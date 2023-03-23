@@ -1,29 +1,29 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertTrue, instanceManager */
+/* jshint globalstrict:true, strict:true, esnext: true */
+/* global assertTrue, instanceManager */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
 const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
@@ -35,7 +35,7 @@ const internal = require("internal");
 
 let getMetric = require('@arangodb/test-helper').getMetric;
 
-function graphTraversalGenericGeneralGraphClusterSuite() {
+function graphTraversalGenericGeneralGraphClusterSuite () {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareGeneralGraphs(), function (testGraph) {
@@ -56,7 +56,7 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
       } catch (e) {
         console.error(e);
         console.error(e.stack);
-        throw(e);
+        throw (e);
       }
     },
 
@@ -70,7 +70,7 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
       } catch (e) {
         console.error(e);
         console.error(e.stack);
-        throw(e);
+        throw (e);
       }
     }
   };
@@ -82,7 +82,7 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
   _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
-      _.each(graphs, function (graph){
+      _.each(graphs, function (graph) {
         suite[testName + '_' + graph.name()] = function () {
           test(graph);
         };
@@ -96,10 +96,10 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
 let beforeQueries;
 let beforeTrxs;
 
-function checkMetricsSuite() {
+function checkMetricsSuite () {
   return {
-    testCheckMetrics : function() {
-      internal.wait(0.5);  // Wait until metrics updated
+    testCheckMetrics: function () {
+      internal.wait(0.5); // Wait until metrics updated
       let afterQueries = getMetric(instanceManager.url, "arangodb_dirty_read_queries_total");
       let afterTrxs = getMetric(instanceManager.url, "arangodb_dirty_read_transactions_total");
       // The following checks that indeed dirty reads have been happening. The

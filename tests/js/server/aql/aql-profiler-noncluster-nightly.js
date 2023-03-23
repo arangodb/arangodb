@@ -1,28 +1,28 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
@@ -31,10 +31,10 @@ const _ = require('lodash');
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for AQL tracing/profiling: slow noncluster tests
-/// contains slow tests for EnumerateCollectionBlock and IndexBlock
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for AQL tracing/profiling: slow noncluster tests
+// / contains slow tests for EnumerateCollectionBlock and IndexBlock
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlProfilerTestSuite () {
 
@@ -64,19 +64,19 @@ function ahuacatlProfilerTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(colName);
       db._drop(edgeColName);
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateCollectionBlock with multiple input rows. slow.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test EnumerateCollectionBlock with multiple input rows. slow.
+// //////////////////////////////////////////////////////////////////////////////
 
     testEnumerateCollectionBlockSlow1: function () {
       const col = db._create(colName);
@@ -87,7 +87,8 @@ function ahuacatlProfilerTestSuite () {
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
-          const profile = db._query(query, {listRows, '@col': colName},
+          const profile = db._query(query, {listRows,
+'@col': colName},
             {
               profile: 2,
               optimizer: {rules: ["-interchange-adjacent-enumerations"]}
@@ -124,28 +125,49 @@ function ahuacatlProfilerTestSuite () {
           let endBatches = optimalBatches;
 
           const expected = [
-            {type: SingletonBlock, items: 1, calls: 1, filtered: 0},
-            {type: CalculationBlock, items: 1, calls: 1, filtered: 0},
-            {type: EnumerateListBlock, items: listRows, calls: listBatches, filtered: 0},
-            {type: EnumerateCollectionBlock, items: totalRows, calls: enumerateCollectionBatches, filtered: 0},
-            {type: CalculationBlock, items: totalRows, calls: endBatches, filtered: 0},
-            {type: ReturnBlock, items: totalRows, calls: endBatches, filtered: 0}
+            {type: SingletonBlock,
+items: 1,
+calls: 1,
+filtered: 0},
+            {type: CalculationBlock,
+items: 1,
+calls: 1,
+filtered: 0},
+            {type: EnumerateListBlock,
+items: listRows,
+calls: listBatches,
+filtered: 0},
+            {type: EnumerateCollectionBlock,
+items: totalRows,
+calls: enumerateCollectionBatches,
+filtered: 0},
+            {type: CalculationBlock,
+items: totalRows,
+calls: endBatches,
+filtered: 0},
+            {type: ReturnBlock,
+items: totalRows,
+calls: endBatches,
+filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
           profHelper.assertNodesItemsAndCalls(expected, actual,
-            {query, listRows, collectionRows});
+            {query,
+listRows,
+collectionRows});
         }
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test IndexBlock with multiple input rows. slow.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test IndexBlock with multiple input rows. slow.
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIndexBlockSlow1 : function () {
+    testIndexBlockSlow1: function () {
       const col = db._create(colName);
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.ensureIndex({ type: "hash",
+fields: [ "value" ] });
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
@@ -155,7 +177,9 @@ function ahuacatlProfilerTestSuite () {
           // forbid reordering of the enumeration nodes as well as removal
           // of one CalculationNode in case listRows == collectionRows.
           const profile = db._query(query,
-            {listRows, collectionRows, '@col': colName},
+            {listRows,
+collectionRows,
+'@col': colName},
             {
               profile: 2,
               optimizer: {rules: [
@@ -203,26 +227,54 @@ function ahuacatlProfilerTestSuite () {
           ];
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
-            {type: EnumerateListBlock, calls: indexCallsBatches, items: totalRows, filtered: 0},
-            {type: IndexBlock, calls: indexBatches, items: totalRows, filtered: 0},
-            {type: CalculationBlock, calls: indexBatches, items: totalRows, filtered: 0},
-            {type: ReturnBlock, calls: indexBatches, items: totalRows, filtered: 0}
+            {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: EnumerateListBlock,
+calls: listBatches,
+items: listRows,
+filtered: 0},
+            {type: EnumerateListBlock,
+calls: indexCallsBatches,
+items: totalRows,
+filtered: 0},
+            {type: IndexBlock,
+calls: indexBatches,
+items: totalRows,
+filtered: 0},
+            {type: CalculationBlock,
+calls: indexBatches,
+items: totalRows,
+filtered: 0},
+            {type: ReturnBlock,
+calls: indexBatches,
+items: totalRows,
+filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
           profHelper.assertNodesItemsAndCalls(expected, actual,
-            {query, listRows, collectionRows, expected, actual});
+            {query,
+listRows,
+collectionRows,
+expected,
+actual});
         }
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test TraversalBlock: traverse a tree for every input vertex
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test TraversalBlock: traverse a tree for every input vertex
+// //////////////////////////////////////////////////////////////////////////////
 
     testTraversalBlock1: function () {
       const col = db._createDocumentCollection(colName);
@@ -240,7 +292,7 @@ function ahuacatlProfilerTestSuite () {
               listRows: listRows,
               colRows: collectionRows,
               root: rootNodeId,
-              '@edgeCol': edgeColName,
+              '@edgeCol': edgeColName
             },
             {
               profile: 2,
@@ -254,7 +306,7 @@ function ahuacatlProfilerTestSuite () {
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
           const calcOptBatches = () => {
-            const opt =  Math.ceil(totalRows / defaultBatchSize);
+            const opt = Math.ceil(totalRows / defaultBatchSize);
             if (totalRows % defaultBatchSize === 0) {
               // In this case the traversal may, or may not know that there is more data.
               return [opt, opt + 1];
@@ -265,26 +317,45 @@ function ahuacatlProfilerTestSuite () {
           const optimalBatches = calcOptBatches();
 
           const expected = [
-            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-            {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-            {type: EnumerateListBlock, calls: listBatches, items: listRows, filtered: 0},
-            {type: TraversalBlock, calls: optimalBatches, items: totalRows, filtered: 0},
-            {type: ReturnBlock, calls: optimalBatches, items: totalRows, filtered: 0}
+            {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: EnumerateListBlock,
+calls: listBatches,
+items: listRows,
+filtered: 0},
+            {type: TraversalBlock,
+calls: optimalBatches,
+items: totalRows,
+filtered: 0},
+            {type: ReturnBlock,
+calls: optimalBatches,
+items: totalRows,
+filtered: 0}
           ];
           const actual = profHelper.getCompactStatsNodes(profile);
 
           profHelper.assertNodesItemsAndCalls(expected, actual,
-            {query, listRows, collectionRows, expected, actual});
+            {query,
+listRows,
+collectionRows,
+expected,
+actual});
         }
       }
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlProfilerTestSuite);
 

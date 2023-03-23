@@ -220,7 +220,7 @@
         '_rev': true,
         '_key': true,
         '_from': true,
-        '_to': true,
+        '_to': true
       };
     },
 
@@ -580,7 +580,7 @@
       if (!frontendConfig.foxxStoreEnabled) {
         delete menus.Store;
       }
-      
+
       if (!frontendConfig.foxxAllowInstallFromRemote) {
         delete menus.Remote;
       }
@@ -654,21 +654,33 @@
     },
 
     arangoNotification: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'success'});
+      window.App.notificationList.add({title: title,
+content: content,
+info: info,
+type: 'success'});
     },
 
     arangoError: function (title, content, info) {
       if (!$('#offlinePlaceholder').is(':visible')) {
-        window.App.notificationList.add({title: title, content: content, info: info, type: 'error'});
+        window.App.notificationList.add({title: title,
+content: content,
+info: info,
+type: 'error'});
       }
     },
 
     arangoWarning: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'warning'});
+      window.App.notificationList.add({title: title,
+content: content,
+info: info,
+type: 'warning'});
     },
 
     arangoMessage: function (title, content, info) {
-      window.App.notificationList.add({title: title, content: content, info: info, type: 'info'});
+      window.App.notificationList.add({title: title,
+content: content,
+info: info,
+type: 'info'});
     },
 
     hideArangoNotifications: function () {
@@ -733,9 +745,9 @@
 
       // custom css (embedded view)
       $('.arangoFrame #deleteDocumentButton').css('display', 'none');
-      $('.document-link').hover(function() {
-        $(this).css('cursor','default');
-        $(this).css('text-decoration','none');
+      $('.document-link').hover(function () {
+        $(this).css('cursor', 'default');
+        $(this).css('text-decoration', 'none');
       });
     },
 
@@ -998,11 +1010,11 @@
       }
 
       // HTML-escape a string
-      return String(val).replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+      return String(val).replace(/&/g, '&amp;').
+        replace(/</g, '&lt;').
+        replace(/>/g, '&gt;').
+        replace(/"/g, '&quot;').
+        replace(/'/g, '&#39;');
     },
 
     backendUrl: function (url) {

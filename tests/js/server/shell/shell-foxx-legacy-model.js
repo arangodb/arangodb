@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertFalse, assertTrue, assertEqual */
+/* jshint globalstrict:false, strict:false */
+/* global assertFalse, assertTrue, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the agency communication layer
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Lucas Doomen
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the agency communication layer
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Lucas Doomen
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var _ = require("lodash"),
   joi = require("joi"),
@@ -77,7 +77,7 @@ function ModelSpec () {
 
     testAddingAMethodWithExtend: function () {
       var Model = FoxxModel.extend({
-        getA: function() {
+        getA: function () {
           return this.get("a");
         }
       });
@@ -91,7 +91,7 @@ function ModelSpec () {
 
     testOverwritingAMethodWithExtend: function () {
       var Model = FoxxModel.extend({
-        get: function() {
+        get: function () {
           return 1;
         }
       });
@@ -124,7 +124,7 @@ function ModelSpec () {
       var dbData = instance.forDB();
       var clientData = instance.forClient();
 
-      _.each(raw, function(value, key) {
+      _.each(raw, function (value, key) {
         assertEqual(value, dbData[key]);
         assertEqual(value, clientData[key]);
       });
@@ -198,7 +198,8 @@ function ModelSpec () {
         }
       });
 
-      instance = new Model({ anInteger: 1, nonExistant: 2 });
+      instance = new Model({ anInteger: 1,
+nonExistant: 2 });
       assertEqual(instance.attributes.anInteger, 1);
       assertEqual(instance.attributes.nonExistant, 2);
       assertEqual(_.keys(instance.errors).length, 1);
@@ -303,8 +304,11 @@ function ModelSpec () {
         }
       });
 
-      instance = new Model({ a: "a", c: "c" });
-      assertEqual(instance.attributes, { a: "a", c: "c", b: "test" });
+      instance = new Model({ a: "a",
+c: "c" });
+      assertEqual(instance.attributes, { a: "a",
+c: "c",
+b: "test" });
     }
   };
 }
@@ -333,7 +337,7 @@ function ModelDBSpec () {
       db._collection(cn).insert({ _key: "test" });
       internal.wal.flush(true, true);
       internal.wait(3);
-        
+
       // doc should be shaped by now, at least on a single server
       var doc = db._document(cn + "/test");
 
@@ -342,11 +346,11 @@ function ModelDBSpec () {
       assertEqual(instance.attributes._PRINT, undefined);
       assertFalse(instance.has('_PRINT'));
     },
-    
+
     testFromWal: function () {
       internal.wal.flush(true, true);
       db._collection(cn).insert({ _key: "test" });
-      
+
       // doc should still be in the WAL, at least on a single server
       var doc = db._document(cn + "/test");
       instance = new FoxxModel(doc);
@@ -360,12 +364,12 @@ function ModelDBSpec () {
           user: joi.string()
         }
       });
-      
+
       internal.wal.flush(true, true);
       db._collection(cn).insert({ _key: "test" });
       internal.wal.flush(true, true);
       internal.wait(3);
-        
+
       // doc should be shaped by now, at least on a single server
       var doc = db._document(cn + "/test");
 
@@ -380,7 +384,7 @@ function ModelDBSpec () {
       db._collection(cn).insert({ _key: "test" });
       internal.wal.flush(true, true);
       internal.wait(3);
-        
+
       // doc should be shaped by now, at least on a single server
       var doc = db._document(cn + "/test");
 
@@ -397,15 +401,15 @@ function ModelDBSpec () {
           user: joi.string()
         }
       });
-      
+
       internal.wal.flush(true, true);
       db._collection(cn).insert({ _key: "test" });
       internal.wal.flush(true, true);
       internal.wait(3);
-      
+
       // doc should be shaped by now, at least on a single server
       var doc = db._document(cn + "/test");
-      
+
       assertTrue(typeof doc._PRINT === 'function' || typeof doc._PRINT === 'undefined');
       instance = new Model();
       instance.set(doc);
@@ -435,7 +439,8 @@ function ModelAnnotationSpec () {
     },
 
     testAttributesOfAPlainModel: function () {
-      var attributes = {a: 1, b: 2};
+      var attributes = {a: 1,
+b: 2};
       var Model = FoxxModel.extend({});
       instance = new Model(attributes);
       assertEqual(instance.attributes, attributes);

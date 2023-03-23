@@ -1,28 +1,28 @@
-/*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/* jshint strict: true */
+/* global assertTrue, assertEqual*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alexandru Petenchea
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
@@ -52,10 +52,10 @@ const compareExchange = function (url, stateId, payload) {
   });
 };
 
-const getEntry = function (url, stateId, entry, allowDirtyRead,  waitForApplied) {
+const getEntry = function (url, stateId, entry, allowDirtyRead, waitForApplied) {
   let params = `?allowDirtyRead=${allowDirtyRead}`;
   params += (waitForApplied === undefined ? '' : `&waitForApplied=${waitForApplied}`);
-  return request.get({url:`${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}${params}`});
+  return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}${params}`});
 };
 
 const getEntries = function (url, stateId, entries, allowDirtyRead, waitForApplied) {
@@ -88,7 +88,7 @@ const getSnapshot = function (url, stateId, waitForIndex) {
   return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/snapshot?waitForIndex=${waitForIndex}`});
 };
 
-const getStatus = function(url, stateId) {
+const getStatus = function (url, stateId) {
   return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}`});
 };
 
@@ -101,7 +101,7 @@ const prototypeStateIsReady = function (url, stateId) {
         return Error(`expected status call to return 200, found ${res.json.code}`);
       }
       return true;
-    } catch(e) {
+    } catch (e) {
       return Error("status call threw exception: " + e);
     }
   };
@@ -125,16 +125,17 @@ const replicatedStateSuite = function () {
         if (!databaseExisted) {
           db._dropDatabase(database);
         }
-      },
+      }
     };
   }());
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
-    testPrototypeReplicatedStateMethods: function() {
+    testPrototypeReplicatedStateMethods: function () {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
@@ -145,10 +146,12 @@ const replicatedStateSuite = function () {
 
       lh.replicatedLogSetTarget(database, stateId, {
         id: stateId,
-        config: {writeConcern: 2, waitForSync: false},
+        config: {writeConcern: 2,
+waitForSync: false},
         participants: lh.getParticipantsObjectForServers(servers),
         supervision: {maxActionsTraceLength: 20},
-        properties: {implementation: {type: "prototype", parameters: {}}},
+        properties: {implementation: {type: "prototype",
+parameters: {}}}
       });
       lh.waitForReplicatedLogAvailable(stateId);
 
@@ -170,26 +173,30 @@ const replicatedStateSuite = function () {
       // wait for prototype state to be ready
       lh.waitFor(prototypeStateIsReady(leaderUrl, stateId));
 
-      let result = insertEntries(leaderUrl, stateId, {foo0 : "bar0", foo1: "bar1", foo2: "bar2"});
+      let result = insertEntries(leaderUrl, stateId, {foo0: "bar0",
+foo1: "bar1",
+foo2: "bar2"});
       lh.checkRequestResult(result);
       let index = result.json.result.index;
       assertEqual(index, 2);
 
       result = getEntry(leaderUrl, stateId, "foo0", false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo0,  "bar0");
+      assertEqual(result.json.result.foo0, "bar0");
 
       result = getEntry(followerUrl, stateId, "foo0", true, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo0,  "bar0");
+      assertEqual(result.json.result.foo0, "bar0");
 
       result = getEntries(leaderUrl, stateId, ["foo1", "foo2"], false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
+      assertEqual(result.json.result, {foo1: "bar1",
+foo2: "bar2"});
 
       result = getEntries(followerUrl, stateId, ["foo1", "foo2"], true, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result, {foo1: "bar1", foo2: "bar2"});
+      assertEqual(result.json.result, {foo1: "bar1",
+foo2: "bar2"});
 
       result = removeEntry(leaderUrl, stateId, "foo0", false);
       lh.checkRequestResult(result);
@@ -207,19 +214,22 @@ const replicatedStateSuite = function () {
       result = getEntry(leaderUrl, stateId, "foo2", false, index);
       assertEqual(result.json.code, 404);
 
-      result = insertEntries(coordUrl, stateId, {foo100: "bar100", foo200: "bar200", foo300: "bar300", foo400: "bar400"});
+      result = insertEntries(coordUrl, stateId, {foo100: "bar100",
+foo200: "bar200",
+foo300: "bar300",
+foo400: "bar400"});
       lh.checkRequestResult(result);
       index = result.json.result.index;
       assertEqual(index, 5);
 
       result = getEntry(coordUrl, stateId, "foo100", false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo100,  "bar100");
+      assertEqual(result.json.result.foo100, "bar100");
 
       result = getEntries(coordUrl, stateId, ["foo200", "foo300"], false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo200,  "bar200");
-      assertEqual(result.json.result.foo300,  "bar300");
+      assertEqual(result.json.result.foo200, "bar200");
+      assertEqual(result.json.result.foo300, "bar300");
 
       result = removeEntry(coordUrl, stateId, "foo300");
       lh.checkRequestResult(result);
@@ -233,11 +243,12 @@ const replicatedStateSuite = function () {
 
       result = getEntry(leaderUrl, stateId, "foo400", false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo400,  "bar400");
+      assertEqual(result.json.result.foo400, "bar400");
 
       result = getSnapshot(leaderUrl, stateId, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result, {foo100: "bar100", foo400: "bar400"});
+      assertEqual(result.json.result, {foo100: "bar100",
+foo400: "bar400"});
 
       result = removeEntry(coordUrl, stateId, "foo100");
       lh.checkRequestResult(result);
@@ -248,36 +259,40 @@ const replicatedStateSuite = function () {
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo400: "bar400"});
 
-      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400",
+"newValue": "foobar"}});
       lh.checkRequestResult(result);
       index = result.json.result.index;
       assertEqual(index, 9);
       result = getEntry(coordUrl, stateId, "foo400", false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo400,  "foobar");
+      assertEqual(result.json.result.foo400, "foobar");
 
-      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400",
+"newValue": "foobar"}});
       assertEqual(result.json.code, 409);
       result = getEntry(coordUrl, stateId, "foo400", false, index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo400,  "foobar");
+      assertEqual(result.json.result.foo400, "foobar");
 
-      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar",
+"newValue": "bar400"}});
       lh.checkRequestResult(result);
       index = result.json.result.index;
       assertEqual(index, 10);
       result = getEntry(coordUrl, stateId, "foo400", index);
       lh.checkRequestResult(result);
-      assertEqual(result.json.result.foo400,  "bar400");
+      assertEqual(result.json.result.foo400, "bar400");
 
-      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar",
+"newValue": "bar400"}});
       assertEqual(result.json.code, 409);
 
       result = dropState(coordUrl, stateId);
       lh.checkRequestResult(result);
       lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
-    },
+    }
   };
 };
 

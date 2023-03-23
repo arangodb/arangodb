@@ -1,28 +1,28 @@
-/*jshint strict: true */
-/*global assertTrue, assertEqual, print*/
+/* jshint strict: true */
+/* global assertTrue, assertEqual, print*/
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -40,13 +40,13 @@ const {
   registerAgencyTestBegin,
   registerAgencyTestEnd,
   replicatedLogUpdateTargetParticipants,
-  waitForReplicatedLogAvailable,
+  waitForReplicatedLogAvailable
 } = helper;
 const {
   replicatedLogIsReady,
   replicatedLogLeaderEstablished,
   replicatedLogParticipantsFlag,
-  replicatedLogTargetVersion,
+  replicatedLogTargetVersion
 } = lpreds;
 
 const database = "replication2_supervision_test_db";
@@ -142,7 +142,7 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    waitForSync: false,
+    waitForSync: false
   };
 
   const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
@@ -184,7 +184,7 @@ const replicatedLogSuite = function () {
             Object.keys(stoppedServers).forEach(function (key) {
               continueServer(key);
             });
-          },
+          }
         };
       })();
 
@@ -287,7 +287,7 @@ const replicatedLogSuite = function () {
           replicatedLogLeaderElectionFailed(database, logId, term + 1, {
             [leader]: 1,
             [followers[0]]: 1,
-            [followers[1]]: 0,
+            [followers[1]]: 0
           })
       );
 
@@ -359,8 +359,8 @@ const replicatedLogSuite = function () {
             [newLeader]: {
               allowedAsLeader: true,
               allowedInQuorum: true,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
       {
@@ -377,7 +377,7 @@ const replicatedLogSuite = function () {
           assertEqual(action.flags, {
             allowedAsLeader: true,
             allowedInQuorum: true,
-            forced: true,
+            forced: true
           });
         }
         {
@@ -392,7 +392,7 @@ const replicatedLogSuite = function () {
           assertEqual(action.flags, {
             allowedAsLeader: true,
             allowedInQuorum: true,
-            forced: false,
+            forced: false
           });
         }
       }
@@ -408,7 +408,7 @@ const replicatedLogSuite = function () {
       // now add the excluded flag to one of the servers
       const server = _.sample(followers);
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [server]: {allowedInQuorum: false},
+        [server]: {allowedInQuorum: false}
       });
 
       waitFor(
@@ -416,14 +416,14 @@ const replicatedLogSuite = function () {
             [server]: {
               allowedInQuorum: false,
               forced: false,
-              allowedAsLeader: true,
-            },
+              allowedAsLeader: true
+            }
           })
       );
 
       // now remove the flag again
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [server]: {allowedInQuorum: true},
+        [server]: {allowedInQuorum: true}
       });
 
       waitFor(
@@ -431,8 +431,8 @@ const replicatedLogSuite = function () {
             [server]: {
               allowedInQuorum: true,
               forced: false,
-              allowedAsLeader: true,
-            },
+              allowedAsLeader: true
+            }
           })
       );
 
@@ -446,7 +446,8 @@ const replicatedLogSuite = function () {
       // now add a new server, but with excluded flag
       const newServer = _.sample(_.difference(dbservers, servers));
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newServer]: {allowedInQuorum: false, allowedAsLeader: false},
+        [newServer]: {allowedInQuorum: false,
+allowedAsLeader: false}
       });
 
       waitFor(
@@ -454,8 +455,8 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedInQuorum: false,
               allowedAsLeader: false,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
@@ -470,7 +471,8 @@ const replicatedLogSuite = function () {
       // first add a new server, but with excluded flag
       const newServer = _.sample(_.difference(dbservers, servers));
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newServer]: {allowedInQuorum: true, allowedAsLeader: true},
+        [newServer]: {allowedInQuorum: true,
+allowedAsLeader: true}
       });
 
       waitFor(
@@ -478,19 +480,19 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedInQuorum: true,
               allowedAsLeader: true,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
       const removedServer = _.sample(followers);
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [removedServer]: null,
+        [removedServer]: null
       });
 
       waitFor(
           replicatedLogParticipantsFlag(database, logId, {
-            [removedServer]: null,
+            [removedServer]: null
           })
       );
 
@@ -506,7 +508,7 @@ const replicatedLogSuite = function () {
           assertEqual(action.flags, {
             allowedAsLeader: true,
             allowedInQuorum: false,
-            forced: false,
+            forced: false
           });
         }
         {
@@ -529,7 +531,9 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, setLeader);
       waitFor(replicatedLogIsReady(database, logId, term, servers, setLeader));
       waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [setLeader]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
+        [setLeader]: {allowedAsLeader: true,
+allowedInQuorum: true,
+forced: false}
       }));
 
       // Stop current leader and wait for the leader to be changed
@@ -544,7 +548,8 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [setLeader]: {allowedInQuorum: true, allowedAsLeader: true},
+        [setLeader]: {allowedInQuorum: true,
+allowedAsLeader: true}
       });
 
       replicatedLogDeleteTarget(database, logId);
@@ -560,15 +565,16 @@ const replicatedLogSuite = function () {
       // first make the new leader excluded
       const newLeader = followers[0];
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newLeader]: {allowedInQuorum: false, allowedAsLeader: false},
+        [newLeader]: {allowedInQuorum: false,
+allowedAsLeader: false}
       });
       waitFor(
           replicatedLogParticipantsFlag(database, logId, {
             [newLeader]: {
               allowedInQuorum: false,
               allowedAsLeader: false,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
@@ -580,7 +586,8 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newLeader]: {allowedInQuorum: true, allowedAsLeader: true},
+        [newLeader]: {allowedInQuorum: true,
+allowedAsLeader: true}
       });
       waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
 
@@ -596,15 +603,15 @@ const replicatedLogSuite = function () {
       // first make one follower excluded
       const excludedFollower = followers[0];
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [excludedFollower]: {allowedAsLeader: false},
+        [excludedFollower]: {allowedAsLeader: false}
       });
       waitFor(
           replicatedLogParticipantsFlag(database, logId, {
             [excludedFollower]: {
               allowedInQuorum: true,
               allowedAsLeader: false,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
@@ -631,7 +638,7 @@ const replicatedLogSuite = function () {
         // add new server to target
         target.participants[newServer] = {
           allowedAsLeader: false,
-          allowedInQuorum: false,
+          allowedInQuorum: false
         };
         replicatedLogSetTarget(database, logId, target);
       }
@@ -641,24 +648,25 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedAsLeader: false,
               allowedInQuorum: false,
-              forced: false,
+              forced: false
             },
-            [oldServer]: null,
+            [oldServer]: null
           })
       );
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newServer]: {allowedAsLeader: true, allowedInQuorum: true},
+        [newServer]: {allowedAsLeader: true,
+allowedInQuorum: true}
       });
       waitFor(
           replicatedLogParticipantsFlag(database, logId, {
             [newServer]: {
               allowedAsLeader: true,
               allowedInQuorum: true,
-              forced: false,
+              forced: false
             },
-            [oldServer]: null,
+            [oldServer]: null
           })
       );
 
@@ -689,7 +697,7 @@ const replicatedLogSuite = function () {
         delete target.participants[leader];
         target.participants[newServer] = {
           allowedAsLeader: false,
-          allowedInQuorum: false,
+          allowedInQuorum: false
         };
         replicatedLogSetTarget(database, logId, target);
       }
@@ -700,14 +708,15 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedAsLeader: false,
               allowedInQuorum: false,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newServer]: {allowedAsLeader: true, allowedInQuorum: true},
+        [newServer]: {allowedAsLeader: true,
+allowedInQuorum: true}
       });
 
       waitFor(
@@ -715,8 +724,8 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedAsLeader: true,
               allowedInQuorum: true,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
@@ -724,7 +733,7 @@ const replicatedLogSuite = function () {
       waitFor(
           replicatedLogLeaderEstablished(database, logId, term + 1, [
             ...followers,
-            newServer,
+            newServer
           ])
       );
     },
@@ -744,7 +753,7 @@ const replicatedLogSuite = function () {
         delete target.participants[leader];
         target.participants[newServer] = {
           allowedInQuorum: false,
-          allowedAsLeader: false,
+          allowedAsLeader: false
         };
         replicatedLogSetTarget(database, logId, target);
       }
@@ -753,8 +762,8 @@ const replicatedLogSuite = function () {
             [newServer]: {
               allowedInQuorum: false,
               allowedAsLeader: false,
-              forced: false,
-            },
+              forced: false
+            }
           })
       );
 
@@ -764,16 +773,17 @@ const replicatedLogSuite = function () {
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
-        [newServer]: {allowedInQuorum: true, allowedAsLeader: true},
+        [newServer]: {allowedInQuorum: true,
+allowedAsLeader: true}
       });
       waitFor(
           replicatedLogParticipantsFlag(database, logId, {
             [newServer]: {
               allowedInQuorum: true,
               allowedAsLeader: true,
-              forced: false,
+              forced: false
             },
-            [leader]: null,
+            [leader]: null
           })
       );
       waitFor(
@@ -866,7 +876,7 @@ const replicatedLogSuite = function () {
       replicatedLogUpdateTargetParticipants(database, logId, {
         [first]: {allowedInQuorum: false},
         [second]: {allowedInQuorum: false},
-        [third]: {allowedInQuorum: false},
+        [third]: {allowedInQuorum: false}
       });
 
       waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
@@ -874,7 +884,7 @@ const replicatedLogSuite = function () {
       replicatedLogUpdateTargetParticipants(database, logId, {
         [first]: {allowedInQuorum: true},
         [second]: {allowedInQuorum: true},
-        [third]: {allowedInQuorum: true},
+        [third]: {allowedInQuorum: true}
       });
       // service should continue as normal
       waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, undefined));
@@ -932,7 +942,7 @@ const replicatedLogSuite = function () {
           replicatedLogLeaderElectionFailed(database, logId, term + 1, {
             [leader]: 1,
             [followers[0]]: 1,
-            [followers[1]]: 0,
+            [followers[1]]: 0
           })
       );
 
@@ -978,14 +988,18 @@ const replicatedLogSuite = function () {
         [followers[0]]: null,
         [followers[1]]: null,
         [newFollowers[0]]: {},
-        [newFollowers[1]]: {},
+        [newFollowers[1]]: {}
       });
 
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [followers[0]]: null,
         [followers[1]]: null,
-        [newFollowers[0]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
-        [newFollowers[1]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+        [newFollowers[0]]: {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false},
+        [newFollowers[1]]: {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false}
       }));
       waitFor(replicatedLogIsReady(database, logId, term, [leader, ...newFollowers], leader));
 
@@ -994,7 +1008,7 @@ const replicatedLogSuite = function () {
         const counts = helper.countActionsByType(actions);
         const expected = {
           "RemoveParticipantFromPlanAction": 2,
-          "UpdateParticipantFlagsAction": 2,
+          "UpdateParticipantFlagsAction": 2
         };
         assertEqual(counts, expected);
       }
@@ -1005,7 +1019,7 @@ const replicatedLogSuite = function () {
     testReplaceLeaderAndOneFollower: function () {
       const {servers, leader, followers, logId, term} = createReplicatedLogAndWaitForLeader(database);
 
-      //const initialNumberOfActions = helper.getSupervisionActionTypes(database, logId).length;
+      // const initialNumberOfActions = helper.getSupervisionActionTypes(database, logId).length;
 
       const otherServer = _.difference(dbservers, servers);
       const [newLeader, newFollower] = _.sampleSize(otherServer, 2);
@@ -1021,9 +1035,15 @@ const replicatedLogSuite = function () {
       waitFor(replicatedLogParticipantsFlag(database, logId, {
         [oldFollower]: null,
         [leader]: null,
-        [newLeader]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
-        [newFollower]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
-        [followers[1]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+        [newLeader]: {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false},
+        [newFollower]: {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false},
+        [followers[1]]: {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false}
       }));
       waitFor(replicatedLogIsReady(database, logId, term + 1, [newLeader, newFollower, followers[1]], newLeader));
 
@@ -1068,7 +1088,7 @@ const replicatedLogSuite = function () {
       // if we continue the server, we expect the old leader to come back
       waitFor(replicatedLogIsReady(database, logId, term + 3, servers, leader));
       replicatedLogDeleteTarget(database, logId);
-    },
+    }
   };
 };
 

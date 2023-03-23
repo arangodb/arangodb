@@ -33,7 +33,7 @@ const jsunity = require('jsunity');
 function clientTestSuite () {
   'use strict';
   return {
-    
+
     testIsArangod: function () {
       assertTrue(require("internal").isArangod());
     },
@@ -52,7 +52,7 @@ function clientTestSuite () {
 
     testColorStop: function () {
       stop_color_print();
-    },
+    }
   };
 }
 

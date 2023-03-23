@@ -34,7 +34,8 @@ const crypto = require('@arangodb/crypto');
 function nonceAndTime () {
   const oauth_timestamp = Math.floor(Date.now() / 1000);
   const oauth_nonce = crypto.genRandomAlphaNumbers(32);
-  return {oauth_timestamp, oauth_nonce};
+  return {oauth_timestamp,
+oauth_nonce};
 }
 
 function normalizeUrl (requestUrl, parameters) {
@@ -180,7 +181,8 @@ module.exports = function oauth1 (cfg) {
       const req = createRequest(
         'POST',
         cfg.accessTokenEndpoint,
-        Object.assign({oauth_token, oauth_verifier}, opts)
+        Object.assign({oauth_token,
+oauth_verifier}, opts)
       );
       const res = request.post(req);
       if (!res.body) {

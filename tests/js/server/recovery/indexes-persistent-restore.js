@@ -38,7 +38,8 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   var c = db._create('UnitTestsRecovery1'), i;
-  c.ensureIndex({ type: 'persistent', fields: ['value'] });
+  c.ensureIndex({ type: 'persistent',
+fields: ['value'] });
 
   for (i = 0; i < 1000; ++i) {
     c.save({ value: i });

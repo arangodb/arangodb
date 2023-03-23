@@ -70,7 +70,7 @@ const executeJS = (code) => {
 
 let __ldapResolved__ = false;
 let __ldapEnabled__ = false;
-function isLdapEnabled() {
+function isLdapEnabled () {
   if (__ldapResolved__) {
     return __ldapEnabled__;
   } else {
@@ -84,7 +84,7 @@ function isLdapEnabled() {
     __ldapEnabled__ = res;
     return res;
   }
-};
+}
 
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level

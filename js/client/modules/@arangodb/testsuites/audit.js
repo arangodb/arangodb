@@ -52,10 +52,10 @@ const testPaths = {
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
-class runBasicOnArangod extends tu.runOnArangodRunner{
-  preRun() {
+class runBasicOnArangod extends tu.runOnArangodRunner {
+  preRun () {
     // we force to use auth basic, since tests expect it!
-    this.instanceManager.httpAuthOptions =  {
+    this.instanceManager.httpAuthOptions = {
       'headers': {
         'Authorization': 'Basic ' + base64Encode('root:')
       }
@@ -64,8 +64,8 @@ class runBasicOnArangod extends tu.runOnArangodRunner{
   }
 }
 
-function auditLog(onServer) {
-  return function(options) {
+function auditLog (onServer) {
+  return function (options) {
     if (options.skipAudit === true) {
       print('skipping audit log tests!');
       return {
@@ -75,15 +75,15 @@ function auditLog(onServer) {
         }
       };
     }
-    
+
     let opts = {
       audit: {
         name: 'audit_' + onServer ? 'server' : 'client'
       }
     };
-    
+
     options.auditLoggingEnabled = true;
-    
+
     const serverOptions = Object.assign({}, tu.testServerAuthInfo, {
       'log.level': 'audit-authentication=info',
       'log.force-direct': true
@@ -107,6 +107,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   // only enable them in Enterprise Edition
   opts['skipAudit'] = !isEnterprise();
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

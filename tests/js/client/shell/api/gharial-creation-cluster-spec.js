@@ -93,7 +93,7 @@ describe('General graph creation', function () {
         edgeDefinitions: [rel],
         name: gn,
         options,
-        isSmart: false,
+        isSmart: false
       };
       // Create with default options
       let res = arango.POST_RAW(`/_api/gharial`, body);
@@ -143,14 +143,14 @@ describe('General graph creation', function () {
         let body = {
           to: [vn2],
           from: [vn2],
-          collection: en2,
+          collection: en2
         };
         let res = arango.POST_RAW(`/_api/gharial/${gn}/edge`, body);
 
         expect(res.code).to.equal(202);
 
         body = {
-          collection: on2,
+          collection: on2
         };
         res = arango.POST_RAW(`/_api/gharial/${gn}/vertex`, body);
 
@@ -187,7 +187,7 @@ describe('General graph creation', function () {
         let body = {
           from: [vn],
           to: [vn3],
-          collection: en,
+          collection: en
         };
 
         let res = arango.PUT_RAW(`/_api/gharial/${gn}/edge/${en}`, body);
@@ -217,7 +217,7 @@ describe('General graph creation', function () {
     "with min replication factor startup options",
     testSuite.bind(this, opts)
   );
-  
+
   opts = { numberOfShards: 3 };
   if (defaultReplicationFactor === 2) {
     opts.replicationFactor = 1;
@@ -226,5 +226,5 @@ describe('General graph creation', function () {
     "with replication factor and shards startup options",
     testSuite.bind(this, opts)
   );
-  
+
 });

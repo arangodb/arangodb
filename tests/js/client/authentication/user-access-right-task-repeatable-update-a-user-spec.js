@@ -114,8 +114,9 @@ const waitForTaskStop = () => {
 
 describe('User Rights Management', () => {
   before(() => {
-    if(!users.exists('bob'))
-      users.save('bob');
+    if (!users.exists('bob')) {
+users.save('bob');
+}
     users.grantDatabase('bob', '_system', 'rw');
     users.grantCollection('bob', '_system', '*', 'rw');
 

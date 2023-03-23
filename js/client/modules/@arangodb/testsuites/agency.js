@@ -50,7 +50,7 @@ function agency (options) {
 
   options.agency = true;
   options.cluster = false;
-  let results = new tu.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
+  let results = new tu.runInArangoshRunner(options, 'agency', {}, false, false).run(testCases);
 
   options.agency = saveAgency;
   options.cluster = saveCluster;
@@ -62,6 +62,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['agency'] = agency;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

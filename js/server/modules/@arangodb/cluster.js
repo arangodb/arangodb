@@ -192,7 +192,7 @@ function waitForSyncRepl (dbName, collList) {
     return true;
   }
   let n = collList.length;
-  let count = 30 * n;   // wait for up to 30 * collList.length seconds
+  let count = 30 * n; // wait for up to 30 * collList.length seconds
                         // usually, this is much faster, but under load
                         // when many unittests run, things may take longer
   let ok = [...Array(n)].map(v => false);
@@ -213,15 +213,16 @@ function waitForSyncRepl (dbName, collList) {
   return false;
 }
 
-function endpoints() {
+function endpoints () {
   try {
     let coords = global.ArangoClusterInfo.getCoordinators();
     let endpoints = coords.map(c => global.ArangoClusterInfo.getServerEndpoint(c));
-    return { "endpoints": endpoints.map(function(e) {
+    return { "endpoints": endpoints.map(function (e) {
                                           return {"endpoint": e};
                                         }) };
   } catch (err) {
-    return { error: true, exception: err };
+    return { error: true,
+exception: err };
   }
 }
 

@@ -7,7 +7,7 @@ const Reporter = require('@arangodb/mocha/reporter');
 const { clean } = require('@arangodb/mocha/utils');
 
 class JsonReporter extends Reporter {
-  constructor(runner, options) {
+  constructor (runner, options) {
     super(runner, options);
     var self = this;
     var tests = [];
@@ -15,23 +15,23 @@ class JsonReporter extends Reporter {
     var failures = [];
     var passes = [];
 
-    runner.on('test end', function(test) {
+    runner.on('test end', function (test) {
       tests.push(test);
     });
 
-    runner.on('pass', function(test) {
+    runner.on('pass', function (test) {
       passes.push(test);
     });
 
-    runner.on('fail', function(test) {
+    runner.on('fail', function (test) {
       failures.push(test);
     });
 
-    runner.on('pending', function(test) {
+    runner.on('pending', function (test) {
       pending.push(test);
     });
 
-    runner.once('end', function() {
+    runner.once('end', function () {
       var obj = {
         stats: self.stats,
         tests: tests.map(clean),

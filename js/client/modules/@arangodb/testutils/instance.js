@@ -73,10 +73,10 @@ let tcpdump;
 
 let PORTMANAGER;
 
-function getSockStatFile(pid) {
+function getSockStatFile (pid) {
   try {
     return fs.read("/proc/" + pid + "/net/sockstat");
-  } catch (e) {/* oops, process already gone? don't care. */ }
+  } catch (e) { /* oops, process already gone? don't care. */ }
   return "";
 }
 
@@ -84,7 +84,7 @@ class portManager {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief finds a free port
   // //////////////////////////////////////////////////////////////////////////////
-  constructor(options) {
+  constructor (options) {
     this.usedPorts = [];
     this.minPort = options['minPort'];
     this.maxPort = options['maxPort'];
@@ -96,13 +96,13 @@ class portManager {
       throw new Error('minPort ' + this.minPort + ' is smaller than maxPort ' + this.maxPort);
     }
   }
-  deregister(port) {
+  deregister (port) {
     let deletePortIndex = this.usedPorts.indexOf(port);
     if (deletePortIndex > -1) {
       this.usedPorts.splice(deletePortIndex, 1);
     }
   }
-  findFreePort() {
+  findFreePort () {
     let tries = 0;
     while (true) {
       const port = Math.floor(Math.random() * (this.maxPort - this.minPort)) + this.minPort;
@@ -127,7 +127,7 @@ class portManager {
 
 const instanceType = {
   single: 'single',
-  activefailover : 'activefailover',
+  activefailover: 'activefailover',
   cluster: 'cluster'
 };
 
@@ -140,7 +140,7 @@ const instanceRole = {
 };
 
 class agencyConfig {
-  constructor(options, wholeCluster) {
+  constructor (options, wholeCluster) {
     this.wholeCluster = wholeCluster;
     this.agencySize = options.agencySize;
     this.supervision = String(options.agencySupervision);
@@ -154,7 +154,7 @@ class agencyConfig {
     this.urls = [];
     this.endpoints = [];
   }
-  getStructure() {
+  getStructure () {
     return {
       agencySize: this.agencySize,
       agencyInstances: this.agencyInstances.length,
@@ -166,7 +166,7 @@ class agencyConfig {
       endpoints: this.endpoints
     };
   }
-  setFromStructure(struct) {
+  setFromStructure (struct) {
     this.agencySize = struct['agencySize'];
     this.supervision = struct['supervision'];
     this.waitForSync = struct['waitForSync'];
@@ -179,8 +179,8 @@ class agencyConfig {
 
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig) {
-    if (! PORTMANAGER) {
+  constructor (options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig) {
+    if (!PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
     this.id = null;
@@ -218,15 +218,16 @@ class instance {
     this.JWT = null;
     this.jwtFiles = null;
     this._makeArgsArangod();
-    
+
     this.name = instanceRole + ' - ' + this.port;
     this.pid = null;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
-    this.netstat = {'in':{}, 'out': {}};
+    this.netstat = {'in': {},
+'out': {}};
   }
 
-  getStructure() {
+  getStructure () {
     return {
       name: this.name,
       instanceRole: this.instanceRole,
@@ -255,7 +256,7 @@ class instance {
     };
   }
 
-  setFromStructure(struct, agencyConfig) {
+  setFromStructure (struct, agencyConfig) {
     this.name = struct['name'];
     this.instanceRole = struct['instanceRole'];
     this.message = struct['message'];
@@ -281,21 +282,21 @@ class instance {
     this.serverCrashedLocal = struct['serverCrashedLocal'];
   }
 
-  isRole(compareRole) {
+  isRole (compareRole) {
     // print(this.instanceRole + ' ==? ' + compareRole);
     return this.instanceRole === compareRole;
   }
 
-  isAgent() {
+  isAgent () {
     return this.instanceRole === instanceRole.agent;
   }
-  isFrontend() {
-    return ( (this.instanceRole === instanceRole.single) ||
+  isFrontend () {
+    return ((this.instanceRole === instanceRole.single) ||
              (this.instanceRole === instanceRole.coordinator) ||
-             (this.instanceRole === instanceRole.failover)      );
+             (this.instanceRole === instanceRole.failover));
   }
 
-  checkNetstat(data) {
+  checkNetstat (data) {
     let which = null;
     if (data.local.port === this.port) {
       which = this.netstat['in'];
@@ -310,8 +311,8 @@ class instance {
       }
     }
   }
-  
-  
+
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -360,8 +361,7 @@ class instance {
 
     if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
       this.args['server.jwt-secret'] = this.restKeyFile;
-    }
-    else if (this.options.hasOwnProperty('jwtFiles')) {
+    } else if (this.options.hasOwnProperty('jwtFiles')) {
       this.jwtFiles = this.options['jwtFiles'];
     // instanceInfo.authOpts['server.jwt-secret-folder'] = addArgs['server.jwt-secret-folder'];
     }
@@ -419,7 +419,7 @@ class instance {
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
-        'cluster.my-role':'PRIMARY',
+        'cluster.my-role': 'PRIMARY',
         'cluster.my-address': this.args['server.endpoint'],
         'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint
       });
@@ -431,7 +431,7 @@ class instance {
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
-        this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
+        this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1' : '2';
       }
     } else if (this.instanceRole === instanceRole.failover) {
       this.args = Object.assign(this.args, {
@@ -449,7 +449,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief aggregates information from /proc about the SUT
   // //////////////////////////////////////////////////////////////////////////////
-  _getProcessStats() {
+  _getProcessStats () {
     let processStats = statisticsExternal(this.pid);
     if (platform === 'linux') {
       let pidStr = "" + this.pid;
@@ -481,7 +481,7 @@ class instance {
           processStats[x[0]] = parseInt(x[1]);
         }
       }
-      /* 
+      /*
        * sockets: used 1272
        * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
        * UDP: inuse 19 mem 17
@@ -494,16 +494,16 @@ class instance {
         if (line.length > 0) {
           let x = line.split(":");
           let values = x[1].split(" ");
-          for (let k = 1; k < values.length; k+= 2) {
-            processStats['sockstat_' + x[0] + '_' + values[k]]
-              = parseInt(values[k + 1]);
+          for (let k = 1; k < values.length; k += 2) {
+            processStats['sockstat_' + x[0] + '_' + values[k]] =
+              parseInt(values[k + 1]);
           }
         }
       });
     }
     return processStats;
   }
-  getSockStat(preamble) {
+  getSockStat (preamble) {
     if (this.options.getSockStat && (platform === 'linux')) {
       let sockStat = preamble + this.pid + "\n";
       sockStat += getSockStatFile(this.pid);
@@ -512,7 +512,7 @@ class instance {
     return "";
   }
 
-  cleanup() {
+  cleanup () {
     if ((this.pid !== null) && (this.exitStatus === null)) {
       print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
       this.terminateInstance();
@@ -539,7 +539,7 @@ class instance {
     let size = fs.size(this.logFile);
     if (this.options.maxLogFileSize !== 0 && size > this.options.maxLogFileSize) {
       // File bigger 500k? this needs to be a bug in the tests.
-      let err=`ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize/1024}kB! - ${size/1024} kBytes!`;
+      let err = `ERROR: ${this.logFile} is bigger than ${this.options.maxLogFileSize / 1024}kB! - ${size / 1024} kBytes!`;
       this.assertLines.push(err);
       print(RED + err + RESET);
       return;
@@ -568,12 +568,12 @@ class instance {
         }
       }
     } catch (ex) {
-      let err="failed to read " + this.logFile + " -> " + ex;
+      let err = "failed to read " + this.logFile + " -> " + ex;
       this.assertLines.push(err);
-      print(RED+err+RESET);
+      print(RED + err + RESET);
     }
   }
-  terminateInstance() {
+  terminateInstance () {
     if (!this.hasOwnProperty('exitStatus')) {
       this.exitStatus = killExternal(this.pid, termSignal);
     }
@@ -584,16 +584,16 @@ class instance {
     const buf = fs.readBuffer(fs.join(this.logFile));
     let lineStart = 0;
     let maxBuffer = buf.length;
-    
+
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
         const line = buf.asciiSlice(lineStart, j);
         lineStart = j + 1;
-        
+
         // filter out regular INFO lines, and test related messages
         let warn = line.search('WARNING about to execute:') !== -1;
         let info = line.search(' INFO ') !== -1;
-        
+
         if (warn || info) {
           continue;
         }
@@ -602,7 +602,7 @@ class instance {
     }
     return fnLines;
   }
-  aggregateFatalErrors(currentTest) {
+  aggregateFatalErrors (currentTest) {
     if (this.assertLines.length > 0) {
       this.assertLines.forEach(line => {
         rp.addFailRunsMessage(currentTest, line);
@@ -692,15 +692,16 @@ class instance {
       }
     }
   }
-  launchInstance(moreArgs) {
+  launchInstance (moreArgs) {
     if (this.pid !== null) {
       print(RED + "can not re-launch when PID still there. " + this.name + " - " + this.pid);
       throw new Error("kill the instance before relaunching it!");
       return;
     }
     try {
-      let args = {...this.args, ...moreArgs};
-      /// TODO Y? Where?
+      let args = {...this.args,
+...moreArgs};
+      // / TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
@@ -721,9 +722,9 @@ class instance {
     if (this.options.enableAliveMonitor) {
       internal.addPidToMonitor(this.pid);
     }
-  };
+  }
 
-  waitForExitAfterDebugKill() {
+  waitForExitAfterDebugKill () {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
     print("waiting for exit - " + this.pid);
@@ -731,17 +732,17 @@ class instance {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. anounce and force kill:
       if (ret.status !== "ABORTED") {
-        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        print(RED + `was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
       }
-    } catch(ex) {
+    } catch (ex) {
       print(ex);
     }
     this.pid = null;
     print('done');
   }
-  waitForExit() {
+  waitForExit () {
     if (this.pid === null) {
       this.exitStatus = null;
       return;
@@ -754,7 +755,7 @@ class instance {
     this.pid = null;
   }
 
-  restartOneInstance(moreArgs, unAuthOK) {
+  restartOneInstance (moreArgs, unAuthOK) {
     if (unAuthOK === undefined) {
       unAuthOK = false;
     }
@@ -763,9 +764,9 @@ class instance {
     this.pid = null;
     this.upAndRunning = false;
 
-    print(CYAN + Date()  + " relaunching: " + this.name + RESET);
+    print(CYAN + Date() + " relaunching: " + this.name + RESET);
     this.launchInstance(moreArgs);
-    while(true) {
+    while (true) {
       const reply = download(this.url + '/_api/version', '');
 
       if (!reply.error && reply.code === 200) {
@@ -834,7 +835,7 @@ class instance {
     }
     return ret;
   }
-  checkArangoConnection(count, overrideVerbosity=false) {
+  checkArangoConnection (count, overrideVerbosity = false) {
     this.endpoint = this.args['server.endpoint'];
     while (count > 0) {
       try {
@@ -849,27 +850,30 @@ class instance {
         }
         sleep(0.5);
       }
-      count --;
+      count--;
     }
     throw new Error(`unable to connect in ${count}s`);
   }
-  getAgent(path, method) {
+  getAgent (path, method) {
     let opts = {
       method: method
     };
 
     if (this.args.hasOwnProperty('authOpts')) {
-      opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+      opts['jwt'] = crypto.jwtEncode(this.authOpts['server.jwt-secret'], {'server_id': 'none',
+'iss': 'arangodb'}, 'HS256');
     } else if (this.args.hasOwnProperty('server.jwt-secret')) {
-      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+      opts['jwt'] = crypto.jwtEncode(this.args['server.jwt-secret'], {'server_id': 'none',
+'iss': 'arangodb'}, 'HS256');
     } else if (this.jwtFiles) {
-      opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+      opts['jwt'] = crypto.jwtEncode(fs.read(this.jwtFiles[0]), {'server_id': 'none',
+'iss': 'arangodb'}, 'HS256');
     }
     return download(this.url + path, method === 'POST' ? '[["/"]]' : '', opts);
   }
 
-  dumpAgent(path, method, fn, dumpdir) {
-    print('--------------------------------- '+ fn + ' -----------------------------------------------');
+  dumpAgent (path, method, fn, dumpdir) {
+    print('--------------------------------- ' + fn + ' -----------------------------------------------');
     let agencyReply = this.getAgent(path, method);
     if (agencyReply.code === 200) {
       let agencyValue = JSON.parse(agencyReply.body);
@@ -902,7 +906,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    print(CYAN + Date() + ' stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -942,14 +946,14 @@ class instance {
             print(arango.reconnect(this.endpoint, '_system', 'root', '', true));
           }
           reply = arango.DELETE_RAW('/_admin/shutdown');
-        } catch(ex) {
+        } catch (ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
-        };
+        }
         if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
             !((reply.code === 500) &&
               (
                 (reply.parsedBody === "Connection closed by remote") || // http connection
-                  reply.parsedBody.includes('failed with #111')           // https connection
+                  reply.parsedBody.includes('failed with #111') // https connection
               ))) {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
@@ -973,13 +977,12 @@ class instance {
             !((reply.code === 500) &&
               (
                 (reply.message === "Connection closed by remote") || // http connection
-                  reply.message.includes('failed with #111')           // https connection
+                  reply.message.includes('failed with #111') // https connection
               ))) {
           this.serverCrashedLocal = true;
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
-        }
-        else if (!this.options.noStartStopLogs) {
+        } else if (!this.options.noStartStopLogs) {
           print(sockStat);
         }
         if (this.options.extremeVerbosity) {
@@ -991,7 +994,7 @@ class instance {
     }
   }
 
-  waitForInstanceShutdown(timeout) {
+  waitForInstanceShutdown (timeout) {
     if (this.pid === null) {
       throw new Error(this.name + " already exited!");
     }
@@ -1016,7 +1019,7 @@ class instance {
     return false;
   }
 
-  shutDownOneInstance(counters, forceTerminate, timeout) {
+  shutDownOneInstance (counters, forceTerminate, timeout) {
     let shutdownTime = time();
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
@@ -1087,7 +1090,7 @@ class instance {
     }
   }
 
-  getInstanceProcessStatus() {
+  getInstanceProcessStatus () {
     if (this.pid !== null) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status !== 'RUNNING') {
@@ -1096,7 +1099,7 @@ class instance {
     }
   }
 
-  suspend() {
+  suspend () {
     if (this.suspended) {
       print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
       return;
@@ -1112,7 +1115,7 @@ class instance {
     return true;
   }
 
-  resume() {
+  resume () {
     if (!this.suspended) {
       print(CYAN + Date() + ' NOT resuming "' + this.name + " again!" + RESET);
       return;
@@ -1139,7 +1142,7 @@ class instance {
     return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
   }
 
-  getMemProfSnapshot(opts) {
+  getMemProfSnapshot (opts) {
     let fn = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.heap`);
     let heapdumpReply = download(this.url + '/_admin/status?memory=true', opts);
     if (heapdumpReply.code === 200) {
@@ -1161,7 +1164,7 @@ class instance {
       print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
       print(metricsReply);
     }
-    this.memProfCounter ++;
+    this.memProfCounter++;
   }
 }
 

@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,20 +31,20 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
 let didRegex = /^([0-9a-zA-Z]+)\/([0-9a-zA-Z\-_]+)/;
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function import_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_is_able_to_import_json_documents: function() {
-      let id = db._create(cn );
+    test_is_able_to_import_json_documents: function () {
+      let id = db._create(cn);
 
       let cmd = `/_api/replication/restore-data?collection=${cn}`;
       let body =
@@ -52,7 +52,7 @@ function import_handlingSuite () {
           "{ \"type\" : 2300, \"data\" : { \"_key\" : \"1234xxx2\",\"_rev\":\"_W2GDlX--_k\" , \"foo\" : \"bar1\" }}";
 
       try {
-        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"} );
+        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"});
 
         assertEqual(doc.code, 200);
 
@@ -62,7 +62,7 @@ function import_handlingSuite () {
       }
     },
 
-    test_returns_an_error_if_an_string_attribute_in_the_JSON_body_is_corrupted: function() {
+    test_returns_an_error_if_an_string_attribute_in_the_JSON_body_is_corrupted: function () {
       let id = db._create(cn);
 
       let cmd = `/_api/replication/restore-data?collection=${cn}`;
@@ -72,7 +72,7 @@ function import_handlingSuite () {
           "{ \"type\" : 2300, \"data\" : { \"_key\" : \"1234xxx3\",\"_rev\":\"_W2GDlX--_l\" , \"foo\" : \"duplicate\", \"foo\" : \"bar\xff\" }}";
 
       try {
-        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"} );
+        let doc = arango.PUT_RAW(cmd, body, { 'content-type': "application/json"});
 
         assertEqual(doc.code, 400, doc);
         assertTrue(doc.parsedBody['error']);
@@ -84,7 +84,7 @@ function import_handlingSuite () {
       } finally {
         db._drop(cn);
       }
-    },
+    }
   };
 }
 

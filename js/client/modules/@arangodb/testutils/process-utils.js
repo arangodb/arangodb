@@ -69,7 +69,7 @@ let tcpdump;
 let assertLines = [];
 
 class ConfigBuilder {
-  constructor(type) {
+  constructor (type) {
     this.config = {
       'log.foreground-tty': 'true'
     };
@@ -92,7 +92,7 @@ class ConfigBuilder {
     }
   }
 
-  setWhatToImport(what) {
+  setWhatToImport (what) {
     this.config['file'] = fs.join(TOP_DIR, what.data);
     this.config['collection'] = what.coll;
     this.config['type'] = what.type;
@@ -157,7 +157,7 @@ class ConfigBuilder {
     }
   }
 
-  setAuth(username, password) {
+  setAuth (username, password) {
     if (username !== undefined) {
       this.config['server.username'] = username;
     }
@@ -165,35 +165,37 @@ class ConfigBuilder {
       this.config['server.password'] = password;
     }
   }
-  setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
-  setDatabase(database) {
+  setEndpoint (endpoint) {
+ this.config['server.endpoint'] = endpoint;
+}
+  setDatabase (database) {
     if (this.haveSetAllDatabases()) {
       throw new Error("must not specify all-databases and database");
     }
     this.config['server.database'] = database;
   }
-  setThreads(threads) {
+  setThreads (threads) {
     if (this.type !== 'restore' && this.type !== 'dump') {
       throw '"threads" is not supported for binary: ' + this.type;
     }
     this.config['threads'] = threads;
   }
-  setIncludeSystem(active) {
+  setIncludeSystem (active) {
     if (this.type !== 'restore' && this.type !== 'dump') {
       throw '"include-system-collections" is not supported for binary: ' + this.type;
     }
     this.config['include-system-collections'] = active ? 'true' : 'false';
   }
-  setOutputDirectory(dir) {
+  setOutputDirectory (dir) {
     if (this.type !== 'dump') {
       throw '"output-directory" is not supported for binary: ' + this.type;
     }
     this.config['output-directory'] = fs.join(this.rootDir, dir);
   }
-  getOutputDirectory() {
+  getOutputDirectory () {
     return this.config['output-directory'];
   }
-  setInputDirectory(dir, createDatabase) {
+  setInputDirectory (dir, createDatabase) {
     if (this.type !== 'restore') {
       throw '"input-directory" is not supported for binary: ' + this.type;
     }
@@ -204,74 +206,82 @@ class ConfigBuilder {
       this.config['create-database'] = 'false';
     }
   }
-  setJwtFile(file) {
+  setJwtFile (file) {
     delete this.config['server.password'];
     this.config['server.jwt-secret-keyfile'] = file;
   }
-  setMaskings(dir) {
+  setMaskings (dir) {
     if (this.type !== 'dump') {
       throw '"maskings" is not supported for binary: ' + this.type;
     }
     this.config['maskings'] = fs.join(TOP_DIR, "tests/js/common/test-data/maskings", dir);
   }
-  activateEncryption() { this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key'); }
-  activateCompression() {
+  activateEncryption () {
+ this.config['encryption.keyfile'] = fs.join(this.rootDir, 'secret-key');
+}
+  activateCompression () {
     if (this.type === 'dump') {
       this.config['--compress-output'] = true;
     }
   }
-  deactivateCompression() {
+  deactivateCompression () {
     if (this.type === 'dump') {
       this.config['--compress-output'] = false;
     }
   }
-  activateEnvelopes() {
+  activateEnvelopes () {
     if (this.type === 'dump') {
       this.config['--envelope'] = true;
     }
   }
-  deactivateEnvelopes() {
+  deactivateEnvelopes () {
     if (this.type === 'dump') {
       this.config['--envelope'] = false;
     }
   }
-  setRootDir(dir) { this.rootDir = dir; }
-  restrictToCollection(collection) {
+  setRootDir (dir) {
+ this.rootDir = dir;
+}
+  restrictToCollection (collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
       throw '"collection" is not supported for binary: ' + this.type;
     }
     this.config['collection'] = collection;
-  };
-  setAllDatabases() {
+  }
+  setAllDatabases () {
     this.config['all-databases'] = 'true';
     delete this.config['server.database'];
   }
-  haveSetAllDatabases() {
+  haveSetAllDatabases () {
     return this.config.hasOwnProperty('all-databases');
   }
-  activateFailurePoint() {
+  activateFailurePoint () {
     if (this.type !== "restore") {
       throw '"activateFailurePoint" is not supported for binary: ' + this.type;
     }
     this.config['fail-after-update-continue-file'] = 'true';
   }
-  enableContinue() {
+  enableContinue () {
     if (this.type !== "restore") {
       throw '"enableContinue" is not supported for binary: ' + this.type;
     }
     this.config['continue'] = 'true';
   }
-  deactivateFailurePoint() {
+  deactivateFailurePoint () {
     delete this.config['fail-after-update-continue-file'];
   }
-  disableContinue() {
+  disableContinue () {
     delete this.config['continue'];
   }
-  toArgv() { return internal.toArgv(this.config); }
+  toArgv () {
+ return internal.toArgv(this.config);
+}
 
-  getExe() { return this.executable; }
+  getExe () {
+ return this.executable;
+}
 
-  print() {
+  print () {
     print(this.executable);
     print(this.config);
   }
@@ -452,7 +462,7 @@ function setupBinaries (builddir, buildType, configDir) {
 // / @brief if we forgot about processes, this safe guard will clean up and mark failed
 // //////////////////////////////////////////////////////////////////////////////
 
-function killRemainingProcesses(results) {
+function killRemainingProcesses (results) {
   let running = internal.getExternalSpawned();
   results.status = results.status && (running.length === 0);
   let i = 0;
@@ -466,8 +476,7 @@ function killRemainingProcesses(results) {
     if (status.status === "TERMINATED") {
       print(RED + Date() + " process exited without us joining it (marking crashy): " +
             JSON.stringify(running[i]) + JSON.stringify(status) + RESET);
-    }
-    else {
+    } else {
       print(RED + Date() + " Killing remaining process & marking crashy: " + JSON.stringify(running[i]) + RESET);
       print(killExternal(running[i].pid, abortSignal));
     }
@@ -544,7 +553,9 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
 function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
   const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
   cfg.setIncludeSystem(includeSystem);
-  if (rootDir) { cfg.setRootDir(rootDir); }
+  if (rootDir) {
+ cfg.setRootDir(rootDir);
+}
 
   if (which === 'dump') {
     cfg.setOutputDirectory(dumpDir);
@@ -624,7 +635,7 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 // / @brief loads the JWT secret from the various ways possible
 // //////////////////////////////////////////////////////////////////////////////
 
-function getJwtSecret(args) {
+function getJwtSecret (args) {
   let jwtSecret;
   if (args.hasOwnProperty('server.jwt-secret-folder')) {
     let files = fs.list(args['server.jwt-secret-folder']);
@@ -689,7 +700,6 @@ function endpointToURL (endpoint) {
 }
 
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -738,7 +748,9 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       rootDir: rootDir,
       pid: 0,
       exitStatus: {},
-      getStructure: function() { return {}; }
+      getStructure: function () {
+ return {};
+}
     };
   }
 
@@ -773,7 +785,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     }
   } else {
     // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
+    res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
@@ -822,7 +834,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
         status: false,
         message: 'exit code was ' + instanceInfo.exitStatus.exit,
         duration: deltaTime,
-        exitCode: instanceInfo.exitStatus.exit,
+        exitCode: instanceInfo.exitStatus.exit
       };
     }
   } else if (instanceInfo.exitStatus.status === 'ABORTED') {
@@ -924,5 +936,11 @@ Object.defineProperty(exports, 'UNITTESTS_DIR', {get: () => UNITTESTS_DIR});
 Object.defineProperty(exports, 'BIN_DIR', {get: () => BIN_DIR});
 Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGODB_DIR});
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
-Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
-Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
+Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal,
+set: (value) => {
+ serverCrashedLocal = value;
+} });
+Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal,
+set: (value) => {
+ serverFailMessagesLocal = value;
+}});

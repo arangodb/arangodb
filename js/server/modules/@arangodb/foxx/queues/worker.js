@@ -32,7 +32,7 @@ var fm = require('@arangodb/foxx/manager');
 var util = require('util');
 var internal = require('internal');
 
-function exponentialBackOff(n, i) {
+function exponentialBackOff (n, i) {
   if (i === 0) {
     return 0;
   }
@@ -45,7 +45,7 @@ function exponentialBackOff(n, i) {
   return Math.floor(Math.random() * (n + 1)) * i;
 }
 
-function getBackOffDelay(job) {
+function getBackOffDelay (job) {
   var n = job.runFailures - 1;
   if (typeof job.backOff === 'string') {
     try {

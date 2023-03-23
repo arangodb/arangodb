@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -84,7 +84,7 @@ const testEffectiveClosenessOnGraph = function (vertices, edges) {
     const result = db._query(`
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "closeness": v.closeness, "v": v}  
-                `).toArray();;
+                `).toArray();
 
     let graph = new Graph(vertices, edges);
     computeCloseness(graph); // write result into the closenessFromTestAlgorithm field
@@ -104,7 +104,7 @@ const testEffectiveClosenessOnGraph = function (vertices, edges) {
     }
 };
 
-function makeEffectiveClosenessTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeEffectiveClosenessTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;

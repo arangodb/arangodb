@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, assertMatch, AQL_EXECUTE, 
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global fail, assertEqual, assertTrue, assertFalse, assertMatch, AQL_EXECUTE,
   AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, bind parameters
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -41,11 +41,11 @@ function ahuacatlQueryCacheTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
       AQL_QUERY_CACHE_INVALIDATE();
 
@@ -56,11 +56,11 @@ function ahuacatlQueryCacheTestSuite () {
       c2 = db._create("UnitTestsAhuacatlQueryCache2");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 
@@ -71,11 +71,11 @@ function ahuacatlQueryCacheTestSuite () {
       AQL_QUERY_CACHE_INVALIDATE();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test fullCount
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test fullCount
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFullCount : function () {
+    testFullCount: function () {
       let query = "FOR i IN 1..10000 LIMIT 10, 7 RETURN i";
 
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
@@ -90,11 +90,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual(10000, result.stats.fullCount);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test setting modes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test setting modes
+// //////////////////////////////////////////////////////////////////////////////
 
-    testModes : function () {
+    testModes: function () {
       var result;
 
       result = AQL_QUERY_CACHE_PROPERTIES({ mode: "off" });
@@ -113,11 +113,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual("demand", result.mode);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test rename collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test rename collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRenameCollection1 : function () {
+    testRenameCollection1: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -153,11 +153,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test rename collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test rename collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRenameCollection2 : function () {
+    testRenameCollection2: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -201,11 +201,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test drop collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test drop collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropCollection : function () {
+    testDropCollection: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -232,11 +232,11 @@ function ahuacatlQueryCacheTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test drop and recreation of collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test drop and recreation of collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropAndRecreateCollection : function () {
+    testDropAndRecreateCollection: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -273,11 +273,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test queries w/ parse error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test queries w/ parse error
+// //////////////////////////////////////////////////////////////////////////////
 
-    testParseError : function () {
+    testParseError: function () {
       var query = "FOR i IN 1..3 RETURN";
 
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
@@ -297,11 +297,11 @@ function ahuacatlQueryCacheTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test queries w/ other error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test queries w/ other error
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOtherError : function () {
+    testOtherError: function () {
       db._drop("UnitTestsAhuacatlQueryCache3");
 
       var query = "FOR doc IN UnitTestsAhuacatlQueryCache3 RETURN doc";
@@ -323,11 +323,11 @@ function ahuacatlQueryCacheTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test queries w/ warnings
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test queries w/ warnings
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWarnings : function () {
+    testWarnings: function () {
       var query = "FOR i IN 1..3 RETURN i / 0";
       var result;
 
@@ -343,11 +343,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual(3, result.warnings.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test non-deterministic queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test non-deterministic queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNonDeterministicQueriesRandom : function () {
+    testNonDeterministicQueriesRandom: function () {
       var query = "FOR doc IN @@collection RETURN RAND()";
       var result, i;
 
@@ -365,16 +365,17 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual(5, result.json.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test non-deterministic queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test non-deterministic queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNonDeterministicQueriesDocument : function () {
+    testNonDeterministicQueriesDocument: function () {
       var query = "FOR i IN 1..5 RETURN DOCUMENT(@@collection, CONCAT('test', i))";
       var result, i;
 
       for (i = 1; i <= 5; ++i) {
-        c1.save({ value: i, _key: "test" + i });
+        c1.save({ value: i,
+_key: "test" + i });
       }
 
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
@@ -387,11 +388,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual(5, result.json.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test slightly different queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test slightly different queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSlightlyDifferentQueries : function () {
+    testSlightlyDifferentQueries: function () {
       var queries = [
         "FOR doc IN @@collection SORT doc.value RETURN doc.value",
         "FOR doc IN @@collection SORT doc.value ASC RETURN doc.value",
@@ -422,11 +423,11 @@ function ahuacatlQueryCacheTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test same query with different bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test same query with different bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDifferentBindOrders : function () {
+    testDifferentBindOrders: function () {
       var query = "FOR doc IN @@collection SORT doc.value LIMIT @offset, @count RETURN doc.value";
       var result, i;
 
@@ -435,25 +436,31 @@ function ahuacatlQueryCacheTestSuite () {
         c1.save({ value: i });
       }
 
-      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 0, count: 1 });
+      result = AQL_EXECUTE(query, { "@collection": c1.name(),
+offset: 0,
+count: 1 });
       assertFalse(result.cached);
       assertEqual([ 1 ], result.json);
-      
-      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 0, count: 1 });
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name(),
+offset: 0,
+count: 1 });
       assertTrue(result.cached);
       assertEqual([ 1 ], result.json);
 
       // same bind parameter values, but in exchanged order
-      result = AQL_EXECUTE(query, { "@collection": c1.name(), offset: 1, count: 0 });
+      result = AQL_EXECUTE(query, { "@collection": c1.name(),
+offset: 1,
+count: 0 });
       assertFalse(result.cached);
       assertEqual([ ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test same query with different bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test same query with different bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDifferentBindOrdersArray : function () {
+    testDifferentBindOrdersArray: function () {
       var query = "RETURN @values";
       var result;
 
@@ -466,7 +473,7 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query, { values: [ 1, 2, 3, 4, 5 ] });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json[0]);
-      
+
       // same bind parameter values, but in exchanged order
       result = AQL_EXECUTE(query, { values: [ 5, 4, 3, 2, 1 ] });
       assertFalse(result.cached);
@@ -477,11 +484,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 5, 4 ], result.json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test same query with different bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test same query with different bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDifferentBindValues : function () {
+    testDifferentBindValues: function () {
       var query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc.value";
       var result, i;
 
@@ -491,24 +498,26 @@ function ahuacatlQueryCacheTestSuite () {
       }
 
       for (i = 1; i <= 5; ++i) {
-        result = AQL_EXECUTE(query, { "@collection": c1.name(), value: i });
+        result = AQL_EXECUTE(query, { "@collection": c1.name(),
+value: i });
         assertFalse(result.cached);
         assertEqual([ i ], result.json);
       }
 
       // now the query results should be fully cached
       for (i = 1; i <= 5; ++i) {
-        result = AQL_EXECUTE(query, { "@collection": c1.name(), value: i });
+        result = AQL_EXECUTE(query, { "@collection": c1.name(),
+value: i });
         assertTrue(result.cached);
         assertEqual([ i ], result.json);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test same query with different bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test same query with different bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDifferentBindValuesCollection : function () {
+    testDifferentBindValuesCollection: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -536,11 +545,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 2, 3, 4, 5, 6 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after single insert operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after single insert operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterRead : function () {
+    testInvalidationAfterRead: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result;
 
@@ -562,11 +571,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after single insert operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after single insert operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterInsertSingle : function () {
+    testInvalidationAfterInsertSingle: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result;
 
@@ -592,11 +601,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after single update operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after single update operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterUpdateSingle : function () {
+    testInvalidationAfterUpdateSingle: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result;
 
@@ -622,11 +631,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 42 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after single remove operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after single remove operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterRemoveSingle : function () {
+    testInvalidationAfterRemoveSingle: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result;
 
@@ -652,11 +661,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after truncate operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after truncate operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterTruncate : function () {
+    testInvalidationAfterTruncate: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -691,11 +700,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after AQL insert operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after AQL insert operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterAqlInsert : function () {
+    testInvalidationAfterAqlInsert: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -712,7 +721,7 @@ function ahuacatlQueryCacheTestSuite () {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
+      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection": c1.name() });
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
@@ -723,11 +732,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after AQL update operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after AQL update operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterAqlUpdate : function () {
+    testInvalidationAfterAqlUpdate: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -744,7 +753,7 @@ function ahuacatlQueryCacheTestSuite () {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      AQL_EXECUTE("FOR doc IN @@collection UPDATE doc._key WITH { value: doc.value + 1 } IN @@collection", { "@collection" : c1.name() });
+      AQL_EXECUTE("FOR doc IN @@collection UPDATE doc._key WITH { value: doc.value + 1 } IN @@collection", { "@collection": c1.name() });
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
@@ -755,11 +764,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 2, 3, 4, 5, 6 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after AQL remove operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after AQL remove operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterAqlRemove : function () {
+    testInvalidationAfterAqlRemove: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -776,7 +785,7 @@ function ahuacatlQueryCacheTestSuite () {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      AQL_EXECUTE("FOR doc IN @@collection REMOVE doc._key IN @@collection", { "@collection" : c1.name() });
+      AQL_EXECUTE("FOR doc IN @@collection REMOVE doc._key IN @@collection", { "@collection": c1.name() });
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
@@ -787,11 +796,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation after AQL multi-collection operation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation after AQL multi-collection operation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationAfterAqlMulti : function () {
+    testInvalidationAfterAqlMulti: function () {
       var query = "FOR doc IN @@collection SORT doc.value RETURN doc.value";
       var result, i;
 
@@ -804,7 +813,7 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-      
+
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -818,7 +827,8 @@ function ahuacatlQueryCacheTestSuite () {
       assertTrue(result.cached);
       assertEqual([ ], result.json);
 
-      AQL_EXECUTE("FOR doc IN @@collection1 INSERT doc IN @@collection2", { "@collection1" : c1.name(), "@collection2" : c2.name() });
+      AQL_EXECUTE("FOR doc IN @@collection1 INSERT doc IN @@collection2", { "@collection1": c1.name(),
+"@collection2": c2.name() });
 
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertTrue(result.cached);
@@ -833,11 +843,11 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalidation of multiple queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalidation of multiple queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidationMultipleQueries : function () {
+    testInvalidationMultipleQueries: function () {
       var query1 = "FOR doc IN @@collection SORT doc.value ASC RETURN doc.value";
       var query2 = "FOR doc IN @@collection SORT doc.value DESC RETURN doc.value";
       var result, i;
@@ -850,7 +860,7 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query1, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-      
+
       result = AQL_EXECUTE(query1, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -858,7 +868,7 @@ function ahuacatlQueryCacheTestSuite () {
       result = AQL_EXECUTE(query2, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ 5, 4, 3, 2, 1 ], result.json);
-      
+
       result = AQL_EXECUTE(query2, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ 5, 4, 3, 2, 1 ], result.json);
@@ -882,13 +892,13 @@ function ahuacatlQueryCacheTestSuite () {
       assertEqual([ 6, 5, 4, 3, 2, 1 ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test transaction commit
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test transaction commit
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTransactionCommit : function () {
+    testTransactionCommit: function () {
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      
+
       var query = "FOR doc IN @@collection RETURN doc.value";
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
@@ -896,50 +906,50 @@ function ahuacatlQueryCacheTestSuite () {
 
       db._executeTransaction({
         collections: { write: c1.name() },
-        action: function(params) {
+        action: function (params) {
           var db = require("@arangodb").db;
           db._collection(params.c1).insert({ value: "foo" });
         },
         params: { c1: c1.name() }
       });
-      
+
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ "foo" ], result.json);
-      
+
       result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertTrue(result.cached);
       assertEqual([ "foo" ], result.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test transaction rollback
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test transaction rollback
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTransactionRollback : function () {
+    testTransactionRollback: function () {
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
 
       var query = "FOR doc IN @@collection RETURN doc.value";
-      
+
       try {
         db._executeTransaction({
           collections: { write: c1.name() },
-          action: function(params) {
+          action: function (params) {
             var result = AQL_EXECUTE(query, { "@collection": c1.name() });
             assertFalse(result.cached);
             assertEqual([ ], result.json);
-            
+
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
             assertFalse(result.cached);
             assertEqual([ ], result.json);
 
             var db = require("@arangodb").db;
             db._collection(params.c1).insert({ value: "foo" });
-        
+
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
             assertFalse(result.cached);
             assertEqual([ "foo" ], result.json);
-            
+
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
             assertFalse(result.cached);
             assertEqual([ "foo" ], result.json);
@@ -952,7 +962,7 @@ function ahuacatlQueryCacheTestSuite () {
       } catch (err) {
         assertMatch(/peng!/, String(err));
       }
-            
+
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ ], result.json);
@@ -965,7 +975,7 @@ function ahuacatlQueryCacheTestSuite () {
   };
 }
 
-function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
+function ahuacatlQueryCacheViewTestSuite (isSearchAlias) {
   var cacheProperties;
   var c1, c2, v;
 
@@ -989,7 +999,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._dropView("UnitTestsView");
       db._dropView("UnitTestsViewRenamed");
       db._drop("UnitTestsAhuacatlQueryCache1");
@@ -999,26 +1009,34 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       AQL_QUERY_CACHE_INVALIDATE();
     },
 
-    testQueryOnView : function () {
+    testQueryOnView: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
 
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1040,25 +1058,33 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertEqual(result1.json, result2.json);
     },
 
-    testRenameView : function () {
+    testRenameView: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1096,27 +1122,35 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertTrue(result2.cached);
       assertEqual(result1.json, result2.json);
     },
-    
-    testPropertyChangeView : function () {
+
+    testPropertyChangeView: function () {
       let i;
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
         i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1140,15 +1174,19 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       if (isSearchAlias) {
         let i2 = db.UnitTestsAhuacatlQueryCache2.ensureIndex(indexMeta);
         viewMeta = {
-          indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name, operation: "del"},
-            {collection: "UnitTestsAhuacatlQueryCache2", index: i2.name}]
+          indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name,
+operation: "del"},
+            {collection: "UnitTestsAhuacatlQueryCache2",
+index: i2.name}]
         };
       } else {
         if (isEnterprise) {
           viewMeta = {
             links: {
               "UnitTestsAhuacatlQueryCache1": null,
-              "UnitTestsAhuacatlQueryCache2": {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+              "UnitTestsAhuacatlQueryCache2": {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
             }
           };
         } else {
@@ -1175,25 +1213,33 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertEqual(3, result2.json.length);
     },
 
-    testDropView : function () {
+    testDropView: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1224,26 +1270,34 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       }
     },
 
-    testDropAndRecreateView : function () {
+    testDropAndRecreateView: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
-        
+
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1281,8 +1335,8 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertTrue(result2.cached);
       assertEqual(2, result2.json.length);
     },
-    
-    testViewInvalidationAfterAqlInsertNoSync : function () {
+
+    testViewInvalidationAfterAqlInsertNoSync: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
@@ -1290,21 +1344,29 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       let viewMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
-        
+
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1314,7 +1376,8 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
+        c1.insert({value: i,
+"value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
       AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
@@ -1331,7 +1394,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
         internal.sleep(5); // give FlushThread some time
 
         // explicitly without waitForSync here
-        AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection" : c1.name() });
+        AQL_EXECUTE("INSERT { value: 9 } INTO @@collection", { "@collection": c1.name() });
 
         // re-run query to repopulate the cache. however, the document is not yet contained
         // in the view as we turned off the flush thread
@@ -1345,41 +1408,49 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       } finally {
         internal.debugClearFailAt();
       }
-        
+
       internal.sleep(5); // give FlushThread some time
-        
+
       // invalidate view query cache
       AQL_EXECUTE("FOR doc in @@view OPTIONS { waitForSync: true } COLLECT WITH COUNT INTO count RETURN count", { "@view": v.name() });
 
       result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
-      
+
       result = AQL_EXECUTE("FOR doc IN @@view SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
-    
-    testViewInvalidationAfterAqlInsert : function () {
+
+    testViewInvalidationAfterAqlInsert: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
 
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1390,7 +1461,8 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
+        c1.insert({value: i,
+"value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
       AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
@@ -1402,7 +1474,7 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
+      AQL_EXECUTE("INSERT { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection": c1.name() });
 
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
@@ -1412,80 +1484,35 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5, 9 ], result.json);
     },
-    
-    testViewInvalidationAfterAqlUpdate : function () {
-      let viewMeta  = {};
-      let indexMeta = {};
-      if (isSearchAlias) {
-        if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
-          ]};
-        } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested[*]"}
-          ]};
-        }
 
-        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
-      } else {
-        if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
-        } else {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
-        }
-      }
-      v.properties(viewMeta);
-
-      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
-      let result;
-
-      for (let i = 1; i <= 5; ++i) {
-        c1.insert({_key: "test" + i, value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
-      }
-
-      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
-      result = AQL_EXECUTE(query, { "@view": v.name() });
-      assertFalse(result.cached);
-      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-
-      result = AQL_EXECUTE(query, { "@view": v.name() });
-      assertTrue(result.cached);
-      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
-
-      AQL_EXECUTE("UPDATE 'test5' WITH { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
-
-      result = AQL_EXECUTE(query, { "@view": v.name() });
-      assertFalse(result.cached);
-      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
-
-      result = AQL_EXECUTE(query, { "@view": v.name() });
-      assertTrue(result.cached);
-      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
-    },
-    
-    testViewInvalidationAfterAqlRemove : function () {
+    testViewInvalidationAfterAqlUpdate: function () {
       let viewMeta = {};
       let indexMeta = {};
       if (isSearchAlias) {
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
 
         let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
-        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
       } else {
         if (isEnterprise) {
-          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
-          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
         }
@@ -1496,7 +1523,9 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({_key: "test" + i, value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
+        c1.insert({_key: "test" + i,
+value: i,
+"value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
       AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
@@ -1508,7 +1537,70 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
-      AQL_EXECUTE("REMOVE 'test5' INTO @@collection OPTIONS { waitForSync: true }", { "@collection" : c1.name() });
+      AQL_EXECUTE("UPDATE 'test5' WITH { value: 9 } INTO @@collection OPTIONS { waitForSync: true }", { "@collection": c1.name() });
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 9 ], result.json);
+    },
+
+    testViewInvalidationAfterAqlRemove: function () {
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested[*]"}
+          ]};
+        }
+
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1",
+index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1":
+          {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
+      let result;
+
+      for (let i = 1; i <= 5; ++i) {
+        c1.insert({_key: "test" + i,
+value: i,
+"value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
+      }
+
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertFalse(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      result = AQL_EXECUTE(query, { "@view": v.name() });
+      assertTrue(result.cached);
+      assertEqual([ 1, 2, 3, 4, 5 ], result.json);
+
+      AQL_EXECUTE("REMOVE 'test5' INTO @@collection OPTIONS { waitForSync: true }", { "@collection": c1.name() });
 
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
@@ -1517,18 +1609,18 @@ function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertTrue(result.cached);
       assertEqual([ 1, 2, 3, 4 ], result.json);
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryCacheTestSuite);
 
-function ahuacatlQueryCacheArangoSearchTestSuite() {
+function ahuacatlQueryCacheArangoSearchTestSuite () {
   let suite = {};
   deriveTestSuite(
     ahuacatlQueryCacheViewTestSuite(false),
@@ -1538,7 +1630,7 @@ function ahuacatlQueryCacheArangoSearchTestSuite() {
   return suite;
 }
 
-function ahuacatlQueryCacheSearchAliasTestSuite() {
+function ahuacatlQueryCacheSearchAliasTestSuite () {
   let suite = {};
   deriveTestSuite(
     ahuacatlQueryCacheViewTestSuite(true),

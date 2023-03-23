@@ -58,9 +58,9 @@ function solarize (ansiText) {
 }
 
 function escapeHtml (raw) {
-  return String(raw)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;');
+  return String(raw).
+    replace(/&/g, '&amp;').
+    replace(/</g, '&lt;');
 }
 
 function createErrorRoute (service, error, body, title) {

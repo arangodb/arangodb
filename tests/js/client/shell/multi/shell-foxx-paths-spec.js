@@ -1,4 +1,4 @@
-/*global describe, it, before, beforeEach, afterEach */
+/* global describe, it, before, beforeEach, afterEach */
 'use strict';
 const expect = require('chai').expect;
 const fm = require('@arangodb/foxx/manager');

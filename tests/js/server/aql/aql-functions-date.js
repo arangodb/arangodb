@@ -53,7 +53,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [true, "0000-01-01T00:01:00-02:00"],
         [true, "9999-12-31T23:59:59+01:00"],
         [false, -999999999999999],
-        [false,  -99999999999999],
+        [false, -99999999999999],
         [false, -62167219200001],
         [false, "-9999-01-01"],
         [false, "-9999-01-01T12:23:34Z"],
@@ -68,7 +68,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [false, "100000-01-01T12:23:34Z"],
         [false, 253402300800000],
         [false, 999999999999999],
-        [false, 9999999999999999],
+        [false, 9999999999999999]
       ];
 
       let functions = [
@@ -87,21 +87,22 @@ function ahuacatlDateFunctionsTestSuite () {
         "DATE_ISOWEEKYEAR",
         "DATE_LEAPYEAR",
         "DATE_QUARTER",
-        "DATE_DAYS_IN_MONTH",
+        "DATE_DAYS_IN_MONTH"
       ];
 
-      functions.forEach(function(fn) {
-        values.forEach(function(values) {
+      functions.forEach(function (fn) {
+        values.forEach(function (values) {
           values = _.clone(values);
           if (values.shift()) {
-            assertNotEqual([ null ], getQueryResults("RETURN " + fn + "(@value)", { value: values[0] }), { fn, value: values[0] });
+            assertNotEqual([ null ], getQueryResults("RETURN " + fn + "(@value)", { value: values[0] }), { fn,
+value: values[0] });
           } else {
-            assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN " + fn  + "(@value)", { value: values[0] });
+            assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN " + fn + "(@value)", { value: values[0] });
           }
         });
       });
     },
-    
+
     testDateIso8601Ranges () {
       let values = [
         [false, -1000, 1, 1],
@@ -112,11 +113,13 @@ function ahuacatlDateFunctionsTestSuite () {
         [false, 99999, 1, 1],
         [true, 0, 1, 1],
         [true, 1, 1, 1],
-        [true, 9999, 12,31],
+        [true, 9999, 12, 31]
       ];
-      values.forEach(function(values) {
+      values.forEach(function (values) {
         const works = values.shift();
-        values = values.map(function(value) { return JSON.stringify(value); });
+        values = values.map(function (value) {
+ return JSON.stringify(value);
+});
         if (works) {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_ISO8601(" + values.join(", ") + ")"));
         } else {
@@ -124,7 +127,7 @@ function ahuacatlDateFunctionsTestSuite () {
         }
       });
     },
-    
+
     testDateAddRanges () {
       let values = [
         [false, "-0001-01-01T00:00:00", 1, "day"],
@@ -138,11 +141,13 @@ function ahuacatlDateFunctionsTestSuite () {
         [true, "0000-01-01T00:00:00", 1, "day"],
         [true, "0000-01-01T00:00:00", 9999, "year"],
         [true, "9999-12-31T23:58:00", 1, "minute"],
-        [true, "9999-12-31T23:59:58", 1, "second"],
+        [true, "9999-12-31T23:59:58", 1, "second"]
       ];
-      values.forEach(function(values) {
+      values.forEach(function (values) {
         const works = values.shift();
-        values = values.map(function(value) { return JSON.stringify(value); });
+        values = values.map(function (value) {
+ return JSON.stringify(value);
+});
         if (works) {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_ADD(" + values.join(", ") + ")"));
         } else {
@@ -150,7 +155,7 @@ function ahuacatlDateFunctionsTestSuite () {
         }
       });
     },
-    
+
     testDateSubRanges () {
       let values = [
         [false, "-0001-01-01T00:00:00", 1, "day"],
@@ -163,11 +168,13 @@ function ahuacatlDateFunctionsTestSuite () {
         [false, "10000-12-31T23:59:59", 1, "day"],
         [true, "0000-01-01T00:00:01", 1, "second"],
         [true, "9999-12-31T23:59:59", 1, "second"],
-        [true, "9999-12-31T23:59:59", 9999, "year"],
+        [true, "9999-12-31T23:59:59", 9999, "year"]
       ];
-      values.forEach(function(values) {
+      values.forEach(function (values) {
         const works = values.shift();
-        values = values.map(function(value) { return JSON.stringify(value); });
+        values = values.map(function (value) {
+ return JSON.stringify(value);
+});
         if (works) {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_SUBTRACT(" + values.join(", ") + ")"));
         } else {
@@ -175,18 +182,20 @@ function ahuacatlDateFunctionsTestSuite () {
         }
       });
     },
-    
+
     testDateDiffRanges () {
       let values = [
         [false, "-0001-01-01T00:00:00", "0000-01-01T00:00:00", "day"],
         [false, "0001-01-01T00:00:00", "-0000-01-01T00:00:00", "day"],
         [false, "10000-01-01T00:00:00", "0000-01-01T00:00:00", "day"],
         [false, "0000-01-01T00:00:00", "10000-01-01T00:00:00", "day"],
-        [false, "10000-01-01T00:00:00", "-0000-01-01T00:00:00", "day"],
+        [false, "10000-01-01T00:00:00", "-0000-01-01T00:00:00", "day"]
       ];
-      values.forEach(function(values) {
+      values.forEach(function (values) {
         const works = values.shift();
-        values = values.map(function(value) { return JSON.stringify(value); });
+        values = values.map(function (value) {
+ return JSON.stringify(value);
+});
         if (works) {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_DIFF(" + values.join(", ") + ")"));
         } else {
@@ -194,7 +203,7 @@ function ahuacatlDateFunctionsTestSuite () {
         }
       });
     },
-    
+
     testRangesDateFormat () {
       let values = [
         [true, -62167219200000],
@@ -207,7 +216,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [true, "0000-01-01T00:01:00-02:00"],
         [true, "9999-12-31T23:59:59+01:00"],
         [false, -999999999999999],
-        [false,  -99999999999999],
+        [false, -99999999999999],
         [false, -62167219200001],
         [false, "-9999-01-01"],
         [false, "-9999-01-01T12:23:34Z"],
@@ -222,10 +231,10 @@ function ahuacatlDateFunctionsTestSuite () {
         [false, "100000-01-01T12:23:34Z"],
         [false, 253402300800000],
         [false, 999999999999999],
-        [false, 9999999999999999],
+        [false, 9999999999999999]
       ];
 
-      values.forEach(function(values) {
+      values.forEach(function (values) {
         values = _.clone(values);
         if (values.shift()) {
           assertNotEqual([ null ], getQueryResults("RETURN DATE_FORMAT(@value, '%f')", { value: values[0] }), { value: values[0] });
@@ -488,18 +497,20 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "2000-04-10T11:39:29.123Z", 4, "millisecond", "2000-04-10T11:39:29.120Z" ],
         [ "2000-04-10T11:39:29.123Z", 10, "millisecond", "2000-04-10T11:39:29.120Z" ],
         [ "2000-04-10T11:39:29.123Z", 15, "millisecond", "2000-04-10T11:39:29.115Z" ],
-        
+
         [ "2000-04-10T11:39:29.123Z", 0, "day", null ],
         [ "2000-04-10T11:39:29.123Z", -1, "day", null ],
         [ "2000-04-10T11:39:29.123Z", "foobar", "day", null ],
         [ "2000-04-10T11:39:29.123Z", 15, "", null ],
         [ "2000-04-10T11:39:29.123Z", 15, "pork", null ],
         [ "", 15, "day", null ],
-        [ "foobar", 15, "day", null ],
+        [ "foobar", 15, "day", null ]
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit)", { value: value[0], mult: value[1], unit: value[2] });
+        let actual = getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit)", { value: value[0],
+mult: value[1],
+unit: value[2] });
         assertEqual([ value[3] ], actual);
       });
     },
@@ -1366,7 +1377,8 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        assertEqual([{week: value[1], year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
+        assertEqual([{week: value[1],
+year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
       });
     },
@@ -1786,7 +1798,9 @@ function ahuacatlDateFunctionsTestSuite () {
       values.forEach(function (value) {
         let dateParams = `${value[0].map((val, idx) => `@val${idx}`).join(', ')}`;
         let query = `RETURN DATE_ADD(${dateParams})`;
-        let bindVars = value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {});
+        let bindVars = value[0].reduce((prev, val, idx) => {
+ prev[`val${idx}`] = val; return prev;
+}, {});
         let actual = getQueryResults(query, bindVars);
         assertEqual([ value[1] ], actual, `${query} using ${JSON.stringify(bindVars)}`);
       });
@@ -1911,7 +1925,9 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         let actual = getQueryResults(`RETURN DATE_SUBTRACT(${value[0].map((val, idx) => `@val${idx}`).join(', ')})`,
-                                     value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+                                     value[0].reduce((prev, val, idx) => {
+ prev[`val${idx}`] = val; return prev;
+}, {}));
         assertEqual([ value[1] ], actual);
       });
     },
@@ -2018,7 +2034,9 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         let actual = getQueryResults(`RETURN DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')})`,
-                                     value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+                                     value[0].reduce((prev, val, idx) => {
+ prev[`val${idx}`] = val; return prev;
+}, {}));
         assertEqual([ value[1] ], actual);
       });
     },
@@ -2197,7 +2215,9 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         let actual = getQueryResults(`RETURN DATE_COMPARE(${value[0].map((val, idx) => `@val${idx}`).join(', ')})`,
-                                     value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+                                     value[0].reduce((prev, val, idx) => {
+ prev[`val${idx}`] = val; return prev;
+}, {}));
         assertEqual([ value[1] ], actual);
       });
     },
@@ -2507,7 +2527,7 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISO8601(@value)", { value: value[0] }));
       });
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_utctolocal and date_localtoutc functions
     // //////////////////////////////////////////////////////////////////////////////
@@ -2521,7 +2541,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "1991-09-10T09:00:00.999", "Asia/Shanghai", "1991-09-10T00:00:00.999Z"],
         [ "1991-09-20T08:00:00.999", "Asia/Shanghai", "1991-09-20T00:00:00.999Z"],
         [ "1992-09-10T08:00:00.999", "Asia/Shanghai", "1992-09-10T00:00:00.999Z"],
-        [ "1992-09-20T08:00:00.999", "Asia/Shanghai", "1992-09-20T00:00:00.999Z"],        
+        [ "1992-09-20T08:00:00.999", "Asia/Shanghai", "1992-09-20T00:00:00.999Z"],
         [ "2020-07-07T09:30:00.333", "Australia/Darwin", "2020-07-07T00:00:00.333Z" ],
         [ "2020-07-07T08:45:00.333", "Australia/Eucla", "2020-07-07T00:00:00.333Z" ],
         [ "2020-04-15T06:06:06.111Z", "UTC", "2020-04-15T06:06:06.111Z" ],
@@ -2530,11 +2550,13 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       withoutZoneInfo.forEach(function (value) {
-        assertEqual([ value[0] ], getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz)", { value: value[2], tz: value[1] }));
-        assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0], tz: value[1] }));
+        assertEqual([ value[0] ], getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz)", { value: value[2],
+tz: value[1] }));
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz)", { value: value[0],
+tz: value[1] }));
       });
-            
-      assertEqual([ "2020-02-29T23:00:00.000Z" ], 
+
+      assertEqual([ "2020-02-29T23:00:00.000Z" ],
         getQueryResults("RETURN DATE_LOCALTOUTC(DATE_ADD(DATE_UTCTOLOCAL('2020-01-31T23:00:00.000Z', 'Europe/Berlin'), 1, 'months'), 'Europe/Berlin')"));
 
 	  const withZoneInfoToLocal = [
@@ -2572,12 +2594,14 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       withZoneInfoToLocal.forEach(function (value) {
-        var res = getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz,@detail)", { value: value[0], tz: value[1], detail: true })[0];
+        var res = getQueryResults("RETURN DATE_UTCTOLOCAL(@value,@tz,@detail)", { value: value[0],
+tz: value[1],
+detail: true })[0];
         // ignore tzdata version
         delete res.tzdb;
         assertEqual(value[2], res);
       });
-      
+
       const withZoneInfoToUTC = [
         [ "2021-01-01T00:00:00.000Z", "America/Los_Angeles", {
             utc: "2021-01-01T08:00:00.000Z",
@@ -2613,13 +2637,15 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       withZoneInfoToUTC.forEach(function (value) {
-        var res = getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz,@detail)", { value: value[0], tz: value[1], detail: true })[0];
+        var res = getQueryResults("RETURN DATE_LOCALTOUTC(@value,@tz,@detail)", { value: value[0],
+tz: value[1],
+detail: true })[0];
         // ignore tzdata version
 		delete res.tzdb;
         assertEqual(value[2], res);
-      });	
+      });
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_timezone
     // //////////////////////////////////////////////////////////////////////////////
@@ -2627,17 +2653,17 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateTimeZone: function () {
       let systemtz = null;
       let res = getQueryResults("RETURN DATE_TIMEZONE()", {})[0];
-      
+
       try {
         systemtz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       } catch (err) {
       }
-        
+
       if (systemtz) {
         // normalize UTC timezone names
         if (systemtz.match(/UTC/)) {
           systemtz = "UTC";
-        } 
+        }
         if (res.match(/UTC/)) {
           res = "UTC";
         }
@@ -2646,11 +2672,11 @@ function ahuacatlDateFunctionsTestSuite () {
         assertNotNull(res);
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test date_timezones
     // //////////////////////////////////////////////////////////////////////////////
-    
+
     testDateTimeZones: function () {
       let res = getQueryResults("RETURN DATE_TIMEZONES()", {})[0];
       assertNotEqual(-1, res.indexOf("America/New_York"));
@@ -2705,10 +2731,10 @@ function ahuacatlDateFunctionsTestSuite () {
       var actual;
 
       actual = getQueryResults("RETURN DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value))", { value: dt });
-      assertEqual([ new Date(dt+"Z").getTime() ], actual);
+      assertEqual([ new Date(dt + "Z").getTime() ], actual);
 
       actual = getQueryResults("RETURN DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value))", { value: dt + "Z" });
-      assertEqual([ new Date(dt+"Z").getTime() ], actual);
+      assertEqual([ new Date(dt + "Z").getTime() ], actual);
     },
 
     // //////////////////////////////////////////////////////////////////////////////

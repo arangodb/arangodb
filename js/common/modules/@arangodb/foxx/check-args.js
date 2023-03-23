@@ -33,7 +33,9 @@ const mimeTypes = require('mime-types');
 const ct = require('content-type');
 const ArangoError = require('@arangodb').ArangoError;
 const ERROR_BAD_PARAMETER = require('@arangodb').errors.ERROR_BAD_PARAMETER;
-const ajv = new Ajv({coerceTypes: true, useDefaults: true, strictSchema: false});
+const ajv = new Ajv({coerceTypes: true,
+useDefaults: true,
+strictSchema: false});
 
 function normalizeMimeType (mime) {
   if (mime === 'binary') {
@@ -45,13 +47,25 @@ function normalizeMimeType (mime) {
 }
 
 function isJoiSchema (value, expectOpaque) {
-  if (!value) return false;
-  if (value.isJoi) return true;
-  if (expectOpaque) return false;
-  if (typeof value !== "object") return false;
-  if (Array.isArray(value)) return false;
+  if (!value) {
+return false;
+}
+  if (value.isJoi) {
+return true;
+}
+  if (expectOpaque) {
+return false;
+}
+  if (typeof value !== "object") {
+return false;
+}
+  if (Array.isArray(value)) {
+return false;
+}
   const values = Object.values(value);
-  if (!values.length) return false;
+  if (!values.length) {
+return false;
+}
   return values.every(value => isJoiSchema(value, true));
 }
 
@@ -62,19 +76,26 @@ function createSchemaValidator (schema, optional = false) {
   if (schema === false) {
     return (value) => {
       if (value === null || value === undefined || value === "") {
-        return {value: undefined, error: null};
+        return {value: undefined,
+error: null};
       }
-      return {value, error: new Error('"value" is forbidden')};
+      return {value,
+error: new Error('"value" is forbidden')};
     };
   }
   const validator = ajv.compile(schema);
   return (value) => {
     if (optional && value === undefined) {
-      return {value: undefined, error: null};
+      return {value: undefined,
+error: null};
     }
     const valid = validator(value);
-    if (valid) return {value, error: null};
-    return {value, error: new Error(
+    if (valid) {
+return {value,
+error: null};
+}
+    return {value,
+error: new Error(
       ajv.errorsText(validator.errors, {dataVar: `"value"`})
     )};
   };
@@ -94,7 +115,9 @@ function runValidation (methodName, paramName, type, value) {
         warnings
       };
     }
-    return {value, error: null, warnings};
+    return {value,
+error: null,
+warnings};
   } else if (typeof type === 'function') {
     const result = type(value);
     if (result.warnings) {
@@ -103,11 +126,15 @@ function runValidation (methodName, paramName, type, value) {
       }
     }
     if (result.error) {
-      result.error.message = result.error.message
-      .replace(/^"value"/, paramName);
-      return {value: result.value, error: result.error, warnings};
+      result.error.message = result.error.message.
+      replace(/^"value"/, paramName);
+      return {value: result.value,
+error: result.error,
+warnings};
     }
-    return {value: result.value, error: null, warnings};
+    return {value: result.value,
+error: null,
+warnings};
   } else {
     throw new Error(il`
       Unknown type for parameter ${paramName} in ${methodName}:
@@ -199,7 +226,8 @@ module.exports = exports = function (methodName, values, ...variations) {
             ${ERROR_BAD_PARAMETER.message}
             ${error.message}
             Method: ${methodName}(${signature})
-            Arguments: ${util.inspect(values, {simpleJoi: true, depth: 3})}
+            Arguments: ${util.inspect(values, {simpleJoi: true,
+depth: 3})}
           `
         }), {cause: error}
       );
@@ -210,14 +238,17 @@ module.exports = exports = function (methodName, values, ...variations) {
 
 exports.validateMiddleware = function (value) {
   if (value && (typeof value === 'function' || typeof value.register === 'function')) {
-    return {value, error: null};
+    return {value,
+error: null};
   }
-  return {value, error: new Error('"value" is not a valid middleware')};
+  return {value,
+error: new Error('"value" is not a valid middleware')};
 };
 
 exports.validateMountable = function (value) {
   if (value && value.isFoxxRouter) {
-    return {value, error: null};
+    return {value,
+error: null};
   }
   return exports.validateMiddleware(value);
 };
@@ -228,7 +259,8 @@ exports.validateStatus = function (value) {
     try {
       status = statuses(status);
     } catch (e) {
-      return {value, error: Object.assign(
+      return {value,
+error: Object.assign(
           new Error('"value" must be a valid status name.'),
           {cause: e}
       )};
@@ -236,46 +268,54 @@ exports.validateStatus = function (value) {
   }
   status = Number(status);
   if (Number.isNaN(status)) {
-    return {value, error: new Error('"value" must be a number')};
+    return {value,
+error: new Error('"value" must be a number')};
   }
-  return {value: status, error: null};
+  return {value: status,
+error: null};
 };
 
 exports.validateSchema = function (schema = true, optional = false) {
   if (schema === null) {
     return {
-      value: {schema: false, validate: createSchemaValidator(false, optional)},
+      value: {schema: false,
+validate: createSchemaValidator(false, optional)},
       error: null
     };
   }
   if (isJoiSchema(schema)) {
     if (schema.isJoi) {
       return {
-        value: {schema, validate: createSchemaValidator(schema, optional)},
+        value: {schema,
+validate: createSchemaValidator(schema, optional)},
         error: null
       };
     }
     try {
       schema = joi.object(schema).required();
     } catch (e) {
-      return {value: schema, error: Object.assign(
+      return {value: schema,
+error: Object.assign(
         new Error('"value" must be a schema'),
         {cause: e}
       )};
     }
     return {
-      value: {schema, validate: createSchemaValidator(schema, optional)},
+      value: {schema,
+validate: createSchemaValidator(schema, optional)},
       error: null
     };
   }
   const valid = ajv.validateSchema(schema);
   if (!valid) {
-    return {value: schema, error: new Error(
+    return {value: schema,
+error: new Error(
       ajv.errorsText(ajv.errors, {dataVar: `"value"`})
     )};
   }
   return {
-    value: {schema, validate: createSchemaValidator(schema, optional)},
+    value: {schema,
+validate: createSchemaValidator(schema, optional)},
     error: null
   };
 };
@@ -287,10 +327,12 @@ exports.validateModel = function (value) {
   let multiple = false;
   if (Array.isArray(model)) {
     if (model.length !== 1) {
-      return {value, error: new Error(il`
+      return {value,
+error: new Error(il`
         "value" must be a model or schema
         or an array containing exactly one model or schema.
-      `), warnings};
+      `),
+warnings};
     }
     model = model[0];
     multiple = true;
@@ -298,15 +340,17 @@ exports.validateModel = function (value) {
 
   let index = multiple ? '[0]' : '';
   if (model && typeof model !== "object" && typeof model !== "boolean") {
-    return {value, error: new Error(
+    return {value,
+error: new Error(
       `"value"${index} must be an object or boolean`
-    ), warnings};
+    ),
+warnings};
   }
 
   let schemaIndex = index;
   if (model && !model.isJoi && Object.keys(model).length && (
-    Object.values(model).some((prop) => typeof prop === "function")
-    || model.schema !== undefined
+    Object.values(model).some((prop) => typeof prop === "function") ||
+    model.schema !== undefined
   )) {
     model = {...model};
     schemaIndex = `${index}.schema`;
@@ -316,9 +360,11 @@ exports.validateModel = function (value) {
 
   const result = exports.validateSchema(model.schema, model.optional);
   if (result.error) {
-    result.error.message = result.error.message
-      .replace(/^"value"/, `"value"${schemaIndex}`);
-    return {value, error: result.error, warnings};
+    result.error.message = result.error.message.
+      replace(/^"value"/, `"value"${schemaIndex}`);
+    return {value,
+error: result.error,
+warnings};
   }
   model.schema = result.value.schema;
   if (model.schema !== true || !model.validate) {
@@ -332,16 +378,20 @@ exports.validateModel = function (value) {
     `);
   }
   if (model.forClient && typeof model.forClient !== 'function') {
-    return {value, error: new Error(il`
+    return {value,
+error: new Error(il`
       "value"${index}.forClient must be a function,
       not ${typeof model.forClient}.
-    `), warnings};
+    `),
+warnings};
   }
   if (model.fromClient && typeof model.fromClient !== 'function') {
-    return {value, error: new Error(il`
+    return {value,
+error: new Error(il`
       "value"${index}.fromClient must be a function,
       not ${typeof model.fromClient}.
-    `), warnings};
+    `),
+warnings};
   }
 
   if (multiple) {
@@ -360,13 +410,15 @@ exports.validateModel = function (value) {
     if (baseModel.schema.isJoi) {
       model.schema = joi.array().items(baseModel.schema).required();
     } else {
-      model.schema = {type: "array", items: baseModel.schema};
+      model.schema = {type: "array",
+items: baseModel.schema};
     }
     if (baseModel.schema === true && baseModel.validate) {
       const validateItem = baseModel.validate;
       model.validate = (value) => {
         if (!Array.isArray(value)) {
-          return {value, error: new Error(`"value" must be an array.`)};
+          return {value,
+error: new Error(`"value" must be an array.`)};
         }
         const arr = Array(value.length);
         for (const item of value) {
@@ -376,30 +428,35 @@ exports.validateModel = function (value) {
           }
           arr.push(result.value);
         }
-        return {value: arr, error: null};
+        return {value: arr,
+error: null};
       };
     } else {
       model.validate = createSchemaValidator(model.schema, model.optional);
     }
   }
 
-  return {value: model, error: null};
+  return {value: model,
+error: null};
 };
 
 exports.validateMimes = function (value) {
   if (!Array.isArray(value)) {
-    return {value, error: new Error(`"value" must be an array.`)};
+    return {value,
+error: new Error(`"value" must be an array.`)};
   }
   const mimes = [];
   for (let i = 0; i < value.length; i++) {
     try {
       mimes.push(normalizeMimeType(value[i]));
     } catch (e) {
-      return {value, error: Object.assign(
+      return {value,
+error: Object.assign(
           new Error(`"value"[${i}] must be a valid MIME type.`),
           {cause: e}
       )};
     }
   }
-  return {value: mimes, error: null};
+  return {value: mimes,
+error: null};
 };

@@ -33,7 +33,7 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const wait = internal.wait;
 
-function waitForTreeReady(c) {
+function waitForTreeReady (c) {
   while (true) {
     let pending = c._revisionTreePendingUpdates();
     // For whatever reason, sometimes we get an empty object back, let's
@@ -72,7 +72,7 @@ function corruptRepairSuite () {
       db._drop(colName1);
     },
 
-    testRevisionTreeCorrupt: function() {
+    testRevisionTreeCorrupt: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1000);
@@ -96,7 +96,7 @@ function corruptRepairSuite () {
       assertNotEqual(summary.hash, 17);
       trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
-    },
+    }
 
   };
 }

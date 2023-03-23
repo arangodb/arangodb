@@ -36,7 +36,7 @@ function runSetup () {
 
   let c = db._create('UnitTestsRecovery');
   let walfiles = () => {
-    return db._currentWalFiles().map(function(f) {
+    return db._currentWalFiles().map(function (f) {
       // strip off leading `/` or `/archive/` if it exists
       let p = f.split('/');
       return p[p.length - 1];
@@ -46,11 +46,12 @@ function runSetup () {
   let docs = [];
   let payload = Array(1024).join("XuxU");
   for (let i = 0; i < 1000; ++i) {
-    docs.push({ value: i, payload });
+    docs.push({ value: i,
+payload });
   }
 
   let initial = walfiles();
-  
+
   while (true) {
     c.insert(docs);
     let now = walfiles();
@@ -67,7 +68,7 @@ function runSetup () {
         require("console").warn("intentionally truncating log file " + fn);
         fs.remove(fn);
         fs.writeFileSync(fn, "");
-        
+
         // crash
         internal.debugTerminate('crashing server');
       }
@@ -86,7 +87,7 @@ function recoverySuite () {
 
     testRestart: function () {
       // assert that initial collection exists.
-      // as we manually wiped one of the WAL files, 
+      // as we manually wiped one of the WAL files,
       // we cannot know how much data is still in it.
       // all we require is a successful restart here
       let c = db._collection('UnitTestsRecovery');

@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -44,13 +44,15 @@ function PregelAuthSuite () {
   let cs = [];
   let coordinators = [];
   const users = [
-    { username: 'alice', password: 'pass1' },
-    { username: 'bob', password: 'pass2' },
+    { username: 'alice',
+password: 'pass1' },
+    { username: 'bob',
+password: 'pass2' }
   ];
   const baseUrl = `/_api/control_pregel`;
   const pregelSystemCollection = '_pregel_queries';
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest (auth, method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -68,7 +70,7 @@ function PregelAuthSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -84,7 +86,7 @@ function PregelAuthSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -92,12 +94,15 @@ function PregelAuthSuite () {
 
       cs = [];
       cs.push(db._create("vertices", {numberOfShards: 8}));
-      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"], distributeShardsLike: "vertices", numberOfShards: 8}));
+      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"],
+distributeShardsLike: "vertices",
+numberOfShards: 8}));
       for (let i = 1; i <= 250; ++i) {
         cs[0].save({ _key: `v_${i}` });
         const edges = [];
         for (let j = 1; j < i; ++j) {
-          edges.push({ _from: `vertices/v_${j}`, _to: `vertices/v_${i}` });
+          edges.push({ _from: `vertices/v_${j}`,
+_to: `vertices/v_${i}` });
         }
         cs[1].save(edges);
       }
@@ -119,7 +124,7 @@ function PregelAuthSuite () {
       require("internal").wait(5.0);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop("edges");
       db._drop("vertices");
       userModule.remove(users[0].username);
@@ -128,7 +133,7 @@ function PregelAuthSuite () {
       coordinators = [];
     },
 
-    testPregelForwardingSameUser: function() {
+    testPregelForwardingSameUser: function () {
       let url = baseUrl;
       const task = {
         algorithm: "pagerank",
@@ -169,7 +174,7 @@ function PregelAuthSuite () {
       assertTrue(persistedState.data.state === "canceled");
     },
 
-    testPregelForwardingDifferentUser: function() {
+    testPregelForwardingDifferentUser: function () {
       let url = baseUrl;
       const task = {
         algorithm: "pagerank",
@@ -206,7 +211,7 @@ function PregelAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
-    },
+    }
 
   };
 }

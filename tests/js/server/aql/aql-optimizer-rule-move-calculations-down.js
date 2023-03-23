@@ -1,56 +1,56 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var db = require("@arangodb").db;
 const isCluster = require("@arangodb/cluster").isCluster();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
   var ruleName = "move-calculations-down";
 
-  // various choices to control the optimizer: 
-  var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  // various choices to control the optimizer:
+  var paramNone = { optimizer: { rules: [ "-all" ] } };
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
-  const RulesCombinator = function*(listOfRules) {
-    const RuleOnOff = function* (rule) {
+  const RulesCombinator = function *(listOfRules) {
+    const RuleOnOff = function *(rule) {
       yield `-${rule}`;
       yield `+${rule}`;
     };
-    const RecursiveRuleOnOff = function* (list) {
+    const RecursiveRuleOnOff = function *(list) {
       if (list.length === 0) {
         return;
       }
@@ -75,30 +75,31 @@ function optimizerRuleTestSuite () {
   var cn = "UnitTestsAhuacatlCalculation";
 
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       db._drop(cn);
       c = db._create(cn);
       for (let i = 0; i < 100; ++i) {
-        c.save({ _key: "test" + i, value: i });
+        c.save({ _key: "test" + i,
+value: i });
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop(cn);
       c = null;
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect when explicitly disabled
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect when explicitly disabled
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled: function () {
       var queries = [
@@ -113,7 +114,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 2 RETURN result",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LIMIT 1 RETURN result",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result",
-        "FOR i IN 1..10 LET result = (RETURN PUSH(i, i + 1)) LET x = (FOR j IN result RETURN j) RETURN x",
+        "FOR i IN 1..10 LET result = (RETURN PUSH(i, i + 1)) LET x = (FOR j IN result RETURN j) RETURN x"
       ];
 
       queries.forEach(function (query) {
@@ -122,9 +123,9 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect: function () {
       var queries = [
@@ -151,7 +152,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 FILTER i < 10 LET result = (RETURN IS_STRING(i)) FOR j IN 1..2 RETURN j",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) COLLECT r = result RETURN r",
         "FOR i IN 1..10 LET result = (RETURN MAX(i)) FILTER result < 3 RETURN result",
-        "FOR i IN 1..10 LET result = (RETURN RAND()) FILTER i < 10 RETURN result",
+        "FOR i IN 1..10 LET result = (RETURN RAND()) FILTER i < 10 RETURN result"
       ];
 
       queries.forEach(function (query) {
@@ -160,9 +161,9 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has an effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has an effect
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect: function () {
       var queries = [
@@ -181,7 +182,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = IS_STRING(i) LET test = (RETURN result + 1) LIMIT 1 RETURN test",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result",
         "FOR i IN 1..10 LET result = (RETURN i + 1) LET test = (FOR j IN 1..2 RETURN j) RETURN result IN test",
-        "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v",
+        "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v"
       ];
 
       queries.forEach(function (query) {
@@ -190,9 +191,9 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test generated plans
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test generated plans
+    // //////////////////////////////////////////////////////////////////////////////
 
     testPlans: function () {
       var plans = [
@@ -205,8 +206,8 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "FilterNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) FILTER i < 10 FILTER i > 2 RETURN result",
@@ -219,8 +220,8 @@ function optimizerRuleTestSuite () {
             "CalculationNode",
             "FilterNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) FILTER i < 2 LIMIT 1 RETURN result",
@@ -232,8 +233,8 @@ function optimizerRuleTestSuite () {
             "FilterNode",
             "LimitNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) LIMIT 1 RETURN result",
@@ -243,8 +244,8 @@ function optimizerRuleTestSuite () {
             "EnumerateListNode",
             "LimitNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) LET test = result + 1 LIMIT 1 RETURN test",
@@ -255,8 +256,8 @@ function optimizerRuleTestSuite () {
             "LimitNode",
             "CalculationNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) SORT i RETURN result",
@@ -266,8 +267,8 @@ function optimizerRuleTestSuite () {
             "EnumerateListNode",
             "SortNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET v = i * 2 LIMIT 2 LET result = v < 5 RETURN v",
@@ -278,8 +279,8 @@ function optimizerRuleTestSuite () {
             "LimitNode",
             "CalculationNode",
             "CalculationNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 10 RETURN result",
@@ -292,8 +293,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 10 FILTER i > 2 RETURN result",
@@ -308,8 +309,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) FILTER i < 2 LIMIT 1 RETURN result",
@@ -323,8 +324,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LIMIT 1 RETURN result",
@@ -336,8 +337,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = IS_STRING(i) LET test = (RETURN result + 1) LIMIT 1 RETURN test",
@@ -350,8 +351,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result",
@@ -363,8 +364,8 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
+            "ReturnNode"
+          ]
         ],
         [
           "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v",
@@ -379,9 +380,9 @@ function optimizerRuleTestSuite () {
             "SubqueryStartNode",
             "CalculationNode",
             "SubqueryEndNode",
-            "ReturnNode",
-          ],
-        ],
+            "ReturnNode"
+          ]
+        ]
       ];
 
       plans.forEach(function (plan) {
@@ -397,112 +398,112 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testResults: function () {
       var queries = [
         ["FOR i IN 1..10 LET a = i + 1 FILTER i < 4 RETURN a", [2, 3, 4]],
         [
           "FOR i IN 1..10 LET a = i + 1 FILTER i < 7 FILTER i > 1 RETURN a",
-          [3, 4, 5, 6, 7],
+          [3, 4, 5, 6, 7]
         ],
         ["FOR i IN 1..10 LET a = i + 1 LIMIT 4 RETURN a", [2, 3, 4, 5]],
         [
           "FOR i IN 1..10 LET a = i + 1 LET b = a + 1 FILTER i < 3 RETURN b",
-          [3, 4],
+          [3, 4]
         ],
         [
           "FOR i IN 1..10 LET a = i + 1 LET b = a + 1 LIMIT 4 RETURN b",
-          [3, 4, 5, 6],
+          [3, 4, 5, 6]
         ],
         [
           "FOR i IN 1..10 LET a = i + 1 LET b = a + 1 FILTER i < 5 LIMIT 4 RETURN b",
-          [3, 4, 5, 6],
+          [3, 4, 5, 6]
         ],
         [
           "FOR i IN 1..10 LET a = i + 1 LET x = (FOR j IN 1..i RETURN j) RETURN a - 1 IN x ? 1 : 0",
-          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ],
         [
           "FOR i IN 1..10 LET a = i + 1 LET x = (FOR j IN 1..i RETURN j) RETURN a IN x ? 1 : 0",
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ],
         [
           "FOR i IN 1..10 LET a = MAX(1..i) FILTER i > 4 RETURN a",
-          [5, 6, 7, 8, 9, 10],
+          [5, 6, 7, 8, 9, 10]
         ],
         ["FOR i IN 1..10 LET a = SUM(1..i) FILTER i == 3 RETURN a", [6]],
         [
           "FOR i IN 1..10 LET a = SUM(1..i) LET b = MIN(1..i) FILTER i == 3 RETURN [ a, b ]",
-          [[6, 1]],
+          [[6, 1]]
         ],
         ["FOR i IN 1..10 LET a = SUM(1..i) LIMIT 3 RETURN a", [1, 3, 6]],
         [
           "FOR i IN 1..10 LET a = SUM(1..i) LIMIT 3 FILTER a > 2 RETURN a",
-          [3, 6],
+          [3, 6]
         ],
         [
           "FOR i IN 1..10 LET a = SUM(1..i) LIMIT 5 FILTER i > 2 RETURN a",
-          [6, 10, 15],
+          [6, 10, 15]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) FILTER i < 4 RETURN a[0]",
-          [2, 3, 4],
+          [2, 3, 4]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) FILTER i < 7 FILTER i > 1 RETURN a[0]",
-          [3, 4, 5, 6, 7],
+          [3, 4, 5, 6, 7]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) LIMIT 4 RETURN a[0]",
-          [2, 3, 4, 5],
+          [2, 3, 4, 5]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) LET b = (RETURN a[0] + 1) FILTER i < 3 RETURN b[0]",
-          [3, 4],
+          [3, 4]
         ],
         [
           "FOR i IN 1..10 LET a = i + 1 LET b = (RETURN a + 1) LIMIT 4 RETURN b[0]",
-          [3, 4, 5, 6],
+          [3, 4, 5, 6]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) LET b = (RETURN a[0] + 1) FILTER i < 5 LIMIT 4 RETURN b[0]",
-          [3, 4, 5, 6],
+          [3, 4, 5, 6]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] - 1 IN x ? 1 : 0",
-          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] IN x ? 1 : 0",
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN MAX(1..i)) FILTER i > 4 RETURN a[0]",
-          [5, 6, 7, 8, 9, 10],
+          [5, 6, 7, 8, 9, 10]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN SUM(1..i)) FILTER i == 3 RETURN a[0]",
-          [6],
+          [6]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN SUM(1..i)) LET b = (RETURN MIN(1..i)) FILTER i == 3 RETURN [ a[0], b[0] ]",
-          [[6, 1]],
+          [[6, 1]]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN SUM(1..i)) LIMIT 3 RETURN a[0]",
-          [1, 3, 6],
+          [1, 3, 6]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN SUM(1..i)) LIMIT 3 FILTER a[0] > 2 RETURN a[0]",
-          [3, 6],
+          [3, 6]
         ],
         [
           "FOR i IN 1..10 LET a = (RETURN SUM(1..i)) LIMIT 5 FILTER i > 2 RETURN a[0]",
-          [6, 10, 15],
-        ],
+          [6, 10, 15]
+        ]
       ];
 
       queries.forEach(function (query) {
@@ -520,9 +521,9 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testCollection1: function () {
       var expected = [];
@@ -547,9 +548,9 @@ function optimizerRuleTestSuite () {
       assertEqual(resultEnabled.json, expected, query[0]);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testCollection2: function () {
       var expected = ["test43-43", "test44-44"];
@@ -614,9 +615,9 @@ function optimizerRuleTestSuite () {
       assertEqual(resultEnabled.json, expected, query[0]);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testCollection5: function () {
       var expected = ["test43-43", "test44-44"];
@@ -702,14 +703,17 @@ function optimizerRuleTestSuite () {
           )
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "move-calculations-down",
+        "move-calculations-down"
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
         const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, { query, params });
-        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
-        assertEqual(json, expected, { query, params });
+        assertEqual(100, writesExecuted, { query,
+params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query,
+params });
+        assertEqual(json, expected, { query,
+params });
       }
     },
 
@@ -730,14 +734,17 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "move-calculations-down",
+        "move-calculations-down"
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
         const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, { query, params });
-        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
-        assertEqual(json, expected, { query, params });
+        assertEqual(100, writesExecuted, { query,
+params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query,
+params });
+        assertEqual(json, expected, { query,
+params });
       }
     },
 
@@ -759,14 +766,17 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "move-calculations-down",
+        "move-calculations-down"
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
         const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, { query, params });
-        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
-        assertEqual(json, expected, { query, params });
+        assertEqual(100, writesExecuted, { query,
+params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query,
+params });
+        assertEqual(json, expected, { query,
+params });
       }
     },
 
@@ -785,16 +795,19 @@ function optimizerRuleTestSuite () {
           LIMIT 1, 2
           RETURN outerSubquery`;
       for (const params of RulesCombinator([
-        "move-calculations-down",
+        "move-calculations-down"
       ])) {
         const { plan } = AQL_EXPLAIN(query, {}, params);
         const { json, stats } = AQL_EXECUTE(query, {}, params);
         const { writesExecuted } = stats;
-        assertEqual(100, writesExecuted, { query, params });
-        assertEqual(-1, plan.rules.indexOf(ruleName), { query, params });
-        assertEqual(json, expected, { query, params });
+        assertEqual(100, writesExecuted, { query,
+params });
+        assertEqual(-1, plan.rules.indexOf(ruleName), { query,
+params });
+        assertEqual(json, expected, { query,
+params });
       }
-    },
+    }
   };
 }
 

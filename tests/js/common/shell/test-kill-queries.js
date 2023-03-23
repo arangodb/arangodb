@@ -31,7 +31,7 @@ const isServer = require('@arangodb').isServer;
 const arango = isServer ? {} : arangodb.arango;
 let db = arangodb.db;
 
-function GenericQueryKillSuite() { // can be either default or stream
+function GenericQueryKillSuite () { // can be either default or stream
   'use strict';
 
   // generate a random collection name
@@ -138,7 +138,7 @@ function GenericQueryKillSuite() { // can be either default or stream
       onlyInCluster: onlyInCluster,
       stream: stream,
       reportKilled: reportKilled,
-      expectedError: expectedError,
+      expectedError: expectedError
     };
   };
 
@@ -213,7 +213,7 @@ function GenericQueryKillSuite() { // can be either default or stream
     tearDownAll: function () {
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
-    },
+    }
   };
 
   const createTestName = (failurePoint, stream) => {
@@ -280,7 +280,7 @@ function GenericQueryKillSuite() { // can be either default or stream
   return testSuite;
 }
 
-function QueryKillSuite() {
+function QueryKillSuite () {
   return GenericQueryKillSuite();
 }
 

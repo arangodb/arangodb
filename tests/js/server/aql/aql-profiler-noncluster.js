@@ -1,29 +1,29 @@
- /*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertTrue */
+ /* jshint globalstrict:true, strict:true, esnext: true */
+/* global assertTrue */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
@@ -34,11 +34,11 @@ const _ = require('lodash');
  const jsunity = require("jsunity");
  const internal = require("internal");
 
- ////////////////////////////////////////////////////////////////////////////////
- /// @file test suite for AQL tracing/profiling: noncluster tests
- /// Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
- /// The main test suite (including comments) is in aql-profiler.js.
- ////////////////////////////////////////////////////////////////////////////////
+ // //////////////////////////////////////////////////////////////////////////////
+ // / @file test suite for AQL tracing/profiling: noncluster tests
+ // / Contains tests for EnumerateCollectionBlock, IndexBlock and TraversalBlock.
+ // / The main test suite (including comments) is in aql-profiler.js.
+ // //////////////////////////////////////////////////////////////////////////////
 
  // import some names from profHelper directly into our namespace
  const colName = profHelper.colName;
@@ -66,7 +66,7 @@ const _ = require('lodash');
    IResearchViewBlock, IResearchViewOrderedBlock
  } = profHelper;
 
- function ahuacatlProfilerTestSuite() {
+ function ahuacatlProfilerTestSuite () {
    return {
      tearDown: function () {
        db._drop(colName);
@@ -75,51 +75,83 @@ const _ = require('lodash');
 
      testMaterializeBlock: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
-      
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.ensureIndex({ type: "persistent",
+fields: ["value", "other", "more"]});
+
       const bind = () => ({'@col': colName});
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
-      const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;    
+      const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
-          {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-          {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-          {type: MaterializeBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-          {type: ReturnBlock, calls: 1, items: Math.min(rows, 3), filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: IndexBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0},
+          {type: SortBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0},
+          {type: LimitBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0},
+          {type: MaterializeBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0},
+          {type: ReturnBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
         FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
 
     testMaterializeBlockThatFilters: function () {
@@ -129,23 +161,32 @@ const _ = require('lodash');
 
       try {
         const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-        col.ensureIndex({ type: "persistent", fields: ["value", "other", "more"]});
-        
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+        col.ensureIndex({ type: "persistent",
+fields: ["value", "other", "more"]});
+
         const bind = () => ({'@col': colName});
         const prepare = (rows) => {
           col.truncate({ compact: false });
@@ -155,27 +196,50 @@ const _ = require('lodash');
 
         const genNodeList = (rows, batches) => {
           return [
-            {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-            {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
-            {type: SortBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-            {type: LimitBlock, calls: 1, items: Math.min(rows, 3), filtered: 0},
-            {type: MaterializeBlock, calls: 1, items: 0, filtered: Math.min(rows, 3)},
-            {type: ReturnBlock, calls: 1, items: 0, filtered: 0}
+            {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+            {type: IndexBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0},
+            {type: SortBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0},
+            {type: LimitBlock,
+calls: 1,
+items: Math.min(rows, 3),
+filtered: 0},
+            {type: MaterializeBlock,
+calls: 1,
+items: 0,
+filtered: Math.min(rows, 3)},
+            {type: ReturnBlock,
+calls: 1,
+items: 0,
+filtered: 0}
           ];
         };
-        
+
         internal.debugSetFailAt("MaterializeExecutor::all_fail_and_count");
         profHelper.runDefaultChecks(
-          {query, genNodeList, prepare, bind}
+          {query,
+genNodeList,
+prepare,
+bind}
         );
 
         // collection was truncated. Insert them again
-        col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+        col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
         const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
           FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
         let iiQueryRes = db._query(iiQuery).toArray();
-        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
 
       } finally {
         // clear failure points!
@@ -185,21 +249,29 @@ const _ = require('lodash');
 
     testEnumerateCollectionBlock: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -209,34 +281,57 @@ const _ = require('lodash');
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateCollectionBlock, calls: batches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateCollectionBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: CalculationBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
-    
+
     testEnumerateCollectionBlockWithFilter: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -246,40 +341,62 @@ const _ = require('lodash');
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateCollectionBlock, calls: 1, items: Math.min(rows, 10), filtered: rows <= 10 ? 0 : rows - 10},
-          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateCollectionBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: rows <= 10 ? 0 : rows - 10},
+          {type: ReturnBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
-    
+
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER d.value <= 10 RETURN d`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
 
     testFilterBlock: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -289,52 +406,83 @@ const _ = require('lodash');
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateCollectionBlock, calls: batches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
-          {type: FilterBlock, calls: 1, items: Math.min(rows, 10), filtered: rows <= 10 ? 0 : rows - 10},
-          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateCollectionBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: CalculationBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: FilterBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: rows <= 10 ? 0 : rows - 10},
+          {type: ReturnBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-move-filters-into-enumerate"] } }}
+        {query,
+genNodeList,
+prepare,
+bind,
+options: { optimizer: { rules: ["-move-filters-into-enumerate"] } }}
         );
-        
+
         // collection was truncated. Insert them again
-        col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-        col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+        col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER d.value <= 10 RETURN d`;
         let iiQueryRes = db._query(iiQuery).toArray();
-        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+        assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test IndexBlock
-////////////////////////////////////////////////////////////////////////////////
-    
-    testIndexBlock1 : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test IndexBlock
+// //////////////////////////////////////////////////////////////////////////////
+
+    testIndexBlock1: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.ensureIndex({ type: "hash",
+fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
-      const bind = (rows) => ({'@col': colName, rows});
+      const bind = (rows) => ({'@col': colName,
+rows});
       const query = `FOR i IN 1..@rows FOR d IN @@col FILTER i == d.value RETURN d.value`;
 
       const genNodeList = (rows, batches) => {
@@ -345,57 +493,91 @@ const _ = require('lodash');
         const indexBatches = [optimalBatches, maxIndexBatches];
 
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
-          {type: IndexBlock, calls: indexBatches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: indexBatches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: indexBatches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateListBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: IndexBlock,
+calls: indexBatches,
+items: rows,
+filtered: 0},
+          {type: CalculationBlock,
+calls: indexBatches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: indexBatches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
+        {query,
+genNodeList,
+prepare,
+bind,
+options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
       );
 
       const iiQuery = `FOR i IN 1..1000 
         FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER d.value == i RETURN d.value`;
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       /*
         PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/SEARCH-449
       */
       // let iiQueryRes = db._query(iiQuery).toArray();
-      // assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      // assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test IndexBlock, asking for every third document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test IndexBlock, asking for every third document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIndexBlock2 : function () {
+    testIndexBlock2: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.ensureIndex({ type: "hash",
+fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
-      const bind = (rows) => ({'@col': colName, rows});
+      const bind = (rows) => ({'@col': colName,
+rows});
       const query = `FOR i IN 0..FLOOR(@rows / 3)
         FOR d IN @@col
         FILTER i * 3 + 1 == d.value
@@ -419,50 +601,83 @@ const _ = require('lodash');
         ];
 
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateListBlock, calls: enumBatches, items: enumRows, filtered: 0},
-          {type: IndexBlock, calls: indexBatches, items: indexRows, filtered: 0},
-          {type: CalculationBlock, calls: indexBatches, items: indexRows, filtered: 0},
-          {type: ReturnBlock, calls: indexBatches, items: indexRows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateListBlock,
+calls: enumBatches,
+items: enumRows,
+filtered: 0},
+          {type: IndexBlock,
+calls: indexBatches,
+items: indexRows,
+filtered: 0},
+          {type: CalculationBlock,
+calls: indexBatches,
+items: indexRows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: indexBatches,
+items: indexRows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind, options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
+        {query,
+genNodeList,
+prepare,
+bind,
+options: { optimizer: { rules: ["-interchange-adjacent-enumerations"] } }}
       );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR i IN 0..FLOOR(1000 / 3)
         FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
         FILTER i * 3 + 1 == d.value
-        RETURN d.value`;  
+        RETURN d.value`;
       /*
         PLEASE UNCOMMENT LINES BELOW AFTER FIXING https://arangodb.atlassian.net/browse/SEARCH-449
-      */  
+      */
       // let iiQueryRes = db._query(iiQuery).toArray();
-      // assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      // assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
-    
+
     testIndexBlockWithProjection: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.ensureIndex({ type: "hash",
+fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -472,35 +687,59 @@ const _ = require('lodash');
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: IndexBlock, calls: batches, items: rows, filtered: 0},
-          {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: IndexBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: CalculationBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
-    
+
     testIndexBlockWithFilter: function () {
       const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
-      col.ensureIndex({ type: "hash", fields: [ "value" ] });
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.ensureIndex({ type: "hash",
+fields: [ "value" ] });
       const prepare = (rows) => {
         col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
@@ -510,27 +749,41 @@ const _ = require('lodash');
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: IndexBlock, calls: 1, items: Math.min(rows, 10), filtered: 0},
-          {type: ReturnBlock, calls: 1, items: Math.min(rows, 10), filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: IndexBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0},
+          {type: ReturnBlock,
+calls: 1,
+items: Math.min(rows, 10),
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName}
         OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER d.value <= 10 RETURN d`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test TraversalBlock: traverse a tree
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test TraversalBlock: traverse a tree
+// //////////////////////////////////////////////////////////////////////////////
 
     testTraversalBlock1: function () {
       const col = db._createDocumentCollection(colName);
@@ -544,24 +797,36 @@ const _ = require('lodash');
         rows: rows,
         root: rootNodeId,
         '@edgeCol': edgeColName,
-        '@vertexCol': colName,
+        '@vertexCol': colName
       });
 
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: TraversalBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test TraversalBlock: traverse ~half a tree
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test TraversalBlock: traverse ~half a tree
+// //////////////////////////////////////////////////////////////////////////////
 
     testTraversalBlock2: function () {
       const col = db._createDocumentCollection(colName);
@@ -581,27 +846,39 @@ const _ = require('lodash');
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
-        '@vertexCol': colName,
+        '@vertexCol': colName
       });
-      const visitedNodes = rows => Math.pow(2, depth(rows)+1) - 1;
+      const visitedNodes = rows => Math.pow(2, depth(rows) + 1) - 1;
 
       const genNodeList = (rows, batches) => {
         rows = visitedNodes(rows);
         batches = Math.ceil(rows / defaultBatchSize);
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: TraversalBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test TraversalBlock: skip ~half a tree
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test TraversalBlock: skip ~half a tree
+// //////////////////////////////////////////////////////////////////////////////
 
     testTraversalBlock3: function () {
       const col = db._createDocumentCollection(colName);
@@ -622,7 +899,7 @@ const _ = require('lodash');
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
-        '@vertexCol': colName,
+        '@vertexCol': colName
       });
       const skippedNodes = rows => Math.pow(2, depth(rows)) - 1;
       const visitedNodes = rows => rows - skippedNodes(rows);
@@ -631,20 +908,32 @@ const _ = require('lodash');
         rows = visitedNodes(rows);
         batches = Math.max(1, Math.ceil(rows / defaultBatchSize));
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: batches, items: rows, filtered: 0},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: TraversalBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test TraversalBlock: check filter result
-    ////////////////////////////////////////////////////////////////////////////////
-    
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test TraversalBlock: check filter result
+    // //////////////////////////////////////////////////////////////////////////////
+
     testTraversalBlockWithFilter: function () {
       const col = db._createDocumentCollection(colName);
       const edgeCol = db._createEdgeCollection(edgeColName);
@@ -664,7 +953,7 @@ const _ = require('lodash');
         depth: depth(rows),
         root: rootNodeId,
         '@edgeCol': edgeColName,
-        '@vertexCol': colName,
+        '@vertexCol': colName
       });
       const skippedNodes = rows => Math.pow(2, depth(rows)) - 1;
       const visitedNodes = rows => rows - skippedNodes(rows);
@@ -675,21 +964,33 @@ const _ = require('lodash');
         batches = Math.max(1, Math.ceil(rows / defaultBatchSize));
 
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: TraversalBlock, calls: batches, items: rows, filtered: 1},
-          {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: TraversalBlock,
+calls: batches,
+items: rows,
+filtered: 1},
+          {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test TraversalBlock: traverse ~half a tree
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test TraversalBlock: traverse ~half a tree
+    // //////////////////////////////////////////////////////////////////////////////
 
-    /* TODO: enable this test once we have parallelism ready 
+    /* TODO: enable this test once we have parallelism ready
     testTraversalBlockParallel: function () {
       const col = db._createDocumentCollection(colName);
       const edgeCol = db._createEdgeCollection(edgeColName);
@@ -740,24 +1041,45 @@ const _ = require('lodash');
       const bind = (rows) => ({rows});
       const genNodeList = (rows, batches) => {
         return [
-          {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-          {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-          {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
-          {type: SortedCollectBlock, calls: 1, items: 1, filtered: 0},
-          {type: LimitBlock, calls: 1, items: 1, filtered: 0},
-          {type: ReturnBlock, calls: 1, items: 1, filtered: 0}
+          {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: EnumerateListBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+          {type: SortedCollectBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: LimitBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+          {type: ReturnBlock,
+calls: 1,
+items: 1,
+filtered: 0}
         ];
       };
 
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query,
+genNodeList,
+prepare,
+bind}
       );
     }
 
    };
  }
 
- function ahuacatlProfilerViewTestSuite(isSearchAlias) {
+ function ahuacatlProfilerViewTestSuite (isSearchAlias) {
    return {
      tearDown: function () {
        db._drop(colName);
@@ -765,35 +1087,46 @@ const _ = require('lodash');
        db._dropView(viewName);
      },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test EnumerateViewBlock1
+// //////////////////////////////////////////////////////////////////////////////
 
      testEnumerateViewBlock1: function () {
        const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
        let view;
        if (isSearchAlias) {
-         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
-         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+         let i = col.ensureIndex({type: "inverted",
+includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName,
+index: i.name}]});
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true,
+"fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -801,7 +1134,9 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i,
+name_1: "name2",
+"nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } RETURN d.value`;
@@ -814,59 +1149,84 @@ const _ = require('lodash');
          const viewBatches = [optimalBatches, maxViewBatches];
 
          return [
-           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: EnumerateViewNode,
+calls: viewBatches,
+items: rows,
+filtered: 0},
            {
              type: CalculationBlock,
              calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
              items: rows,
              filtered: 0
            },
-           {type: ReturnBlock, calls: rows % defaultBatchSize === 0 ? batches + 1 : batches, items: rows, filtered: 0}
+           {type: ReturnBlock,
+calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
+items: rows,
+filtered: 0}
          ];
        };
        profHelper.runDefaultChecks(
-         {query, genNodeList, prepare, bind}
+         {query,
+genNodeList,
+prepare,
+bind}
        );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
         FILTER d.value != 0 RETURN d.value`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
      },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test EnumerateViewBlock2
+// //////////////////////////////////////////////////////////////////////////////
 
      testEnumerateViewBlock2: function () {
        const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
        let view;
        if (isSearchAlias) {
-         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
-         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+         let i = col.ensureIndex({type: "inverted",
+includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName,
+index: i.name}]});
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true,
+"fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -874,7 +1234,9 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i,
+name_1: "name2",
+"nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT d.value DESC RETURN d.value`;
@@ -887,60 +1249,88 @@ const _ = require('lodash');
          const viewBatches = [optimalBatches, maxViewBatches];
 
          return [
-           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
+           {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: EnumerateViewNode,
+calls: viewBatches,
+items: rows,
+filtered: 0},
            {
              type: CalculationBlock,
              calls: rows % defaultBatchSize === 0 ? batches + 1 : batches,
              items: rows,
              filtered: 0
            },
-           {type: SortBlock, calls: batches, items: rows, filtered: 0},
-           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+           {type: SortBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+           {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
          ];
        };
        profHelper.runDefaultChecks(
-         {query, genNodeList, prepare, bind}
+         {query,
+genNodeList,
+prepare,
+bind}
        );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER
       d.value != 0 SORT d.value DESC RETURN d.value`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
      },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test EnumerateViewBlock3
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test EnumerateViewBlock3
+// //////////////////////////////////////////////////////////////////////////////
 
      testEnumerateViewBlock3: function () {
        const col = db._create(colName);
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
       if (isEnterprise) {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               "value"
           ]};
       } else {
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
               {"name": "value_nested[*]"},
               "value"
           ]};
       }
       col.ensureIndex(indexMeta);
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
        let view;
        if (isSearchAlias) {
-         let i = col.ensureIndex({type: "inverted", includeAllFields: true});
-         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName, index: i.name}]});
+         let i = col.ensureIndex({type: "inverted",
+includeAllFields: true});
+         view = db._createView(viewName, "search-alias", {indexes: [{collection: colName,
+index: i.name}]});
        } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[colName]: {includeAllFields: true, "fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[colName]: {includeAllFields: true,
+"fields": { "nested_value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
           meta = {links: {[colName]: {includeAllFields: true}}};
         }
@@ -948,7 +1338,9 @@ const _ = require('lodash');
        }
        const prepare = (rows) => {
          col.truncate({compact: false});
-         col.insert(_.range(1, rows + 1).map((i) => ({value: i, name_1: "name2", "nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
+         col.insert(_.range(1, rows + 1).map((i) => ({value: i,
+name_1: "name2",
+"nested_value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]})));
        };
        const bind = () => ({'@view': viewName});
        const query = `FOR d IN @@view SEARCH d.value != 0 OPTIONS { waitForSync: true } SORT TFIDF(d) ASC, BM25(d) RETURN d.value`;
@@ -961,25 +1353,45 @@ const _ = require('lodash');
          const viewBatches = [optimalBatches, maxViewBatches];
 
          return [
-           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-           {type: EnumerateViewNode, calls: viewBatches, items: rows, filtered: 0},
-           {type: SortBlock, calls: batches, items: rows, filtered: 0},
-           {type: CalculationBlock, calls: batches, items: rows, filtered: 0},
-           {type: ReturnBlock, calls: batches, items: rows, filtered: 0}
+           {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: EnumerateViewNode,
+calls: viewBatches,
+items: rows,
+filtered: 0},
+           {type: SortBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+           {type: CalculationBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+           {type: ReturnBlock,
+calls: batches,
+items: rows,
+filtered: 0}
          ];
        };
 
        profHelper.runDefaultChecks(
-         {query, genNodeList, prepare, bind}
+         {query,
+genNodeList,
+prepare,
+bind}
        );
 
       // collection was truncated. Insert them again
-      col.save({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      col.save({ name_1: "bar", "value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+      col.save({ name_1: "foo",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      col.save({ name_1: "bar",
+"value_nested": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}  FILTER
-        d.value != 0 SORT d.other RETURN d.value`;;
+        d.value != 0 SORT d.other RETURN d.value`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
      },
 
      testLimitCollectCombination: function () {
@@ -994,30 +1406,51 @@ const _ = require('lodash');
        const bind = (rows) => ({rows});
        const genNodeList = (rows, batches) => {
          return [
-           {type: SingletonBlock, calls: 1, items: 1, filtered: 0},
-           {type: CalculationBlock, calls: 1, items: 1, filtered: 0},
-           {type: EnumerateListBlock, calls: batches, items: rows, filtered: 0},
-           {type: SortedCollectBlock, calls: 1, items: 1, filtered: 0},
-           {type: LimitBlock, calls: 1, items: 1, filtered: 0},
-           {type: ReturnBlock, calls: 1, items: 1, filtered: 0}
+           {type: SingletonBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: CalculationBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: EnumerateListBlock,
+calls: batches,
+items: rows,
+filtered: 0},
+           {type: SortedCollectBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: LimitBlock,
+calls: 1,
+items: 1,
+filtered: 0},
+           {type: ReturnBlock,
+calls: 1,
+items: 1,
+filtered: 0}
          ];
        };
 
        profHelper.runDefaultChecks(
-         {query, genNodeList, prepare, bind}
+         {query,
+genNodeList,
+prepare,
+bind}
        );
      }
 
    };
  }
 
- ////////////////////////////////////////////////////////////////////////////////
- /// @brief executes the test suite
- ////////////////////////////////////////////////////////////////////////////////
+ // //////////////////////////////////////////////////////////////////////////////
+ // / @brief executes the test suite
+ // //////////////////////////////////////////////////////////////////////////////
 
  jsunity.run(ahuacatlProfilerTestSuite);
 
- function ahuacatlProfilerArangoSearchTestSuite() {
+ function ahuacatlProfilerArangoSearchTestSuite () {
    let suite = {};
    deriveTestSuite(
      ahuacatlProfilerViewTestSuite(false),
@@ -1027,7 +1460,7 @@ const _ = require('lodash');
    return suite;
  }
 
- function ahuacatlProfilerSearchAliasTestSuite() {
+ function ahuacatlProfilerSearchAliasTestSuite () {
    let suite = {};
    deriveTestSuite(
      ahuacatlProfilerViewTestSuite(true),

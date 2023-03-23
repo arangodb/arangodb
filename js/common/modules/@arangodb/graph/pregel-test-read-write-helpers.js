@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ const {
 const {
     loadGraphGenerators,
     unionGraph,
-    graphGenerator,
+    graphGenerator
 } = require("@arangodb/graph/graphs-generation");
 
 const {
@@ -56,14 +56,15 @@ const testReadWriteOnGraph = function (vertices, edges) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
 
-    let parameters = {sourceField: "input", resultField: "output"};
+    let parameters = {sourceField: "input",
+resultField: "output"};
     const pid = pregel.start("readwrite", graphName, parameters);
     waitUntilRunFinishedSuccessfully(pid);
     const result = db._query(`
                   FOR v in ${vColl}
                   RETURN {"_key": v._key, "input": v.input, "output": v.output}  
                 `).toArray();
-    
+
     for (const resultV of result) {
         const vKey = resultV._key;
         const doThrow = false;
@@ -84,7 +85,7 @@ const setConsecutiveValuesFrom0 = function (vertices) {
     }
 };
 
-function makeReadWriteTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeReadWriteTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
 

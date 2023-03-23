@@ -38,9 +38,12 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "hash", fields: ["foo", "bar"] });
+  c.ensureIndex({ type: "hash",
+fields: ["foo", "bar"] });
 
-  c.save({ _key: 'test', 'foo': 1, 'bar': 2 }, true);
+  c.save({ _key: 'test',
+'foo': 1,
+'bar': 2 }, true);
 
   internal.wal.flush(true, true);
   internal.wal.flush(true, false);
@@ -73,7 +76,8 @@ function recoverySuite () {
       doc = c.document('test');
       assertEqual(1, doc.foo);
       assertEqual(2, doc.bar);
-      assertEqual(1, c.byExample({ foo: 1, bar: 2 }).toArray().length);
+      assertEqual(1, c.byExample({ foo: 1,
+bar: 2 }).toArray().length);
     }
 
   };

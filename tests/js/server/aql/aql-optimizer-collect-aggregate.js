@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertNull, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertTrue, assertFalse, assertNull, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for COLLECT w/ COUNT
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for COLLECT w/ COUNT
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -36,34 +36,36 @@ const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerAggregateTestSuite () {
   let c;
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
       let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+        docs.push({ group: "test" + (i % 10),
+value1: i,
+value2: i % 5 });
       }
       c.insert(docs);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalid queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalid queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidSyntax : function () {
+    testInvalidSyntax: function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " AGGREGATE RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " AGGREGATE length = LENGTH(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE RETURN 1");
@@ -78,14 +80,14 @@ function optimizerAggregateTestSuite () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = i.test + 1 RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = 1 + LENGTH(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = LENGTH(i) + 1 RETURN 1");
-      
+
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalid queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test invalid queries
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidAggregateFunctions : function () {
+    testInvalidAggregateFunctions: function () {
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_NUMBER(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_STRING(i) RETURN 1");
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT AGGREGATE c = IS_ARRAY(i) RETURN 1");
@@ -94,11 +96,11 @@ function optimizerAggregateTestSuite () {
       assertQueryError(errors.ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION.code, "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE c = IS_OBJECT(i) RETURN 1");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateAll : function () {
+    testAggregateAll: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
       var results = AQL_EXECUTE(query);
@@ -114,10 +116,14 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
@@ -154,11 +160,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "AVERAGE_STEP2" : "AVERAGE", collectNode.aggregates[4].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateExpression : function () {
+    testAggregateExpression: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), min = MIN(i.value1 + 1), max = MAX(i.value1 * 2) RETURN { group, length, min, max }";
 
       var results = AQL_EXECUTE(query);
@@ -172,11 +178,15 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
@@ -206,11 +216,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("MAX", collectNode.aggregates[2].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateUnique : function () {
+    testAggregateUnique: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2), uniqueGroup = UNIQUE(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
       var results = AQL_EXECUTE(query);
@@ -225,11 +235,15 @@ function optimizerAggregateTestSuite () {
 
       let plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
@@ -261,8 +275,8 @@ function optimizerAggregateTestSuite () {
       assertEqual("uniqueGroup", collectNode.aggregates[3].outVariable.name);
       assertEqual(isCluster ? "UNIQUE_STEP2" : "UNIQUE", collectNode.aggregates[3].type);
     },
-    
-    testAggregateUnique2 : function () {
+
+    testAggregateUnique2: function () {
       var query = "FOR i IN " + c.name() + " COLLECT AGGREGATE unique1 = UNIQUE(i.value1), unique2 = UNIQUE(i.value2) RETURN { unique1, unique2 }";
 
       var results = AQL_EXECUTE(query);
@@ -276,9 +290,11 @@ function optimizerAggregateTestSuite () {
 
       let plan = AQL_EXPLAIN(query).plan;
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertFalse(collectNode.isDistinctCommand);
@@ -301,8 +317,8 @@ function optimizerAggregateTestSuite () {
       assertEqual("unique2", collectNode.aggregates[1].outVariable.name);
       assertEqual(isCluster ? "UNIQUE_STEP2" : "UNIQUE", collectNode.aggregates[1].type);
     },
-    
-    testAggregateSortedUnique : function () {
+
+    testAggregateSortedUnique: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = SORTED_UNIQUE(i.value1), unique2 = SORTED_UNIQUE(i.value2), uniqueGroup = SORTED_UNIQUE(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
       var results = AQL_EXECUTE(query);
@@ -322,11 +338,15 @@ function optimizerAggregateTestSuite () {
 
       let plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
@@ -358,8 +378,8 @@ function optimizerAggregateTestSuite () {
       assertEqual("uniqueGroup", collectNode.aggregates[3].outVariable.name);
       assertEqual(isCluster ? "SORTED_UNIQUE_STEP2" : "SORTED_UNIQUE", collectNode.aggregates[3].type);
     },
-    
-    testAggregateCountUnique : function () {
+
+    testAggregateCountUnique: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(1), unique1 = COUNT_UNIQUE(i.value1), unique2 = COUNT_UNIQUE(i.value2), uniqueGroup = COUNT_DISTINCT(i.group) RETURN { group, length, unique1, unique2, uniqueGroup }";
 
       var results = AQL_EXECUTE(query);
@@ -374,11 +394,15 @@ function optimizerAggregateTestSuite () {
 
       let plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
-      
+
       let collectNode = collectNodes[0];
       if (isCluster) {
         assertEqual("hash", collectNode.collectOptions.method);
@@ -411,21 +435,21 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "COUNT_DISTINCT_STEP2" : "COUNT_DISTINCT", collectNode.aggregates[3].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateAllReferToCollectvariable : function () {
+    testAggregateAllReferToCollectvariable: function () {
       assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE length = LENGTH(group) RETURN { group, length }");
       assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(doc) RETURN doc");
       assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length1 = LENGTH(1), length2 = LENGTH(length1) RETURN doc");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateFiltered : function () {
+    testAggregateFiltered: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test4' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
       var results = AQL_EXECUTE(query);
@@ -439,9 +463,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -457,7 +485,7 @@ function optimizerAggregateTestSuite () {
         assertEqual("AVERAGE_STEP1", collectNode.aggregates[4].type);
         collectNode = collectNodes[1];
       }
-      
+
       assertEqual("hash", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -477,11 +505,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "AVERAGE_STEP2" : "AVERAGE", collectNode.aggregates[4].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateFilteredMulti : function () {
+    testAggregateFilteredMulti: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test2' && i.group <= 'test4' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
       var results = AQL_EXECUTE(query);
@@ -497,9 +525,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -532,11 +564,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "AVERAGE_STEP2" : "AVERAGE", collectNode.aggregates[4].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateFilteredEmpty : function () {
+    testAggregateFilteredEmpty: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT group = i.group AGGREGATE length = LENGTH(i.value1), min = MIN(i.value1), max = MAX(i.value1), sum = SUM(i.value1), avg = AVERAGE(i.value1) RETURN { group, length, min, max, sum, avg }";
 
       var results = AQL_EXECUTE(query);
@@ -544,9 +576,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -582,11 +618,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "AVERAGE_STEP2" : "AVERAGE", collectNode.aggregates[4].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateNested : function () {
+    testAggregateNested: function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE sum = SUM(1) RETURN sum";
 
       let opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
@@ -596,9 +632,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query, null, opts).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -620,11 +660,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("SUM", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountAggregateNested : function () {
+    testCountAggregateNested: function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT AGGREGATE length = LENGTH(j) RETURN length";
 
       let opts = { optimizer: { rules: ["-interchange-adjacent-enumerations"] } };
@@ -634,9 +674,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query, null, opts).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -648,7 +692,7 @@ function optimizerAggregateTestSuite () {
         assertEqual("LENGTH", collectNode.aggregates[0].type);
 
         collectNode = collectNodes[1];
-        
+
       } else {
         assertEqual("count", collectNode.collectOptions.method);
       }
@@ -661,11 +705,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("length", collectNode.aggregates[0].outVariable.name);
       assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateSimple : function () {
+    testAggregateSimple: function () {
       var query = "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE length = LENGTH(i) RETURN [ class, length ]";
 
       var results = AQL_EXECUTE(query);
@@ -679,9 +723,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -707,11 +755,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate shaped
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate shaped
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateShaped : function () {
+    testAggregateShaped: function () {
       var query = "FOR j IN " + c.name() + " COLLECT doc = j AGGREGATE length = LENGTH(j) RETURN { doc, length }";
 
       var results = AQL_EXECUTE(query);
@@ -720,9 +768,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -733,7 +785,7 @@ function optimizerAggregateTestSuite () {
         assertEqual(1, collectNode.groups.length);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
-        
+
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
@@ -747,11 +799,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiKey : function () {
+    testMultiKey: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group1 = i.group, group2 = i.value2 AGGREGATE length = LENGTH(i.value1) RETURN { group1, group2, length }";
 
       var results = AQL_EXECUTE(query);
@@ -764,9 +816,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
       let collectNode = collectNodes[0];
 
@@ -777,7 +833,7 @@ function optimizerAggregateTestSuite () {
         assertEqual(2, collectNode.groups.length);
         assertEqual(1, collectNode.aggregates.length);
         assertEqual("LENGTH", collectNode.aggregates[0].type);
-        
+
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
@@ -792,11 +848,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(isCluster ? "SUM" : "LENGTH", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCross : function () {
+    testCross: function () {
       var query = "FOR i IN " + c.name() + " COLLECT group = i.group AGGREGATE total = LENGTH(1), c100 = SUM(i.value1 >= 100 ? 1 : 0), c500 = SUM(i.value1 >= 500 ? 1 : 0), c1000 = SUM(i.value1 >= 1000 ? 1 : null) RETURN { group, total, c100, c500, c1000 }";
 
       var results = AQL_EXECUTE(query);
@@ -811,9 +867,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -827,7 +887,7 @@ function optimizerAggregateTestSuite () {
         assertEqual("SUM", collectNode.aggregates[1].type);
         assertEqual("SUM", collectNode.aggregates[2].type);
         assertEqual("SUM", collectNode.aggregates[3].type);
-        
+
         collectNode = collectNodes[1];
       }
       assertEqual("hash", collectNode.collectOptions.method);
@@ -847,11 +907,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("SUM", collectNode.aggregates[3].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test min
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinEmpty : function () {
+    testMinEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -860,11 +920,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test min
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinOnlyNull : function () {
+    testMinOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -873,11 +933,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test min
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinNotOnlyNullButStartsWithNull : function () {
+    testMinNotOnlyNullButStartsWithNull: function () {
       var query = "FOR i IN [ null, null, null, null, 35 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -886,11 +946,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ null, null, null, null, 35 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test min
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinMixed : function () {
+    testMinMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 15 }, { zzz: 2 }, 9999, -9999 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -899,9 +959,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -912,11 +976,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("MIN", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test min
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test min
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinStrings : function () {
+    testMinStrings: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', 'bachelor' ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -925,9 +989,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -938,11 +1006,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("MIN", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test max
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxEmpty : function () {
+    testMaxEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -951,11 +1019,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MAX([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test max
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxOnlyNull : function () {
+    testMaxOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -964,22 +1032,26 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN MAX([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test max
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxMixed : function () {
+    testMaxMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 15 }, { zzz : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
-      assertEqual({ zzz : 15 }, results.json[0]);
+      assertEqual({ zzz: 15 }, results.json[0]);
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -990,11 +1062,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("MAX", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test max
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test max
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxStrings : function () {
+    testMaxStrings: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', 'bachelor' ] COLLECT AGGREGATE m = MAX(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1003,9 +1075,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1016,11 +1092,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("MAX", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sum
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSumEmpty : function () {
+    testSumEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1031,11 +1107,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(0, AQL_EXECUTE("RETURN SUM([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sum
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSumOnlyNull : function () {
+    testSumOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1044,11 +1120,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN SUM([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sum
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSumMixed : function () {
+    testSumMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = SUM(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1057,9 +1133,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1070,13 +1150,15 @@ function optimizerAggregateTestSuite () {
       assertEqual("SUM", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sum
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSumNumbers : function () {
+    testSumNumbers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
-      var expected = values.reduce(function(a, b) { return a + b; }, 0);
+      var expected = values.reduce(function (a, b) {
+ return a + b;
+}, 0);
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = SUM(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1085,11 +1167,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(expected, AQL_EXECUTE("RETURN SUM(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgEmpty : function () {
+    testAvgEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1098,11 +1180,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgOnlyNull : function () {
+    testAvgOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1111,11 +1193,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgSingle : function () {
+    testAvgSingle: function () {
       var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1124,11 +1206,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE([ -42.5 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgSingleString : function () {
+    testAvgSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1137,11 +1219,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgSingleWithNulls : function () {
+    testAvgSingleWithNulls: function () {
       var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1150,11 +1232,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE([ -42.5, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgMixed : function () {
+    testAvgMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1163,9 +1245,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1176,13 +1262,15 @@ function optimizerAggregateTestSuite () {
       assertEqual("AVERAGE", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test avg
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test avg
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAvgNumbers : function () {
+    testAvgNumbers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
-      var expected = values.reduce(function(a, b) { return a + b; }, 0);
+      var expected = values.reduce(function (a, b) {
+ return a + b;
+}, 0);
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = AVERAGE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1191,11 +1279,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN AVERAGE(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceEmpty : function () {
+    testVarianceEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1204,11 +1292,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleEmpty : function () {
+    testVarianceSampleEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1217,11 +1305,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceOnlyNull : function () {
+    testVarianceOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1230,11 +1318,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleOnlyNull : function () {
+    testVarianceSampleOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1243,11 +1331,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSingle : function () {
+    testVarianceSingle: function () {
       var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1256,11 +1344,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ -42.5 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleSingle : function () {
+    testVarianceSampleSingle: function () {
       var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1269,11 +1357,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ -42.5 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleSingleWithNull : function () {
+    testVarianceSampleSingleWithNull: function () {
       var query = "FOR i IN [ -42.5, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1282,11 +1370,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ -42.5, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleTwoValues : function () {
+    testVarianceSampleTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1295,11 +1383,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleSingleTwoValues : function () {
+    testVarianceSampleSingleTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1308,11 +1396,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSingleString : function () {
+    testVarianceSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1321,11 +1409,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleSingleString : function () {
+    testVarianceSampleSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1334,11 +1422,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleTwoStrings : function () {
+    testVarianceSampleTwoStrings: function () {
       var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1347,11 +1435,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ '-42.5foo', '99baz' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSingleWithNulls : function () {
+    testVarianceSingleWithNulls: function () {
       var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1360,11 +1448,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE([ -42.5, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleSingleWithNulls : function () {
+    testVarianceSampleSingleWithNulls: function () {
       var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1373,11 +1461,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN VARIANCE_SAMPLE([ -42.5, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceMixed : function () {
+    testVarianceMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1386,9 +1474,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1399,11 +1491,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("VARIANCE_POPULATION", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceNumbers : function () {
+    testVarianceNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
       var expected = 495.03999999999996;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
@@ -1414,11 +1506,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN VARIANCE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleNumbers : function () {
+    testVarianceSampleNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
       var expected = 550.0444444444444;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
@@ -1429,11 +1521,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceNumbersOthers : function () {
+    testVarianceNumbersOthers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
       var expected = 473.9791666666667;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE(i) RETURN m";
@@ -1444,11 +1536,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN VARIANCE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test variance
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVarianceSampleNumbersOthers : function () {
+    testVarianceSampleNumbersOthers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
       var expected = 568.775;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = VARIANCE_SAMPLE(i) RETURN m";
@@ -1459,11 +1551,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN VARIANCE_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevEmpty : function () {
+    testStddevEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1472,11 +1564,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleEmpty : function () {
+    testStddevSampleEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1485,11 +1577,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevOnlyNull : function () {
+    testStddevOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1498,11 +1590,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleOnlyNull : function () {
+    testStddevSampleOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1511,11 +1603,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSingle : function () {
+    testStddevSingle: function () {
       var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1524,11 +1616,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ -42.5 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleSingle : function () {
+    testStddevSampleSingle: function () {
       var query = "FOR i IN [ -42.5 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1537,11 +1629,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleSingleWithNull : function () {
+    testStddevSampleSingleWithNull: function () {
       var query = "FOR i IN [ -42.5, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1550,11 +1642,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleTwoValues : function () {
+    testStddevSampleTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1563,11 +1655,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleSingleTwoValues : function () {
+    testStddevSampleSingleTwoValues: function () {
       var expected = 2.8284271247461903;
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
@@ -1577,11 +1669,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE([ 19, 23 ])").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSingleString : function () {
+    testStddevSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1590,11 +1682,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleSingleString : function () {
+    testStddevSampleSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1603,11 +1695,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleTwoStrings : function () {
+    testStddevSampleTwoStrings: function () {
       var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1616,11 +1708,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ '-42.5foo', '99baz' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSingleWithNulls : function () {
+    testStddevSingleWithNulls: function () {
       var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1629,11 +1721,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV([ -42.5, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleSingleWithNulls : function () {
+    testStddevSampleSingleWithNulls: function () {
       var query = "FOR i IN [ -42.5, null, null, null ] COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1642,11 +1734,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN STDDEV_SAMPLE([ -42.5, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevMixed : function () {
+    testStddevMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = STDDEV(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1655,9 +1747,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1668,11 +1764,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("STDDEV_POPULATION", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevNumbers : function () {
+    testStddevNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
       var expected = 22.249494376277408;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
@@ -1683,11 +1779,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleNumbers : function () {
+    testStddevSampleNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, -34];
       var expected = 23.453026338714675;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
@@ -1698,11 +1794,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV_SAMPLE(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevNumbersOthers : function () {
+    testStddevNumbersOthers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
       var expected = 21.771062598473844;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV(i) RETURN m";
@@ -1713,11 +1809,11 @@ function optimizerAggregateTestSuite () {
       assertTrue(Math.abs(results.json[0] - AQL_EXECUTE("RETURN STDDEV(" + JSON.stringify(values) + ")").json[0]) < 0.01);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test stddev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test stddev
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStddevSampleNumbersOthers : function () {
+    testStddevSampleNumbersOthers: function () {
       var values = [ 1, 42, 23, 19.5, 4, -28 ];
       var expected = 23.84900417208232;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = STDDEV_SAMPLE(i) RETURN m";
@@ -1729,13 +1825,11 @@ function optimizerAggregateTestSuite () {
     },
 
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
-
-    testBitAndEmpty : function () {
+    testBitAndEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1744,11 +1838,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndOnlyNull : function () {
+    testBitAndOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1757,11 +1851,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndSingleWithNull : function () {
+    testBitAndSingleWithNull: function () {
       var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1770,11 +1864,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 42, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndSingleWithNulls : function () {
+    testBitAndSingleWithNulls: function () {
       var query = "FOR i IN [ 42, null, null, null ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1783,11 +1877,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 42, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndTwoValues : function () {
+    testBitAndTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1796,11 +1890,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndSingleString : function () {
+    testBitAndSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1809,11 +1903,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndTwoStrings : function () {
+    testBitAndTwoStrings: function () {
       var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1822,11 +1916,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ '-42.5foo', '99baz' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndOutOfRange : function () {
+    testBitAndOutOfRange: function () {
       var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1835,11 +1929,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndMixed : function () {
+    testBitAndMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1848,9 +1942,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -1861,11 +1959,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("BIT_AND", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndNumbers : function () {
+    testBitAndNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
       var expected = 0;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
@@ -1876,11 +1974,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndNumbersOthers : function () {
+    testBitAndNumbersOthers: function () {
       var values = [ 1, 42, 23, 19, 4, 28 ];
       var expected = 0;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
@@ -1891,11 +1989,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_AND(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_and
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_and
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitAndNumbersRange : function () {
+    testBitAndNumbersRange: function () {
       var expected = 0;
       var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_AND(i) RETURN m";
 
@@ -1904,11 +2002,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(expected, results.json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrEmpty : function () {
+    testBitOrEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1917,11 +2015,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrOnlyNull : function () {
+    testBitOrOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1930,11 +2028,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrSingleWithNull : function () {
+    testBitOrSingleWithNull: function () {
       var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1943,11 +2041,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 42, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrTwoValues : function () {
+    testBitOrTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1956,11 +2054,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrSingleString : function () {
+    testBitOrSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1969,11 +2067,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrTwoStrings : function () {
+    testBitOrTwoStrings: function () {
       var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1982,11 +2080,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ '-42.5foo', '99baz' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrOutOfRange : function () {
+    testBitOrOutOfRange: function () {
       var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -1995,11 +2093,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrMixed : function () {
+    testBitOrMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2008,9 +2106,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -2021,11 +2123,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("BIT_OR", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrNumbers : function () {
+    testBitOrNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
       var expected = 63;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
@@ -2036,11 +2138,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrNumbersOthers : function () {
+    testBitOrNumbersOthers: function () {
       var values = [ 1, 42, 23, 19, 4, 28 ];
       var expected = 63;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
@@ -2051,11 +2153,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_OR(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_or
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_or
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitOrNumbersRange : function () {
+    testBitOrNumbersRange: function () {
       var expected = 16383;
       var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
@@ -2064,11 +2166,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(expected, results.json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrEmpty : function () {
+    testBitXOrEmpty: function () {
       var query = "FOR i IN [ ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2077,11 +2179,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrOnlyNull : function () {
+    testBitXOrOnlyNull: function () {
       var query = "FOR i IN [ null, null, null, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2090,11 +2192,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ null, null, null, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrSingleWithNull : function () {
+    testBitXOrSingleWithNull: function () {
       var query = "FOR i IN [ 42, null ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2103,11 +2205,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 42, null ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrTwoValues : function () {
+    testBitXOrTwoValues: function () {
       var query = "FOR i IN [ 19, 23 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2116,11 +2218,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 19, 23 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrSingleString : function () {
+    testBitXOrSingleString: function () {
       var query = "FOR i IN [ '-42.5foo' ] COLLECT AGGREGATE m = BIT_OR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2129,11 +2231,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ '-42.5foo' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrTwoStrings : function () {
+    testBitXOrTwoStrings: function () {
       var query = "FOR i IN [ '-42.5foo', '99baz' ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2142,11 +2244,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ '-42.5foo', '99baz' ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrOutOfRange : function () {
+    testBitXOrOutOfRange: function () {
       var query = "FOR i IN [ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2155,11 +2257,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR([ 0, 1, 2, 3, 4, 5, 6, 7, 9, 4294967296 ])").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrMixed : function () {
+    testBitXOrMixed: function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 1 }, { aaa : 2 }, 9999, -9999 ] COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
@@ -2168,9 +2270,13 @@ function optimizerAggregateTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      var collectNode = plan.nodes[plan.nodes.map(function(node) { return node.type; }).indexOf("CollectNode")];
+      var collectNode = plan.nodes[plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("CollectNode")];
       assertEqual("sorted", collectNode.collectOptions.method);
       assertFalse(collectNode.isDistinctCommand);
 
@@ -2181,11 +2287,11 @@ function optimizerAggregateTestSuite () {
       assertEqual("BIT_XOR", collectNode.aggregates[0].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrNumbers : function () {
+    testBitXOrNumbers: function () {
       var values = [ 1, 2, 3, 4, null, 23, 42, 19, 32, 44, 34];
       var expected = 4;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
@@ -2196,11 +2302,11 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrNumbersOthers : function () {
+    testBitXOrNumbersOthers: function () {
       var values = [ 1, 42, 23, 19, 4, 28 ];
       var expected = 55;
       var query = "FOR i IN " + JSON.stringify(values) + " COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
@@ -2211,18 +2317,18 @@ function optimizerAggregateTestSuite () {
       assertEqual(results.json[0], AQL_EXECUTE("RETURN BIT_XOR(" + JSON.stringify(values) + ")").json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bit_xor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bit_xor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBitXOrNumbersRange : function () {
+    testBitXOrNumbersRange: function () {
       var expected = 10000;
       var query = "FOR i IN 1..10000 COLLECT AGGREGATE m = BIT_XOR(i) RETURN m";
 
       var results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
       assertEqual(expected, results.json[0]);
-    },
+    }
 
   };
 }
@@ -2231,34 +2337,38 @@ function optimizerAggregateModifyTestSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUp: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
 
       let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+        docs.push({ group: "test" + (i % 10),
+value1: i,
+value2: i % 5 });
       }
       c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop("UnitTestsCollection");
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test aggregate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test aggregate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAggregateFilteredBig : function () {
+    testAggregateFilteredBig: function () {
       var i;
       let docs = [];
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 1 });
+        docs.push({ age: 10 + (i % 80),
+type: 1 });
       }
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 2 });
+        docs.push({ age: 10 + (i % 80),
+type: 2 });
       }
       c.insert(docs);
 
@@ -2270,9 +2380,13 @@ function optimizerAggregateModifyTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
 
-      let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+      let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
       assertEqual(isCluster ? 2 : 1, collectNodes.length);
 
       let collectNode = collectNodes[0];
@@ -2295,23 +2409,22 @@ function optimizerAggregateModifyTestSuite () {
     }
   };
 }
-    
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerAggregateCollectionTestSuite () {
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollectionA");
       var c = db._create("UnitTestsCollectionA");
 
-      var values = [ 
-        { "_key" : "t1" }, 
-        { "_key" : "t2" }, 
-        { "_key" : "t3" } 
+      var values = [
+        { "_key": "t1" },
+        { "_key": "t2" },
+        { "_key": "t3" }
       ];
       c.insert(values);
 
@@ -2319,35 +2432,89 @@ function optimizerAggregateCollectionTestSuite () {
       c = db._create("UnitTestsCollectionB");
 
       values = [
-        { "tlm" : 1456480062167, "ct" : 0, "rev" : "t2", "_key" : "5" },
-        { "tlm" : 1460377620213, "ct" : 0, "rev" : "t3", "_key" : "14" }, 
-        { "tlm" : 1456480264467, "ct" : 0, "rev" : "t2", "_key" : "6" }, 
-        { "tlm" : 1461698920149, "ct" : 0, "rev" : "t1", "_key" : "17" }, 
-        { "tlm" : 1455815267983, "ct" : 0, "rev" : "t2", "_key" : "3" }, 
-        { "tlm" : 1457427632487, "ct" : 0, "rev" : "t2", "_key" : "12" },
-        { "tlm" : 1455867727519, "ct" : 0, "rev" : "t2", "_key" : "4" },
-        { "tlm" : 1461697990707, "ct" : 0, "rev" : "t1", "_key" : "15" },
-        { "tlm" : 1455867750978, "ct" : 0, "rev" : "t2", "_key" : "1" }, 
-        { "tlm" : 1457340889219, "ct" : 0, "rev" : "t2", "_key" : "10" }, 
-        { "tlm" : 1456488586444, "ct" : 0, "rev" : "t3", "_key" : "9" },
-        { "tlm" : 1461876187642, "ct" : 0, "rev" : "t3", "_key" : "18" }, 
-        { "tlm" : 1455878231589, "ct" : 0, "rev" : "t2", "_key" : "2" }, 
-        { "tlm" : 1463214385088, "ct" : 5, "rev" : "t2", "_key" : "13" }, 
-        { "tlm" : 1463216196030, "ct" : 1, "rev" : "t2", "_key" : "7" },
-        { "tlm" : 1461698190283, "ct" : 0, "rev" : "t1", "_key" : "16" }, 
-        { "tlm" : 1460381974860, "ct" : 0, "rev" : "t2", "_key" : "11" },
-        { "tlm" : 1460382104593, "ct" : 0, "rev" : "t3", "_key" : "8" }
+        { "tlm": 1456480062167,
+"ct": 0,
+"rev": "t2",
+"_key": "5" },
+        { "tlm": 1460377620213,
+"ct": 0,
+"rev": "t3",
+"_key": "14" },
+        { "tlm": 1456480264467,
+"ct": 0,
+"rev": "t2",
+"_key": "6" },
+        { "tlm": 1461698920149,
+"ct": 0,
+"rev": "t1",
+"_key": "17" },
+        { "tlm": 1455815267983,
+"ct": 0,
+"rev": "t2",
+"_key": "3" },
+        { "tlm": 1457427632487,
+"ct": 0,
+"rev": "t2",
+"_key": "12" },
+        { "tlm": 1455867727519,
+"ct": 0,
+"rev": "t2",
+"_key": "4" },
+        { "tlm": 1461697990707,
+"ct": 0,
+"rev": "t1",
+"_key": "15" },
+        { "tlm": 1455867750978,
+"ct": 0,
+"rev": "t2",
+"_key": "1" },
+        { "tlm": 1457340889219,
+"ct": 0,
+"rev": "t2",
+"_key": "10" },
+        { "tlm": 1456488586444,
+"ct": 0,
+"rev": "t3",
+"_key": "9" },
+        { "tlm": 1461876187642,
+"ct": 0,
+"rev": "t3",
+"_key": "18" },
+        { "tlm": 1455878231589,
+"ct": 0,
+"rev": "t2",
+"_key": "2" },
+        { "tlm": 1463214385088,
+"ct": 5,
+"rev": "t2",
+"_key": "13" },
+        { "tlm": 1463216196030,
+"ct": 1,
+"rev": "t2",
+"_key": "7" },
+        { "tlm": 1461698190283,
+"ct": 0,
+"rev": "t1",
+"_key": "16" },
+        { "tlm": 1460381974860,
+"ct": 0,
+"rev": "t2",
+"_key": "11" },
+        { "tlm": 1460382104593,
+"ct": 0,
+"rev": "t3",
+"_key": "8" }
       ];
 
       c.insert(values);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsCollectionA");
       db._drop("UnitTestsCollectionB");
     },
 
-    testWithData : function () {
+    testWithData: function () {
       var query = "FOR a IN UnitTestsCollectionA LET c = (FOR b IN UnitTestsCollectionB FILTER b.rev == a._key && b.tlm > NOOPT(1463476452512) - 864000000 COLLECT AGGREGATE t = SUM(b.ct) RETURN t)[0] UPDATE a WITH {c} IN UnitTestsCollectionA RETURN NEW";
       var results = AQL_EXECUTE(query).json;
       assertEqual(3, results.length); // should just work
@@ -2357,26 +2524,30 @@ function optimizerAggregateCollectionTestSuite () {
 
 function optimizerAggregateResultsSuite () {
   const opt = { optimizer: { rules: ["-collect-in-cluster"] } };
-  let compare = function(query) {
+  let compare = function (query) {
     let expected = AQL_EXECUTE(query, null, opt).json[0];
     if (typeof expected === 'number') {
       expected = expected.toFixed(6);
     }
 
     let plan = AQL_EXPLAIN(query, null, opt).plan;
-    let collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+    let collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
     assertEqual(1, collectNodes.length);
     assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
 
-    let actual   = AQL_EXECUTE(query).json[0];
+    let actual = AQL_EXECUTE(query).json[0];
     if (typeof actual === 'number') {
       actual = actual.toFixed(6);
     }
-   
+
     assertEqual(expected, actual, query);
-    
+
     plan = AQL_EXPLAIN(query).plan;
-    collectNodes = plan.nodes.filter(function(node) { return node.type === 'CollectNode'; });
+    collectNodes = plan.nodes.filter(function (node) {
+ return node.type === 'CollectNode';
+});
     assertEqual(2, collectNodes.length);
     assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
   };
@@ -2384,118 +2555,120 @@ function optimizerAggregateResultsSuite () {
   let c;
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 5 });
       let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        docs.push({ group: "test" + (i % 10), value1: i, value2: i % 5 });
+        docs.push({ group: "test" + (i % 10),
+value1: i,
+value2: i % 5 });
       }
       c.save(docs);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsCollection");
     },
 
-    testCount : function () {
+    testCount: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT(doc.value1) RETURN v");
     },
 
-    testAvg1 : function () {
+    testAvg1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = AVG(doc.value1) RETURN v");
     },
-    
-    testAvg2 : function () {
+
+    testAvg2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = AVG(doc.value2) RETURN v");
     },
-    
-    testVariance1 : function () {
+
+    testVariance1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE(doc.value1) RETURN v");
     },
-    
-    testVariance2 : function () {
+
+    testVariance2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE(doc.value2) RETURN v");
     },
-    
-    testVarianceSample1 : function () {
+
+    testVarianceSample1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE_SAMPLE(doc.value1) RETURN v");
     },
-    
-    testVarianceSample2 : function () {
+
+    testVarianceSample2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = VARIANCE_SAMPLE(doc.value2) RETURN v");
     },
-    
-    testStddev1 : function () {
+
+    testStddev1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV(doc.value1) RETURN v");
     },
-    
-    testStddev2 : function () {
+
+    testStddev2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV(doc.value2) RETURN v");
     },
-    
-    testStddevSample1 : function () {
+
+    testStddevSample1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV_SAMPLE(doc.value1) RETURN v");
     },
-    
-    testStddevSample2 : function () {
+
+    testStddevSample2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = STDDEV_SAMPLE(doc.value2) RETURN v");
     },
-    
-    testUnique1 : function () {
+
+    testUnique1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value1) RETURN SORTED(v)");
     },
 
-    testUnique2 : function () {
+    testUnique2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = UNIQUE(doc.value2) RETURN SORTED(v)");
     },
-    
-    testSortedUnique1 : function () {
+
+    testSortedUnique1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = SORTED_UNIQUE(doc.value1) RETURN v");
     },
 
-    testSortedUnique2 : function () {
+    testSortedUnique2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = SORTED_UNIQUE(doc.value2) RETURN v");
     },
-    
-    testCountDistinct1 : function () {
+
+    testCountDistinct1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT_DISTINCT(doc.value1) RETURN v");
     },
 
-    testCountDistinct2 : function () {
+    testCountDistinct2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = COUNT_DISTINCT(doc.value2) RETURN v");
     },
 
-    testBitAnd1 : function () {
+    testBitAnd1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_AND(doc.value1) RETURN v");
     },
-    
-    testBitAnd2 : function () {
+
+    testBitAnd2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_AND(doc.value2) RETURN v");
     },
-    
-    testBitOr1 : function () {
+
+    testBitOr1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_OR(doc.value1) RETURN v");
     },
-    
-    testBitOr2 : function () {
+
+    testBitOr2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_OR(doc.value2) RETURN v");
     },
-    
-    testBitXOr1 : function () {
+
+    testBitXOr1: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value1) RETURN v");
     },
-    
-    testBitXOr2 : function () {
+
+    testBitXOr2: function () {
       compare("FOR doc IN " + c.name() + " COLLECT AGGREGATE v = BIT_XOR(doc.value2) RETURN v");
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerAggregateTestSuite);
 jsunity.run(optimizerAggregateModifyTestSuite);

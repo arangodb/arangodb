@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   return status;
 };
 
-const uniquePregelResults = function(documentCursor) {
+const uniquePregelResults = function (documentCursor) {
   let myset = new Set();
   while (documentCursor.hasNext()) {
     const doc = documentCursor.next();
@@ -117,7 +117,8 @@ const dampingFactor = 0.85;
 const testPageRankOnGraph = function (vertices, edges, seeded = false) {
     db[vColl].save(vertices);
     db[eColl].save(edges);
-    let parameters = {maxGSS: 100, resultField: "pagerank"};
+    let parameters = {maxGSS: 100,
+resultField: "pagerank"};
     if (seeded) {
         parameters.sourceField = "input";
     }
@@ -154,7 +155,8 @@ const testHITSKleinbergOnGraph = function (vertices, edges) {
     db[eColl].save(edges);
     const numberIterations = 50;
 
-    let parameters = {resultField: "hits", maxNumIterations: numberIterations};
+    let parameters = {resultField: "hits",
+maxNumIterations: numberIterations};
     const pid = pregel.start("hitskleinberg", graphName, parameters);
     waitUntilRunFinishedSuccessfully(pid);
     const result = db._query(`
@@ -202,7 +204,9 @@ const testHITSKleinbergThresholdOnGraph = function (vertices, edges) {
     const numberIterations = 50;
     const threshold = 200.0; // must be less than 1000.0, the value added in HITSKleinberg in reportFakeDifference()
 
-    let parameters = {resultField: "hits", maxNumIterations: numberIterations, threshold: threshold};
+    let parameters = {resultField: "hits",
+maxNumIterations: numberIterations,
+threshold: threshold};
     const pid = pregel.start("hitskleinberg", graphName, parameters);
     waitUntilRunFinishedSuccessfully(pid);
     const result = db._query(`
@@ -266,7 +270,8 @@ const makeSetUp = function (smart, smartAttribute, numberOfShards) {
     return function () {
         if (smart) {
             smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
-                {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
+                {smartGraphAttribute: smartAttribute,
+numberOfShards: numberOfShards});
         } else {
             db._create(vColl, {numberOfShards: numberOfShards});
             db._createEdgeCollection(eColl, {
@@ -291,7 +296,7 @@ const makeTearDown = function (smart) {
 };
 
 class ComponentGenerator {
-    constructor(generator, parameters) {
+    constructor (generator, parameters) {
         this.generator = generator;
         this.parameters = parameters;
     }
@@ -364,7 +369,8 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
     // we expect that '_' appears in the string (should it not, return the whole string)
     const extractSizeUniqueLabel = function (v) {
         const indexOf_ = v.indexOf('_');
-        return {size: v.substr(0, indexOf_), uniqueLabel: v.substr(indexOf_ + 1)};
+        return {size: v.substr(0, indexOf_),
+uniqueLabel: v.substr(indexOf_ + 1)};
     };
 
     // Produce the graph.
@@ -408,7 +414,7 @@ const testComponentsAlgorithmOnDisjointComponents = function (componentGenerator
 };
 
 class PageRank {
-    constructor(dampingFactor, numVertices) {
+    constructor (dampingFactor, numVertices) {
         this.dampingFactor = dampingFactor;
         this.commonProbability = (1 - dampingFactor) / numVertices;
     }
@@ -420,7 +426,7 @@ class PageRank {
      * @param vKey vertex key
      * @param graph a graph containing a vertex with this key
      */
-    doOnePagerankStep(vKey, graph) {
+    doOnePagerankStep (vKey, graph) {
         let sum = 0.0;
         const v = graph.vertex(vKey);
         for (const predKey of v.inNeighbors) {
@@ -436,9 +442,12 @@ class PageRank {
 // This class only accumulates functions that belong to the HITS algorithm, it has no data
 class HITS {
 
-    computeFixedPointKleinberg(graph, numSteps, epsilon) {
+    computeFixedPointKleinberg (graph, numSteps, epsilon) {
         for (let [, vertex] of graph.vertices) {
-            vertex.value = {hits_auth: 1.0, hits_hub: 1.0, old_hits_auth: 1.0, old_hits_hub: 1.0};
+            vertex.value = {hits_auth: 1.0,
+hits_hub: 1.0,
+old_hits_auth: 1.0,
+old_hits_hub: 1.0};
         }
         const computeAuth = function () {
             let authNorm = 0.0;
@@ -485,7 +494,8 @@ class HITS {
         assertTrue(numSteps > 0);
         // initialize
         for (let [, vertex] of graph.vertices) {
-            vertex.value = {hits_auth: 1.0, hits_hub: 1.0};
+            vertex.value = {hits_auth: 1.0,
+hits_hub: 1.0};
         }
 
         let step = 0;
@@ -507,7 +517,7 @@ class HITS {
     }
 }
 
-function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeWCCTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const {makeEdgeBetweenVertices, verticesEdgesGenerator} = loadGraphGenerators(isSmart);
 
@@ -711,13 +721,13 @@ function makeWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 });
                 assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
                 assertEqual(computedComponents[0].size, size0 + size1);
-            },
+            }
 
         };
     };
 }
 
-function makeHeavyWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeHeavyWCCTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
 
@@ -746,12 +756,12 @@ function makeHeavyWCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                     componentGenerators.push(componentGenerator);
                 }
                 testComponentsAlgorithmOnDisjointComponents(componentGenerators);
-            },
+            }
         };
     };
 }
 
-function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeSCCTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgesBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -788,7 +798,7 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 testComponentsAlgorithmOnDisjointComponents(componentGenerators, "scc");
             },
 
-            testSCC10BidirectedCliques() {
+            testSCC10BidirectedCliques () {
                 let componentGenerators = [];
                 let uniqueLabel = 0;
                 for (let size = 120; size < 130; ++size) {
@@ -1033,12 +1043,12 @@ function makeSCCTestSuite(isSmart, smartAttribute, numberOfShards) {
                 for (let component of computedComponents) {
                     assertEqual(component.size, 3);
                 }
-            },
+            }
         };
     };
 }
 
-function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeLabelPropagationTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -1058,7 +1068,8 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
                 db[vColl].save(vertices);
                 db[eColl].save(edges);
 
-                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100,
+resultField: "community"});
                 waitUntilRunFinishedSuccessfully(pid);
                 const result = db._query(`
                   FOR v in ${vColl}
@@ -1080,7 +1091,8 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
                 db[vColl].save(verticesEdges.vertices);
                 db[eColl].save(verticesEdges.edges);
 
-                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100,
+resultField: "community"});
                 waitUntilRunFinishedSuccessfully(pid);
                 const result = db._query(`
                   FOR v in ${vColl}
@@ -1105,7 +1117,8 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 db[eColl].save(makeEdgeBetweenVertices(vColl, 0, "v0", 0, "v1"));
 
-                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100, resultField: "community"});
+                const pid = pregel.start("labelpropagation", graphName, {maxGSS: 100,
+resultField: "community"});
                 waitUntilRunFinishedSuccessfully(pid);
                 const result = db._query(`
                   FOR v in ${vColl}
@@ -1196,12 +1209,12 @@ function makeLabelPropagationTestSuite(isSmart, smartAttribute, numberOfShards) 
 
                 // expect that all 11 vertices are in the same community
                 testSubgraphs("labelpropagation", graphName, {maxGSS: 100}, [numberLeaves + 1]);
-            },
+            }
         };
     };
 }
 
-function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makePagerankTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -1273,13 +1286,13 @@ function makePagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                     edges
                 } = graphGenerator(verticesEdgesGenerator(vColl, `v`)).makeStar(numberLeaves, "bidirected");
                 testPageRankOnGraph(vertices, edges);
-            },
+            }
 
         };
     };
 }
 
-function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeSeededPagerankTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -1322,7 +1335,7 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                 assertTrue(false);
             }
             const restProbPerRestVertex = (1 - totalProbability) / (vertices.length - seeds.length
-                /*!= 0 by the previous check*/);
+                /* != 0 by the previous check*/);
             for (let i = 0; i < vertices.length; ++i) {
                 if (vertices[i]._key in seeds) {
                     vertices[i].input = seeds[vertices[i]._key];
@@ -1476,13 +1489,13 @@ function makeSeededPagerankTestSuite(isSmart, smartAttribute, numberOfShards) {
                 seeds[vertices[0]] = 1;
                 setSeeds(vertices, seeds);
                 testPageRankOnGraph(vertices, edges2);
-            },
+            }
 
         };
     };
 }
 
-function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeSSSPTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -1506,7 +1519,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
 
         db[vColl].save(vertices);
         db[eColl].save(edges);
-        let parameters = {source: `${vColl}/${source}`, resultField: "distance"};
+        let parameters = {source: `${vColl}/${source}`,
+resultField: "distance"};
         const pid = pregel.start("sssp", graphName, parameters);
         waitUntilRunFinishedSuccessfully(pid);
         const result = db._query(`
@@ -1525,8 +1539,8 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
         }
         graph.bfs(source, writeDistance, undefined);
         for (const element of result) {
-            assertTrue(element.result === (graph.vertex(element._key)).value
-                || (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
+            assertTrue(element.result === (graph.vertex(element._key)).value ||
+                (element.result > 9007199254740991 && (graph.vertex(element._key)).value === infinity),
                 `Different distances. Pregel returned ${element.result}, ` +
                 `test computed ${(graph.vertex(element._key)).value} for vertex ${element._key} ` +
                 `where source is ${source}`);
@@ -1638,7 +1652,7 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
     };
 }
 
-function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
+function makeHITSTestSuite (isSmart, smartAttribute, numberOfShards) {
 
     const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
     const makeEdgeBetweenVertices = loadGraphGenerators(isSmart).makeEdgeBetweenVertices;
@@ -1725,7 +1739,7 @@ function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
                 }
                 testHITSKleinbergOnGraph(vertices, edges2);
                 testHITSKleinbergThresholdOnGraph(vertices, edges);
-            },
+            }
 
         };
     };

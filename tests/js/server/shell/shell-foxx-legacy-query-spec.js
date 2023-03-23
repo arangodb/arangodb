@@ -45,7 +45,7 @@ describe('createQuery(query)', function () {
   });
 
   it('should execute QueryBuilder instances with no arguments', function () {
-    const query = createQuery({toAQL() {
+    const query = createQuery({toAQL () {
         return 'RETURN 23';
     }});
     expect(query()).to.eql([23]);
@@ -55,16 +55,16 @@ describe('createQuery(query)', function () {
     const query = createQuery('RETURN 23');
     expect(function () {
       query({foo: 'chicken'});
-    }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code);
+    }).to.throw(ArangoError).
+      with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED.code);
   });
 
   it('should raise an ArangoError for missing arguments', function () {
     const query = createQuery('RETURN @x');
     expect(function () {
       query();
-    }).to.throw(ArangoError)
-      .with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
+    }).to.throw(ArangoError).
+      with.property('errorNum', errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
   });
 
   it('should execute a query with valid arguments', function () {
@@ -129,7 +129,8 @@ describe('createQuery(cfg)', function () {
   it('should mix cfg.defaults into arguments', function () {
     const query = createQuery({
       query: 'RETURN [@x, @y]',
-      defaults: {x: 'chicken', y: 'kittens'}
+      defaults: {x: 'chicken',
+y: 'kittens'}
     });
     expect(query()).to.eql([['chicken', 'kittens']]);
     expect(query({y: 'puppies'})).to.eql([['chicken', 'puppies']]);
@@ -208,7 +209,8 @@ describe('createQuery(cfg)', function () {
   it('should throw an error if cfg.model is a non-function', function () {
     for (let value of [{}, 'garbage', true, 23, Infinity]) {
       expect(function () {
-        createQuery({query: 'RETURN 23', model: value});
+        createQuery({query: 'RETURN 23',
+model: value});
       }).to.throw();
     }
   });
@@ -216,7 +218,8 @@ describe('createQuery(cfg)', function () {
   it('should throw an error if cfg.transform is a non-function', function () {
     for (let value of [{}, 'garbage', true, 23, Infinity]) {
       expect(function () {
-        createQuery({query: 'RETURN 23', transform: value});
+        createQuery({query: 'RETURN 23',
+transform: value});
       }).to.throw();
     }
   });
@@ -224,7 +227,8 @@ describe('createQuery(cfg)', function () {
   it('should throw an error if cfg.context has no "collectionName" method', function () {
     for (let value of [{}, 'garbage', true, 23, Infinity, function () {}, {collectionName: 'not a function'}]) {
       expect(function () {
-        createQuery({query: 'RETURN 23', context: value});
+        createQuery({query: 'RETURN 23',
+context: value});
       }).to.throw();
     }
   });

@@ -1,36 +1,36 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the deadlock detection
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-/// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the deadlock detection
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// / @author Copyright 2019, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
-    'rocksdb.exclusive-writes': 'false',
+    'rocksdb.exclusive-writes': 'false'
   };
 }
 
@@ -47,24 +47,26 @@ function OptionsTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflictWithoutOption : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+    testExclusiveExpectConflictWithoutOption: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
 
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
@@ -77,7 +79,7 @@ function OptionsTestSuite () {
                 action: function () {
                   let db = require("internal").db;
                   for (let i = 0; i < 10000; ++i) {
-                    db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                    db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner1" });
                   }
                 }
               });
@@ -87,13 +89,17 @@ function OptionsTestSuite () {
               }
             }
           } catch (err) {
-            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed",
+errorNum: err.errorNum,
+errorMessage: err.errorMessage,
+code: err.code });
           }
           db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
@@ -105,7 +111,7 @@ function OptionsTestSuite () {
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 10000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+                db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner2" });
               }
             }
           });
@@ -115,7 +121,10 @@ function OptionsTestSuite () {
           }
         }
       } catch (err) {
-        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed",
+errorNum: err.errorNum,
+errorMessage: err.errorMessage,
+code: err.code });
       }
       db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
 
@@ -128,7 +137,7 @@ function OptionsTestSuite () {
           break;
         }
       }
-      
+
       let found = 0;
       let keys = ["other-failed", "we-failed"];
       keys.forEach((k) => {
@@ -149,12 +158,14 @@ function OptionsTestSuite () {
       assertEqual(2, c2.count());
     },
 
-    testExclusiveExpectNoConflicts : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+    testExclusiveExpectNoConflicts: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
 
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
@@ -164,7 +175,7 @@ function OptionsTestSuite () {
             for (let i = 0; i < 50; ++i) {
               let db = require("internal").db;
               for (let i = 0; i < 200; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner1" });
               }
 
               if (db.UnitTestsExclusiveCollection2.document("runner2").value) {
@@ -172,13 +183,17 @@ function OptionsTestSuite () {
               }
             }
           } catch (err) {
-            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+            db.UnitTestsExclusiveCollection2.insert({ _key: "other-failed",
+errorNum: err.errorNum,
+errorMessage: err.errorMessage,
+code: err.code });
           }
           db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
@@ -187,7 +202,7 @@ function OptionsTestSuite () {
         for (let i = 0; i < 50; ++i) {
           let db = require("internal").db;
           for (let i = 0; i < 200; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner2" });
           }
 
           if (db.UnitTestsExclusiveCollection2.document("runner1").value) {
@@ -195,7 +210,10 @@ function OptionsTestSuite () {
           }
         }
       } catch (err) {
-        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed", errorNum: err.errorNum, errorMessage: err.errorMessage, code: err.code });
+        db.UnitTestsExclusiveCollection2.insert({ _key: "we-failed",
+errorNum: err.errorNum,
+errorMessage: err.errorMessage,
+code: err.code });
       }
       db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
 
@@ -208,7 +226,7 @@ function OptionsTestSuite () {
           break;
         }
       }
-      
+
       let keys = ["other-failed", "we-failed"];
       let errors = [];
       keys.forEach((k) => {

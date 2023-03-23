@@ -65,7 +65,7 @@ function runJSUnityTests (tests, instanceinfo) {
     try {
       res = runTest(file, true, unitTestFilter);
       if (res === undefined) {
-        allResults[file] =  {
+        allResults[file] = {
           timeout: true,
           status: false,
           message: "test didn't return any result at all!"
@@ -75,7 +75,7 @@ function runJSUnityTests (tests, instanceinfo) {
       }
       allResults[file] = res;
       allResults.duration += res.duration;
-      allResults.total +=1;
+      allResults.total += 1;
       allResults.failed += res.failed;
       allResults.totalSetUp += res.totalSetup;
       allResults.totalTearDown += res.totalTearDown;
@@ -136,10 +136,10 @@ function runMochaTests (testFiles) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs tests from command-line
 // //////////////////////////////////////////////////////////////////////////////
-function addResults(result, which) {
+function addResults (result, which) {
   for (let key in which) {
     if (which.hasOwnProperty(key)) {
-      if (! statusKeys.includes(key)) {
+      if (!statusKeys.includes(key)) {
         if (result.hasOwnProperty(key)) {
           print('Duplicate test in "' + key + '" - \n"' + JSON.stringify(which) + "\n" + JSON.stringify(result));
           throw new Error();

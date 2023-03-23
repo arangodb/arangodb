@@ -42,7 +42,8 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery'), i;
 
   for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i });
+    c.save({ _key: 'test' + i,
+value1: 'test' + i });
   }
 
   // make sure the next operations go into a separate log

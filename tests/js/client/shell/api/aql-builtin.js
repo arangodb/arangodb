@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,14 +31,14 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/aql-builtin";
 function dealing_with_the_builtin_AQL_functionsSuite () {
   return {
 
-    test_fetches_the_list_of_functions: function() {
+    test_fetches_the_list_of_functions: function () {
       let doc = arango.GET_RAW(api);
 
       assertEqual(doc.code, 200);
@@ -50,16 +50,16 @@ function dealing_with_the_builtin_AQL_functionsSuite () {
         assertEqual(typeof f, 'object');
         assertTrue(f.hasOwnProperty(("name")));
         assertTrue(f.hasOwnProperty(("arguments")));
-        
+
         found[f["name"]] = f["name"];
       });
 
       // check for a few known functions;
-      assertTrue(found.hasOwnProperty( "PI"));
-      assertTrue(found.hasOwnProperty( "DEGREES"));
-      assertTrue(found.hasOwnProperty( "RADIANS"));
-      assertTrue(found.hasOwnProperty( "SIN"));
-      assertTrue(found.hasOwnProperty( "COS"));
+      assertTrue(found.hasOwnProperty("PI"));
+      assertTrue(found.hasOwnProperty("DEGREES"));
+      assertTrue(found.hasOwnProperty("RADIANS"));
+      assertTrue(found.hasOwnProperty("SIN"));
+      assertTrue(found.hasOwnProperty("COS"));
     }
   };
 }

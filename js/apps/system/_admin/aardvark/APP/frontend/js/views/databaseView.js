@@ -182,17 +182,17 @@
       if (frontendConfig.forceOneShard) {
         sharding = 'single';
       }
-      
+
       let replicationFactor = $('#new-replication-factor').val();
       let writeConcern = $('#new-write-concern').val();
 
       if (!window.App.isCluster || parseInt(writeConcern) <= parseInt(replicationFactor)) {
         var options = {
           name: dbname,
-          "options" : {
-            "sharding" : sharding,
-            "replicationFactor" : Number(replicationFactor),
-            "writeConcern" : Number(writeConcern),
+          "options": {
+            "sharding": sharding,
+            "replicationFactor": Number(replicationFactor),
+            "writeConcern": Number(writeConcern)
           },
           users: [{
             username: userName
@@ -220,7 +220,8 @@
 
     submitDeleteDatabase: function (dbname) {
       var toDelete = this.collection.where({name: dbname});
-      toDelete[0].destroy({wait: true, url: arangoHelper.databaseUrl('/_api/database/' + encodeURIComponent(dbname))});
+      toDelete[0].destroy({wait: true,
+url: arangoHelper.databaseUrl('/_api/database/' + encodeURIComponent(dbname))});
       this.updateDatabases();
       window.App.naviView.dbSelectionView.render($('#dbSelect'));
       window.modalView.hide();
@@ -288,9 +289,9 @@
         var src = img.attr('src');
         $.get(src, function (d) {
           var svg = $(d).find('svg');
-          svg.attr('id', id)
-            .attr('class', 'tile-icon-svg')
-            .removeAttr('xmlns:a');
+          svg.attr('id', id).
+            attr('class', 'tile-icon-svg').
+            removeAttr('xmlns:a');
           img.replaceWith(svg);
         }, 'xml');
       });
@@ -309,7 +310,7 @@
       return str.substring(0, index);
     },
 
-    getDatabaseSettings: function(dbName) {
+    getDatabaseSettings: function (dbName) {
       return $.ajax({
         type: 'GET',
         cache: false,
@@ -329,19 +330,19 @@
       var buttons = [];
       var tableContent = [];
 
-      $.when(this.getDatabaseSettings(dbName)).done(function(response){
+      $.when(this.getDatabaseSettings(dbName)).done(function (response) {
         tableContent.push(
           window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
         );
-  
+
         tableContent.push(
           window.modalView.createReadOnlyEntry('replication_factor', 'Replication factor', response.result.replicationFactor, '')
         );
-  
+
         tableContent.push(
           window.modalView.createReadOnlyEntry('write_concern', 'Write concern', response.result.writeConcern, '')
         );
-  
+
         tableContent.push(
           window.modalView.createReadOnlyEntry('sharding', 'Sharding', response.result.sharding, '')
         );
@@ -370,7 +371,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_admin/server/databaseDefaults'), //get default properties
+        url: arangoHelper.databaseUrl('/_admin/server/databaseDefaults'), // get default properties
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -406,7 +407,7 @@
       );
 
       if (window.App.isCluster) {
-        // (id, label, value, info, placeholder, mandatory, regexp) 
+        // (id, label, value, info, placeholder, mandatory, regexp)
         // ReplicationFactor
         tableContent.push(
           window.modalView.createTextEntry(
@@ -444,13 +445,13 @@
       }
 
       // OneShard
-      //if enterprise
+      // if enterprise
       if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
-        var sharding = [ { value : "",
-                           label : "Sharded"
+        var sharding = [ { value: "",
+                           label: "Sharded"
                          },
-                         { value : "single",
-                           label : "OneShard"
+                         { value: "single",
+                           label: "OneShard"
                          }
                        ];
 

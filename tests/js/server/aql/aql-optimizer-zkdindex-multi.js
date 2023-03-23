@@ -1,25 +1,25 @@
 /* global AQL_EXPLAIN, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -34,7 +34,7 @@ const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 
 const opCases = ["none", "eq", "le", "ge", "le2", "ge2", "lt", "gt", "legt"];
 
-function conditionForVariable(op, name) {
+function conditionForVariable (op, name) {
     if (op === "none") {
         return "true";
     } else if (op === "eq") {
@@ -56,7 +56,7 @@ function conditionForVariable(op, name) {
     }
 }
 
-function resultSetForConditoin(op) {
+function resultSetForConditoin (op) {
     const all = [...Array(11).keys()];
     if (op === "none") {
         return all;
@@ -79,7 +79,7 @@ function resultSetForConditoin(op) {
     }
 }
 
-function productSet(x, y, z, w) {
+function productSet (x, y, z, w) {
     let result = [];
     for (let dx of resultSetForConditoin(x)) {
         for (let dy of resultSetForConditoin(y)) {
@@ -93,14 +93,17 @@ function productSet(x, y, z, w) {
     return result;
 }
 
-function optimizerRuleZkd2dIndexTestSuite() {
+function optimizerRuleZkd2dIndexTestSuite () {
     const colName = 'UnitTestZkdIndexMultiCollection';
     let col;
 
     let testObject = {
         setUpAll: function () {
             col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'a.w'], fieldValueTypes: 'double'});
+            col.ensureIndex({type: 'zkd',
+name: 'zkdIndex',
+fields: ['x', 'y', 'z', 'a.w'],
+fieldValueTypes: 'double'});
             db._query(aql`
                 FOR x IN 0..10
                 FOR y IN 0..10
@@ -112,7 +115,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         tearDownAll: function () {
             col.drop();
-        },
+        }
     };
 
     for (let x of ["none", "eq"]) {

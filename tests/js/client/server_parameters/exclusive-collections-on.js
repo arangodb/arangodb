@@ -1,36 +1,36 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, getOptions*/
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertNotEqual, assertTrue, getOptions*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the deadlock detection
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-/// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the deadlock detection
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// / @author Copyright 2019, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
-    'rocksdb.exclusive-writes': 'true',
+    'rocksdb.exclusive-writes': 'true'
   };
 }
 
@@ -41,9 +41,9 @@ var db = arangodb.db;
 
 var ERRORS = arangodb.errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function OptionsTestSuite () {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
@@ -52,32 +52,34 @@ function OptionsTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, { numberOfShards: 2 });
       c2 = db._create(cn2, { numberOfShards: 2 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflictWithoutOption : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+    testExclusiveExpectConflictWithoutOption: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
 
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
@@ -88,7 +90,7 @@ function OptionsTestSuite () {
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 10000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner1" });
               }
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
             }
@@ -96,7 +98,8 @@ function OptionsTestSuite () {
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
@@ -106,7 +109,7 @@ function OptionsTestSuite () {
         action: function () {
           let db = require("internal").db;
           for (let i = 0; i < 10000; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner2" });
           }
           db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
         }
@@ -124,9 +127,9 @@ function OptionsTestSuite () {
 
       assertEqual(2, c2.count());
       // both transactions should have succeeded
-      assertTrue(c2.document("runner1").value);  // runner1 transaction should succeed
+      assertTrue(c2.document("runner1").value); // runner1 transaction should succeed
       assertTrue(c2.document("runner2").value); // runner2 transaction should succeed
-    },
+    }
 
   };
 }

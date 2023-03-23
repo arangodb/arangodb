@@ -38,7 +38,8 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery');
 
-  c.save({ _key: 'crashme', thefoxx: 'is quick and jumped over the lazy dog' }, true); // wait for sync
+  c.save({ _key: 'crashme',
+thefoxx: 'is quick and jumped over the lazy dog' }, true); // wait for sync
 
   internal.debugTerminate('crashing server');
 }

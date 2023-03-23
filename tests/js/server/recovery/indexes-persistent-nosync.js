@@ -38,7 +38,8 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: 'persistent', fields: ['value'] });
+  c.ensureIndex({ type: 'persistent',
+fields: ['value'] });
 
   internal.debugSetFailAt('TransactionWriteCommitMarkerNoRocksSync');
 

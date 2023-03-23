@@ -1,29 +1,29 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceManager */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertFalse, assertEqual, fail, instanceManager */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test synchronous replication in the cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Simon Grätzer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test synchronous replication in the cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Simon Grätzer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -36,7 +36,7 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 
-function getDBServers() {
+function getDBServers () {
   var tmp = global.ArangoClusterInfo.getDBServers();
   var servers = [];
   for (var i = 0; i < tmp.length; ++i) {
@@ -46,9 +46,9 @@ function getDBServers() {
 }
 
 const tasksCompleted = () => {
-  return 0 === tasks.get().filter((task) => {
+  return tasks.get().filter((task) => {
     return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
-  }).length;
+  }).length === 0;
 };
 const waitForTasks = () => {
   const time = require("internal").time;
@@ -64,11 +64,11 @@ const waitForTasks = () => {
   require("internal").wait(1.0, false);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function ClusterTransactionSuite() {
+function ClusterTransactionSuite () {
   'use strict';
   var cn = "UnitTestClusterTrx";
   var c;
@@ -76,21 +76,21 @@ function ClusterTransactionSuite() {
   var ccinfo;
   var shards;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find out servers for the system collections
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief find out servers for the system collections
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function findCollectionServers(database, collection) {
+  function findCollectionServers (database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for synchronous replication
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for synchronous replication
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function waitForSynchronousReplication(database) {
+  function waitForSynchronousReplication (database) {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
@@ -114,11 +114,11 @@ function ClusterTransactionSuite() {
     return false;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fail the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function failFollower() {
+  function failFollower () {
     var follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
@@ -130,11 +130,11 @@ function ClusterTransactionSuite() {
     return pos;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function healFollower() {
+  function healFollower () {
     var follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
@@ -145,11 +145,11 @@ function ClusterTransactionSuite() {
     console.info("Have healed follower", follower);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the leader
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fail the leader
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function failLeader() {
+  function failLeader () {
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -161,11 +161,11 @@ function ClusterTransactionSuite() {
     return leader;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function healLeader() {
+  function healLeader () {
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -176,15 +176,15 @@ function ClusterTransactionSuite() {
     console.info("Have healed leader", leader);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the actual tests
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief the actual tests
+  // //////////////////////////////////////////////////////////////////////////////
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
@@ -192,7 +192,8 @@ function ClusterTransactionSuite() {
       while (true) {
         db._drop(cn);
         c = db._create(cn, {
-          numberOfShards: 1, replicationFactor: 2,
+          numberOfShards: 1,
+replicationFactor: 2,
           avoidServers: systemCollServers
         });
         var servers = findCollectionServers("_system", cn);
@@ -201,32 +202,32 @@ function ClusterTransactionSuite() {
           return;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
-        //waitForSynchronousReplication("_system");
+        // waitForSynchronousReplication("_system");
         console.info("Synchronous replication has settled, now dropping again.");
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._drop(cn);
-      //global.ArangoAgency.set('Target/FailedServers', {});
+      // global.ArangoAgency.set('Target/FailedServers', {});
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check whether we have access to global.instanceManager
-    ////////////////////////////////////////////////////////////////////////////////
-    testCheckInstanceInfo : function () {
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief check whether we have access to global.instanceManager
+    // //////////////////////////////////////////////////////////////////////////////
+    testCheckInstanceInfo: function () {
       assertTrue(global.instanceManager !== undefined);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check if a synchronously replicated collection gets online
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief check if a synchronously replicated collection gets online
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testSetup : function () {
+    testSetup: function () {
       for (var count = 0; count < 120; ++count) {
         let dbservers = getDBServers();
         if (dbservers.length === 5) {
@@ -239,10 +240,10 @@ function ClusterTransactionSuite() {
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check transaction abort when a leader fails
-    ////////////////////////////////////////////////////////////////////////////////
-    /*testFailLeader: function () {
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief check transaction abort when a leader fails
+    // //////////////////////////////////////////////////////////////////////////////
+    /* testFailLeader: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 
       let docs = [];
@@ -253,17 +254,17 @@ function ClusterTransactionSuite() {
       db._collection(cn).save(docs);
       assertEqual(db._collection(cn).count(), 1000);
 
-      const cmd = `const db = require('internal').db; 
-      var trx = { 
-        collections: { write: ['${cn}'] }, 
+      const cmd = `const db = require('internal').db;
+      var trx = {
+        collections: { write: ['${cn}'] },
         action: function () {
-          const db = require('internal').db; 
-          var ops = db._query('FOR i IN ${cn} REMOVE i._key IN ${cn}').getExtra().stats; 
+          const db = require('internal').db;
+          var ops = db._query('FOR i IN ${cn} REMOVE i._key IN ${cn}').getExtra().stats;
           require('internal').sleep(25.0);
         }
       };
       db._executeTransaction(trx);`;
-      
+
       tasks.register({ name: "UnitTestsSlowTrx", command: cmd });
       wait(2.0);
       failLeader();
@@ -276,10 +277,10 @@ function ClusterTransactionSuite() {
       assertEqual(db._collection(cn).count(), 1000);
       assertEqual(db._collection(cn).all().toArray().length, 1000);
     },*/
-    
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower, transaction should succeeed regardless
-  ////////////////////////////////////////////////////////////////////////////////
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fail the follower, transaction should succeeed regardless
+  // //////////////////////////////////////////////////////////////////////////////
     testFailFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
 
@@ -301,8 +302,9 @@ function ClusterTransactionSuite() {
         }
       };
       db._executeTransaction(trx);`;
-      
-      tasks.register({ name: "UnitTestsSlowTrx", command: cmd });
+
+      tasks.register({ name: "UnitTestsSlowTrx",
+command: cmd });
       wait(2.0);
       failFollower();
       wait(15.0); // wait for longer than grace period
@@ -317,9 +319,9 @@ function ClusterTransactionSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ClusterTransactionSuite);
 

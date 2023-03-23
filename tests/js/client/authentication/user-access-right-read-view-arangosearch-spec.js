@@ -65,7 +65,7 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -92,7 +92,7 @@ describe('User Rights Management', () => {
                 db._useDatabase(dbName);
                 rootCreateCollection(testCol1Name);
                 rootCreateCollection(testCol2Name);
-                let properties = { properties : {} };
+                let properties = { properties: {} };
                 if (testViewType === "arangosearch") {
                   properties['links'] = {};
                   properties['links'][testCol1Name] = { includeAllFields: true };
@@ -100,7 +100,8 @@ describe('User Rights Management', () => {
                   properties['links'][testCol2Name] = { includeAllFields: true };
                   rootCreateView(testView2Name, testViewType, properties);
                 } else {
-                  properties['indexes'] = [ { collection: testCol1Name, index: indexName } ];
+                  properties['indexes'] = [ { collection: testCol1Name,
+index: indexName } ];
                   rootCreateView(testView1Name, testViewType, properties);
                 }
                 rootPrepareCollection(testCol1Name, testNumDocs);
@@ -127,7 +128,9 @@ describe('User Rights Management', () => {
                 if (!rootTestCollection(colName, false)) {
                   let c = db._create(colName);
                   if (colName === testCol1Name) {
-                    c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                    c.ensureIndex({ type: "inverted",
+name: indexName,
+fields: [ { name: "value" } ] });
                   }
                   if (explicitRight !== '' && rightLevels.has(explicitRight)) {
                     if (helper.isLdapEnabledExternal()) {
@@ -178,7 +181,9 @@ describe('User Rights Management', () => {
                   db._collection(colName).truncate({ compact: false });
                   let docs = [];
                   for (let i = 0; i < numDocs; ++i) {
-                    let doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
+                    let doc = {prop1: colName + "_1",
+propI: i,
+plink: "lnk" + i};
                     if (!defKey) {
                       doc._key = colName + i;
                     }
@@ -210,7 +215,7 @@ describe('User Rights Management', () => {
                 if (rootTestView(viewName, false)) {
                   db._dropView(viewName);
                 }
-                let view =  db._createView(viewName, viewType, {});
+                let view = db._createView(viewName, viewType, {});
                 if (properties !== null) {
                   view.properties(properties, false);
                 }
@@ -240,9 +245,9 @@ describe('User Rights Management', () => {
                   let query = `FOR d IN  ${testView1Name} RETURN d`;
                   if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                     db._query(query);
-                    //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
-                    //let result = db._query(query).toArray();
-                    //expect(result.length).to.equal(testNumDocs, 'View read failed');
+                    // FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
+                    // let result = db._query(query).toArray();
+                    // expect(result.length).to.equal(testNumDocs, 'View read failed');
                   } else {
                     try {
                       db._query(query);
@@ -260,9 +265,9 @@ describe('User Rights Management', () => {
                     let query = `FOR d IN  ${testView2Name} RETURN d`;
                     if ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
                       db._query(query, null, { waitForSync: true });
-                      //FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
-                      //let result = db._query(query, null, { waitForSync: true }).toArray();
-                      //expect(result.length).to.equal(testNumDocs*2, 'View read failed');
+                      // FIXME: issue #429 (https://github.com/arangodb/backlog/issues/429)
+                      // let result = db._query(query, null, { waitForSync: true }).toArray();
+                      // expect(result.length).to.equal(testNumDocs*2, 'View read failed');
                     } else {
                       try {
                         db._query(query);
@@ -275,8 +280,8 @@ describe('User Rights Management', () => {
                   });
 
                   let descName = 'view with links to multiple collections with NONE access level to one of them';
-                  !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? describe(descName, () => {}) :
-                    describe(descName, () => {
+                  !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? describe(descName, () => {})
+                    : describe(descName, () => {
                       before(() => {
                         rootGrantCollection(testCol2Name, name, 'none');
                         expect(rootTestView(testView2Name)).to.equal(true, 'Precondition failed, the view doesn\'t exist');

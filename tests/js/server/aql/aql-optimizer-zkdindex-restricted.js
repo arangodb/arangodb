@@ -1,25 +1,25 @@
 /* global AQL_EXPLAIN, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -29,7 +29,7 @@ const internal = require("internal");
 const db = arangodb.db;
 const {assertEqual} = jsunity.jsUnity.assertions;
 
-function optimizerRuleZkd2dIndexTestSuite() {
+function optimizerRuleZkd2dIndexTestSuite () {
     const colName = 'UnitTestZkdIndexCollection';
     let col;
 
@@ -44,7 +44,9 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testNoFieldValueTypes: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y']});
+                col.ensureIndex({type: 'zkd',
+name: 'zkdIndex',
+fields: ['x', 'y']});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }
@@ -52,7 +54,11 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testSparseProperty: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double', sparse: true});
+                col.ensureIndex({type: 'zkd',
+name: 'zkdIndex',
+fields: ['x', 'y'],
+fieldValueTypes: 'double',
+sparse: true});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }
@@ -60,7 +66,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testArrayExpansions: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x[*]', 'y'], fieldValueTypes: 'double'});
+                col.ensureIndex({type: 'zkd',
+name: 'zkdIndex',
+fields: ['x[*]', 'y'],
+fieldValueTypes: 'double'});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }

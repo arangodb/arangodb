@@ -13,7 +13,7 @@
       }
     });
 
-    const updateOptions = function(options) {
+    const updateOptions = function (options) {
       const update = { ...options };
       update.headers = {
         ...update.headers,
@@ -28,7 +28,7 @@
       }
       return update;
     };
-    
+
     window.arangoFetch = function (url, options) {
       // eslint-disable-next-line
       return fetch(url, updateOptions(options));
@@ -62,7 +62,7 @@
           $('.subBarDropdown').hide();
         }
       }
-      
+
       // also note that the web interface was actively used
       arangoHelper.noteActivity();
     });
@@ -74,7 +74,7 @@
           window.modalView.hide();
         }
       }
-      
+
       // also note that the web interface was actively used
       arangoHelper.noteActivity();
     });

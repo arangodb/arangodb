@@ -1,29 +1,29 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-/// @author Heiko Kernbach
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// / @author Heiko Kernbach
+// //////////////////////////////////////////////////////////////////////////////
 
 const {protoGraphs} = require('@arangodb/testutils/aql-graph-traversal-generic-graphs.js');
 const {testsByGraph, metaTests} = require('@arangodb/testutils/aql-graph-traversal-generic-tests.js');
@@ -31,7 +31,7 @@ const console = require('console');
 const jsunity = require("jsunity");
 const _ = require("lodash");
 
-function graphTraversalGenericGeneralGraphStandaloneSuite() {
+function graphTraversalGenericGeneralGraphStandaloneSuite () {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
   _.each(protoGraphs, function (protoGraph) {
     _.each(protoGraph.prepareSingleServerGraph(), function (testGraph) {
@@ -52,7 +52,7 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
       } catch (e) {
         console.error(e);
         console.error(e.stack);
-        throw(e);
+        throw (e);
       }
     },
 
@@ -66,7 +66,7 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
       } catch (e) {
         console.error(e);
         console.error(e.stack);
-        throw(e);
+        throw (e);
       }
     }
   };
@@ -78,7 +78,7 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
-      _.each(graphs, function (graph, name){
+      _.each(graphs, function (graph, name) {
         suite[`${testName}_${name}`] = function () {
           test(graph);
         };

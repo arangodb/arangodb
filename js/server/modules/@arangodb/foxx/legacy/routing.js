@@ -145,7 +145,8 @@ function buildFileAsset (app, path, basePath, asset) {
   // return content
   // .............................................................................
 
-  return {contentType: type, body: content};
+  return {contentType: type,
+body: content};
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -157,7 +158,8 @@ function buildAssetRoute (app, path, basePath, asset) {
 
   return {
     url: {match: path},
-    content: {contentType: c.contentType, body: c.body}
+    content: {contentType: c.contentType,
+body: c.body}
   };
 }
 
@@ -290,8 +292,8 @@ function validateRoute (route) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
         errorMessage: (
-          `Route parts "${route}" may only contain a-z, A-Z, 0-9 or`
-          + ` "_" (underscore) but may start with a ":" (colon)`
+          `Route parts "${route}" may only contain a-z, A-Z, 0-9 or` +
+          ` "_" (underscore) but may start with a ":" (colon)`
         )
       });
     }

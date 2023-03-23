@@ -1,49 +1,49 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, relational operators
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, relational operators
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRelationalTestSuite () {
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test compare order
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCompareOrder : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test compare order
+// //////////////////////////////////////////////////////////////////////////////
+
+    testCompareOrder: function () {
       assertEqual([ true ], getQueryResults("RETURN null < false"));
       assertEqual([ true ], getQueryResults("RETURN false < true"));
       assertEqual([ true ], getQueryResults("RETURN true < -5"));
@@ -62,11 +62,11 @@ function ahuacatlRelationalTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN { a : true} < { a : true, b : false }"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test equality
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRelationalEq : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test equality
+// //////////////////////////////////////////////////////////////////////////////
+
+    testRelationalEq: function () {
       assertEqual([ true ], getQueryResults("RETURN null == null"));
       assertEqual([ true ], getQueryResults("RETURN false == false"));
       assertEqual([ true ], getQueryResults("RETURN true == true"));
@@ -144,11 +144,11 @@ function ahuacatlRelationalTestSuite () {
       assertEqual([ false ], getQueryResults("RETURN 0 == { }"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unequality
-////////////////////////////////////////////////////////////////////////////////
-    
-    testRelationalNe : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test unequality
+// //////////////////////////////////////////////////////////////////////////////
+
+    testRelationalNe: function () {
       assertEqual([ true ], getQueryResults("RETURN null != false"));
       assertEqual([ true ], getQueryResults("RETURN null != true"));
       assertEqual([ true ], getQueryResults("RETURN null != 0"));
@@ -160,7 +160,7 @@ function ahuacatlRelationalTestSuite () {
       assertEqual([ true ], getQueryResults("RETURN null != \"A\""));
       assertEqual([ true ], getQueryResults("RETURN null != [ ]"));
       assertEqual([ true ], getQueryResults("RETURN null != { }"));
-      
+
       assertEqual([ false ], getQueryResults("RETURN null != null"));
       assertEqual([ false ], getQueryResults("RETURN false != false"));
       assertEqual([ false ], getQueryResults("RETURN true != true"));
@@ -190,9 +190,9 @@ function ahuacatlRelationalTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlRelationalTestSuite);
 

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests range deletion
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests range deletion
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -40,18 +40,18 @@ function CollectionRangeDeleteSuite () {
   let c;
 
   return {
-    setUp : function () {
+    setUp: function () {
       internal.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       internal.debugClearFailAt();
       db._drop(cn);
     },
-    
-    testRangeDeleteTriggerInSingleServer : function () {
+
+    testRangeDeleteTriggerInSingleServer: function () {
       if (require("@arangodb/cluster").isCluster()) {
         return;
       }
@@ -64,7 +64,7 @@ function CollectionRangeDeleteSuite () {
           docs = [];
         }
       }
-      
+
       assertEqual(100000, c.count());
 
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
@@ -76,8 +76,8 @@ function CollectionRangeDeleteSuite () {
         assertEqual(ERRORS.ERROR_DEBUG.code, err.errorNum);
       }
     },
-    
-    testRangeDeleteTriggersInCluster : function () {
+
+    testRangeDeleteTriggersInCluster: function () {
       if (!require("@arangodb/cluster").isCluster()) {
         return;
       }
@@ -90,7 +90,7 @@ function CollectionRangeDeleteSuite () {
           docs = [];
         }
       }
-      
+
       assertEqual(100000, c.count());
 
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
@@ -102,15 +102,15 @@ function CollectionRangeDeleteSuite () {
         assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
                    err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
       }
-      
+
       assertEqual(100000, c.count());
       internal.debugClearFailAt();
-      
+
       c.truncate({ compact: false });
       assertEqual(0, c.count());
     },
 
-    testRangeDeleteNotTriggered : function () {
+    testRangeDeleteNotTriggered: function () {
       // number of docs too small for RangeDelete
       for (let i = 0; i < 100; ++i) {
         c.insert({});
@@ -121,11 +121,11 @@ function CollectionRangeDeleteSuite () {
       // should not fire
       c.truncate({ compact: false });
       assertEqual(0, c.count());
-      
+
       for (let i = 0; i < 100; ++i) {
         c.insert({});
       }
-      
+
       internal.debugClearFailAt();
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOff");
 
@@ -137,7 +137,7 @@ function CollectionRangeDeleteSuite () {
         assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
                    err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
       }
-    },
+    }
   };
 }
 

@@ -192,10 +192,10 @@ const tests = {
   dualldap: {
     name: 'dualldap',
     conf: dualLdapConf
-  },
+  }
 };
 
-function parseOptions(options, ldap2) {
+function parseOptions (options, ldap2) {
   let verbose = {};
   if (options.extremeVerbosity) {
     verbose['log.level'] = 'ldap=trace';
@@ -203,7 +203,7 @@ function parseOptions(options, ldap2) {
 
   let toReturn = tests;
 
-  _.each(toReturn, function(opt) {
+  _.each(toReturn, function (opt) {
     Object.assign(opt.conf, verbose);
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
@@ -227,8 +227,8 @@ function parseOptions(options, ldap2) {
 }
 
 class ldapTestRunner extends tu.runInArangoshRunner {
-  postStart() {
-    let baseUrl = function(e) {
+  postStart () {
+    let baseUrl = function (e) {
       return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
     };
 
@@ -244,7 +244,7 @@ class ldapTestRunner extends tu.runInArangoshRunner {
         method: "PUT",
         url: baseUrl(endpoint) + "/_admin/debug/failat/LdapFlakyLdap",
         auth: {
-          bearer: jwt,
+          bearer: jwt
         },
         body: {}
       });
@@ -256,7 +256,7 @@ class ldapTestRunner extends tu.runInArangoshRunner {
   }
 }
 
-function authenticationLdapSearchModePrefixSuffix(options) {
+function authenticationLdapSearchModePrefixSuffix (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -283,7 +283,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapSearchMode(options) {
+function authenticationLdapSearchMode (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -310,7 +310,7 @@ function authenticationLdapSearchMode(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapSearchModePlaceholder(options) {
+function authenticationLdapSearchModePlaceholder (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -337,7 +337,7 @@ function authenticationLdapSearchModePlaceholder(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapRolesModePrefixSuffix(options) {
+function authenticationLdapRolesModePrefixSuffix (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -364,7 +364,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapRolesMode(options) {
+function authenticationLdapRolesMode (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
     return {
@@ -391,7 +391,7 @@ function authenticationLdapRolesMode(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapTwoLdap(options) {
+function authenticationLdapTwoLdap (options) {
   // this will start a setup with two active LDAP servers
 
   if (options.skipLdap === true) {
@@ -420,7 +420,7 @@ function authenticationLdapTwoLdap(options) {
                            ).run(testCases);
 }
 
-function authenticationLdapFirstLdap(options) {
+function authenticationLdapFirstLdap (options) {
   // this will start a setup with two LDAP servers configured, one active
 
   if (options.skipLdap === true) {
@@ -450,7 +450,7 @@ function authenticationLdapFirstLdap(options) {
   return new ldapTestRunner(options, 'ldap', conf).run(testCases);
 }
 
-function authenticationLdapSecondLdap(options) {
+function authenticationLdapSecondLdap (options) {
   // this will start a setup with two LDAP servers configured, one active
 
   if (options.skipLdap === true) {
@@ -480,7 +480,7 @@ function authenticationLdapSecondLdap(options) {
   return new ldapTestRunner(options, 'ldap', conf).run(testCases);
 }
 
-exports.setup = function(testFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
   testFns['ldap'] = ['ldaprole', 'ldapsearch', 'ldapsearchplaceholder', 'ldaprolesimple', 'ldapsearchsimple'];

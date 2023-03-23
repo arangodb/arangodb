@@ -1,8 +1,8 @@
-/*jshint -W051:true, evil:true */
+/* jshint -W051:true, evil:true */
 /*eslint-disable */
 ;(function () {
   'use strict'
-  /*eslint-enable */
+  /* eslint-enable */
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief module "internal"
@@ -41,9 +41,9 @@
   exports.db = global.db;
   delete global.db;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief ArangoAnalyzers
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoAnalyzers
+  // //////////////////////////////////////////////////////////////////////////////
 
   exports.ArangoAnalyzers = global.ArangoAnalyzers;
   delete global.ArangoAnalyzers;
@@ -204,7 +204,7 @@
     exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
     delete global.SYS_IS_FOXX_STORE_DISABLED;
   }
- 
+
   if (typeof global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE !== 'undefined') {
     exports.foxxAllowInstallFromRemote = global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
     delete global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
@@ -249,7 +249,7 @@
     exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
     delete global.SYS_ENABLED_STATISTICS;
   }
-  
+
   if (global.SYS_ENABLED_STATISTICS_ALL_DATABASES) {
     exports.enabledStatisticsInAllDatabases = global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
     delete global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
@@ -361,7 +361,7 @@
     exports.serverId = global.REPLICATION_SERVER_ID;
     delete global.REPLICATION_SERVER_ID;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief wait for index selectivity estimate sync
   // //////////////////////////////////////////////////////////////////////////////
@@ -588,6 +588,6 @@
   if (global.SYS_CREATE_HOTBACKUP) {
     exports.createHotbackup = global.SYS_CREATE_HOTBACKUP;
     delete global.SYS_CREATE_HOTBACKUP;
-  };
+  }
 
 }());

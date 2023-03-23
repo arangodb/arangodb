@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'java_driver': 'java client driver test',
+  'java_driver': 'java client driver test'
 };
 const optionsDocumentation = [
   '   - `javasource`: directory of the java driver',
@@ -68,11 +68,11 @@ const testPaths = {
 
 function javaDriver (options) {
   class runInJavaTest extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runInJavaTest";
     }
-    runOneTest(file) {
+    runOneTest (file) {
       let topology;
       let testResultsDir = fs.join(this.instanceManager.rootDir, 'javaresults');
       let results = {
@@ -96,9 +96,9 @@ function javaDriver (options) {
         'test', '-U',
         '-Dgroups=api',
         '-Dtest.useProvidedDeployment=true',
-        '-Dtest.arangodb.version='+ db._version(),
-        '-Dtest.arangodb.isEnterprise=' + isEnterprise()? 'true' : 'false',
-        '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
+        '-Dtest.arangodb.version=' + db._version(),
+        '-Dtest.arangodb.isEnterprise=' + isEnterprise() ? 'true' : 'false',
+        '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx, ''),
         '-Dtest.arangodb.authentication=root:',
         '-Dtest.arangodb.topology=' + topology,
         '-Dallure.results.directory=' + testResultsDir
@@ -131,7 +131,7 @@ function javaDriver (options) {
       let resultFiles = fs.list(testResultsDir).filter(file => {
         return file.match(resultRe) !== null;
       });
-      //print(resultFiles)
+      // print(resultFiles)
       resultFiles.forEach(containerFile => {
         let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
         resultJson['parents'] = [];
@@ -143,16 +143,16 @@ function javaDriver (options) {
         let container = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
         container['childContainers'] = [];
         container['isToplevel'] = false;
-        //print(container)
+        // print(container)
         container.children.forEach(child => {
           allResultJsons[child]['parents'].push(container.uuid);
         });
         allContainerJsons[container.uuid] = container;
       });
 
-      for(let oneResultKey in allResultJsons) {
-        allResultJsons[oneResultKey].parents = 
-          allResultJsons[oneResultKey].parents.sort(function(aUuid, bUuid) {
+      for (let oneResultKey in allResultJsons) {
+        allResultJsons[oneResultKey].parents =
+          allResultJsons[oneResultKey].parents.sort(function (aUuid, bUuid) {
             let a = allContainerJsons[aUuid];
             let b = allContainerJsons[bUuid];
             if ((a.start !== b.start) || (a.stop !== b.stop)) {
@@ -161,15 +161,15 @@ function javaDriver (options) {
             if (a.children.length !== b.children.length) {
               return b.children.length - a.children.length;
             }
-            //print(a)
-            //print(b)
-            //print('--------')
+            // print(a)
+            // print(b)
+            // print('--------')
             return 0;
           });
         for (let i = 0; i + 1 < allResultJsons[oneResultKey].parents.length; i++) {
           let parent = allResultJsons[oneResultKey].parents[i];
           let child = allResultJsons[oneResultKey].parents[i + 1];
-          if(i === 0) {
+          if (i === 0) {
             topLevelContainers.push(parent);
           }
           if (!allContainerJsons[parent]['childContainers'].includes(child)) {
@@ -177,14 +177,14 @@ function javaDriver (options) {
           }
           // print(allContainerJsons[parent])
         }
-        //print(allResultJsons[oneResultKey])
-        //print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
+        // print(allResultJsons[oneResultKey])
+        // print('vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv')
       }
-      //print(topLevelContainers)
+      // print(topLevelContainers)
       topLevelContainers.forEach(id => {
-        //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+        // print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
         let tlContainer = allContainerJsons[id];
-        //print(tlContainer['childContainers'])
+        // print(tlContainer['childContainers'])
 
         let resultSet = {
           duration: tlContainer.stop - tlContainer.start,
@@ -198,14 +198,14 @@ function javaDriver (options) {
           let childContainer = allContainerJsons[childContainerId];
           let suiteResult = {};
           resultSet[childContainer.name] = suiteResult;
-          //print(childContainer);
+          // print(childContainer);
           childContainer['childContainers'].forEach(grandChildContainerId => {
             let grandChildContainer = allContainerJsons[grandChildContainerId];
-            //print(grandChildContainer);
+            // print(grandChildContainer);
             let name = childContainer.name + "." + grandChildContainer.name;
             if (grandChildContainer.children.length !== 1) {
-              print(RED+"This grandchild has more than one item - not supported!"+RESET);
-              print(RED+grandChildContainer.children+RESET);
+              print(RED + "This grandchild has more than one item - not supported!" + RESET);
+              print(RED + grandChildContainer.children + RESET);
             }
             let gcTestResult = allResultJsons[grandChildContainer.children[0]];
             let message = "";
@@ -227,7 +227,7 @@ function javaDriver (options) {
             }
           });
         });
-        //print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
+        // print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz')
       });
       results['timeout'] = false;
       results['status'] = status;
@@ -248,6 +248,10 @@ function javaDriver (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['java_driver'] = javaDriver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

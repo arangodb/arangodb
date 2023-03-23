@@ -26,10 +26,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'BackupNoAuthSysTests':   'complete backup tests without authentication, with    system collections',
+  'BackupNoAuthSysTests': 'complete backup tests without authentication, with    system collections',
   'BackupNoAuthNoSysTests': 'complete backup tests without authentication, without system collections',
-  'BackupAuthSysTests':     'complete backup tests with    authentication, with    system collections',
-  'BackupAuthNoSysTests':   'complete backup tests with    authentication, without system collections'
+  'BackupAuthSysTests': 'complete backup tests with    authentication, with    system collections',
+  'BackupAuthNoSysTests': 'complete backup tests with    authentication, without system collections'
 };
 const optionsDocumentation = [
 ];
@@ -74,9 +74,8 @@ const failPreStartMessage = (msg) => {
 var dumpPath;
 
 
-
 class backupTestRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
+  constructor (options, testname, useAuth, user, restoreDir, checkUsers = true) {
     super(options, testname, {}, checkUsers, false);
     this.user = user;
     this.useAuth = useAuth;
@@ -88,7 +87,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // / We start a temporary system to generate the dumps that are agnostic
   // / of whether its a cluster or not.
   // //////////////////////////////////////////////////////////////////////////////
-  generateDumpData() {
+  generateDumpData () {
     let options = _.clone(this.options);
     if (this.dumpPath !== undefined) {
       return dumpPath;
@@ -99,7 +98,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
                                                   _.clone(tu.testServerAuthInfo),
                                                   'backup',
                                                   fs.join(fs.getTempPath(), this.friendlyName));
-          
+
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -162,7 +161,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
         this.instanceManager.arangods[0].exitStatus = null;
         fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
         fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
-        
+
       }
       log('done.');
       print();
@@ -175,7 +174,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // //////////////////////////////////////////////////////////////////////////////
   // / set up the test according to the testcase.
   // //////////////////////////////////////////////////////////////////////////////
-  preStart() {
+  preStart () {
     this.dumpPath = this.generateDumpData();
     if (typeof this.dumpPath === 'object' && this.dumpPath.failed === 1) {
       log('DUMPING FAILED!');
@@ -196,7 +195,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // //////////////////////////////////////////////////////////////////////////////
   // / set up the test according to the testcase.
   // //////////////////////////////////////////////////////////////////////////////
-  postStart(){
+  postStart () {
     let restore = pu.run.arangoDumpRestore(this.user,
                                            this.instanceManager,
                                            'restore',
@@ -291,6 +290,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['BackupAuthSysTests'] = BackupAuthSysTests;
   testFns['BackupAuthNoSysTests'] = BackupAuthNoSysTests;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

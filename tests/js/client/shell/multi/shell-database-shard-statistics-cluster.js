@@ -28,7 +28,7 @@ let arangodb = require('@arangodb');
 let db = arangodb.db;
 let { getDBServers } = require('@arangodb/test-helper');
 
-function shardStatisticsDatabaseSuite() {
+function shardStatisticsDatabaseSuite () {
   'use strict';
   const cn = 'UnitTestsDatabase';
 
@@ -67,7 +67,7 @@ function shardStatisticsDatabaseSuite() {
       assertTrue(res.result.hasOwnProperty("servers"), res.result);
       // exact number of servers is unclear here
       assertTrue(res.result.servers > 0, res.result);
-      
+
       let previousCols = cols;
       let previousShards = res.result.shards;
       let previousLeaders = res.result.leaders;
@@ -77,9 +77,10 @@ function shardStatisticsDatabaseSuite() {
 
       // create a few collections, w/o replicationFactor
       for (let i = 0; i < 5; ++i) {
-        db._create("test" + i, { numberOfShards: 3, replicationFactor: 1 });
+        db._create("test" + i, { numberOfShards: 3,
+replicationFactor: 1 });
       }
-      
+
       res = arango.GET("/_api/database/shardStatistics");
       assertEqual(1, res.result.databases);
 
@@ -93,19 +94,20 @@ function shardStatisticsDatabaseSuite() {
       assertTrue(res.result.hasOwnProperty("servers"), res.result);
       // exact number of servers is unclear here
       assertTrue(res.result.servers > 0, res.result);
-      
+
       previousCols = cols;
       previousShards = res.result.shards;
       previousLeaders = res.result.leaders;
       previousFollowers = res.result.followers;
       previousRealLeaders = res.result.realLeaders;
-      
+
 
       // create a few collections, w/ replicationFactor 2
       for (let i = 0; i < 5; ++i) {
-        db._create("testmann" + i, { numberOfShards: 3, replicationFactor: 2 });
+        db._create("testmann" + i, { numberOfShards: 3,
+replicationFactor: 2 });
       }
-      
+
       res = arango.GET("/_api/database/shardStatistics");
       assertEqual(1, res.result.databases);
 
@@ -120,15 +122,16 @@ function shardStatisticsDatabaseSuite() {
       // exact number of servers is unclear here
       assertTrue(res.result.servers > 0, res.result);
     },
-    
+
     testShardStatisticsAggregate: function () {
       db._useDatabase(cn);
 
       // create a few collections, w/o replicationFactor
       for (let i = 0; i < 5; ++i) {
-        db._create("test" + i, { numberOfShards: 3, replicationFactor: 2 });
+        db._create("test" + i, { numberOfShards: 3,
+replicationFactor: 2 });
       }
-        
+
       let dbservers = getDBServers();
       assertTrue(dbservers.length > 0);
 
@@ -139,7 +142,7 @@ function shardStatisticsDatabaseSuite() {
         leaders: 0,
         followers: 0,
         realLeaders: 0,
-        servers: 0,
+        servers: 0
       };
 
       dbservers.forEach((server) => {
@@ -148,13 +151,13 @@ function shardStatisticsDatabaseSuite() {
           partialValues[k] += part[k];
         });
       });
-      
+
       let allValues = arango.GET("/_api/database/shardStatistics").result;
       assertEqual(allValues.shards, partialValues.shards);
       assertEqual(allValues.leaders, partialValues.leaders);
       assertEqual(allValues.followers, partialValues.followers);
       assertEqual(allValues.realLeaders, partialValues.realLeaders);
-    },
+    }
   };
 }
 

@@ -29,7 +29,7 @@
 
 const _ = require('lodash');
 
-function MergeStatisticSamples(samples) {
+function MergeStatisticSamples (samples) {
   const merged = {
     physicalMemory: 0,
     residentSizeCurrent: 0,
@@ -65,7 +65,7 @@ function MergeStatisticSamples(samples) {
   // the statisics samples are stored every 10 seconds, so our bucketSize should be a multiple of 10
   const bucketSize = 10;
   const numBuckets = Math.ceil((maxTime - minTime) / bucketSize);
-  
+
   const calcBucket = (time) => Math.floor((time - minTime) / bucketSize);
   merged.times = _.range(minTime, minTime + numBuckets * bucketSize, bucketSize);
 
@@ -83,7 +83,7 @@ function MergeStatisticSamples(samples) {
       values[bucket] += _.get(sample, path);
     });
   });
-  
+
   for (let i = 0; i < counts.length; ++i) {
     if (counts[i] !== 0) {
       merged.avgRequestTime[i] /= counts[i];

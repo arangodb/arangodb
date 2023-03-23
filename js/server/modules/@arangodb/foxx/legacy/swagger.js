@@ -74,7 +74,8 @@ function createSwaggerRouteHandler (defaultAppPath, opts) {
       } else if (typeof swaggerJsonHandler === 'function') {
         var foxx = resolveFoxx(req, res, appPath);
         if (typeof foxx !== 'undefined') {
-          swaggerJsonHandler(req, res, {appPath, foxx});
+          swaggerJsonHandler(req, res, {appPath,
+foxx});
         }
         return;
       }
@@ -186,7 +187,8 @@ function parseRoutes (tag, routes, models) {
         responses: {
           default: {
             description: 'undocumented body',
-            schema: {properties: {}, type: 'object'}
+            schema: {properties: {},
+type: 'object'}
           }
         },
         parameters: route.docs.parameters.map(function (param) {

@@ -78,10 +78,10 @@ class IncomingResponse {
       } else {
         const offset = (this.body.length - MAX_BYTES) / 2;
         ctx.output += `"…${
-          this.body.slice(offset, offset + MAX_BYTES)
-          .replace('\n', '\\n')
-          .replace('\r', '\\r')
-          .replace('\t', '\\t')
+          this.body.slice(offset, offset + MAX_BYTES).
+          replace('\n', '\\n').
+          replace('\r', '\\r').
+          replace('\t', '\\t')
         }…"`;
       }
     }
@@ -96,8 +96,8 @@ function querystringify (query, useQuerystring) {
   if (typeof query === 'string') {
     return query.charAt(0) === '?' ? query.slice(1) : query;
   }
-  return (useQuerystring ? querystring : qs).stringify(query)
-    .replace(/[!'()*]/g, function (c) {
+  return (useQuerystring ? querystring : qs).stringify(query).
+    replace(/[!'()*]/g, function (c) {
       // Stricter RFC 3986 compliance
       return '%' + c.charCodeAt(0).toString(16);
     });
@@ -105,7 +105,8 @@ function querystringify (query, useQuerystring) {
 
 function request (req) {
   if (typeof req === 'string') {
-    req = {url: req, method: 'GET'};
+    req = {url: req,
+method: 'GET'};
   }
 
   let path = req.url || req.uri;

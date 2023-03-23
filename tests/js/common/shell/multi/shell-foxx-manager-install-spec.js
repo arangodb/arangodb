@@ -74,22 +74,22 @@ describe('Foxx Manager install', function () {
     it('without manifest', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'no-manifest'), '/unittest/broken');
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_SERVICE_MANIFEST_NOT_FOUND.code);
     });
 
     it('with malformed manifest', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-manifest'), '/unittest/broken');
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_MALFORMED_MANIFEST_FILE.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_MALFORMED_MANIFEST_FILE.code);
     });
 
     it('with malformed name', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'malformed-name'), '/unittest/broken');
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_SERVICE_MANIFEST.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_SERVICE_MANIFEST.code);
     });
 
     it('with malformed controller file', function () {
@@ -122,8 +122,8 @@ describe('Foxx Manager install', function () {
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
+          expect(err).to.have.property('cause').
+            that.is.an.instanceof(SyntaxError);
         } else {
           expect(err).not.to.have.property('cause');
         }
@@ -153,8 +153,8 @@ describe('Foxx Manager install', function () {
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
+          expect(err).to.have.property('cause').
+            that.is.an.instanceof(SyntaxError);
         } else {
           expect(err).not.to.have.property('cause');
         }
@@ -178,8 +178,8 @@ describe('Foxx Manager install', function () {
       }).to.throw(ArangoError).that.satisfies(function (err) {
         expect(err).to.have.property('errorNum', errors.ERROR_MODULE_SYNTAX_ERROR.code);
         if (require('@arangodb').isServer) {
-          expect(err).to.have.property('cause')
-            .that.is.an.instanceof(SyntaxError);
+          expect(err).to.have.property('cause').
+            that.is.an.instanceof(SyntaxError);
         } else {
           expect(err).not.to.have.property('cause');
         }
@@ -254,8 +254,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('starting with %', function () {
@@ -263,8 +263,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('starting with a number', function () {
@@ -272,8 +272,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('starting with app/', function () {
@@ -281,8 +281,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('containing /app/', function () {
@@ -290,8 +290,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('containing a .', function () {
@@ -299,8 +299,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('containing a whitespace', function () {
@@ -308,8 +308,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('starting with ?', function () {
@@ -317,8 +317,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
 
     it('starting with :', function () {
@@ -326,8 +326,8 @@ describe('Foxx Manager install', function () {
       expect(function () {
         FoxxManager.install(fs.join(basePath, 'minimal-working-manifest'), mount);
         FoxxManager.uninstall(mount);
-      }).to.throw(ArangoError)
-        .with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
+      }).to.throw(ArangoError).
+        with.property('errorNum', errors.ERROR_INVALID_MOUNTPOINT.code);
     });
   });
 });

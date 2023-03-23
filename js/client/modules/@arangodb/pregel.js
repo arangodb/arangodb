@@ -30,13 +30,13 @@ var db = internal.db;
 
 var API = '/_api/control_pregel';
 
-let buildMessage = function(algo, second, params) {
+let buildMessage = function (algo, second, params) {
   let valid = false;
   let message = { algorithm: algo };
 
   if (typeof algo === 'string' && second) {
-    var first = second.vertexCollections && second.vertexCollections instanceof Array
-                && second.edgeCollections && second.edgeCollections instanceof Array;
+    var first = second.vertexCollections && second.vertexCollections instanceof Array &&
+                second.edgeCollections && second.edgeCollections instanceof Array;
     if (first) {
       message.vertexCollections = second.vertexCollections;
       message.edgeCollections = second.edgeCollections;
@@ -49,7 +49,7 @@ let buildMessage = function(algo, second, params) {
       valid = true;
     }
   }
-  
+
   if (params && typeof params === 'object') {
     message.params = params;
   }
@@ -65,7 +65,7 @@ let buildMessage = function(algo, second, params) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new pregel execution
 // //////////////////////////////////////////////////////////////////////////////
-var startExecution = function(algo, second, params) {
+var startExecution = function (algo, second, params) {
   let message = buildMessage(algo, second, params);
   let requestResult = db._connection.POST(API, message);
   arangosh.checkRequestResult(requestResult);

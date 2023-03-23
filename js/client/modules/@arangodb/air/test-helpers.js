@@ -30,7 +30,7 @@ exports.wait_for_pregel = wait_for_pregel;
 exports.compare_pregel = compare_pregel;
 
 /* Some helper functions */
-function compare_pregel(aqlResult) {
+function compare_pregel (aqlResult) {
   const res = aqlResult.toArray();
   if (res.length > 0) {
     internal.print("Test failed.");
@@ -42,7 +42,7 @@ function compare_pregel(aqlResult) {
   return true;
 }
 
-function wait_for_pregel(name, pid) {
+function wait_for_pregel (name, pid) {
   internal.print("  Started: " + name + " - PID: " + pid);
   var waited = 0;
   while (true) {

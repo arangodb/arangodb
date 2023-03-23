@@ -42,10 +42,9 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 
-function subQuerySuite() {
+function subQuerySuite () {
   const gn = 'UnitTestGraph';
   var vc, ec;
   var vertex = {};
@@ -78,23 +77,38 @@ function subQuerySuite() {
       vertex.C = vc.save({_key: 'C'})._id;
       vertex.D = vc.save({_key: 'D'})._id;
 
-      vertex.B1 = vc.save({_key: 'B1', value: 1})._id;
-      vertex.B2 = vc.save({_key: 'B2', value: 2})._id;
-      vertex.B3 = vc.save({_key: 'B3', value: 3})._id;
-      vertex.B4 = vc.save({_key: 'B4', value: 4})._id;
-      vertex.B5 = vc.save({_key: 'B5', value: 5})._id;
+      vertex.B1 = vc.save({_key: 'B1',
+value: 1})._id;
+      vertex.B2 = vc.save({_key: 'B2',
+value: 2})._id;
+      vertex.B3 = vc.save({_key: 'B3',
+value: 3})._id;
+      vertex.B4 = vc.save({_key: 'B4',
+value: 4})._id;
+      vertex.B5 = vc.save({_key: 'B5',
+value: 5})._id;
 
-      vertex.C1 = vc.save({_key: 'C1', value: 1})._id;
-      vertex.C2 = vc.save({_key: 'C2', value: 2})._id;
-      vertex.C3 = vc.save({_key: 'C3', value: 3})._id;
-      vertex.C4 = vc.save({_key: 'C4', value: 4})._id;
-      vertex.C5 = vc.save({_key: 'C5', value: 5})._id;
+      vertex.C1 = vc.save({_key: 'C1',
+value: 1})._id;
+      vertex.C2 = vc.save({_key: 'C2',
+value: 2})._id;
+      vertex.C3 = vc.save({_key: 'C3',
+value: 3})._id;
+      vertex.C4 = vc.save({_key: 'C4',
+value: 4})._id;
+      vertex.C5 = vc.save({_key: 'C5',
+value: 5})._id;
 
-      vertex.D1 = vc.save({_key: 'D1', value: 1})._id;
-      vertex.D2 = vc.save({_key: 'D2', value: 2})._id;
-      vertex.D3 = vc.save({_key: 'D3', value: 3})._id;
-      vertex.D4 = vc.save({_key: 'D4', value: 4})._id;
-      vertex.D5 = vc.save({_key: 'D5', value: 5})._id;
+      vertex.D1 = vc.save({_key: 'D1',
+value: 1})._id;
+      vertex.D2 = vc.save({_key: 'D2',
+value: 2})._id;
+      vertex.D3 = vc.save({_key: 'D3',
+value: 3})._id;
+      vertex.D4 = vc.save({_key: 'D4',
+value: 4})._id;
+      vertex.D5 = vc.save({_key: 'D5',
+value: 5})._id;
 
       ec.save(vertex.A, vertex.B, {});
       ec.save(vertex.A, vertex.C, {});
@@ -135,34 +149,34 @@ function subQuerySuite() {
       // once TraverserCache::clear() got called.
       let query = `WITH ${vn} FOR i IN 1..3 FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key`;
       let result = db._query(query).toArray();
-      assertEqual([ 
-        "B", "B", "B", 
-        "B1", "B1", "B1", 
-        "B2", "B2", "B2", 
-        "B3", "B3", "B3", 
-        "B4", "B4", "B4", 
-        "B5", "B5", "B5", 
-        "C", "C", "C", 
-        "C1", "C1", "C1", 
-        "C2", "C2", "C2", 
-        "C3", "C3", "C3", 
-        "C4", "C4", "C4", 
-        "C5", "C5", "C5", 
-        "D", "D", "D", 
-        "D1", "D1", "D1", 
-        "D2", "D2", "D2", 
-        "D3", "D3", "D3", 
-        "D4", "D4", "D4", 
-        "D5", "D5", "D5" 
+      assertEqual([
+        "B", "B", "B",
+        "B1", "B1", "B1",
+        "B2", "B2", "B2",
+        "B3", "B3", "B3",
+        "B4", "B4", "B4",
+        "B5", "B5", "B5",
+        "C", "C", "C",
+        "C1", "C1", "C1",
+        "C2", "C2", "C2",
+        "C3", "C3", "C3",
+        "C4", "C4", "C4",
+        "C5", "C5", "C5",
+        "D", "D", "D",
+        "D1", "D1", "D1",
+        "D2", "D2", "D2",
+        "D3", "D3", "D3",
+        "D4", "D4", "D4",
+        "D5", "D5", "D5"
       ], result);
-      
+
       // while we are here, try a different query as well
       query = `WITH ${vn} FOR i IN 1..3 LET sub = (FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key) RETURN sub`;
       result = db._query(query).toArray();
-      assertEqual([ 
-        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
-        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
-        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ] 
+      assertEqual([
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ],
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ],
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ]
       ], result);
     },
 

@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false, unused:false */
-/*global assertEqual, assertTrue, assertFalse, assertUndefined */
+/* jshint globalstrict:false, strict:false, unused:false */
+/* global assertEqual, assertTrue, assertFalse, assertUndefined */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief simple queries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lucas Dohmen
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief simple queries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lucas Dohmen
+// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 // Stubbing and Mocking
 
 var stub,
@@ -44,14 +44,14 @@ var stub,
 
 stub = function () {
   'use strict';
-  return function() {};
+  return function () {};
 };
 
 // allow(x)
 //   .toReceive("functionName")
 //   .andReturn({ x: 1 })
 
-FunctionStub = function(obj) {
+FunctionStub = function (obj) {
   'use strict';
   this.obj = obj;
 };
@@ -81,7 +81,7 @@ Object.assign(FunctionStub.prototype, {
   }
 });
 
-allow = function(obj) {
+allow = function (obj) {
   'use strict';
   return (new FunctionStub(obj));
 };
@@ -128,7 +128,7 @@ fakeContext = {
   manifest: {
     rootElement: false
   },
-  collectionName() {}
+  collectionName () {}
 };
 
 fakeContextWithRootElement = {
@@ -137,7 +137,7 @@ fakeContextWithRootElement = {
   manifest: {
     rootElement: true
   },
-  collectionName() {}
+  collectionName () {}
 };
 
 function CreateFoxxControllerSpec () {
@@ -259,7 +259,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.get(2, myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
       assertEqual(error, new Error("URL has to be a String"));
@@ -273,7 +273,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.get(/[a-z]*/, myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
       assertEqual(error, new Error("URL has to be a String"));
@@ -287,7 +287,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.get(["/a", "/b"], myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
       assertEqual(error, new Error("URL has to be a String"));
@@ -315,7 +315,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.login('/simple/route', myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
 
@@ -343,7 +343,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.logout('/simple/route', myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
 
@@ -372,7 +372,7 @@ function SetRoutesFoxxControllerSpec () {
 
       try {
         app.destroySession('/simple/route', myFunc);
-      } catch(e) {
+      } catch (e) {
         error = e;
       }
 
@@ -392,7 +392,9 @@ function ControllerInjectionSpec () {
         res = {},
         timesCalled = 0;
 
-      app.addInjector({thing: function() {timesCalled++;}});
+      app.addInjector({thing: function () {
+timesCalled++;
+}});
 
       app.get('/foxx', function () {});
 
@@ -408,7 +410,9 @@ function ControllerInjectionSpec () {
         res = {},
         timesCalled = 0;
 
-      app.addInjector('thing', function() {timesCalled++;});
+      app.addInjector('thing', function () {
+timesCalled++;
+});
 
       app.get('/foxx', function () {});
 
@@ -425,8 +429,12 @@ function ControllerInjectionSpec () {
         wrongFuncCalled = false,
         timesCalled = 0;
 
-      app.addInjector({thing: function() {wrongFuncCalled = true;}});
-      app.addInjector({thing: function() {timesCalled++;}});
+      app.addInjector({thing: function () {
+wrongFuncCalled = true;
+}});
+      app.addInjector({thing: function () {
+timesCalled++;
+}});
 
       app.get('/foxx', function () {});
 
@@ -445,12 +453,18 @@ function ControllerInjectionSpec () {
         calledB = false,
         calledC = false;
 
-      app.addInjector({thing: function() {calledA = true;}});
+      app.addInjector({thing: function () {
+calledA = true;
+}});
 
       app.get('/foxx', function () {
         app.addInjector({
-          thing: function() {calledB = true;},
-          other: function() {calledC = true;}
+          thing: function () {
+calledB = true;
+},
+          other: function () {
+calledC = true;
+}
         });
       });
 
@@ -469,7 +483,9 @@ function ControllerInjectionSpec () {
         res = {},
         called = false;
 
-      app.addInjector({thing: function() {return 'value';}});
+      app.addInjector({thing: function () {
+return 'value';
+}});
 
       app.get('/foxx', function (req, res, injected) {
         assertEqual(injected.thing, 'value');
@@ -488,7 +504,8 @@ function ControllerInjectionSpec () {
         called = false;
 
       var injectors = {
-        obj: {a: 0, b: 1},
+        obj: {a: 0,
+b: 1},
         arr: ['one', 'two'],
         str: 'hello',
         num: 42
@@ -532,7 +549,7 @@ function DocumentationAndConstraintsSpec () {
     testDefinePathParam: function () {
       var constraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/foxx/:id', function () {
-          //nothing
+          // nothing
         }).pathParam("id", {
           type: constraint
         });
@@ -549,7 +566,7 @@ function DocumentationAndConstraintsSpec () {
     testDefinePathParamShorthand: function () {
       var constraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/foxx/:id', function () {
-          //nothing
+          // nothing
         }).pathParam("id", constraint);
 
       assertEqual(routes.length, 1);
@@ -564,7 +581,7 @@ function DocumentationAndConstraintsSpec () {
     testDefinePathCaseParam: function () {
       var constraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/foxx/:idParam', function () {
-          //nothing
+          // nothing
         }).pathParam("idParam", {
           type: constraint
         });
@@ -582,7 +599,7 @@ function DocumentationAndConstraintsSpec () {
       var foxxConstraint = joi.string().description("Kind of Foxx"),
         idConstraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/:foxx/:id', function () {
-          //nothing
+          // nothing
         }).pathParam("foxx", {
           type: foxxConstraint
         }).pathParam("id", {
@@ -603,14 +620,15 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "integer");
 
-      assertEqual(context.constraints.urlParams, {foxx: foxxConstraint, id: idConstraint});
+      assertEqual(context.constraints.urlParams, {foxx: foxxConstraint,
+id: idConstraint});
     },
 
     testDefineMultiplePathCaseParams: function () {
       var foxxConstraint = joi.string().description("Kind of Foxx"),
         idConstraint = joi.number().integer().description("Id of the Foxx"),
         context = app.get('/:foxxParam/:idParam', function () {
-          //nothing
+          // nothing
         }).pathParam("foxxParam", {
           type: foxxConstraint
         }).pathParam("idParam", {
@@ -631,13 +649,14 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
       assertEqual(routes[0].docs.parameters[1].dataType, "integer");
 
-      assertEqual(context.constraints.urlParams, {foxxParam: foxxConstraint, idParam: idConstraint});
+      assertEqual(context.constraints.urlParams, {foxxParam: foxxConstraint,
+idParam: idConstraint});
     },
 
     testDefineQueryParam: function () {
       var constraint = joi.number().integer().description("The value of an a"),
         context = app.get('/foxx', function () {
-          //nothing
+          // nothing
         }).queryParam("a", {
           type: constraint
         });
@@ -655,7 +674,7 @@ function DocumentationAndConstraintsSpec () {
     testDefineQueryParamWithOverrides: function () {
       var constraint = joi.number().integer(),
         context = app.get('/foxx', function () {
-          //nothing
+          // nothing
         }).queryParam("a", {
           type: constraint,
           description: "The value of an a",
@@ -671,19 +690,19 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].required, true, "param required not equal?");
       assertEqual(routes[0].docs.parameters[0].allowMultiple, true, "allows multiple parameters?");
       assertEqual(context.constraints.queryParams, {
-        a: constraint
-        .description("The value of an a")
-        .meta({allowMultiple: true})
-        .required()
+        a: constraint.
+        description("The value of an a").
+        meta({allowMultiple: true}).
+        required()
       });
     },
 
     testDefineQueryParamShorthand: function () {
-      var constraint = joi.number().integer()
-      .description("The value of an a")
-      .meta({allowMultiple: true}),
+      var constraint = joi.number().integer().
+      description("The value of an a").
+      meta({allowMultiple: true}),
         context = app.get('/foxx', function () {
-          //nothing
+          // nothing
         }).queryParam("a", constraint);
 
       assertEqual(routes.length, 1);
@@ -700,14 +719,15 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { required: [], properties: {} };
+        jsonSchema = { required: [],
+properties: {} };
 
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
+      allow(ModelPrototype).
+        toReceive("toJSONSchema").
+        andReturn(jsonSchema);
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).bodyParam(paramName, {
         description: description,
         type: ModelPrototype
@@ -725,14 +745,15 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { required: [], properties: {} };
+        jsonSchema = { required: [],
+properties: {} };
 
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
+      allow(ModelPrototype).
+        toReceive("toJSONSchema").
+        andReturn(jsonSchema);
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).bodyParam(paramName, {
         description: description,
         type: [ModelPrototype]
@@ -750,14 +771,15 @@ function DocumentationAndConstraintsSpec () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { required: [], properties: {} };
+        jsonSchema = { required: [],
+properties: {} };
 
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
+      allow(ModelPrototype).
+        toReceive("toJSONSchema").
+        andReturn(jsonSchema);
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).bodyParam(paramName, {
         description: description,
         type: ModelPrototype
@@ -777,12 +799,14 @@ function DocumentationAndConstraintsSpec () {
         jsonSchemaId = stub(),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       ModelPrototype = mockConstructor(requestBody);
-      ModelPrototype.toJSONSchema = function () { return { }; };
+      ModelPrototype.toJSONSchema = function () {
+ return { };
+};
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);
@@ -806,9 +830,9 @@ function DocumentationAndConstraintsSpec () {
         schema = {x: joi.number().integer().required()},
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], {x: 1});
@@ -828,18 +852,20 @@ function DocumentationAndConstraintsSpec () {
         res = {},
         paramName = 'flurb',
         description = stub(),
-        requestBody = {x: 1, y: 2},
+        requestBody = {x: 1,
+y: 2},
         schema = {x: joi.number().integer().required()},
         called = false;
 
       schema = joi.object().keys(schema).options({allowUnknown: true});
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
-        called = _.isEqual(providedReq.parameters[paramName], {x: 1, y: 2});
+        called = _.isEqual(providedReq.parameters[paramName], {x: 1,
+y: 2});
       }).bodyParam(paramName, {
         description: description,
         type: schema
@@ -856,15 +882,16 @@ function DocumentationAndConstraintsSpec () {
         res = {},
         paramName = 'flurb',
         description = stub(),
-        requestBody = {x: 1, y: 2},
+        requestBody = {x: 1,
+y: 2},
         schema = {x: joi.number().integer().required()},
         called = false;
 
       schema = joi.object().keys(schema).options({allowUnknown: false});
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = true;
@@ -889,9 +916,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.object().keys({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], {x: 1});
@@ -915,9 +942,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.object().keys({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], {x: 1});
@@ -938,9 +965,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], [{x: 1}]);
@@ -964,9 +991,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], 'banana');
@@ -991,9 +1018,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function (providedReq) {
         called = _.isEqual(providedReq.parameters[paramName], 'banana');
@@ -1017,9 +1044,9 @@ function DocumentationAndConstraintsSpec () {
         schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       app.get('/foxx', function () {
         called = true;
@@ -1039,8 +1066,12 @@ function DocumentationAndConstraintsSpec () {
       var reqBody = '{"foo": "bar"}',
         req = {
           parameters: {},
-          body: function () { return JSON.parse(this.rawBody()); },
-          rawBody: function () { return reqBody; }
+          body: function () {
+ return JSON.parse(this.rawBody());
+},
+          rawBody: function () {
+ return reqBody;
+}
         },
         res = {},
         receivedParam = false,
@@ -1063,8 +1094,12 @@ function DocumentationAndConstraintsSpec () {
       var reqBody = '{:foo "bar"}',
         req = {
           parameters: {},
-          body: function () { return JSON.parse(this.rawBody()); },
-          rawBody: function () { return reqBody; }
+          body: function () {
+ return JSON.parse(this.rawBody());
+},
+          rawBody: function () {
+ return reqBody;
+}
         },
         res = {},
         receivedParam = false,
@@ -1094,12 +1129,14 @@ function DocumentationAndConstraintsSpec () {
         jsonSchemaId = stub(),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       ModelPrototype = mockConstructor(rawElement);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+      ModelPrototype.toJSONSchema = function () {
+ return { id: jsonSchemaId };
+};
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
@@ -1119,7 +1156,7 @@ function DocumentationAndConstraintsSpec () {
       var CustomErrorClass = function () {};
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
       assertEqual(routes.length, 1);
@@ -1197,7 +1234,7 @@ function DocumentationAndConstraintsSpec () {
       app.allRoutes.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       });
 
       assertEqual(routes.length, 1);
@@ -1218,7 +1255,9 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { var a = (req > res); },
+      var myFunc = function (req, res) {
+ var a = (req > res);
+},
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1233,7 +1272,9 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { var a = (req > res); },
+      var myFunc = function (req, res) {
+ var a = (req > res);
+},
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1248,7 +1289,9 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { var a = (req > res); },
+      var myFunc = function (req, res) {
+ var a = (req > res);
+},
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1263,7 +1306,9 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { var a = (req > res); },
+      var myFunc = function (req, res) {
+ var a = (req > res);
+},
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1291,15 +1336,15 @@ function CommentDrivenDocumentationSpec () {
     },
 
     testSettingTheSummary: function () {
-      app.get('/simple/route', noop)
-      .summary('Get all the foxes');
+      app.get('/simple/route', noop).
+      summary('Get all the foxes');
 
       assertEqual(routingInfo.routes[0].docs.summary, 'Get all the foxes');
     },
 
     testSettingTheNotes: function () {
-      app.get('/simple/route', noop)
-      .notes('A function to get all foxes from the database\nin a good way.');
+      app.get('/simple/route', noop).
+      notes('A function to get all foxes from the database\nin a good way.');
 
       assertEqual(routingInfo.routes[0].docs.notes, "A function to get all foxes from the database\nin a good way.");
     }
@@ -1488,12 +1533,14 @@ function FoxxControllerWithRootElement () {
         jsonSchemaId = stub(),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       ModelPrototype = mockConstructor(rawElement);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+      ModelPrototype.toJSONSchema = function () {
+ return { id: jsonSchemaId };
+};
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);
@@ -1520,12 +1567,14 @@ function FoxxControllerWithRootElement () {
         jsonSchemaId = stub(),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       ModelPrototype = mockConstructor(rawElement);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+      ModelPrototype.toJSONSchema = function () {
+ return { id: jsonSchemaId };
+};
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
@@ -1553,17 +1602,19 @@ function ExtendFoxxControllerSpec () {
       routes = app.routingInfo.routes;
     },
 
-    testDocumentationBodyParameterInExtension: function() {
+    testDocumentationBodyParameterInExtension: function () {
       var paramName = stub(),
         description = stub(),
         ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
+        jsonSchema = { id: 'a',
+required: [],
+properties: {} };
+      allow(ModelPrototype).
+        toReceive("toJSONSchema").
+        andReturn(jsonSchema);
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.bodyParam(paramName, {
             description: description,
             type: ModelPrototype
@@ -1572,7 +1623,7 @@ function ExtendFoxxControllerSpec () {
       });
 
       app.get("/foxx", function () {
-        //nothing
+        // nothing
       }).extension();
 
       assertEqual(routes.length, 1);
@@ -1583,7 +1634,7 @@ function ExtendFoxxControllerSpec () {
       assertEqual(app.models[token], jsonSchema);
     },
 
-    testFunctionalityBodyParameterInExtension: function() {
+    testFunctionalityBodyParameterInExtension: function () {
       var req = { parameters: {} },
         res = {},
         paramName = stub(),
@@ -1593,15 +1644,17 @@ function ExtendFoxxControllerSpec () {
         jsonSchemaId = stub(),
         called = false;
 
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
+      allow(req).
+        toReceive("body").
+        andReturn(requestBody);
 
       ModelPrototype = mockConstructor(requestBody);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+      ModelPrototype.toJSONSchema = function () {
+ return { id: jsonSchemaId };
+};
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.bodyParam(paramName, {
             description: description,
             type: ModelPrototype
@@ -1620,12 +1673,12 @@ function ExtendFoxxControllerSpec () {
       ModelPrototype.assertIsSatisfied();
     },
 
-    testPathParameterInExtension: function() {
+    testPathParameterInExtension: function () {
       var constraint = joi.number().integer().description("Id of the Foxx"),
           context;
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.pathParam("id", {
             type: constraint
           });
@@ -1633,7 +1686,7 @@ function ExtendFoxxControllerSpec () {
       });
 
       context = app.get('/foxx/:id', function () {
-        //nothing
+        // nothing
       }).extension();
 
       assertEqual(routes.length, 1);
@@ -1650,7 +1703,7 @@ function ExtendFoxxControllerSpec () {
       context;
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
             this.queryParam("a", {
             type: constraint
           });
@@ -1658,7 +1711,7 @@ function ExtendFoxxControllerSpec () {
       });
 
       context = app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).extension();
 
       assertEqual(routes.length, 1);
@@ -1675,13 +1728,13 @@ function ExtendFoxxControllerSpec () {
       var CustomErrorClass = function () {};
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
         }
       });
 
       app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).extension();
 
       assertEqual(routes.length, 1);
@@ -1710,7 +1763,7 @@ function ExtendFoxxControllerSpec () {
       };
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.errorResponse(CustomErrorClass, code, reason);
         }
       });
@@ -1721,7 +1774,7 @@ function ExtendFoxxControllerSpec () {
         }
         throw new CustomErrorClass();
       }).extension();
-      
+
       var callback = transformRoute(routes[0].action);
       callback(req, res);
 
@@ -1735,7 +1788,7 @@ function ExtendFoxxControllerSpec () {
       context;
 
       app.extend({
-        "extension": function() {
+        "extension": function () {
           this.queryParam("a", {
             type: constraint
           });
@@ -1743,22 +1796,24 @@ function ExtendFoxxControllerSpec () {
       });
 
       context = app.get('/foxx', function () {
-        //nothing
-      }).extension()
-      .queryParam("b", {
+        // nothing
+      }).extension().
+      queryParam("b", {
         type: constraint
       });
 
-      assertEqual(context.constraints.queryParams, {a: constraint, b: constraint});
+      assertEqual(context.constraints.queryParams, {a: constraint,
+b: constraint});
       context = app.get('/foxx2', function () {
-        //nothing
-      })
-      .queryParam("b", {
+        // nothing
+      }).
+      queryParam("b", {
         type: constraint
-      })
-      .extension();
+      }).
+      extension();
 
-      assertEqual(context.constraints.queryParams, {a: constraint, b: constraint});
+      assertEqual(context.constraints.queryParams, {a: constraint,
+b: constraint});
     },
 
     testExtensionUsingParams: function () {
@@ -1766,7 +1821,7 @@ function ExtendFoxxControllerSpec () {
       context;
 
       app.extend({
-        "extension": function(name, type) {
+        "extension": function (name, type) {
           this.queryParam(name, {
             type: type
           });
@@ -1774,7 +1829,7 @@ function ExtendFoxxControllerSpec () {
       });
 
       context = app.get('/foxx', function () {
-        //nothing
+        // nothing
       }).extension("a", constraint);
 
       assertEqual(context.constraints.queryParams, {a: constraint});
@@ -1786,7 +1841,7 @@ function ExtendFoxxControllerSpec () {
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);
-//jsunity.run(LegacyDocumentationAndConstraintsSpec);
+// jsunity.run(LegacyDocumentationAndConstraintsSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);

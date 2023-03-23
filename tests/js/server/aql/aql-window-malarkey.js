@@ -1,27 +1,27 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Simon Grätzer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Simon Grätzer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -32,7 +32,7 @@ const cluster = require('@arangodb/cluster');
 const isCoordinator = cluster.isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
 
-function checkQueryError(query, message, errorCode) {
+function checkQueryError (query, message, errorCode) {
   if (errorCode === undefined) {
     errorCode = errors.ERROR_QUERY_PARSE.code;
   }
@@ -48,20 +48,20 @@ function checkQueryError(query, message, errorCode) {
   }
 }
 
-function checkQueryExplainOutput(query, part) {
+function checkQueryExplainOutput (query, part) {
   const output = explainer.explain(query, {colors: false}, false);
   assertTrue(output.includes(part),
     "query explain output did not contain expected part \"" + part + "\". Output:\n" + output);
 }
 
-function WindowTestSuite() {
+function WindowTestSuite () {
 
   const collection = "WindowTestCollection";
   return {
     setUpAll: function () {
       db._create(collection, { numberOfShards: 4 });
     },
-    
+
     tearDownAll: function () {
       db._drop(collection);
     },
@@ -73,21 +73,21 @@ function WindowTestSuite() {
         RETURN av
       `;
       checkQueryExplainOutput(query, "WINDOW { preceding: 1, following: 1 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW {preceding: 1} AGGREGATE av = AVG(doc.value)
         RETURN av
       `;
       checkQueryExplainOutput(query, "WINDOW { preceding: 1, following: 0 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW {following: 1} AGGREGATE av = AVG(doc.value)
         RETURN av
       `;
       checkQueryExplainOutput(query, "WINDOW { preceding: 0, following: 1 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW {preceding: "unbounded", following: 1} AGGREGATE av = AVG(doc.value)
@@ -95,7 +95,7 @@ function WindowTestSuite() {
       `;
       checkQueryExplainOutput(query, "WINDOW { preceding: \"unbounded\", following: 1 }");
     },
-    
+
     testVerifyRowBasedBoundAttributesOnlySpecifiedOnce: function () {
       let query = `
       FOR doc IN ${collection}
@@ -103,8 +103,8 @@ function WindowTestSuite() {
         RETURN av
       `;
       checkQueryError(query, "WINDOW attribute 'following' is specified multiple times");
-    }, 
-    
+    },
+
     testVerifyRowBasedInvalidBoundAttributes: function () {
       let query = `
       FOR doc IN ${collection}
@@ -113,7 +113,7 @@ function WindowTestSuite() {
       `;
       checkQueryError(query, `Invalid WINDOW attribute 'folowing'; only "preceding" and "following" are supported`);
     },
-    
+
     testVerifyRowBasedAtLeastOneBoundAttributeSpecified: function () {
       let query = `
       FOR doc IN ${collection}
@@ -121,7 +121,7 @@ function WindowTestSuite() {
         RETURN av`;
       checkQueryError(query, "At least one WINDOW bound must be specified ('preceding'/'following')");
     },
-    
+
     testVerifyRowBasedBoundAttributeMustBeIntegerOrUnbounded: function () {
       let queries = [
         `FOR doc IN ${collection}
@@ -137,47 +137,47 @@ function WindowTestSuite() {
           errors.ERROR_BAD_PARAMETER.code);
       }
     },
-    
+
     testExplainRangeBased: function () {
       let query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {preceding: 1, following: 1} AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 1, following: 1 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {preceding: 1} AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 1, following: 0 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {following: 1} AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: 0, following: 1 }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {preceding: "P1Y2DT3H4.05S", following: "P1M2WT3M"} AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"P1Y2DT3H4.050S\", following: \"P1M2WT3M\" }");
-      
+
       query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {preceding: "P0Y0M0DT0H0M5.0S" } AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryExplainOutput(query, "WINDOW #2 WITH { preceding: \"PT5S\", following: \"P0D\" }");
     },
-    
+
     testVerifyRangeBasedBoundAttributesOnlySpecifiedOnce: function () {
       let query = `
       FOR doc IN ${collection}
         WINDOW doc.value WITH {preceding: 1, following: 1, following: 2} AGGREGATE av = AVG(doc.value)
         RETURN av`;
       checkQueryError(query, "WINDOW attribute 'following' is specified multiple times");
-    }, 
-    
+    },
+
     testVerifyRangeBasedInvalidBoundAttributes: function () {
       let query = `
       FOR doc IN ${collection}
@@ -185,7 +185,7 @@ function WindowTestSuite() {
         RETURN av`;
       checkQueryError(query, `Invalid WINDOW attribute 'folowing'; only "preceding" and "following" are supported`);
     },
-    
+
     testVerifyRangeBasedAtLeastOneBoundAttributeSpecified: function () {
       let query = `
       FOR doc IN ${collection}
@@ -193,7 +193,7 @@ function WindowTestSuite() {
         RETURN av`;
       checkQueryError(query, "At least one WINDOW bound must be specified ('preceding'/'following')");
     },
-    
+
     testVerifyRangeBasedBoundAttributesHaveSameType: function () {
       let query = `
       FOR doc IN ${collection}
@@ -204,7 +204,7 @@ function WindowTestSuite() {
         "either both are numeric values, or both are ISO 8601 duration strings",
         errors.ERROR_BAD_PARAMETER.code);
     },
-    
+
     testVerifyRangeBasedBoundAttributeInvalidISO8601: function () {
       let query = `
       FOR doc IN ${collection}
@@ -214,7 +214,7 @@ function WindowTestSuite() {
         "WINDOW range spec is invalid; 'preceding' is not a valid ISO 8601 duration string",
         errors.ERROR_BAD_PARAMETER.code);
     },
-    
+
     testFilterNotMovedBeyondWindow: function () {
       let query = `
       FOR t IN ${collection}
@@ -239,8 +239,8 @@ function WindowTestSuite() {
         assertEqual(nodes[11].type, "FilterNode");
       }
     },
-    
-    testCountWithoutArgument: function() {
+
+    testCountWithoutArgument: function () {
       // regression test because we previously had a nullptr access since we did not
       // correctly handle aggregate functions without any arguments
       const result = db._query(`
@@ -251,21 +251,21 @@ function WindowTestSuite() {
       assertEqual([1, 2, 2, 2], result);
     },
 
-    testWindowAggregateNoArgumentsExecute : function () {
+    testWindowAggregateNoArgumentsExecute: function () {
       let res = db._query("FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1").toArray();
       assertEqual(res.length, 0);
     },
 
-    testWindowAggregateNoArgumentsExplain : function () {
+    testWindowAggregateNoArgumentsExplain: function () {
       let res = AQL_EXPLAIN("FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1");
       const nodes = res.plan.nodes;
       assertTrue(nodes.length > 0);
-    },
+    }
 
   };
 }
 
-function WindowMalarkeyTestSuite() {
+function WindowMalarkeyTestSuite () {
 
   const cname1 = "WindowTestCollection1";
   const cname2 = "WindowTestCollection2";
@@ -281,7 +281,7 @@ function WindowMalarkeyTestSuite() {
       }
       c1.insert(docs);
     },
-    
+
     tearDown: function () {
       db._drop(cname1);
       db._drop(cname2);
@@ -308,19 +308,37 @@ function WindowMalarkeyTestSuite() {
 
       let results = db._query(query).toArray();
       const expected = [
-        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:00:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:15:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:30:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "07:45:00", "rollingAverage" : null, "rollingSum" : null }, 
-        { "time" : "08:00:00", "rollingAverage" : null, "rollingSum" : null } 
+        { "time": "07:00:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:00:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:15:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:15:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:30:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:30:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:45:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "07:45:00",
+"rollingAverage": null,
+"rollingSum": null },
+        { "time": "08:00:00",
+"rollingAverage": null,
+"rollingSum": null }
       ];
       assertEqual(results, expected);
     },
-    
+
     testResultsInsertAfterRow: function () {
       const q = `
       FOR doc IN @@input 
@@ -328,7 +346,8 @@ function WindowMalarkeyTestSuite() {
         WINDOW {preceding: 1, following: 1} AGGREGATE rolling_sum = SUM(doc.value), av = AVG(doc.value), l = LENGTH(doc)
         INSERT {value: doc.value, sum: rolling_sum, avg: av, len: l} into @@output
       `;
-      db._query(q, { '@input': cname1, '@output': cname2 });
+      db._query(q, { '@input': cname1,
+'@output': cname2 });
       assertEqual(c1.count(), c2.count());
       let count = c1.count();
       c2.toArray().forEach(doc => {
@@ -344,7 +363,8 @@ function WindowMalarkeyTestSuite() {
         WINDOW doc.value WITH {preceding: 1, following: 1} AGGREGATE rolling_sum = SUM(doc.value), av = AVG(doc.value), l = LENGTH(doc)
         INSERT {value: doc.value, sum: rolling_sum, avg: av, len: l} into @@output
       `;
-      db._query(q, { '@input': cname1, '@output': cname2 });
+      db._query(q, { '@input': cname1,
+'@output': cname2 });
       assertEqual(c1.count(), c2.count());
       let count = c1.count();
       c2.toArray().forEach(doc => {
@@ -394,7 +414,8 @@ function WindowMalarkeyTestSuite() {
       `;
       let didThrow = false;
       try {
-        db._query(q, { '@input': cname1, '@output': cname2 });
+        db._query(q, { '@input': cname1,
+'@output': cname2 });
       } catch (err) {
         didThrow = true;
         assertEqual(errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
@@ -434,11 +455,11 @@ function WindowMalarkeyTestSuite() {
         assertEqual(errors.ERROR_QUERY_WINDOW_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertTrue(didThrow);
-    },
+    }
   };
 }
 
-function WindowDateRangeTestSuite() {
+function WindowDateRangeTestSuite () {
 
   const cname = "WindowTestCollection1";
   let c = null;
@@ -455,7 +476,7 @@ function WindowDateRangeTestSuite() {
              length: l, time: doc.time, idx: doc.idx} 
   `;
 
-  function runDurationTest() {
+  function runDurationTest () {
     let intervals = [["P1D", "P2D"],
     ["P2M15DT6H30.33S", "P1M3WT10H"],
     ["P4M3D", "P1Y1M3D"],
@@ -465,24 +486,32 @@ function WindowDateRangeTestSuite() {
     ["P2M15D", "P1Y1MT10M"]];
 
     intervals.forEach(pair => {
-      let cursor = db._query(q, { '@cc': cname, preceding: pair[0], following: pair[1] });
+      let cursor = db._query(q, { '@cc': cname,
+preceding: pair[0],
+following: pair[1] });
       assertEqual(cursor.count(), c.count());
       while (cursor.hasNext()) {
         let row = cursor.next();
 
         // considered rows are all within the specified duration
         let l = db._query("RETURN DATE_DIFF(DATE_SUBTRACT(@row, @duration), @other, 'f')",
-          { row: row.time, duration: pair[0], other: row.minTime }).toArray()[0];
+          { row: row.time,
+duration: pair[0],
+other: row.minTime }).toArray()[0];
 
         assertTrue(l >= 0);
 
         l = db._query("RETURN DATE_DIFF(@other, DATE_ADD(@row, @duration), 'f')",
-          { row: row.time, duration: pair[1], other: row.maxTime }).toArray()[0];
+          { row: row.time,
+duration: pair[1],
+other: row.maxTime }).toArray()[0];
 
         assertTrue(l >= 0);
 
         let diffHours = db._query("RETURN DATE_DIFF(DATE_SUBTRACT(@row, @preceding), DATE_ADD(@row, @following), 'h')",
-          { row: row.time, preceding: pair[0], following: pair[1] }).toArray()[0];
+          { row: row.time,
+preceding: pair[0],
+following: pair[1] }).toArray()[0];
 
         assertTrue(row.length <= diffHours, row);
 
@@ -533,7 +562,9 @@ function WindowDateRangeTestSuite() {
             // pick a time of day
             date.setHours(y - startYear + 2, m, d, 100);
 
-            docs.push({ _key: keyPref + i, idx: i, time: date.valueOf() });
+            docs.push({ _key: keyPref + i,
+idx: i,
+time: date.valueOf() });
             i++;
 
           }
@@ -547,7 +578,9 @@ function WindowDateRangeTestSuite() {
     },
 
     testDateRanges: function () {
-      let actual = AQL_EXPLAIN(q, { '@cc': cname, preceding: "P1D", following: "P1D" });
+      let actual = AQL_EXPLAIN(q, { '@cc': cname,
+preceding: "P1D",
+following: "P1D" });
       let nodes = actual.plan.nodes;
 
       let sortNodes = nodes.filter(n => n.type === "SortNode");
@@ -561,9 +594,12 @@ function WindowDateRangeTestSuite() {
     testDateRangesWithIndex: function () {
 
       // add sorted index on time
-      c.ensureIndex({ type: 'skiplist', fields: ['time'] });
+      c.ensureIndex({ type: 'skiplist',
+fields: ['time'] });
 
-      let actual = AQL_EXPLAIN(q, { '@cc': cname, preceding: "P1D", following: "P1D" });
+      let actual = AQL_EXPLAIN(q, { '@cc': cname,
+preceding: "P1D",
+following: "P1D" });
       let nodes = actual.plan.nodes;
 
       let sortNodes = nodes.filter(n => n.type === "SortNode");
@@ -574,7 +610,7 @@ function WindowDateRangeTestSuite() {
   };
 }
 
-function WindowHappyTestSuite() {
+function WindowHappyTestSuite () {
 
   const gm = require('@arangodb/general-graph');
   const vn = 'UnitTestVertexCollection';
@@ -590,9 +626,9 @@ function WindowHappyTestSuite() {
       db._drop(en);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test window with traversal
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test window with traversal
+    // //////////////////////////////////////////////////////////////////////////////
 
     testWindowAndTraversal: function () {
 
@@ -606,11 +642,16 @@ function WindowHappyTestSuite() {
 
       gm._create(gn, [gm._relation(en, vn, vn)]);
 
-      var start = vc.save({ _key: 's', value: 0 })._id;
-      var a = vc.save({ _key: 'a', value: 2 })._id;
-      var b = vc.save({ _key: 'b', value: 3 })._id;
-      var c = vc.save({ _key: 'c', value: 4 })._id;
-      var d = vc.save({ _key: 'd', value: 5 })._id;
+      var start = vc.save({ _key: 's',
+value: 0 })._id;
+      var a = vc.save({ _key: 'a',
+value: 2 })._id;
+      var b = vc.save({ _key: 'b',
+value: 3 })._id;
+      var c = vc.save({ _key: 'c',
+value: 4 })._id;
+      var d = vc.save({ _key: 'd',
+value: 5 })._id;
       ec.save(start, a, {});
       ec.save(a, b, {});
       ec.save(b, c, {});
@@ -654,19 +695,18 @@ function WindowHappyTestSuite() {
       assertEqual(cursor[12].length, 13);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test copying of subquery results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test copying of subquery results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testWindowInSubquery: function () {
       var expected = [[[], [], []]];
       for (var i = 1; i <= 100; ++i) {
         if (i < 50) {
           expected[0][0].push(i);
-        }
-        else {
+        } else {
           expected[0][1].push(i);
-          let sum = ((i > 51) ? i - 2 : 0) + ((i > 50) ? i - 1 : 0) + i + (i < 100 ? i + 1 : 0) + + (i < 99 ? i + 2 : 0);
+          let sum = ((i > 51) ? i - 2 : 0) + ((i > 50) ? i - 1 : 0) + i + (i < 100 ? i + 1 : 0) + +(i < 99 ? i + 2 : 0);
           expected[0][2].push(sum);
         }
       }
@@ -681,9 +721,9 @@ function WindowHappyTestSuite() {
       assertEqual(expected, db._query(q).toArray());
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // testOneShardDBAndSpliceSubquery
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
 
     testWindowAndSubqueryInOneShardDB: function () {
       const dbName = "SingleShardDB";
@@ -729,9 +769,9 @@ function WindowHappyTestSuite() {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
-    },
+    }
   };
-};
+}
 
 jsunity.run(WindowTestSuite);
 jsunity.run(WindowMalarkeyTestSuite);

@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test synchronous replication in the cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test synchronous replication in the cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const fs = require('fs');
@@ -35,14 +35,14 @@ function SynchronousReplicationFailLeaderSuite () {
   const suite = internal.load(fs.join(internal.pathForTesting('server'), 'resilience', 'failover', 'resilience-synchronous-repl-cluster.inc'));
 
   return {
-    setUp : suite.setUp,
-    tearDown : suite.tearDown,
+    setUp: suite.setUp,
+    tearDown: suite.tearDown,
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check with failures:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a standard check with failures:
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFailureLeader : function () {
+    testBasicOperationsFailureLeader: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
       suite.failLeader();
       suite.runBasicOperations({}, {});
@@ -50,208 +50,244 @@ function SynchronousReplicationFailLeaderSuite () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail1 : function () {
+    testBasicOperationsLeaderFail1: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:1, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 1,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 2
-////////////////////////////////////////////////////////////////////////////////
-    testBasicOperationsLeaderFail2 : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 2
+// //////////////////////////////////////////////////////////////////////////////
+    testBasicOperationsLeaderFail2: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:2, follower: false},
-                         {place:18, follower: false});
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 3
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail3 : function () {
-      assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:3, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 2,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 4
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 3
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail4 : function () {
+    testBasicOperationsLeaderFail3: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:4, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 3,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 5
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 4
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail5 : function () {
+    testBasicOperationsLeaderFail4: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:5, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 4,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 6
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 5
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail6 : function () {
+    testBasicOperationsLeaderFail5: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:6, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 5,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 7
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 6
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail7 : function () {
+    testBasicOperationsLeaderFail6: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:7, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 6,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 8
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 7
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail8 : function () {
+    testBasicOperationsLeaderFail7: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:8, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 7,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 9
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 8
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail9 : function () {
+    testBasicOperationsLeaderFail8: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:9, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 8,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 10
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 9
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail10 : function () {
+    testBasicOperationsLeaderFail9: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:10, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 9,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 11
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 10
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail11 : function () {
+    testBasicOperationsLeaderFail10: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:11, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 10,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 12
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 11
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail12 : function () {
+    testBasicOperationsLeaderFail11: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:12, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 11,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 13
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 12
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail13 : function () {
+    testBasicOperationsLeaderFail12: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:13, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 12,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 14
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 13
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail14 : function () {
+    testBasicOperationsLeaderFail13: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:14, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 13,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 15
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 14
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail15 : function () {
+    testBasicOperationsLeaderFail14: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:15, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 14,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 16
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 15
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail16 : function () {
+    testBasicOperationsLeaderFail15: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:16, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 15,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 17
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 16
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail17 : function () {
+    testBasicOperationsLeaderFail16: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:17, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 16,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 18
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 17
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail18 : function () {
+    testBasicOperationsLeaderFail17: function () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
-      suite.runBasicOperations({place:18, follower: false},
-                         {place:18, follower: false});
+      suite.runBasicOperations({place: 17,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(suite.waitForSynchronousReplication("_system"));
     },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 18
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail18: function () {
+      assertTrue(suite.waitForSynchronousReplication("_system"));
+      suite.runBasicOperations({place: 18,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(suite.waitForSynchronousReplication("_system"));
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(SynchronousReplicationFailLeaderSuite);
 

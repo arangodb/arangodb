@@ -22,7 +22,7 @@
 // / limitations under the License.
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// / 
+// /
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -39,13 +39,13 @@ function runSetup () {
 
   // write a documents with a large numeric key
   db._drop('UnitTestsRecovery1');
-  c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'traditional'} } );
+  c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'traditional'} });
   c.save({ _key: String(bigNumber) });
   for (let i = 0; i < 10000; i++) { // fill up the WAL
     c.save({some: 'valuexxxxxxxxxxxxx'});
   }
 
-  // write to other collection 
+  // write to other collection
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
   c.save({ value: 0 });

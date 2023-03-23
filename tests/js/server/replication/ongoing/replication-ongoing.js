@@ -168,8 +168,8 @@ const compare = function (leaderFunc, leaderFunc2, followerFuncOngoing, follower
   }
 };
 
-const checkCountConsistency = function(cn, expected) {
-  let check = function() {
+const checkCountConsistency = function (cn, expected) {
+  let check = function () {
     db._flushCache();
     let c = db[cn];
     let figures = c.figures(true).engine;
@@ -223,7 +223,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testStatsInsertUpdate: function () {
       connectToLeader();
 
@@ -253,12 +253,12 @@ function BaseTestConfig () {
           assertTrue(s.totalFetchTime > 0);
           assertTrue(s.totalApplyTime > 0);
           assertTrue(s.averageApplyTime > 0);
-  
+
           checkCountConsistency(cn, 1000);
         }
       );
     },
-    
+
     testStatsRemove: function () {
       connectToLeader();
 
@@ -369,7 +369,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testInsertRemoveInsert: function () {
       connectToLeader();
 
@@ -379,10 +379,12 @@ function BaseTestConfig () {
         },
         function (state) {
           for (let i = 0; i < 1000; ++i) {
-            db._collection(cn).insert({ _key: "test" + i, value: i });
+            db._collection(cn).insert({ _key: "test" + i,
+value: i });
             db._collection(cn).update("test" + i, { value: i + 1 });
             db._collection(cn).remove("test" + i);
-            db._collection(cn).insert({ _key: "test" + i, value: 42 + i });
+            db._collection(cn).insert({ _key: "test" + i,
+value: 42 + i });
           }
           internal.wal.flush(true, true);
         },
@@ -396,7 +398,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testInsertRemoveTransaction: function () {
       connectToLeader();
 
@@ -414,10 +416,12 @@ function BaseTestConfig () {
 
           const tc = trx.collection(cn);
           for (let i = 0; i < 1000; ++i) {
-            tc.insert({ _key: "test" + i, value: i });
+            tc.insert({ _key: "test" + i,
+value: i });
             tc.update("test" + i, { value: i + 1 });
             tc.remove("test" + i);
-            tc.insert({ _key: "test" + i, value: 42 + i });
+            tc.insert({ _key: "test" + i,
+value: 42 + i });
           }
           trx.commit();
           internal.wal.flush(true, true);
@@ -432,7 +436,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test duplicate _key issue and replacement
     // //////////////////////////////////////////////////////////////////////////////
@@ -453,7 +457,7 @@ function BaseTestConfig () {
             _key: 'boom',
             who: 'follower'
           }, {waitForSync: true});
-          console.warn("leader state:", replication.logger.state().state);  
+          console.warn("leader state:", replication.logger.state().state);
           assertEqual('follower', db[cn].document('boom').who);
 
           connectToLeader();
@@ -476,36 +480,39 @@ function BaseTestConfig () {
       );
     },
 
-    testPrimaryKeyConflictInTransaction: function() {
+    testPrimaryKeyConflictInTransaction: function () {
       connectToLeader();
 
       compare(
-        function(state) {
+        function (state) {
           db._drop(cn);
           db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           // insert same record on follower that we will insert on the leader
           connectToFollower();
-          db[cn].insert({ _key: "boom", who: "follower" });
+          db[cn].insert({ _key: "boom",
+who: "follower" });
           connectToLeader();
-          db._executeTransaction({ 
+          db._executeTransaction({
             collections: { write: cn },
-            action: function(params) {
+            action: function (params) {
               let db = require("internal").db;
-              db[params.cn].insert({ _key: "meow", foo: "bar" });
-              db[params.cn].insert({ _key: "boom", who: "leader" }, {waitForSync: true});
+              db[params.cn].insert({ _key: "meow",
+foo: "bar" });
+              db[params.cn].insert({ _key: "boom",
+who: "leader" }, {waitForSync: true});
             },
             params: { cn }
           });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertEqual(2, db[cn].count());
           assertEqual("bar", db[cn].document("meow").foo);
           // leader document version must have won
@@ -561,44 +568,49 @@ function BaseTestConfig () {
       );
     },
 
-    testSecondaryKeyConflictInTransaction: function() {
+    testSecondaryKeyConflictInTransaction: function () {
       connectToLeader();
 
       compare(
-        function(state) {
+        function (state) {
           db._drop(cn);
           db._create(cn);
-          db[cn].ensureIndex({ type: "hash", fields: ["value"], unique: true });
+          db[cn].ensureIndex({ type: "hash",
+fields: ["value"],
+unique: true });
         },
 
-        function(state) {
+        function (state) {
           // insert same record on follower that we will insert on the leader
           connectToFollower();
-          db[cn].insert({ _key: "follower", value: "one" });
+          db[cn].insert({ _key: "follower",
+value: "one" });
           connectToLeader();
-          db._executeTransaction({ 
+          db._executeTransaction({
             collections: { write: cn },
-            action: function(params) {
+            action: function (params) {
               let db = require("internal").db;
-              db[params.cn].insert({ _key: "meow", value: "abc" });
-              db[params.cn].insert({ _key: "leader", value: "one" });
+              db[params.cn].insert({ _key: "meow",
+value: "abc" });
+              db[params.cn].insert({ _key: "leader",
+value: "one" });
             },
             params: { cn }
           });
         },
 
-        function(state) {
+        function (state) {
           return true;
         },
 
-        function(state) {
+        function (state) {
           assertEqual(2, db[cn].count());
           assertEqual("abc", db[cn].document("meow").value);
 
           assertNull(db[cn].firstExample({ _key: "follower" }));
           assertNotNull(db[cn].firstExample({ _key: "leader" }));
           let docs = db[cn].toArray();
-          docs.sort(function(l, r) { 
+          docs.sort(function (l, r) {
             if (l._key !== r._key) {
               return l._key < r._key ? -1 : 1;
             }
@@ -1104,7 +1116,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testSearchAliasWithLinks: function () {
       connectToLeader();
       const idxName = "inverted_idx";
@@ -1112,16 +1124,19 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let idx = c.ensureIndex({ type: "inverted",
+name: idxName,
+fields: [ { name: "value" } ] });
           let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {
             indexes: [
               {
                 collection: cn,
-                index: idxName,
+                index: idxName
               }
             ]
           });
-          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+          assertEqual([{ collection: cn,
+index: idxName }], view.properties().indexes);
         },
         function () { },
         function () { },
@@ -1129,12 +1144,13 @@ function BaseTestConfig () {
           let view = db._view('UnitTestsSyncSearchAlias');
           assertNotNull(view);
           assertEqual("search-alias", view.type());
-          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+          assertEqual([{ collection: cn,
+index: idxName }], view.properties().indexes);
         },
         {}
       );
     },
-    
+
     testSearchAliasWithLinksAddedLater: function () {
       connectToLeader();
       const idxName = "inverted_idx";
@@ -1142,21 +1158,24 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let idx = c.ensureIndex({ type: "inverted",
+name: idxName,
+fields: [ { name: "value" } ] });
           let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
           assertEqual([], view.properties().indexes);
         },
-        function () { 
+        function () {
           let view = db._view('UnitTestsSyncSearchAlias');
           view.properties({
             indexes: [
               {
                 collection: cn,
-                index: idxName,
+                index: idxName
               }
             ]
           });
-          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+          assertEqual([{ collection: cn,
+index: idxName }], view.properties().indexes);
         },
         function () { },
         function (state) {
@@ -1165,7 +1184,8 @@ function BaseTestConfig () {
           assertEqual("search-alias", view.type());
           let props = view.properties();
           assertEqual(1, props.indexes.length);
-          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+          assertEqual({ collection: cn,
+index: idxName }, props.indexes[0]);
         },
         {}
       );
@@ -1232,7 +1252,7 @@ function BaseTestConfig () {
         {}
       );
     },
-    
+
     testViewWithUpdateLater: function () {
       connectToLeader();
 
@@ -1261,7 +1281,7 @@ function BaseTestConfig () {
         {}
       );
     },
-    
+
     testViewRename: function () {
       connectToLeader();
 
@@ -1437,7 +1457,7 @@ function BaseTestConfig () {
           assertEqual(1, res.length);
         });
     },
-    
+
     testViewDataCustomAnalyzer: function () {
       connectToLeader();
       compare(
@@ -1483,8 +1503,8 @@ function BaseTestConfig () {
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.links.hasOwnProperty(cn));
           // do not check results. We need to trigger analyzers cache reload
-          db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") '
-                    + ' OPTIONS { waitForSync: true } RETURN doc').toArray();
+          db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") ' +
+                    ' OPTIONS { waitForSync: true } RETURN doc').toArray();
         }, // followerFuncOngoing
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
@@ -1526,8 +1546,7 @@ function ReplicationSuite () {
       try {
         replication.applier.stop();
         replication.applier.forget();
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       connectToLeader();
@@ -1550,8 +1569,10 @@ function ReplicationSuite () {
       db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
-      db._analyzers.toArray().forEach(function(analyzer) {
-        try { analyzers.remove(analyzer.name, true); } catch (err) {}
+      db._analyzers.toArray().forEach(function (analyzer) {
+        try {
+ analyzers.remove(analyzer.name, true);
+} catch (err) {}
       });
 
       connectToFollower();
@@ -1697,7 +1718,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
         db._dropDatabase(dbName);
       } catch (e) {
       }
-    },
+    }
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1800,7 +1821,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
     // The DB should be gone and the server should be running.
     let dbs = db._databases();
     assertEqual(-1, dbs.indexOf(dbName));
-    
+
     const lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
 
     // Section - Follower

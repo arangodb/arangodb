@@ -48,7 +48,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testToBase64Values: function () {
-      [ 
+      [
         [ null, "" ],
         [ -13, "LTEz" ],
         [ 10, "MTA="],
@@ -57,27 +57,27 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "", "" ],
         [ "foobar", "Zm9vYmFy" ],
         [ " ", "IA==" ],
-        [ "The quick brown fox jumps over the lazy dog", "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw==" ],
-      ].forEach(function(test) {
+        [ "The quick brown fox jumps over the lazy dog", "VGhlIHF1aWNrIGJyb3duIGZveCBqdW1wcyBvdmVyIHRoZSBsYXp5IGRvZw==" ]
+      ].forEach(function (test) {
         assertEqual([ test[1] ], getQueryResults('RETURN TO_BASE64(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
-    
-    
+
+
     testToBase64InvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow")');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo")');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_BASE64("test", "meow", "foo", "bar")');
     },
-    
+
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test tohex
 // //////////////////////////////////////////////////////////////////////////////
 
     testToHexValues: function () {
-      [ 
+      [
         [ null, "" ],
         [ -13, "2d3133" ],
         [ 10, "3130"],
@@ -86,13 +86,13 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "", "" ],
         [ "foobar", "666f6f626172" ],
         [ " ", "20" ],
-        [ "The quick brown fox jumps over the lazy dog", "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67"],
-      ].forEach(function(test) {
+        [ "The quick brown fox jumps over the lazy dog", "54686520717569636b2062726f776e20666f78206a756d7073206f76657220746865206c617a7920646f67"]
+      ].forEach(function (test) {
         assertEqual([ test[1] ], getQueryResults('RETURN TO_HEX(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
-    
-    
+
+
     testToHexInvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN TO_HEX("test", "meow")');
@@ -105,7 +105,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testEncodeURIComponentValues: function () {
-      [ 
+      [
         [ null, "" ],
         [ -13, "-13" ],
         [ 10, "10"],
@@ -117,13 +117,13 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "?x=шеллы", "%3Fx%3D%D1%88%D0%B5%D0%BB%D0%BB%D1%8B"],
         [ "?x=test", "%3Fx%3Dtest"],
         [ "The quick brown fox jumps over the lazy dog", "The%20quick%20brown%20fox%20jumps%20over%20the%20lazy%20dog"],
-        [ "https://w3schools.com/my test.asp?name=ståle&car=saab", "https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab"],
-      ].forEach(function(test) {
+        [ "https://w3schools.com/my test.asp?name=ståle&car=saab", "https%3A%2F%2Fw3schools.com%2Fmy%20test.asp%3Fname%3Dst%C3%A5le%26car%3Dsaab"]
+      ].forEach(function (test) {
         assertEqual([ test[1] ], getQueryResults('RETURN ENCODE_URI_COMPONENT(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
-    
-    
+
+
     testEncodeURIComponentInvalidNumberOfParameters: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN ENCODE_URI_COMPONENT("test", "meow")');
@@ -150,7 +150,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // / @brief test Soundex
 // //////////////////////////////////////////////////////////////////////////////
     testToSoundexValues: function () {
-      [ 
+      [
         [ null, "" ],
         [ "a", "A000" ],
         [ "ab", "A100" ],
@@ -175,8 +175,8 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "mötör", "M360" ],
         [ "2m2ö2t2ö2r2", "M360" ],
         [ "Öööööö", "" ],
-        [ "The quick brown fox jumps over the lazy dog", "T221"],
-      ].forEach(function(test) {
+        [ "The quick brown fox jumps over the lazy dog", "T221"]
+      ].forEach(function (test) {
         assertEqual([ test[1] ], getQueryResults('RETURN SOUNDEX(' + JSON.stringify(test[0]) + ')'), test);
       });
     },
@@ -193,7 +193,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // / @brief test LevenshteinDistance
 // //////////////////////////////////////////////////////////////////////////////
     testToLevenshteinDistanceValues: function () {
-      [ 
+      [
         [ null, "", 0 ],
         [ null, null, 0 ],
         [ "", "", 0 ],
@@ -220,8 +220,8 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "der mötör trötet", "dertrötet", 7 ],
         [ "Öööööö", "öö", 4 ],
         [ "The quick brown fox jumps over the lazy dog", "The quick black dog jumps over the brown fox", 13 ],
-        [ "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham..", "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form.", 74 ],
-      ].forEach(function(test) {
+        [ "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form, accompanied by English versions from the 1914 translation by H. Rackham..", "Contrary to popular belief, Lorem Ipsum is not simply random text. It has roots in a piece of classical Latin literature from 45 BC, making it over 2000 years old. Richard McClintock, a Latin professor at Hampden-Sydney College in Virginia, looked up one of the more obscure Latin words, consectetur, from a Lorem Ipsum passage, and going through the cites of the word in classical literature, discovered the undoubtable source. Lorem Ipsum comes from sections 1.10.32 and 1.10.33 of \"de Finibus Bonorum et Malorum\" (The Extremes of Good and Evil) by Cicero, written in 45 BC. This book is a treatise on the theory of ethics, very popular during the Renaissance. The first line of Lorem Ipsum, 'Lorem ipsum dolor sit amet..', comes from a line in section 1.10.32.  The standard chunk of Lorem Ipsum used since the 1500s is reproduced below for those interested. Sections 1.10.32 and 1.10.33 from 'de Finibus Bonorum et Malorum' by Cicero are also reproduced in their exact original form.", 74 ]
+      ].forEach(function (test) {
         assertEqual([ test[2] ], getQueryResults('RETURN LEVENSHTEIN_DISTANCE(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ')'), test);
       });
     },
@@ -296,9 +296,13 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ [1, 2, 3, 4] ], getQueryResults("RETURN JSON_PARSE('[ 1, 2, 3, 4 ]')"));
       assertEqual([ [[1, 2, 3, 4]] ], getQueryResults("RETURN JSON_PARSE('[ [ 1, 2, 3, 4  ] ]')"));
       assertEqual([ {} ], getQueryResults("RETURN JSON_PARSE('{ }')"));
-      assertEqual([ { a: 1, b: 2 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\" : 2     }')`));
-      assertEqual([ { A: 2, a: 1 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"A\\": 2, \\"a\\": 1 }')`));
-      assertEqual([ { a: 1, b: 'foo', c: null } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\": \\"foo\\", \\"c\\": null }')`));
+      assertEqual([ { a: 1,
+b: 2 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\" : 2     }')`));
+      assertEqual([ { A: 2,
+a: 1 } ], getQueryResults(`RETURN JSON_PARSE('{ \\"A\\": 2, \\"a\\": 1 }')`));
+      assertEqual([ { a: 1,
+b: 'foo',
+c: null } ], getQueryResults(`RETURN JSON_PARSE('{ \\"a\\": 1, \\"b\\": \\"foo\\", \\"c\\": null }')`));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -462,13 +466,16 @@ function ahuacatlStringFunctionsTestSuite () {
 
       values.forEach(function (v) {
         var query = 'RETURN REGEX_TEST(@what, @re)';
-        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(v[2], getQueryResults(query, { what: v[0],
+re: v[1] })[0], v);
 
         query = 'RETURN @what =~ @re';
-        assertEqual(v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(v[2], getQueryResults(query, { what: v[0],
+re: v[1] })[0], v);
 
         query = 'RETURN @what !~ @re';
-        assertEqual(!v[2], getQueryResults(query, { what: v[0], re: v[1] })[0], v);
+        assertEqual(!v[2], getQueryResults(query, { what: v[0],
+re: v[1] })[0], v);
       });
     },
 
@@ -541,15 +548,17 @@ function ahuacatlStringFunctionsTestSuite () {
       values.forEach(function (v) {
         var query;
         query = 'RETURN REGEX_REPLACE(@what, @re, @with)';
-        assertEqual(v[1], getQueryResults(query, { what: v[0][0], re: v[0][1], with: v[0][2] })[0], v);
+        assertEqual(v[1], getQueryResults(query, { what: v[0][0],
+re: v[0][1],
+with: v[0][2] })[0], v);
       });
     },
-    
+
   // //////////////////////////////////////////////////////////////////////////////
 // / @brief test RegexSplit
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexSplitValues: function () {
-      [ 
+      [
         [ "hypertext language, programming", "[\s, ]+", true, 1, ["hypertext"] ],
         [ "hypertext language, programming", "[\s, ]+", true, 2, ["hypertext", "language"] ],
         [ "hypertext language, programming", "[\s, ]+", true, 3, ["hypertext", "language", "programming"] ],
@@ -570,8 +579,8 @@ function ahuacatlStringFunctionsTestSuite () {
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 6, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n"] ],
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 7, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line"] ],
         [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 8, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r"] ],
-        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ],
-      ].forEach(function(test) {
+        [ "This is a line.\n This is yet another line\r\n This again is a line.\r Mac line ", "\.?(\n|\r|\r\n)", true, 9, ["This is a line", "\n", " This is yet another lin", "\r", "", "\n", " This again is a line", "\r", " Mac line "] ]
+      ].forEach(function (test) {
         assertEqual([ test[4] ], getQueryResults('RETURN REGEX_SPLIT(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ', ' + JSON.stringify(test[3]) + ')'), test);
       });
     },
@@ -587,7 +596,7 @@ function ahuacatlStringFunctionsTestSuite () {
 // / @brief test RegexMatches
 // //////////////////////////////////////////////////////////////////////////////
     testToRegexMatchesValues: function () {
-      [ 
+      [
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", true, ["my-us3r_n4m3"] ],
         ["my-us3r_n4m3", "^[a-z0-9_-]{3,16}$", false, ["my-us3r_n4m3"] ],
         ["my-Us3r_N4m3", "^[a-z0-9_-]{3,16}$", true, ["my-Us3r_N4m3"] ],
@@ -621,8 +630,8 @@ function ahuacatlStringFunctionsTestSuite () {
         ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, ["73.60.124.136"] ],
         ["73.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, ["73.60.124.136"] ],
         ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", true, null ],
-        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ],
-      ].forEach(function(test) {
+        ["256.60.124.136", "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", false, null ]
+      ].forEach(function (test) {
         assertEqual([ test[3] ], getQueryResults('RETURN REGEX_MATCHES(' + JSON.stringify(test[0]) + ', ' + JSON.stringify(test[1]) + ', ' + JSON.stringify(test[2]) + ')'), test);
       });
     },
@@ -632,7 +641,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test")');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN REGEX_MATCHES("test", "meow", "foo", "bar")');
     },
-    
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test like function, invalid arguments
 // //////////////////////////////////////////////////////////////////////////////
@@ -702,8 +711,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults('RETURN "[ ] ( ) % * . + -" LIKE "%. +%"'));
       assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "abc^def$g"'));
       assertEqual([ true ], getQueryResults('RETURN "abc^def$g" LIKE "%^%$g"'));
-      assertEqual([ true ],  getQueryResults('RETURN "der\*hund"  LIKE "%*%"'));
-      assertEqual([ true ],  getQueryResults('RETURN "der*hund"  LIKE "%*%"'));
+      assertEqual([ true ], getQueryResults('RETURN "der\*hund"  LIKE "%*%"'));
+      assertEqual([ true ], getQueryResults('RETURN "der*hund"  LIKE "%*%"'));
       assertEqual([ false ], getQueryResults('RETURN "der*hund"  LIKE "*"'));
       assertEqual([ true ], getQueryResults('RETURN LIKE("%", "\\%")'));
       assertEqual([ true ], getQueryResults('RETURN LIKE("a%c", "a%c")'));
@@ -781,20 +790,20 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testContainsFirst: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test")'); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test", "test", "test", "test")'); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS()'); 
-      assertEqual([ -1 ], getQueryResults('RETURN CONTAINS("test", "test2", "test3")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, null)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS(4, 4)')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ }, { })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ ], [ ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])')); 
-      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, "yes")')); 
-      assertEqual([ false ], getQueryResults('RETURN CONTAINS(3, null)')); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS("test", "test", "test", "test")');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN CONTAINS()');
+      assertEqual([ -1 ], getQueryResults('RETURN CONTAINS("test", "test2", "test3")'));
+      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, null)'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS(4, 4)'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ }, { })'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS({ a: 1, b: 2 }, { a: 1, b: 2 })'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ ], [ ])'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], [ 1, 2, 3 ])'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2 ], [ 1, 2 ])'));
+      assertEqual([ true ], getQueryResults('RETURN CONTAINS([ 1, 2, 3 ], 2)'));
+      assertEqual([ false ], getQueryResults('RETURN CONTAINS(null, "yes")'));
+      assertEqual([ false ], getQueryResults('RETURN CONTAINS(3, null)'));
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -950,8 +959,10 @@ function ahuacatlStringFunctionsTestSuite () {
       var values = [
         [ 'the quick brown dog jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', [ 'foxx', 'dog' ], [ 'dog', 'foxx' ] ],
         [ 'the quick brown foxx jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', [ 'foxx', 'dog' ], [ 'foxx', 'foxx' ] ],
-        [ 'the quick brown dog jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', { 'foxx': 'dog', 'dog': 'foxx' } ],
-        [ 'the quick brown foxx jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', { 'foxx': 'foxx', 'dog': 'foxx' } ],
+        [ 'the quick brown dog jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', { 'foxx': 'dog',
+'dog': 'foxx' } ],
+        [ 'the quick brown foxx jumped over the lazy foxx', 'the quick brown foxx jumped over the lazy dog', { 'foxx': 'foxx',
+'dog': 'foxx' } ],
         [ 'the unspecified unspecified foxx jumped over the unspecified dog', 'the quick brown foxx jumped over the lazy dog', [ 'quick', 'brown', 'lazy' ], 'unspecified' ],
         [ 'the slow yellow foxx jumped over the eager dog', 'the quick brown foxx jumped over the lazy dog', [ 'quick', 'brown', 'lazy' ], [ 'slow', 'yellow', 'eager' ] ],
         [ 'the empty  foxx jumped over the  dog', 'the quick brown foxx jumped over the lazy dog', [ 'quick', 'brown', 'lazy' ], [ 'empty' ] ],
@@ -971,9 +982,24 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'mötör quick brown mötör jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'over', 'the', 'foxx' ], 'mötör', 2 ],
         [ 'apfela', 'rabarbara', ['barbara', 'rabarbar'], ['petra', 'apfel']],
         [ 'rapetra', 'rabarbara', ['barbara', 'bar'], ['petra', 'foo']],
-        [ 'AbCdEF', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' } ],
-        [ 'AbcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 2 ],
-        [ 'aBcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 0 ],
+        [ 'AbCdEF', 'aBcDef', { a: 'A',
+B: 'b',
+c: 'C',
+D: 'd',
+e: 'E',
+f: 'F' } ],
+        [ 'AbcDef', 'aBcDef', { a: 'A',
+B: 'b',
+c: 'C',
+D: 'd',
+e: 'E',
+f: 'F' }, 2 ],
+        [ 'aBcDef', 'aBcDef', { a: 'A',
+B: 'b',
+c: 'C',
+D: 'd',
+e: 'E',
+f: 'F' }, 0 ],
         [ 'xxxxyyyyzzz', 'aaaabbbbccc', [ 'a', 'b', 'c' ], [ 'x', 'y', 'z' ] ],
         [ 'xxaabbbbccc', 'aaaabbbbccc', [ 'a', 'b', 'c' ], [ 'x', 'y', 'z' ], 2 ],
         [ 'xxxxyybbccc', 'aaaabbbbccc', [ 'a', 'b', 'c' ], [ 'x', 'y', 'z' ], 6 ],
@@ -981,8 +1007,10 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'the quick  foxx', 'the quick brown foxx', 'brown' ],
         [ 'the quick brown foxx', 'the quick brown foxx', [ ] ],
         [ 'the quick  foxx', 'the quick brown foxx', [ 'brown' ], [ ] ],
-        [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ], 
-        [ 'the   ant', 'the quick brown foxx', { quick: '', brown: null, foxx: 'ant' } ],
+        [ 'the   ant', 'the quick brown foxx', [ 'quick', 'brown', 'foxx' ], [ '', null, 'ant' ] ],
+        [ 'the   ant', 'the quick brown foxx', { quick: '',
+brown: null,
+foxx: 'ant' } ]
       ];
 
       values.forEach(function (value) {
@@ -997,7 +1025,7 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ expected ], nuResults, value);
       });
     },
-    
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test substitute function
 // //////////////////////////////////////////////////////////////////////////////
@@ -1252,8 +1280,8 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
   testRtrim: function () {
-    var expected = [ '', 
-                     '', 
+    var expected = [ '',
+                     '',
                      '',
                      '  foo',
                      '\t\r\nabc',
@@ -1382,8 +1410,8 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 12, 'foo BAR foo bar', 'bar' ],
       [ 4, 'foo bar foo bar', 'bar' ],
       [ 17, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
-      [ 3, '或或或MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
-      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
+      [ 3, '或或或MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？', 'MÖtleyCrÜe'],
+      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？', '或']
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_FIRST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ')');
       assertEqual([ v[0] ], actual);
@@ -1498,8 +1526,8 @@ function ahuacatlStringFunctionsTestSuite () {
       [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
       [ 14, 'some linebreak\r\ngoes here', '\r\n' ],
       [ 31, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
-      [ 11, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
-      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
+      [ 11, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？', 'MÖtleyCrÜe'],
+      [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？', '或']
     ].forEach(function (v) {
       var actual = getQueryResults(`RETURN FIND_LAST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ')');
       assertEqual([ v[0] ], actual);
@@ -1852,9 +1880,9 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testSubstringInvalid: function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING("yes")`); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING("yes", 0, 2, "yes")`); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING("yes")`);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTRING("yes", 0, 2, "yes")`);
       assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(null, 0)"));
       assertEqual([ "" ], getQueryResults("RETURN SUBSTRING(null, 1)"));
       assertEqual([ "true" ], getQueryResults("RETURN SUBSTRING(true, 0)"));
@@ -1875,11 +1903,11 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
     testSubstringBytes: function () {
-      assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 4)`));
-      assertEqual([ '🤡'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0)`));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 4)`));
+      assertEqual([ '🤡' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0)`));
       assertEqual([ '🤡f' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 0, 5)`));
-      assertEqual([ 'fo'  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 4, 2)`));
-      assertEqual([ ''  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 42, 2)`));
+      assertEqual([ 'fo' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 4, 2)`));
+      assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', 42, 2)`));
       assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 0)`));
       assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('', 0, 1)`));
 
@@ -1898,15 +1926,15 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '' ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -2, "foobar")`));
 
       // invalid utf8 offset
-      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, 2)`)); 
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, 2)`));
       assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 0, 2)`));
       assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -4, 2)`));
       assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡foo', -42, 2)`));
 
       // invalid argument types
-      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES(['🤡'], 1, 2)`)); 
-      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', [1], 2)`)); 
-      assertEqual([ null  ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, [2])`)); 
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES(['🤡'], 1, 2)`));
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', [1], 2)`));
+      assertEqual([ null ], getQueryResults(`RETURN SUBSTRING_BYTES('🤡', 1, [2])`));
 
       // invalid number of arguments
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN SUBSTRING_BYTES()");
@@ -1992,7 +2020,7 @@ function ahuacatlStringFunctionsTestSuite () {
       // arrays and subqueries
       assertEqual(getQueryResults("RETURN HASH([1,2,3])"), getQueryResults("RETURN HASH(FOR i IN [1,2,3] RETURN i)"));
     },
-      
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test ip4_to_number function
 // //////////////////////////////////////////////////////////////////////////////
@@ -2032,7 +2060,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('a1.1.1.1a')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.1a.1.1')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_TO_NUMBER('1.a1.1.1')");
-      
+
       assertEqual([ 0 ], getQueryResults(`RETURN IPV4_TO_NUMBER('0.0.0.0')`));
       assertEqual([ 16843009 ], getQueryResults(`RETURN IPV4_TO_NUMBER('1.1.1.1')`));
       assertEqual([ 167773449 ], getQueryResults(`RETURN IPV4_TO_NUMBER('10.0.5.9')`));
@@ -2082,7 +2110,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('a1.1.1.1a')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.1a.1.1')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IPV4_FROM_NUMBER('1.a1.1.1')");
-      
+
       assertEqual([ '0.0.0.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(0)`));
       assertEqual([ '0.0.0.1' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(1)`));
       assertEqual([ '0.0.1.0' ], getQueryResults(`RETURN IPV4_FROM_NUMBER(256)`));
@@ -2159,7 +2187,7 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.255.0')`));
       assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('0.0.0.255')`));
       assertEqual([ true ], getQueryResults(`RETURN IS_IPV4('17.17.17.17')`));
-      
+
       assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('01.01.01.01')`));
       assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('000.000.000.000')`));
       assertEqual([ false ], getQueryResults(`RETURN IS_IPV4('001.001.001.001')`));
@@ -2331,76 +2359,76 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test ngram_similarity function
 // //////////////////////////////////////////////////////////////////////////////
-    testNGramSimilarityFunction : function() {
-      assertQueryWarningAndNull(errors.ERROR_BAD_PARAMETER.code, 
+    testNGramSimilarityFunction: function () {
+      assertQueryWarningAndNull(errors.ERROR_BAD_PARAMETER.code,
         "RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow', 0)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY(123, 'Jack Sparow', 4)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow', 123, 4)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow', '4')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_SIMILARITY()");
       {
         let res = getQueryResults("RETURN NGRAM_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow', 2)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(1, res[0]);
       }
       {
         let res = getQueryResults("RETURN NGRAM_SIMILARITY('abcdefgh', 'abdef', 2)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0.75, res[0]);
       }
       {
         let res = getQueryResults("RETURN NGRAM_SIMILARITY('abcd', 'aecf', 2)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0, res[0]);
       }
     },
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test ngram_positional_similarity function
 // //////////////////////////////////////////////////////////////////////////////
-    testNGramPositionalSimilarityFunction : function() {
-      assertQueryWarningAndNull(errors.ERROR_BAD_PARAMETER.code, 
+    testNGramPositionalSimilarityFunction: function () {
+      assertQueryWarningAndNull(errors.ERROR_BAD_PARAMETER.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow', 0)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY(123, 'Jack Sparow', 4)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow', 123, 4)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow', '4')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparow')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow')");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
         "RETURN NGRAM_POSITIONAL_SIMILARITY()");
       {
         let res = getQueryResults("RETURN NGRAM_POSITIONAL_SIMILARITY('Capitan Jack Sparrow', 'Jack Sparrow', 5)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0.5, res[0]);
       }
       {
         let res = getQueryResults("RETURN NGRAM_POSITIONAL_SIMILARITY('abcdefgh', 'abdef', 2)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0.5, res[0]);
       }
       {
         let res = getQueryResults("RETURN NGRAM_POSITIONAL_SIMILARITY('abcd', 'aecf', 2)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0.5, res[0]);
       }
       {
         let res = getQueryResults("RETURN NGRAM_POSITIONAL_SIMILARITY('abcd', 'abc', 10)");
-        assertEqual(1, res.length);  
+        assertEqual(1, res.length);
         assertEqual(0.75, res[0]);
       }
-    },
+    }
   };
 }
 

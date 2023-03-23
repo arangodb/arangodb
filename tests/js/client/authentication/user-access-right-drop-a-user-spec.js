@@ -56,7 +56,7 @@ helper.generateAllUsers();
 
 describe('User Rights Management', () => {
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     for (let name of userSet) {
       let canUse = false;
       try {

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue, assertEqual, fail */
+/* jshint globalstrict:false, strict:false */
+/* global fail, assertTrue, assertEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the authentication (dual ldap)
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Frank Celler
-/// @author Copyright 2021, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the authentication (dual ldap)
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Frank Celler
+// / @author Copyright 2021, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
@@ -39,14 +39,14 @@ const FORBIDDEN = exports.FORBIDDEN = 'FORBIDDEN';
 const OK = exports.OK = 'OK';
 
 // generate a single test
-const buildTestFunction = function(value) {
+const buildTestFunction = function (value) {
   const user = value[0];
   const pw = value[1];
   const dbname = value[2];
   const result = value[3];
 
   if (result === FORBIDDEN) {
-    return function() {
+    return function () {
       try {
         arango.reconnect(arango.getEndpoint(), dbname, user, pw);
         fail('It didn\'t fail! User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
@@ -55,22 +55,22 @@ const buildTestFunction = function(value) {
       }
     };
   } else if (result === OK) {
-    return function() {
+    return function () {
       try {
         arango.reconnect(arango.getEndpoint(), dbname, user, pw);
       } catch (e) {
-        fail('its not OK: ' + e  + ' User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
+        fail('its not OK: ' + e + ' User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
       }
     };
   } else {
-    return function() {
+    return function () {
       fail('Illegal test dataset User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
     };
   }
 };
 
 // generate a test suite
-exports.createSuite = function(definition) {
+exports.createSuite = function (definition) {
   'use strict';
 
   // hardcoded in testsuite
@@ -83,7 +83,7 @@ exports.createSuite = function(definition) {
 
   // standard functions first
   const suite = {
-    setUpAll: function() {
+    setUpAll: function () {
       arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
       for (const role of roles) {
@@ -97,7 +97,7 @@ exports.createSuite = function(definition) {
       } catch (err) {}
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
       for (const role of roles) {
@@ -111,7 +111,7 @@ exports.createSuite = function(definition) {
       } catch (err) {}
     },
 
-    testCreateRoles: function() {
+    testCreateRoles: function () {
       for (const role of roles) {
         const fr = ":role:" + role;
         let r = users.save(fr, "password", true);
@@ -126,7 +126,7 @@ exports.createSuite = function(definition) {
       }
     },
 
-    testDatabases: function() {
+    testDatabases: function () {
       let r = db._createDatabase(dbname);
       assertTrue(r);
 
@@ -141,7 +141,7 @@ exports.createSuite = function(definition) {
     suite["test" + key] = buildTestFunction(value);
   });
 
-  return function GenericLdap() {
+  return function GenericLdap () {
     return suite;
   };
 };

@@ -43,7 +43,7 @@ function arangoSecureInstallationSuite () {
     setUpAll: function () {
       oldPasswd = internal.env['ARANGODB_DEFAULT_ROOT_PASSWORD'];
     },
-    
+
     tearDownAll: function () {
       internal.env['ARANGODB_DEFAULT_ROOT_PASSWORD'] = oldPasswd;
     },
@@ -51,7 +51,7 @@ function arangoSecureInstallationSuite () {
     setUp: function () {
       delete internal.env['ARANGODB_DEFAULT_ROOT_PASSWORD'];
     },
-    
+
     testInvokeArangoSecureInstallationWithoutPassword: function () {
       let platform = internal.platform;
       if (platform !== 'linux') {
@@ -101,8 +101,8 @@ function arangoSecureInstallationSuite () {
           fs.removeDirectory(path);
         } catch (err) {}
       }
-    },
-    
+    }
+
   };
 }
 

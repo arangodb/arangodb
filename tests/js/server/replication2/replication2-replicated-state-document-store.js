@@ -1,28 +1,28 @@
-/*jshint strict: true */
-/*global assertTrue, assertFalse, assertEqual, assertNotNull, print*/
+/* jshint strict: true */
+/* global assertTrue, assertFalse, assertEqual, assertNotNull, print*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alexandru Petenchea
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
@@ -40,7 +40,7 @@ const sp = require("@arangodb/testutils/replicated-state-predicates");
 const database = "replication2_document_store_test_db";
 const collectionName = "testCollection";
 
-function makeTestSuites(testSuite) {
+function makeTestSuites (testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
   helper.deriveTestSuite(testSuite({}), suiteV1, "_V1");
@@ -53,7 +53,7 @@ function makeTestSuites(testSuite) {
  * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
  * This is needed because we're using the list of participants from two places.
  */
-const syncShardsWithLogs = function(dbn) {
+const syncShardsWithLogs = function (dbn) {
   const coordinator = lh.coordinators[0];
   let logs = lhttp.listLogs(coordinator, dbn).result;
   let collections = lh.readAgencyValueAt(`Plan/Collections/${dbn}`);
@@ -66,11 +66,11 @@ const syncShardsWithLogs = function(dbn) {
     }
   }
 
-  const waitForCurrent  = lh.readAgencyValueAt("Current/Version");
+  const waitForCurrent = lh.readAgencyValueAt("Current/Version");
   helper.agency.increaseVersion(`Plan/Version`);
 
   lh.waitFor(() => {
-    const currentVersion  = lh.readAgencyValueAt("Current/Version");
+    const currentVersion = lh.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
     }
@@ -162,14 +162,14 @@ const getDocumentEntries = function (entries, type, document) {
   return null;
 };
 
-const mergeLogs = function(logs) {
+const mergeLogs = function (logs) {
   return logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
 };
 
 /**
  * Check if all the documents are in the logs and have the provided type.
  */
-const searchDocs = function(logs, docs, opType) {
+const searchDocs = function (logs, docs, opType) {
   let allEntries = mergeLogs(logs);
   for (const doc of docs) {
     let entry = getDocumentEntries(allEntries, opType, doc);
@@ -181,11 +181,11 @@ const searchDocs = function(logs, docs, opType) {
 /**
  * Unroll all array entries from all logs and optionally filter by name.
  */
-const getArrayElements = function(logs, opType, name) {
-  let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
-      .filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation === opType
-          && Array.isArray(entry.payload.data))
-      .reduce((previous, current) => previous.concat(current.payload.data), []);
+const getArrayElements = function (logs, opType, name) {
+  let entries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []).
+      filter(entry => entry.hasOwnProperty("payload") && entry.payload.operation === opType &&
+          Array.isArray(entry.payload.data)).
+      reduce((previous, current) => previous.concat(current.payload.data), []);
   if (name === undefined) {
     return entries;
   }
@@ -207,7 +207,9 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 2,
+"writeConcern": 2,
+"replicationFactor": 3});
       shards = collection.shards();
       logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
     }),
@@ -218,7 +220,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       collection = null;
     }),
 
-    testCreateReplicatedStateForEachShard: function() {
+    testCreateReplicatedStateForEachShard: function () {
       let colPlan = lh.readAgencyValueAt(`Plan/Collections/${database}/${collection._id}`);
       let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
@@ -240,7 +242,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testDropCollection: function() {
+    testDropCollection: function () {
       db._drop(collectionName);
       collection = null;
       for (const shard of shards) {
@@ -249,7 +251,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testReplicateOperationsCommit: function() {
+    testReplicateOperationsCommit: function () {
       const opType = "Commit";
 
       collection.insert({_key: "abcd"});
@@ -263,7 +265,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           `Insert entries: ${insertEntries} do not match Commit entries ${commitEntries}`);
     },
 
-    testReplicateOperationsInsert: function() {
+    testReplicateOperationsInsert: function () {
       const opType = "Insert";
 
       // Insert single document
@@ -272,7 +274,10 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       searchDocs(logs, documents, opType);
 
       // Insert multiple documents
-      documents = [...Array(10).keys()].map(i => {return {name: "testInsert1", foobar: i};});
+      documents = [...Array(10).keys()].map(i => {
+return {name: "testInsert1",
+foobar: i};
+});
       collection.insert(documents);
       let result = getArrayElements(logs, opType, "testInsert1");
       for (const doc of documents) {
@@ -280,7 +285,10 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
 
       // AQL INSERT
-      documents = [...Array(10).keys()].map(i => {return {name: "testInsert2", baz: i};});
+      documents = [...Array(10).keys()].map(i => {
+return {name: "testInsert2",
+baz: i};
+});
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('test', i), name: "testInsert2", baz: i} INTO ${collectionName}`);
       result = getArrayElements(logs, opType, "testInsert2");
       for (const doc of documents) {
@@ -288,13 +296,13 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testReplicateOperationsModify: function() {
+    testReplicateOperationsModify: function () {
       const opType = "Update";
 
       // Choose two distinct random numbers
       const numDocs = 2;
       const nums = new Set();
-      while(nums.size !== numDocs) {
+      while (nums.size !== numDocs) {
         nums.add(_.random(1000));
       }
 
@@ -302,22 +310,27 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       const documents = [...nums].map(i => ({_key: `test${i}`}));
       let docHandles = [];
       documents.forEach(doc => {
-        let docUpdate = {_key: doc._key, name: `updatedTest${doc.value}`};
+        let docUpdate = {_key: doc._key,
+name: `updatedTest${doc.value}`};
         let d = collection.insert(doc);
         docHandles.push(collection.update(d, docUpdate));
         searchDocs(logs, [docUpdate], opType);
       });
 
       // Replace multiple documents
-      let replacements = [{value: 10, name: "testR"}, {value: 20, name: "testR"}];
+      let replacements = [{value: 10,
+name: "testR"}, {value: 20,
+name: "testR"}];
       docHandles = collection.replace(docHandles, replacements);
-      let result = getArrayElements(logs, "Replace",  "testR");
+      let result = getArrayElements(logs, "Replace", "testR");
       for (const doc of replacements) {
         assertTrue(result.find(entry => entry.value === doc.value) !== undefined);
       }
 
       // Update multiple documents
-      let updates = documents.map(_ => {return {name: "testModify10"};});
+      let updates = documents.map(_ => {
+return {name: "testModify10"};
+});
       docHandles = collection.update(docHandles, updates);
       result = getArrayElements(logs, opType, "testModify10");
       assertEqual(result.length, updates.length);
@@ -328,7 +341,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       assertEqual(result.length, updates.length);
     },
 
-    testReplicateOperationsRemove: function() {
+    testReplicateOperationsRemove: function () {
       const opType = "Remove";
 
       // Remove single document
@@ -349,7 +362,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    testReplicateOperationsTruncate: function() {
+    testReplicateOperationsTruncate: function () {
       const opType = "Truncate";
       // we need to fill the collection with some docs since truncate will only
       // use range-deletes (which are replicated as truncate op) if the number
@@ -385,7 +398,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 /**
  * This test suite intentionally triggers intermediate commit operations and validates their execution.
  */
-const replicatedStateIntermediateCommitsSuite = function() {
+const replicatedStateIntermediateCommitsSuite = function () {
   const rc = lh.dbservers.length;
   const servers = Object.assign({}, ...lh.dbservers.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
   let collection = null;
@@ -400,7 +413,9 @@ const replicatedStateIntermediateCommitsSuite = function() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      const props = {numberOfShards: 1, writeConcern: rc, replicationFactor: rc};
+      const props = {numberOfShards: 1,
+writeConcern: rc,
+replicationFactor: rc};
       collection = db._create(collectionName, props);
       shards = collection.shards();
       shardId = shards[0];
@@ -413,20 +428,20 @@ const replicatedStateIntermediateCommitsSuite = function() {
       collection = null;
     }),
 
-    testIntermediateCommitsNoLogEntries: function(testName) {
+    testIntermediateCommitsNoLogEntries: function (testName) {
       db._query(`FOR i in 0..10 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`);
       let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
       assertEqual(intermediateCommitEntries.length, 0);
     },
 
-    testIntermediateCommitsLogEntries: function(testName) {
+    testIntermediateCommitsLogEntries: function (testName) {
       db._query(`FOR i in 0..1000 INSERT {_key: CONCAT('test', i), name: '${testName}', baz: i} INTO ${collectionName}`,
         {}, {intermediateCommitCount: 1});
       let intermediateCommitEntries = getDocumentEntries(mergeLogs(logs), "IntermediateCommit");
       assertEqual(intermediateCommitEntries.length, 2);
     },
 
-    testIntermediateCommitsFull: function(testName) {
+    testIntermediateCommitsFull: function (testName) {
       db._query(`
       FOR i in 0..2000 
       INSERT {_key: CONCAT('test', i), name: '${testName}', value: i} INTO ${collectionName}`,
@@ -449,7 +464,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
       }
     },
 
-    testIntermediateCommitsPartial: function(testName) {
+    testIntermediateCommitsPartial: function (testName) {
       // Intentionally fail the query after an intermediate commit
       try {
         db._query(`
@@ -479,7 +494,7 @@ const replicatedStateIntermediateCommitsSuite = function() {
           assertEqual(doc.value < 1000, doc._key !== undefined);
         }
       }
-    },
+    }
   };
 };
 
@@ -502,7 +517,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+      collection = db._create(collectionName, {"numberOfShards": 1,
+"writeConcern": rc,
+"replicationFactor": rc});
       shardId = collection.shards()[0];
     }),
     tearDown: tearDownAnd(() => {
@@ -512,29 +529,36 @@ const replicatedStateFollowerSuite = function (dbParams) {
       collection = null;
     }),
 
-    testFollowersSingleDocument: function(testName) {
-      let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
+    testFollowersSingleDocument: function (testName) {
+      let handle = collection.insert({_key: `${testName}-foo`,
+value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       handle = collection.update(handle, {value: `${testName}-baz`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, isReplication2);
 
-      handle = collection.replace(handle, {_key: `${testName}-foo`, value: `${testName}-bar`});
+      handle = collection.replace(handle, {_key: `${testName}-foo`,
+value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
 
       collection.remove(handle);
       checkFollowersValue(servers, shardId, `${testName}-foo`, null, isReplication2);
     },
 
-    testFollowersMultiDocuments: function(testName) {
-      let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-foo${i}`, value: i};});
+    testFollowersMultiDocuments: function (testName) {
+      let documents = [...Array(3).keys()].map(i => {
+return {_key: `${testName}-foo${i}`,
+value: i};
+});
 
       let handles = collection.insert(documents);
       for (let doc of documents) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, isReplication2);
       }
 
-      let updates = documents.map(doc => {return {value: doc.value + 100};});
+      let updates = documents.map(doc => {
+return {value: doc.value + 100};
+});
       handles = collection.update(handles, updates);
       for (let doc of documents) {
         checkFollowersValue(servers, shardId, doc._key, doc.value + 100, isReplication2);
@@ -551,8 +575,11 @@ const replicatedStateFollowerSuite = function (dbParams) {
       }
     },
 
-    testFollowersAql: function(testName) {
-      let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-foo${i}`, value: i};});
+    testFollowersAql: function (testName) {
+      let documents = [...Array(3).keys()].map(i => {
+return {_key: `${testName}-foo${i}`,
+value: i};
+});
 
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('${testName}-foo', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
@@ -575,8 +602,9 @@ const replicatedStateFollowerSuite = function (dbParams) {
       }
     },
 
-    testFollowersTruncate: function(testName) {
-      collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
+    testFollowersTruncate: function (testName) {
+      collection.insert({_key: `${testName}-foo`,
+value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
       checkFollowersValue(servers, shardId, `${testName}-foo`, null, isReplication2);
@@ -608,8 +636,10 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
-    testDropDatabase: function() {
-      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+    testDropDatabase: function () {
+      let collection = db._create(collectionName, {"numberOfShards": 2,
+"writeConcern": 2,
+"replicationFactor": 3});
       let shards = collection.shards();
       db._useDatabase("_system");
       db._dropDatabase(database);
@@ -617,7 +647,7 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
         let {plan} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
         assertEqual(plan, undefined, `Expected nothing in plan for shard ${shard}, got ${JSON.stringify(plan)}`);
       }
-    },
+    }
   };
 };
 
@@ -639,7 +669,9 @@ const replicatedStateRecoverySuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 1,
+"writeConcern": 2,
+"replicationFactor": 3});
       shards = collection.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
@@ -656,7 +688,8 @@ const replicatedStateRecoverySuite = function () {
       assertTrue(participants !== undefined);
       let servers = Object.assign({}, ...participants.map((serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
-      let handle = collection.insert({_key: `${testName}-foo`, value: `${testName}-bar`});
+      let handle = collection.insert({_key: `${testName}-foo`,
+value: `${testName}-bar`});
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-bar`, true);
 
       // We unset the leader here so that once the old leader node is resumed we
@@ -689,7 +722,10 @@ const replicatedStateRecoverySuite = function () {
       checkFollowersValue(servers, shardId, `${testName}-foo`, `${testName}-baz`, true);
 
       // Try an AQL query.
-      let documents = [...Array(3).keys()].map(i => {return {_key: `${testName}-${i}`, value: i};});
+      let documents = [...Array(3).keys()].map(i => {
+return {_key: `${testName}-${i}`,
+value: i};
+});
       db._query(`FOR i in 0..3 INSERT {_key: CONCAT('${testName}-', i), value: i} INTO ${collectionName}`);
       for (let doc of documents) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, true);
@@ -705,7 +741,7 @@ const replicatedStateRecoverySuite = function () {
       for (let doc of documents) {
         checkFollowersValue(servers, shardId, doc._key, doc.value, true);
       }
-    },
+    }
   };
 };
 
@@ -722,13 +758,15 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     setUp,
     tearDown,
 
-    testDoesNotCreateReplicatedStateForEachShard: function() {
-      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+    testDoesNotCreateReplicatedStateForEachShard: function () {
+      let collection = db._create(collectionName, {"numberOfShards": 2,
+"writeConcern": 2,
+"replicationFactor": 3});
       for (const shard of collection.shards()) {
         let {target} = sh.readReplicatedStateAgency(database, lh.shardIdToLogId(shard));
         assertEqual(target, undefined, `Expected nothing in target for shard ${shard}, got ${JSON.stringify(target)}`);
       }
-    },
+    }
   };
 };
 
@@ -750,7 +788,9 @@ const replicatedStateSnapshotTransferSuite = function () {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      collection = db._create(collectionName, {"numberOfShards": 1, "writeConcern": 2, "replicationFactor": 3});
+      collection = db._create(collectionName, {"numberOfShards": 1,
+"writeConcern": 2,
+"replicationFactor": 3});
       shards = collection.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
@@ -863,8 +903,12 @@ const replicatedStateSnapshotTransferSuite = function () {
 };
 
 
-function replicatedStateFollowerSuiteV1() { return makeTestSuites(replicatedStateFollowerSuite)[0]; }
-function replicatedStateFollowerSuiteV2() { return makeTestSuites(replicatedStateFollowerSuite)[1]; }
+function replicatedStateFollowerSuiteV1 () {
+ return makeTestSuites(replicatedStateFollowerSuite)[0];
+}
+function replicatedStateFollowerSuiteV2 () {
+ return makeTestSuites(replicatedStateFollowerSuite)[1];
+}
 
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);

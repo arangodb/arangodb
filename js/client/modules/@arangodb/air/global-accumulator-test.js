@@ -30,14 +30,14 @@ const internal = require("internal");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.global_accumulators_test_program = global_accumulators_test_program;
 exports.global_accumulators_test = global_accumulators_test;
 exports.test = test;
 
 // TODO these tests have to be more detailed, but less icky to write...
-function test_custom_global_accumulator_not_defined() {
+function test_custom_global_accumulator_not_defined () {
   internal.print("Testing: custom global accumulator declared");
 
   let finalResult = false;
@@ -55,15 +55,17 @@ function test_custom_global_accumulator_not_defined() {
             accumulatorType: "custom",
             valueType: "any",
             customType: "sam"
-          },
+          }
         },
         vertexAccumulators: { },
         customAccumulators: {
-          sum: accumulators.sumAccumulator(),
+          sum: accumulators.sumAccumulator()
         },
-        phases: [ { name: "main", updateProgram: [], initProgram: [] } ]
+        phases: [ { name: "main",
+updateProgram: [],
+initProgram: [] } ]
       }));
-  } catch(e) {
+  } catch (e) {
     if (e.errorNum === 10 && e.code === 400) {
       internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
       finalResult = true;
@@ -75,7 +77,7 @@ function test_custom_global_accumulator_not_defined() {
   return finalResult;
 }
 
-function test_custom_vertex_accumulator_not_defined() {
+function test_custom_vertex_accumulator_not_defined () {
   internal.print("Testing: custom vertex accumulators declared");
   let finalResult = false;
 
@@ -94,14 +96,16 @@ function test_custom_vertex_accumulator_not_defined() {
             accumulatorType: "custom",
             valueType: "any",
             customType: "sam"
-          },
+          }
         },
         customAccumulators: {
-          sum: accumulators.sumAccumulator(),
+          sum: accumulators.sumAccumulator()
         },
-        phases: [ { name: "main", updateProgram: [], initProgram: [] } ]
+        phases: [ { name: "main",
+updateProgram: [],
+initProgram: [] } ]
       }));
-  } catch(e) {
+  } catch (e) {
     if (e.errorNum === 10 && e.code === 400) {
       internal.print("\u001b[32mOK:   Error signaled when custom type used that is not declared\u001b[0m");
       finalResult = true;
@@ -114,7 +118,7 @@ function test_custom_vertex_accumulator_not_defined() {
 }
 
 /* returns a program that compputes the vertex degree of every vertex */
-function global_accumulators_test_program(resultField) {
+function global_accumulators_test_program (resultField) {
   return {
     resultField: resultField,
     maxGSS: 5000,
@@ -140,7 +144,7 @@ function global_accumulators_test_program(resultField) {
         accumulatorType: "custom",
         valueType: "any",
         customType: "my_sum"
-      },
+      }
     },
     customAccumulators: {
       my_sum: accumulators.sumAccumulator(),
@@ -154,7 +158,7 @@ function global_accumulators_test_program(resultField) {
           "seq",
           ["send-to-global-accum", "numberOfVertices", 1],
           ["accum-set!", "forward", 0.1],
-          "vote-active",
+          "vote-active"
         ],
         updateProgram:
         ["seq",
@@ -163,32 +167,32 @@ function global_accumulators_test_program(resultField) {
             ["send-to-accum", "forward",
               ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
               ["accum-ref", "forward"]]]],
-         "vote-halt",
+         "vote-halt"
         ],
         onHalt: [
           "seq",
           ["goto-phase", "second"]
-        ],
+        ]
       },
       {
         name: "second",
         initProgram: [
           "seq",
           ["send-to-global-accum", "minimalTest", ["this-unique-id"]],
-          "vote-halt",
+          "vote-halt"
         ],
         updateProgram: ["vote-halt"],
         onHalt: [
           "seq",
           ["goto-phase", "third"]
-        ],
+        ]
       },
       {
         name: "third",
         initProgram: [
           "seq",
           ["send-to-global-accum", "maximalTest", ["this-unique-id"]],
-          "vote-halt",
+          "vote-halt"
         ],
         updateProgram: ["vote-halt"],
         onHalt: [
@@ -196,11 +200,11 @@ function global_accumulators_test_program(resultField) {
           ["finish"]
         ]
       }
-    ],
+    ]
   };
 }
 
-function global_accumulators_test(graphName, resultField) {
+function global_accumulators_test (graphName, resultField) {
   return pregel.start(
     "ppa",
     graphName,
@@ -208,7 +212,7 @@ function global_accumulators_test(graphName, resultField) {
   );
 }
 
-function checkVertexCount(graphSpec, presult) {
+function checkVertexCount (graphSpec, presult) {
   const agg_numberOfVertices = presult.masterContext.globalAccumulatorValues.numberOfVertices;
   const exp_numberOfVertices = presult.vertexCount;
 
@@ -218,7 +222,7 @@ function checkVertexCount(graphSpec, presult) {
   return true;
 }
 
-function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
+function exec_test_global_accumulators_test_on_graph (graphSpec, checkProc) {
   const presult = testhelpers.wait_for_pregel(
     "AIR global-accumulators",
     global_accumulators_test(graphSpec.name, "globalAccumulators")
@@ -226,7 +230,7 @@ function exec_test_global_accumulators_test_on_graph(graphSpec, checkProc) {
   return checkProc(graphSpec, presult);
  }
 
-function exec_test_vertex_degrees() {
+function exec_test_vertex_degrees () {
   let results = [];
   let spec = examplegraphs.create_line_graph("LineGraph100", 100, 5);
   // YOLO, graph sometimes arrives too late.
@@ -275,7 +279,7 @@ function exec_test_vertex_degrees() {
 }
 
 // run tests
-function test() {
+function test () {
   if (!test_custom_global_accumulator_not_defined()) {
     internal.print('Test: "test_custom_global_accumulator_not_defined" failed!');
     return false;

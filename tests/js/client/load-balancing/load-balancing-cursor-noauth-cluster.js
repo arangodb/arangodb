@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, assertMatch, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -48,9 +48,9 @@ function CursorSyncSuite (databaseName) {
   ];
   let cs = [];
   let coordinators = [];
-  const baseCursorUrl = `/_db/${encodeURIComponent(databaseName)}/_api/cursor`; 
- 
-  function sendRequest(method, endpoint, body, usePrimary) {
+  const baseCursorUrl = `/_db/${encodeURIComponent(databaseName)}/_api/cursor`;
+
+  function sendRequest (method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -62,7 +62,7 @@ function CursorSyncSuite (databaseName) {
         url: `${coordinators[i]}${endpoint}`
       };
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -74,15 +74,15 @@ function CursorSyncSuite (databaseName) {
   }
 
   return {
-    
-    setUpAll: function() {
+
+    setUpAll: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
     },
 
-    setUp: function() {
+    setUp: function () {
       db._createDatabase(databaseName);
       db._useDatabase(databaseName);
       cs = [];
@@ -98,17 +98,17 @@ function CursorSyncSuite (databaseName) {
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cns[0]);
       db._drop(cns[1]);
       cs = [];
       db._useDatabase("_system");
-      if(databaseName !== "_system") {
+      if (databaseName !== "_system") {
         db._dropDatabase(databaseName);
       }
     },
 
-    testCursorForwardingBasicPut: function() {
+    testCursorForwardingBasicPut: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -145,8 +145,8 @@ function CursorSyncSuite (databaseName) {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
-    
-    testCursorForwardingBasicPost: function() {
+
+    testCursorForwardingBasicPost: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -183,7 +183,7 @@ function CursorSyncSuite (databaseName) {
       assertEqual(result.code, 404);
     },
 
-    testCursorForwardingDeletionPut: function() {
+    testCursorForwardingDeletionPut: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -217,8 +217,8 @@ function CursorSyncSuite (databaseName) {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
-    
-    testCursorForwardingDeletionPost: function() {
+
+    testCursorForwardingDeletionPost: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -252,8 +252,8 @@ function CursorSyncSuite (databaseName) {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
-    
-    testCursorForwardingDeletionWrongId: function() {
+
+    testCursorForwardingDeletionWrongId: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -277,11 +277,11 @@ function CursorSyncSuite (databaseName) {
       result = sendRequest('DELETE', `${baseCursorUrl}/12345${cursorId}`, {}, true);
       assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.errorNum);
       assertMatch(/cannot find target server/, result.errorMessage);
-      
+
       result = sendRequest('DELETE', `${baseCursorUrl}/12345${cursorId}`, {}, false);
       assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.errorNum);
       assertMatch(/cannot find target server/, result.errorMessage);
-      
+
       result = sendRequest('DELETE', `${baseCursorUrl}/${cursorId}`, {}, true);
 
       assertFalse(result === undefined || result === {});
@@ -294,18 +294,19 @@ function CursorSyncSuite (databaseName) {
       assertFalse(result === undefined || result === {});
       assertTrue(result.error);
       assertEqual(result.code, 404);
-    },
+    }
 
   };
 }
 
 dbs.forEach((databaseName) => {
-  let func = function() {
+  let func = function () {
     let suite = {};
     deriveTestSuite(CursorSyncSuite(databaseName), suite, databaseName);
     return suite;
   };
-  Object.defineProperty(func, 'name', {value: "CursorSyncSuite" + databaseName, writable: false});
+  Object.defineProperty(func, 'name', {value: "CursorSyncSuite" + databaseName,
+writable: false});
   jsunity.run(func);
 });
 

@@ -46,7 +46,7 @@ const removeCost = require('@arangodb/aql-helper').removeCost;
 
 const gh = require('@arangodb/graph/helpers');
 
-function optimizeInSuite() {
+function optimizeInSuite () {
   var ruleName = 'optimize-traversals';
   var startId = vn + '/optIn';
   var vc;
@@ -61,8 +61,10 @@ function optimizeInSuite() {
       vc.save({_key: startId.split('/')[1]});
 
       for (var i = 0; i < 100; ++i) {
-        var tmp = vc.save({_key: 'tmp' + i, value: i});
-        ec.save(startId, tmp._id, {_key: 'tmp' + i, value: i});
+        var tmp = vc.save({_key: 'tmp' + i,
+value: i});
+        ec.save(startId, tmp._id, {_key: 'tmp' + i,
+value: i});
         for (var j = 0; j < 100; ++j) {
           var innerTmp = vc.save({_key: 'innertmp' + i + '_' + j});
           ec.save(tmp._id, innerTmp._id, {});
@@ -230,7 +232,8 @@ function optimizeInSuite() {
       var bindVars = {
         '@eCol': en,
         'startId': startId,
-        'obj': {'_key': 'tmp0', 'value': 0}
+        'obj': {'_key': 'tmp0',
+'value': 0}
       };
 
       var noOpt = {optimizer: {rules: ['-all']}};

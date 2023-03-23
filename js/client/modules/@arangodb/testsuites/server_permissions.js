@@ -62,11 +62,11 @@ const testPaths = {
 };
 
 class permissionsRunner extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runInDriverTest";
   }
-  run(testList) {
+  run (testList) {
     let tmpDir = fs.getTempPath();
     let beforeStart = time();
     this.continueTesting = true;
@@ -141,7 +141,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                 ex.errorNum === internal.errors.ERROR_DISABLED.code) {
               forceTerminate = true;
             }
-            shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate);                               // stop
+            shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate); // stop
             this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
@@ -152,8 +152,8 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             this.results.status = false;
             return this.results;
           }
-          if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
-            this.instanceManager.arangods.forEach(function(arangod) {
+          if (this.instanceManager.shutdownInstance(forceTerminate)) { // stop
+            this.instanceManager.arangods.forEach(function (arangod) {
               arangod.pid = null;
             });
             if (this.options.extremeVerbosity !== 'silent') {
@@ -164,9 +164,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               if (paramsSecondRun.hasOwnProperty('server.failure-point')) {
                 print("Failure points active, marking suspended");
                 this.instanceManager.arangods.forEach(
-                  arangod => { arangod.suspended = true; });
+                  arangod => {
+ arangod.suspended = true;
+});
               }
-              this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
+              this.instanceManager.reStartInstance(paramsSecondRun); // restart with restricted permissions
             } catch (ex) {
               if (ex instanceof ArangoError &&
                   ex.errorNum === internal.errors.ERROR_DISABLED.code) {
@@ -183,8 +185,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               this.instanceManager.shutdownInstance(true);
               return this.results;
             }
-          }
-          else {
+          } else {
             this.results.shutdown = false;
             this.results[te] = {
               status: false,
@@ -204,7 +205,9 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           if (failurePoints) {
             print("Failure points active, marking suspended");
             this.instanceManager.arangods.forEach(
-              arangod => { arangod.suspended = true; });
+              arangod => {
+ arangod.suspended = true;
+});
           }
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
@@ -269,19 +272,19 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
   }
 }
 
-function server_permissions(options) {
+function server_permissions (options) {
   let testCases = tu.scanTestPaths(testPaths.server_permissions, options);
   testCases = tu.splitBuckets(options, testCases);
   return new permissionsRunner(options, "server_permissions").run(testCases);
 }
 
-function server_parameters(options) {
+function server_parameters (options) {
   let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
   testCases = tu.splitBuckets(options, testCases);
   return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 
-function server_secrets(options) {
+function server_secrets (options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
@@ -317,8 +320,8 @@ function server_secrets(options) {
     'ssl.keyfile': keyfileName
   };
   if (isEnterprise()) {
-    additionalArguments['ssl.server-name-indication']
-      = "hans.arangodb.com=./etc/testing/tls.keyfile";
+    additionalArguments['ssl.server-name-indication'] =
+      "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
   let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {
@@ -334,5 +337,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
 };

@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -48,12 +48,14 @@ function CursorSyncAuthSuite () {
   let cs = [];
   let coordinators = [];
   const users = [
-    { username: 'alice', password: 'pass1' },
-    { username: 'bob', password: 'pass2' },
+    { username: 'alice',
+password: 'pass1' },
+    { username: 'bob',
+password: 'pass2' }
   ];
   const baseCursorUrl = `/_api/cursor`;
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest (auth, method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -69,7 +71,7 @@ function CursorSyncAuthSuite () {
         url: `${coordinators[i]}${endpoint}`
       };
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -82,7 +84,7 @@ function CursorSyncAuthSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -115,7 +117,7 @@ function CursorSyncAuthSuite () {
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cns[0]);
       db._drop(cns[1]);
       userModule.remove(users[0].username);
@@ -124,7 +126,7 @@ function CursorSyncAuthSuite () {
       coordinators = [];
     },
 
-    testCursorForwardingSameUserBasicPut: function() {
+    testCursorForwardingSameUserBasicPut: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -161,8 +163,8 @@ function CursorSyncAuthSuite () {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
-    
-    testCursorForwardingSameUserBasicPost: function() {
+
+    testCursorForwardingSameUserBasicPost: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -200,7 +202,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.code, 404);
     },
 
-    testCursorForwardingSameUserDeletionPut: function() {
+    testCursorForwardingSameUserDeletionPut: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -234,8 +236,8 @@ function CursorSyncAuthSuite () {
       assertTrue(result.error);
       assertEqual(result.code, 404);
     },
-    
-    testCursorForwardingSameUserDeletionPost: function() {
+
+    testCursorForwardingSameUserDeletionPost: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -270,7 +272,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.code, 404);
     },
 
-    testCursorForwardingDifferentUserPut: function() {
+    testCursorForwardingDifferentUserPut: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -304,8 +306,8 @@ function CursorSyncAuthSuite () {
       assertFalse(result.error);
       assertEqual(result.code, 202);
     },
-    
-    testCursorForwardingDifferentUserPost: function() {
+
+    testCursorForwardingDifferentUserPost: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -340,7 +342,7 @@ function CursorSyncAuthSuite () {
       assertEqual(result.code, 202);
     },
 
-    testCursorForwardingDifferentUserDelete: function() {
+    testCursorForwardingDifferentUserDelete: function () {
       let url = baseCursorUrl;
       const query = {
         query: `FOR doc IN @@coll LIMIT 4 RETURN doc`,
@@ -373,7 +375,7 @@ function CursorSyncAuthSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.error);
       assertEqual(result.code, 202);
-    },
+    }
 
   };
 }

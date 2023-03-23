@@ -1,37 +1,37 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
+/* jshint globalstrict:true, strict:true, esnext: true */
+/* global assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
 const jsunity = require("jsunity");
 const internal = require('internal');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const isCluster = require('@arangodb/cluster').isCluster();
-const canUseFailAt =  internal.debugCanUseFailAt();
-  
+const canUseFailAt = internal.debugCanUseFailAt();
+
 const cn = "UnitTestsCollection";
 
 function CreateSuite () {
@@ -56,56 +56,67 @@ function CreateSuite () {
   };
 
   return {
-    testCreateNonUniquePersistentIndex : function () {
+    testCreateNonUniquePersistentIndex: function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "persistent", fields: ["value1"] }, value);
+        checkIndex({ type: "persistent",
+fields: ["value1"] }, value);
       });
     },
-    
-    testCreateUniquePersistentIndex : function () {
+
+    testCreateUniquePersistentIndex: function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "persistent", fields: ["value1"], unique: true }, value);
+        checkIndex({ type: "persistent",
+fields: ["value1"],
+unique: true }, value);
       });
     },
-    
-    testCacheEnabledFlagDoesNotMakeADifference1 : function () {
+
+    testCacheEnabledFlagDoesNotMakeADifference1: function () {
       let c = db._create(cn);
       try {
         assertEqual(1, c.indexes().length);
 
-        let idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+        let idx1 = c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: true });
         assertTrue(idx1.isNewlyCreated);
         assertTrue(idx1.cacheEnabled);
         assertEqual(2, c.indexes().length);
-        
+
         // create same index but with different cacheEnabled flag value
-        let idx2 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: false });
+        let idx2 = c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: false });
         assertFalse(idx2.isNewlyCreated);
         assertTrue(idx2.cacheEnabled);
         assertEqual(2, c.indexes().length);
-        
+
         assertEqual(idx1.id, idx2.id);
       } finally {
         db._drop(cn);
       }
     },
 
-    testCacheEnabledFlagDoesNotMakeADifference2 : function () {
+    testCacheEnabledFlagDoesNotMakeADifference2: function () {
       let c = db._create(cn);
       try {
         assertEqual(1, c.indexes().length);
 
-        let idx1 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: false });
+        let idx1 = c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: false });
         assertTrue(idx1.isNewlyCreated);
         assertFalse(idx1.cacheEnabled);
         assertEqual(2, c.indexes().length);
-        
+
         // create same index but with different cacheEnabled flag value
-        let idx2 = c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+        let idx2 = c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: true });
         assertFalse(idx2.isNewlyCreated);
         assertFalse(idx2.cacheEnabled);
         assertEqual(2, c.indexes().length);
-        
+
         assertEqual(idx1.id, idx2.id);
       } finally {
         db._drop(cn);
@@ -156,7 +167,7 @@ function FiguresSuite () {
 
         if (cacheEnabled) {
           c.insert(docs);
-      
+
           // figures shouldn't have changed
           let figures = c.indexes(true).filter((idx) => idx.name === 'testCache')[0];
           assertTrue(figures.figures.cacheInUse, figures);
@@ -171,7 +182,7 @@ function FiguresSuite () {
           for (let i = 0; i < 5; ++i) {
             db._query(`FOR i IN 1..1000 FOR doc IN ${cn} FILTER doc.value == i RETURN 1`);
           }
-          
+
           figures = c.indexes(true).filter((idx) => idx.name === 'testCache')[0];
           assertNotEqual(0, figures.figures.cacheSize, figures);
           assertNotEqual(0, figures.figures.cacheUsage, figures);
@@ -181,24 +192,27 @@ function FiguresSuite () {
           assertNotEqual(0, figures.figures.cacheLifeTimeHitRate, figures);
         }
       }
-      
+
     } finally {
       db._drop(cn);
     }
   };
 
   return {
-    testFiguresNonUniquePersistentIndex : function () {
+    testFiguresNonUniquePersistentIndex: function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "persistent", fields: ["value"] }, value);
+        checkIndex({ type: "persistent",
+fields: ["value"] }, value);
       });
     },
-    
-    testFiguresUniquePersistentIndex : function () {
+
+    testFiguresUniquePersistentIndex: function () {
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "persistent", fields: ["value"], unique: true }, value);
+        checkIndex({ type: "persistent",
+fields: ["value"],
+unique: true }, value);
       });
-    },
+    }
   };
 }
 
@@ -206,7 +220,7 @@ function VPackIndexCacheModifySuite (unique) {
   const n = 2000;
 
   const maxTries = 3;
-  
+
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
       internal.debugSetFailAt("VPackIndexFailWithoutCache");
@@ -217,7 +231,8 @@ function VPackIndexCacheModifySuite (unique) {
     let c = db._collection(cn);
     let docs = [];
     for (let i = 0; i < n; ++i) {
-      docs.push({ _key: "test" + i, value: i });
+      docs.push({ _key: "test" + i,
+value: i });
       if (docs.length === 1000) {
         c.insert(docs);
         docs = [];
@@ -231,14 +246,18 @@ function VPackIndexCacheModifySuite (unique) {
       let c = db._create(cn);
 
       insertDocuments();
-      
+
       if (canUseFailAt) {
         internal.debugClearFailAt();
       }
 
-      c.ensureIndex({ type: "persistent", fields: ["value"], name: "UnitTestsIndex", unique, cacheEnabled: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+name: "UnitTestsIndex",
+unique,
+cacheEnabled: true });
     },
-    
+
     tearDown: function () {
       if (canUseFailAt) {
         internal.debugClearFailAt();
@@ -265,7 +284,7 @@ function VPackIndexCacheModifySuite (unique) {
         let stats = qres.getExtra().stats;
         assertEqual(0, stats.cacheHits, stats);
         assertEqual(1000, stats.cacheMisses, stats);
-        
+
         // query again (may hit the cache)
         qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
         result = qres.toArray();
@@ -285,7 +304,7 @@ function VPackIndexCacheModifySuite (unique) {
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
     },
-    
+
     testPointLookupAndRemove: function () {
       setFailurePointForPointLookup();
 
@@ -309,7 +328,7 @@ function VPackIndexCacheModifySuite (unique) {
         let stats = qres.getExtra().stats;
         assertEqual(0, stats.cacheHits, stats);
         assertEqual(1000, stats.cacheMisses, stats);
-        
+
         // query again (may hit the cache)
         qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
         result = qres.toArray();
@@ -329,7 +348,7 @@ function VPackIndexCacheModifySuite (unique) {
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
     },
-    
+
     testPointLookupAndUpdate: function () {
       setFailurePointForPointLookup();
 
@@ -360,7 +379,7 @@ function VPackIndexCacheModifySuite (unique) {
         let stats = qres.getExtra().stats;
         assertEqual(0, stats.cacheHits, stats);
         assertEqual(1000, stats.cacheMisses, stats);
-        
+
         // query again (may hit the cache)
         qres = db._query(`FOR i IN 0..999 FOR doc IN ${cn} FILTER doc.value == i RETURN doc`);
         result = qres.toArray();
@@ -382,7 +401,7 @@ function VPackIndexCacheModifySuite (unique) {
         // between different caches, cache migration events etc.
         assertTrue(tries < maxTries - 1 || stats.cacheHits > 0, stats);
       }
-    },
+    }
 
   };
 }
@@ -390,7 +409,7 @@ function VPackIndexCacheModifySuite (unique) {
 function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
   const n = 5000;
   const maxTries = 10;
-  
+
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
       // fails whenever the cache is used
@@ -415,20 +434,26 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
 
       let docs = [];
       for (let i = 0; i < n; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "testmann" + String(i).padStart(5, "0") });
+        docs.push({ _key: "test" + i,
+value1: i,
+value2: "testmann" + String(i).padStart(5, "0") });
         if (docs.length === 1000) {
           c.insert(docs);
           docs = [];
         }
       }
-      
+
       if (canUseFailAt) {
         internal.debugClearFailAt();
       }
 
-      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], name: "UnitTestsIndex", unique, cacheEnabled });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1", "value2"],
+name: "UnitTestsIndex",
+unique,
+cacheEnabled });
     },
-    
+
     tearDown: function () {
       if (canUseFailAt) {
         internal.debugClearFailAt();
@@ -453,7 +478,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         }
       }
     },
-    
+
     testFullScanNonCovering: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -467,7 +492,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         assertEqual("testmann" + String(i).padStart(5, "0"), doc.value2);
       }
     },
-    
+
     testFullScanCovering: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -482,7 +507,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testRangeScanNonCovering: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -500,7 +525,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testRangeScanCovering: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -515,7 +540,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testPointLookupOnlyMissesPartialCoverage: function () {
       setFailurePointIfCacheUsed();
 
@@ -528,7 +553,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         assertEqual(0, stats.cacheMisses, stats);
       }
     },
-    
+
     testPointLookupOnlyMissesFullCoverage: function () {
       setFailurePointForPointLookup();
 
@@ -553,7 +578,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         }
       }
     },
-    
+
     testPointLookupNonCovering: function () {
       setFailurePointForPointLookup();
 
@@ -642,7 +667,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         }
       }
     },
-    
+
     testPointLookupCoveringCacheExplicitlyOn: function () {
       setFailurePointForPointLookup();
 
@@ -672,7 +697,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         }
       }
     },
-    
+
     testPointLookupCoveringCacheDisabled: function () {
       setFailurePointIfCacheUsed();
 
@@ -688,7 +713,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
         assertEqual(0, stats.cacheMisses, stats);
       }
     },
-    
+
     testMixedLookupNonCovering: function () {
       setFailurePointIfCacheUsed();
 
@@ -704,7 +729,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
       let stats = qres.getExtra().stats;
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
-    },
+    }
 
   };
 }
@@ -712,7 +737,7 @@ function VPackIndexCacheReadOnlySuite (unique, cacheEnabled) {
 function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
   const n = 10000;
   const maxTries = 10;
-  
+
   let setFailurePointIfCacheUsed = () => {
     if (canUseFailAt) {
       // fails whenever the cache is used
@@ -735,20 +760,29 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
 
       let docs = [];
       for (let i = 0; i < n; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "testmann" + String(i).padStart(5, "0"), value3: i, value4: "test" + i });
+        docs.push({ _key: "test" + i,
+value1: i,
+value2: "testmann" + String(i).padStart(5, "0"),
+value3: i,
+value4: "test" + i });
         if (docs.length === 1000) {
           c.insert(docs);
           docs = [];
         }
       }
-      
+
       if (canUseFailAt) {
         internal.debugClearFailAt();
       }
 
-      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], storedValues: ["value3", "value4"], name: "UnitTestsIndex", unique, cacheEnabled: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1", "value2"],
+storedValues: ["value3", "value4"],
+name: "UnitTestsIndex",
+unique,
+cacheEnabled: true });
     },
-    
+
     tearDown: function () {
       if (canUseFailAt) {
         internal.debugClearFailAt();
@@ -770,7 +804,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testFullScanCoveringMultiple: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -788,7 +822,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testRangeScanCovering: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -803,7 +837,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testRangeScanCoveringMultiple: function () {
       // full scan must never used the cache
       setFailurePointIfCacheUsed();
@@ -821,7 +855,7 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
       assertEqual(0, stats.cacheHits, stats);
       assertEqual(0, stats.cacheMisses, stats);
     },
-    
+
     testPointLookupCovering1: function () {
       setFailurePointForPointLookup();
 
@@ -872,15 +906,15 @@ function VPackIndexCacheReadOnlyStoredValuesSuite (unique) {
           }
         }
       }
-    },
+    }
 
   };
 }
 
 function PersistentIndexNonUniqueHugeValueSuite () {
   const maxTries = 10;
-  const n = 200000; 
-  
+  const n = 200000;
+
   let setFailurePointForPointLookup = () => {
     if (canUseFailAt) {
       internal.debugSetFailAt("VPackIndexFailWithoutCache");
@@ -888,9 +922,11 @@ function PersistentIndexNonUniqueHugeValueSuite () {
   };
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: true });
       let docs = [];
       // create a "super node", which will not be stored in the cache
       for (let i = 0; i < n; ++i) {
@@ -904,11 +940,11 @@ function PersistentIndexNonUniqueHugeValueSuite () {
       c.insert({ value: "foobar" });
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testHugeValue : function () {
+    testHugeValue: function () {
       setFailurePointForPointLookup();
 
       let c = db._collection(cn);
@@ -923,8 +959,8 @@ function PersistentIndexNonUniqueHugeValueSuite () {
         assertEqual(1, stats.cacheMisses, stats);
       }
     },
-    
-    testSmallValue : function () {
+
+    testSmallValue: function () {
       setFailurePointForPointLookup();
 
       let c = db._collection(cn);
@@ -945,7 +981,7 @@ function PersistentIndexNonUniqueHugeValueSuite () {
           }
         }
       }
-    },
+    }
 
   };
 }
@@ -971,7 +1007,7 @@ function OtherIndexesSuite () {
   };
 
   return {
-    testEdgeIndex : function () {
+    testEdgeIndex: function () {
       let c = db._createEdgeCollection(cn);
 
       try {
@@ -984,90 +1020,96 @@ function OtherIndexesSuite () {
         db._drop(cn);
       }
     },
-    
-    testInvertedIndex : function () {
+
+    testInvertedIndex: function () {
       // inverted index should not show the "cacheEnabled" property
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "inverted", fields: [{ name: "value1" }] }, value);
+        checkIndex({ type: "inverted",
+fields: [{ name: "value1" }] }, value);
       });
     },
 
-    testTtlIndex : function () {
+    testTtlIndex: function () {
       // ttl index should not show the "cacheEnabled" property
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "ttl", fields: ["value1"], expireAfter: 600 }, value);
+        checkIndex({ type: "ttl",
+fields: ["value1"],
+expireAfter: 600 }, value);
       });
     },
-    
-    testGeoIndex : function () {
+
+    testGeoIndex: function () {
       // geo index should not show the "cacheEnabled" property
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "geo", fields: ["value1", "value2"] }, value);
+        checkIndex({ type: "geo",
+fields: ["value1", "value2"] }, value);
       });
     },
-    
-    testFulltextIndex : function () {
+
+    testFulltextIndex: function () {
       // fulltext index should not show the "cacheEnabled" property
       [ false, true, undefined ].forEach((value) => {
-        checkIndex({ type: "fulltext", fields: ["value1"], minLength: 3 }, value);
+        checkIndex({ type: "fulltext",
+fields: ["value1"],
+minLength: 3 }, value);
       });
-    },
+    }
   };
 }
 
-function PersistentIndexNonUniqueModifySuite() {
+function PersistentIndexNonUniqueModifySuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheModifySuite(/*unique*/ false), suite, '_nonUnique');
+  deriveTestSuite(VPackIndexCacheModifySuite(/* unique*/ false), suite, '_nonUnique');
   return suite;
 }
 
-function PersistentIndexUniqueModifySuite() {
+function PersistentIndexUniqueModifySuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheModifySuite(/*unique*/ true), suite, '_unique');
+  deriveTestSuite(VPackIndexCacheModifySuite(/* unique*/ true), suite, '_unique');
   return suite;
 }
 
-function PersistentIndexNonUniqueReadOnlyCacheDisabledSuite() {
+function PersistentIndexNonUniqueReadOnlyCacheDisabledSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ false, /*cacheEnabled*/ false), suite, '_nonUnique_cacheDisabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/* unique*/ false, /* cacheEnabled*/ false), suite, '_nonUnique_cacheDisabled');
   return suite;
 }
 
-function PersistentIndexNonUniqueReadOnlyCacheEnabledSuite() {
+function PersistentIndexNonUniqueReadOnlyCacheEnabledSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ false, /*cacheEnabled*/ true), suite, '_nonUnique_cacheEnabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/* unique*/ false, /* cacheEnabled*/ true), suite, '_nonUnique_cacheEnabled');
   return suite;
 }
 
-function PersistentIndexNonUniqueReadOnlyStoredValuesSuite() {
+function PersistentIndexNonUniqueReadOnlyStoredValuesSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/*unique*/ false), suite, '_nonUnique_storedValues');
+  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/* unique*/ false), suite, '_nonUnique_storedValues');
   return suite;
 }
 
-function PersistentIndexUniqueReadOnlyCacheDisabledSuite() {
+function PersistentIndexUniqueReadOnlyCacheDisabledSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ true, /*cacheEnabled*/ false), suite, '_unique_cacheDisabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/* unique*/ true, /* cacheEnabled*/ false), suite, '_unique_cacheDisabled');
   return suite;
 }
 
-function PersistentIndexUniqueReadOnlyCacheEnabledSuite() {
+function PersistentIndexUniqueReadOnlyCacheEnabledSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlySuite(/*unique*/ true, /*cacheEnabled*/ true), suite, '_unique_cacheEnabled');
+  deriveTestSuite(VPackIndexCacheReadOnlySuite(/* unique*/ true, /* cacheEnabled*/ true), suite, '_unique_cacheEnabled');
   return suite;
 }
 
-function PersistentIndexUniqueReadOnlyStoredValuesSuite() {
+function PersistentIndexUniqueReadOnlyStoredValuesSuite () {
   'use strict';
   let suite = {};
-  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/*unique*/ true), suite, '_unique_storedValues');
+  deriveTestSuite(VPackIndexCacheReadOnlyStoredValuesSuite(/* unique*/ true), suite, '_unique_storedValues');
   return suite;
 }
 

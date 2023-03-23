@@ -57,12 +57,12 @@ const testPaths = {
   'permissions': [tu.pathForTesting('client/permissions')]
 };
 class permissionsRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";
   }
-  
-  run() {
+
+  run () {
     let obj = this;
     let res = {};
     let filtered = {};
@@ -71,10 +71,10 @@ class permissionsRunner extends tu.runInArangoshRunner {
     this.instanceManager = {
       rootDir: rootDir,
       endpoint: 'tcp://127.0.0.1:8888',
-      findEndpoint: function() {
+      findEndpoint: function () {
         return 'tcp://127.0.0.1:8888';
       },
-      getStructure: function() {
+      getStructure: function () {
         return {
           endpoint: 'tcp://127.0.0.1:8888',
           rootDir: rootDir
@@ -89,7 +89,7 @@ class permissionsRunner extends tu.runInArangoshRunner {
         let testName = t[t.length - 1].replace(/\.js/, '');
         let instanceRoot = fs.join(rootDir, testName);
         fs.makeDirectoryRecursive(instanceRoot);
-        let testResultJson = fs.join(rootDir, 'testresult.json');;
+        let testResultJson = fs.join(rootDir, 'testresult.json');
         process.env['RESULT'] = testResultJson;
 
         let content = fs.read(f);
@@ -99,7 +99,7 @@ class permissionsRunner extends tu.runInArangoshRunner {
 
         obj.addArgs = testOptions;
         res[f] = obj.runOneTest(/*  ,*/
-          f                                
+          f
         );
         if (obj.options.cleanup && res[f].status) {
           fs.removeDirectoryRecursive(instanceRoot, true);
@@ -111,7 +111,7 @@ class permissionsRunner extends tu.runInArangoshRunner {
     return res;
   }
 }
-function permissions(options) {
+function permissions (options) {
   return new permissionsRunner(options, "permissions").run();
 }
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
@@ -120,6 +120,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
 
   opts['skipShebang'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

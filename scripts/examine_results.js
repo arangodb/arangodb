@@ -30,8 +30,8 @@ function main (argv) {
       break;
     }
     analyzers = _.merge(analyzers, argv[0].split(','));
-    
-    argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
+
+    argv = argv.slice(1); // and remove first arg (c++:pop_front/bash:shift)
   }
 
   if (analyzers.length === 0) {
@@ -39,7 +39,7 @@ function main (argv) {
           yaml.safeDump(Object.keys(rp.analyze)) + "\n" + RESET);
     process.exit(1);
   }
-  
+
   if (argv.length >= 1) {
     try {
       options = internal.parseArgv(argv, 0);
@@ -78,7 +78,7 @@ function main (argv) {
       print(RED + "File not found [" + file + "]: " + ex.message + RESET + "\n");
       return false;
     }
-      
+
     let results;
     try {
       cu.GDB_OUTPUT = "";
@@ -86,8 +86,7 @@ function main (argv) {
       if (results.hasOwnProperty('crashreport')) {
         cu.GDB_OUTPUT = results['crashreport'];
       }
-    }
-    catch (ex) {
+    } catch (ex) {
       print(RED + "Failed to parse " + file + " - " + ex.message + RESET + "\n");
       return false;
     }
@@ -98,15 +97,14 @@ function main (argv) {
       let f = otherFile[i];
       try {
         otherResultsDump = fs.read(f);
-        i+=1;
+        i += 1;
       } catch (ex) {
         print(RED + "other File not found [" + f + "]: " + ex.message + RESET + "\n");
         return false;
       }
       try {
         otherResults = JSON.parse(otherResultsDump);
-      }
-      catch (ex) {
+      } catch (ex) {
         print(RED + "Failed to parse " + f + " - " + ex.message + RESET + "\n");
         return false;
       }
@@ -114,7 +112,7 @@ function main (argv) {
     _.defaults(options, optionsDefaults);
     try {
       print(YELLOW + "Analyzing: " + file + RESET);
-      ret = ret && analyzers.forEach(function(which) {
+      ret = ret && analyzers.forEach(function (which) {
         rp.analyze[which](options, results, otherResults);
       });
     } catch (ex) {

@@ -82,9 +82,9 @@ function shellClientReplicationApi (options) {
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
-    'replication': true,
+    'replication': true
   };
-  
+
   arango.forceJson(true);
   _.defaults(opts, options);
   opts.forceJson = true;
@@ -98,7 +98,7 @@ function shellClientReplicationApi (options) {
 
 
 class replicationRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, serverOptions, startReplication=false) {
+  constructor (options, testname, serverOptions, startReplication = false) {
     super(options, testname, serverOptions);
     this.options.singles = 2;
     this.follower = undefined;
@@ -106,15 +106,15 @@ class replicationRunner extends tu.runInArangoshRunner {
     this.startReplication = startReplication;
   }
 
-  preStart() {
+  preStart () {
     // our tests lean on accessing the `_users` collection, hence no auth for secondary
     this.instanceManager.arangods[1].args['server.authentication'] = false;
     return {
       message: '',
-      state: true,
+      state: true
     };
   }
-  postStart() {
+  postStart () {
     let message;
     print("starting replication follower: ");
     let state = true;
@@ -136,10 +136,10 @@ class replicationRunner extends tu.runInArangoshRunner {
     }
     return {
       message: message,
-      state: state,
+      state: state
     };
   }
-};
+}
 
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -175,7 +175,7 @@ function replicationAql (options) {
 // / @brief TEST: replication_ongoing*
 // //////////////////////////////////////////////////////////////////////////////
 
-var _replicationOngoing = function(path) {
+var _replicationOngoing = function (path) {
   this.func = function replicationOngoing (options) {
     let testCases = tu.scanTestPaths(testPaths[path], options);
 
@@ -227,6 +227,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   testFns['http_replication'] = shellClientReplicationApi;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

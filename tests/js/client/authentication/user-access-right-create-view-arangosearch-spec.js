@@ -62,7 +62,7 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -98,7 +98,9 @@ describe('User Rights Management', () => {
                 if (!rootTestCollection(colName, false)) {
                   let c = db._create(colName);
                   if (colName === testColName) {
-                    c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                    c.ensureIndex({ type: "inverted",
+name: indexName,
+fields: [ { name: "value" } ] });
                   }
                   if (colLevel['none'].has(name)) {
                     if (helper.isLdapEnabledExternal()) {
@@ -142,9 +144,9 @@ describe('User Rights Management', () => {
                 helper.switchUser('root', dbName);
                 let view = db._view(viewName);
                 if (view !== null) {
-                  links.every(function(link) {
+                  links.every(function (link) {
                     const links = view.properties().links;
-                    if (links != null && links.hasOwnProperty([link])){
+                    if (links != null && links.hasOwnProperty([link])) {
                       return true;
                     } else {
                       view = null;
@@ -175,8 +177,7 @@ describe('User Rights Management', () => {
 
               const rootGrantCollection = (colName, user, explicitRight = '') => {
                 if (rootTestCollection(colName, false)) {
-                  if (explicitRight !== '' && rightLevels.includes(explicitRight))
-                  {
+                  if (explicitRight !== '' && rightLevels.includes(explicitRight)) {
                     if (helper.isLdapEnabledExternal()) {
                       users.grantCollection(':role:' + user, dbName, colName, explicitRight);
                     } else {
@@ -240,7 +241,7 @@ describe('User Rights Management', () => {
                       expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                     }
                   });
-                  
+
                   it('view with links to existing collection', () => {
                     rootDropView(testViewName);
                     rootDropCollection(testColName);
@@ -265,7 +266,7 @@ describe('User Rights Management', () => {
                       }
                     }
                   });
-                  
+
                   it('view with links to multiple collections with same access level', () => {
                     rootDropView(testViewName);
                     rootDropCollection(testColName);
@@ -279,16 +280,18 @@ describe('User Rights Management', () => {
                     expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
 
                     if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
-                      db._createView(testViewName, testViewType, { links: { 
-                        [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+                      db._createView(testViewName, testViewType, { links: {
+                        [testColName]: { includeAllFields: true },
+[testColNameAnother]: { includeAllFields: true }
                       }
                       });
                       expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
                       expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
                     } else {
                       try {
-                        db._createView(testViewName, testViewType, { links: { 
-                          [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true } 
+                        db._createView(testViewName, testViewType, { links: {
+                          [testColName]: { includeAllFields: true },
+[testColNameAnother]: { includeAllFields: true }
                         }
                         });
                       } catch (e) {
@@ -302,8 +305,8 @@ describe('User Rights Management', () => {
                   });
 
                   let itName = 'view with links to multiple collections with RO access level to one of them';
-                  !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
-                    it(itName, () => {
+                  !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName)
+                    : it(itName, () => {
                       rootDropView(testViewName);
                       rootDropCollection(testColName);
                       rootDropCollection(testColNameAnother);
@@ -317,31 +320,33 @@ describe('User Rights Management', () => {
                       expect(rootTestCollection(testColNameAnother)).to.equal(true, 'Precondition failed, the collection still not exists');
 
                       if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
-                        db._createView(testViewName, testViewType, { links: { 
-                          [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
-                        } 
+                        db._createView(testViewName, testViewType, { links: {
+                          [testColName]: { includeAllFields: true },
+[testColNameAnother]: { includeAllFields: true }
+                        }
                         });
                         expect(rootTestView(testViewName)).to.equal(true, 'View creation reported success, but view was not found afterwards');
                         expect(rootTestViewHasLinks(testViewName, [`${testColName}`, `${testColNameAnother}`])).to.equal(true, 'View links expected to be visible, but were not found afterwards');
                       } else {
                         try {
                           db._createView(testViewName, testViewType, { links: {
-                            [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
-                          } 
+                            [testColName]: { includeAllFields: true },
+[testColNameAnother]: { includeAllFields: true }
+                          }
                           });
                         } catch (e) {
                           checkError(e);
                           return;
                         }
-                        if(!dbLevel['rw'].has(name)) {
+                        if (!dbLevel['rw'].has(name)) {
                           expect(rootTestView(testViewName)).to.equal(false, `${name} was able to create a view with insufficent rights`);
                         }
                       }
                     });
-                  
+
                   itName = 'view with links to multiple collections with NONE access level to one of them';
-                  !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
-                    it(itName, () => {
+                  !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName)
+                    : it(itName, () => {
                       rootDropView(testViewName);
                       rootDropCollection(testColName);
                       rootDropCollection(testColNameAnother);
@@ -357,7 +362,8 @@ describe('User Rights Management', () => {
                       if (dbLevel['rw'].has(name)) {
                         try {
                           db._createView(testViewName, testViewType, { links: {
-                            [testColName]: { includeAllFields: true }, [testColNameAnother]: { includeAllFields: true }
+                            [testColName]: { includeAllFields: true },
+[testColNameAnother]: { includeAllFields: true }
                           }
                           });
                         } catch (e) {

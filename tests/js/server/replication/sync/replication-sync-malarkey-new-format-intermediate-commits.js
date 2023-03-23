@@ -41,7 +41,7 @@ const {
 
 const cn = 'UnitTestsReplication';
 
-function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
+function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits () {
   'use strict';
 
   let suite = {
@@ -57,7 +57,7 @@ function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
       clearFailurePoints();
       setFailurePoint("TransactionState::intermediateCommitCount1000");
       db._drop(cn);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_NewFormatIntermediateCommit');

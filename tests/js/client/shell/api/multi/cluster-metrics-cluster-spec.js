@@ -57,159 +57,159 @@ const MetricNames = {
 };
 
 class Watcher {
-  beforeCoordinator(metrics) {};
-  afterCoordinator(metrics) {};
-  beforeDBServer(metrics) {};
-  afterDBServer(metrics) {};
-  beforeAgent(metrics) {};
-  afterAgent(metrics) {};
+  beforeCoordinator (metrics) {}
+  afterCoordinator (metrics) {}
+  beforeDBServer (metrics) {}
+  afterDBServer (metrics) {}
+  beforeAgent (metrics) {}
+  afterAgent (metrics) {}
 }
 
 class CoordinatorValueWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeCoordinator(metrics) {
+  beforeCoordinator (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
+  afterCoordinator (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.greaterThan(this._before);
-  };
+  }
 }
 
 
 class CoordinatorBucketWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeCoordinator(metrics) {
+  beforeCoordinator (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
+  afterCoordinator (metrics) {
+    const after = metrics[this._metric];
     expectOneBucketChanged(after, this._before);
-  };
+  }
 }
 
 
 class DBServerValueWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeDBServer(metrics) {
+  beforeDBServer (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
+  afterDBServer (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.greaterThan(this._before);
-  };
+  }
 }
 
 
 class DBServerBucketWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeDBServer(metrics) {
+  beforeDBServer (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
+  afterDBServer (metrics) {
+    const after = metrics[this._metric];
     expectOneBucketChanged(after, this._before);
-  };
+  }
 }
 
 
 class AgentValueWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeAgent(metrics) {
+  beforeAgent (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterAgent(metrics) {
-    const after =  metrics[this._metric];
+  afterAgent (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.greaterThan(this._before);
-  };
+  }
 }
 
 
 class AgentBucketWatcher extends Watcher {
-  constructor(metric) {
+  constructor (metric) {
     super();
     this._metric = metric;
     this._before = null;
   }
 
-  beforeAgent(metrics) {
+  beforeAgent (metrics) {
     this._before = metrics[this._metric];
-  };
+  }
 
-  afterAgent(metrics) {
-    const after =  metrics[this._metric];
+  afterAgent (metrics) {
+    const after = metrics[this._metric];
     expectOneBucketChanged(after, this._before);
-  };
+  }
 }
 
 class QueryTimeWatcher extends CoordinatorValueWatcher {
-  constructor(minChange) {
+  constructor (minChange) {
     super(MetricNames.QUERY_TIME);
     this._minChange = minChange;
   }
 
-  afterCoordinator(metrics) {
-    const after =  metrics[this._metric];
+  afterCoordinator (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.at.least(this._before + this._minChange);
-  };
+  }
 }
 
 class ShardCountWatcher extends DBServerValueWatcher {
-  constructor(change) {
+  constructor (change) {
     super(MetricNames.SHARD_COUNT);
     this._change = change;
   }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
+  afterDBServer (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.equal(this._before + this._change);
-  };
+  }
 }
 
 class ShardLeaderCountWatcher extends DBServerValueWatcher {
-  constructor(change) {
+  constructor (change) {
     super(MetricNames.SHARD_LEADER_COUNT);
     this._change = change;
   }
 
-  afterDBServer(metrics) {
-    const after =  metrics[this._metric];
+  afterDBServer (metrics) {
+    const after = metrics[this._metric];
     expect(after).to.be.equal(this._before + this._change);
-  };
+  }
 }
 
 class MaintenanceWatcher extends Watcher {
-  constructor() {
+  constructor () {
     super();
     this._p1ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_1_COUNT);
     this._p2ValueWatcher = new DBServerValueWatcher(MetricNames.PHASE_2_COUNT);
@@ -217,23 +217,23 @@ class MaintenanceWatcher extends Watcher {
     this._p2BucketWatcher = new DBServerBucketWatcher(MetricNames.PHASE_2_BUCKET);
   }
 
-  beforeDBServer(metrics) {
+  beforeDBServer (metrics) {
     this._p1ValueWatcher.beforeDBServer(metrics);
     this._p2ValueWatcher.beforeDBServer(metrics);
     this._p1BucketWatcher.beforeDBServer(metrics);
     this._p2BucketWatcher.beforeDBServer(metrics);
-  };
+  }
 
-  afterDBServer(metrics) {
+  afterDBServer (metrics) {
     this._p1ValueWatcher.afterDBServer(metrics);
     this._p2ValueWatcher.afterDBServer(metrics);
     this._p1BucketWatcher.afterDBServer(metrics);
     this._p2BucketWatcher.afterDBServer(metrics);
-  };
+  }
 }
 
 class HeartBeatWatcher extends Watcher {
-  constructor() {
+  constructor () {
     super();
     this._dbhbValueWatcher = new DBServerValueWatcher(MetricNames.HEARTBEAT_COUNT);
     this._dbhbBucketWatcher = new DBServerBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
@@ -241,47 +241,45 @@ class HeartBeatWatcher extends Watcher {
     this._coordhbBucketWatcher = new CoordinatorBucketWatcher(MetricNames.HEARTBEAT_BUCKET);
   }
 
-  beforeDBServer(metrics) {
+  beforeDBServer (metrics) {
     this._dbhbValueWatcher.beforeDBServer(metrics);
     this._dbhbBucketWatcher.beforeDBServer(metrics);
-  };
+  }
 
-  afterDBServer(metrics) {
+  afterDBServer (metrics) {
     this._dbhbValueWatcher.afterDBServer(metrics);
     this._dbhbBucketWatcher.afterDBServer(metrics);
-  };
+  }
 
-  beforeCoordinator(metrics) {
+  beforeCoordinator (metrics) {
     this._coordhbValueWatcher.beforeCoordinator(metrics);
     this._coordhbBucketWatcher.beforeCoordinator(metrics);
-  };
+  }
 
-  afterCoordinator(metrics) {
+  afterCoordinator (metrics) {
     this._coordhbValueWatcher.afterCoordinator(metrics);
     this._coordhbBucketWatcher.afterCoordinator(metrics);
-  };
+  }
 }
 
 class SupervisionWatcher extends Watcher {
-  constructor() {
+  constructor () {
     super();
     this._svValueWatcher = new AgentValueWatcher(MetricNames.SUPERVISION_COUNT);
     this._svBucketWatcher = new AgentBucketWatcher(MetricNames.SUPERVISION_BUCKET);
   }
 
 
-  beforeAgent(metrics) {
+  beforeAgent (metrics) {
     this._svValueWatcher.beforeAgent(metrics);
     this._svBucketWatcher.beforeAgent(metrics);
-  };
+  }
 
-  afterAgent(metrics) {
+  afterAgent (metrics) {
     this._svValueWatcher.afterAgent(metrics);
     this._svBucketWatcher.afterAgent(metrics);
-  };
-};
-
-
+  }
+}
 
 
 describe('_admin/metrics', () => {
@@ -313,7 +311,7 @@ describe('_admin/metrics', () => {
     const labelPart = key.substring(start + 1, key.length - 1);
     for (const l of labelPart.split(",")) {
       const [lab, val] = l.split("=");
-      labels.set(lab,val);
+      labels.set(lab, val);
     }
     return [
       key.substring(0, start),
@@ -344,7 +342,7 @@ describe('_admin/metrics', () => {
       return res;
     };
 
-    const loadMetrics = (role, idx) =>  {
+    const loadMetrics = (role, idx) => {
       const url = `${servers.get(role)[idx]}/_admin/metrics/v2`;
 
       const res = request({
@@ -378,23 +376,35 @@ describe('_admin/metrics', () => {
 
     const runTest = (action, watchers) => {
       const coordBefore = loadAllMetrics("coordinator");
-      watchers.forEach(w => {w.beforeCoordinator(coordBefore);});
+      watchers.forEach(w => {
+w.beforeCoordinator(coordBefore);
+});
 
       const dbBefore = loadAllMetrics("dbserver");
-      watchers.forEach(w => {w.beforeDBServer(dbBefore);});
+      watchers.forEach(w => {
+w.beforeDBServer(dbBefore);
+});
 
       const agentsBefore = loadAllMetrics("agent");
-      watchers.forEach(w => {w.beforeAgent(agentsBefore);});
+      watchers.forEach(w => {
+w.beforeAgent(agentsBefore);
+});
 
       action();
       const coordAfter = loadAllMetrics("coordinator");
-      watchers.forEach(w => {w.afterCoordinator(coordAfter);});
+      watchers.forEach(w => {
+w.afterCoordinator(coordAfter);
+});
 
       const dbAfter = loadAllMetrics("dbserver");
-      watchers.forEach(w => {w.afterDBServer(dbAfter);});
+      watchers.forEach(w => {
+w.afterDBServer(dbAfter);
+});
 
       const agentsAfter = loadAllMetrics("agent");
-      watchers.forEach(w => {w.afterAgent(agentsAfter);});
+      watchers.forEach(w => {
+w.afterAgent(agentsAfter);
+});
     };
 
     it('aql query time', () => {
@@ -407,13 +417,15 @@ describe('_admin/metrics', () => {
     it('collection and index', () => {
       try {
         runTest(() => {
-          db._create("UnitTestCollection", {numberOfShards: 9, replicationFactor: 2}, undefined, {waitForSyncReplication: true});
+          db._create("UnitTestCollection", {numberOfShards: 9,
+replicationFactor: 2}, undefined, {waitForSyncReplication: true});
           require("internal").wait(10.0); // database servers update their shard count in phaseOne. So lets wait until all have done their next phaseOne.
         },
         [new MaintenanceWatcher(), new ShardCountWatcher(18), new ShardLeaderCountWatcher(9)]
         );
         runTest(() => {
-          db["UnitTestCollection"].ensureIndex({ type: "hash", fields: ["temp"] });
+          db["UnitTestCollection"].ensureIndex({ type: "hash",
+fields: ["temp"] });
         },
         [new MaintenanceWatcher()]
         );

@@ -662,7 +662,7 @@ describe('babies collection document', function () {
       expect(b[5].error).to.equal(true);
       expect(b[5].errorNum).to.equal(invalidCode);
 
-      // Check unique violated 
+      // Check unique violated
       expect(b[2].error).to.equal(true);
       expect(b[2].errorNum).to.equal(uniqueCode);
       expect(b[4].error).to.equal(true);
@@ -700,7 +700,7 @@ describe('babies collection document', function () {
       expect(b1[0]._key).to.be.a('string');
       expect(b1[0]._rev).to.be.a('string');
 
-      let req2 = arango.POST_RAW('/_api/document/' + cn + '?returnNew=true',[{
+      let req2 = arango.POST_RAW('/_api/document/' + cn + '?returnNew=true', [{
         'Hallo': 12
       }]);
 
@@ -1023,7 +1023,7 @@ describe('babies collection document', function () {
       expect(req5.code).to.equal(202);
 
       let b5 = req5.parsedBody;
-      
+
       expect(b5).to.be.instanceof(Array);
       expect(b5).to.have.lengthOf(1);
       expect(b5[0]).to.be.a('object');
@@ -1127,11 +1127,11 @@ describe('babies collection document', function () {
         {
           '_key': key1,
           'ulf': 42
-        },{
+        }, {
           '_key': key1,
           'ulf': 32
 
-        },{
+        }, {
           '_key': key1,
           'ulfine': 23
         }

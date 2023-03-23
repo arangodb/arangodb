@@ -40,7 +40,7 @@ const testPaths = {
 // / @brief TEST: version
 // //////////////////////////////////////////////////////////////////////////////
 
-function version(options) {
+function version (options) {
   // create empty data directory
   const dataDir = fs.join(fs.getTempPath(), 'version');
 
@@ -67,7 +67,7 @@ function version(options) {
   args.push(fs.join('.', 'js', 'apps'));
   args.push('--javascript.v8-contexts');
   args.push('1');
-  
+
   fs.makeDirectoryRecursive(dataDir);
 
   let results = { failed: 0 };
@@ -89,5 +89,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['version'] = version;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
 };

@@ -81,7 +81,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging enabled\\n' +
     'bt\\n' +
-    'thread apply all bt\\n'+
+    'thread apply all bt\\n' +
     'bt full\\n' +
     '\';';
 
@@ -98,7 +98,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   const args = ['-c', command];
   print(JSON.stringify(args));
-  
+
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
@@ -142,7 +142,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging enabled\\n' +
     'bt\\n' +
-    'thread apply all bt\\n'+
+    'thread apply all bt\\n' +
     'bt full\\n' +
     gcore +
     'kill \\n' +
@@ -250,7 +250,7 @@ function generateCoreDumpMac (instanceInfo, options, storeArangodPath, pid, gene
   return {
     pid: executeExternal('/bin/bash', args),
     file: lldbOutputFile,
-    hint:  'lldb ' + storeArangodPath + ' -c /cores/core.' + pid,
+    hint: 'lldb ' + storeArangodPath + ' -c /cores/core.' + pid,
     verbosePrint: true
   };
 }
@@ -271,7 +271,7 @@ function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) 
   if (options.exceptionFilter != null) {
     procdumpArgs = [
       '-accepteula',
-      '-64',
+      '-64'
     ];
     if (!instantDump) {
       procdumpArgs.push('-e');
@@ -287,7 +287,7 @@ function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) 
     procdumpArgs.push(dumpFile);
   } else {
     procdumpArgs = [
-      '-accepteula',
+      '-accepteula'
     ];
     if (!instantDump) {
       procdumpArgs.push('-e');
@@ -337,8 +337,8 @@ function stopProcdump (options, instanceInfo, force = false) {
   }
 }
 
-function calculateMonitorValues(options, instanceInfo, pid, cmd) {
-  
+function calculateMonitorValues (options, instanceInfo, pid, cmd) {
+
   if (platform.substr(0, 3) === 'win') {
     if (process.env.hasOwnProperty('COREDIR')) {
       instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'],
@@ -355,7 +355,7 @@ function calculateMonitorValues(options, instanceInfo, pid, cmd) {
     }
   }
 }
-function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
+function isEnabledWindowsMonitor (options, instanceInfo, pid, cmd) {
   calculateMonitorValues(options, instanceInfo, pid, cmd);
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     return true;
@@ -445,7 +445,7 @@ function generateCoreDumpWindows (instanceInfo) {
 }
 
 function checkMonitorAlive (binary, instanceInfo, options, res) {
-  if (instanceInfo.hasOwnProperty('monitor') ) {
+  if (instanceInfo.hasOwnProperty('monitor')) {
     // Windows: wait for procdump to do its job...
     if (!instanceInfo.monitor.hasOwnProperty('status')) {
       let rc = statusExternal(instanceInfo.monitor.pid, false);
@@ -467,8 +467,9 @@ function checkMonitorAlive (binary, instanceInfo, options, res) {
           return false;
         }
       }
-    }
-    else return instanceInfo.monitor.exitStatus;
+    } else {
+return instanceInfo.monitor.exitStatus;
+}
   }
   return true;
 }
@@ -545,7 +546,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     if (instanceInfo.hasOwnProperty('monitor')) {
       stopProcdump(options, instanceInfo);
     }
-    if (!instanceInfo.hasOwnProperty('coreFilePattern') ) {
+    if (!instanceInfo.hasOwnProperty('coreFilePattern')) {
       print("your process wasn't monitored by procdump, won't have a coredump!");
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
@@ -577,7 +578,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   const stats = statisticsExternal(instanceInfo.pid);
   // picking some arbitrary number of a running arangod doubling it
   const generateCoreDump = options.coreGen && ((
-    stats.virtualSize  < 310000000 &&
+    stats.virtualSize < 310000000 &&
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0);
   if (options.test !== undefined) {
@@ -598,7 +599,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   }
 }
 
-function aggregateDebugger(instanceInfo, options) {
+function aggregateDebugger (instanceInfo, options) {
   print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
@@ -617,7 +618,7 @@ function aggregateDebugger(instanceInfo, options) {
     }
   }
   if (tearDownTimeout <= 0) {
-    print(RED+"killing debugger since it did not finish its busines in 180s"+RESET);
+    print(RED + "killing debugger since it did not finish its busines in 180s" + RESET);
     killExternal(instanceInfo.debuggerInfo.pid.pid, termSignal);
     print(statusExternal(instanceInfo.debuggerInfo.pid.pid, false));
   }
@@ -658,4 +659,7 @@ exports.runProcdump = runProcdump;
 exports.stopProcdump = stopProcdump;
 exports.isEnabledWindowsMonitor = isEnabledWindowsMonitor;
 exports.calculateMonitorValues = calculateMonitorValues;
-Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT, set: (value) => { GDB_OUTPUT = value; }});
+Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT,
+set: (value) => {
+ GDB_OUTPUT = value;
+}});

@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -33,7 +33,7 @@ const arangodb = require('@arangodb');
 const db = arangodb.db;
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
@@ -47,24 +47,27 @@ function drop_graph (waitForSync, graph_name) {
   cmd = cmd + "?waitForSync=${waitForSync}";
   let doc = arango.DELETE_RAW(cmd);
   return doc;
-};
+}
 
 function get_graph (graph_name) {
   let cmd = api + "/" + graph_name;
   let doc = arango.GET_RAW(cmd);
   return doc;
-};
+}
 
 function create_graph (waitForSync, name, edge_definitions) {
   let cmd = api + `?waitForSync=${waitForSync}`;
-  let body = {'name': name, 'edgeDefinitions':  edge_definitions};
+  let body = {'name': name,
+'edgeDefinitions': edge_definitions};
   let doc = arango.POST_RAW(cmd, body);
   return doc;
 }
 
 function create_graph_orphans (waitForSync, name, edge_definitions, orphans) {
   let cmd = api + `?waitForSync=${waitForSync}`;
-  let body = {'name': name, 'edgeDefinitions': edge_definitions, 'orphanCollections': orphans};
+  let body = {'name': name,
+'edgeDefinitions': edge_definitions,
+'orphanCollections': orphans};
   let doc = arango.POST_RAW(cmd, body);
   return doc;
 }
@@ -73,10 +76,10 @@ function create_graph_orphans (waitForSync, name, edge_definitions, orphans) {
 function endpoint (type, graph_name, collection, key) {
   let result = api + "/" + encodeURIComponent(graph_name) + "/" + encodeURIComponent(type);
   if (collection !== null) {
-    result =  result + "/" + collection;
+    result = result + "/" + collection;
   }
   if (key !== null) {
-    result =  result + "/" + encodeURIComponent(key);
+    result = result + "/" + encodeURIComponent(key);
   }
   return result;
 }
@@ -96,7 +99,7 @@ function list_edge_collections (graph_name) {
 }
 
 function additional_edge_definition (waitForSync, graph_name, edge_definitions) {
-  let cmd = edge_endpoint(graph_name)  + `?waitForSync=${waitForSync}`;
+  let cmd = edge_endpoint(graph_name) + `?waitForSync=${waitForSync}`;
   let doc = arango.POST_RAW(cmd, edge_definitions);
   return doc;
 }
@@ -120,7 +123,7 @@ function list_vertex_collections (graph_name) {
 }
 
 function additional_vertex_collection (waitForSync, graph_name, collection_name) {
-  let cmd = vertex_endpoint(graph_name)  + `?waitForSync=${waitForSync}`;
+  let cmd = vertex_endpoint(graph_name) + `?waitForSync=${waitForSync}`;
   let body = { 'collection': collection_name };
   let doc = arango.POST_RAW(cmd, body);
   return doc;
@@ -132,7 +135,7 @@ function delete_vertex_collection (waitForSync, graph_name, collection_name) {
   return doc;
 }
 
-function create_vertex (waitForSync, graph_name, collection, body, options={}) {
+function create_vertex (waitForSync, graph_name, collection, body, options = {}) {
   let cmd = vertex_endpoint(graph_name, collection) + `?waitForSync=${waitForSync}`;
   for (const [key, value] of Object.entries(options)) {
     cmd = cmd + "&" + encodeURIComponent(key) + "=" + encodeURIComponent(value);
@@ -147,7 +150,7 @@ function get_vertex (graph_name, collection, key) {
   return doc;
 }
 
-function update_vertex (waitForSync, graph_name, collection, key, body, keepNull, options={}) {
+function update_vertex (waitForSync, graph_name, collection, key, body, keepNull, options = {}) {
   let cmd = vertex_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   if (keepNull !== '') {
     cmd = cmd + `&keepNull=${keepNull}`;
@@ -159,7 +162,7 @@ function update_vertex (waitForSync, graph_name, collection, key, body, keepNull
   return doc;
 }
 
-function replace_vertex (waitForSync, graph_name, collection, key, body, options={}) {
+function replace_vertex (waitForSync, graph_name, collection, key, body, options = {}) {
   let cmd = vertex_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   for (const [key, value] of Object.entries(options)) {
     cmd = cmd + "&" + encodeURIComponent(key) + "=" + encodeURIComponent(value);
@@ -168,7 +171,7 @@ function replace_vertex (waitForSync, graph_name, collection, key, body, options
   return doc;
 }
 
-function delete_vertex (waitForSync, graph_name, collection, key, options={}) {
+function delete_vertex (waitForSync, graph_name, collection, key, options = {}) {
   let cmd = vertex_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   for (const [key, value] of Object.entries(options)) {
     cmd = cmd + "&" + encodeURIComponent(key) + "=" + encodeURIComponent(value);
@@ -177,7 +180,7 @@ function delete_vertex (waitForSync, graph_name, collection, key, options={}) {
   return doc;
 }
 
-function create_edge (waitForSync, graph_name, collection, from, to, body, options={}) {
+function create_edge (waitForSync, graph_name, collection, from, to, body, options = {}) {
   let cmd = edge_endpoint(graph_name, collection) + `?waitForSync=${waitForSync}`;
   body["_from"] = from;
   body["_to"] = to;
@@ -194,7 +197,7 @@ function get_edge (graph_name, collection, key) {
   return doc;
 }
 
-function update_edge (waitForSync, graph_name, collection, key, body, keepNull='', options={}) {
+function update_edge (waitForSync, graph_name, collection, key, body, keepNull = '', options = {}) {
   let cmd = edge_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   if (keepNull !== '') {
     cmd = cmd + `&keepNull=${keepNull}`;
@@ -206,7 +209,7 @@ function update_edge (waitForSync, graph_name, collection, key, body, keepNull='
   return doc;
 }
 
-function replace_edge (waitForSync, graph_name, collection, key, body, options={}) {
+function replace_edge (waitForSync, graph_name, collection, key, body, options = {}) {
   let cmd = edge_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   for (const [key, value] of Object.entries(options)) {
     cmd = cmd + "&" + encodeURIComponent(key) + "=" + encodeURIComponent(value);
@@ -215,7 +218,7 @@ function replace_edge (waitForSync, graph_name, collection, key, body, options={
   return doc;
 }
 
-function delete_edge (waitForSync, graph_name, collection, key, options={}) {
+function delete_edge (waitForSync, graph_name, collection, key, options = {}) {
   let cmd = edge_endpoint(graph_name, collection, key) + `?waitForSync=${waitForSync}`;
   for (const [key, value] of Object.entries(options)) {
     cmd = cmd + "&" + encodeURIComponent(key) + "=" + encodeURIComponent(value);
@@ -233,16 +236,16 @@ const unknown_name = "UnitTestUnknown";
 const unknown_collection = "UnitTestUnknownCollection";
 const unknown_key = "UnitTestUnknownKey";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking graph creation process;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function check_creation_of_graphSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       drop_graph(sync, graph_name);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       drop_graph(sync, graph_name);
       db._drop(bought_collection);
       db._drop(friend_collection);
@@ -250,9 +253,9 @@ function check_creation_of_graphSuite () {
       db._drop(user_collection);
     },
 
-    test_can_create_an_empty_graph: function() {
+    test_can_create_an_empty_graph: function () {
       let edge_definition = [];
-      let doc = create_graph(sync, graph_name, edge_definition );
+      let doc = create_graph(sync, graph_name, edge_definition);
 
       assertEqual(doc.code, sync ? 201 : 202);
       assertFalse(doc.parsedBody['error']);
@@ -262,8 +265,10 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
     },
 
-    test_can_create_a_graph_with_definitions: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_create_a_graph_with_definitions: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       let edge_definition = [first_def];
       let doc = create_graph(sync, graph_name, edge_definition);
 
@@ -275,7 +280,7 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
     },
 
-    test_can_create_a_graph_with_orphan_collections: function() {
+    test_can_create_a_graph_with_orphan_collections: function () {
       let orphans = [product_collection];
       let doc = create_graph_orphans(sync, graph_name, [], orphans);
       assertEqual(doc.code, sync ? 201 : 202);
@@ -287,19 +292,23 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], orphans);
     },
 
-    test_can_add_additional_edge_definitions: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_add_additional_edge_definitions: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       let edge_definition = [first_def];
       create_graph(sync, graph_name, edge_definition);
-      let second_def = { "collection": bought_collection, "from": [user_collection], "to": [product_collection] };
-      let doc = additional_edge_definition(sync, graph_name, second_def );
+      let second_def = { "collection": bought_collection,
+"from": [user_collection],
+"to": [product_collection] };
+      let doc = additional_edge_definition(sync, graph_name, second_def);
       edge_definition.push(second_def);
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 202);
       assertEqual(doc.parsedBody['graph']['name'], graph_name);
       assertEqual(doc.parsedBody['graph']['_rev'], doc.headers['etag']);
-      function sortByCollection(x, y) {
+      function sortByCollection (x, y) {
         if (x['collection'] < y['collection']) {
           return -1;
         }
@@ -312,13 +321,17 @@ function check_creation_of_graphSuite () {
                   edge_definition.sort(sortByCollection), doc);
     },
 
-    test_can_modify_existing_edge_definitions: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
-      create_graph(sync, graph_name, [first_def] );
-      let second_def = { "collection": friend_collection, "from": [product_collection], "to": [user_collection] };
+    test_can_modify_existing_edge_definitions: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
+      create_graph(sync, graph_name, [first_def]);
+      let second_def = { "collection": friend_collection,
+"from": [product_collection],
+"to": [user_collection] };
       let edge_definition = [second_def];
 
-      let doc = change_edge_definition(sync,  graph_name, friend_collection, second_def );
+      let doc = change_edge_definition(sync, graph_name, friend_collection, second_def);
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 202);
@@ -327,11 +340,13 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
     },
 
-    test_can_delete_an_edge_definition: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_delete_an_edge_definition: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       let edge_definition = [first_def];
-      create_graph(sync, graph_name, edge_definition );
-      let doc = delete_edge_definition(sync,  graph_name, friend_collection );
+      create_graph(sync, graph_name, edge_definition);
+      let doc = delete_edge_definition(sync, graph_name, friend_collection);
 
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
@@ -341,11 +356,13 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['edgeDefinitions'], []);
     },
 
-    test_can_add_an_additional_orphan_collection: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_add_an_additional_orphan_collection: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       let edge_definition = [first_def];
-      create_graph(sync, graph_name, edge_definition );
-      let doc = additional_vertex_collection(sync, graph_name, product_collection );
+      create_graph(sync, graph_name, edge_definition);
+      let doc = additional_vertex_collection(sync, graph_name, product_collection);
 
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
@@ -356,12 +373,14 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], [product_collection]);
     },
 
-    test_can_delete_an_orphan_collection: function() {
-      let first_def = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_delete_an_orphan_collection: function () {
+      let first_def = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       let edge_definition = [first_def];
-      create_graph(sync, graph_name, edge_definition );
+      create_graph(sync, graph_name, edge_definition);
       additional_vertex_collection(sync, graph_name, product_collection);
-      const doc = delete_vertex_collection(sync,  graph_name, product_collection);
+      const doc = delete_vertex_collection(sync, graph_name, product_collection);
 
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
@@ -372,14 +391,14 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
     },
 
-    test_can_delete_an_already_removed_orphan_collection: function() {
+    test_can_delete_an_already_removed_orphan_collection: function () {
       let edge_definition = [];
       create_graph(sync, graph_name, edge_definition);
       additional_vertex_collection(sync, graph_name, product_collection);
       db._drop(product_collection);
       assertFalse(db._collection(product_collection));
 
-      const doc = delete_vertex_collection(sync,  graph_name, product_collection );
+      const doc = delete_vertex_collection(sync, graph_name, product_collection);
 
       assertEqual(doc.code, 202);
       assertFalse(doc.parsedBody['error']);
@@ -390,8 +409,10 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
     },
 
-    test_can_delete_a_graph_again: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_delete_a_graph_again: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
       let doc = drop_graph(sync, graph_name);
       assertEqual(doc.code, 202);
@@ -399,8 +420,10 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['code'], 202);
     },
 
-    test_can_not_delete_a_graph_twice: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_not_delete_a_graph_twice: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
       drop_graph(sync, graph_name);
       let doc = drop_graph(sync, graph_name);
@@ -410,8 +433,10 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_not_create_a_graph_twice: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_not_create_a_graph_twice: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
       let doc = create_graph(sync, graph_name, [definition]);
       assertEqual(doc.code, 409);
@@ -420,7 +445,7 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['code'], 409);
     },
 
-    test_can_get_a_graph_by_name: function() {
+    test_can_get_a_graph_by_name: function () {
       let orphans = [product_collection];
       let doc = create_graph_orphans(sync, graph_name, [], orphans);
       let rev = doc.parsedBody['graph']['_rev'];
@@ -435,8 +460,10 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], orphans);
     },
 
-    test_can_get_a_list_of_vertex_collections: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_can_get_a_list_of_vertex_collections: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
       additional_vertex_collection(sync, graph_name, product_collection);
 
@@ -447,9 +474,13 @@ function check_creation_of_graphSuite () {
       assertEqual(doc.parsedBody['collections'], [product_collection, user_collection]);
     },
 
-    test_can_get_a_list_of_edge_collections: function() {
-      let definition1 = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
-      let definition2 = { "collection": bought_collection, "from": [user_collection], "to": [product_collection] };
+    test_can_get_a_list_of_edge_collections: function () {
+      let definition1 = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
+      let definition2 = { "collection": bought_collection,
+"from": [user_collection],
+"to": [product_collection] };
       create_graph(sync, graph_name, [definition1, definition2]);
 
       let doc = list_edge_collections(graph_name);
@@ -463,19 +494,21 @@ function check_creation_of_graphSuite () {
 
 function check_vertex_operationSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       drop_graph(sync, graph_name);
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       drop_graph(sync, graph_name);
       db._drop(friend_collection);
       db._drop(user_collection);
     },
 
-    test_can_create_a_vertex: function() {
+    test_can_create_a_vertex: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name}, {});
       assertEqual(doc.code, sync ? 201 : 202);
@@ -487,7 +520,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['new'], undefined);
     },
 
-    test_can_create_a_vertex__returnNew: function() {
+    test_can_create_a_vertex__returnNew: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name}, { "returnNew": "true" });
       assertEqual(doc.code, sync ? 201 : 202);
@@ -500,7 +533,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['new']['name'], name);
     },
 
-    test_can_get_a_vertex: function() {
+    test_can_get_a_vertex: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -514,7 +547,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['_key'], key);
     },
 
-    test_can_not_get_a_non_existing_vertex: function() {
+    test_can_not_get_a_non_existing_vertex: function () {
       let key = "unknownKey";
       let doc = get_vertex(graph_name, user_collection, key);
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -523,7 +556,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_replace_a_vertex: function() {
+    test_can_replace_a_vertex: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -549,7 +582,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['_key'], key);
     },
 
-    test_can_replace_a_vertex__returnOld: function() {
+    test_can_replace_a_vertex__returnOld: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -557,7 +590,8 @@ function check_vertex_operationSuite () {
       assertEqual(oldTag, doc.headers['etag']);
       name = "Bob";
 
-      doc = replace_vertex(sync, graph_name, user_collection, key, {"name2": name}, { "returnOld": "true", "returnNew": true });
+      doc = replace_vertex(sync, graph_name, user_collection, key, {"name2": name}, { "returnOld": "true",
+"returnNew": true });
       assertEqual(doc.code, sync ? 200 : 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], sync ? 200 : 202);
@@ -579,7 +613,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['_key'], key);
     },
 
-    test_can_not_replace_a_non_existing_vertex: function() {
+    test_can_not_replace_a_non_existing_vertex: function () {
       let key = "unknownKey";
 
       let doc = replace_vertex(sync, graph_name, user_collection, key, {"name2": "bob"});
@@ -589,7 +623,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_update_a_vertex: function() {
+    test_can_update_a_vertex: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -612,13 +646,14 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['_key'], key);
     },
 
-    test_can_update_a_vertex__returnOld: function() {
+    test_can_update_a_vertex__returnOld: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
       let name2 = "Bob";
 
-      doc = update_vertex(sync, graph_name, user_collection, key, {"name2": name2}, "", { "returnOld": "true", "returnNew": "true" });
+      doc = update_vertex(sync, graph_name, user_collection, key, {"name2": name2}, "", { "returnOld": "true",
+"returnNew": "true" });
       assertEqual(doc.code, sync ? 200 : 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], sync ? 200 : 202);
@@ -639,7 +674,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['_key'], key);
     },
 
-    test_can_update_a_vertex_keepUndefined_defaulttrue: function() {
+    test_can_update_a_vertex_keepUndefined_defaulttrue: function () {
       let doc = create_vertex(sync, graph_name, user_collection, {"name": "Alice"});
       let key = doc.parsedBody['vertex']['_key'];
       doc = update_vertex(sync, graph_name, user_collection, key, {"name": null}, "");
@@ -649,7 +684,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['name'], null);
     },
 
-    test_can_update_a_vertex_keepUndefined_false: function() {
+    test_can_update_a_vertex_keepUndefined_false: function () {
       let doc = create_vertex(sync, graph_name, user_collection, {"name": "Alice"});
       let key = doc.parsedBody['vertex']['_key'];
       doc = update_vertex(sync, graph_name, user_collection, key, {"name": null}, false);
@@ -658,7 +693,7 @@ function check_vertex_operationSuite () {
       assertFalse(doc.parsedBody['vertex'].hasOwnProperty('name'));
     },
 
-    test_can_update_a_vertex_keepUndefined_true: function() {
+    test_can_update_a_vertex_keepUndefined_true: function () {
       let doc = create_vertex(sync, graph_name, user_collection, {"name": "Alice"});
       let key = doc.parsedBody['vertex']['_key'];
       doc = update_vertex(sync, graph_name, user_collection, key, {"name": null}, true);
@@ -668,7 +703,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['vertex']['name'], null);
     },
 
-    test_can_not_update_a_non_existing_vertex: function() {
+    test_can_not_update_a_non_existing_vertex: function () {
       let key = "unknownKey";
       let name2 = "Bob";
 
@@ -679,7 +714,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_delete_a_vertex: function() {
+    test_can_delete_a_vertex: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -698,7 +733,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_delete_a_vertex__returnOld: function() {
+    test_can_delete_a_vertex__returnOld: function () {
       let name = "Alice";
       let doc = create_vertex(sync, graph_name, user_collection, {"name": name});
       let key = doc.parsedBody['vertex']['_key'];
@@ -719,7 +754,7 @@ function check_vertex_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_not_delete_a_non_existing_vertex: function() {
+    test_can_not_delete_a_non_existing_vertex: function () {
       let key = "unknownKey";
 
       let doc = delete_vertex(sync, graph_name, user_collection, key);
@@ -736,13 +771,15 @@ function check_edge_operationSuite () {
   const unrelatedVertexCollectionName = 'unrelatedVertexCollection';
 
   return {
-    setUp: function() {
+    setUp: function () {
       drop_graph(sync, graph_name);
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       drop_graph(sync, graph_name);
       db._drop(friend_collection);
       db._drop(user_collection);
@@ -756,7 +793,7 @@ function check_edge_operationSuite () {
       }
     },
 
-    test_can_create_an_edge: function() {
+    test_can_create_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -773,7 +810,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['new'], undefined);
     },
 
-    test_cannot_create_an_edge_with_non_strings_in_from_and_to: function() {
+    test_cannot_create_an_edge_with_non_strings_in_from_and_to: function () {
       // Create some existing documents v1 and v2
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       let v2 = create_vertex(sync, graph_name, user_collection, {});
@@ -791,7 +828,7 @@ function check_edge_operationSuite () {
       );
     },
 
-    test_cannot_create_an_edge_in_unrelated_edge_collection: function() {
+    test_cannot_create_an_edge_in_unrelated_edge_collection: function () {
       // Create another unrelated edge, which is not part of the graph itself
       // Additionally, we will use wrong _from and _to values (objects instead
       // of string)
@@ -816,7 +853,7 @@ function check_edge_operationSuite () {
       );
     },
 
-    test_cannot_create_a_vertex_in_unrelated_vertex_collection: function() {
+    test_cannot_create_a_vertex_in_unrelated_vertex_collection: function () {
       // Create another unrelated vertex, which is not part of the graph itself
       db._createDocumentCollection(unrelatedVertexCollectionName);
 
@@ -830,7 +867,7 @@ function check_edge_operationSuite () {
       );
     },
 
-    test_can_create_an_edge__returnNew: function() {
+    test_can_create_an_edge__returnNew: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -847,7 +884,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['new']['value'], "foo");
     },
 
-    test_can_not_create_edge_with_unknown__from_vertex_collection: function() {
+    test_can_not_create_edge_with_unknown__from_vertex_collection: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       v1 = v1.parsedBody['vertex']['_id'];
       let doc = create_edge(sync, graph_name, friend_collection, "MISSING/v2", v1, {});
@@ -857,7 +894,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
 
-    test_can_not_create_edge_with_unknown__to_vertex_collection: function() {
+    test_can_not_create_edge_with_unknown__to_vertex_collection: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       v1 = v1.parsedBody['vertex']['_id'];
       let doc = create_edge(sync, graph_name, friend_collection, v1, "MISSING/v2", {});
@@ -867,19 +904,20 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
 
-    test_should_not_replace_an_edge_in_case_the_collection_does_not_exist: function() {
+    test_should_not_replace_an_edge_in_case_the_collection_does_not_exist: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       v1 = v1.parsedBody['vertex']['_id'];
       let v2 = create_vertex(sync, graph_name, user_collection, {});
       v2 = v2.parsedBody['vertex']['_id'];
-      let doc = replace_edge(sync, graph_name, unknown_collection, unknown_key, {"_from": `${v1}/1`, "_to": `${v2}/2`});
+      let doc = replace_edge(sync, graph_name, unknown_collection, unknown_key, {"_from": `${v1}/1`,
+"_to": `${v2}/2`});
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       assertMatch(/.*collection or view not found.*/, doc.parsedBody['errorMessage'], doc);
     },
 
-    test_can_get_an_edge: function() {
+    test_can_get_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -900,7 +938,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['_key'], key);
     },
 
-    test_can_not_get_a_non_existing_edge: function() {
+    test_can_not_get_a_non_existing_edge: function () {
       let key = "unknownKey";
 
       let doc = get_edge(graph_name, friend_collection, key);
@@ -910,7 +948,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_replace_an_edge: function() {
+    test_can_replace_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -925,7 +963,9 @@ function check_edge_operationSuite () {
       assertEqual(oldTag, doc.headers['etag']);
       type = "divorced";
 
-      doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": type, "_from": v1, "_to": v2});
+      doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": type,
+"_from": v1,
+"_to": v2});
       assertEqual(doc.code, sync ? 200 : 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], sync ? 200 : 202);
@@ -943,7 +983,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['_key'], key);
     },
 
-    test_can_replace_an_edge__returnOld: function() {
+    test_can_replace_an_edge__returnOld: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -959,8 +999,11 @@ function check_edge_operationSuite () {
       type = "divorced";
 
       doc = replace_edge(sync, graph_name, friend_collection, key,
-                         {"type2": type, "_from": v1, "_to": v2},
-                         { "returnOld": "true", "returnNew": "true" });
+                         {"type2": type,
+"_from": v1,
+"_to": v2},
+                         { "returnOld": "true",
+"returnNew": "true" });
       assertEqual(doc.code, sync ? 200 : 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], sync ? 200 : 202);
@@ -987,28 +1030,32 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['_key'], key);
     },
 
-    test_can_not_replace_a_non_existing_edge: function() {
+    test_can_not_replace_a_non_existing_edge: function () {
       let key = "unknownKey";
       // Added _from and _to, because otherwise a 400 might conceal the;
       // 404. Another test checking that missing _from or _to trigger;
       // errors was added to api-gharial-spec.js.;
-      let doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": "divorced", "_from": `${user_collection}/1`, "_to": `${user_collection}/2`});
+      let doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": "divorced",
+"_from": `${user_collection}/1`,
+"_to": `${user_collection}/2`});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
       assertMatch(/.*document not found.*/, doc.parsedBody['errorMessage'], doc);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_not_replace_a_non_valid_edge: function() {
+    test_can_not_replace_a_non_valid_edge: function () {
       let key = "unknownKey";
-      let doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": "divorced", "_from": "1", "_to": "2"});
+      let doc = replace_edge(sync, graph_name, friend_collection, key, {"type2": "divorced",
+"_from": "1",
+"_to": "2"});
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertTrue(doc.parsedBody['error']);
       assertMatch(/.*edge attribute missing or invalid.*/, doc.parsedBody['errorMessage'], doc);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    test_can_update_an_edge: function() {
+    test_can_update_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1038,7 +1085,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['_key'], key);
     },
 
-    test_can_update_an_edge__returnOld: function() {
+    test_can_update_an_edge__returnOld: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1051,7 +1098,8 @@ function check_edge_operationSuite () {
       let key = doc.parsedBody['edge']['_key'];
       let type2 = "divorced";
 
-      doc = update_edge(sync, graph_name, friend_collection, key, {"type2": type2}, "", { "returnOld": "true", "returnNew": "true" });
+      doc = update_edge(sync, graph_name, friend_collection, key, {"type2": type2}, "", { "returnOld": "true",
+"returnNew": "true" });
       assertEqual(doc.code, sync ? 200 : 202);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], sync ? 200 : 202);
@@ -1075,7 +1123,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['_key'], key);
     },
 
-    test_can_update_an_edge_keepUndefined_defaulttrue: function() {
+    test_can_update_an_edge_keepUndefined_defaulttrue: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1095,7 +1143,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['type'], null);
     },
 
-    test_can_update_an_edge_keepUndefined_true: function() {
+    test_can_update_an_edge_keepUndefined_true: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1115,7 +1163,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['edge']['type'], null);
     },
 
-    test_can_update_an_edge_keepUndefined_false: function() {
+    test_can_update_an_edge_keepUndefined_false: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1134,7 +1182,7 @@ function check_edge_operationSuite () {
       assertFalse(doc.parsedBody['edge'].hasOwnProperty('type'));
     },
 
-    test_can_not_update_a_non_existing_edge: function() {
+    test_can_not_update_a_non_existing_edge: function () {
       let key = "unknownKey";
 
       let doc = update_edge(sync, graph_name, friend_collection, key, {"type2": "divorced"}, "");
@@ -1144,7 +1192,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_delete_an_edge: function() {
+    test_can_delete_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1170,7 +1218,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_delete_an_edge__returnOld: function() {
+    test_can_delete_an_edge__returnOld: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
       v1 = v1.parsedBody['vertex']['_id'];
@@ -1198,7 +1246,7 @@ function check_edge_operationSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_can_not_delete_a_non_existing_edge: function() {
+    test_can_not_delete_a_non_existing_edge: function () {
       let key = "unknownKey";
 
       let doc = delete_edge(sync, graph_name, friend_collection, key);
@@ -1237,7 +1285,7 @@ function check400VertexUnused (doc) {
   assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.code);
   assertTrue(doc.parsedBody['error']);
   assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-  /// puts doc.parsedBody['errorMessage'];
+  // / puts doc.parsedBody['errorMessage'];
 }
 
 function check404CRUD (doc) {
@@ -1295,115 +1343,123 @@ function check404_graph_not_found (doc) {
   assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
   assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_NOT_FOUND.code);
   assertEqual(doc.parsedBody['errorMessage'], "graph 'UnitTestUnknown' not found");
-};
+}
 
 function check_error_codeSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       drop_graph(sync, graph_name);
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       create_graph(sync, graph_name, [definition]);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       drop_graph(sync, graph_name);
       db._drop(friend_collection);
       db._drop(user_collection);
     },
 
-    test_get_graph: function() {
+    test_get_graph: function () {
       check404_graph_not_found(get_graph(unknown_name));
     },
 
-    test_delete_graph: function() {
+    test_delete_graph: function () {
       check404_graph_not_found(drop_graph(sync, unknown_name));
     },
 
-    test_list_edge_collections: function() {
+    test_list_edge_collections: function () {
       check404_graph_not_found(list_edge_collections(unknown_name));
     },
 
-    test_add_edge_definition: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_add_edge_definition: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       check404_graph_not_found(additional_edge_definition(sync, unknown_name, definition));
     },
 
-    test_change_edge_definition: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_change_edge_definition: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       check404_graph_not_found(change_edge_definition(sync, unknown_name, friend_collection, definition));
     },
 
-    test_delete_edge_definition: function() {
+    test_delete_edge_definition: function () {
       check404_graph_not_found(delete_edge_definition(sync, unknown_name, friend_collection));
     },
 
-    test_list_vertex_collections: function() {
+    test_list_vertex_collections: function () {
       check404_graph_not_found(list_vertex_collections(unknown_name));
     },
 
-    test_add_vertex_collection: function() {
+    test_add_vertex_collection: function () {
       check404_graph_not_found(additional_vertex_collection(sync, unknown_name, user_collection));
     },
 
-    test_delete_vertex_collection: function() {
+    test_delete_vertex_collection: function () {
       check404_graph_not_found(delete_vertex_collection(sync, unknown_name, user_collection));
     },
 
-    test_create_vertex: function() {
+    test_create_vertex: function () {
       check404_graph_not_found(create_vertex(sync, unknown_name, unknown_name, {}));
     },
 
-    test_get_vertex: function() {
+    test_get_vertex: function () {
       check404_graph_not_found(get_vertex(unknown_name, unknown_name, unknown_name));
     },
 
-    test_update_vertex: function() {
+    test_update_vertex: function () {
       check404_graph_not_found(update_vertex(sync, unknown_name, unknown_name, unknown_name, {}));
     },
 
-    test_replace_vertex: function() {
+    test_replace_vertex: function () {
       check404_graph_not_found(replace_vertex(sync, unknown_name, unknown_name, unknown_name, {}));
     },
 
-    test_delete_vertex: function() {
+    test_delete_vertex: function () {
       check404_graph_not_found(delete_vertex(sync, unknown_name, unknown_name, unknown_name));
     },
 
-    test_create_edge: function() {
+    test_create_edge: function () {
       check404_graph_not_found(create_edge(sync, unknown_name, unknown_name, unknown_name, unknown_name, {}));
     },
 
-    test_get_edge: function() {
+    test_get_edge: function () {
       check404_graph_not_found(get_edge(unknown_name, unknown_name, unknown_name));
     },
 
-    test_update_edge: function() {
+    test_update_edge: function () {
       check404_graph_not_found(update_edge(sync, unknown_name, unknown_name, unknown_name, {}));
     },
 
-    test_replace_edge: function() {
+    test_replace_edge: function () {
       check404_graph_not_found(replace_edge(sync, unknown_name, unknown_name, unknown_name, {}));
     },
 
-    test_delete_edge: function() {
+    test_delete_edge: function () {
       check404_graph_not_found(delete_edge(sync, unknown_name, unknown_name, unknown_name));
     },
 
-    test_change_edge_definition_unknown: function() {
-      let definition = { "collection": friend_collection, "from": [user_collection], "to": [user_collection] };
+    test_change_edge_definition_unknown: function () {
+      let definition = { "collection": friend_collection,
+"from": [user_collection],
+"to": [user_collection] };
       check404Edge(change_edge_definition(sync, graph_name, unknown_name, definition));
     },
 
-    test_delete_edge_definition_unknown: function() {
+    test_delete_edge_definition_unknown: function () {
       check404Edge(delete_edge_definition(sync, graph_name, unknown_name));
     },
 
-    test_delete_vertex_collection_unknown: function() {
+    test_delete_vertex_collection_unknown: function () {
       // this checks if a not used vertex collection can be removed of a graph;
       check400VertexUnused(delete_vertex_collection(sync, graph_name, unknown_name));
     },
 
-    test_create_vertex_unknown: function() {
+    test_create_vertex_unknown: function () {
       const response = create_vertex(sync, graph_name, unknown_name, {});
       assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(response.parsedBody.error);
@@ -1411,25 +1467,25 @@ function check_error_codeSuite () {
       assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
     },
 
-    test_get_vertex_unknown: function() {
+    test_get_vertex_unknown: function () {
       check404CRUD(get_vertex(graph_name, unknown_name, unknown_name));
     },
 
     // TODO add tests where the edge/vertex collection is not part of the graph, but;
     // the given key exists!;
-    test_update_vertex_unknown: function() {
+    test_update_vertex_unknown: function () {
       check404CRUD(update_vertex(sync, graph_name, unknown_name, unknown_name, {}));
     },
 
-    test_replace_vertex_unknown: function() {
+    test_replace_vertex_unknown: function () {
       check404CRUD(replace_vertex(sync, graph_name, unknown_name, unknown_name, {}));
     },
 
-    test_delete_vertex_unknown: function() {
+    test_delete_vertex_unknown: function () {
       check404CRUD(delete_vertex(sync, graph_name, unknown_name, unknown_name));
     },
 
-    test_create_edge_unknown: function() {
+    test_create_edge_unknown: function () {
       const response = create_edge(
         sync, graph_name, unknown_name, unknown_name, unknown_name, {}
       );
@@ -1439,19 +1495,19 @@ function check_error_codeSuite () {
       assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.code);
     },
 
-    test_get_edge_unknown: function() {
+    test_get_edge_unknown: function () {
       check404CRUD(get_edge(graph_name, unknown_name, unknown_name));
     },
 
-    test_update_edge_unknown: function() {
+    test_update_edge_unknown: function () {
       check404CRUD(update_edge(sync, graph_name, unknown_name, unknown_name, {}));
     },
 
-    test_replace_edge_invalid_key_unknown: function() {
+    test_replace_edge_invalid_key_unknown: function () {
       check400CRUD(replace_edge(sync, graph_name, unknown_name, unknown_name, {}));
     },
 
-    test_replace_edge_valid_key_but_not_existing_unknown: function() {
+    test_replace_edge_valid_key_but_not_existing_unknown: function () {
       check404(replace_edge(sync, graph_name, user_collection, unknown_name,
         {
           _from: user_collection + "/" + unknown_name,
@@ -1460,46 +1516,48 @@ function check_error_codeSuite () {
       ));
     },
 
-    test_delete_edge_unknown: function() {
+    test_delete_edge_unknown: function () {
       check404CRUD(delete_edge(sync, graph_name, unknown_name, unknown_name));
     },
 
-    test_get_vertex_throw: function() {
+    test_get_vertex_throw: function () {
       check404(get_vertex(graph_name, user_collection, unknown_name));
     },
 
-    test_update_vertex_throw: function() {
+    test_update_vertex_throw: function () {
       check404(update_vertex(sync, graph_name, user_collection, unknown_name, {}));
     },
 
-    test_replace_vertex_throw: function() {
+    test_replace_vertex_throw: function () {
       check404(replace_vertex(sync, graph_name, user_collection, unknown_name, {}));
     },
 
-    test_delete_vertex_throw: function() {
+    test_delete_vertex_throw: function () {
       check404(delete_vertex(sync, graph_name, user_collection, unknown_name));
     },
 
-    test_get_edge_throw: function() {
+    test_get_edge_throw: function () {
       check404(get_edge(graph_name, friend_collection, unknown_name));
     },
 
-    test_update_edge_throw: function() {
+    test_update_edge_throw: function () {
       check404(update_edge(sync, graph_name, friend_collection, unknown_name, {}));
     },
 
-    test_replace_edge_invalid_throw: function() {
-      check400(replace_edge(sync, graph_name, friend_collection, unknown_name, {"_from": "1", "_to": "2"}));
+    test_replace_edge_invalid_throw: function () {
+      check400(replace_edge(sync, graph_name, friend_collection, unknown_name, {"_from": "1",
+"_to": "2"}));
     },
 
-    test_replace_edge_document_does_not_exist_not_found: function() {
+    test_replace_edge_document_does_not_exist_not_found: function () {
       // Added _from and _to, because otherwise a 400 might conceal the;
       // 404. Another test checking that missing _from or _to trigger;
       // errors was added to api-gharial-spec.js.;
-      check404(replace_edge(sync, graph_name, friend_collection, unknown_name, {"_from": `${user_collection}/1`, "_to": `${user_collection}/2`}));
+      check404(replace_edge(sync, graph_name, friend_collection, unknown_name, {"_from": `${user_collection}/1`,
+"_to": `${user_collection}/2`}));
     },
 
-    test_delete_edge_throw: function() {
+    test_delete_edge_throw: function () {
       check404(delete_edge(sync, graph_name, friend_collection, unknown_name));
     }
   };
@@ -1512,7 +1570,7 @@ jsunity.run(check_error_codeSuite);
 
 sync = true;
 
-jsunity.run(function() {
+jsunity.run(function () {
   let suite = {};
   deriveTestSuite(
     check_creation_of_graphSuite(),
@@ -1520,7 +1578,7 @@ jsunity.run(function() {
   return suite;
 });
 
-jsunity.run(function() {
+jsunity.run(function () {
   let suite = {};
   deriveTestSuite(
     check_vertex_operationSuite(),
@@ -1528,7 +1586,7 @@ jsunity.run(function() {
   return suite;
 });
 
-jsunity.run(function() {
+jsunity.run(function () {
   let suite = {};
   deriveTestSuite(
     check_edge_operationSuite(),
@@ -1536,7 +1594,7 @@ jsunity.run(function() {
   return suite;
 });
 
-jsunity.run(function() {
+jsunity.run(function () {
   let suite = {};
   deriveTestSuite(
     check_error_codeSuite(),

@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/* jshint strict: false */
 /* global more:true */
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,7 @@ GeneralArrayCursor.prototype.execute = function () {
   var e = len;
 
   // skip from the beginning
-  if (0 < this._skip) {
+  if (this._skip > 0) {
     s = this._skip;
 
     if (e < s) {
@@ -107,7 +107,7 @@ GeneralArrayCursor.prototype.execute = function () {
 
 GeneralArrayCursor.prototype._PRINT = function (context) {
   let text = '[object GeneralArrayCursor';
-  
+
   text += ', count: ' + this._documents.length;
   text += ', cached: ' + (this._cached ? 'true' : 'false');
 
@@ -126,25 +126,25 @@ GeneralArrayCursor.prototype._PRINT = function (context) {
     }
   }
   text += ']';
-  
+
   let rows = [], i = 0;
 //  this._pos = this._printPos || currentPos;
   while (++i <= 10 && this.hasNext()) {
     rows.push(this.next());
   }
- 
+
   more = undefined;
   if (rows.length > 0) {
     var old = internal.startCaptureMode();
     internal.print(rows);
     text += '\n' + internal.stopCaptureMode(old);
-  
+
     if (this.hasNext()) {
       text += "\ntype 'more' to show more documents\n";
       more = this; // assign cursor to global variable more!
     }
   }
-    
+
   context.output += text;
 };
 
@@ -201,7 +201,7 @@ GeneralArrayCursor.prototype.next = function () {
 // / @brief returns an iterator for the results
 // //////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype[Symbol.iterator] = function * () {
+GeneralArrayCursor.prototype[Symbol.iterator] = function *() {
   while (this._current < this._stop) {
     yield this._documents[this._current++];
   }

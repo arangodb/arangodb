@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceManager */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertFalse, assertEqual, fail, instanceManager */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test synchronous replication in the cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Vadim Kondratyev
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test synchronous replication in the cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Vadim Kondratyev
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -38,7 +38,7 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
 
-function getDBServers() {
+function getDBServers () {
   var tmp = global.ArangoClusterInfo.getDBServers();
   var servers = [];
   for (var i = 0; i < tmp.length; ++i) {
@@ -47,9 +47,9 @@ function getDBServers() {
   return servers;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function SynchronousReplicationWithViewSuite () {
   'use strict';
@@ -58,33 +58,34 @@ function SynchronousReplicationWithViewSuite () {
   var cinfo;
   var ccinfo;
   var shards;
-  var failedState = { leader: null, follower: null };
+  var failedState = { leader: null,
+follower: null };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for the system collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find out servers for the system collections
+// //////////////////////////////////////////////////////////////////////////////
 
-  function findCollectionServers(database, collection) {
+  function findCollectionServers (database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for the shards of a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find out servers for the shards of a collection
+// //////////////////////////////////////////////////////////////////////////////
 
-  function findCollectionShardServers(database, collection) {
+  function findCollectionShardServers (database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for synchronous replication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief wait for synchronous replication
+// //////////////////////////////////////////////////////////////////////////////
 
-  function waitForSynchronousReplication(database) {
+  function waitForSynchronousReplication (database) {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
@@ -110,7 +111,7 @@ function SynchronousReplicationWithViewSuite () {
         // operation.
         wait(1);
         return true;
-      }  
+      }
       wait(0.5);
       global.ArangoClusterInfo.flush();
     }
@@ -118,11 +119,11 @@ function SynchronousReplicationWithViewSuite () {
     return false;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail the follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail the follower
+// //////////////////////////////////////////////////////////////////////////////
 
-  function failFollower() {
+  function failFollower () {
     var follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
@@ -134,12 +135,14 @@ function SynchronousReplicationWithViewSuite () {
     failedState.follower = follower;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heal the follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief heal the follower
+// //////////////////////////////////////////////////////////////////////////////
 
-  function healFollower(follower = null) {
-    if (follower == null) follower = cinfo.shards[shards[0]][1];
+  function healFollower (follower = null) {
+    if (follower == null) {
+follower = cinfo.shards[shards[0]][1];
+}
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
     var pos = _.findIndex(global.instanceManager.arangods,
@@ -147,14 +150,16 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have healed follower", follower);
-    if (failedState.follower === follower) failedState.follower = null;
+    if (failedState.follower === follower) {
+failedState.follower = null;
+}
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail the leader
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail the leader
+// //////////////////////////////////////////////////////////////////////////////
 
-  function failLeader() {
+  function failLeader () {
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -167,12 +172,14 @@ function SynchronousReplicationWithViewSuite () {
     return leader;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heal the follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief heal the follower
+// //////////////////////////////////////////////////////////////////////////////
 
-  function healLeader(leader) {
-    if (leader == null) leader = cinfo.shards[shards[0]][0];
+  function healLeader (leader) {
+    if (leader == null) {
+leader = cinfo.shards[shards[0]][0];
+}
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
     var pos = _.findIndex(global.instanceManager.arangods,
@@ -180,14 +187,16 @@ function SynchronousReplicationWithViewSuite () {
     assertTrue(pos >= 0);
     assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
     console.info("Have healed leader", leader);
-    if (failedState.leader === leader) failedState.leader = null;
+    if (failedState.leader === leader) {
+failedState.leader = null;
+}
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief produce failure
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief produce failure
+// //////////////////////////////////////////////////////////////////////////////
 
-  function makeFailure(failure) {
+  function makeFailure (failure) {
     if (failure.follower) {
       failFollower();
     } else {
@@ -195,11 +204,11 @@ function SynchronousReplicationWithViewSuite () {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heal failure
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief heal failure
+// //////////////////////////////////////////////////////////////////////////////
 
-  function healFailure(failure) {
+  function healFailure (failure) {
     if (failure.follower) {
       healFollower();
     } else {
@@ -207,29 +216,37 @@ function SynchronousReplicationWithViewSuite () {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief basic operations, with various failure modes:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief basic operations, with various failure modes:
+// //////////////////////////////////////////////////////////////////////////////
 
-  function runBasicOperations(failure, healing) {
-    if (failure.place === 1) { makeFailure(failure); }
+  function runBasicOperations (failure, healing) {
+    if (failure.place === 1) {
+ makeFailure(failure);
+}
 
     // Insert with check:
-    var id = c.insert({Hallo:12});
+    var id = c.insert({Hallo: 12});
     assertEqual(4, c.count());
 
-    viewOperations("assert", null, function assert() {
+    viewOperations("assert", null, function assert () {
       assertEqual(
         viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} COLLECT WITH COUNT into iCount RETURN iCount",
-        bind: '{ "@vn" : name }' }).toArray()[0], 4); } );
+        bind: '{ "@vn" : name }' }).toArray()[0], 4);
+});
 
-    if (healing.place === 1) { healFailure(healing); }
-    if (failure.place === 2) { makeFailure(failure); }
-    
+    if (healing.place === 1) {
+ healFailure(healing);
+}
+    if (failure.place === 2) {
+ makeFailure(failure);
+}
+
     var doc = c.document(id._key);
     assertEqual(12, doc.Hallo);
-    viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo == 12 OPTIONS {waitForSync: true} RETURN d.Hallo", bind: '{ "@vn" : name }' }).toArray();
+    viewOperations("assert", null, function assert () {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo == 12 OPTIONS {waitForSync: true} RETURN d.Hallo",
+bind: '{ "@vn" : name }' }).toArray();
       assertEqual(result.length, 1);
       assertEqual(result[0], 12);
     });
@@ -240,28 +257,37 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(result[0], 12);
     }
 
-    if (healing.place === 2) { healFailure(healing); }
-    if (failure.place === 3) { makeFailure(failure); }
+    if (healing.place === 2) {
+ healFailure(healing);
+}
+    if (failure.place === 3) {
+ makeFailure(failure);
+}
 
-    var ids = c.insert([{Hallo:13}, {Hallo:14}]);
+    var ids = c.insert([{Hallo: 13}, {Hallo: 14}]);
     assertEqual(6, c.count());
     assertEqual(2, ids.length);
-    viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", bind: '{ "@vn" : name }' }).toArray();
+    viewOperations("assert", null, function assert () {
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d",
+bind: '{ "@vn" : name }' }).toArray();
       assertEqual(result.length, 6);
     });
 
-    if (healing.place === 3) { healFailure(healing); }
-    if (failure.place === 4) { makeFailure(failure); }
+    if (healing.place === 3) {
+ healFailure(healing);
+}
+    if (failure.place === 4) {
+ makeFailure(failure);
+}
 
     var docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
     assertEqual(13, docs[0].Hallo);
     assertEqual(14, docs[1].Hallo);
-    viewOperations("assert", null, function assert(inFilter = ids) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
-                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
+    viewOperations("assert", null, function assert (inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN [" +
+                                                    inFilter.map(e => "'" + e._key + "'").join(",") +
+                                                    "] OPTIONS {waitForSync: true} SORT d._key RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(13, result[0].Hallo);
@@ -276,18 +302,26 @@ function SynchronousReplicationWithViewSuite () {
         assertEqual(14, result[1].Hallo);
     }
 
-    if (healing.place === 4) { healFailure(healing); }
-    if (failure.place === 5) { makeFailure(failure); }
+    if (healing.place === 4) {
+ healFailure(healing);
+}
+    if (failure.place === 5) {
+ makeFailure(failure);
+}
 
     // Replace with check:
     c.replace(id._key, {"Hallo": 100});
 
-    if (healing.place === 5) { healFailure(healing); }
-    if (failure.place === 6) { makeFailure(failure); }
+    if (healing.place === 5) {
+ healFailure(healing);
+}
+    if (failure.place === 6) {
+ makeFailure(failure);
+}
 
     doc = c.document(id._key);
     assertEqual(100, doc.Hallo);
-    viewOperations("assert", null, function assert(inFilter = id._key) {
+    viewOperations("assert", null, function assert (inFilter = id._key) {
       var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' OPTIONS {waitForSync: true} RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(1, result.length);
@@ -301,22 +335,30 @@ function SynchronousReplicationWithViewSuite () {
         assertEqual(100, result[0].Hallo);
     }
 
-    if (healing.place === 6) { healFailure(healing); }
-    if (failure.place === 7) { makeFailure(failure); }
+    if (healing.place === 6) {
+ healFailure(healing);
+}
+    if (failure.place === 7) {
+ makeFailure(failure);
+}
 
-    c.replace([ids[0]._key, ids[1]._key], [{Hallo:101}, {Hallo:102}]);
+    c.replace([ids[0]._key, ids[1]._key], [{Hallo: 101}, {Hallo: 102}]);
 
-    if (healing.place === 7) { healFailure(healing); }
-    if (failure.place === 8) { makeFailure(failure); }
+    if (healing.place === 7) {
+ healFailure(healing);
+}
+    if (failure.place === 8) {
+ makeFailure(failure);
+}
 
     docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
     assertEqual(101, docs[0].Hallo);
     assertEqual(102, docs[1].Hallo);
-    viewOperations("assert", null, function assert(inFilter = ids) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
-                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
+    viewOperations("assert", null, function assert (inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN [" +
+                                                    inFilter.map(e => "'" + e._key + "'").join(",") +
+                                                    "] OPTIONS {waitForSync: true} SORT d._key RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(101, result[0].Hallo);
@@ -331,20 +373,28 @@ function SynchronousReplicationWithViewSuite () {
         assertEqual(102, result[1].Hallo);
     }
 
-    if (healing.place === 8) { healFailure(healing); }
-    if (failure.place === 9) { makeFailure(failure); }
+    if (healing.place === 8) {
+ healFailure(healing);
+}
+    if (failure.place === 9) {
+ makeFailure(failure);
+}
 
     // Update with check:
     c.update(id._key, {"Hallox": 105});
 
-    if (healing.place === 9) { healFailure(healing); }
-    if (failure.place === 10) { makeFailure(failure); }
+    if (healing.place === 9) {
+ healFailure(healing);
+}
+    if (failure.place === 10) {
+ makeFailure(failure);
+}
 
     doc = c.document(id._key);
     assertEqual(100, doc.Hallo);
     assertEqual(105, doc.Hallox);
-    viewOperations("assert", null, function assert(inFilter = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' OPTIONS {waitForSync: true} RETURN d", 
+    viewOperations("assert", null, function assert (inFilter = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key == '" + `${inFilter}` + "' OPTIONS {waitForSync: true} RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(1, result.length);
       assertEqual(100, result[0].Hallo);
@@ -359,13 +409,21 @@ function SynchronousReplicationWithViewSuite () {
         assertEqual(105, result[0].Hallox);
     }
 
-    if (healing.place === 10) { healFailure(healing); }
-    if (failure.place === 11) { makeFailure(failure); }
+    if (healing.place === 10) {
+ healFailure(healing);
+}
+    if (failure.place === 11) {
+ makeFailure(failure);
+}
 
-    c.update([ids[0]._key, ids[1]._key], [{Hallox:106}, {Hallox:107}]);
+    c.update([ids[0]._key, ids[1]._key], [{Hallox: 106}, {Hallox: 107}]);
 
-    if (healing.place === 11) { healFailure(healing); }
-    if (failure.place === 12) { makeFailure(failure); }
+    if (healing.place === 11) {
+ healFailure(healing);
+}
+    if (failure.place === 12) {
+ makeFailure(failure);
+}
 
     docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
@@ -373,10 +431,10 @@ function SynchronousReplicationWithViewSuite () {
     assertEqual(102, docs[1].Hallo);
     assertEqual(106, docs[0].Hallox);
     assertEqual(107, docs[1].Hallox);
-    viewOperations("assert", null, function assert(inFilter = ids) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN ["
-                                                    + inFilter.map(e => "'" + e._key + "'").join(",") 
-                                                    + "] OPTIONS {waitForSync: true} SORT d._key RETURN d", 
+    viewOperations("assert", null, function assert (inFilter = ids) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d._key IN [" +
+                                                    inFilter.map(e => "'" + e._key + "'").join(",") +
+                                                    "] OPTIONS {waitForSync: true} SORT d._key RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(2, result.length);
       assertEqual(101, result[0].Hallo);
@@ -395,7 +453,9 @@ function SynchronousReplicationWithViewSuite () {
         assertEqual(107, result[1].Hallox);
     }
 
-    if (healing.place === 12) { healFailure(healing); }
+    if (healing.place === 12) {
+ healFailure(healing);
+}
     if (failure.place === 13) {
       makeFailure(failure);
       // Note that it is not guaranteed that an AQL query runs without an
@@ -416,78 +476,99 @@ function SynchronousReplicationWithViewSuite () {
                          RETURN {"Hallo": x.Hallo}`, {"@cn": cn});
     docs = q.toArray();
     assertEqual(3, docs.length);
-    assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], docs);
-    viewOperations("assert", null, function assert() {
-      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo > 0 OPTIONS {waitForSync: true} SORT d.Hallo RETURN {'Hallo': d.Hallo}", 
+    assertEqual([{Hallo: 100}, {Hallo: 101}, {Hallo: 102}], docs);
+    viewOperations("assert", null, function assert () {
+      var result = viewOperations("query", { query: "FOR d IN @@vn SEARCH d.Hallo > 0 OPTIONS {waitForSync: true} SORT d.Hallo RETURN {'Hallo': d.Hallo}",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(3, result.length);
-      assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
+      assertEqual([{Hallo: 100}, {Hallo: 101}, {Hallo: 102}], result);
     });
 
     {
       result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}`).toArray();
         assertEqual(3, result.length);
-        assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
+        assertEqual([{Hallo: 100}, {Hallo: 101}, {Hallo: 102}], result);
     }
 
-    if (healing.place === 13) { healFailure(healing); }
-    if (failure.place === 14) { makeFailure(failure); }
+    if (healing.place === 13) {
+ healFailure(healing);
+}
+    if (failure.place === 14) {
+ makeFailure(failure);
+}
 
     // Remove with check:
     c.remove(id._key);
 
-    if (healing.place === 14) { healFailure(healing); }
-    if (failure.place === 15) { makeFailure(failure); }
+    if (healing.place === 14) {
+ healFailure(healing);
+}
+    if (failure.place === 15) {
+ makeFailure(failure);
+}
 
     try {
       doc = c.document(id._key);
       fail();
-    }
-    catch (e1) {
+    } catch (e1) {
       assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e1.errorNum);
     }
 
-    if (healing.place === 15) { healFailure(healing); }
-    if (failure.place === 16) { makeFailure(failure); }
+    if (healing.place === 15) {
+ healFailure(healing);
+}
+    if (failure.place === 16) {
+ makeFailure(failure);
+}
 
     assertEqual(5, c.count());
-    viewOperations("assert", null, function assert(doc = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
+    viewOperations("assert", null, function assert (doc = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(5, result.length);
       assertEqual(undefined, result.find(e => e._key === doc));
     });
 
-    if (healing.place === 16) { healFailure(healing); }
-    if (failure.place === 17) { makeFailure(failure); }
+    if (healing.place === 16) {
+ healFailure(healing);
+}
+    if (failure.place === 17) {
+ makeFailure(failure);
+}
 
     c.remove([ids[0]._key, ids[1]._key]);
 
-    if (healing.place === 17) { healFailure(healing); }
-    if (failure.place === 18) { makeFailure(failure); }
+    if (healing.place === 17) {
+ healFailure(healing);
+}
+    if (failure.place === 18) {
+ makeFailure(failure);
+}
 
     docs = c.document([ids[0]._key, ids[1]._key]);
     assertEqual(2, docs.length);
     assertTrue(docs[0].error);
     assertTrue(docs[1].error);
-    viewOperations("assert", null, function assert(doc = id._key) {
-      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
+    viewOperations("assert", null, function assert (doc = id._key) {
+      var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d",
                                   bind: '{ "@vn" : name }' }).toArray();
       assertEqual(3, result.length);
     });
 
-    if (healing.place === 18) { healFailure(healing); }
+    if (healing.place === 18) {
+ healFailure(healing);
+}
   }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief view operations:
-////////////////////////////////////////////////////////////////////////////////
-  function viewOperations(type, options = null, exec = null) {
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief view operations:
+// //////////////////////////////////////////////////////////////////////////////
+  function viewOperations (type, options = null, exec = null) {
     // check if arangosearch views are supported and could be used
     if (db._views() !== 0) {
       var name = (typeof options !== "undefined" && options != null && options.hasOwnProperty("name")) ? options.name : "vn";
-      
+
       var checkArgument = (parameter, argument = null, type = "object") => {
         if (type === "object") {
           return (typeof parameter === type && parameter != null && parameter.hasOwnProperty(argument) && parameter[argument] !== null);
@@ -499,7 +580,7 @@ function SynchronousReplicationWithViewSuite () {
         return false;
       };
 
-      switch(type) {
+      switch (type) {
         case "drop":
           try {
             return db._view(name).drop();
@@ -516,7 +597,7 @@ function SynchronousReplicationWithViewSuite () {
           if (checkArgument(options, "query")) {
             if (checkArgument(options, "bind")) {
               var binded;
-              eval("binded = " + options.bind );
+              eval("binded = " + options.bind);
               return db._query(options.query, binded);
             } else {
               return db._query(options.query);
@@ -536,45 +617,56 @@ function SynchronousReplicationWithViewSuite () {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief the actual tests
+// //////////////////////////////////////////////////////////////////////////////
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var systemCollServers = findCollectionServers("_system", "_graphs");
       console.info("System collections use servers:", systemCollServers);
       while (true) {
         db._drop(cn);
-        c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
+        c = db._create(cn, {numberOfShards: 1,
+replicationFactor: 2,
                             avoidServers: systemCollServers});
-        
-        c.save({ name_1: "abc", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        c.save({ name_1: "cde", "value": [{ "nested_1": [{ "nested_2": "foo234"}]}]});
-        c.save({ name_1: "efg", "value": [{ "nested_1": [{ "nested_2": "foo423"}]}]});
 
-        viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
+        c.save({ name_1: "abc",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        c.save({ name_1: "cde",
+"value": [{ "nested_1": [{ "nested_2": "foo234"}]}]});
+        c.save({ name_1: "efg",
+"value": [{ "nested_1": [{ "nested_2": "foo423"}]}]});
+
+        viewOperations("drop");// try { db._view("vn1").drop(); } catch(ignore) { }
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } };
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          viewMeta = { properties: { links: { [cn]: { includeAllFields: true,
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } };
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
             "Hallo", "_key",
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
           viewMeta = { properties: { links: { [cn]: { includeAllFields: true } } } };
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
             "Hallo", "_key",
             {"name": "value[*]"}
           ]};
         }
-        c.ensureIndex(indexMeta); 
+        c.ensureIndex(indexMeta);
         viewOperations("create", viewMeta);
 
         var servers = findCollectionServers("_system", cn);
@@ -583,51 +675,55 @@ function SynchronousReplicationWithViewSuite () {
           return;
         }
         console.info("Need to recreate collection to avoid system collection servers.");
-        //waitForSynchronousReplication("_system");
+        // waitForSynchronousReplication("_system");
         console.info("Synchronous replication has settled, now dropping again.");
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
-      if(failedState.leader != null) healLeader(failedState.leader);
-      if(failedState.follower != null) healFollower(failedState.follower);
+    tearDown: function () {
+      if (failedState.leader != null) {
+healLeader(failedState.leader);
+}
+      if (failedState.follower != null) {
+healFollower(failedState.follower);
+}
       db._drop(cn);
       viewOperations("drop");
-      //global.ArangoAgency.set('Target/FailedServers', {});
+      // global.ArangoAgency.set('Target/FailedServers', {});
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check inquiry functionality
-////////////////////////////////////////////////////////////////////////////////
-    testInquiry : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check inquiry functionality
+// //////////////////////////////////////////////////////////////////////////////
+    testInquiry: function () {
       console.warn("Checking inquiry");
       var writeResult = global.ArangoAgency.write(
-        [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+        [[{"a": 1}, {"a": {"oldEmpty": true}}, "INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
       assertTrue(typeof writeResult === "object");
       assertTrue(writeResult !== null);
       assertTrue("results" in writeResult);
-      assertTrue(writeResult.results[0]>0);
+      assertTrue(writeResult.results[0] > 0);
       try {
         writeResult = global.ArangoAgency.write(
-          [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+          [[{"a": 1}, {"a": 0}, "INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
         fail();
       } catch (e1) {
         console.log(
           "Inquired successfully a failed precondition under 503 response from write");
       }
       writeResult = global.ArangoAgency.write(
-        [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+        [[{"a": 1}, {"a": 1}, "INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
       console.log(
         "Inquired successfully a matched precondition under 0 response from write");
       try {
         writeResult = global.ArangoAgency.write(
-          [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
+          [[{"a": 1}, {"a": 0}, "INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
         fail();
       } catch (e1) {
         console.log(
@@ -635,19 +731,19 @@ function SynchronousReplicationWithViewSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether we have access to global.instanceManager
-////////////////////////////////////////////////////////////////////////////////
-    testCheckInstanceInfo : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether we have access to global.instanceManager
+// //////////////////////////////////////////////////////////////////////////////
+    testCheckInstanceInfo: function () {
       assertTrue(global.instanceManager !== undefined);
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a synchronously replicated collection gets online
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check if a synchronously replicated collection gets online
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSetup : function () {
+    testSetup: function () {
       for (var count = 0; count < 120; ++count) {
         let dbservers = getDBServers();
         if (dbservers.length === 5) {
@@ -660,20 +756,20 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check without failures:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a standard check without failures:
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperations : function () {
+    testBasicOperations: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({}, {});
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check with failures:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a standard check with failures:
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFailureFollower : function () {
+    testBasicOperationsFailureFollower: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       failFollower();
       runBasicOperations({}, {});
@@ -681,191 +777,227 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail1 : function () {
+    testBasicOperationsFollowerFail1: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:1, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 2
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail2 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:2, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 1,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 3
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 2
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail3 : function () {
+    testBasicOperationsFollowerFail2: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:3, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 4
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail4 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:4, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 2,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 5
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 3
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail5 : function () {
+    testBasicOperationsFollowerFail3: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:5, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 6
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail6 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:6, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 3,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 7
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 4
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail7 : function () {
+    testBasicOperationsFollowerFail4: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:7, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 8
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail8 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:8, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 4,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 9
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 5
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail9 : function () {
+    testBasicOperationsFollowerFail5: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:9, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 10
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail10 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:10, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 5,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 11
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 6
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail11 : function () {
+    testBasicOperationsFollowerFail6: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:11, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 12
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail12 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:12, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 6,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 13
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 7
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail13 : function () {
+    testBasicOperationsFollowerFail7: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:13, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 14
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail14 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:14, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 7,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 15
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 8
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail15 : function () {
+    testBasicOperationsFollowerFail8: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:15, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 16
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail16 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:16, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 8,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 17
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 9
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFollowerFail17 : function () {
+    testBasicOperationsFollowerFail9: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:17, follower:true}, {place:18, follower:true});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail in place 18
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsFollowerFail18 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:18, follower:true}, {place:18, follower:true});
+      runBasicOperations({place: 9,
+follower: true}, {place: 18,
+follower: true});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run a standard check with failures:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 10
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsFailureLeader : function () {
+    testBasicOperationsFollowerFail10: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 10,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 11
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail11: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 11,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 12
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail12: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 12,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 13
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail13: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 13,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 14
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail14: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 14,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 15
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail15: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 15,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 16
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail16: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 16,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 17
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail17: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 17,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail in place 18
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFollowerFail18: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 18,
+follower: true}, {place: 18,
+follower: true});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief run a standard check with failures:
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsFailureLeader: function () {
       assertTrue(waitForSynchronousReplication("_system"));
       failLeader();
       runBasicOperations({}, {});
@@ -873,217 +1005,253 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail1 : function () {
+    testBasicOperationsLeaderFail1: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:1, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 2
-////////////////////////////////////////////////////////////////////////////////
-    testBasicOperationsLeaderFail2 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:2, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 1,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 3
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail3 : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 2
+// //////////////////////////////////////////////////////////////////////////////
+    testBasicOperationsLeaderFail2: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:3, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 4
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail4 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:4, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 2,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 5
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 3
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail5 : function () {
+    testBasicOperationsLeaderFail3: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:5, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 6
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail6 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:6, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 3,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 7
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 4
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail7 : function () {
+    testBasicOperationsLeaderFail4: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:7, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 8
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail8 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:8, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 4,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 9
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 5
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail9 : function () {
+    testBasicOperationsLeaderFail5: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:9, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 10
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail10 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:10, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 5,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 11
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 6
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail11 : function () {
+    testBasicOperationsLeaderFail6: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:11, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 12
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail12 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:12, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 6,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 13
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 7
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail13 : function () {
+    testBasicOperationsLeaderFail7: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:13, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 14
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail14 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:14, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 7,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 15
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 8
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail15 : function () {
+    testBasicOperationsLeaderFail8: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:15, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 16
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail16 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:16, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 8,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 17
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 9
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBasicOperationsLeaderFail17 : function () {
+    testBasicOperationsLeaderFail9: function () {
       assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:17, follower: false},
-                         {place:18, follower: false});
-      assertTrue(waitForSynchronousReplication("_system"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fail leader in place 18
-////////////////////////////////////////////////////////////////////////////////
-
-    testBasicOperationsLeaderFail18 : function () {
-      assertTrue(waitForSynchronousReplication("_system"));
-      runBasicOperations({place:18, follower: false},
-                         {place:18, follower: false});
+      runBasicOperations({place: 9,
+follower: false},
+                         {place: 18,
+follower: false});
       assertTrue(waitForSynchronousReplication("_system"));
     },
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief just to allow a trailing comma at the end of the last test
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 10
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDummy : function () {
+    testBasicOperationsLeaderFail10: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 10,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 11
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail11: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 11,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 12
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail12: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 12,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 13
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail13: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 13,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 14
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail14: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 14,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 15
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail15: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 15,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 16
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail16: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 16,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 17
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail17: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 17,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fail leader in place 18
+// //////////////////////////////////////////////////////////////////////////////
+
+    testBasicOperationsLeaderFail18: function () {
+      assertTrue(waitForSynchronousReplication("_system"));
+      runBasicOperations({place: 18,
+follower: false},
+                         {place: 18,
+follower: false});
+      assertTrue(waitForSynchronousReplication("_system"));
+    },
+
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief just to allow a trailing comma at the end of the last test
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDummy: function () {
       assertEqual(12, 12);
     }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(SynchronousReplicationWithViewSuite);
 

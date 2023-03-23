@@ -5,7 +5,7 @@
 
 const Runnable = require('@arangodb/mocha/runnable');
 
-function createInvalidArgumentTypeError(message, argument, expected) {
+function createInvalidArgumentTypeError (message, argument, expected) {
   var err = new TypeError(message);
   err.code = 'ERR_MOCHA_INVALID_ARG_TYPE';
   err.argument = argument;
@@ -15,7 +15,7 @@ function createInvalidArgumentTypeError(message, argument, expected) {
 }
 
 class Test extends Runnable {
-  constructor(title, fn) {
+  constructor (title, fn) {
     if (typeof title !== "string") {
     throw createInvalidArgumentTypeError(
       'Test argument "title" should be a string. Received type "' +
@@ -30,7 +30,7 @@ class Test extends Runnable {
     this.type = 'test';
   }
 
-  clone() {
+  clone () {
     var test = new Test(this.title, this.fn);
     test.timeout(this.timeout());
     test.slow(this.slow());

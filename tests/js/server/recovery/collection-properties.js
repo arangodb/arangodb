@@ -89,7 +89,7 @@ function recoverySuite () {
       c = db._collection('UnitTestsRecovery3');
       prop = c.properties();
       assertTrue(prop.waitForSync);
-      
+
       c = db._collection('UnitTestsRecovery4');
       prop = c.properties();
       assertTrue(prop.waitForSync);

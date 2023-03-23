@@ -41,22 +41,22 @@ let possibleAgent = null;
 
 var healthRecord = {};
 
-function INFO() {
+function INFO () {
   let args = Array.prototype.slice.call(arguments);
   print.apply(print, ["INFO"].concat(args));
 }
 
-function WARN() {
+function WARN () {
   let args = Array.prototype.slice.call(arguments);
   print.apply(print, ["WARN"].concat(args));
 }
 
-function ERROR() {
+function ERROR () {
   let args = Array.prototype.slice.call(arguments);
   print.apply(print, ["ERROR"].concat(args));
 }
 
-function loadAgencyConfig() {
+function loadAgencyConfig () {
   var configuration = arango.GET("/_api/agency/config");
   return configuration;
 }
@@ -67,25 +67,25 @@ function loadAgencyConfig() {
  *
  * @param keys      Keys
  */
-function sortShardKeys(keys) {
+function sortShardKeys (keys) {
   var ret = [];
   // Get rid of 's' up front
-  keys.forEach(function(key, index, theArray) {
+  keys.forEach(function (key, index, theArray) {
     theArray[index] = key.substring(1);
   });
   // Sort keeping indices
-  var ind = range(0,keys.length-1);
-  ind.sort(function compare(i, j) {
+  var ind = range(0, keys.length - 1);
+  ind.sort(function compare (i, j) {
     return parseInt(keys[i]) > parseInt(keys[j]);
   });
   ind.forEach(function (i) {
-    ret.push('s'+keys[i]);
+    ret.push('s' + keys[i]);
   });
   return ret;
 }
 
 
-function agencyInspector(obj) {
+function agencyInspector (obj) {
 
   var nerrors = 0;
   var nwarnings = 0;
@@ -128,7 +128,7 @@ function agencyInspector(obj) {
   const current = agency.Current;
 
   // Start sanity of plan
-  INFO('Plan (version ' + plan.Version+ ')');
+  INFO('Plan (version ' + plan.Version + ')');
 
   // Planned databases check if also in collections and current
   INFO("  Databases");
@@ -137,7 +137,7 @@ function agencyInspector(obj) {
     ERROR('no databases in plan');
     return;
   }
-  Object.keys(plan.Databases).forEach(function(database) {
+  Object.keys(plan.Databases).forEach(function (database) {
     INFO('    ' + database);
     report.Databases[database] = {};
     if (!plan.Collections.hasOwnProperty(database)) {
@@ -157,7 +157,7 @@ function agencyInspector(obj) {
   }
 
   var warned = false;
-  Object.keys(plan.Collections).forEach(function(database) {
+  Object.keys(plan.Collections).forEach(function (database) {
     ++ndatabases;
     INFO('    ' + database);
 
@@ -165,7 +165,7 @@ function agencyInspector(obj) {
       ERROR('found planned collections in unplanned database ' + database);
     }
 
-    Object.keys(plan.Collections[database]).forEach(function(collection) {
+    Object.keys(plan.Collections[database]).forEach(function (collection) {
       report.Databases[database]
       [plan.Collections[database][collection].name] = {};
 
@@ -196,7 +196,7 @@ function agencyInspector(obj) {
             ERROR(
               'distributeShardsLike: planned shard map mismatch between "/arango/Plan/Collections/' +
                 database + '/' + collection + '/shards/' + myShardKeys[i] +
-                '" and " /arango/Plan/Collections/'  + database + '/' + distributeShardsLike +
+                '" and " /arango/Plan/Collections/' + database + '/' + distributeShardsLike +
                 '/shards/' + prototypeShardKeys[i] + '"');
             INFO('      ' + JSON.stringify(col.shards[shname]));
             INFO('      ' + JSON.stringify(prototype.shards[prototypeShardKeys[i]]));
@@ -204,7 +204,7 @@ function agencyInspector(obj) {
         }
       }
 
-      myShardKeys.forEach(function(shname) {
+      myShardKeys.forEach(function (shname) {
         ++nshards;
         if (current.Collections.hasOwnProperty(database)) {
           if (!current.Collections[database].hasOwnProperty(collection)) {
@@ -217,16 +217,16 @@ function agencyInspector(obj) {
             if (shard) {
               if (JSON.stringify(shard.servers) !== JSON.stringify(col.shards[shname])) {
                 if (shard.servers[0] !== col.shards[shname][0]) {
-                  ERROR('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
-                        + shname + ' and /arango/Current/Collections/' + database + '/'
-                        + collection + '/' + shname + '/servers do not match');
+                  ERROR('/arango/Plan/Collections/' + database + '/' + collection + '/shards/' +
+                        shname + ' and /arango/Current/Collections/' + database + '/' +
+                        collection + '/' + shname + '/servers do not match');
                 } else {
                   var sortedPlan = (shard.servers).sort();
                   var sortedCurrent = (col.shards[shname]).sort();
                   if (JSON.stringify(sortedPlan) === JSON.stringify(sortedCurrent)) {
-                    WARN('/arango/Plan/Collections/' + database + '/' + collection + '/shards/'
-                         + shname + ' and /arango/Current/Collections/' + database + '/'
-                         + collection + '/' + shname + '/servers follower do not match in order');
+                    WARN('/arango/Plan/Collections/' + database + '/' + collection + '/shards/' +
+                         shname + ' and /arango/Current/Collections/' + database + '/' +
+                         collection + '/' + shname + '/servers follower do not match in order');
                   }
                 }
               }
@@ -250,7 +250,7 @@ function agencyInspector(obj) {
   const supervision = agency.Supervision;
   const target = agency.Target;
   var servers = plan.DBServers;
-  Object.keys(servers).forEach(function(serverId) {
+  Object.keys(servers).forEach(function (serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
     } else {
@@ -259,11 +259,12 @@ function agencyInspector(obj) {
         ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
-      report.servers.dbservers[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
+      report.servers.dbservers[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName,
+status: servers[serverId].Status};
       if (servers[serverId].Status === "BAD") {
-        WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+        WARN('bad db server ' + serverId + '(' + servers[serverId].ShortName + ')');
       } else if (servers[serverId].Status === "FAILED") {
-        WARN('*** FAILED *** db server ' + serverId + '(' + servers[serverId].ShortName+ ')');
+        WARN('*** FAILED *** db server ' + serverId + '(' + servers[serverId].ShortName + ')');
       }
     }
   });
@@ -271,19 +272,20 @@ function agencyInspector(obj) {
   INFO('  Coordinators');
   report.servers.coordinators = {};
   servers = plan.Coordinators;
-  Object.keys(servers).forEach(function(serverId) {
+  Object.keys(servers).forEach(function (serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
     } else {
       INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
-      report.servers.coordinators[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
+      report.servers.coordinators[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName,
+status: servers[serverId].Status};
 
       if (!supervision.Health.hasOwnProperty(serverId)) {
         WARN('planned coordinator ' + serverId + ' missing in supervision\'s health records.');
       }
       servers[serverId] = supervision.Health[serverId];
       if (servers[serverId].Status !== "GOOD") {
-        WARN('*** FAILED *** coordinator ' + serverId + '(' + servers[serverId].ShortName+ ')');
+        WARN('*** FAILED *** coordinator ' + serverId + '(' + servers[serverId].ShortName + ')');
       }
     }
   });
@@ -309,7 +311,10 @@ function agencyInspector(obj) {
        'Failed: ' + njobs[3] + ')'
       );
 
-  report.jobs = { todo: njobs[0], pending: njobs[1], finished: njobs[2], failed: njobs[3]};
+  report.jobs = { todo: njobs[0],
+pending: njobs[1],
+finished: njobs[2],
+failed: njobs[3]};
 
   INFO('Summary');
   if (nerrors > 0) {
@@ -334,11 +339,11 @@ function agencyInspector(obj) {
  * @param start     Start of range
  * @param end       End of range
  */
-function range(start, end) {
+function range (start, end) {
   return Array(end - start + 1).fill().map((_, idx) => start + idx);
 }
 
-function loadAgency(conn, seen) {
+function loadAgency (conn, seen) {
 
   var agencyDump = conn.POST("/_api/agency/read", [["/"]]);
   seen[conn.getEndpoint()] = true;
@@ -364,8 +369,7 @@ function loadAgency(conn, seen) {
       } else {
         if (m[1] === "http") {
           leader = "tcp://" + m[2];
-        }
-        else if (m[1] === "https") {
+        } else if (m[1] === "https") {
           leader = "ssl://" + m[2];
         }
 
@@ -396,7 +400,7 @@ function loadAgency(conn, seen) {
 
 }
 
-function defineServer(type, id, source) {
+function defineServer (type, id, source) {
   if (id in servers) {
     _.merge(servers[id].source, source);
   } else {
@@ -408,46 +412,46 @@ function defineServer(type, id, source) {
   }
 }
 
-function defineServerEndpoint(id, endpoint) {
+function defineServerEndpoint (id, endpoint) {
   const server = servers[id];
 
   if ('endpoint' in server) {
     if (server.endpoint !== endpoint) {
-      INFO("changing endpoint for " + id + " from "
-           + server.endpoint + " to " + endpoint);
+      INFO("changing endpoint for " + id + " from " +
+           server.endpoint + " to " + endpoint);
     }
   }
 
   server.endpoint = endpoint;
 }
 
-function defineServerStatus(id, status) {
+function defineServerStatus (id, status) {
   const server = servers[id];
 
   if ('status' in server) {
     if (server.status !== status) {
-      INFO("changing status for " + id + " from "
-           + server.status + " to " + status);
+      INFO("changing status for " + id + " from " +
+           server.status + " to " + status);
     }
   }
 
   server.status = status;
 }
 
-function defineAgentLeader(id, leading) {
+function defineAgentLeader (id, leading) {
   const server = servers[id];
 
   if ('leading' in server) {
     if (server.leading !== leading) {
-      INFO("changing leading for " + id + " from "
-           + server.leading + " to " + leading);
+      INFO("changing leading for " + id + " from " +
+           server.leading + " to " + leading);
     }
   }
 
   server.leading = leading;
 }
 
-function defineAgentFromStatus(status, endpoint) {
+function defineAgentFromStatus (status, endpoint) {
   let id = status.agent.id;
   let leader = status.agent.leaderId;
 
@@ -458,20 +462,20 @@ function defineAgentFromStatus(status, endpoint) {
 
   const cfg = db.configuration.toArray()[0].cfg;
 
-  _.forEach(cfg.active, function(id) {
+  _.forEach(cfg.active, function (id) {
     defineServer('AGENT', id, { active: endpoint });
   });
 
-  _.forEach(cfg.pool, function(loc, id) {
+  _.forEach(cfg.pool, function (loc, id) {
     defineServer('AGENT', id, { pool: endpoint });
     defineServerEndpoint(id, loc);
     defineAgentLeader(id, id === leader);
   });
 
-  defineAgentLeader(id,status.agent.leading);
+  defineAgentLeader(id, status.agent.leading);
 }
 
-function definePrimaryFromStatus(status, endpoint) {
+function definePrimaryFromStatus (status, endpoint) {
   let id = status.serverInfo.serverId;
 
   defineServer('PRIMARY', id, { status: endpoint });
@@ -479,14 +483,14 @@ function definePrimaryFromStatus(status, endpoint) {
 
   let agentEndpoints = status.agency.agencyComm.endpoints;
 
-  if (0 < agentEndpoints.length) {
+  if (agentEndpoints.length > 0) {
     possibleAgent = agentEndpoints[0];
   } else {
     console.error("Failed to find an agency endpoint");
   }
 }
 
-function defineCoordinatorFromStatus(status, endpoint) {
+function defineCoordinatorFromStatus (status, endpoint) {
   let id = status.serverInfo.serverId;
 
   defineServer('COORDINATOR', id, { status: endpoint });
@@ -494,20 +498,20 @@ function defineCoordinatorFromStatus(status, endpoint) {
 
   let agentEndpoints = status.agency.agencyComm.endpoints;
 
-  if (0 < agentEndpoints.length) {
+  if (agentEndpoints.length > 0) {
     possibleAgent = agentEndpoints[0];
   } else {
     console.error("Failed to find an agency endpoint");
   }
 }
 
-function defineSingleFromStatus(status, endpoint) {
+function defineSingleFromStatus (status, endpoint) {
   defineServer('SINGLE', 'SINGLE', { status: endpoint });
   defineServerEndpoint('SINGLE', endpoint);
   if (status.hasOwnProperty('agency')) {
     let agentEndpoints = status.agency.agencyComm.endpoints;
 
-    if (0 < agentEndpoints.length) {
+    if (agentEndpoints.length > 0) {
       possibleAgent = agentEndpoints[0];
     } else {
       console.error("Failed to find an agency endpoint");
@@ -515,7 +519,7 @@ function defineSingleFromStatus(status, endpoint) {
   }
 }
 
-function serverBasics(conn) {
+function serverBasics (conn) {
   if (!conn) {
     conn = arango;
   }
@@ -538,11 +542,11 @@ function serverBasics(conn) {
   return role;
 }
 
-function locateServers(plan) {
+function locateServers (plan) {
   let health = plan[0].arango.Supervision.Health;
   let cluster = plan[0].arango.Cluster;
 
-  _.forEach(health, function(info, id) {
+  _.forEach(health, function (info, id) {
     const type = id.substr(0, 4);
 
     if (type === "PRMR") {
@@ -561,11 +565,11 @@ function locateServers(plan) {
   });
 }
 
-function listServers() {
+function listServers () {
   return servers;
 }
 
-function getServerData(arango) {
+function getServerData (arango) {
   var current = arango.getEndpoint();
   var servers = listServers();
   var report = {};
@@ -601,32 +605,37 @@ function getServerData(arango) {
           var local = {};
           try {
             var localDBs = db._databases();
-            localDBs.forEach( function(localDB) {
+            localDBs.forEach(function (localDB) {
               db._useDatabase(localDB);
               local[localDB] = {};
               var localCols = db._collections();
-              localCols.forEach( function(localCol) {
+              localCols.forEach(function (localCol) {
                 var colName = localCol.name();
                 local[localDB][colName] = {};
-                Object.keys(localCol.properties()).forEach( function(property) {
+                Object.keys(localCol.properties()).forEach(function (property) {
                   local[localDB][colName][property] = localCol.properties()[property];
                 });
                 local[localDB][colName].index = localCol.getIndexes();
                 local[localDB][colName].count = localCol.count();
-              });});
+              });
+});
             db._useDatabase('_system');
           } catch (e) {}
 
           // report this server
           report[server] = {
-            version:version, log:log, statistics:statistics, status:status,
-            local:local, time:time};
+            version: version,
+log: log,
+statistics: statistics,
+status: status,
+            local: local,
+time: time};
 
-          Object.keys(systemReport).forEach( function(section) {
+          Object.keys(systemReport).forEach(function (section) {
             report[server][section] = systemReport[section];
           });
 
-          if (agencyConfig !==  undefined) {
+          if (agencyConfig !== undefined) {
             report[server].config = agencyConfig;
             report[server].state = agencyState;
           }
@@ -645,7 +654,7 @@ function getServerData(arango) {
   return report;
 }
 
-(function() {
+(function () {
   try {
     var type = serverBasics();
 

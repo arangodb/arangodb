@@ -49,7 +49,8 @@ function runSetup () {
 
   db._create('test');
   for (i = 0; i < 100; ++i) {
-    db.test.save({ _key: 'test' + i, value: i });
+    db.test.save({ _key: 'test' + i,
+value: i });
   }
 
   db._useDatabase('_system');

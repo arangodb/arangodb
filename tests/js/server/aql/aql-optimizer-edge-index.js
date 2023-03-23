@@ -51,10 +51,14 @@ function optimizerEdgeIndexTestSuite () {
         var j;
 
         for (j = 0; j < i; ++j) {
-          edocs.push({'_from': 'UnitTestsCollection/from' + i, '_to': 'UnitTestsCollection/nono', value: i + '-' + j });
+          edocs.push({'_from': 'UnitTestsCollection/from' + i,
+'_to': 'UnitTestsCollection/nono',
+value: i + '-' + j });
         }
         for (j = 0; j < i; ++j) {
-          edocs.push({'_from': 'UnitTestsCollection/nono', '_to': 'UnitTestsCollection/to' + i, value: i + '-' + j });
+          edocs.push({'_from': 'UnitTestsCollection/nono',
+'_to': 'UnitTestsCollection/to' + i,
+value: i + '-' + j });
         }
       }
       e.insert(edocs);
@@ -129,7 +133,7 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.stats.scannedIndex);
       });
     },
-    
+
     testFindFromNoDocuments: function () {
       var queries = [
         [ 'FOR i IN ' + e.name() + ' FILTER i._from == "UnitTestsCollection/from100" RETURN 1', 100 ],
@@ -144,7 +148,9 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
         assertEqual(query[1], results.stats.scannedIndex);
-        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'IndexNode';
+});
         assertEqual(1, nodes.length);
         assertFalse(nodes[0].producesResult);
       });
@@ -160,7 +166,7 @@ function optimizerEdgeIndexTestSuite () {
         [ 'FOR i IN ' + e.name() + ' FILTER i._from >= "UnitTestsCollection/from100" RETURN i._key', 38000 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._from < "UnitTestsCollection/from1000" RETURN i._key', 100 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._from <= "UnitTestsCollection/from1000" RETURN i._key', 1100 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from1100" RETURN i._key', 36900 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from1100" RETURN i._key', 36900 ]
       ];
 
       queries.forEach(function (query) {
@@ -169,9 +175,13 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(e.count(), results.stats.scannedFull);
         assertEqual(0, results.stats.scannedIndex);
 
-        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'IndexNode';
+});
         assertEqual(0, nodes.length);
-        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'EnumerateCollectionNode';
+});
         assertEqual(1, nodes.length);
         assertTrue(nodes[0].producesResult);
       });
@@ -197,7 +207,7 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.stats.scannedIndex);
       });
     },
-    
+
     testFindToNoDocuments: function () {
       var queries = [
         [ 'FOR i IN ' + e.name() + ' FILTER i._to == "UnitTestsCollection/to100" RETURN 1', 100 ],
@@ -212,7 +222,9 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(query[1], results.json.length, query[0]);
         assertEqual(0, results.stats.scannedFull);
         assertEqual(query[1], results.stats.scannedIndex);
-        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'IndexNode';
+});
         assertEqual(1, nodes.length);
         assertFalse(nodes[0].producesResult);
       });
@@ -228,7 +240,7 @@ function optimizerEdgeIndexTestSuite () {
         [ 'FOR i IN ' + e.name() + ' FILTER i._to >= "UnitTestsCollection/from100" RETURN i._key', 38000 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._to <= "UnitTestsCollection/from1000" RETURN i._key', 0 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._to != "UnitTestsCollection/from1100" RETURN i._key', 38000 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._to != "UnitTestsCollection/from1100" RETURN i._key', 38000 ]
       ];
 
       queries.forEach(function (query) {
@@ -237,9 +249,13 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(e.count(), results.stats.scannedFull);
         assertEqual(0, results.stats.scannedIndex);
 
-        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'IndexNode';
+});
         assertEqual(0, nodes.length);
-        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'EnumerateCollectionNode';
+});
         assertEqual(1, nodes.length);
         assertTrue(nodes[0].producesResult);
       });
@@ -275,7 +291,7 @@ function optimizerEdgeIndexTestSuite () {
         [ 'FOR i IN ' + e.name() + ' FILTER i._from > "UnitTestsCollection/from100" && i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._from >= "UnitTestsCollection/from100" && i._to <= "UnitTestsCollection/from1000" RETURN i._key', 0 ],
         [ 'FOR i IN ' + e.name() + ' FILTER i._from > "UnitTestsCollection/from100" && i._to < "UnitTestsCollection/from1000" RETURN i._key', 0 ],
-        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from100" && i._to != "UnitTestsCollection/from1000" RETURN i._key', 37900 ],
+        [ 'FOR i IN ' + e.name() + ' FILTER i._from != "UnitTestsCollection/from100" && i._to != "UnitTestsCollection/from1000" RETURN i._key', 37900 ]
       ];
 
       queries.forEach(function (query) {
@@ -284,9 +300,13 @@ function optimizerEdgeIndexTestSuite () {
         assertEqual(e.count(), results.stats.scannedFull);
         assertEqual(0, results.stats.scannedIndex);
 
-        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        let nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'IndexNode';
+});
         assertEqual(0, nodes.length);
-        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+        nodes = AQL_EXPLAIN(query[0]).plan.nodes.filter(function (n) {
+ return n.type === 'EnumerateCollectionNode';
+});
         assertEqual(1, nodes.length);
         assertTrue(nodes[0].producesResult);
       });
@@ -297,29 +317,35 @@ function optimizerEdgeIndexTestSuite () {
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(1, node.elements.length);
       assertEqual("to", node.elements[0].inVariable.name);
       assertTrue(node.elements[0].ascending);
     },
-    
+
     testLookupOnFromSortOnFromAttribute: function () {
       let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT from = doc._from RETURN from";
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(0, node.length);
     },
-    
+
     testLookupOnFromSortOnFromToAttribute: function () {
       let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT from = doc._from, to = doc._to RETURN { from, to }";
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(2, node.elements.length);
@@ -328,13 +354,15 @@ function optimizerEdgeIndexTestSuite () {
       assertTrue(node.elements[0].ascending);
       assertTrue(node.elements[1].ascending);
     },
-    
+
     testLookupOnFromSortOnToFromAttribute: function () {
       let query = "FOR doc IN " + e.name() + " FILTER doc._from == 'UnitTestsCollection/nono' COLLECT to = doc._to, from = doc._from RETURN { from, to }";
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(2, node.elements.length);
@@ -349,7 +377,9 @@ function optimizerEdgeIndexTestSuite () {
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(1, node.elements.length);
@@ -362,7 +392,9 @@ function optimizerEdgeIndexTestSuite () {
       let results = AQL_EXECUTE(query);
       assertEqual(1, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(0, node.length);
     },
 
@@ -371,7 +403,9 @@ function optimizerEdgeIndexTestSuite () {
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(2, node.elements.length);
@@ -380,13 +414,15 @@ function optimizerEdgeIndexTestSuite () {
       assertTrue(node.elements[0].ascending);
       assertTrue(node.elements[1].ascending);
     },
-    
+
     testLookupOnToSortOnFromToAttribute: function () {
       let query = "FOR doc IN " + e.name() + " FILTER doc._to == 'UnitTestsCollection/nono' COLLECT from = doc._from, to = doc._to RETURN { from, to }";
       let results = AQL_EXECUTE(query);
       assertEqual(19, results.json.length);
 
-      let node = AQL_EXPLAIN(query).plan.nodes.filter(function(n) { return n.type === 'SortNode'; });
+      let node = AQL_EXPLAIN(query).plan.nodes.filter(function (n) {
+ return n.type === 'SortNode';
+});
       assertEqual(1, node.length);
       node = node[0];
       assertEqual(2, node.elements.length);

@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse, assertNotNull, assertNotUndefined, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB Inc, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the collection interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB Inc, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -44,7 +44,7 @@ let sleepInCluster = () => {
 
 const skipOptions = {"skipDocumentValidation": true};
 
-function ValidationBasicsSuite() {
+function ValidationBasicsSuite () {
   const testCollectionName = "TestValidationCollection";
   let testCollection;
   let validatorJson;
@@ -718,12 +718,12 @@ function ValidationBasicsSuite() {
       }
     }
 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
   }; // return
 } // END - ValidationBasicsSuite
 
 
-function UpdateSchemaCoverageSuite() {
+function UpdateSchemaCoverageSuite () {
   const testCollectionName = "TestCollection";
   let testCollection = null;
   const validatorJson = {
@@ -799,7 +799,8 @@ function UpdateSchemaCoverageSuite() {
 
     testPropertiesRemoveAttributeAfterDocInsertion: () => {
       assertNotNull(testCollection);
-      const newDoc = {"created": 123, "creator": "Julia"};
+      const newDoc = {"created": 123,
+"creator": "Julia"};
       testCollection.insert(newDoc);
       delete validatorJson.rule.properties.name;
       assertFalse(validatorJson.rule.hasOwnProperty("name"));
@@ -826,11 +827,11 @@ function UpdateSchemaCoverageSuite() {
       assertEqual(schema.level, validatorJson2.level);
       assertEqual(schema.type, validatorJson2.type);
       assertEqual(schema.rule, validatorJson2.rule);
-    },
+    }
   };
 } // END - UpdateSchemaCoverageSuite
 
-function ValidationEdgeSuite() {
+function ValidationEdgeSuite () {
   const testCollectionName = "TestValidationEdgeCollection";
   let testCollection;
   let validatorJson;
@@ -1052,7 +1053,7 @@ function ValidationEdgeSuite() {
       doc = testCollection.any();
       assertNotUndefined(doc.additional);
     }
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
   }; // return
 } // END - ValidationEdgeSuite
 

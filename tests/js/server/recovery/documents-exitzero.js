@@ -39,7 +39,8 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery'), i;
 
   for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value: i });
+    c.save({ _key: 'test' + i,
+value: i });
   }
   // shut down normally! no crashing!
 }

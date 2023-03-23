@@ -33,20 +33,20 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require(fs.join(internal.pathForTesting('client'),
                              'shell', 'shell-iterators.inc'));
 
-function StandaloneAqlIteratorReadSuite() {
+function StandaloneAqlIteratorReadSuite () {
   'use strict';
 
   const ctx = {
     query: (...args) => internal.db._query(...args),
     collection: (name) => internal.db[name],
-    abort: () => {},
+    abort: () => {}
   };
-  const permute = function(run) {
+  const permute = function (run) {
     [ {}, {intermediateCommitCount: 111} ].forEach((opts) => {
       run(ctx, opts);
     });
   };
-  
+
   let suite = {};
   deriveTestSuite(base.IteratorReadSuite(permute, true), suite, '_StandaloneAqlRead');
   return suite;

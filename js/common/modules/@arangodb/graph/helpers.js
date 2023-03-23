@@ -1,38 +1,38 @@
 /* jshint strict: true, unused: true */
 /* global AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Helpers for graph tests
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Helpers for graph tests
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2016-2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 
-function makeTree(k, depth, nrShards, subgraph) {
+function makeTree (k, depth, nrShards, subgraph) {
   // This creates a large graph (vertices and edges), which is a k-ary
   // tree of depth <depth>. If <subgraph> is 'random', then the subgraph
   // attribute 'sub' will be set randomly in [1..nrShards] as string.
@@ -45,7 +45,12 @@ function makeTree(k, depth, nrShards, subgraph) {
   if (typeof k !== 'number' || k > 9 || k < 2) {
     throw 'bad k';
   }
-  let r = { 'vertices': [], 'edges': [], k, depth, nrShards, subgraph };
+  let r = { 'vertices': [],
+'edges': [],
+k,
+depth,
+nrShards,
+subgraph };
   const makeVertices = (which, d) => {
     let v = {name: which};
     if (subgraph === 'random') {
@@ -65,8 +70,10 @@ function makeTree(k, depth, nrShards, subgraph) {
       return pos;
     }
     for (let i = 0; i < k; i++) {
-      let subpos = makeVertices(which + i, d+1);
-      let e = { _from: pos, _to: subpos, name: '->' + which + i };
+      let subpos = makeVertices(which + i, d + 1);
+      let e = { _from: pos,
+_to: subpos,
+name: '->' + which + i };
       r.edges.push(e);
     }
     return pos;
@@ -76,19 +83,19 @@ function makeTree(k, depth, nrShards, subgraph) {
 }
 
 class PoorMansRandom {
-  constructor(seed) {
+  constructor (seed) {
     this.x = seed === undefined ? 1234567 : seed;
   }
-  next() {
+  next () {
     this.x = Math.floor(this.x * 15485867 + 17263) % 10000000;
     return this.x;
   }
-  nextUnitInterval() {
+  nextUnitInterval () {
     return this.next() / 10000000.0;
   }
 }
 
-function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
+function makeClusteredGraph (clusterSizes, intDegree, intDegreeDelta,
                                           extDegree, seed) {
   // This creates a pseudo-random clustered graph. The arguments are:
   // clusterSizes:     array of positive integers, sizes of the subgraphs
@@ -113,16 +120,21 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
   let names3 = ['Chaplin', 'Hardy', 'Laurel', 'Keaton', 'Hallervorden',
                 'Appelt', 'Mittermaier', 'Trump', 'Queen Elizabeth',
                 'Merkel'];
-  function makeName(i) {
+  function makeName (i) {
     let r = names1[i % 10] + '-' + names2[Math.floor(i / 10) % 10] + '_' +
             names3[Math.floor(i / 100) % 10];
     let z = Math.floor(i / 1000);
     return z > 0 ? r + z : r;
   }
-          
+
   let rand = new PoorMansRandom(seed);
-  let r = { 'vertices': [], 'edges': [], clusterSizes,
-            intDegree, intDegreeDelta, extDegree, seed };
+  let r = { 'vertices': [],
+'edges': [],
+clusterSizes,
+            intDegree,
+intDegreeDelta,
+extDegree,
+seed };
 
   // Make the vertices:
   let clusters = [];
@@ -130,8 +142,10 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
     let cluster = [];
     let subgraphId = i < clusterNames.length ? clusterNames[i] : 'C' + i;
     for (let j = 0; j < clusterSizes[i]; ++j) {
-      let v = {subgraphId, name: subgraphId + '_' + makeName(j)};
-      cluster.push({v, pos: r.vertices.length});
+      let v = {subgraphId,
+name: subgraphId + '_' + makeName(j)};
+      cluster.push({v,
+pos: r.vertices.length});
       r.vertices.push(v);
     }
     clusters.push(cluster);
@@ -144,12 +158,13 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
     for (let j = 0; j < cluster.length; ++j) {
       let vv = cluster[j];
       let v = vv.v;
-      let nrInt = intDegree - intDegreeDelta + 
+      let nrInt = intDegree - intDegreeDelta +
                   rand.next() % (2 * intDegreeDelta);
       for (let k = 0; k < nrInt; ++k) {
         let toVertexPos = rand.next() % cluster.length;
         let toVertex = r.vertices[cluster[toVertexPos].pos];
-        let e = { _from: vv.pos, _to: cluster[toVertexPos].pos,
+        let e = { _from: vv.pos,
+_to: cluster[toVertexPos].pos,
                   name: v.name + '->' + toVertex.name };
         r.edges.push(e);
       }
@@ -160,7 +175,8 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
         } while (toCluster === i);
         let toVertexPos = rand.next() % clusters[toCluster].length;
         let toVertex = r.vertices[clusters[toCluster][toVertexPos].pos];
-        let e = { _from: vv.pos, _to: clusters[toCluster][toVertexPos].pos,
+        let e = { _from: vv.pos,
+_to: clusters[toCluster][toVertexPos].pos,
                   name: v.name + '->' + toVertex.name };
         r.edges.push(e);
       }
@@ -172,7 +188,7 @@ function makeClusteredGraph(clusterSizes, intDegree, intDegreeDelta,
 
 // In-memory simulation of graph traversals:
 
-function makeGraphIndex(graph) {
+function makeGraphIndex (graph) {
   if (graph.table === undefined ||
       graph.fromTable === undefined || graph.toTable === undefined) {
     graph.table = {};
@@ -192,8 +208,9 @@ function makeGraphIndex(graph) {
   }
 }
 
-function produceResult(schreier, minDepth, mode) {
-  let r = { res: [], depths: [] };
+function produceResult (schreier, minDepth, mode) {
+  let r = { res: [],
+depths: [] };
   for (let i = 0; i < schreier.length; ++i) {
     if (schreier[i].depth < minDepth) {
       continue;
@@ -201,10 +218,12 @@ function produceResult(schreier, minDepth, mode) {
     if (mode === 'vertex') {
       r.res.push(schreier[i].vertex);
     } else if (mode === 'edge') {
-      r.res.push({vertex: schreier[i].vertex, edge: schreier[i].edge});
+      r.res.push({vertex: schreier[i].vertex,
+edge: schreier[i].edge});
     } else {
       let pos = i;
-      let p = {vertices: [], edges: []};
+      let p = {vertices: [],
+edges: []};
       while (pos !== null) {
         p.vertices.push(schreier[pos].vertex);
         p.edges.push(schreier[pos].edge);
@@ -220,7 +239,7 @@ function produceResult(schreier, minDepth, mode) {
   return r;
 }
 
-function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
+function simulateBreadthFirstSearch (graph, startVertexId, minDepth, maxDepth,
                                     uniqueness, mode, dir) {
   // <graph> is an object with attributes 'vertices' and 'edges', which
   // simply contain the list of vertices (with their _id attributes)
@@ -239,8 +258,10 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
   makeGraphIndex(graph);
 
   // Now start the breadth first search:
-  let schreier = [{vertex: graph.table[startVertexId], edge: null,
-                   depth: 0, pred: null}];
+  let schreier = [{vertex: graph.table[startVertexId],
+edge: null,
+                   depth: 0,
+pred: null}];
   let pos = 0;
   let used = {};
   used[startVertexId] = true;
@@ -283,8 +304,10 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
         used[vertex._id] = true;
       }
       if (useThisEdge) {
-        schreier.push({vertex: vertex, edge: edge,
-                       depth: schreier[pos].depth + 1, pred: pos});
+        schreier.push({vertex: vertex,
+edge: edge,
+                       depth: schreier[pos].depth + 1,
+pred: pos});
       }
     };
 
@@ -311,7 +334,7 @@ function simulateBreadthFirstSearch(graph, startVertexId, minDepth, maxDepth,
   return produceResult(schreier, minDepth, mode);
 }
 
-function simulateDepthFirstSearch(graph, startVertexId, minDepth, maxDepth,
+function simulateDepthFirstSearch (graph, startVertexId, minDepth, maxDepth,
                                   uniqueness, mode, dir) {
   // <graph> is an object with attributes 'vertices' and 'edges', which
   // simply contain the list of vertices (with their _id attributes)
@@ -330,10 +353,12 @@ function simulateDepthFirstSearch(graph, startVertexId, minDepth, maxDepth,
   makeGraphIndex(graph);
 
   // Now start the depth first search:
-  let schreier = [{vertex: graph.table[startVertexId], edge: null,
-                   depth: 0, pred: null}];
+  let schreier = [{vertex: graph.table[startVertexId],
+edge: null,
+                   depth: 0,
+pred: null}];
 
-  function doRecurse(pos) {
+  function doRecurse (pos) {
     if (schreier[pos].depth >= maxDepth) {
       return;
     }
@@ -366,8 +391,10 @@ function simulateDepthFirstSearch(graph, startVertexId, minDepth, maxDepth,
         }
       }
       if (useThisEdge) {
-        schreier.push({vertex: vertex, edge: edge,
-                       depth: schreier[pos].depth + 1, pred: pos});
+        schreier.push({vertex: vertex,
+edge: edge,
+                       depth: schreier[pos].depth + 1,
+pred: pos});
         doRecurse(schreier.length - 1);
       }
     };
@@ -397,7 +424,7 @@ function simulateDepthFirstSearch(graph, startVertexId, minDepth, maxDepth,
   return produceResult(schreier, minDepth, mode);
 }
 
-function pathCompare(a, b) {
+function pathCompare (a, b) {
   // Establishes a total order on the set of all paths of the form:
   //   { vertices: [...], edges: [...] }
   // where there is one more vertex than edges, and all vertices and
@@ -417,7 +444,7 @@ function pathCompare(a, b) {
         return 1;
       } else {
         if (i === a.vertices.length - 1) {
-          return 0;   // all is equal
+          return 0; // all is equal
         }
         if (a.edges[i]._id < b.edges[i]._id) {
           return -1;
@@ -431,7 +458,7 @@ function pathCompare(a, b) {
   }
 }
 
-function checkBFSResult(pattern, toCheck) {
+function checkBFSResult (pattern, toCheck) {
   // This tries to check a BFS result against a given pattern. Some
   // fuzziness is needed since AQL does not promise the order in which
   // edges are followed from a vertex during the traversal. The mode
@@ -453,14 +480,16 @@ function checkBFSResult(pattern, toCheck) {
   // where errorMessage is set iff error is true. This can be used as in:
   //   assertFalse(res.error, res.errorMessage)
   if (pattern.res.length !== toCheck.length) {
-    return { error: true, errorMessage: 'Number of results does not match' };
+    return { error: true,
+errorMessage: 'Number of results does not match' };
   }
   if (pattern.res.length === 0) {
     return { error: false };
   }
   let guck = pattern.res[0];
   if (typeof guck !== 'object') {
-    return { error: true, errorMessage: 'Cannot recognize mode' };
+    return { error: true,
+errorMessage: 'Cannot recognize mode' };
   }
   let mode;
   if (guck.hasOwnProperty('vertices') && guck.hasOwnProperty('edges')) {
@@ -490,12 +519,13 @@ function checkBFSResult(pattern, toCheck) {
   for (let i = 0; i < newDepths.length - 1; ++i) {
     if (mode === 'vertex') {
       let tab = {};
-      for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
+      for (let j = newDepths[i]; j < newDepths[i + 1]; ++j) {
         tab[pattern.res[j]._id] = true;
       }
-      for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
+      for (let j = newDepths[i]; j < newDepths[i + 1]; ++j) {
         if (tab[toCheck[j]._id] !== true) {
-          return { error: true, errorMessage: 'Ids in depth ' +
+          return { error: true,
+errorMessage: 'Ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
                    toCheck[j]._id + '" in toCheck is not in pattern' };
         }
@@ -503,29 +533,31 @@ function checkBFSResult(pattern, toCheck) {
     } else if (mode === 'edge') {
       let vTab = {};
       let eTab = {};
-      for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
+      for (let j = newDepths[i]; j < newDepths[i + 1]; ++j) {
         vTab[pattern.res[j].vertex._id] = true;
         if (pattern.res[j].edge !== null) {
           eTab[pattern.res[j].edge._id] = true;
         }
       }
-      for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
+      for (let j = newDepths[i]; j < newDepths[i + 1]; ++j) {
         if (vTab[toCheck[j].vertex._id] !== true) {
-          return { error: true, errorMessage: 'Vertex ids in depth ' +
+          return { error: true,
+errorMessage: 'Vertex ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
                    toCheck[j].vertex._id + '" in toCheck is not in pattern' };
         }
         if (toCheck[j].edge !== null &&
             eTab[toCheck[j].edge._id] !== true) {
-          return { error: true, errorMessage: 'Edge ids in depth ' +
+          return { error: true,
+errorMessage: 'Edge ids in depth ' +
                    pattern.depths[j] + ' do not match, "' +
                    toCheck[j].edge._id + '" in toCheck is not in pattern' };
         }
       }
-    } else {   // mode === 'path'
+    } else { // mode === 'path'
       let colA = [];
       let colB = [];
-      for (let j = newDepths[i]; j < newDepths[i+1]; ++j) {
+      for (let j = newDepths[i]; j < newDepths[i + 1]; ++j) {
         colA.push(pattern.res[j]);
         colB.push(toCheck[j]);
       }
@@ -533,9 +565,10 @@ function checkBFSResult(pattern, toCheck) {
       colB.sort(pathCompare);
       for (let j = 0; j < colA.length; ++j) {
         if (pathCompare(colA[j], colB[j]) !== 0) {
-          return { error: true, errorMessage: 'Path sets in depth ' +
+          return { error: true,
+errorMessage: 'Path sets in depth ' +
                    pattern.depths[newDepths[i]] + ' do not match, here is a ' +
-                   'sample: ' + JSON.stringify(colA) + ' (pattern) as opposed '+
+                   'sample: ' + JSON.stringify(colA) + ' (pattern) as opposed ' +
                    ' to ' + JSON.stringify(colB) + ' (toCheck)' };
         }
       }
@@ -546,7 +579,7 @@ function checkBFSResult(pattern, toCheck) {
   return { error: false };
 }
 
-function checkDFSResult(pattern, toCheck) {
+function checkDFSResult (pattern, toCheck) {
   // This tries to check a DFS result against a given pattern. Some
   // fuzziness is needed since AQL does not promise the order in which
   // edges are followed from a vertex during the traversal. The only mode
@@ -564,7 +597,8 @@ function checkDFSResult(pattern, toCheck) {
   // where errorMessage is set iff error is true. This can be used as in:
   //   assertFalse(res.error, res.errorMessage)
   if (pattern.res.length !== toCheck.length) {
-    return { error: true, errorMessage: 'Number of results does not match' };
+    return { error: true,
+errorMessage: 'Number of results does not match' };
   }
   if (pattern.res.length === 0) {
     return { error: false };
@@ -576,8 +610,9 @@ function checkDFSResult(pattern, toCheck) {
   colB.sort(pathCompare);
   for (let j = 0; j < colA.length; ++j) {
     if (pathCompare(colA[j], colB[j]) !== 0) {
-      return { error: true, errorMessage: 'Path sets do not match, here is a ' +
-               'sample: ' + JSON.stringify(colA) + ' (pattern) as opposed '+
+      return { error: true,
+errorMessage: 'Path sets do not match, here is a ' +
+               'sample: ' + JSON.stringify(colA) + ' (pattern) as opposed ' +
                ' to ' + JSON.stringify(colB) + ' (toCheck)' };
     }
   }
@@ -586,7 +621,7 @@ function checkDFSResult(pattern, toCheck) {
   return { error: false };
 }
 
-function storeGraph(r, Vname, Ename, Gname) {
+function storeGraph (r, Vname, Ename, Gname) {
   // r a graph made by makeTree or makeClusteredGraph, Vname a string for the
   // name of the vertex collection, Ename a string for the name of the edge
   // collection, Gname is the name of the named graph, returns an object
@@ -614,7 +649,8 @@ function storeGraph(r, Vname, Ename, Gname) {
   }
   let graph = g._create(Gname);
   graph._extendEdgeDefinitions(g._relation(Ename, [Vname], [Vname]));
-  return { data: { vertices: V.toArray(), edges: E.toArray() },
+  return { data: { vertices: V.toArray(),
+edges: E.toArray() },
            graph };
 }
 
@@ -624,24 +660,34 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
     let v = db._collection(vn);
     for (let i = 0; i < 10; ++i) {
       if (smartGraphAttribute) {
-        keys.push(v.insert({ value: i, [smartGraphAttribute]: JSON.stringify(i)})._key);
+        keys.push(v.insert({ value: i,
+[smartGraphAttribute]: JSON.stringify(i)})._key);
       } else {
         keys.push(v.insert({ value: i })._key);
       }
     }
 
     let e1 = db._collection(en + "1");
-    e1.insert({ _from: vn + "/" + keys[0], _to: vn + "/" + keys[1] });
-    e1.insert({ _from: vn + "/" + keys[1], _to: vn + "/" + keys[2] });
-    e1.insert({ _from: vn + "/" + keys[2], _to: vn + "/" + keys[3] });
-    e1.insert({ _from: vn + "/" + keys[3], _to: vn + "/" + keys[4] });
-    e1.insert({ _from: vn + "/" + keys[4], _to: vn + "/" + keys[5] });
+    e1.insert({ _from: vn + "/" + keys[0],
+_to: vn + "/" + keys[1] });
+    e1.insert({ _from: vn + "/" + keys[1],
+_to: vn + "/" + keys[2] });
+    e1.insert({ _from: vn + "/" + keys[2],
+_to: vn + "/" + keys[3] });
+    e1.insert({ _from: vn + "/" + keys[3],
+_to: vn + "/" + keys[4] });
+    e1.insert({ _from: vn + "/" + keys[4],
+_to: vn + "/" + keys[5] });
 
     let e2 = db._collection(en + "2");
-    e2.insert({ _from: vn + "/" + keys[0], _to: vn + "/" + keys[6] });
-    e2.insert({ _from: vn + "/" + keys[1], _to: vn + "/" + keys[7] });
-    e2.insert({ _from: vn + "/" + keys[7], _to: vn + "/" + keys[8] });
-    e2.insert({ _from: vn + "/" + keys[8], _to: vn + "/" + keys[9] });
+    e2.insert({ _from: vn + "/" + keys[0],
+_to: vn + "/" + keys[6] });
+    e2.insert({ _from: vn + "/" + keys[1],
+_to: vn + "/" + keys[7] });
+    e2.insert({ _from: vn + "/" + keys[7],
+_to: vn + "/" + keys[8] });
+    e2.insert({ _from: vn + "/" + keys[8],
+_to: vn + "/" + keys[9] });
 
     return keys;
   };
@@ -713,16 +759,16 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
     [ `WITH ${vn} FOR v IN 0..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 0, 1, 6 ] ],
     [ `WITH ${vn} FOR v IN 1..1 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 6 ] ],
     [ `WITH ${vn} FOR v IN 1..2 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 6, 7 ] ],
-    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ],
+    [ `WITH ${vn} FOR v IN 1..3 OUTBOUND "${vn}/${keys[0]}" GRAPH "${gn}" OPTIONS { edgeCollections: [ "${en}1", "${en}2" ] } SORT v._id RETURN DISTINCT v._id`, [ 1, 2, 3, 6, 7, 8 ] ]
   ];
 
-  queries.forEach(function(q) {
+  queries.forEach(function (q) {
     if (checkOptimizerRule) {
       assertNotEqual(-1, AQL_EXPLAIN(q[0]).plan.rules.indexOf(checkOptimizerRule));
     }
     const actual = db._query(q[0]).toArray();
     let expected = [];
-    q[1].forEach(function(e) {
+    q[1].forEach(function (e) {
       expected.push(vn + "/" + keys[e]);
     });
     assertEqual(actual, expected, q);

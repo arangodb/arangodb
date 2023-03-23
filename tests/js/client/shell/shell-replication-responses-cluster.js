@@ -31,7 +31,7 @@ const db = arangodb.db;
 const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getUrlById, getEndpointsByType } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
 
-function followerResponsesSuite() {
+function followerResponsesSuite () {
   'use strict';
   const cn = 'UnitTestsCollection';
 
@@ -45,9 +45,10 @@ function followerResponsesSuite() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },
-    
+
     testInsert: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
 
       let shards = db._collection(cn).shards(true);
       let shard = Object.keys(shards)[0];
@@ -55,7 +56,7 @@ function followerResponsesSuite() {
 
       let leader = servers[0];
       let follower = servers[1];
-      
+
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
@@ -70,7 +71,7 @@ function followerResponsesSuite() {
 
       // verify that response is empty
       assertEqual({}, response.json);
-      
+
       // send multi document replication insert request
       response = request({
         method: "post",
@@ -82,9 +83,10 @@ function followerResponsesSuite() {
       // verify that response is empty
       assertEqual([], response.json);
     },
-    
+
     testUpdate: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let docs = [];
       for (let i = 0; i < 10; ++i) {
         docs.push({ _key: "test" + i });
@@ -97,7 +99,7 @@ function followerResponsesSuite() {
 
       let leader = servers[0];
       let follower = servers[1];
-      
+
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
@@ -112,7 +114,7 @@ function followerResponsesSuite() {
 
       // verify that response is empty
       assertEqual({}, response.json);
-      
+
       // send multi document replication update request
       response = request({
         method: "patch",
@@ -124,9 +126,10 @@ function followerResponsesSuite() {
       // verify that response is empty
       assertEqual([], response.json);
     },
-    
+
     testRemove: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let docs = [];
       for (let i = 0; i < 10; ++i) {
         docs.push({ _key: "test" + i });
@@ -139,7 +142,7 @@ function followerResponsesSuite() {
 
       let leader = servers[0];
       let follower = servers[1];
-      
+
       let endpoint = getEndpointById(follower);
       let url = getUrlById(follower);
       debugSetFailAt(endpoint, "synchronousReplication::neverRefuseOnFollower");
@@ -154,7 +157,7 @@ function followerResponsesSuite() {
 
       // verify that response is empty
       assertEqual({}, response.json);
-      
+
       // send multi document replication remove request
       response = request({
         method: "delete",
@@ -165,7 +168,7 @@ function followerResponsesSuite() {
 
       // verify that response is empty
       assertEqual([], response.json);
-    },
+    }
   };
 }
 

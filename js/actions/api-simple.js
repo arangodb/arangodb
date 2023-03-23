@@ -482,7 +482,8 @@ actions.defineHttp({
           if (typeof options === 'undefined') {
             var waitForSync = body.waitForSync || undefined;
             var limit = body.limit || null;
-            options = {waitForSync: waitForSync, limit: limit};
+            options = {waitForSync: waitForSync,
+limit: limit};
           }
 
           if (options.limit > 0 && !checkShards(req, collection)) {
@@ -534,7 +535,8 @@ actions.defineHttp({
           if (typeof options === 'undefined') {
             var waitForSync = body.waitForSync || undefined;
             var limit = body.limit || null;
-            options = {waitForSync: waitForSync, limit: limit};
+            options = {waitForSync: waitForSync,
+limit: limit};
           }
 
           if (options.limit > 0 && !checkShards(req, collection)) {
@@ -592,7 +594,10 @@ actions.defineHttp({
           if (typeof options === 'undefined') {
             var waitForSync = body.waitForSync || undefined;
             limit = body.limit || undefined;
-            options = {waitForSync: waitForSync, keepNull: keepNull, limit: limit, mergeObjects: mergeObjects};
+            options = {waitForSync: waitForSync,
+keepNull: keepNull,
+limit: limit,
+mergeObjects: mergeObjects};
           }
 
           if (options.limit > 0 && !checkShards(req, collection)) {

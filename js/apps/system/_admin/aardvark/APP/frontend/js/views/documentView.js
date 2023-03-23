@@ -224,7 +224,7 @@
       this.abortEdge('to');
     },
 
-    setEditMode(type, active) {
+    setEditMode (type, active) {
       if (type === 'from') {
         this.editFromActive = active;
       } else {
@@ -274,7 +274,7 @@
       );
     },
 
-    applyEdge: function(type) {
+    applyEdge: function (type) {
       var model = this.collection.first();
       this.setEditMode(type, false);
 
@@ -300,7 +300,7 @@
       $('#document-' + type).show();
     },
 
-    abortEdge: function(type) {
+    abortEdge: function (type) {
       this.setEditMode(type, false);
       this.toggleEditIcons(type, true);
 
@@ -541,6 +541,6 @@
         '<i class="fa fa-chevron-right"></i>' +
         this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + _.escape(decodeURIComponent(name[2]))
       );
-    },
+    }
   });
 }());

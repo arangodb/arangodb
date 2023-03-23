@@ -1,4 +1,4 @@
-/*eslint
+/* eslint
   camelcase:0
   curly:0,
   eqeqeq:0,
@@ -13,13 +13,13 @@
 /* global BYTELENGTH */
 global.DEFINE_MODULE('buffer', (function () {
   'use strict'
-  /*eslint-enable */
+  /* eslint-enable */
 
   const exports = {};
 
   var SlowBuffer = require('internal').SlowBuffer;
 
-  SlowBuffer.prototype._PRINT = function(context) {
+  SlowBuffer.prototype._PRINT = function (context) {
     context.output += '<SlowBuffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
       context.output += ' ';
@@ -185,7 +185,9 @@ global.DEFINE_MODULE('buffer', (function () {
 
   const BUFFER_PROXY_HANDLER = {
     get (target, name) {
-      if (name === '__buffer__') { return true; }
+      if (name === '__buffer__') {
+ return true;
+}
       if (typeof name === 'string' && name.match(/^\d+$/)) {
         return target.parent[name];
       }
@@ -201,7 +203,7 @@ global.DEFINE_MODULE('buffer', (function () {
     }
   };
 
-  function createBufferFromString(subject, encoding) {
+  function createBufferFromString (subject, encoding) {
     const buffer = Object.create(Buffer.prototype);
     const length = BYTELENGTH(subject, encoding);
     buffer.parent = new SlowBuffer(length);
@@ -210,7 +212,7 @@ global.DEFINE_MODULE('buffer', (function () {
     return new Proxy(buffer, BUFFER_PROXY_HANDLER);
   }
 
-  function createBufferFromArrayBuffer(subject, byteOffset = 0, length = subject.byteLength - byteOffset) {
+  function createBufferFromArrayBuffer (subject, byteOffset = 0, length = subject.byteLength - byteOffset) {
     const buffer = Object.create(Buffer.prototype);
     const dv = new DataView(subject);
     buffer.parent = new SlowBuffer(length);
@@ -222,7 +224,7 @@ global.DEFINE_MODULE('buffer', (function () {
     return new Proxy(buffer, BUFFER_PROXY_HANDLER);
   }
 
-  function createBufferFromByteArray(subject) {
+  function createBufferFromByteArray (subject) {
     const buffer = Object.create(Buffer.prototype);
     buffer.parent = new SlowBuffer(subject.length);
     buffer.offset = 0;
@@ -233,7 +235,7 @@ global.DEFINE_MODULE('buffer', (function () {
     return new Proxy(buffer, BUFFER_PROXY_HANDLER);
   }
 
-  function createBufferFromBuffer(subject, byteLength, start) {
+  function createBufferFromBuffer (subject, byteLength, start) {
     // NOTE for historical reasons this behaves as a `copy` by default but as
     // a `slice` if either `byteLength` or `start` is set.
     if (typeof start !== "undefined" || typeof byteLength !== "undefined") {
@@ -250,19 +252,19 @@ global.DEFINE_MODULE('buffer', (function () {
     return buffer;
   }
 
-  Buffer.prototype.values = Buffer.prototype[Symbol.iterator] = function * () {
+  Buffer.prototype.values = Buffer.prototype[Symbol.iterator] = function *() {
     for (let i = 0; i < this.length; i++) {
       yield this[i];
     }
   };
 
-  Buffer.prototype.entries = function * () {
+  Buffer.prototype.entries = function *() {
     for (let i = 0; i < this.length; i++) {
       yield [i, this[i]];
     }
   };
 
-  Buffer.prototype.keys = function * () {
+  Buffer.prototype.keys = function *() {
     for (let i = 0; i < this.length; i++) {
       yield i;
     }

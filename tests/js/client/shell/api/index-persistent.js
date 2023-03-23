@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,41 +31,45 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // unique constraints during create;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_unique_constraints_violationSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_does_not_create_the_index_in_case_of_violation: function() {
+    test_does_not_create_the_index_in_case_of_violation: function () {
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      let body = { "a" : 1, "b" : 1 };
+      let body = { "a": 1,
+"b": 1 };
       let doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // create another document;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] } ;
+      body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -74,23 +78,27 @@ function dealing_with_unique_constraints_violationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
-    test_does_not_create_the_index_in_case_of_violation__null_attributes: function() {
+    test_does_not_create_the_index_in_case_of_violation__null_attributes: function () {
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      let body = { "a" : null, "b" : 1 };
+      let body = { "a": null,
+"b": 1 };
       let doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // create another document;
-      body = { "a" : null, "b" : 1 };
+      body = { "a": null,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
+      body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ] };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -99,23 +107,28 @@ function dealing_with_unique_constraints_violationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
-    test_does_not_create_the_index_in_case_of_violation__sparse_index: function() {
+    test_does_not_create_the_index_in_case_of_violation__sparse_index: function () {
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      let body = { "a" : 1, "b" : 1 };
+      let body = { "a": 1,
+"b": 1 };
       let doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // create another document;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ],
+"sparse": true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -124,23 +137,28 @@ function dealing_with_unique_constraints_violationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
     },
 
-    test_creates_the_index_in_case_of_null_attributes__sparse_index: function() {
+    test_creates_the_index_in_case_of_null_attributes__sparse_index: function () {
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      let body = { "a" : null, "b" : 1 };
+      let body = { "a": null,
+"b": 1 };
       let doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // create another document;
-      body = { "a" : null, "b" : 1 };
+      body = { "a": null,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
 
       // try to create the index;
       let cmd = `/_api/index?collection=${cn}`;
-      body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ],
+"sparse": true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -149,23 +167,25 @@ function dealing_with_unique_constraints_violationSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // unique constraints during create;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_unique_constraintsSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_rolls_back_in_case_of_violation: function() {
+    test_rolls_back_in_case_of_violation: function () {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
+      let body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -174,7 +194,8 @@ function dealing_with_unique_constraintsSuite () {
 
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -196,7 +217,8 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // create a unique constraint violation;
-      body = { "a" : 1, "b" : 2 };
+      body = { "a": 1,
+"b": 2 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -211,7 +233,8 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // third try (make sure the rollback has not destroyed anything);
-      body = { "a" : 1, "b" : 3 };
+      body = { "a": 1,
+"b": 3 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -226,9 +249,12 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['_rev'], rev1);
     },
 
-    test_rolls_back_in_case_of_violation__sparse_index: function() {
+    test_rolls_back_in_case_of_violation__sparse_index: function () {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      let body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -237,7 +263,8 @@ function dealing_with_unique_constraintsSuite () {
 
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -259,7 +286,8 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // create a unique constraint violation;
-      body = { "a" : 1, "b" : 2 };
+      body = { "a": 1,
+"b": 2 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -274,7 +302,8 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // third try (make sure the rollback has not destroyed anything);
-      body = { "a" : 1, "b" : 3 };
+      body = { "a": 1,
+"b": 3 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -287,27 +316,29 @@ function dealing_with_unique_constraintsSuite () {
       assertEqual(doc.parsedBody['b'], 1);
       assertEqual(doc.parsedBody['_id'], id1);
       assertEqual(doc.parsedBody['_rev'], rev1);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // unique constraints during update;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_unique_constraintsSuite2 () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_rolls_back_in_case_of_violation_update: function() {
+    test_rolls_back_in_case_of_violation_update: function () {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ] };
+      let body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -316,7 +347,8 @@ function dealing_with_unique_constraintsSuite2 () {
 
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -338,7 +370,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // create a second document;
-      body = { "a" : 2, "b" : 2 };
+      body = { "a": 2,
+"b": 2 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -350,7 +383,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(typeof rev2, 'string');
 
       // create a unique constraint violation during update;
-      body = { "a" : 2, "b" : 3 };
+      body = { "a": 2,
+"b": 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -378,7 +412,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(doc.parsedBody['_rev'], rev2);
 
       // third try (make sure the rollback has not destroyed anything);
-      body = { "a" : 2, "b" : 4 };
+      body = { "a": 2,
+"b": 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -394,9 +429,12 @@ function dealing_with_unique_constraintsSuite2 () {
       assertNotEqual(doc.parsedBody['_rev'], rev2);
     },
 
-    test_rolls_back_in_case_of_violation__sparse_index_update: function() {
+    test_rolls_back_in_case_of_violation__sparse_index_update: function () {
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "persistent", "unique" : true, "fields" : [ "a" ], "sparse" : true };
+      let body = { "type": "persistent",
+"unique": true,
+"fields": [ "a" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -405,7 +443,8 @@ function dealing_with_unique_constraintsSuite2 () {
 
       // create a document;
       let cmd1 = `/_api/document?collection=${cn}`;
-      body = { "a" : 1, "b" : 1 };
+      body = { "a": 1,
+"b": 1 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -427,7 +466,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(doc.parsedBody['_rev'], rev1);
 
       // create a second document;
-      body = { "a" : 2, "b" : 2 };
+      body = { "a": 2,
+"b": 2 };
       doc = arango.POST_RAW(cmd1, body);
 
       assertEqual(doc.code, 201);
@@ -439,7 +479,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(typeof rev2, 'string');
 
       // create a unique constraint violation during update;
-      body = { "a" : 2, "b" : 3 };
+      body = { "a": 2,
+"b": 3 };
       doc = arango.PUT_RAW(cmd2, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -467,7 +508,8 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(doc.parsedBody['_rev'], rev2);
 
       // third try (make sure the rollback has not destroyed anything);
-      body = { "a" : 2, "b" : 4 };
+      body = { "a": 2,
+"b": 4 };
       doc = arango.PUT_RAW(cmd2, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -481,7 +523,7 @@ function dealing_with_unique_constraintsSuite2 () {
       assertEqual(doc.parsedBody['_id'], id1);
       assertEqual(doc.parsedBody['_rev'], rev1);
       assertNotEqual(doc.parsedBody['_rev'], rev2);
-    },
+    }
   };
 }
 

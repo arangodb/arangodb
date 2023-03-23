@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertFalse, assertTrue, assertNotNull, AQL_EXPLAIN, fail */
+/* jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertFalse, assertTrue, assertNotNull, AQL_EXPLAIN, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, graph functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, graph functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -39,11 +39,11 @@ const getQueryResults = helper.getQueryResults;
 const getRawQueryResults = helper.getRawQueryResults;
 const assertQueryError = helper.assertQueryError;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for graph features
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for graph features
+// //////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryEdgesTestSuite() {
+function ahuacatlQueryEdgesTestSuite () {
   const vn = "UnitTestsAhuacatlVertex";
   let vertex = null;
   let edge = null;
@@ -57,16 +57,24 @@ function ahuacatlQueryEdgesTestSuite() {
       vertex = db._create(vn, {numberOfShards: 4});
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
-      vertex.save({_key: "v1", name: "v1"});
-      vertex.save({_key: "v2", name: "v2"});
-      vertex.save({_key: "v3", name: "v3"});
-      vertex.save({_key: "v4", name: "v4"});
-      vertex.save({_key: "v5", name: "v5"});
-      vertex.save({_key: "v6", name: "v6"});
-      vertex.save({_key: "v7", name: "v7"});
+      vertex.save({_key: "v1",
+name: "v1"});
+      vertex.save({_key: "v2",
+name: "v2"});
+      vertex.save({_key: "v3",
+name: "v3"});
+      vertex.save({_key: "v4",
+name: "v4"});
+      vertex.save({_key: "v5",
+name: "v5"});
+      vertex.save({_key: "v6",
+name: "v6"});
+      vertex.save({_key: "v7",
+name: "v7"});
 
-      function makeEdge(from, to) {
-        edge.save(vn + "/" + from, vn + "/" + to, {_key: from + "" + to, what: from + "->" + to});
+      function makeEdge (from, to) {
+        edge.save(vn + "/" + from, vn + "/" + to, {_key: from + "" + to,
+what: from + "->" + to});
       }
 
       makeEdge("v1", "v2");
@@ -85,9 +93,9 @@ function ahuacatlQueryEdgesTestSuite() {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges ANY
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges ANY
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesAny: function () {
       var q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -123,9 +131,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges INBOUND
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges INBOUND
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesIn: function () {
       var q = `WITH ${vn} FOR v, e IN INBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -161,9 +169,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges OUTBOUND
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges OUTBOUND
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesOut: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -198,9 +206,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesAnyInclVertices: function () {
       "use strict";
@@ -248,9 +256,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesInInclVerticesNonCollectionBind: function () {
       "use strict";
@@ -258,7 +266,7 @@ function ahuacatlQueryEdgesTestSuite() {
       let query = `WITH ${vn} FOR v, e IN INBOUND @start @col SORT e.what RETURN v._key`;
 
       let bindVars = {
-        "col": "UnitTestsAhuacatlEdge",
+        "col": "UnitTestsAhuacatlEdge"
       };
 
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
@@ -299,9 +307,9 @@ function ahuacatlQueryEdgesTestSuite() {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesInInclVertices: function () {
       "use strict";
@@ -309,7 +317,7 @@ function ahuacatlQueryEdgesTestSuite() {
       let query = `WITH ${vn} FOR v, e IN INBOUND @start @@col SORT e.what RETURN v._key`;
 
       let bindVars = {
-        "@col": "UnitTestsAhuacatlEdge",
+        "@col": "UnitTestsAhuacatlEdge"
       };
 
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
@@ -351,9 +359,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesOutInclVerticesNonCollectionBindInvalidValues: function () {
       "use strict";
@@ -392,9 +400,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesOutInclVerticesInvalidCollections: function () {
       "use strict";
@@ -421,9 +429,9 @@ function ahuacatlQueryEdgesTestSuite() {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesOutInclVerticesNonCollectionBind: function () {
       "use strict";
@@ -431,7 +439,7 @@ function ahuacatlQueryEdgesTestSuite() {
       let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
 
       let bindVars = {
-        "col": "UnitTestsAhuacatlEdge",
+        "col": "UnitTestsAhuacatlEdge"
       };
 
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
@@ -475,9 +483,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges / vertex combination
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges / vertex combination
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesOutInclVertices: function () {
       "use strict";
@@ -485,7 +493,7 @@ function ahuacatlQueryEdgesTestSuite() {
       let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
 
       let bindVars = {
-        "@col": "UnitTestsAhuacatlEdge",
+        "@col": "UnitTestsAhuacatlEdge"
       };
 
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
@@ -529,9 +537,9 @@ function ahuacatlQueryEdgesTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges with filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges with filter
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesFilterExample: function () {
       var q;
@@ -573,9 +581,9 @@ function ahuacatlQueryEdgesTestSuite() {
       assertEqual(actual, ["v3->v6"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges when starting with an array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges when starting with an array
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexArray: function () {
       var q = `WITH ${vn} FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -588,9 +596,9 @@ function ahuacatlQueryEdgesTestSuite() {
       assertEqual(actual, ["v1->v2", "v1->v3", "v2->v3"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges when starting on an object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges when starting on an object
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexObject: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -600,9 +608,9 @@ function ahuacatlQueryEdgesTestSuite() {
       assertEqual(actual, ["v1->v2", "v1->v3"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks edges with illegal start
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks edges with illegal start
+// //////////////////////////////////////////////////////////////////////////////
 
     testEdgesStartVertexIllegal: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
@@ -625,7 +633,7 @@ function ahuacatlQueryEdgesTestSuite() {
         }
         try {
           // [GraphRefactor] Note: Related to #GORDO-1360
-          bindVars = {start: {id: "UnitTestTheFuxx/v1"}};  // No _id attribute
+          bindVars = {start: {id: "UnitTestTheFuxx/v1"}}; // No _id attribute
           getQueryResults(qModified, bindVars);
           fail();
         } catch (e) {
@@ -652,7 +660,7 @@ function ahuacatlQueryEdgesTestSuite() {
         actual = getQueryResults(q, bindVars);
         assertEqual(actual, []);
 
-        bindVars = {start: {id: "UnitTestTheFuxx/v1"}};  // No _id attribute
+        bindVars = {start: {id: "UnitTestTheFuxx/v1"}}; // No _id attribute
         actual = getQueryResults(q, bindVars);
         assertEqual(actual, []);
 
@@ -675,16 +683,16 @@ function ahuacatlQueryEdgesTestSuite() {
   };
 }
 
-function ahuacatlQueryNeighborsTestSuite() {
+function ahuacatlQueryNeighborsTestSuite () {
   var vertex = null;
   var edge = null;
   var vn = "UnitTestsAhuacatlVertex";
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       db._drop(vn);
@@ -693,16 +701,24 @@ function ahuacatlQueryNeighborsTestSuite() {
       vertex = db._create(vn, {numberOfShards: 4});
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
-      vertex.save({_key: "v1", name: "v1"});
-      vertex.save({_key: "v2", name: "v2"});
-      vertex.save({_key: "v3", name: "v3"});
-      vertex.save({_key: "v4", name: "v4"});
-      vertex.save({_key: "v5", name: "v5"});
-      vertex.save({_key: "v6", name: "v6"});
-      vertex.save({_key: "v7", name: "v7"});
+      vertex.save({_key: "v1",
+name: "v1"});
+      vertex.save({_key: "v2",
+name: "v2"});
+      vertex.save({_key: "v3",
+name: "v3"});
+      vertex.save({_key: "v4",
+name: "v4"});
+      vertex.save({_key: "v5",
+name: "v5"});
+      vertex.save({_key: "v6",
+name: "v6"});
+      vertex.save({_key: "v7",
+name: "v7"});
 
-      function makeEdge(from, to) {
-        edge.save(vn + "/" + from, vn + "/" + to, {what: from + "->" + to, _key: from + "_" + to});
+      function makeEdge (from, to) {
+        edge.save(vn + "/" + from, vn + "/" + to, {what: from + "->" + to,
+_key: from + "_" + to});
       }
 
       makeEdge("v1", "v2");
@@ -716,9 +732,9 @@ function ahuacatlQueryNeighborsTestSuite() {
       makeEdge("v6", "v3");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop(vn);
@@ -739,9 +755,9 @@ function ahuacatlQueryNeighborsTestSuite() {
       assertEqual(actual, ["v1"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks neighbors
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks neighbors
+// //////////////////////////////////////////////////////////////////////////////
 
     testNeighborsAny: function () {
       var actual;
@@ -804,9 +820,9 @@ function ahuacatlQueryNeighborsTestSuite() {
       assertEqual(actual, ["v1", "v2", "v4", "v6", "v7"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks neighbors inbound
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks neighbors inbound
+// //////////////////////////////////////////////////////////////////////////////
 
     testNeighborsIn: function () {
       var actual;
@@ -868,9 +884,9 @@ function ahuacatlQueryNeighborsTestSuite() {
       assertEqual(actual, ["v1", "v2", "v6", "v7"]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks outbound neighbors
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks outbound neighbors
+// //////////////////////////////////////////////////////////////////////////////
 
     testNeighborsOut: function () {
       var actual;
@@ -1044,7 +1060,7 @@ function ahuacatlQueryNeighborsTestSuite() {
   };
 }
 
-function ahuacatlQueryBreadthFirstTestSuite() {
+function ahuacatlQueryBreadthFirstTestSuite () {
   let vertex = null;
   let edge = null;
   const vn = "UnitTestsAhuacatlVertex";
@@ -1058,18 +1074,18 @@ function ahuacatlQueryBreadthFirstTestSuite() {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-///
-///
-/// Graph Under Test:
-///  +---------+---------+
-/// \|/        |        \|/
-///  D <- B <- A -> E -> F
-///       |   /|\   |
-///       |    |    |
-///       +--> C <--+
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// /
+// /
+// / Graph Under Test:
+// /  +---------+---------+
+// / \|/        |        \|/
+// /  D <- B <- A -> E -> F
+// /       |   /|\   |
+// /       |    |    |
+// /       +--> C <--+
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       cleanUp();
@@ -1272,16 +1288,16 @@ function ahuacatlQueryBreadthFirstTestSuite() {
       ].sort();
       assertEqual(actual.length, expected.length);
       assertEqual(actual, expected);
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for SHORTEST_PATH 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for SHORTEST_PATH
+// //////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryShortestPathTestSuite() {
+function ahuacatlQueryShortestPathTestSuite () {
   var vn = "UnitTestsTraversalVertices";
   var en = "UnitTestsTraversalEdges";
   var vertexCollection;
@@ -1289,9 +1305,9 @@ function ahuacatlQueryShortestPathTestSuite() {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       db._drop(vn);
@@ -1301,20 +1317,23 @@ function ahuacatlQueryShortestPathTestSuite() {
       edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
       ["A", "B", "C", "D", "E", "F", "G", "H"].forEach(function (item) {
-        vertexCollection.save({_key: item, name: item});
+        vertexCollection.save({_key: item,
+name: item});
       });
 
       [["A", "B", 1], ["B", "C", 5], ["C", "D", 1], ["A", "D", 12], ["D", "C", 3], ["C", "B", 2], ["D", "E", 6], ["B", "F", 1], ["E", "G", 5], ["G", "H", 2]].forEach(function (item) {
         var l = item[0];
         var r = item[1];
         var w = item[2];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r, weight: w});
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r,
+what: l + "->" + r,
+weight: w});
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop(vn);
@@ -1324,9 +1343,9 @@ function ahuacatlQueryShortestPathTestSuite() {
       edgeCollection = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path using dijkstra default config
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path using dijkstra default config
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutbound: function () {
       var query = `WITH ${vn}
@@ -1357,10 +1376,10 @@ function ahuacatlQueryShortestPathTestSuite() {
       ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path with a limit, skipping a result
-/// Regression test for missing skipSome implementation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path with a limit, skipping a result
+// / Regression test for missing skipSome implementation
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutboundSkipFirst: function () {
       const query = `WITH ${vn}
@@ -1378,9 +1397,9 @@ function ahuacatlQueryShortestPathTestSuite() {
       ], vertices);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path using dijkstra with includeData: true
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path using dijkstra with includeData: true
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraOutboundIncludeData: function () {
       var query = `WITH ${vn}
@@ -1408,9 +1427,9 @@ function ahuacatlQueryShortestPathTestSuite() {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path using dijkstra
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path using dijkstra
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraInbound: function () {
       var query = `WITH ${vn} FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
@@ -1418,9 +1437,9 @@ function ahuacatlQueryShortestPathTestSuite() {
       assertEqual([vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A"], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path with custom distance function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path with custom distance function
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraDistance: function () {
       var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
@@ -1428,15 +1447,16 @@ function ahuacatlQueryShortestPathTestSuite() {
       assertEqual(["A", "B", "C", "D", "E", "G", "H"], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path, with cycles
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path, with cycles
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraCycles: function () {
       [["B", "A"], ["C", "A"], ["D", "B"]].forEach(function (item) {
         var l = item[0];
         var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r});
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r,
+what: l + "->" + r});
       });
 
       var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
@@ -1445,13 +1465,14 @@ function ahuacatlQueryShortestPathTestSuite() {
       assertEqual(["A", "D", "E", "G", "H"], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shortest path, non-connected vertices
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief shortest path, non-connected vertices
+// //////////////////////////////////////////////////////////////////////////////
 
     testShortestPathDijkstraNotConnected: function () {
       // this item is not connected to any other
-      vertexCollection.save({_key: "J", name: "J"});
+      vertexCollection.save({_key: "J",
+name: "J"});
 
       let query;
       if (cluster.isCluster()) {
@@ -1487,7 +1508,8 @@ function ahuacatlQueryShortestPathTestSuite() {
       }
 
       // re-add vertex to let environment stay as is has been before the test
-      vertexCollection.save({_key: key, name: key});
+      vertexCollection.save({_key: key,
+name: key});
     },
 
     testAllPathsConnectedButInnerVertexDeleted: function () {
@@ -1513,24 +1535,25 @@ function ahuacatlQueryShortestPathTestSuite() {
       }
 
       // re-add vertex to let environment stay as is has been before the test
-      vertexCollection.save({_key: key, name: key});
+      vertexCollection.save({_key: key,
+name: key});
     }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for ShortestPath with intentional failures
-////////////////////////////////////////////////////////////////////////////////
-function kPathsTestSuite() {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for ShortestPath with intentional failures
+// //////////////////////////////////////////////////////////////////////////////
+function kPathsTestSuite () {
   const gn = "UnitTestGraph";
   const vn = "UnitTestV";
   const en = "UnitTestE";
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       gm._create(gn, [gm._relation(en, vn, vn)]);
@@ -1546,22 +1569,23 @@ function kPathsTestSuite() {
         ["c", "f"], ["f", "t"],
         ["c", "g"], ["g", "t"]
       ].map(([a, b]) => {
-        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+        db[en].insert({_from: `${vn}/${a}`,
+_to: `${vn}/${b}`});
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       gm._drop(gn, true);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we are able to find all paths when using ANY direction with KPATHs
-/// One of the edges is used in both directions.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks if we are able to find all paths when using ANY direction with KPATHs
+// / One of the edges is used in both directions.
+// //////////////////////////////////////////////////////////////////////////////
 
     testkPathsAnyUseEdgeTwice: function () {
       let outbound = db._query(`
@@ -1579,14 +1603,14 @@ function kPathsTestSuite() {
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
     },
-    
+
     testkPathsWithVertices1: function () {
       const queryOutbound = `
         FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
         RETURN p
       `;
-      
+
       const queryAny = `
         FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
@@ -1599,7 +1623,7 @@ function kPathsTestSuite() {
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
       assertTrue(nodes[0].options.produceVertices);
-      
+
       plan = AQL_EXPLAIN(queryAny).plan;
       nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
       assertEqual(-1, plan.rules.indexOf("optimize-paths"));
@@ -1621,14 +1645,14 @@ function kPathsTestSuite() {
         assertTrue(doc.hasOwnProperty("edges"));
       });
     },
-    
+
     testkPathsWithVertices2: function () {
       const queryOutbound = `
         FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
         RETURN p.vertices
       `;
-      
+
       const queryAny = `
         FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
@@ -1641,7 +1665,7 @@ function kPathsTestSuite() {
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
       assertTrue(nodes[0].options.produceVertices);
-      
+
       plan = AQL_EXPLAIN(queryAny).plan;
       nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
       assertEqual(-1, plan.rules.indexOf("optimize-paths"));
@@ -1661,14 +1685,14 @@ function kPathsTestSuite() {
         assertNotNull(doc);
       });
     },
-    
+
     testkPathsNoVertices: function () {
       const queryOutbound = `
         FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
         RETURN p.edges
       `;
-      
+
       const queryAny = `
         FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
           GRAPH ${gn}
@@ -1681,7 +1705,7 @@ function kPathsTestSuite() {
       assertEqual(1, nodes.length);
       assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
       assertFalse(nodes[0].options.produceVertices);
-      
+
       plan = AQL_EXPLAIN(queryAny).plan;
       nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
       assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
@@ -1694,20 +1718,20 @@ function kPathsTestSuite() {
 
       let any = db._query(queryAny);
       assertEqual(any.toArray().length, 16);
-    },
+    }
   };
 }
 
-function allShortestPathsTestSuite() {
+function allShortestPathsTestSuite () {
   const gn = "UnitTestGraph";
   const vn = "UnitTestV";
   const en = "UnitTestE";
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       gm._create(gn, [gm._relation(en, vn, vn)]);
@@ -1724,22 +1748,23 @@ function allShortestPathsTestSuite() {
         ["c", "g"], ["g", "t"],
         ["s", "x"], ["y", "x"], ["y", "z"], ["z", "y"], ["z", "t"]
       ].map(([a, b]) => {
-        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+        db[en].insert({_from: `${vn}/${a}`,
+_to: `${vn}/${b}`});
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       gm._drop(gn, true);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if we are able to find all shortest paths when using ANY direction with ALL_SHORTEST_PATHS
-/// One of the edges is used in both directions.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks if we are able to find all shortest paths when using ANY direction with ALL_SHORTEST_PATHS
+// / One of the edges is used in both directions.
+// //////////////////////////////////////////////////////////////////////////////
 
     testAllShortestPathsAnyUseEdgeTwice: function () {
       let outbound = db._query(`
@@ -1760,7 +1785,7 @@ function allShortestPathsTestSuite() {
   };
 }
 
-function ShortestPathErrorTestSuite() {
+function ShortestPathErrorTestSuite () {
 
   const graphName = "UnitTestGraph";
   const vName = "UnitTestVertices";
@@ -1772,7 +1797,7 @@ function ShortestPathErrorTestSuite() {
   const keyD = "D";
   const keyE = "E";
 
-  function createGraph() {
+  function createGraph () {
     /*
      * Graph:
      *   A  -> B  -> E
@@ -1781,19 +1806,34 @@ function ShortestPathErrorTestSuite() {
     gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
 
     const vertexes = [
-      {_key: keyA, value: 1},
-      {_key: keyB, value: 1},
-      {_key: keyC, value: 1},
-      {_key: keyD, value: 1},
-      {_key: keyE, value: 1}
+      {_key: keyA,
+value: 1},
+      {_key: keyB,
+value: 1},
+      {_key: keyC,
+value: 1},
+      {_key: keyD,
+value: 1},
+      {_key: keyE,
+value: 1}
     ];
 
     const edges = [
-      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyB}`, weight: 1},
-      {_from: `${vName}/${keyB}`, _to: `${vName}/${keyE}`, weight: -1},
-      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyC}`, weight: -1},
-      {_from: `${vName}/${keyC}`, _to: `${vName}/${keyD}`, weight: 1},
-      {_from: `${vName}/${keyD}`, _to: `${vName}/${keyE}`, weight: -1}
+      {_from: `${vName}/${keyA}`,
+_to: `${vName}/${keyB}`,
+weight: 1},
+      {_from: `${vName}/${keyB}`,
+_to: `${vName}/${keyE}`,
+weight: -1},
+      {_from: `${vName}/${keyA}`,
+_to: `${vName}/${keyC}`,
+weight: -1},
+      {_from: `${vName}/${keyC}`,
+_to: `${vName}/${keyD}`,
+weight: 1},
+      {_from: `${vName}/${keyD}`,
+_to: `${vName}/${keyE}`,
+weight: -1}
     ];
 
     db[vName].insert(vertexes);
@@ -1930,9 +1970,9 @@ function ShortestPathErrorTestSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryNeighborsTestSuite);

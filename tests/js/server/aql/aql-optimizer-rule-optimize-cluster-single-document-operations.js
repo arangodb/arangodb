@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for single operation nodes in cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Wilfried Goesgens
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for single operation nodes in cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Wilfried Goesgens
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -35,7 +35,7 @@ const helper = require("@arangodb/aql-helper");
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
+  var thisRuleEnabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
   var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName ] } };
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
@@ -49,35 +49,43 @@ function optimizerClusterSingleDocumentTestSuite () {
   var cn3 = "UnitTestsCollectionModify";
   var c3;
 
-  var s = function() {};
+  var s = function () {};
 
-  var setupC1 = function() {
+  var setupC1 = function () {
     db._drop(cn1);
     c1 = db._create(cn1, { numberOfShards: 5 });
 
     for (var i = 0; i < 20; ++i) {
-      c1.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+      c1.save({ _key: `${i}`,
+group: "test" + (i % 10),
+value1: i,
+value2: i % 5 });
     }
   };
 
-  var setupC2 = function() {
+  var setupC2 = function () {
     db._drop(cn2);
     c2 = db._create(cn2, { numberOfShards: 5 });
     c2.save({_key: yeOldeDoc});
   };
 
-  var setupC3 = function() {
+  var setupC3 = function () {
     db._drop(cn3);
     c3 = db._create(cn3, { numberOfShards: 5 });
 
     for (var i = 0; i < 20; ++i) {
-      c3.save({ _key: `${i}`, group: "test" + (i % 10), value1: i, value2: i % 5 });
+      c3.save({ _key: `${i}`,
+group: "test" + (i % 10),
+value1: i,
+value2: i % 5 });
     }
   };
 
-  var pruneRevisions = function(obj) {
+  var pruneRevisions = function (obj) {
     if (typeof obj instanceof Array) {
-      obj.forEach(function (doc) { pruneRevisions(doc);});
+      obj.forEach(function (doc) {
+ pruneRevisions(doc);
+});
     } else {
       if ((obj !== null) && (typeof obj !== "string")) {
         if (obj instanceof Object) {
@@ -85,21 +93,24 @@ function optimizerClusterSingleDocumentTestSuite () {
             obj._rev = "wedontcare";
           }
           for (var property in obj) {
-            if (!obj.hasOwnProperty(property)) continue;
+            if (!obj.hasOwnProperty(property)) {
+continue;
+}
             pruneRevisions(obj[property]);
           }
         }
       }
     }
   };
-  
+
   var explain = function (result) {
-    return helper.getCompactPlan(result).map(function(node)
-                                             { return node.type; });
+    return helper.getCompactPlan(result).map(function (node) {
+ return node.type;
+});
   };
-  var runTestSet = function(sets, expectedRules, expectedNodes) {
+  var runTestSet = function (sets, expectedRules, expectedNodes) {
     let count = 0;
-    sets.forEach(function(set) {
+    sets.forEach(function (set) {
       let queryString = set[0];
       let expectRule = expectedRules[set[1]];
       let expectNode = expectedNodes[set[2]];
@@ -150,19 +161,19 @@ function optimizerClusterSingleDocumentTestSuite () {
   };
 
   return {
-    setUp : function () {
+    setUp: function () {
       setupC1();
       setupC2();
       setupC3();
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
     },
 
-    testNumericKeyInsert : function () {
+    testNumericKeyInsert: function () {
       try {
         db._query("INSERT { _key: 1234 } INTO " + cn1);
         fail();
@@ -170,8 +181,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
       }
     },
-    
-    testNumericKeyUpdate : function () {
+
+    testNumericKeyUpdate: function () {
       try {
         db._query("UPDATE { _key: 1234 } WITH { value: 1 } IN " + cn1);
         fail();
@@ -179,8 +190,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-    
-    testNumericKeyReplace : function () {
+
+    testNumericKeyReplace: function () {
       try {
         db._query("REPLACE { _key: 1234 } WITH { value: 1 } IN " + cn1);
         fail();
@@ -188,8 +199,8 @@ function optimizerClusterSingleDocumentTestSuite () {
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, err.errorNum);
       }
     },
-    
-    testNumericKeyRemove : function () {
+
+    testNumericKeyRemove: function () {
       try {
         db._query("REMOVE { _key: 1234 } IN " + cn1);
         fail();
@@ -198,58 +209,66 @@ function optimizerClusterSingleDocumentTestSuite () {
       }
     },
 
-    testFetchDocumentWithOldAttribute : function() {
-      let doc = c1.save({ _key: "oldDoc", old: "abc" });
-      
+    testFetchDocumentWithOldAttribute: function () {
+      let doc = c1.save({ _key: "oldDoc",
+old: "abc" });
+
       const queries = [
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._id", cn1 + "/oldDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._key", "oldDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one._rev", doc._rev ],
         [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one.old", "abc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one", { _key: "oldDoc", _rev: doc._rev, old: "abc", _id: cn1 + "/oldDoc" } ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'oldDoc' RETURN one", { _key: "oldDoc",
+_rev: doc._rev,
+old: "abc",
+_id: cn1 + "/oldDoc" } ]
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query[0], { "@cn1": cn1 });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
 
-        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        result = AQL_EXECUTE(query[0], { "@cn1": cn1 }).json;
         assertEqual(query[1], result[0]);
       });
     },
-    
-    testFetchDocumentWithNewAttribute : function() {
-      let doc = c1.save({ _key: "newDoc", "new": "abc" });
-      
+
+    testFetchDocumentWithNewAttribute: function () {
+      let doc = c1.save({ _key: "newDoc",
+"new": "abc" });
+
       const queries = [
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._id", cn1 + "/newDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._key", "newDoc" ],
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one._rev", doc._rev ],
         [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one.`new`", "abc" ],
-        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one", { _key: "newDoc", _rev: doc._rev, "new": "abc", _id: cn1 + "/newDoc" } ],
+        [ "FOR one IN @@cn1 FILTER one._key == 'newDoc' RETURN one", { _key: "newDoc",
+_rev: doc._rev,
+"new": "abc",
+_id: cn1 + "/newDoc" } ]
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query[0], { "@cn1": cn1 });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
 
-        result = AQL_EXECUTE(query[0], { "@cn1" : cn1 }).json;
+        result = AQL_EXECUTE(query[0], { "@cn1": cn1 }).json;
         assertEqual(query[1], result[0]);
       });
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test plans that should result
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testRuleFetch : function () {
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test plans that should result
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRuleFetch: function () {
       var queries = [
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d", 0, 0, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER '1' == d._key RETURN d", 0, 0, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d.xyz == '1' RETURN d", 1, 1, false, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN 123", 2, 2, true, s, 0],
         [ "FOR d IN " + cn1 + " FILTER d._key == '1' LIMIT 10, 1 RETURN d", 3, 3, false, s, 0],
-        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d._key", 4, 4, true, s, 0],
+        [ "FOR d IN " + cn1 + " FILTER d._key == '1' RETURN d._key", 4, 4, true, s, 0]
       ];
       var expectedRules = [[ "use-indexes",
                              "remove-filter-covered-by-index",
@@ -258,10 +277,10 @@ function optimizerClusterSingleDocumentTestSuite () {
                            [ "scatter-in-cluster",
                              "distribute-filtercalc-to-cluster",
                              "remove-unnecessary-remote-scatter" ],
-                           [ "move-calculations-up", 
-                             "use-indexes", 
-                             "remove-filter-covered-by-index", 
-                             "remove-unnecessary-calculations-2", 
+                           [ "move-calculations-up",
+                             "use-indexes",
+                             "remove-filter-covered-by-index",
+                             "remove-unnecessary-calculations-2",
                              "optimize-cluster-single-document-operations" ],
                            [ "use-indexes", "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
@@ -274,22 +293,22 @@ function optimizerClusterSingleDocumentTestSuite () {
                              "use-indexes",
                              "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
-                             "optimize-cluster-single-document-operations" ],
+                             "optimize-cluster-single-document-operations" ]
                           ];
 
       var expectedNodes = [
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "EnumerateCollectionNode", "CalculationNode",
-          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode"  ],
+          "FilterNode", "RemoteNode", "GatherNode", "ReturnNode" ],
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode",
           "ReturnNode"],
         [ "SingletonNode", "IndexNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ],
-        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
+        [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ]
       ];
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleInsert : function () {
+    testRuleInsert: function () {
       var queries = [
         // [ query, expectedRulesField, expectedNodesField, doFullTest, setupFunction, errorCode ]
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, ignoreErrors:true}`, 0, 0, true, setupC2, 0 ],
@@ -310,14 +329,14 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0 ],
         [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0 ],
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW`, 0, 1, true, setupC2, 0 ],
-        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0 ],
+        [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0 ]
       ];
 
       var expectedRules = [
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2", 
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2",
           "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
@@ -330,7 +349,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleUpdate : function () {
+    testRuleUpdate: function () {
       var queries = [
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
@@ -342,11 +361,11 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "UPDATE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],          
+        [ "UPDATE {_key: '1', boom: true } INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],        
+        [ "UPDATE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
         [ "UPDATE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ "UPDATE {_key: '1'} INTO " + cn1 + " RETURN OLD._key", 0, 2, true, s, 0],
         [ "UPDATE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
@@ -368,7 +387,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 6, 4, true, s, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = { a: 123 } FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} RETURN OLD._key`, 8, 2, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == '1' UPDATE doc WITH {foo: 'bar'} INTO ${cn1} RETURN OLD._key`, 8, 2, true, setupC1, 0]
       ];
 
       var expectedRules = [
@@ -384,7 +403,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
@@ -400,7 +419,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleReplace : function () {
+    testRuleReplace: function () {
       var queries = [
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, s, 0],
@@ -411,12 +430,12 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, false],
         [ "REPLACE {_key: '1'} IN   " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
-        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],          
+        [ "REPLACE {_key: '1'} INTO " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 3, 2, false],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar1a'} IN " + cn1 + " OPTIONS {}", 1, 0, true, s, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD", 1, 1, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar2a'} IN " + cn1 + " OPTIONS {} RETURN OLD._key", 10, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar3a'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, s, 0],
-        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],   
+        [ "REPLACE {_key: '1'} WITH {foo: 'bar4a'} IN " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 2, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1', boom: true } IN   " + cn1 + " OPTIONS {} RETURN [OLD, NEW]", 3, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {foo: 'bar5a'} IN " + cn1 + " OPTIONS {} RETURN { old: OLD, new: NEW }", 2, 2, true, setupC1, 0],
         [ "REPLACE {_key: '1'} WITH {_key: '1', name: 'test1'} IN " + cn1 + " OPTIONS {} RETURN NEW", 1, 1, true, setupC1, 0, "name", "test1"],
@@ -435,11 +454,11 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '1' REPLACE '1' WITH {_key: '1', name: 'test1'} INTO ${cn1} OPTIONS {} RETURN NEW`, 12, 5, true, setupC1, 0, "name", "test1"],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == '-1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0 ],
-        
+
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [OLD, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc WITH {foo: 'bar'} INTO ${cn1} OPTIONS {} RETURN [doc, NEW, a]`, 9, 2, true, setupC1, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} OPTIONS {} RETURN [ NEW, a ]`, 7, 4, true, setupC1, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} RETURN OLD._key`, 4, 4, true, setupC1, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key ==  '1' REPLACE doc INTO ${cn1} RETURN OLD._key`, 4, 4, true, setupC1, 0]
       ];
 
       var expectedRules = [
@@ -456,7 +475,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "move-calculations-up-2", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "distribute-in-cluster", "scatter-in-cluster", "remove-unnecessary-remote-scatter", "restrict-to-single-shard" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
@@ -465,13 +484,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode"],
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "CalculationNode", "IndexNode", "RemoteNode", "GatherNode", "CalculationNode", "DistributeNode", "RemoteNode", "ReplaceNode", "RemoteNode", "GatherNode", "ReturnNode" ]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testRuleRemove : function () {
+    testRuleRemove: function () {
       var queries = [
         [ "REMOVE {_key: '1'} IN   " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
         [ "REMOVE {_key: '2'} INTO " + cn1 + " OPTIONS {}", 0, 0, true, setupC1, 0],
@@ -486,32 +505,33 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN doc`, 4, 1, true, s, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD`, 2, 1, true, s, 0],
         [ `LET a = 123 FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 4, 2, true, s, 0],
-        [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 1, 2, true, s, 0],
+        [ `FOR doc IN ${cn1} FILTER doc._key == 'notheredoc' REMOVE doc IN ${cn1} RETURN OLD._key`, 1, 2, true, s, 0]
       ];
       var expectedRules = [
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ]
       ];
 
       var expectedNodes = [
         [ "SingletonNode", "SingleRemoteOperationNode" ],
         [ "SingletonNode", "SingleRemoteOperationNode", "ReturnNode" ],
         [ "SingletonNode", "SingleRemoteOperationNode", "CalculationNode", "ReturnNode" ],
-        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ],
+        [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode", "ReturnNode" ]
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
     },
 
-    testSelectAndInsert : function() {
-      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+    testSelectAndInsert: function () {
+      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", { "@cn1": cn1,
+"@cn2": cn2 });
       assertEqual(-1, result.plan.rules.indexOf(ruleName));
     },
 
-    testSimpleQueriesNotEligible : function() {
+    testSimpleQueriesNotEligible: function () {
       let queries = [
         "FOR one IN @@cn1 FILTER one.abc == 'a' RETURN one",
         "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN @@cn1",
@@ -539,7 +559,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         "UPDATE [ {} ] IN @@cn1 RETURN OLD",
         "UPDATE [{ foo: 4 }] IN @@cn1 RETURN OLD",
         "UPDATE 'foo' WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: true }",
-        
+
         "REPLACE [] IN @@cn1",
         "REPLACE [ {} ] IN @@cn1",
         "REPLACE [{ foo: 3 }] IN @@cn1",
@@ -554,16 +574,16 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REMOVE [] IN @@cn1 RETURN OLD",
         "REMOVE [ {} ] IN @@cn1 RETURN OLD",
         "REMOVE [{ foo: 4 }] IN @@cn1 RETURN OLD",
-        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: true }",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: true }"
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, { "@cn1": cn1 });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
-    testSimpleQueriesEligible : function() {
+    testSimpleQueriesEligible: function () {
       let queries = [
         "FOR one IN @@cn1 FILTER one._key == 'a' RETURN one",
         "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN @@cn1",
@@ -580,11 +600,11 @@ function optimizerClusterSingleDocumentTestSuite () {
         "REPLACE { _key: 'abc' } WITH { two: 1 } INTO @@cn1 OPTIONS { exclusive: false }",
         "REMOVE 'abc' INTO @@cn1",
         "REMOVE { _key: 'abc' } INTO @@cn1",
-        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: false }",
+        "REMOVE { _key: 'abc' } INTO @@cn1 OPTIONS { exclusive: false }"
       ];
 
-      queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+      queries.forEach(function (query) {
+        let result = AQL_EXPLAIN(query, { "@cn1": cn1 });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     }

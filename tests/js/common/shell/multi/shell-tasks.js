@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertMatch, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertEqual, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the task manager
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the task manager
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -35,20 +35,19 @@ var internal = require("internal");
 var db = arangodb.db;
 var tasks = require("@arangodb/tasks");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function TaskSuite () {
   var cn = "UnitTestsTasks";
 
   var cleanTasks = function () {
-    tasks.get().forEach(function(task) {
+    tasks.get().forEach(function (task) {
       if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
         try {
           tasks.unregister(task);
-        }
-        catch (err) {
+        } catch (err) {
         }
       }
     });
@@ -69,86 +68,89 @@ function TaskSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       cleanTasks();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       cleanTasks();
 
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task without an id
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task without an id
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskNoId : function () {
+    testCreateTaskNoId: function () {
       try {
         tasks.register({ });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an invalid period
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an invalid period
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskInvalidPeriod1 : function () {
+    testCreateTaskInvalidPeriod1: function () {
       try {
-        tasks.register({ name: "UnitTestsNoPeriod", period: -1, command: "1+1;" });
+        tasks.register({ name: "UnitTestsNoPeriod",
+period: -1,
+command: "1+1;" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an invalid period
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an invalid period
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskInvalidPeriod2 : function () {
+    testCreateTaskInvalidPeriod2: function () {
       try {
-        tasks.register({ name: "UnitTestsNoPeriod", period: 0, command: "1+1;" });
+        tasks.register({ name: "UnitTestsNoPeriod",
+period: 0,
+command: "1+1;" });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task without a command
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task without a command
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskNoCommand : function () {
+    testCreateTaskNoCommand: function () {
       try {
-        tasks.register({ name: "UnitTestsNoCommand", period: 1 });
+        tasks.register({ name: "UnitTestsNoCommand",
+period: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an automatic id
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an automatic id
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskAutomaticId : function () {
-      var task = tasks.register({ name: "UnitTestsTaskAutoId", command: "1+1;", period: 1 });
+    testCreateTaskAutomaticId: function () {
+      var task = tasks.register({ name: "UnitTestsTaskAutoId",
+command: "1+1;",
+period: 1 });
 
       assertMatch(/^\d+$/, task.id);
       assertEqual("UnitTestsTaskAutoId", task.name);
@@ -156,12 +158,15 @@ function TaskSuite () {
       assertEqual(1, task.period);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with a duplicate id
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with a duplicate id
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskDuplicateId : function () {
-      var task = tasks.register({ id: "UnitTestsTaskDuplicateId", name: "UnitTests1", command: "1+1;", period: 1 });
+    testCreateTaskDuplicateId: function () {
+      var task = tasks.register({ id: "UnitTestsTaskDuplicateId",
+name: "UnitTests1",
+command: "1+1;",
+period: 1 });
 
       assertEqual("UnitTestsTaskDuplicateId", task.id);
       assertEqual("UnitTests1", task.name);
@@ -170,34 +175,37 @@ function TaskSuite () {
       assertEqual(1, task.period);
 
       try {
-        tasks.register({ id: "UnitTestsTaskDuplicateId", name: "UnitTests2", command: "1+1;", period: 1 });
+        tasks.register({ id: "UnitTestsTaskDuplicateId",
+name: "UnitTests2",
+command: "1+1;",
+period: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_DUPLICATE_ID.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove without an id
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove without an id
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskRemoveWithoutId : function () {
+    testCreateTaskRemoveWithoutId: function () {
       try {
         tasks.unregister();
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task and remove it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task and remove it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskRemoveByTask : function () {
-      var task = tasks.register({ name: "UnitTests1", command: "1+1;", period: 1 });
+    testCreateTaskRemoveByTask: function () {
+      var task = tasks.register({ name: "UnitTests1",
+command: "1+1;",
+period: 1 });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
@@ -209,18 +217,20 @@ function TaskSuite () {
         // deleting again should fail
         tasks.unregister(task);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_NOT_FOUND.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task and remove it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task and remove it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateTaskRemoveById : function () {
-      var task = tasks.register({ id: "UnitTests" + Date.now(), name: "UnitTests1", command: "1+1;", period: 1 });
+    testCreateTaskRemoveById: function () {
+      var task = tasks.register({ id: "UnitTests" + Date.now(),
+name: "UnitTests1",
+command: "1+1;",
+period: 1 });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("periodic", task.type);
@@ -232,17 +242,16 @@ function TaskSuite () {
         // deleting again should fail
         tasks.unregister(task.id);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_TASK_NOT_FOUND.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a single task
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a single task
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTask : function () {
+    testGetTask: function () {
       var task = tasks.register({
         name: "UnitTests1",
         command: "1+1;",
@@ -258,11 +267,11 @@ function TaskSuite () {
       assertEqual(task.database, t.database);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a single task
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get a single task
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTaskById : function () {
+    testGetTaskById: function () {
       var task = tasks.register({
         id: "UnitTests" + Date.now(),
         name: "UnitTests1",
@@ -279,11 +288,11 @@ function TaskSuite () {
       assertEqual(task.database, t.database);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get list of tasks
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get list of tasks
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTasks : function () {
+    testGetTasks: function () {
       var task1 = tasks.register({
         name: "UnitTests1",
         command: "1+1;",
@@ -332,11 +341,11 @@ function TaskSuite () {
       assertEqual("_system", t[2].database);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get list of tasks pre and post task deletion
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get list of tasks pre and post task deletion
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTasksPrePost : function () {
+    testGetTasksPrePost: function () {
       var task1 = tasks.register({
         id: "UnitTests" + Date.now() + "1",
         name: "UnitTests1",
@@ -392,11 +401,11 @@ function TaskSuite () {
       assertEqual(0, t.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an offset and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an offset and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOffsetTaskNoExec : function () {
+    testOffsetTaskNoExec: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -426,11 +435,11 @@ function TaskSuite () {
       tasks.unregister(task);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an offset and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an offset and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOffsetTaskExec : function () {
+    testOffsetTaskExec: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -465,11 +474,11 @@ function TaskSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with an offset and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with an offset and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOffsetTaskImmediate : function () {
+    testOffsetTaskImmediate: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -501,11 +510,11 @@ function TaskSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a timer task and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a timer task and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTimerTask : function () {
+    testTimerTask: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -540,11 +549,11 @@ function TaskSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a timer task and kill it before execution
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a timer task and kill it before execution
+// //////////////////////////////////////////////////////////////////////////////
 
-    testKillTimerTask : function () {
+    testKillTimerTask: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -575,11 +584,11 @@ function TaskSuite () {
       assertEqual(0, t.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateStringCommand : function () {
+    testCreateStringCommand: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -613,11 +622,11 @@ function TaskSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task and run it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task and run it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateFunctionCommand : function () {
+    testCreateFunctionCommand: function () {
       db._drop(cn);
       db._create(cn);
 
@@ -632,7 +641,8 @@ function TaskSuite () {
         command: command,
         period: 1,
         offset: 0,
-        params: { cn: cn, val: 42 }
+        params: { cn: cn,
+val: 42 }
       });
 
       assertEqual("UnitTests1", task.name);
@@ -653,11 +663,11 @@ function TaskSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a task with broken function code
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a task with broken function code
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBrokenCommand : function () {
+    testBrokenCommand: function () {
       try {
         tasks.register({
           name: "UnitTests1",
@@ -665,8 +675,7 @@ function TaskSuite () {
           offset: 0
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     }
@@ -675,9 +684,9 @@ function TaskSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(TaskSuite);
 

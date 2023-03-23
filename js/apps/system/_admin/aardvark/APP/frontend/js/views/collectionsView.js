@@ -266,12 +266,12 @@
           (
             event.originalEvent.key &&
             (
-              event.originalEvent.key === 'Control' || 
-              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Control' ||
+              event.originalEvent.key === 'Alt' ||
               event.originalEvent.key === 'Shift'
             )
-          ) || 
-          event.originalEvent.ctrlKey || 
+          ) ||
+          event.originalEvent.ctrlKey ||
           event.originalEvent.altKey
         )
       ) {
@@ -382,7 +382,9 @@
             if (shardKeys.length === 0) {
               shardKeys.push('_key');
             } else {
-              _.each(shardKeys, function (element, index) { shardKeys[index] = arangoHelper.escapeHtml(element); });
+              _.each(shardKeys, function (element, index) {
+ shardKeys[index] = arangoHelper.escapeHtml(element);
+});
             }
           }
           if (collName.substr(0, 1) === '_') {
@@ -466,7 +468,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_api/database/current'), //get default properties of current db
+          url: arangoHelper.databaseUrl('/_api/database/current'), // get default properties of current db
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -521,7 +523,9 @@
               'Type',
               '',
               'Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. <br> Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph.',
-              [{value: 2, label: 'Document'}, {value: 3, label: 'Edge'}]
+              [{value: 2,
+label: 'Document'}, {value: 3,
+label: 'Edge'}]
             )
           );
 
@@ -559,10 +563,10 @@
                 false
               )
             );
-          
+
             if (window.App.isCluster) {
-              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
-              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1);
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10);
 
               // clamp replicationFactor between min & max allowed values
               var replicationFactor = '';
@@ -581,14 +585,14 @@
                   'new-replication-factor',
                   'Replication factor',
                   String(replicationFactor),
-                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' +
                   maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + minReplicationFactor +  
+                      msg: 'Must be a number between ' + minReplicationFactor +
                            ' and ' + maxReplicationFactor + '.'
                     }
                   ]
@@ -625,7 +629,9 @@
                   'SatelliteCollection',
                   '',
                   'Use this option for smaller data sets that will be synchronously replicated to each DB-Server, facilitating local join operations. Selecting it will disable the replication factor above.',
-                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
+                  [{value: false,
+label: 'No'}, {value: true,
+label: 'Yes'}]
                 )
               );
               advancedTableContent.push(
@@ -665,7 +671,9 @@
               'Wait for sync',
               '',
               'Synchronize to disk before returning from a create or update of a document.',
-              [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
+              [{value: false,
+label: 'No'}, {value: true,
+label: 'Yes'}]
             )
           );
           advanced.header = 'Advanced';
@@ -699,17 +707,17 @@
 
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
-                _.each(handleSatelliteIds, function(id) {
+                _.each(handleSatelliteIds, function (id) {
                   $(id).prop('disabled', true);
                 });
                 $('#s2id_new-collection-shardKeys').select2('disable');
               } else {
-                _.each(handleSatelliteIds, function(id) {
+                _.each(handleSatelliteIds, function (id) {
                   $(id).prop('disabled', false);
                 });
                 $('#s2id_new-collection-shardKeys').select2('enable');
               }
-              _.each(handleSatelliteIds, function(id) {
+              _.each(handleSatelliteIds, function (id) {
                 $(id).val('').focus().focusout();
               });
             });

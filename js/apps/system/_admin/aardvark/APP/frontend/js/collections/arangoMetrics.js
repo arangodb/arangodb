@@ -20,7 +20,7 @@
       return this.txt;
     },
 
-    comparator: function(metric) {
+    comparator: function (metric) {
       return metric.get('name');
     },
 

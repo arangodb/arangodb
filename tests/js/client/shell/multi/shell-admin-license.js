@@ -37,7 +37,7 @@ function adminLicenseSuite () {
     testGet: function () {
       if (!require("internal").isEnterprise()) {
         let result = arango.GET('/_admin/license');
-        assertEqual(result, {license:"none"});
+        assertEqual(result, {license: "none"});
       }
     },
 
@@ -57,7 +57,7 @@ function adminLicenseSuite () {
         assertEqual(result.code, 405);
         assertEqual(result.errorNum, 405);
       });
-    },
+    }
 
   };
 }

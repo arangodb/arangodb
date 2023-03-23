@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
-/*global assertEqual, assertTrue, assertUndefined, arango */
+/* jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/* global assertEqual, assertTrue, assertUndefined, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup collections for dump/reload tests
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief setup collections for dump/reload tests
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const analyzers = require("@arangodb/analyzers");
@@ -44,12 +44,13 @@ if (isEnterprise) {
 }
 
 
-function cleanup() {
+function cleanup () {
   'use strict';
 
   let dbOptions = {};
   if (isCluster) {
-    dbOptions = {replicationFactor: 2, writeConcern: 2};
+    dbOptions = {replicationFactor: 2,
+writeConcern: 2};
   }
 
   ["UnitTestsDumpSrc", "UnitTestsDumpDst"].forEach(function (name) {
@@ -67,8 +68,11 @@ function cleanup() {
       }
     });
 
-    db._createDatabase("UnitTestsDumpProperties1", {replicationFactor: 1, writeConcern: 1});
-    db._createDatabase("UnitTestsDumpProperties2", {replicationFactor: 2, writeConcern: 2, sharding: "single"});
+    db._createDatabase("UnitTestsDumpProperties1", {replicationFactor: 1,
+writeConcern: 1});
+    db._createDatabase("UnitTestsDumpProperties2", {replicationFactor: 2,
+writeConcern: 2,
+sharding: "single"});
   }
   // clean up first
   db._drop("UnitTestsDumpEmpty");
@@ -84,7 +88,7 @@ function cleanup() {
   db._drop("UnitTestsDumpReplicationFactor2");
 }
 
-function createUsers() {
+function createUsers () {
   // create user in _system database
   var users = require("@arangodb/users");
   users.save("foobaruser", "foobarpasswd", true);
@@ -97,20 +101,23 @@ function createUsers() {
   arango.reconnect(endpoint, "UnitTestsDumpSrc", "foobaruser", "foobarpasswd");
 }
 
-function createEmpty() {
+function createEmpty () {
   db._useDatabase("UnitTestsDumpSrc");
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", {waitForSync: true});
 }
 
-function createMany() {
+function createMany () {
   db._useDatabase("UnitTestsDumpSrc");
   // create lots of documents
   let c = db._create("UnitTestsDumpMany");
   let docs = [];
   for (let i = 0; i < 100000; ++i) {
-    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+    docs.push({_key: "test" + i,
+value1: i,
+value2: "this is a test",
+value3: "test" + i});
     if (docs.length === 10000) {
       c.save(docs);
       docs = [];
@@ -121,30 +128,39 @@ function createMany() {
   for (let i = 0; i < 10; ++i) {
     c.save("UnitTestsDumpMany/test" + i,
       "UnitTestsDumpMany/test" + (i + 1),
-      {_key: "test" + i, what: i + "->" + (i + 1)});
+      {_key: "test" + i,
+what: i + "->" + (i + 1)});
   }
 }
 
-function createOrder() {
+function createOrder () {
   // we update & modify the order
   let c = db._create("UnitTestsDumpOrder");
-  c.save({_key: "one", value: 1});
-  c.save({_key: "two", value: 2});
-  c.save({_key: "three", value: 3});
-  c.save({_key: "four", value: 4});
+  c.save({_key: "one",
+value: 1});
+  c.save({_key: "two",
+value: 2});
+  c.save({_key: "three",
+value: 3});
+  c.save({_key: "four",
+value: 4});
 
-  c.update("three", {value: 3, value2: 123});
-  c.update("two", {value: 2, value2: 456});
-  c.update("one", {value: 1, value2: 789});
+  c.update("three", {value: 3,
+value2: 123});
+  c.update("two", {value: 2,
+value2: 456});
+  c.update("one", {value: 1,
+value2: 789});
   c.remove("four");
 }
 
-function createModifyCollection() {
+function createModifyCollection () {
   db._useDatabase("UnitTestsDumpSrc");
 
   // we apply a series of updates & removals here
   let c = db._create("UnitTestsDumpRemoved");
-  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i})));
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i,
+value1: i})));
   for (let i = 0; i < 1000; ++i) {
     c.update("test" + i, {value2: i + 1});
   }
@@ -152,14 +168,26 @@ function createModifyCollection() {
 
   // we create a lot of (meaningless) indexes here
   c = db._create("UnitTestsDumpIndexes");
-  c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
-  c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
-  c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
-  c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
-  c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
-  c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
-  c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
-  c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
+  c.ensureIndex({ type: "hash",
+fields: ["a_uc"],
+unique: true });
+  c.ensureIndex({ type: "skiplist",
+fields: ["a_s1", "a_s2"] });
+  c.ensureIndex({ type: "hash",
+fields: ["a_h1", "a_h2"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["a_su"],
+unique: true });
+  c.ensureIndex({ type: "hash",
+fields: ["a_hs1", "a_hs2"],
+sparse: true });
+  c.ensureIndex({ type: "skiplist",
+fields: ["a_ss1", "a_ss2"],
+sparse: true });
+  c.ensureIndex({ type: "fulltext",
+fields: ["a_f"] });
+  c.ensureIndex({ type: "geo",
+fields: ["a_la", "a_lo"] });
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated");
@@ -172,17 +200,19 @@ function createModifyCollection() {
   c.truncate({compact: false});
 }
 
-function createMultiShard() {
+function createMultiShard () {
   // more than one shard:
   let c = db._create("UnitTestsDumpShards", {numberOfShards: 9});
   let l = [];
   for (let i = 0; i < 1000; ++i) {
-    l.push({_key: String(7 + (i * 42)), value: i, more: {value: [i, i]}});
+    l.push({_key: String(7 + (i * 42)),
+value: i,
+more: {value: [i, i]}});
   }
   c.save(l);
 }
 
-function createComputedValues() {
+function createComputedValues () {
   db._useDatabase("UnitTestsDumpSrc");
    let c = db._create("UnitTestsComputedValues", {
     computedValues: [{
@@ -198,12 +228,14 @@ function createComputedValues() {
    });
    let docs = [];
     for (let i = 0; i < 1000; ++i) {
-      docs.push({value1: "test" + i, value2: "abc", value4: false});
+      docs.push({value1: "test" + i,
+value2: "abc",
+value4: false});
     }
     c.insert(docs);
 }
 
-function createAutoIncKeyGen() {
+function createAutoIncKeyGen () {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpKeygen", {
     keyOptions: {
@@ -215,7 +247,8 @@ function createAutoIncKeyGen() {
   });
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
+    docs.push({value: i,
+more: {value: [i, i]}});
   }
   c.save(docs);
   let d = c.save({});
@@ -223,7 +256,7 @@ function createAutoIncKeyGen() {
   c.remove(d);
 }
 
-function createPaddedKeyGen() {
+function createPaddedKeyGen () {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpKeygenPadded", {
     keyOptions: {
@@ -235,7 +268,8 @@ function createPaddedKeyGen() {
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({value: i, more: {value: [i, i]}});
+    docs.push({value: i,
+more: {value: [i, i]}});
   }
   c.save(docs);
   let d = c.save({});
@@ -243,7 +277,7 @@ function createPaddedKeyGen() {
   c.remove(d);
 }
 
-function createUUIDKeyGen() {
+function createUUIDKeyGen () {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpKeygenUuid", {
     keyOptions: {
@@ -262,7 +296,7 @@ function createUUIDKeyGen() {
   c.remove(d);
 }
 
-function createStrings() {
+function createStrings () {
   db._useDatabase("UnitTestsDumpSrc");
 
   let c = db._create("UnitTestsDumpStrings");
@@ -278,11 +312,12 @@ function createStrings() {
   ];
 
   texts.forEach(function (t, i) {
-    c.save({_key: "text" + i, value: t});
+    c.save({_key: "text" + i,
+value: t});
   });
 }
 
-function createTransactional() {
+function createTransactional () {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpTransactionCommit");
   db._executeTransaction({
@@ -293,7 +328,10 @@ function createTransactional() {
       var c = require("internal").db.UnitTestsDumpTransactionCommit;
       let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+        docs.push({_key: "test" + i,
+value1: i,
+value2: "this is a test",
+value3: "test" + i});
       }
       c.save(docs);
     }
@@ -303,7 +341,10 @@ function createTransactional() {
   c = db._create("UnitTestsDumpTransactionUpdate");
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+    docs.push({_key: "test" + i,
+value1: i,
+value2: "this is a test",
+value3: "test" + i});
   }
   c.save(docs);
 
@@ -332,7 +373,10 @@ function createTransactional() {
         c.remove("foo");
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
-          docs.push({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i});
+          docs.push({_key: "test" + i,
+value1: i,
+value2: "this is a test",
+value3: "test" + i});
         }
         c.save(docs);
         throw "rollback!";
@@ -343,15 +387,18 @@ function createTransactional() {
   }
 }
 
-function createPersistent() {
+function createPersistent () {
   db._useDatabase("UnitTestsDumpSrc");
   let c = db._create("UnitTestsDumpPersistent");
-  c.ensureIndex({type: "persistent", fields: ["value"], unique: true});
+  c.ensureIndex({type: "persistent",
+fields: ["value"],
+unique: true});
 
-  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i,
+value: i})));
 }
 
-function createView() {
+function createView () {
   db._useDatabase("UnitTestsDumpSrc");
   const countBefore = db["_analyzers"].count();
   let analyzer = analyzers.save("customInCreateView", "delimiter", {delimiter: " "}, ["frequency"]);
@@ -380,8 +427,10 @@ function createView() {
       }
     });
 
-    c.save({value: -1, text: "the red foxx jumps over the pond"});
-    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+    c.save({value: -1,
+text: "the red foxx jumps over the pond"});
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i,
+value: i})));
   } catch (err) {
   }
 
@@ -399,7 +448,7 @@ function createView() {
   }
 }
 
-function createSearch() {
+function createSearch () {
   db._useDatabase("UnitTestsDumpSrc");
 
   // create collections
@@ -417,21 +466,25 @@ function createSearch() {
 
   // create views
   let search = db._createView("searchSearch", "search-alias",
-   { indexes: [ { collection: collection.name(), index: index.name } ] });
+   { indexes: [ { collection: collection.name(),
+index: index.name } ] });
 
   // insert data
-  collection.save({value: -1, text: "the red foxx jumps over the pond"});
-  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+  collection.save({value: -1,
+text: "the red foxx jumps over the pond"});
+  collection.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i,
+value: i})));
 }
 
-function createInvertedIndex() {
+function createInvertedIndex () {
   db._useDatabase("UnitTestsDumpSrc");
 
   let analyzers = require("@arangodb/analyzers");
   let a = analyzers.save("AqlAnalyzerRound", "aql", { queryString: "RETURN ROUND(@param)" }, ["frequency", "norm", "position"]);
   let b = analyzers.save("myDelimiterAnalyzer", "delimiter", { delimiter: " " }, ["frequency", "norm", "position"]);
   let c = analyzers.save("AqlAnalyzerHash", "aql", { queryString: "return to_hex(to_string(@param))" }, []);
-  let d = analyzers.save("norm_lower", "norm", {locale: "de.utf-8", case: "lower"}, ["frequency", "norm", "position"]);
+  let d = analyzers.save("norm_lower", "norm", {locale: "de.utf-8",
+case: "lower"}, ["frequency", "norm", "position"]);
 
   // create collections
   let collection_documents_0 = db._create("collection_documents_0", {
@@ -442,8 +495,8 @@ function createInvertedIndex() {
   // create indexes
   let index = db.collection_documents_0.ensureIndex(
     {
-        "type":"inverted",
-        "name":"collection_documents_0_all",
+        "type": "inverted",
+        "name": "collection_documents_0_all",
         "fields": [
             {
                 "analyzer": "AqlAnalyzerHash",
@@ -490,10 +543,10 @@ function createInvertedIndex() {
 
             },
             {
-                "name": "Setzt",
+                "name": "Setzt"
             },
             {
-              "name": "Haustiere",
+              "name": "Haustiere"
             }
         ],
         "includeAllFields": false,
@@ -513,23 +566,28 @@ function createInvertedIndex() {
     ]
   });
 
-  collection_documents_0.save({value: -1, text: "the red foxx jumps over the pond"});
-  collection_documents_0.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
+  collection_documents_0.save({value: -1,
+text: "the red foxx jumps over the pond"});
+  collection_documents_0.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i,
+value: i})));
 }
 
-function createReplicationFactors() {
-  db._create("UnitTestsDumpReplicationFactor1", {replicationFactor: 2, numberOfShards: 7});
-  db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2, numberOfShards: 6});
+function createReplicationFactors () {
+  db._create("UnitTestsDumpReplicationFactor1", {replicationFactor: 2,
+numberOfShards: 7});
+  db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2,
+numberOfShards: 6});
 }
 
-function createJobs() {
+function createJobs () {
   db._useDatabase("UnitTestsDumpSrc");
   // insert an entry into _jobs collection
   try {
     db._jobs.remove("test");
   } catch (err) {
   }
-  db._jobs.insert({_key: "test", status: "completed"});
+  db._jobs.insert({_key: "test",
+status: "completed"});
 
   // insert an entry into _queues collection
   try {
@@ -539,7 +597,7 @@ function createJobs() {
   db._queues.insert({_key: "test"});
 }
 
-function createFoxx() {
+function createFoxx () {
   db._useDatabase("UnitTestsDumpSrc");
   // Install Foxx
   const fs = require('fs');
@@ -550,7 +608,7 @@ function createFoxx() {
   FoxxManager.install(SERVICE_PATH, '/test');
 }
 
-function createAnalyzers() {
+function createAnalyzers () {
   db._useDatabase("UnitTestsDumpDst");
   const countBeforeInDst = db._analyzers.count();
   analyzers.save("custom_dst", "delimiter", {delimiter: ","}, ["frequency"]);
@@ -568,7 +626,7 @@ function createAnalyzers() {
  * @param kind: "SmartGraph", "Disjoint" (for disjoint smart graph), "Satellite", "Hybrid", "HybridDisjoint"
  * @returns: the module
  */
-function chooseGraphModule(kind) {
+function chooseGraphModule (kind) {
   switch (kind) {
     case "SmartGraph":
     case "Disjoint":
@@ -590,7 +648,7 @@ function chooseGraphModule(kind) {
  *        @param kind: one of "SmartGraph", "Disjoint", "Satellite"
  *        @param options: a document
  */
-function createEmptyGraph(kind, options) {
+function createEmptyGraph (kind, options) {
   if (!isEnterprise) {
     return;
   }
@@ -626,7 +684,7 @@ function createEmptyGraph(kind, options) {
  * @brief Only if enterprise mode:
  *        Creates an empty SmartGraph sharded by `value`, with no edge relations.
  */
-function createEmptySmartGraph() {
+function createEmptySmartGraph () {
   createEmptyGraph("SmartGraph", {
     numberOfShards: 5,
     replicationFactor: 2,
@@ -638,7 +696,7 @@ function createEmptySmartGraph() {
  * @brief Only if enterprise mode:
  *        Creates an empty EnterpriseGraph, with no edge relations.
  */
-function createEmptyEnterpriseGraph() {
+function createEmptyEnterpriseGraph () {
   createEmptyGraph("EnterpriseGraph", {
     numberOfShards: 5,
     replicationFactor: 2,
@@ -650,7 +708,7 @@ function createEmptyEnterpriseGraph() {
  * @brief Only if enterprise mode:
  *        Creates an empty Satellite with no edge relations.
  */
-function createEmptySatelliteGraph() {
+function createEmptySatelliteGraph () {
   createEmptyGraph("Satellite", {
     numberOfShards: 5,
     replicationFactor: 'satellite'
@@ -661,7 +719,7 @@ function createEmptySatelliteGraph() {
  * @brief Only if enterprise mode:
  *        Creates an empty disjoint SmartGraph with no edge relations.
  */
-function createEmptyDisjointGraph() {
+function createEmptyDisjointGraph () {
   createEmptyGraph("Disjoint", {
     numberOfShards: 5,
     replicationFactor: 2,
@@ -680,7 +738,7 @@ function createEmptyDisjointGraph() {
  *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
-function createSmartGraph() {
+function createSmartGraph () {
   if (!isEnterprise) {
     return;
   }
@@ -695,7 +753,8 @@ function createSmartGraph() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+    [orphans], {numberOfShards: 5,
+smartGraphAttribute: "value"});
 
   let vDocs = [];
   for (let i = 0; i < 100; ++i) {
@@ -704,9 +763,15 @@ function createSmartGraph() {
   let saved = db[vertices].save(vDocs).map(v => v._id);
   let eDocs = [];
   for (let i = 0; i < 100; ++i) {
-    eDocs.push({_from: saved[(i + 1) % 100], _to: saved[i], value: String(i)});
-    eDocs.push({_from: saved[i], _to: saved[i], value: String(i)});
-    eDocs.push({_from: saved[i], _to: saved[(i + 1) % 100], value: String(i)});
+    eDocs.push({_from: saved[(i + 1) % 100],
+_to: saved[i],
+value: String(i)});
+    eDocs.push({_from: saved[i],
+_to: saved[i],
+value: String(i)});
+    eDocs.push({_from: saved[i],
+_to: saved[(i + 1) % 100],
+value: String(i)});
   }
   db[edges].save(eDocs);
   db[orphans].save(vDocs);
@@ -722,7 +787,7 @@ function createSmartGraph() {
  *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
-function createEnterpriseGraph() {
+function createEnterpriseGraph () {
   if (!isEnterprise) {
     return;
   }
@@ -737,18 +802,26 @@ function createEnterpriseGraph() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   egm._create(enterpriseGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, isSmart: true});
+    [orphans], {numberOfShards: 5,
+isSmart: true});
 
   let vDocs = [];
   for (let i = 0; i < 100; ++i) {
-    vDocs.push({value: String(i), _key: String(i)});
+    vDocs.push({value: String(i),
+_key: String(i)});
   }
   let saved = db[vertices].save(vDocs).map(v => v._id);
   let eDocs = [];
   for (let i = 0; i < 100; ++i) {
-    eDocs.push({_from: saved[(i + 1) % 100], _to: saved[i], value: String(i)});
-    eDocs.push({_from: saved[i], _to: saved[i], value: String(i)});
-    eDocs.push({_from: saved[i], _to: saved[(i + 1) % 100], value: String(i)});
+    eDocs.push({_from: saved[(i + 1) % 100],
+_to: saved[i],
+value: String(i)});
+    eDocs.push({_from: saved[i],
+_to: saved[i],
+value: String(i)});
+    eDocs.push({_from: saved[i],
+_to: saved[(i + 1) % 100],
+value: String(i)});
   }
   db[edges].save(eDocs);
   db[orphans].save(vDocs);
@@ -757,7 +830,7 @@ function createEnterpriseGraph() {
 /**
  * A cycle of length 100 with a symmetric edge relation and self-loops on every vertex
  */
-function createSmartGraphSingleServer() {
+function createSmartGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -774,7 +847,7 @@ function createSmartGraphSingleServer() {
     toVertices: [vertices],
     orphans: [orphans]
   });
-  
+
   let properties = db[edges].properties();
   assertTrue(properties.isSmart);
   properties = db[vertices].properties();
@@ -792,7 +865,7 @@ function createSmartGraphSingleServer() {
 /**
  * A cycle of length 100 with a symmetric edge relation and self-loops on every vertex
  */
-function createEnterpriseGraphSingleServer() {
+function createEnterpriseGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -827,7 +900,7 @@ function createEnterpriseGraphSingleServer() {
 /**
  * Two disjoint cycles of length 50 each with a symmetric edge relation and self-loops on every vertex
  */
-function createDisjointGraphSingleServer() {
+function createDisjointGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -845,7 +918,8 @@ function createDisjointGraphSingleServer() {
       toVertices: [vertices],
       orphans: [orphans]
     },
-    {isDisjoint: true, replicationFactor: 2}
+    {isDisjoint: true,
+replicationFactor: 2}
   );
 
   const size = 50;
@@ -863,7 +937,7 @@ function createDisjointGraphSingleServer() {
  * Two disjoint cycles of length 50 each with a symmetric edge relation and self-loops on every vertex
  */
 
-function createSatelliteGraphSingleServer() {
+function createSatelliteGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -881,7 +955,8 @@ function createSatelliteGraphSingleServer() {
       orphans: [orphans]
     },
     {
-      isSatellite: true, isSmart: false /*needed: default is true - only for internal helper method api*/,
+      isSatellite: true,
+isSmart: false /* needed: default is true - only for internal helper method api*/,
       replicationFactor: 'satellite'
     });
 
@@ -897,7 +972,7 @@ function createSatelliteGraphSingleServer() {
   db[orphans].save(docs2.vDocs);
 }
 
-function createHybridSmartGraphSingleServer() {
+function createHybridSmartGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -925,8 +1000,12 @@ function createHybridSmartGraphSingleServer() {
   const docsNonSat = fillAndSaveVDocs(size, verticesNonSat);
   let eDocs = [];
   for (let i = 0; i < size; ++i) {
-    eDocs.push({_from: docsSat.saved[i], _to: docsNonSat.saved[i], value: String(i)});
-    eDocs.push({_from: docsSat.saved[i], _to: docsNonSat.saved[(i + 1) % size], value: String(i)});
+    eDocs.push({_from: docsSat.saved[i],
+_to: docsNonSat.saved[i],
+value: String(i)});
+    eDocs.push({_from: docsSat.saved[i],
+_to: docsNonSat.saved[(i + 1) % size],
+value: String(i)});
   }
 
   db[edges].save(eDocs);
@@ -949,7 +1028,7 @@ function createHybridSmartGraphSingleServer() {
  *
  * This function is too special and does not use createGraphWithoutData().
  */
-function createHybridDisjointSmartGraphSingleServer() {
+function createHybridDisjointSmartGraphSingleServer () {
   if (!isEnterprise) {
     return;
   }
@@ -984,16 +1063,24 @@ function createHybridDisjointSmartGraphSingleServer() {
 
   // from Sat to A
   for (let i = 0; i < size; ++i) {
-    eDocs.push({_from: docsSat.saved[i], _to: docsANonSat.saved[i], value: String(i)});
-    eDocs.push({_from: docsSat.saved[i], _to: docsANonSat.saved[(i + 1) % size], value: String(i)});
+    eDocs.push({_from: docsSat.saved[i],
+_to: docsANonSat.saved[i],
+value: String(i)});
+    eDocs.push({_from: docsSat.saved[i],
+_to: docsANonSat.saved[(i + 1) % size],
+value: String(i)});
   }
 
   db[edgesSatA].save(eDocs);
   eDocs = [];
   // from A to A &&  B to B
   for (let i = 0; i < size; ++i) {
-    eDocs.push({_from: docsANonSat.saved[i], _to: docsANonSat.saved[i], value: String(i)});
-    eDocs.push({_from: docsBNonSat.saved[i], _to: docsBNonSat.saved[i], value: String(i)});
+    eDocs.push({_from: docsANonSat.saved[i],
+_to: docsANonSat.saved[i],
+value: String(i)});
+    eDocs.push({_from: docsBNonSat.saved[i],
+_to: docsBNonSat.saved[i],
+value: String(i)});
   }
 
   db[edgesAB].save(eDocs);
@@ -1002,7 +1089,7 @@ function createHybridDisjointSmartGraphSingleServer() {
 }
 
 
-function createSatelliteGraphWithoutData() {
+function createSatelliteGraphWithoutData () {
   if (!isEnterprise) {
     return;
   }
@@ -1018,7 +1105,7 @@ function createSatelliteGraphWithoutData() {
   );
 }
 
-function createDisjointGraphWithoutData() {
+function createDisjointGraphWithoutData () {
   if (!isEnterprise) {
     return;
   }
@@ -1030,7 +1117,8 @@ function createDisjointGraphWithoutData() {
       toVertices: ["UnitTestDumpDisjointVerticesWithoutData"],
       orphans: ["UnitTestDumpDisjointOrphansWithoutData"]
     },
-    {isDisjoint: true, replicationFactor: 2}
+    {isDisjoint: true,
+replicationFactor: 2}
   );
 }
 
@@ -1041,18 +1129,20 @@ function createDisjointGraphWithoutData() {
  * @param verticesName: the name of the collection to save the numbers
  * @returns {{saved, vDocs: *[]}}
  */
-function fillAndSaveVDocs(size, verticesName, setKeyValue) {
+function fillAndSaveVDocs (size, verticesName, setKeyValue) {
   let vDocs = [];
   const startValue = db[verticesName] ? db[verticesName].count() : 0;
   for (let i = startValue; i < startValue + size; ++i) {
     if (setKeyValue) {
-      vDocs.push({value: String(i), _key: String(i)});
+      vDocs.push({value: String(i),
+_key: String(i)});
     } else {
       vDocs.push({value: String(i)});
     }
   }
 
-  return {saved: db[verticesName].save(vDocs).map(v => v._id), vDocs: vDocs};
+  return {saved: db[verticesName].save(vDocs).map(v => v._id),
+vDocs: vDocs};
 }
 
 
@@ -1063,7 +1153,7 @@ function fillAndSaveVDocs(size, verticesName, setKeyValue) {
  * @param savedVDocsColls: an array of saved collections
  * @returns {*[]}
  */
-function fillEDocs(savedVDocsColls = [], isDisjoint = false) {
+function fillEDocs (savedVDocsColls = [], isDisjoint = false) {
   let eDocs = [];
   for (let ell = 0; ell < savedVDocsColls.length; ++ell) {
     const savedColl = savedVDocsColls[ell];
@@ -1071,11 +1161,17 @@ function fillEDocs(savedVDocsColls = [], isDisjoint = false) {
 
     for (let i = 0; i < size; ++i) {
       if (!isDisjoint) {
-        eDocs.push({_from: savedColl[(i + 1) % size], _to: savedColl[i], value: String(i)});
-        eDocs.push({_from: savedColl[i], _to: savedColl[(i + 1) % size], value: String(i)});
+        eDocs.push({_from: savedColl[(i + 1) % size],
+_to: savedColl[i],
+value: String(i)});
+        eDocs.push({_from: savedColl[i],
+_to: savedColl[(i + 1) % size],
+value: String(i)});
       }
 
-      eDocs.push({_from: savedColl[i], _to: savedColl[i], value: String(i)});
+      eDocs.push({_from: savedColl[i],
+_to: savedColl[i],
+value: String(i)});
     }
   }
   return eDocs;
@@ -1095,7 +1191,7 @@ function fillEDocs(savedVDocsColls = [], isDisjoint = false) {
  * numberOfShards (default: 5), smartGraphAttribute (default: "values"), isDisjoint (default: false),
  * isSatellite (default: false), satellites (not contained by default), isSmart (default: true)
  */
-function createGraphWithoutData(names, options = undefined, kind) {
+function createGraphWithoutData (names, options = undefined, kind) {
   if (!isEnterprise) {
     return;
   }
@@ -1161,7 +1257,7 @@ function createGraphWithoutData(names, options = undefined, kind) {
   );
 }
 
-function createSmartGraphWithoutData() {
+function createSmartGraphWithoutData () {
   // External method for dump-setup-mixed.js to create a default SmartGraph
   // Using helper graph creation method defined above: createGraphWithoutData
   if (!isEnterprise) {
@@ -1184,7 +1280,7 @@ function createSmartGraphWithoutData() {
   createGraphWithoutData(names);
 }
 
-function createEnterpriseGraphWithoutData() {
+function createEnterpriseGraphWithoutData () {
   // External method for dump-setup-mixed.js to create a default SmartGraph
   // Using helper graph creation method defined above: createGraphWithoutData
   if (!isEnterprise) {
@@ -1211,7 +1307,7 @@ function createEnterpriseGraphWithoutData() {
  * @brief Only if enterprise mode:
  *        Creates an arangosearch over smart edge collection
  */
-function createSmartArangoSearch() {
+function createSmartArangoSearch () {
   db._useDatabase("UnitTestsDumpSrc");
   if (!isEnterprise) {
     return;
@@ -1243,7 +1339,7 @@ function createSmartArangoSearch() {
   });
 }
 
-function assertCollectionsAreNew(collectionNames) {
+function assertCollectionsAreNew (collectionNames) {
   for (let existingCollection of db._collections()) {
     const existingCollectionName = existingCollection.name();
     for (let collectionName of collectionNames) {
@@ -1258,7 +1354,7 @@ function assertCollectionsAreNew(collectionNames) {
  * @brief Only if enterprise mode:
  *        Creates a SatelliteCollection with 100 documents
  */
-function createSatelliteCollections() {
+function createSatelliteCollections () {
   if (!isEnterprise) {
     return;
   }
@@ -1278,7 +1374,7 @@ function createSatelliteCollections() {
  * @brief Only if enterprise mode:
  *        Creates a SatelliteGraph
  */
-function createSatelliteGraphs() {
+function createSatelliteGraphs () {
   if (!isEnterprise) {
     return;
   }
@@ -1346,7 +1442,7 @@ function createSatelliteGraphs() {
     'vertexCol2': satelliteVertexCollection2Name,
     '@edgeCol1': satelliteEdgeCollection1Name,
     '@edgeCol2': satelliteEdgeCollection2Name,
-    '@orphanCol': satelliteOrphanCollectionName,
+    '@orphanCol': satelliteOrphanCollectionName
   });
   const res = db._query(`
     FOR v, e, p IN 100 OUTBOUND "UnitTestDumpSatelliteVertexCollection1/v1" GRAPH "UnitTestDumpSatelliteGraph"
@@ -1366,7 +1462,7 @@ function createSatelliteGraphs() {
  *        database containing a SmartGraph with edited smart attribute
  *        value could not be restored.
  */
-function createSmartGraphRegressionTest() {
+function createSmartGraphRegressionTest () {
   if (!isEnterprise) {
     return;
   }
@@ -1379,7 +1475,8 @@ function createSmartGraphRegressionTest() {
   assertCollectionsAreNew([edges, vertices]);
 
   gm._create(smartGraphName, [gm._relation(edges, vertices, vertices)],
-    [], {numberOfShards: 5, smartGraphAttribute: "cheesyness"});
+    [], {numberOfShards: 5,
+smartGraphAttribute: "cheesyness"});
 
   let vDocs = [{cheesyness: "cheese"}];
   let saved = db[vertices].save(vDocs).map(v => v._id);

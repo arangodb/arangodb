@@ -2,28 +2,28 @@
 /* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrei Lobov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrei Lobov
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'recovery_cluster': 'run recovery tests for cluster'
@@ -53,8 +53,8 @@ const testPaths = {
   'recovery_cluster': [tu.pathForTesting('server/recovery')]
 };
 
-/// ensure that we have enough db servers in cluster tests
-function ensureServers(options, numServers) {
+// / ensure that we have enough db servers in cluster tests
+function ensureServers (options, numServers) {
   if (options.cluster && options.dbServers < numServers) {
     let localOptions = _.clone(options);
     localOptions.dbServers = numServers;
@@ -68,14 +68,14 @@ function ensureServers(options, numServers) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params, useEncryption) {
-  let additionalParams= {
+  let additionalParams = {
     'foxx.queues': 'false',
     'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
     'temp.path': params.temp_path
   };
-  
+
   if (useEncryption) {
     // randomly turn on or off hardware-acceleration for encryption for both
     // setup and the actual test. given enough tests, this will ensure that we run
@@ -87,9 +87,9 @@ function runArangodRecovery (params, useEncryption) {
   let argv = [];
   let binary = pu.ARANGOD_BIN;
   // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
-  let additionalTestParams  = {
+  let additionalTestParams = {
     // arangosh has different name for parameter :(
-    'javascript.execute':  params.script,
+    'javascript.execute': params.script,
     'javascript.run-main': true,
     'temp.path': params.temp_path
   };
@@ -106,9 +106,9 @@ function runArangodRecovery (params, useEncryption) {
     }
 
     params.options.disableMonitor = true;
-    params.options =  ensureServers(params.options);
+    params.options = ensureServers(params.options);
     let args = {};
-    
+
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
@@ -121,12 +121,12 @@ function runArangodRecovery (params, useEncryption) {
 
     if (useEncryption) {
       params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(params.keyDir)) {  // needed on win32
+      if (!fs.exists(params.keyDir)) { // needed on win32
         fs.makeDirectory(params.keyDir);
       }
-        
+
       const key = '01234567890123456789012345678901';
-      
+
       let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
       fs.write(keyfile, key);
 
@@ -141,7 +141,7 @@ function runArangodRecovery (params, useEncryption) {
     }
 
     params.args = args;
-      
+
   } else {
     additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
@@ -169,7 +169,7 @@ function runArangodRecovery (params, useEncryption) {
     print(BLUE + "Restarting cluster " + RESET);
     params.instanceManager.reStartInstance();
     let tryCount = 10;
-    while(tryCount > 0 && !params.instanceManager._checkServersGOOD()) {
+    while (tryCount > 0 && !params.instanceManager._checkServersGOOD()) {
       print(RESET + "Waiting for all servers to go GOOD");
       internal.sleep(3); // give agency time to bootstrap DBServers
       --tryCount;
@@ -189,7 +189,9 @@ function runArangodRecovery (params, useEncryption) {
       rootDir: params.instanceManager.rootDir,
       pid: 0,
       exitStatus: {},
-      getStructure: function() { return {}; }
+      getStructure: function () {
+ return {};
+}
     };
 
     pu.executeAndWait(pu.ARANGOSH_BIN,
@@ -209,7 +211,7 @@ function runArangodRecovery (params, useEncryption) {
         message: 'Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus)
       };
     }
-  } catch(err) {
+  } catch (err) {
     print('Error while launching test:' + err);
     params.instanceManager.shutdownInstance(false);
     params.instanceManager.destructor(false);
@@ -228,7 +230,7 @@ function runArangodRecovery (params, useEncryption) {
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);
       // need this to properly mark spawned process as killed in internal test data
-      arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
+      arangod.exitStatus = internal.killExternal(arangod.pid, termSignal);
       arangod.pid = 0;
     });
   } else {
@@ -273,7 +275,7 @@ function recovery (options) {
 
     if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       count += 1;
-      ////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tmpMgr.tempDir,
@@ -292,18 +294,20 @@ function recovery (options) {
         results[test] = ret;
         continue;
       }
-      ////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
         tu.writeTestResult(params.temp_path, {
           failed: 1,
-          status: false, 
+          status: false,
           message: "unable to run recovery test " + test,
           duration: -1
         });
-    } catch (er) { print(er);}
+    } catch (er) {
+ print(er);
+}
       try {
         runArangodRecovery(params, useEncryption);
       } catch (err) {
@@ -359,6 +363,10 @@ function recovery (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_cluster'] = recovery;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

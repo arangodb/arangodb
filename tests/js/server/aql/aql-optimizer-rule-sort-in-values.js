@@ -1,92 +1,92 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var isEqual = helper.isEqual;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
   var ruleName = "sort-in-values";
 
-  // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  // various choices to control the optimizer:
+  var paramNone = { optimizer: { rules: [ "-all" ] } };
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has no effect when explicitly disabled
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that rule has no effect when explicitly disabled
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRuleDisabled : function () {
+    testRuleDisabled: function () {
       var queries = [
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER LENGTH(i.a) >= 3 FILTER i.a IN values RETURN i",
-        "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]) FOR i IN 1..100 FILTER i IN values RETURN i" 
+        "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]) FOR i IN 1..100 FILTER i IN values RETURN i"
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var result = AQL_EXPLAIN(query, { }, paramNone);
         assertEqual([ ], result.plan.rules);
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has no effect
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that rule has no effect
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRuleNoEffect : function () {
-      var queryList = [ 
+    testRuleNoEffect: function () {
+      var queryList = [
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a == 'foobar' && i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a == 'foobar' || i.a IN values RETURN i",
         "FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN SPLIT('foo,bar,foobar,qux', ',') RETURN i",
-        "LET values = RANGE(1, 100) FOR i IN 1..100 FILTER i IN values RETURN i", 
+        "LET values = RANGE(1, 100) FOR i IN 1..100 FILTER i IN values RETURN i",
         "FOR i IN 1..100 FILTER i IN RANGE(1, 100) RETURN i",
-        "FOR i IN 1..100 FILTER i IN NOOPT(RANGE(1, 100)) RETURN i", 
-        "LET values = NOOPT([ 1 ]) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT([ 1, 2 ]) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT([ 1, 2, 3 ]) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT({ }) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT('foobar') FOR i IN 1..100 FILTER i IN values RETURN i", 
+        "FOR i IN 1..100 FILTER i IN NOOPT(RANGE(1, 100)) RETURN i",
+        "LET values = NOOPT([ 1 ]) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT([ 1, 2 ]) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT([ 1, 2, 3 ]) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT({ }) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT('foobar') FOR i IN 1..100 FILTER i IN values RETURN i",
         "FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN SPLIT('foo,bar,foobar,qux', ',') RETURN i"
       ];
 
-      queryList.forEach(function(query) {
+      queryList.forEach(function (query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual([ ], result.plan.rules, query);
         var allresults = getQueryMultiplePlansAndExecutions(query, {});
@@ -102,22 +102,22 @@ function optimizerRuleTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that rule has an effect
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that rule has an effect
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect : function () {
-      var queries = [ 
+    testRuleHasEffect: function () {
+      var queries = [
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER LENGTH(i.a) >= 3 FILTER i.a IN values RETURN i",
-        "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = NOOPT([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]) FOR i IN 1..100 FILTER i IN values RETURN i", 
+        "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i",
+        "LET values = NOOPT([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]) FOR i IN 1..100 FILTER i IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
-        "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
+        "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i"
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual([ ruleName ], result.plan.rules, query);
         var allresults = getQueryMultiplePlansAndExecutions(query, {});
@@ -133,11 +133,11 @@ function optimizerRuleTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test generated plans
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test generated plans
+// //////////////////////////////////////////////////////////////////////////////
 
-    testPlans : function () {
+    testPlans: function () {
       var query = "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i";
       var actual = AQL_EXPLAIN(query, null, paramEnabled);
       var nodes = helper.getLinearizedPlan(actual).reverse();
@@ -171,7 +171,7 @@ function optimizerRuleTestSuite () {
       assertNotEqual(nodes[6].outVariable.id, varId);
 
       assertEqual("SingletonNode", nodes[7].type);
-      
+
       var allresults = getQueryMultiplePlansAndExecutions(query, {});
       for (var j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
@@ -184,11 +184,11 @@ function optimizerRuleTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test results
+// //////////////////////////////////////////////////////////////////////////////
 
-    testResults : function () {
+    testResults: function () {
       var groups = [ ], numbers = [ ], strings = [ ], reversed = [ ], i;
       for (i = 1; i <= 100; ++i) {
         numbers.push(i);
@@ -200,27 +200,27 @@ function optimizerRuleTestSuite () {
       }
 
       var queries = [
-        [ "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER i IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", numbers ], 
-        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", [ ] ], 
-        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i IN values RETURN i", [ ] ], 
+        [ "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", [ ] ],
+        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER i IN values RETURN i", [ ] ],
+        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(strings) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", [ ] ],
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", [ ] ],
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) IN values RETURN i", numbers ],
+        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER CONCAT('test', i) NOT IN values RETURN i", [ ] ],
+        [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i IN values RETURN i", [ ] ],
         [ "LET values = NOOPT(" + JSON.stringify(reversed) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", numbers ],
-        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values COLLECT group = i % 10 RETURN group", groups ] 
+        [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values COLLECT group = i % 10 RETURN group", groups ]
       ];
 
-      queries.forEach(function(query) {
-        var planDisabled   = AQL_EXPLAIN(query[0], { }, paramDisabled);
-        var planEnabled    = AQL_EXPLAIN(query[0], { }, paramEnabled);
+      queries.forEach(function (query) {
+        var planDisabled = AQL_EXPLAIN(query[0], { }, paramDisabled);
+        var planEnabled = AQL_EXPLAIN(query[0], { }, paramEnabled);
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        var resultEnabled = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
@@ -241,8 +241,8 @@ function optimizerRuleTestSuite () {
         }
       });
     },
-    
-    testAvoidDuplicateSortWithSorted : function () {
+
+    testAvoidDuplicateSortWithSorted: function () {
       let query = "LET values = SORTED(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -258,7 +258,7 @@ function optimizerRuleTestSuite () {
       assertEqual("array", nodes[1].expression.subNodes[0].type);
       assertEqual(1, nodes[1].expression.subNodes[0].subNodes.length);
       assertEqual("range", nodes[1].expression.subNodes[0].subNodes[0].type);
-      
+
       let outVariableOfSort = nodes[1].outVariable.id;
 
       assertEqual("CalculationNode", nodes[4].type);
@@ -269,8 +269,8 @@ function optimizerRuleTestSuite () {
       assertEqual("reference", nodes[4].expression.subNodes[1].type);
       assertEqual(outVariableOfSort, nodes[4].expression.subNodes[1].id);
     },
-    
-    testAvoidDuplicateSortWithSortedUnique : function () {
+
+    testAvoidDuplicateSortWithSortedUnique: function () {
       let query = "LET values = SORTED_UNIQUE(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -285,7 +285,7 @@ function optimizerRuleTestSuite () {
       assertEqual("array", nodes[1].expression.subNodes[0].type);
       assertEqual(1, nodes[1].expression.subNodes[0].subNodes.length);
       assertEqual("range", nodes[1].expression.subNodes[0].subNodes[0].type);
-      
+
       let outVariableOfSort = nodes[1].outVariable.id;
 
       assertEqual("CalculationNode", nodes[4].type);
@@ -297,7 +297,7 @@ function optimizerRuleTestSuite () {
       assertEqual(outVariableOfSort, nodes[4].expression.subNodes[1].id);
     },
 
-    testMovingOutOfLoops : function () {
+    testMovingOutOfLoops: function () {
       let query = "LET values = (FOR i IN 1..10000 RETURN i) FOR j IN 1..100 FILTER j IN values RETURN j";
 
       let plan = AQL_EXPLAIN(query).plan;
@@ -325,14 +325,14 @@ function optimizerRuleTestSuite () {
       assertEqual("j", nodes[8].expression.subNodes[0].name);
       assertEqual("reference", nodes[8].expression.subNodes[1].type);
       assertEqual(outVariableOfSort, nodes[8].expression.subNodes[1].id);
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerRuleTestSuite);
 

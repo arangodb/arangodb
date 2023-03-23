@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -36,17 +36,17 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 var ruleName = "inline-subqueries";
 const isEnterprise = require("internal").isEnterprise();
 
-function optimizerRuleTestSuite() {
-  // various choices to control the optimizer: 
+function optimizerRuleTestSuite () {
+  // various choices to control the optimizer:
   var paramNone = {optimizer: {rules: ["-all"]}};
   var paramEnabled = {optimizer: {rules: ["-all", "+" + ruleName]}};
   var paramDisabled = {optimizer: {rules: ["+all", "-" + ruleName]}};
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect when explicitly disabled
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect when explicitly disabled
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled: function () {
       var queries = [
@@ -61,9 +61,9 @@ function optimizerRuleTestSuite() {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect: function () {
       var queries = [
@@ -79,7 +79,7 @@ function optimizerRuleTestSuite() {
         "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j RETURN x) FOR k IN sub RETURN [i, k]",
         "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j OPTIONS { method: 'hash' } RETURN x) FOR k IN sub RETURN [i, k]",
         "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,1] COLLECT x = j OPTIONS { method: 'sorted' } RETURN x) FOR k IN sub RETURN [i, k]",
-        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,2,3,3] RETURN DISTINCT j) FOR x IN sub RETURN [i, x]",
+        "FOR i IN [1,2,3] LET sub = (FOR j IN [1,1,2,3,3] RETURN DISTINCT j) FOR x IN sub RETURN [i, x]"
       ];
 
       queries.forEach(function (query) {
@@ -90,9 +90,9 @@ function optimizerRuleTestSuite() {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has an effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has an effect
+    // //////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect: function () {
       var queries = [
@@ -117,9 +117,9 @@ function optimizerRuleTestSuite() {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test generated plans
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test generated plans
+    // //////////////////////////////////////////////////////////////////////////////
 
     testPlans: function () {
       var plans = [
@@ -139,9 +139,9 @@ function optimizerRuleTestSuite() {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test generated results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test generated results
+    // //////////////////////////////////////////////////////////////////////////////
 
     testResults: function () {
       var queries = [
@@ -160,7 +160,7 @@ function optimizerRuleTestSuite() {
         ["LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x RETURN k", [4, 3]],
         ["LET x = (FOR j IN [1,2,3,4] SORT j DESC LIMIT 2 RETURN j) FOR k IN x LIMIT 1 RETURN k", [4]],
         ["FOR i IN [3,2,1] SORT i LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [[1, 1], [1, 2], [1, 3], [2, 1], [2, 2], [2, 3], [3, 1], [3, 2], [3, 3]]],
-        ["FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [[3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3]]],
+        ["FOR i IN [3,2,1] SORT i DESC LET sub = (FOR j IN [1,2,3] RETURN j) FOR k IN sub RETURN [i, k]", [[3, 1], [3, 2], [3, 3], [2, 1], [2, 2], [2, 3], [1, 1], [1, 2], [1, 3]]]
       ];
       queries.forEach(function (query) {
         var result = AQL_EXPLAIN(query[0]);
@@ -174,7 +174,7 @@ function optimizerRuleTestSuite() {
   };
 }
 
-function optimizerRuleCollectionTestSuite() {
+function optimizerRuleCollectionTestSuite () {
   var c = null;
   var cn = "UnitTestsOptimizer";
   const noMoveFilters = {optimizer: {rules: ["-move-filters-into-enumerate"]}};
@@ -240,7 +240,7 @@ function optimizerRuleCollectionTestSuite() {
   };
 }
 
-function optimizerRuleViewTestSuite(isSearchAlias) {
+function optimizerRuleViewTestSuite (isSearchAlias) {
   let cn = "UnitTestsOptimizer";
 
   return {
@@ -250,28 +250,38 @@ function optimizerRuleViewTestSuite(isSearchAlias) {
       db._drop(cn);
       let c = db._create(cn);
       for (let i = 0; i < 10; ++i) {
-        c.save({ name_1: i, "value_nested": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        c.save({ name_1: i,
+"value_nested": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       if (isSearchAlias) {
         let c = db._collection(cn);
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value_nested[*]"}
           ]};
         }
         let i = c.ensureIndex(indexMeta);
-        db._createView(cn + "View", "search-alias", {indexes: [{collection: cn, index: i.name}]});
+        db._createView(cn + "View", "search-alias", {indexes: [{collection: cn,
+index: i.name}]});
       } else {
         let meta = {};
         if (isEnterprise) {
-          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          meta = {links: {[cn]: {includeAllFields: true,
+"fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
-          meta = {links: {[cn]: {includeAllFields: true, "fields": { "value_nested": {}}}}};
+          meta = {links: {[cn]: {includeAllFields: true,
+"fields": { "value_nested": {}}}}};
         }
         db._createView(cn + "View", "arangosearch", meta);
       }
@@ -331,12 +341,12 @@ function optimizerRuleViewTestSuite(isSearchAlias) {
       assertEqual("v", viewNode.condition.subNodes[0].subNodes[0].subNodes[0].subNodes[0].name);
       assertEqual("value", viewNode.condition.subNodes[0].subNodes[0].subNodes[1].type);
       assertEqual([], viewNode.scorers);
-    },
+    }
 
   };
 }
 
-function optimizerRuleArangoSearchTestSuite() {
+function optimizerRuleArangoSearchTestSuite () {
   let suite = {};
   deriveTestSuite(
     optimizerRuleViewTestSuite(false),
@@ -346,7 +356,7 @@ function optimizerRuleArangoSearchTestSuite() {
   return suite;
 }
 
-function optimizerRuleSearchAliasTestSuite() {
+function optimizerRuleSearchAliasTestSuite () {
   let suite = {};
   deriveTestSuite(
     optimizerRuleViewTestSuite(true),

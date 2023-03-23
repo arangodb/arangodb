@@ -58,8 +58,8 @@ function shouldTrustProxy (address) {
   if (trustedProxyBlocks === undefined) {
     trustedProxyBlocks = generateTrustedProxyBlocks();
   }
-  return !trustedProxyBlocks || trustedProxyBlocks
-      .some((block) => block.contains(address));
+  return !trustedProxyBlocks || trustedProxyBlocks.
+      some((block) => block.contains(address));
 }
 
 module.exports =
@@ -75,8 +75,7 @@ module.exports =
       this.queryParams = querystring.parse(this._url.query);
       if (req.hasOwnProperty('rawRequestBody')) {
         this.body = req.rawRequestBody;
-      }
-      else {
+      } else {
         this.body = req.requestBody;
       }
       this.rawBody = this.body;
@@ -218,7 +217,9 @@ module.exports =
         try {
           credentials = new Buffer(match[1], "base64").toString("utf-8");
         } catch (e) {}
-        if (!credentials) return {basic: {}};
+        if (!credentials) {
+return {basic: {}};
+}
         const i = credentials.indexOf(":");
         if (i === -1) {
           return {basic: {username: credentials}};
@@ -301,13 +302,13 @@ function extractServer (req, trustProxy) {
   let hostname = req.server.address;
   let port = req.server.port;
   const protocol = (
-  (trustProxy && req.headers['x-forwarded-proto'])
-  || req.protocol
+  (trustProxy && req.headers['x-forwarded-proto']) ||
+  req.protocol
   );
   const secure = protocol === 'https';
   const hostHeader = (
-  (trustProxy && req.headers['x-forwarded-host'])
-  || req.headers.host
+  (trustProxy && req.headers['x-forwarded-host']) ||
+  req.headers.host
   );
   if (hostHeader) {
     const match = hostHeader.match(/^(.*):(\d+)$/) || [hostHeader, hostHeader];
@@ -316,15 +317,17 @@ function extractServer (req, trustProxy) {
       port = match[2] ? Number(match[2]) : secure ? 443 : 80;
     }
   }
-  return {protocol, hostname, port};
+  return {protocol,
+hostname,
+port};
 }
 
 function extractClient (req, trustProxy) {
   let ip = req.client.address;
   let ips = [ip];
   const port = Number(
-    (trustProxy && req.headers['x-forwarded-port'])
-    || req.client.port
+    (trustProxy && req.headers['x-forwarded-port']) ||
+    req.client.port
   );
   const forwardedFor = req.headers['x-forwarded-for'];
   if (trustProxy && forwardedFor) {
@@ -334,5 +337,7 @@ function extractClient (req, trustProxy) {
       ip = tokens[0];
     }
   }
-  return {ips, ip, port};
+  return {ips,
+ip,
+port};
 }

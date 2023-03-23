@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, fail, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, fail, AQL_EXECUTE */
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
 var errors = internal.errors;
@@ -36,10 +36,10 @@ var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 var db = require("org/arangodb").db;
 
-function ahuacatlMiscFunctionsTestSuite () { 
+function ahuacatlMiscFunctionsTestSuite () {
   return {
-    
-    testInternalFunction : function () {
+
+    testInternalFunction: function () {
       try {
         // an internal function cannot be used from a query directly.
         // AQL will always pretend that the function does not exist.
@@ -50,95 +50,113 @@ function ahuacatlMiscFunctionsTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test parse identifier function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test parse identifier function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testParseIdentifier : function () {
+    testParseIdentifier: function () {
       var actual;
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER('foo/bar')");
-      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+      assertEqual([ { collection: 'foo',
+key: 'bar' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER('this-is-a-collection-name/and-this-is-an-id')");
-      assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
+      assertEqual([ { collection: 'this-is-a-collection-name',
+key: 'and-this-is-an-id' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER('MY_COLLECTION/MY_DOC')");
-      assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
+      assertEqual([ { collection: 'MY_COLLECTION',
+key: 'MY_DOC' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER('_users/AbC')");
-      assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
+      assertEqual([ { collection: '_users',
+key: 'AbC' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER({ _id: 'foo/bar', value: 'baz' })");
-      assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
+      assertEqual([ { collection: 'foo',
+key: 'bar' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER({ ignore: true, _id: '_system/VALUE', value: 'baz' })");
-      assertEqual([ { collection: '_system', key: 'VALUE' } ], actual);
+      assertEqual([ { collection: '_system',
+key: 'VALUE' } ], actual);
 
       actual = getQueryResults("RETURN PARSE_IDENTIFIER({ value: 123, _id: 'Some-Odd-Collection/THIS_IS_THE_KEY' })");
-      assertEqual([ { collection: 'Some-Odd-Collection', key: 'THIS_IS_THE_KEY' } ], actual);
+      assertEqual([ { collection: 'Some-Odd-Collection',
+key: 'THIS_IS_THE_KEY' } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test parse identifier function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test parse identifier function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testParseIdentifierCollection : function () {
+    testParseIdentifierCollection: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      cx.save({ "title" : "123", "value" : 456, "_key" : "foobar" });
-      cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
+      cx.save({ "title": "123",
+"value": 456,
+"_key": "foobar" });
+      cx.save({ "_key": "so-this-is-it",
+"title": "nada",
+"value": 123 });
 
       var expected, actual;
 
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
+      expected = [ { collection: cn,
+key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn,
+key: "foobar" });
       assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "foobar" } ];
-      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn, key: "foobar" });
+      expected = [ { collection: cn,
+key: "foobar" } ];
+      actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', @key)))", { cn: cn,
+key: "foobar" });
       assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "foobar" } ];
+      expected = [ { collection: cn,
+key: "foobar" } ];
       actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT(CONCAT(@cn, '/', 'foobar')))", { cn: cn });
       assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "foobar" } ];
+      expected = [ { collection: cn,
+key: "foobar" } ];
       actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ @key ])[0])", { key: "UnitTestsAhuacatlFunctions/foobar" });
       assertEqual(expected, actual);
 
-      expected = [ { collection: cn, key: "so-this-is-it" } ];
+      expected = [ { collection: cn,
+key: "so-this-is-it" } ];
       actual = getQueryResults("RETURN PARSE_IDENTIFIER(DOCUMENT([ 'UnitTestsAhuacatlFunctions/so-this-is-it' ])[0])");
       assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test parse identifier function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test parse identifier function
+// //////////////////////////////////////////////////////////////////////////////
 
-testParseIdentifierInvalid : function () {
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER()"); 
+testParseIdentifierInvalid: function () {
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER()");
   assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo', 'bar')");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(null)"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(false)"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(3)"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(\"foo\")"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo bar')"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo/bar/baz')"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER([ ])"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ })"); 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ foo: 'bar' })"); 
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(null)");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(false)");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(3)");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER(\"foo\")");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo bar')");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER('foo/bar/baz')");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER([ ])");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ })");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PARSE_IDENTIFIER({ foo: 'bar' })");
 },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test is_same_collection function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test is_same_collection function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsSameCollection : function () {
+    testIsSameCollection: function () {
       assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'foo/bar')"));
       assertEqual([ true ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', 'foo/bark')"));
       assertEqual([ false ], getQueryResults("RETURN IS_SAME_COLLECTION('FOO', 'foo/bark')"));
@@ -166,21 +184,26 @@ testParseIdentifierInvalid : function () {
       assertEqual([ null ], getQueryResults("RETURN IS_SAME_COLLECTION('foo', [ 'foo/bar' ])"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test is_same_collection function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test is_same_collection function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsSameCollectionCollection : function () {
+    testIsSameCollectionCollection: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      cx.save({ "title" : "123", "value" : 456, "_key" : "foobar" });
-      cx.save({ "_key" : "so-this-is-it", "title" : "nada", "value" : 123 });
+      cx.save({ "title": "123",
+"value": 456,
+"_key": "foobar" });
+      cx.save({ "_key": "so-this-is-it",
+"title": "nada",
+"value": 123 });
 
       var actual;
 
-      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT(CONCAT(@cn, '/', @key)))`, { cn: cn, key: "foobar" });
+      actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT(CONCAT(@cn, '/', @key)))`, { cn: cn,
+key: "foobar" });
       assertTrue(actual[0]);
 
       actual = getQueryResults(`RETURN IS_SAME_COLLECTION(${cn}, DOCUMENT(CONCAT(@cn, '/', 'foobar')))`, { cn: cn });
@@ -195,11 +218,11 @@ testParseIdentifierInvalid : function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test is_same_collection function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test is_same_collection function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsSameCollectionInvalid : function () {
+    testIsSameCollectionInvalid: function () {
      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION()");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo')");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 'bar', 'baz')");
@@ -212,20 +235,33 @@ testParseIdentifierInvalid : function () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', { })");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test check_document function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test check_document function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCheckDocument : function () {
+    testCheckDocument: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       let c = internal.db._create(cn);
 
-      c.insert({ _key: "test1", a: 1, b: 2, c: 3 });
-      c.insert({ _key: "test2", a: 1, b: 2, c: 3, sub: { a: 1, b: 2, c: 3 }});
-      c.insert({ _key: "test3", a: 1, b: 2, c: 3, sub: [{ a: 1 }, { b: 2 }, { c: 3 }, { a: 1 }]});
-      
+      c.insert({ _key: "test1",
+a: 1,
+b: 2,
+c: 3 });
+      c.insert({ _key: "test2",
+a: 1,
+b: 2,
+c: 3,
+sub: { a: 1,
+b: 2,
+c: 3 }});
+      c.insert({ _key: "test3",
+a: 1,
+b: 2,
+c: 3,
+sub: [{ a: 1 }, { b: 2 }, { c: 3 }, { a: 1 }]});
+
       assertEqual([ true, true, true ], getQueryResults("FOR doc IN " + cn + " RETURN CHECK_DOCUMENT(doc)"));
 
       assertEqual([ false ], getQueryResults("RETURN CHECK_DOCUMENT(null)"));
@@ -246,29 +282,33 @@ testParseIdentifierInvalid : function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDocument1 : function () {
+    testDocument1: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      var d1 = cx.save({ "title" : "123", "value" : 456 });
-      var d2 = cx.save({ "title" : "nada", "value" : 123 });
+      var d1 = cx.save({ "title": "123",
+"value": 456 });
+      var d2 = cx.save({ "title": "nada",
+"value": 123 });
 
       var expected, actual;
 
       // test with two parameters
-      expected = [ { title: "123", value : 456 } ];
+      expected = [ { title: "123",
+value: 456 } ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._id + "\")");
       assertEqual(expected, actual);
 
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d1._key + "\")");
       assertEqual(expected, actual);
 
-      expected = [ { title: "nada", value : 123 } ];
+      expected = [ { title: "nada",
+value: 123 } ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + d2._id + "\")");
       assertEqual(expected, actual);
 
@@ -276,7 +316,8 @@ testParseIdentifierInvalid : function () {
       assertEqual(expected, actual);
 
       // test with one parameter
-      expected = [ { title: "nada", value : 123 } ];
+      expected = [ { title: "nada",
+value: 123 } ];
       actual = getQueryResults("RETURN DOCUMENT(\"" + d2._id + "\")");
       assertEqual(expected, actual);
 
@@ -286,135 +327,181 @@ testParseIdentifierInvalid : function () {
       actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"bart\"))");
       assertEqual([ null ], actual);
 
-      cx.save({ _key: "foo", value: "bar" });
+      cx.save({ _key: "foo",
+value: "bar" });
       expected = [ { value: "bar" } ];
       actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"foo\"))");
       assertEqual([ null ], actual);
-      actual = getQueryResults("RETURN DOCUMENT(CONCAT(@c, \"/\", @k))", { c: cn, k: "foo" });
+      actual = getQueryResults("RETURN DOCUMENT(CONCAT(@c, \"/\", @k))", { c: cn,
+k: "foo" });
       assertEqual(expected, actual);
       actual = getQueryResults("RETURN DOCUMENT(CONCAT(\"" + cn + "\", \"/\", @k))", { k: "foo" });
       assertEqual(expected, actual);
 
       // test with bind parameter
-      expected = [ { title: "nada", value : 123 } ];
+      expected = [ { title: "nada",
+value: 123 } ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { id: d2._id });
       assertEqual(expected, actual);
 
       // test dynamic parameter
-      expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
-      actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn" : cn });
+      expected = [ { title: "nada",
+value: 123 }, { title: "123",
+value: 456 }, { value: "bar" } ];
+      actual = getQueryResults("FOR d IN @@cn SORT d.value RETURN DOCUMENT(d._id)", { "@cn": cn });
       assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDocument2 : function () {
+    testDocument2: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      var d1 = cx.save({ "title" : "123", "value" : 456, "zxy" : 1 });
-      var d2 = cx.save({ "title" : "nada", "value" : 123, "zzzz" : false });
+      var d1 = cx.save({ "title": "123",
+"value": 456,
+"zxy": 1 });
+      var d2 = cx.save({ "title": "nada",
+"value": 123,
+"zzzz": false });
 
       var expected, actual;
 
       // test with two parameters
-      expected = [ { title: "123", value : 456, zxy: 1 } ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._id });
+      expected = [ { title: "123",
+value: 456,
+zxy: 1 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": d1._id });
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._key });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": d1._key });
       assertEqual(expected, actual);
 
-      expected = [ { title: "nada", value : 123, zzzz : false } ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._id });
+      expected = [ { title: "nada",
+value: 123,
+zzzz: false } ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": d2._id });
       assertEqual(expected, actual);
 
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._key });
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": d2._key });
       assertEqual(expected, actual);
 
       // test with one parameter
-      expected = [ { title: "123", value : 456, zxy: 1 } ];
-      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d1._id });
+      expected = [ { title: "123",
+value: 456,
+zxy: 1 } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id": d1._id });
       assertEqual(expected, actual);
 
-      expected = [ { title: "nada", value : 123, zzzz : false } ];
-      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d2._id });
+      expected = [ { title: "nada",
+value: 123,
+zzzz: false } ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id": d2._id });
       assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDocumentMulti1 : function () {
+    testDocumentMulti1: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      var d1 = cx.save({ "title" : "123", "value" : 456, "zxy" : 1 });
-      var d2 = cx.save({ "title" : "nada", "value" : 123, "zzzz" : false });
-      var d3 = cx.save({ "title" : "boom", "value" : 3321, "zzzz" : null });
+      var d1 = cx.save({ "title": "123",
+"value": 456,
+"zxy": 1 });
+      var d2 = cx.save({ "title": "nada",
+"value": 123,
+"zzzz": false });
+      var d3 = cx.save({ "title": "boom",
+"value": 3321,
+"zzzz": null });
 
       var expected, actual;
 
       // test with two parameters
       expected = [ [
-        { title: "123", value : 456, zxy : 1 },
-        { title: "nada", value : 123, zzzz : false },
-        { title: "boom", value : 3321, zzzz : null }
+        { title: "123",
+value: 456,
+zxy: 1 },
+        { title: "nada",
+value: 123,
+zzzz: false },
+        { title: "boom",
+value: 3321,
+zzzz: null }
       ] ];
 
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d1._id, d2._id, d3._id ] }, true);
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": [ d1._id, d2._id, d3._id ] }, true);
       assertEqual(expected, actual);
 
-      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id ] }, true);
+      expected = [ [ { title: "nada",
+value: 123,
+zzzz: false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": [ d2._id ] }, true);
       assertEqual(expected, actual);
 
       // test with one parameter
-      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id ] }, true);
+      expected = [ [ { title: "nada",
+value: 123,
+zzzz: false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id": [ d2._id ] }, true);
       assertEqual(expected, actual);
 
 
       cx.remove(d3);
 
-      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] }, true);
+      expected = [ [ { title: "nada",
+value: 123,
+zzzz: false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn": cn,
+"id": [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
 
-      expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
-      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id, d3._id, "abc/def" ] }, true);
+      expected = [ [ { title: "nada",
+value: 123,
+zzzz: false } ] ];
+      actual = getQueryResults("RETURN DOCUMENT(@id)", { "id": [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
 
       internal.db._drop(cn);
     },
-    
-    testDocumentUseAfterModification : function () {
+
+    testDocumentUseAfterModification: function () {
       const cn = "UnitTestsAhuacatlFunctions";
 
       let c = internal.db._create(cn);
       try {
-        c.insert({ "title" : "123", "value" : 456 });
-        c.insert({ "title" : "nada", "value" : 123 });
+        c.insert({ "title": "123",
+"value": 456 });
+        c.insert({ "title": "nada",
+"value": 123 });
 
         let res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value RETURN DOCUMENT(doc._id).title");
         assertEqual([ "nada", "123" ], res.json);
-        
+
         try {
           AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value REMOVE doc IN " + cn + " RETURN DOCUMENT(doc._id).title");
           fail();
         } catch (err) {
           assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
         }
-      
+
         res = AQL_EXECUTE("FOR doc IN " + cn + " SORT doc.value LET title = DOCUMENT(doc._id).title INSERT { title } INTO " + cn + " RETURN NEW");
         assertEqual(2, res.json.length);
         assertEqual(4, c.count());
@@ -423,11 +510,11 @@ testParseIdentifierInvalid : function () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDocumentInvalid : function () {
+    testDocumentInvalid: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
@@ -458,16 +545,17 @@ testParseIdentifierInvalid : function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document indexed access function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document indexed access function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDocumentIndexedAccess : function () {
+    testDocumentIndexedAccess: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
       var cx = internal.db._create(cn);
-      var d1 = cx.save({ "title" : "123", "value" : 456 });
+      var d1 = cx.save({ "title": "123",
+"value": 456 });
 
       var expected, actual;
 
@@ -478,11 +566,11 @@ testParseIdentifierInvalid : function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test current user function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test current user function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCurrentUser : function () {
+    testCurrentUser: function () {
       var expected = null;
       if (internal.getCurrentRequest) {
         var req = internal.getCurrentRequest();
@@ -497,20 +585,20 @@ testParseIdentifierInvalid : function () {
        assertEqual([ expected ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test current database function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test current database function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCurrentDatabase : function () {
+    testCurrentDatabase: function () {
       var actual = getQueryResults("RETURN CURRENT_DATABASE()");
       assertEqual([ "_system" ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test sleep function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test sleep function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSleep : function () {
+    testSleep: function () {
       var start = require("internal").time();
       var actual = getQueryResults("LET a = SLEEP(2) RETURN 1");
 
@@ -522,11 +610,11 @@ testParseIdentifierInvalid : function () {
       assertTrue(diff >= 1.8 && diff <= 20, "SLEEP(2) did not take between 1.8 and 20 seconds");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test ASSERT function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test ASSERT function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAssert : function () {
+    testAssert: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
@@ -535,11 +623,11 @@ testParseIdentifierInvalid : function () {
       c.insert({"foo": 1});
       c.insert({"foo": 2});
 
-      var result = db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn" : cn });
-      assertEqual(result.toArray().length,3);
+      var result = db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn": cn });
+      assertEqual(result.toArray().length, 3);
 
       try {
-        db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn });
+        db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn": cn });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_QUERY_USER_ASSERT.code, err.errorNum);
@@ -548,11 +636,11 @@ testParseIdentifierInvalid : function () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test WARN function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test WARN function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWarn : function () {
+    testWarn: function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
       internal.db._drop(cn);
@@ -562,14 +650,14 @@ testParseIdentifierInvalid : function () {
       c.insert({"foo": 2});
 
 
-      var result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn" : cn });
-      assertEqual(result.toArray().length,3);
+      var result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn": cn });
+      assertEqual(result.toArray().length, 3);
 
-      result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn });
-      assertEqual(result.toArray().length,2);
+      result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn": cn });
+      assertEqual(result.toArray().length, 2);
 
       try {
-        db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn }, {"failOnWarning": true});
+        db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn": cn }, {"failOnWarning": true});
       } catch (err) {
         assertEqual(errors.ERROR_QUERY_USER_WARN.code, err.errorNum);
       } finally {
@@ -577,88 +665,89 @@ testParseIdentifierInvalid : function () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test DECODE_REV
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test DECODE_REV
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDecodeRevInvalid : function () {
-      [ 
-        null, 
-        false, 
-        true, 
-        -1000, 
-        -1, 
-        -0.1, 
-        0, 
-        0.1, 
-        10, 
-        10000, 
-        9945854.354, 
-        "", 
-        " ", 
+    testDecodeRevInvalid: function () {
+      [
+        null,
+        false,
+        true,
+        -1000,
+        -1,
+        -0.1,
+        0,
+        0.1,
+        10,
+        10000,
+        9945854.354,
+        "",
+        " ",
         [],
-        {} 
-      ].forEach(function(value) {
+        {}
+      ].forEach(function (value) {
         assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DECODE_REV(@value)", { value });
       });
     },
-    
-    testDecodeRev : function () {
+
+    testDecodeRev: function () {
       [
-        [ "_YSlmbS6---", "2019-03-04T18:12:45.007Z", 0 ], 
-        [ "_YUwHwWy---", "2019-03-11T11:36:03.213Z", 0 ], 
-        [ "_YaE0fyK---", "2019-03-28T00:32:38.723Z", 0 ], 
-        [ "_YSmDflm---", "2019-03-04T18:44:29.946Z", 0 ], 
-        [ "_YaE0Way---", "2019-03-28T00:32:29.133Z", 0 ], 
-        [ "_YWeadNG---", "2019-03-16T20:06:02.226Z", 0 ], 
-        [ "_YVORUcq---", "2019-03-12T22:43:39.115Z", 0 ], 
-        [ "_YSl0nrO---", "2019-03-04T18:28:15.188Z", 0 ], 
-        [ "_YY7gl3K--A", "2019-03-24T11:07:50.035Z", 2 ], 
-        [ "_YaE4H3q---", "2019-03-28T00:36:36.379Z", 0 ], 
-        [ "_YY7N6p2--A", "2019-03-24T10:47:26.142Z", 2 ], 
-        [ "_YSlq-Ny---", "2019-03-04T18:16:37.373Z", 0 ], 
-        [ "_YYykPIe---", "2019-03-24T00:42:40.168Z", 0 ], 
-        [ "_YWf_RSG--B", "2019-03-16T20:46:14.850Z", 3 ], 
-        [ "_YSl93J----", "2019-03-04T18:38:20.848Z", 0 ], 
-        [ "_YY0Gml6---", "2019-03-24T02:30:06.719Z", 0 ], 
-        [ "_YSmdMmW---", "2019-03-04T19:12:34.438Z", 0 ], 
-        [ "_YY00EdG---", "2019-03-24T03:19:46.418Z", 0 ], 
-        [ "_YYy1OBu---", "2019-03-24T01:01:13.148Z", 0 ], 
-        [ "_YY1Bzgu---", "2019-03-24T03:34:46.572Z", 0 ], 
-        [ "_YYyPBYK---", "2019-03-24T00:19:29.827Z", 0 ], 
-        [ "_YaFcLFe--_", "2019-03-28T01:15:58.968Z", 1 ], 
-        [ "_YWexcTu---", "2019-03-16T20:31:08.636Z", 0 ], 
-        [ "_YU0HOEG---", "2019-03-11T16:15:05.314Z", 0 ], 
-        [ "_YaE1DTC--A", "2019-03-28T00:33:15.089Z", 2 ], 
-        [ "_YSmRdx6---", "2019-03-04T18:59:45.599Z", 0 ], 
-        [ "_YaE2Q4S---", "2019-03-28T00:34:34.533Z", 0 ], 
-        [ "_YSmTlb2---", "2019-03-04T19:02:04.510Z", 0 ], 
-        [ "_YYzAiEe---", "2019-03-24T01:13:34.568Z", 0 ], 
-        [ "_YVN12He---", "2019-03-12T22:13:38.584Z", 0 ], 
-        [ "_YYyVku----", "2019-03-24T00:26:39.232Z", 0 ], 
-        [ "_YaFQc26---", "2019-03-28T01:03:10.735Z", 0 ], 
-        [ "_YYytrHa---", "2019-03-24T00:52:58.647Z", 0 ], 
-        [ "_YaFVoZC---", "2019-03-28T01:08:50.225Z", 0 ], 
-        [ "_YWezNX6--A", "2019-03-16T20:33:04.415Z", 2 ], 
-        [ "_YaE3rfi---", "2019-03-28T00:36:07.321Z", 0 ], 
-        [ "_YUw_E-e---", "2019-03-11T11:26:33.480Z", 0 ], 
-        [ "_YYzEieO---", "2019-03-24T01:17:57.124Z", 0 ], 
-        [ "_YVOfDlu---", "2019-03-12T22:58:39.356Z", 0 ], 
-        [ "_YYyRtVy---", "2019-03-24T00:22:25.917Z", 0 ], 
-        [ "_YaFvsf2---", "2019-03-28T01:37:18.366Z", 0 ], 
-        [ "_YWfiar----", "2019-03-16T21:24:38.224Z", 0 ], 
-        [ "_YSmHzya---", "2019-03-04T18:49:12.775Z", 0 ], 
-        [ "_YY0uxp2---", "2019-03-24T03:13:59.486Z", 0 ], 
-        [ "_YZZIMQy---", "2019-03-25T21:38:20.077Z", 0 ], 
-        [ "_YaE353K---", "2019-03-28T00:36:22.035Z", 0 ], 
-      ].forEach(function(parts){
+        [ "_YSlmbS6---", "2019-03-04T18:12:45.007Z", 0 ],
+        [ "_YUwHwWy---", "2019-03-11T11:36:03.213Z", 0 ],
+        [ "_YaE0fyK---", "2019-03-28T00:32:38.723Z", 0 ],
+        [ "_YSmDflm---", "2019-03-04T18:44:29.946Z", 0 ],
+        [ "_YaE0Way---", "2019-03-28T00:32:29.133Z", 0 ],
+        [ "_YWeadNG---", "2019-03-16T20:06:02.226Z", 0 ],
+        [ "_YVORUcq---", "2019-03-12T22:43:39.115Z", 0 ],
+        [ "_YSl0nrO---", "2019-03-04T18:28:15.188Z", 0 ],
+        [ "_YY7gl3K--A", "2019-03-24T11:07:50.035Z", 2 ],
+        [ "_YaE4H3q---", "2019-03-28T00:36:36.379Z", 0 ],
+        [ "_YY7N6p2--A", "2019-03-24T10:47:26.142Z", 2 ],
+        [ "_YSlq-Ny---", "2019-03-04T18:16:37.373Z", 0 ],
+        [ "_YYykPIe---", "2019-03-24T00:42:40.168Z", 0 ],
+        [ "_YWf_RSG--B", "2019-03-16T20:46:14.850Z", 3 ],
+        [ "_YSl93J----", "2019-03-04T18:38:20.848Z", 0 ],
+        [ "_YY0Gml6---", "2019-03-24T02:30:06.719Z", 0 ],
+        [ "_YSmdMmW---", "2019-03-04T19:12:34.438Z", 0 ],
+        [ "_YY00EdG---", "2019-03-24T03:19:46.418Z", 0 ],
+        [ "_YYy1OBu---", "2019-03-24T01:01:13.148Z", 0 ],
+        [ "_YY1Bzgu---", "2019-03-24T03:34:46.572Z", 0 ],
+        [ "_YYyPBYK---", "2019-03-24T00:19:29.827Z", 0 ],
+        [ "_YaFcLFe--_", "2019-03-28T01:15:58.968Z", 1 ],
+        [ "_YWexcTu---", "2019-03-16T20:31:08.636Z", 0 ],
+        [ "_YU0HOEG---", "2019-03-11T16:15:05.314Z", 0 ],
+        [ "_YaE1DTC--A", "2019-03-28T00:33:15.089Z", 2 ],
+        [ "_YSmRdx6---", "2019-03-04T18:59:45.599Z", 0 ],
+        [ "_YaE2Q4S---", "2019-03-28T00:34:34.533Z", 0 ],
+        [ "_YSmTlb2---", "2019-03-04T19:02:04.510Z", 0 ],
+        [ "_YYzAiEe---", "2019-03-24T01:13:34.568Z", 0 ],
+        [ "_YVN12He---", "2019-03-12T22:13:38.584Z", 0 ],
+        [ "_YYyVku----", "2019-03-24T00:26:39.232Z", 0 ],
+        [ "_YaFQc26---", "2019-03-28T01:03:10.735Z", 0 ],
+        [ "_YYytrHa---", "2019-03-24T00:52:58.647Z", 0 ],
+        [ "_YaFVoZC---", "2019-03-28T01:08:50.225Z", 0 ],
+        [ "_YWezNX6--A", "2019-03-16T20:33:04.415Z", 2 ],
+        [ "_YaE3rfi---", "2019-03-28T00:36:07.321Z", 0 ],
+        [ "_YUw_E-e---", "2019-03-11T11:26:33.480Z", 0 ],
+        [ "_YYzEieO---", "2019-03-24T01:17:57.124Z", 0 ],
+        [ "_YVOfDlu---", "2019-03-12T22:58:39.356Z", 0 ],
+        [ "_YYyRtVy---", "2019-03-24T00:22:25.917Z", 0 ],
+        [ "_YaFvsf2---", "2019-03-28T01:37:18.366Z", 0 ],
+        [ "_YWfiar----", "2019-03-16T21:24:38.224Z", 0 ],
+        [ "_YSmHzya---", "2019-03-04T18:49:12.775Z", 0 ],
+        [ "_YY0uxp2---", "2019-03-24T03:13:59.486Z", 0 ],
+        [ "_YZZIMQy---", "2019-03-25T21:38:20.077Z", 0 ],
+        [ "_YaE353K---", "2019-03-28T00:36:22.035Z", 0 ]
+      ].forEach(function (parts) {
         let value = parts[0];
         let result = AQL_EXECUTE("RETURN DECODE_REV(@value)", { value }).json;
-        assertEqual({ date: parts[1], count: parts[2] }, result[0], parts);
+        assertEqual({ date: parts[1],
+count: parts[2] }, result[0], parts);
       });
     },
 
-    testShardId : function() {
+    testShardId: function () {
       const isCluster = require("@arangodb/cluster").isCluster();
 
       var cl, sid, d, counts, val, vala, valb;
@@ -677,7 +766,8 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         d = db.cl.insert({});
         sid = db._query('RETURN SHARD_ID("cl", {"_key":@val})', {val: d._key}).toArray();
         assertEqual(sid.length, 1);
@@ -692,7 +782,8 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         d = db.cl.insert({});
         sid = db._query('RETURN SHARD_ID("cl", {})').toArray();
         assertEqual(sid.length, 1);
@@ -707,9 +798,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val: null}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -722,9 +814,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val:null}).toArray();
+        sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val: null}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -737,9 +830,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {"b":@val})', {val:null}).toArray();
+        sid = db._query('RETURN SHARD_ID("cl", {"b":@val})', {val: null}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -752,9 +846,11 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         d = db.cl.insert({});
-        sid = db._query('RETURN SHARD_ID("cl", {"a":@vala,"b":@valb})', {vala:null, valb:null}).toArray();
+        sid = db._query('RETURN SHARD_ID("cl", {"a":@vala,"b":@valb})', {vala: null,
+valb: null}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -767,9 +863,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         val = 3;
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -783,9 +880,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         val = "Pi";
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -799,10 +897,11 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a"]});
         // I know, this is way beyond double precision. But honestly who cares?
         val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -816,9 +915,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         val = 3;
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -832,9 +932,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         val = "Pi";
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -848,9 +949,10 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         val = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
-        d = db.cl.insert({"a":val});
+        d = db.cl.insert({"a": val});
         sid = db._query('RETURN SHARD_ID("cl", {a:@val})', {val}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
@@ -864,11 +966,14 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         vala = 3;
         valb = "Pi";
-        d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        d = db.cl.insert({"a": vala,
+"b": valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala,
+valb}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -881,11 +986,14 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         vala = "Pi";
         valb = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
-        d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        d = db.cl.insert({"a": vala,
+"b": valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala,
+valb}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -898,11 +1006,14 @@ testParseIdentifierInvalid : function () {
       }
 
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         vala = 3.1415926535897932384626433832795028841971693993751058209749445923078164062;
         valb = 3;
-        d = db.cl.insert({"a":vala,"b":valb});
-        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala, valb}).toArray();
+        d = db.cl.insert({"a": vala,
+"b": valb});
+        sid = db._query('RETURN SHARD_ID("cl", {a:@vala, b:@valb})', {vala,
+valb}).toArray();
         assertEqual(sid.length, 1);
         if (!isCluster) {
           assertEqual(sid[0], "cl");
@@ -916,26 +1027,33 @@ testParseIdentifierInvalid : function () {
 
       // check that every document among 1000 went to the predicted shard
       try {
-        cl = db._create("cl", {numberOfShards:3, shardKeys:["a", "b"]});
+        cl = db._create("cl", {numberOfShards: 3,
+shardKeys: ["a", "b"]});
         var docs = [];
         var i, a, b, doc;
         for (i = 0; i < 1000; ++i) {
-          a = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
-          b = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5)+i;
-          doc = {a, b, i, d: db.cl.insert({a,i,b})};
+          a = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5) + i;
+          b = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5) + i;
+          doc = {a,
+b,
+i,
+d: db.cl.insert({a,
+i,
+b})};
           docs.push(doc);
         }
         docs.forEach(function (doc) {
-          sid = db._query('RETURN SHARD_ID("cl", {a:@va, b:@vb})', {va:doc.a,vb:doc.b}).toArray();
+          sid = db._query('RETURN SHARD_ID("cl", {a:@va, b:@vb})', {va: doc.a,
+vb: doc.b}).toArray();
           assertEqual(sid.length, 1);
-          d = db._query('FOR j in cl FILTER j.i == @val RETURN j', {val:doc.i}, {shardIds: sid}).toArray();
+          d = db._query('FOR j in cl FILTER j.i == @val RETURN j', {val: doc.i}, {shardIds: sid}).toArray();
           assertEqual(d.length, 1);
         });
       } finally {
         db.cl.drop();
       }
 
-    },
+    }
 
   };
 
@@ -948,7 +1066,7 @@ function ahuacatlCollectionCountTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 4 });
       let docs = [];
@@ -959,15 +1077,15 @@ function ahuacatlCollectionCountTestSuite () {
       c.insert(docs);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test LENGTH(collection) - non existing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test LENGTH(collection) - non existing
+// //////////////////////////////////////////////////////////////////////////////
 
-    testLengthNonExisting : function () {
+    testLengthNonExisting: function () {
       var cnot = cn + "DoesNotExist";
 
       try {
@@ -978,37 +1096,37 @@ function ahuacatlCollectionCountTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test LENGTH(collection)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test LENGTH(collection)
+// //////////////////////////////////////////////////////////////////////////////
 
-    testLength : function () {
+    testLength: function () {
       var actual = AQL_EXECUTE("RETURN LENGTH(" + cn + ")");
       assertEqual([ ], actual.warnings);
       assertEqual([ 1000 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test LENGTH(collection)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test LENGTH(collection)
+// //////////////////////////////////////////////////////////////////////////////
 
-    testLengthUseInLoop : function () {
+    testLengthUseInLoop: function () {
       var actual = AQL_EXECUTE("FOR i IN 1..LENGTH(" + cn + ") REMOVE CONCAT('test', i) IN " + cn);
       assertEqual([ ], actual.warnings);
       assertEqual([ ], actual.json);
       assertEqual(0, c.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test LENGTH(collection)
-////////////////////////////////////////////////////////////////////////////////
-    
-    testLengthUseBeforeModification : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test LENGTH(collection)
+// //////////////////////////////////////////////////////////////////////////////
+
+    testLengthUseBeforeModification: function () {
       let res = AQL_EXECUTE("FOR doc IN " + cn + " LET l = LENGTH(" + cn + ") REMOVE doc IN " + cn + " RETURN l");
       assertEqual(Array(1000).fill(1000), res.json);
     },
 
-    testLengthUseAfterModification : function () {
+    testLengthUseAfterModification: function () {
       try {
         AQL_EXECUTE("FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN LENGTH(" + cn + ")");
         fail();
@@ -1018,12 +1136,15 @@ function ahuacatlCollectionCountTestSuite () {
       assertEqual(1000, c.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test COLLECTIONS()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test COLLECTIONS()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCollections : function () {
-      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN COLLECTIONS()')[0]);
+    testCollections: function () {
+      assertEqual(db._collections().map((col) => {
+return {name: col.name(),
+_id: col._id};
+}), getQueryResults('RETURN COLLECTIONS()')[0]);
     }
   };
 }

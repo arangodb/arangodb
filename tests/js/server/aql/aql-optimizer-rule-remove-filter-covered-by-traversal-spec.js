@@ -1,32 +1,32 @@
 /* global describe, it, before, after, AQL_EXPLAIN*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const expect = require('chai').expect;
 const db = require('internal').db;
@@ -75,17 +75,23 @@ describe('Single Traversal Optimizer', function () {
     ];
 
     for (let i = 0; i < 10; ++i) {
-      vertices.push({_key: `a${i}`, foo: i});
-      edges.push({_from: startId, _to: `${vertexCollection}/a${i}`, foo: i});
+      vertices.push({_key: `a${i}`,
+foo: i});
+      edges.push({_from: startId,
+_to: `${vertexCollection}/a${i}`,
+foo: i});
       for (let j = 0; j < 10; ++j) {
-        vertices.push({_key: `a${i}${j}`, foo: j});
-        edges.push({_from: `${vertexCollection}/a${i}`, _to: `${vertexCollection}/a${i}${j}`, foo: j});
+        vertices.push({_key: `a${i}${j}`,
+foo: j});
+        edges.push({_from: `${vertexCollection}/a${i}`,
+_to: `${vertexCollection}/a${i}${j}`,
+foo: j});
       }
     }
 
     v.save(vertices);
     e.save(edges);
-    
+
   });
 
   after(dropCollections);
@@ -144,7 +150,7 @@ describe('Single Traversal Optimizer', function () {
         hasNoFilterNode(plan);
         validateResult(query, bindVars);
       });
- 
+
     });
 
   });

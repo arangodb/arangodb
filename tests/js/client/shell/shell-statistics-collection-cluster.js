@@ -1,28 +1,28 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global assertEqual, assertTrue, assertNull, assertNotNull, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
@@ -31,7 +31,7 @@ const request = require("@arangodb/request");
 const { getDBServers } = require('@arangodb/test-helper');
 
 
-function statisticsCollectionsSuite() {
+function statisticsCollectionsSuite () {
   'use strict';
   const collections = ["_statistics", "_statistics15", "_statisticsRaw"];
   const cn = 'UnitTestsDatabase';
@@ -44,7 +44,7 @@ function statisticsCollectionsSuite() {
         assertNotNull(db._collection(s));
       });
     },
-    
+
     testStatisticsCollectionsInOtherDatabaseOnCoordinator: function () {
       db._useDatabase("_system");
       try {
@@ -65,7 +65,9 @@ function statisticsCollectionsSuite() {
     testStatisticsCollectionsOnDBServer: function () {
       let dbservers = getDBServers();
       dbservers.forEach((server) => {
-        let result = request({ method: "GET", url: server.url + "/_api/collection", body: {} });
+        let result = request({ method: "GET",
+url: server.url + "/_api/collection",
+body: {} });
         assertEqual(200, result.json.code);
         let shards = result.json.result;
         assertTrue(Array.isArray(shards));
@@ -78,7 +80,7 @@ function statisticsCollectionsSuite() {
           assertEqual(-1, shardNames.indexOf(collectionName));
         });
       });
-    },
+    }
   };
 }
 

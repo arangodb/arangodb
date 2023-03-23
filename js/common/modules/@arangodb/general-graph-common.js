@@ -69,7 +69,7 @@ var isValidCollectionsParameter = function (x) {
   return true;
 };
 
-var checkROPermission = function(c) {
+var checkROPermission = function (c) {
   if (!users.isAuthActive()) {
     return;
   }
@@ -579,7 +579,7 @@ var updateBindCollections = function (graph) {
 
 // @brief Class Graph. Defines a graph in the Database.
 class AbstractGraph {
-  constructor(info) {
+  constructor (info) {
     // We assume well-formedness of the input.
     // User cannot directly call this constructor.
     let vertexCollections = {};
@@ -641,7 +641,7 @@ class AbstractGraph {
 // / @brief return all vertex collections of the graph.
 // //////////////////////////////////////////////////////////////////////////////
 
-  _vertexCollections(excludeOrphans) {
+  _vertexCollections (excludeOrphans) {
     if (excludeOrphans) {
       return this.__vertexCollections;
     }
@@ -652,7 +652,7 @@ class AbstractGraph {
     return _.union(_.values(this.__vertexCollections), orphans);
   }
 
-  __updateDefinitions(edgeDefs, orphans) {
+  __updateDefinitions (edgeDefs, orphans) {
     this.__edgeDefinitions = edgeDefs;
     this.__orphanCollections = orphans;
   }
@@ -662,7 +662,7 @@ class AbstractGraph {
 // //////////////////////////////////////////////////////////////////////////////
 
   // might be needed from AQL itself
-  _EDGES(vertexId) {
+  _EDGES (vertexId) {
     if (vertexId.indexOf('/') === -1) {
       let err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
@@ -1427,7 +1427,7 @@ class AbstractGraph {
       }
     }
 
-    /*var query = `
+    /* var query = `
       ${generateWithStatement(this, optionsVertex1.hasOwnProperty('edgeCollectionRestriction') ? optionsVertex1 : optionsVertex2)}
       ${transformExampleToAQL(vertex1Example, Object.keys(this.__vertexCollections), bindVars, 'left')}
         LET leftNeighbors = (FOR v IN ${optionsVertex1.minDepth || 1}..${optionsVertex1.maxDepth || 1} ${optionsVertex1.direction || 'ANY'} left

@@ -86,7 +86,7 @@ function dumpTestSuite () {
 
 jsunity.run(dumpTestSuite);
 
-jsunity.run(function() {
+jsunity.run(function () {
   db._useDatabase('anotherDataBase');
   return deriveTestSuiteWithnamespace(
     dumpTestSuite(),

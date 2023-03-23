@@ -1,39 +1,39 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const assert = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const db = internal.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimizerLimitClusterTestSuite() {
+function ahuacatlQueryOptimizerLimitClusterTestSuite () {
   const cn = 'UnitTestsAhuacatlOptimizerLimitCluster';
   const numberOfShards = 9;
   const docCount = 20;
@@ -48,7 +48,8 @@ function ahuacatlQueryOptimizerLimitClusterTestSuite() {
       const aShard = shards[0];
 
       for (let i = 0, inserted = 0; inserted < docCount; i++) {
-        const doc = {_key: "test" + i.toString(), value: inserted};
+        const doc = {_key: "test" + i.toString(),
+value: inserted};
 
         const shard = col.getResponsibleShard(doc);
         if (shard === aShard) {
@@ -85,7 +86,8 @@ function ahuacatlQueryOptimizerLimitClusterTestSuite() {
       runWithOneFilledShard(() => {
         const query = `FOR c IN ${cn} SORT c.value LIMIT 5, 10 RETURN c`;
 
-        const queryResult = db._query(query, {}, {fullCount: true, profile: 2});
+        const queryResult = db._query(query, {}, {fullCount: true,
+profile: 2});
         const extra = queryResult.getExtra();
         const values = queryResult.toArray();
 
@@ -102,13 +104,13 @@ function ahuacatlQueryOptimizerLimitClusterTestSuite() {
         // assertEqual('constrained-heap', sorts[0].strategy);
         assert.assertEqual('standard', sorts[0].strategy);
       });
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryOptimizerLimitClusterTestSuite);
 

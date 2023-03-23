@@ -23,10 +23,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 module.exports = {
-  get createRouter() {
+  get createRouter () {
     return require('@arangodb/foxx/router');
   },
-  get queue() {
+  get queue () {
     const queues = require('@arangodb/foxx/queues');
     return queues.get('default');
   }

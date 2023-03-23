@@ -7,7 +7,7 @@ global.DEFINE_MODULE('internal', (function () {
 
   const exports = {};
 
-  ///////////////////////////////////////////////////////////////////////////////
+  // /////////////////////////////////////////////////////////////////////////////
   // @brief module "internal"
   //
   // @file
@@ -46,10 +46,10 @@ global.DEFINE_MODULE('internal', (function () {
   } else {
     exports.ArangoError = function (error) {
       if (error !== undefined) {
-        this.error = error.error;                // bool -- is error or not
-        this.code = error.code;                  // int - http status code
-        this.errorNum = error.errorNum;          // int - internal arangodb error code
-        this.errorMessage = error.errorMessage;  // string - error message
+        this.error = error.error; // bool -- is error or not
+        this.code = error.code; // int - http status code
+        this.errorNum = error.errorNum; // int - internal arangodb error code
+        this.errorMessage = error.errorMessage; // string - error message
         if (error.error) {
           this.original = error;
         }
@@ -64,7 +64,7 @@ global.DEFINE_MODULE('internal', (function () {
   Object.defineProperty(exports.ArangoError.prototype, 'message', {
     configurable: true,
     enumerable: true,
-    get() {
+    get () {
       return this.errorMessage;
     }
   });
@@ -275,8 +275,8 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.extend = function (target, source) {
-    Object.getOwnPropertyNames(source)
-      .forEach(function (propName) {
+    Object.getOwnPropertyNames(source).
+      forEach(function (propName) {
         Object.defineProperty(
           target,
           propName,
@@ -677,7 +677,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.exit = global.SYS_EXIT;
     delete global.SYS_EXIT;
   } else {
-    exports.exit = function() {};
+    exports.exit = function () {};
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1611,7 +1611,7 @@ global.DEFINE_MODULE('internal', (function () {
     if (!useColor && !silent) {
       exports.print('starting color printing');
     }
-    
+
     if (color === undefined || color === null) {
       color = 'arangodb';
     }
@@ -1667,14 +1667,14 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief isArangod - find out if we are in arangod or arangosh
   // //////////////////////////////////////////////////////////////////////////////
-  exports.isArangod = function() {
+  exports.isArangod = function () {
     return (typeof ArangoClusterInfo === "object");
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief isArangod - find out if we are in a cluster setup or not
   // //////////////////////////////////////////////////////////////////////////////
-  exports.isCluster = function() {
+  exports.isCluster = function () {
     if (exports.isArangod()) {
       return require("@arangodb/cluster").isCluster();
     } else {
@@ -1713,7 +1713,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.authenticationEnabled = global.AUTHENTICATION_ENABLED;
     delete global.AUTHENTICATION_ENABLED;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ldapEnabled
   // //////////////////////////////////////////////////////////////////////////////
@@ -1731,7 +1731,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.options = global.SYS_OPTIONS;
     delete global.SYS_OPTIONS;
   }
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
@@ -1742,7 +1742,7 @@ global.DEFINE_MODULE('internal', (function () {
     let fs = require('fs');
     let dict = null;
     let preprefix = null;
-    if(enterprise){
+    if (enterprise) {
       dict = testsBasePathsEnterprise;
       preprefix = fs.join('enterprise', 'tests');
     } else {
@@ -1844,7 +1844,7 @@ global.DEFINE_MODULE('internal', (function () {
   global.stop_color_print = function stop_color_print () {
     require('internal').stopColorPrint();
   };
-  
+
   [ "arangobackup", "arangobench", "arangod", "arangodb", "arangodbtests",
     "arangodump", "arangoexport", "arangoimp", "arangoimport", "arango-init-database",
     "arangoinspect", "arangorestore", "arango-secure-installation", "arangosh", "arangovpack"].forEach((executableName) => {
@@ -1888,7 +1888,7 @@ global.DEFINE_MODULE('internal', (function () {
     exports.terminalSize = global.SYS_TERMINAL_SIZE;
     delete global.SYS_TERMINAL_SIZE;
   }
-  
+
   if (useColor) {
     exports.startColorPrint('arangodb', true);
   }

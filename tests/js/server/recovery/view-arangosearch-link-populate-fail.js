@@ -1,28 +1,28 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrey Abramov
+// / @author Vasiliy Nabatchikov
+// //////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require('@arangodb');
 var db = arangodb.db;
@@ -48,12 +48,14 @@ function runSetup () {
       collections: {
         write: ['UnitTestsRecoveryDummy']
       },
-      action: function() {
+      action: function () {
         var db = require('@arangodb').db;
         var internal = require('internal');
         var c = db.UnitTestsRecoveryDummy;
         for (let i = 0; i < 10000; i++) {
-          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+          c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i });
         }
 
         c.save({ name: 'crashme' }, true);
@@ -67,9 +69,9 @@ function runSetup () {
     true);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -79,9 +81,9 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test whether we can restore the trx data
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test whether we can restore the trx data
+    // //////////////////////////////////////////////////////////////////////////////
 
     testIResearchLinkPopulateFail: function () {
       var v = db._view('UnitTestsRecoveryView');
@@ -98,9 +100,9 @@ function recoverySuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
   'use strict';

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertNotEqual, instanceManager */
+/* jshint globalstrict:false, strict:false, maxlen: 400 */
+/* global fail, assertNotEqual, instanceManager */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure scenarios
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Heiko Kernbach
-/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test failure scenarios
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Heiko Kernbach
+// / @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
@@ -50,9 +50,9 @@ const expectedSystemCollections = [
   "_queues"
 ];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief async helper
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief async helper
+// //////////////////////////////////////////////////////////////////////////////
 
 const waitForJob = function (postJobRes) {
   expect(postJobRes).to.have.property("status", 202);
@@ -84,11 +84,11 @@ const waitForJob = function (postJobRes) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function databaseFailureSuite() {
+function databaseFailureSuite () {
   'use strict';
   var dn = "FailureDatabase";
 
@@ -111,15 +111,15 @@ function databaseFailureSuite() {
       } catch (err) {}
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test database upgrade procedure, if some system collections are
-/// already existing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test database upgrade procedure, if some system collections are
+// / already existing
+// //////////////////////////////////////////////////////////////////////////////
 
     testHideDatabaseUntilCreationIsFinished: function () {
       // this will trigger an internal sleep of 5 seconds during db creation
       internal.debugSetFailAt("UpgradeTasks::HideDatabaseUntilCreationIsFinished");
-      
+
       // this should fail now
       try {
         db._useDatabase(dn);
@@ -148,7 +148,7 @@ function databaseFailureSuite() {
         availableCollections.push(collection.name());
       });
 
-      expectedSystemCollections.forEach(function(name) {
+      expectedSystemCollections.forEach(function (name) {
         assertNotEqual(-1, availableCollections.indexOf(name));
       });
     },
@@ -164,18 +164,18 @@ function databaseFailureSuite() {
         availableCollections.push(collection.name());
       });
 
-      expectedSystemCollections.forEach(function(name) {
+      expectedSystemCollections.forEach(function (name) {
         assertNotEqual(-1, availableCollections.indexOf(name));
       });
-    },
+    }
 
   };
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 if (internal.debugCanUseFailAt()) {
   jsunity.run(databaseFailureSuite);

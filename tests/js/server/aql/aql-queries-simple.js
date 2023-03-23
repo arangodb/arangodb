@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, simple queries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, simple queries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var errors = require("internal").errors;
@@ -34,140 +34,140 @@ var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQuerySimpleTestSuite () {
   return {
 
-    testNoArraySorting1 : function () {
+    testNoArraySorting1: function () {
       let query = "LET values = [9,16,8,15,7,14,6,13,5,12,4,11,3,10,2,1] RETURN values";
       assertEqual([9, 16, 8, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 1], AQL_EXECUTE(query).json[0]);
     },
-    
-    testNoArraySorting2 : function () {
+
+    testNoArraySorting2: function () {
       let query = "LET values = [9,16,8,15,7,14,6,13,5,12,4,11,3,10,2,1] FOR v IN values FILTER v IN values LIMIT 1 RETURN values";
       assertEqual([9, 16, 8, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 1], AQL_EXECUTE(query).json[0]);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filters with special characters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test filters with special characters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSpecialChars1 : function () {
-      var data = [ 
+    testSpecialChars1: function () {
+      var data = [
         "the quick\nbrown fox jumped over\r\nthe lazy dog",
         "'the \"\\quick\\\n \"brown\\\rfox' jumped",
         '"the fox"" jumped \\over the \newline \roof"'
       ];
 
-      data.forEach(function(value) {
+      data.forEach(function (value) {
         var actual = getQueryResults("FOR doc IN [ { text: " + JSON.stringify(value) + " } ] FILTER doc.text == " + JSON.stringify(value) + " RETURN doc.text");
         assertEqual([ value ], actual);
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filters with special characters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test filters with special characters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSpecialChars2 : function () {
-      var data = [ 
+    testSpecialChars2: function () {
+      var data = [
         "the quick\nbrown fox jumped over\r\nthe lazy dog",
         "'the \"\\quick\\\n \"brown\\\rfox' jumped",
         '"the fox"" jumped \\over the \newline \roof"'
       ];
 
-      data.forEach(function(value) {
+      data.forEach(function (value) {
         var actual = getQueryResults("FOR doc IN [ { text: @value } ] FILTER doc.text == @value RETURN doc.text", { value: value });
         assertEqual([ value ], actual);
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange1 : function () {
+    testRange1: function () {
       var expected = [ [ 1, 2, 3 ] ];
 
       var actual = getQueryResults("RETURN 1..3");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange2 : function () {
+    testRange2: function () {
       var expected = [ [ 7, 8, 9, 10, 11, 12, 13, 14, 15 ] ];
 
       var actual = getQueryResults("RETURN 7..15");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange3 : function () {
+    testRange3: function () {
       var expected = [ [ -5, -6, -7, -8, -9, -10 ] ];
 
       var actual = getQueryResults("RETURN -5..-10");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange4 : function () {
+    testRange4: function () {
       var expected = [ [ -5, -4, -3, -2, -1, 0, 1, 2 ] ];
 
       var actual = getQueryResults("RETURN -5..2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange5 : function () {
+    testRange5: function () {
       var expected = [ [ 5, 4, 3, 2, 1, 0, -1, -2 ] ];
 
       var actual = getQueryResults("RETURN 5..-2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange6 : function () {
+    testRange6: function () {
       var expected = [ [ 0 ] ];
 
       var actual = getQueryResults("RETURN 0..0");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange7 : function () {
+    testRange7: function () {
       var expected = [ [ 3, 4, 5, 6, 7, 8, 9 ] ];
 
       var actual = getQueryResults("LET a = 3, b = 9 RETURN a..b");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange8 : function () {
-      var result = [ ], i ,j;
+    testRange8: function () {
+      var result = [ ], i, j;
       for (i = 1; i <= 10; ++i) {
         for (j = 1; j <= 10; ++j) {
           result.push(i * j);
@@ -178,721 +178,727 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(result, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief range
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief range
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRange9 : function () {
+    testRange9: function () {
       var expected = [ [ 1, 2, 3, 4 ] ];
 
       var actual = AQL_EXECUTE("RETURN 1.5..4.76").json;
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLet1 : function () {
+    testMultiLet1: function () {
       var expected = [ 6 ];
 
       var actual = getQueryResults("let a = 1, b = 2, c = 3 return a + b+ c");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLet2 : function () {
+    testMultiLet2: function () {
       var expected = [ 1, 1, 1 ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET a = 1, b = 2, c = 3 RETURN 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLet3 : function () {
+    testMultiLet3: function () {
       var expected = [ 3, 2, 2 ];
 
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET a = 1, b = 2, c = 3 RETURN i > a ? b : c");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLet4 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1, b = RETURN a"); 
+    testMultiLet4: function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "LET a = 1, b = RETURN a");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLet5 : function () {
+    testMultiLet5: function () {
       var expected = [ [ 1, 2, 3 ] ];
 
       var actual = getQueryResults("LET a = 1, b = (FOR i IN [ 1, 2, 3 ] RETURN i) RETURN b");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLetOrder1 : function () {
+    testMultiLetOrder1: function () {
       var expected = [ 14 ];
 
       var actual = getQueryResults("LET a = 1, b = a + 1, c = b * 7 RETURN c");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLetOrder2 : function () {
+    testMultiLetOrder2: function () {
       var expected = [ 5 ];
 
       var actual = getQueryResults("LET a = [ 3, 5 ], r = (FOR i IN a RETURN i) RETURN r[1]");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief multi let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief multi let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultiLetOrder3 : function () {
+    testMultiLetOrder3: function () {
       var expected = [ 5 ];
 
       var actual = getQueryResults("LET a = [ 3, 5 ], r = (FOR i IN a RETURN i), t = r[1] RETURN t");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return null
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return null
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery1 : function () {
+    testReturnOnlyQuery1: function () {
       var expected = [ null ];
 
       var actual = getQueryResults("return null");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a number
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a number
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery2 : function () {
+    testReturnOnlyQuery2: function () {
       var expected = [ 0 ];
 
       var actual = getQueryResults("return 0");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a string
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery3 : function () {
+    testReturnOnlyQuery3: function () {
       var expected = [ "a string value" ];
 
       var actual = getQueryResults("return \"a string value\"");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery4 : function () {
+    testReturnOnlyQuery4: function () {
       var expected = [ [ 1, 2, 9 ] ];
 
       var actual = getQueryResults("return [ 1, 2, 9 ]");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return an array
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return an array
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery5 : function () {
-      var expected = [ { "active" : false, "age" : 35, "id" : 15, "likes" : [ ], "name" : "Peter" } ];
+    testReturnOnlyQuery5: function () {
+      var expected = [ { "active": false,
+"age": 35,
+"id": 15,
+"likes": [ ],
+"name": "Peter" } ];
 
       var actual = getQueryResults("return { \"name\" : \"Peter\", \"id\" : 15, \"age\" : 35, \"active\" : false, \"likes\" : [ ] }");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a list of arrays
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a list of arrays
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery6 : function () {
-      var expected = [ [ { "name" : "Max", "id" : 1 }, { "name" : "Vanessa", "id" : 2 }, { "unrelated" : [ "some", "stuff", "goes", "here" ] } ] ];
+    testReturnOnlyQuery6: function () {
+      var expected = [ [ { "name": "Max",
+"id": 1 }, { "name": "Vanessa",
+"id": 2 }, { "unrelated": [ "some", "stuff", "goes", "here" ] } ] ];
 
       var actual = getQueryResults("return [ { \"name\" : \"Max\", \"id\" : 1 }, { \"name\" : \"Vanessa\", \"id\" : 2 }, { \"unrelated\" : [ \"some\", \"stuff\", \"goes\", \"here\" ] } ]");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a computed value
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a computed value
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnOnlyQuery7 : function () {
+    testReturnOnlyQuery7: function () {
       var expected = [ 42 ];
 
       var actual = getQueryResults("return 1 + 40 + 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet1 : function () {
+    testReturnLet1: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("let x = 1 return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet2 : function () {
+    testReturnLet2: function () {
       var expected = [ [ 1, 2, 42 ] ];
 
       var actual = getQueryResults("let x = [ 1, 2, 42 ] return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet3 : function () {
+    testReturnLet3: function () {
       var expected = [ null ];
 
       var actual = getQueryResults("let x = null return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet4 : function () {
+    testReturnLet4: function () {
       var expected = [ [ 1, 2, 3 ] ];
 
       var actual = getQueryResults("let x = (for u in [ 1, 2, 3 ] return u) return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet5 : function () {
+    testReturnLet5: function () {
       var expected = [ [ 2, 3, 4 ] ];
 
       var actual = getQueryResults("let x = (for u in (for v in [ 1, 2, 3 ] return v + 1) return u) return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from let
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from let
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLet6 : function () {
+    testReturnLet6: function () {
       var expected = [ [ 1 ] ];
 
       var actual = getQueryResults("let x = (return 1) return x");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter1 : function () {
+    testReturnFilter1: function () {
       var expected = [ ];
 
       var actual = getQueryResults("filter 1 == 0 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter2 : function () {
+    testReturnFilter2: function () {
       var expected = [ ];
 
       var actual = getQueryResults("filter 1 == 1 filter 1 == 0 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter3 : function () {
+    testReturnFilter3: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("filter 1 == 1 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter4 : function () {
+    testReturnFilter4: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("filter 1 == 1 filter \"true\" == \"true\" return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter5 : function () {
+    testReturnFilter5: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let x = (filter 1 == 1 return 1) return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter6 : function () {
+    testReturnFilter6: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let x = (filter 0 == 1 return 1) return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter7 : function () {
+    testReturnFilter7: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let x = (filter 0 == 1 return 1) filter x == [ 1 ] return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter8 : function () {
+    testReturnFilter8: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let x = (filter 1 == 1 return 1) filter x == [ 1 ] return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter9 : function () {
+    testReturnFilter9: function () {
       var expected = [ ];
 
       var actual = getQueryResults("filter 1 == 0 filter 2 == 3 return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter10 : function () {
+    testReturnFilter10: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 filter a > 1 && a < 0 filter a > 2 && a < 1 return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter11 : function () {
+    testReturnFilter11: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 filter a == 1 && a == 2 && a == 3 return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter12 : function () {
+    testReturnFilter12: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a == b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter13 : function () {
+    testReturnFilter13: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a != b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter14 : function () {
+    testReturnFilter14: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter15 : function () {
+    testReturnFilter15: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter16 : function () {
+    testReturnFilter16: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a <= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter17 : function () {
+    testReturnFilter17: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a < b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter18 : function () {
+    testReturnFilter18: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a <= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter19 : function () {
+    testReturnFilter19: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a < b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter20 : function () {
+    testReturnFilter20: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a > b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter21 : function () {
+    testReturnFilter21: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a >= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter22 : function () {
+    testReturnFilter22: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a >= b filter a == b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter23 : function () {
+    testReturnFilter23: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a <= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter24 : function () {
+    testReturnFilter24: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a < b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter25 : function () {
+    testReturnFilter25: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a > b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter26 : function () {
+    testReturnFilter26: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a >= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter27 : function () {
+    testReturnFilter27: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a > b filter a == b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter28 : function () {
+    testReturnFilter28: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a <= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter29 : function () {
+    testReturnFilter29: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a < b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter30 : function () {
+    testReturnFilter30: function () {
       var expected = [ 2 ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a >= b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a value from a filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return a value from a filter
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnFilter31 : function () {
+    testReturnFilter31: function () {
       var expected = [ ];
 
       var actual = getQueryResults("let a = 1 let b = 1 filter a == b filter a > b return 2");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sort and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnSort1 : function () {
+    testReturnSort1: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("sort null return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sort and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnSort2 : function () {
+    testReturnSort2: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("sort [ 1, 2 ] return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sort and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnSort3 : function () {
+    testReturnSort3: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("sort rand() return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sort and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief sort and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnSort4 : function () {
+    testReturnSort4: function () {
       var expected = [ [ 3, 2, 1 ] ];
 
       var actual = getQueryResults("let a=(for x in [1,2,3] sort x desc return x) return a");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief limit and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLimit1 : function () {
+    testReturnLimit1: function () {
       var expected = [ ];
 
       var actual = getQueryResults("limit 0 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief limit and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLimit2 : function () {
+    testReturnLimit2: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("limit 1 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief limit and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLimit3 : function () {
+    testReturnLimit3: function () {
       var expected = [ ];
 
       var actual = getQueryResults("limit 0, 0 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief limit and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLimit4 : function () {
+    testReturnLimit4: function () {
       var expected = [ ];
 
       var actual = getQueryResults("limit 1, 1 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief limit and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief limit and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnLimit5 : function () {
+    testReturnLimit5: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("limit 0, 1 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collect and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collect and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnCollect1 : function () {
+    testReturnCollect1: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("collect city = 1 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collect and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collect and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnCollect2 : function () {
+    testReturnCollect2: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("collect city = 1 into g return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief collect and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief collect and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReturnCollect3 : function () {
+    testReturnCollect3: function () {
       var expected = [ 1 ];
 
       var actual = getQueryResults("collect city = 1, nonsense = 2 return 1");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief comments
+// //////////////////////////////////////////////////////////////////////////////
 
     testComments1: function () {
       var expected = [ 1 ];
@@ -901,9 +907,9 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief comments
+// //////////////////////////////////////////////////////////////////////////////
 
     testComments2: function () {
       var expected = [ [ 4 ] ];
@@ -912,9 +918,9 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief comments
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief comments
+// //////////////////////////////////////////////////////////////////////////////
 
     testComments3: function () {
       var expected = [ 1 ];
@@ -923,176 +929,176 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief list index access 
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief list index access
+// //////////////////////////////////////////////////////////////////////////////
 
     testListIndexes: function () {
       var actual;
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[0]");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[1]");
       assertEqual([ 2 ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[2]");
       assertEqual([ 3 ], actual);
 
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[3]");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-1]");
       assertEqual([ 3 ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-2]");
       assertEqual([ 2 ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-3]");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l[-4]");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['a']");
       assertEqual([ null ], actual);
-  
+
       actual = getQueryResults("LET l = [ 1, 2, 3 ] RETURN l['0']");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[0]");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[1]");
       assertEqual([ '1' ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l[-1]");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['0']");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['1']");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['2']");
       assertEqual([ 2 ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['24']");
       assertEqual([ null ], actual);
-      
+
       actual = getQueryResults("LET l = { '1': 1, '2': 2, '3': 3 } RETURN l['-1']");
       assertEqual([ null ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief naming
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief naming
+// //////////////////////////////////////////////////////////////////////////////
 
     testNaming: function () {
       var actual;
-      
+
       actual = getQueryResults("LET a = [ 1 ] RETURN a[0]");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET `a` = [ 1 ] RETURN `a`[0]");
       assertEqual([ 1 ], actual);
-    
+
       actual = getQueryResults("LET `a b` = [ 1 ] RETURN `a b`[0]");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET `a b c` = [ 1 ] RETURN `a b c`[0]");
       assertEqual([ 1 ], actual);
-      
+
       actual = getQueryResults("LET `a b c` = { `d e f`: 1 } RETURN `a b c`['d e f']");
       assertEqual([ 1 ], actual);
-      
-      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, "LET a = 1 RETURN `a b c`"); 
+
+      assertQueryError(errors.ERROR_ARANGO_ILLEGAL_NAME.code, "LET a = 1 RETURN `a b c`");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric overflow at compile time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric overflow at compile time
+// //////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileInt: function () {
       assertEqual([ 0 ], getQueryResults("LET l = 4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric overflow at compile time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric overflow at compile time
+// //////////////////////////////////////////////////////////////////////////////
 
     testOverflowCompileDouble: function () {
-      assertEqual([ 0 ], getQueryResults("LET l = 4.0e999 RETURN l * l * l * l * l")); 
+      assertEqual([ 0 ], getQueryResults("LET l = 4.0e999 RETURN l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric underflow at compile time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric underflow at compile time
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileInt: function () {
       assertEqual([ 0 ], getQueryResults("LET l = -4444444444444555555555555555555555555555555555554444333333333333333333333334444444544 RETURN l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric underflow at compile time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric underflow at compile time
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnderflowCompileDouble: function () {
-      assertEqual([ 0 ], getQueryResults("LET l = -4.0e999 RETURN l * l * l * l * l")); 
+      assertEqual([ 0 ], getQueryResults("LET l = -4.0e999 RETURN l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric overflow at execution time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric overflow at execution time
+// //////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionInt: function () {
-      assertEqual([ null ], getQueryResults("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ 33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric overflow at execution time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric overflow at execution time
+// //////////////////////////////////////////////////////////////////////////////
 
     testOverflowExecutionDouble: function () {
-      assertEqual([ 0 ], getQueryResults("FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ 0 ], getQueryResults("FOR l IN [ 3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric underflow at execution time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric underflow at execution time
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionInt: function () {
-      assertEqual([ null ], getQueryResults("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ null ], getQueryResults("FOR l IN [ -33939359949454345354858882332 ] RETURN l * l * l * l * l * l * l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief numeric underflow at execution time
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief numeric underflow at execution time
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnderflowExecutionDouble: function () {
-      assertEqual([ 0 ], getQueryResults("FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l")); 
+      assertEqual([ 0 ], getQueryResults("FOR l IN [ -3.0e300 ] RETURN l * l * l * l * l * l * l * l * l * l * l"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief big integer overflow
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief big integer overflow
+// //////////////////////////////////////////////////////////////////////////////
 
     testBigIntOverflow: function () {
-      assertEqual([ 9223372036854776000 ], getQueryResults("RETURN 9223372036854775808")); 
+      assertEqual([ 9223372036854776000 ], getQueryResults("RETURN 9223372036854775808"));
     },
-    
-////////////////////////////////////////////////////////////////////////////////
-/// @brief big integer underflow
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief big integer underflow
+// //////////////////////////////////////////////////////////////////////////////
 
     testBigIntUnderflow: function () {
-      assertEqual([ -9223372036854776000 ], getQueryResults("RETURN -9223372036854775809")); 
+      assertEqual([ -9223372036854776000 ], getQueryResults("RETURN -9223372036854775809"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief big integers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief big integers
+// //////////////////////////////////////////////////////////////////////////////
 
     testBigInt: function () {
       var actual;
@@ -1101,9 +1107,9 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ 1, 1, 1, 1 ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief negative numbers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief negative numbers
+// //////////////////////////////////////////////////////////////////////////////
 
     testNegativeNumbers1: function () {
       var actual;
@@ -1112,64 +1118,71 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ -1, -2, -2.5, -5.5, -4, -7, -4 ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief negative numbers
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief negative numbers
+// //////////////////////////////////////////////////////////////////////////////
+
     testNegativeNumbers2: function () {
       var actual;
 
       actual = getQueryResults("FOR i IN [ 1 ] RETURN { a: -1 -3, b: 2 - 0 }");
-      assertEqual([ { a: -4, b: 2 } ], actual);
+      assertEqual([ { a: -4,
+b: 2 } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test empty lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test empty lists
+// //////////////////////////////////////////////////////////////////////////////
 
     testEmptyLists1: function () {
       var actual;
 
       actual = getQueryResults("LET l1 = [ ] LET l2 = [ ] RETURN { l1: l1, l2: l2 }");
-      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+      assertEqual([ { l1: [ ],
+l2: [ ] } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test empty lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test empty lists
+// //////////////////////////////////////////////////////////////////////////////
 
     testEmptyLists2: function () {
       var actual;
 
       actual = getQueryResults("LET l1 = (FOR i IN [] RETURN i) LET l2 = (FOR i IN [ ] RETURN i) RETURN { l1: l1, l2: l2 }");
-      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+      assertEqual([ { l1: [ ],
+l2: [ ] } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test empty lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test empty lists
+// //////////////////////////////////////////////////////////////////////////////
 
     testEmptyLists3: function () {
       var actual;
 
-      actual = getQueryResults("LET l1 = @l1 LET l2 = @l2 RETURN { l1: l1, l2: l2 }", { l1: [ ], l2: [ ] });
-      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+      actual = getQueryResults("LET l1 = @l1 LET l2 = @l2 RETURN { l1: l1, l2: l2 }", { l1: [ ],
+l2: [ ] });
+      assertEqual([ { l1: [ ],
+l2: [ ] } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test empty lists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test empty lists
+// //////////////////////////////////////////////////////////////////////////////
 
     testEmptyLists4: function () {
       var actual;
 
-      actual = getQueryResults("LET l1 = (FOR i IN @l1 RETURN i) LET l2 = (FOR i IN @l2 RETURN i) RETURN { l1: l1, l2: l2 }", { l1: [ ], l2: [ ] });
-      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+      actual = getQueryResults("LET l1 = (FOR i IN @l1 RETURN i) LET l2 = (FOR i IN @l2 RETURN i) RETURN { l1: l1, l2: l2 }", { l1: [ ],
+l2: [ ] });
+      assertEqual([ { l1: [ ],
+l2: [ ] } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test constant filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test constant filter
+// //////////////////////////////////////////////////////////////////////////////
 
     testConstantFilter1: function () {
       var actual;
@@ -1178,9 +1191,9 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ 1, 2, 3, 4 ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test constant filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test constant filter
+// //////////////////////////////////////////////////////////////////////////////
 
     testConstantFilter2: function () {
       var actual;
@@ -1189,9 +1202,9 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test constant filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test constant filter
+// //////////////////////////////////////////////////////////////////////////////
 
     testConstantFilter3: function () {
       var actual;
@@ -1200,95 +1213,134 @@ function ahuacatlQuerySimpleTestSuite () {
       assertEqual([ ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test constant filter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test constant filter
+// //////////////////////////////////////////////////////////////////////////////
 
     testConstantFilter4: function () {
       var actual;
 
       actual = getQueryResults("LET l1 = (FOR i IN [1, 2, 3, 4] FILTER 3 < 0 RETURN i) LET l2 = (FOR i IN [1, 2, 3, 4] FILTER 3 < 0 RETURN i) RETURN { l1: l1, l2: l2 }");
-      assertEqual([ { l1: [ ], l2: [ ] } ], actual);
+      assertEqual([ { l1: [ ],
+l2: [ ] } ], actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stable sort after COLLECT
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief stable sort after COLLECT
+// //////////////////////////////////////////////////////////////////////////////
+
     testStableSort1: function () {
-      var data = [ 
-        { "city" : "london", "order" : 4 }, 
-        { "city" : "paris", "order" : 4 }, 
-        { "city" : "london", "order" : 2 }, 
-        { "city" : "paris", "order" : 3 }, 
-        { "city" : "new york", "order" : 2 }, 
-        { "city" : "london", "order" : 3 }, 
-        { "city" : "new york", "order" : 4 }, 
-        { "city" : "new york", "order" : 3 }, 
-        { "city" : "paris", "order" : 1 }, 
-        { "city" : "new york", "order" : 1 }, 
-        { "city" : "paris", "order" : 2 }, 
-        { "city" : "london", "order" : 1 }
+      var data = [
+        { "city": "london",
+"order": 4 },
+        { "city": "paris",
+"order": 4 },
+        { "city": "london",
+"order": 2 },
+        { "city": "paris",
+"order": 3 },
+        { "city": "new york",
+"order": 2 },
+        { "city": "london",
+"order": 3 },
+        { "city": "new york",
+"order": 4 },
+        { "city": "new york",
+"order": 3 },
+        { "city": "paris",
+"order": 1 },
+        { "city": "new york",
+"order": 1 },
+        { "city": "paris",
+"order": 2 },
+        { "city": "london",
+"order": 1 }
       ];
 
       var actual, expected;
 
-      expected = [ 
-        { "city" : "london", "orders" : [ 4, 3, 2, 1 ] }, 
-        { "city" : "new york", "orders" : [ 4, 3, 2, 1 ] }, 
-        { "city" : "paris", "orders" : [ 4, 3, 2, 1 ] } 
+      expected = [
+        { "city": "london",
+"orders": [ 4, 3, 2, 1 ] },
+        { "city": "new york",
+"orders": [ 4, 3, 2, 1 ] },
+        { "city": "paris",
+"orders": [ 4, 3, 2, 1 ] }
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.order DESC COLLECT city = value.city INTO orders RETURN { city: city, orders: orders[*].value.order }");
       assertEqual(expected, actual);
-      
-      expected = [ 
-        { "city" : "london", "orders" : [ 1, 2, 3, 4 ] }, 
-        { "city" : "new york", "orders" : [ 1, 2, 3, 4 ] }, 
-        { "city" : "paris", "orders" : [ 1, 2, 3, 4 ] } 
+
+      expected = [
+        { "city": "london",
+"orders": [ 1, 2, 3, 4 ] },
+        { "city": "new york",
+"orders": [ 1, 2, 3, 4 ] },
+        { "city": "paris",
+"orders": [ 1, 2, 3, 4 ] }
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.order ASC COLLECT city = value.city INTO orders RETURN { city: city, orders: orders[*].value.order }");
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stable sort after COLLECT
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief stable sort after COLLECT
+// //////////////////////////////////////////////////////////////////////////////
+
     testStableSort2: function () {
-      var data = [ 
-        { "city" : "london", "order" : 4 }, 
-        { "city" : "paris", "order" : 4 }, 
-        { "city" : "london", "order" : 2 }, 
-        { "city" : "paris", "order" : 3 }, 
-        { "city" : "new york", "order" : 2 }, 
-        { "city" : "london", "order" : 3 }, 
-        { "city" : "new york", "order" : 4 }, 
-        { "city" : "new york", "order" : 3 }, 
-        { "city" : "paris", "order" : 1 }, 
-        { "city" : "new york", "order" : 1 }, 
-        { "city" : "paris", "order" : 2 }, 
-        { "city" : "london", "order" : 1 }
+      var data = [
+        { "city": "london",
+"order": 4 },
+        { "city": "paris",
+"order": 4 },
+        { "city": "london",
+"order": 2 },
+        { "city": "paris",
+"order": 3 },
+        { "city": "new york",
+"order": 2 },
+        { "city": "london",
+"order": 3 },
+        { "city": "new york",
+"order": 4 },
+        { "city": "new york",
+"order": 3 },
+        { "city": "paris",
+"order": 1 },
+        { "city": "new york",
+"order": 1 },
+        { "city": "paris",
+"order": 2 },
+        { "city": "london",
+"order": 1 }
       ];
 
       var actual, expected;
 
-      expected = [ 
-        { "cities" : [ "paris", "new york", "london" ], "order" : 1 }, 
-        { "cities" : [ "paris", "new york", "london" ], "order" : 2 }, 
-        { "cities" : [ "paris", "new york", "london" ], "order" : 3 }, 
-        { "cities" : [ "paris", "new york", "london" ], "order" : 4 } 
+      expected = [
+        { "cities": [ "paris", "new york", "london" ],
+"order": 1 },
+        { "cities": [ "paris", "new york", "london" ],
+"order": 2 },
+        { "cities": [ "paris", "new york", "london" ],
+"order": 3 },
+        { "cities": [ "paris", "new york", "london" ],
+"order": 4 }
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city DESC COLLECT order = value.order INTO cities RETURN { order: order, cities: cities[*].value.city }");
       assertEqual(expected, actual);
-      
-      expected = [ 
-        { "cities" : [ "london", "new york", "paris" ], "order" : 4 }, 
-        { "cities" : [ "london", "new york", "paris" ], "order" : 3 }, 
-        { "cities" : [ "london", "new york", "paris" ], "order" : 2 }, 
-        { "cities" : [ "london", "new york", "paris" ], "order" : 1 } 
+
+      expected = [
+        { "cities": [ "london", "new york", "paris" ],
+"order": 4 },
+        { "cities": [ "london", "new york", "paris" ],
+"order": 3 },
+        { "cities": [ "london", "new york", "paris" ],
+"order": 2 },
+        { "cities": [ "london", "new york", "paris" ],
+"order": 1 }
       ];
 
       actual = getQueryResults("FOR value IN " + JSON.stringify(data) + " SORT value.city ASC COLLECT order = value.order INTO cities SORT order DESC RETURN { order: order, cities: cities[*].value.city }");
@@ -1298,68 +1350,68 @@ function ahuacatlQuerySimpleTestSuite () {
 
     testLimitForLists: function () {
       var queries = [
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 0 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1 RETURN doc2", [1]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2 RETURN doc2", [1,2]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3 RETURN doc2", [1,2,3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 4 RETURN doc2", [1,2,3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,0 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,1 RETURN doc2", [2]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,2 RETURN doc2", [2,3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,3 RETURN doc2", [2,3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,4 RETURN doc2", [2,3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,0 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,1 RETURN doc2", [3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,2 RETURN doc2", [3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,3 RETURN doc2", [3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,4 RETURN doc2", [3]], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,0 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,1 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,2 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,3 RETURN doc2", []], 
-        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,4 RETURN doc2", []] 
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 0 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1 RETURN doc2", [1]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2 RETURN doc2", [1, 2]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3 RETURN doc2", [1, 2, 3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 4 RETURN doc2", [1, 2, 3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,0 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,1 RETURN doc2", [2]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,2 RETURN doc2", [2, 3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,3 RETURN doc2", [2, 3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 1,4 RETURN doc2", [2, 3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,0 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,1 RETURN doc2", [3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,2 RETURN doc2", [3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,3 RETURN doc2", [3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 2,4 RETURN doc2", [3]],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,0 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,1 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,2 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,3 RETURN doc2", []],
+        ["FOR doc1 IN [[1],[2],[3]] FOR doc2 IN doc1 LIMIT 3,4 RETURN doc2", []]
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var actual = getQueryResults(query[0]);
         assertEqual(query[1], actual);
       });
     },
 
-    testForWithoutArray : function () {
+    testForWithoutArray: function () {
       let values = [ null, false, true, -1, 0, 1.5, 9999, {} ];
-      values.forEach(function(value) {
-        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = @value FOR x IN a RETURN 1", { value }); 
-      
-        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(@value) FOR x IN a RETURN 1", { value }); 
+      values.forEach(function (value) {
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = @value FOR x IN a RETURN 1", { value });
+
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(@value) FOR x IN a RETURN 1", { value });
       });
     },
 
-    testLargeQuery : function() {
+    testLargeQuery: function () {
       let q = "LET v0 = NOOPT(1)";
       const cnt = 2000;
       for (let i = 1; i < cnt; ++i) {
-        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
+        q += `LET v${i} = NOOPT(v${i - 1} + 1)\n`;
       }
       q += `RETURN v${cnt - 1}`;
       assertEqual([cnt], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
-    
-    testLargeSubQuery : function() {
+
+    testLargeSubQuery: function () {
       const _ = require('lodash');
       let q = "FOR i IN 0..9 LET x = (\n";
       q += "LET v0 = NOOPT(1)\n";
       const cnt = 2000;
       for (let i = 1; i < cnt; ++i) {
-        q += `LET v${i} = NOOPT(v${i- 1} + 1)\n`;
+        q += `LET v${i} = NOOPT(v${i - 1} + 1)\n`;
       }
       q += `RETURN v${cnt - 1})[0]\n`;
       q += "RETURN i + x";
       const expected = _.range(cnt, cnt + 10);
       assertEqual(expected, AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
-    
-    testQueryWithManyInitializeCursors : function() {
+
+    testQueryWithManyInitializeCursors: function () {
       let q = "LET x = NOOPT([1])\n";
       const cnt = 999;
       for (let i = 0; i < cnt; ++i) {
@@ -1368,8 +1420,8 @@ function ahuacatlQuerySimpleTestSuite () {
       q += "RETURN 1";
       assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
-    
-    testQueryWithManyNodes : function() {
+
+    testQueryWithManyNodes: function () {
       let q = "LET x = NOOPT('testi')\n";
       const cnt = 4000 - 4; // singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
@@ -1378,8 +1430,8 @@ function ahuacatlQuerySimpleTestSuite () {
       q += "RETURN 1";
       assertEqual([1], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
-    
-    testQueryWithTooManyNodes : function() {
+
+    testQueryWithTooManyNodes: function () {
       let q = "LET x = NOOPT('testi')\n";
       const cnt = 4000; // plus singleton + calculation + calculation + return
       for (let i = 0; i < cnt; ++i) {
@@ -1388,53 +1440,53 @@ function ahuacatlQuerySimpleTestSuite () {
       q += "RETURN 1";
       assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
     },
-    
-    testQueryWithDeepExpression : function() {
+
+    testQueryWithDeepExpression: function () {
       let q = "RETURN 0";
-      const cnt = 500 - 2; 
+      const cnt = 500 - 2;
       for (let i = 1; i <= cnt; ++i) {
         q += " + " + i;
       }
       assertEqual([124251], AQL_EXECUTE(q, {}, {optimizer: {rules: ['-all']}}).json);
     },
-    
-    testQueryWithTooDeepExpression : function() {
+
+    testQueryWithTooDeepExpression: function () {
       let q = "RETURN 0";
-      const cnt = 500; 
+      const cnt = 500;
       for (let i = 0; i < cnt; ++i) {
         q += " + " + i;
       }
       assertQueryError(errors.ERROR_QUERY_TOO_MUCH_NESTING.code, q);
     },
 
-    testIsNullConversion : function() {
-      let q = `RETURN IS_NULL(42)`; 
+    testIsNullConversion: function () {
+      let q = `RETURN IS_NULL(42)`;
       let nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       let expr = nodes[0].expression;
       assertEqual("value", expr.type);
       assertFalse(expr.value);
-      
-      q = `RETURN IS_NULL(null)`; 
+
+      q = `RETURN IS_NULL(null)`;
       nodes = AQL_EXPLAIN(q).plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       expr = nodes[0].expression;
       assertEqual("value", expr.type);
       assertTrue(expr.value);
-      
-      q = `RETURN IS_NULL(@value)`; 
+
+      q = `RETURN IS_NULL(@value)`;
       nodes = AQL_EXPLAIN(q, {value: 42}).plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       expr = nodes[0].expression;
       assertEqual("value", expr.type);
       assertFalse(expr.value);
-      
+
       nodes = AQL_EXPLAIN(q, {value: null}).plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       expr = nodes[0].expression;
       assertEqual("value", expr.type);
       assertTrue(expr.value);
-    },
+    }
 
   };
 }

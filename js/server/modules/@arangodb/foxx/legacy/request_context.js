@@ -377,7 +377,8 @@ class RequestContext {
       reason: reason,
       errorHandler: errorHandler
     });
-    this.route.docs.errorResponses.push({code: code, reason: reason});
+    this.route.docs.errorResponses.push({code: code,
+reason: reason});
     return this;
   }
 
@@ -399,8 +400,8 @@ class RequestContext {
 
     check = function (req) {
       if (
-        !(req.session && req.session.get('uid')) // new and shiny
-        && !(req.user && req.currentSession) // old and busted
+        !(req.session && req.session.get('uid')) && // new and shiny
+        !(req.user && req.currentSession) // old and busted
       ) {
         throw new UnauthorizedError();
       }
@@ -427,7 +428,7 @@ class RequestContextBuffer {
 }
 
 Object.assign(RequestContextBuffer.prototype, {
-  applyEachFunction(target) {
+  applyEachFunction (target) {
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });

@@ -41,7 +41,7 @@ const {
 
 const cn = 'UnitTestsReplication';
 
-function ReplicationIncrementalMalarkeyNoHLC() {
+function ReplicationIncrementalMalarkeyNoHLC () {
   'use strict';
 
   let suite = {
@@ -57,7 +57,7 @@ function ReplicationIncrementalMalarkeyNoHLC() {
       // clear all failure points
       clearFailurePoints();
       db._drop(cn);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_NoHLC');

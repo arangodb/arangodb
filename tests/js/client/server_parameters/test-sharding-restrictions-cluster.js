@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertUndefined, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for security-related server options
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -41,17 +41,17 @@ const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 let db = require('internal').db;
 
-function testSuite() {
+function testSuite () {
   return {
-    setUp: function() {
-      db._drop(cn);
-    },
-    
-    tearDown: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    testCreateDatabaseNoReplicationFactor : function() {
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    testCreateDatabaseNoReplicationFactor: function () {
       db._createDatabase(cn + "Database");
       try {
         db._useDatabase(cn + "Database");
@@ -62,8 +62,8 @@ function testSuite() {
         db._dropDatabase(cn + "Database");
       }
     },
-    
-    testCreateDatabaseWithReplicationFactor : function() {
+
+    testCreateDatabaseWithReplicationFactor: function () {
       db._createDatabase(cn + "Database", { replicationFactor: 2 });
       try {
         db._useDatabase(cn + "Database");
@@ -74,8 +74,8 @@ function testSuite() {
         db._dropDatabase(cn + "Database");
       }
     },
-    
-    testCreateDatabaseTooLowReplicationFactor : function() {
+
+    testCreateDatabaseTooLowReplicationFactor: function () {
       try {
         db._createDatabase(cn + "Database", { replicationFactor: 1 });
         fail();
@@ -83,8 +83,8 @@ function testSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testCreateDatabaseTooHighReplicationFactor : function() {
+
+    testCreateDatabaseTooHighReplicationFactor: function () {
       try {
         db._createDatabase(cn + "Database", { replicationFactor: 4 });
         fail();
@@ -92,26 +92,26 @@ function testSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testCreateCollectionNoShards : function() {
+
+    testCreateCollectionNoShards: function () {
       let c = db._create(cn);
       let props = c.properties();
       assertEqual(1, props.numberOfShards);
     },
 
-    testCreateCollectionOneShard : function() {
+    testCreateCollectionOneShard: function () {
       let c = db._create(cn, { numberOfShards: 1 });
       let props = c.properties();
       assertEqual(1, props.numberOfShards);
     },
-    
-    testCreateCollectionMaximumShards : function() {
+
+    testCreateCollectionMaximumShards: function () {
       let c = db._create(cn, { numberOfShards: 3 });
       let props = c.properties();
       assertEqual(3, props.numberOfShards);
     },
-    
-    testCreateCollectionTooManyShards : function() {
+
+    testCreateCollectionTooManyShards: function () {
       try {
         db._create(cn, { numberOfShards: 4 });
         fail();
@@ -119,39 +119,39 @@ function testSuite() {
         assertEqual(errors.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
       }
     },
-    
-    testCreateCollectionNoReplicationFactor : function() {
+
+    testCreateCollectionNoReplicationFactor: function () {
       let c = db._create(cn);
       let props = c.properties();
       assertEqual(2, props.replicationFactor);
     },
-    
-    testCreateCollectionMinReplicationFactor : function() {
+
+    testCreateCollectionMinReplicationFactor: function () {
       let c = db._create(cn, { replicationFactor: 2 });
       let props = c.properties();
       assertEqual(2, props.replicationFactor);
     },
-    
-    testCreateCollectionMaxReplicationFactor : function() {
+
+    testCreateCollectionMaxReplicationFactor: function () {
       let c = db._create(cn, { replicationFactor: 3 }, 2, { enforceReplicationFactor: false });
       let props = c.properties();
       assertEqual(3, props.replicationFactor);
     },
-    
-    testCreateCollectionReplicationFactorTooHigh : function() {
+
+    testCreateCollectionReplicationFactorTooHigh: function () {
       try {
         db._create(cn, { replicationFactor: 4 }, 2, { enforceReplicationFactor: true });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-      
+
       let c = db._create(cn, { replicationFactor: 4 }, 2, { enforceReplicationFactor: false });
       let props = c.properties();
       assertEqual(4, props.replicationFactor);
     },
-    
-    testCreateCollectionChangeReplicationFactor : function() {
+
+    testCreateCollectionChangeReplicationFactor: function () {
       let c = db._create(cn, { replicationFactor: 2 });
       let props = c.properties();
       assertEqual(2, props.replicationFactor);
@@ -163,7 +163,7 @@ function testSuite() {
       }
     },
 
-    testCreateGraph : function() {
+    testCreateGraph: function () {
       const graph = require("@arangodb/general-graph");
       const vn = "UnitTestVertices";
       const en = "UnitTestEdges";
@@ -183,8 +183,8 @@ function testSuite() {
         graph._drop(gn, true);
       }
     },
-    
-    testCreateSmartGraph : function() {
+
+    testCreateSmartGraph: function () {
       if (!require("internal").isEnterprise()) {
         return;
       }
@@ -206,8 +206,8 @@ function testSuite() {
       } finally {
         smrt._drop(gn, true);
       }
-    },
-    
+    }
+
   };
 }
 

@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -47,7 +47,7 @@ function TasksSuite () {
   let coordinators = [];
   const baseTasksUrl = `/_api/tasks`;
 
-  function sendRequest(method, endpoint, body, usePrimary) {
+  function sendRequest (method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -60,7 +60,7 @@ function TasksSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -76,7 +76,7 @@ function TasksSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -95,14 +95,14 @@ function TasksSuite () {
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cns[0]);
       db._drop(cns[1]);
       cs = [];
       coordinators = [];
     },
 
-    testTaskForwarding: function() {
+    testTaskForwarding: function () {
       let url = baseTasksUrl;
       const task = {
         command: `const time = Date.now();`,
@@ -131,7 +131,7 @@ function TasksSuite () {
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
-    },
+    }
 
   };
 }

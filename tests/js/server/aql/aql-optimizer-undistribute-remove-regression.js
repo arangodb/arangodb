@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXECUTE, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
@@ -46,39 +46,42 @@ var setupData = function () {
 
   c1.save([{_key: "1"}, {_key: "2"}, {_key: "3"}]);
   c2.save([
-    {_key: "1", value: "testValue1"},
-    {_key: "2", value: "testValue2"},
-    {_key: "3", value: "testValue3"},
+    {_key: "1",
+value: "testValue1"},
+    {_key: "2",
+value: "testValue2"},
+    {_key: "3",
+value: "testValue3"}
   ]);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function undistributeAfterEnumCollRegressionSuite() {
+function undistributeAfterEnumCollRegressionSuite () {
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       cleanup();
       setupData();
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       cleanup();
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test whether the undistribute-remove-after-enum-coll rule
-    /// messes up the execution plan badly.
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test whether the undistribute-remove-after-enum-coll rule
+    // / messes up the execution plan badly.
+    // //////////////////////////////////////////////////////////////////////////////
     testUndistributeRule: function () {
       const query = `
         FOR x IN @@c1
@@ -88,22 +91,22 @@ function undistributeAfterEnumCollRegressionSuite() {
           RETURN NEW.value`;
       const bindVars = {
         "@c1": collectionName1,
-        c2: collectionName2,
+        c2: collectionName2
       };
 
       var withRule = db._query(query, bindVars);
       var withoutRule = db._query(query, bindVars, {
-        optimizer: { rules: ["-undistribute-remove-after-enum-coll"] },
+        optimizer: { rules: ["-undistribute-remove-after-enum-coll"] }
       });
 
       assertEqual(withoutRule.toArray().sort(), withRule.toArray().sort());
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(undistributeAfterEnumCollRegressionSuite);
 

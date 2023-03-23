@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, assertNotEqual, assertMatch, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -43,7 +43,7 @@ function PregelSuite () {
   let coordinators = [];
   const baseUrl = `/_api/control_pregel`;
 
-  function sendRequest(method, endpoint, body, usePrimary) {
+  function sendRequest (method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -56,7 +56,7 @@ function PregelSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -72,7 +72,7 @@ function PregelSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -80,12 +80,15 @@ function PregelSuite () {
 
       cs = [];
       cs.push(db._create("vertices", {numberOfShards: 8}));
-      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"], distributeShardsLike: "vertices", numberOfShards: 8}));
+      cs.push(db._createEdgeCollection("edges", {shardKeys: ["vertex"],
+distributeShardsLike: "vertices",
+numberOfShards: 8}));
       for (let i = 1; i <= 250; ++i) {
         cs[0].save({ _key: `v_${i}` });
         const edges = [];
         for (let j = 1; j < i; ++j) {
-          edges.push({ _from: `vertices/v_${j}`, _to: `vertices/v_${i}` });
+          edges.push({ _from: `vertices/v_${j}`,
+_to: `vertices/v_${i}` });
         }
         cs[1].save(edges);
       }
@@ -93,14 +96,14 @@ function PregelSuite () {
       require("internal").wait(5.0);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop("edges");
       db._drop("vertices");
       cs = [];
       coordinators = [];
     },
-    
-    testPregelAllJobs: function() {
+
+    testPregelAllJobs: function () {
       let url = baseUrl;
       const task = {
         algorithm: "pagerank",
@@ -109,7 +112,7 @@ function PregelSuite () {
         params: {
           resultField: "result",
           store: false
-        },
+        }
       };
       let ids = [];
       for (let i = 0; i < 5; ++i) {
@@ -121,7 +124,7 @@ function PregelSuite () {
         ids.push(result.body);
       }
       assertEqual(5, ids.length);
-      
+
       let result = sendRequest('GET', url, {}, false);
       assertEqual(result.status, 200);
       assertEqual(5, result.body.length);
@@ -153,7 +156,7 @@ function PregelSuite () {
       });
     },
 
-    testPregelForwarding: function() {
+    testPregelForwarding: function () {
       let url = baseUrl;
       const task = {
         algorithm: "pagerank",
@@ -185,8 +188,8 @@ function PregelSuite () {
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
     },
-    
-    testPregelWrongId: function() {
+
+    testPregelWrongId: function () {
       let url = baseUrl;
       const task = {
         algorithm: "pagerank",
@@ -217,19 +220,19 @@ function PregelSuite () {
       assertEqual(result.status, 404);
       assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.body.errorNum);
       assertMatch(/cannot find target server/, result.body.errorMessage);
-      
+
       result = sendRequest('DELETE', `${baseUrl}/12345${taskId}`, {}, {}, false);
       assertEqual(result.status, 404);
       assertEqual(errors.ERROR_CURSOR_NOT_FOUND.code, result.body.errorNum);
       assertMatch(/cannot find target server/, result.body.errorMessage);
-      
+
       // kill using the right id
       result = sendRequest('DELETE', url, {}, {}, true);
 
       assertFalse(result === undefined || result === {});
       assertFalse(result.body.error);
       assertEqual(result.status, 200);
-    },
+    }
 
   };
 }

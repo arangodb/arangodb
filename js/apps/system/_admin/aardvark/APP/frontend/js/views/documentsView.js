@@ -547,7 +547,7 @@
         var callback = function (error, type) {
           if (error) {
             arangoHelper.arangoError('Error', 'Could not fetch collection type');
-          } else {            
+          } else {
             if (this.collection.getSmartJoinAttribute()) {
               tableContent.push(this.createDocumentKeyInput(true));
 
@@ -568,7 +568,7 @@
                 )
               );
               tableContent.push(window.modalView.createJsonEditor());
-              
+
               buttons.push(
                 window.modalView.createSuccessButton('Create', this.addSmartAttributeDocument.bind(this))
               );
@@ -717,7 +717,7 @@
                 tableContent
               );
             }
-            
+
             var container = document.getElementById('jsoneditor');
             this.resize();
             var options = {

@@ -82,27 +82,27 @@
     rerenderDistributionDonuts: function (donutChartData) {
       let renderDonut = (chartData, idSelector) => {
         nv.addGraph(function () {
-          var chart = nv.models.pieChart()
-            .x(function (d) {
+          var chart = nv.models.pieChart().
+            x(function (d) {
               return d.label;
-            })
-            .y(function (d) {
+            }).
+            y(function (d) {
               return d.value;
-            })
-            .showLabels(true)
-            .showTooltipPercent(true)
-            .legendPosition("bottom")
-            .labelThreshold(0.05)
-            .labelType("percent")
-            .donut(true)
-            .donutRatio(0.35);
-          ;
+            }).
+            showLabels(true).
+            showTooltipPercent(true).
+            legendPosition("bottom").
+            labelThreshold(0.05).
+            labelType("percent").
+            donut(true).
+            donutRatio(0.35);
+
 
           let id = `${idSelector} svg`;
-          d3.select(id)
-            .datum(chartData)
-            .transition().duration(350)
-            .call(chart);
+          d3.select(id).
+            datum(chartData).
+            transition().duration(350).
+            call(chart);
 
           return chart;
         });
@@ -163,9 +163,12 @@
       _.each(data, (info, dbServerId) => {
         let shortName = arangoHelper.getDatabaseShortName(dbServerId);
         tableData[shortName] = {
-          shards: {total: 0, percent: 0},
-          leaders: {total: 0, percent: 0},
-          followers: {total: 0, percent: 0}
+          shards: {total: 0,
+percent: 0},
+          leaders: {total: 0,
+percent: 0},
+          followers: {total: 0,
+percent: 0}
         };
 
         donutChartData.shards.push({
@@ -211,7 +214,7 @@
           arangoHelper.arangoError('Distribution', 'Could not fetch "shardStatistics" details.');
         }
       });
-    },
+    }
 
   });
 }());

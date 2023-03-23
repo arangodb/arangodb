@@ -10,30 +10,30 @@ const internal = require('internal');
 const arango = require('@arangodb').arango;
 const _ = require("lodash");
 
-function getStatistics() {
+function getStatistics () {
   return arango.GET("/_db/_system/_admin/statistics?sync=true");
 }
 
-function performGETRequest() {
+function performGETRequest () {
   arango.GET('/_api/version');
 }
 
-function performPOSTRequest() {
+function performPOSTRequest () {
   arango.POST("/_admin/execute", "return 'test!'");
 }
 
-function performDELETERequest() {
+function performDELETERequest () {
   arango.DELETE("/_dummy");
 }
 
-function checkCommonStatisticsChanges(initialStats, finalStats) {
+function checkCommonStatisticsChanges (initialStats, finalStats) {
   const greater = [
     "client.totalTime.sum",
     "client.requestTime.sum",
     "client.queueTime.sum",
     "client.ioTime.sum",
     "client.bytesSent.sum",
-    "client.bytesReceived.sum",
+    "client.bytesReceived.sum"
   ];
 
   for (const path of greater) {
@@ -47,7 +47,7 @@ function checkCommonStatisticsChanges(initialStats, finalStats) {
     "client.ioTime.count",
     "client.bytesSent.count",
     "client.bytesReceived.count",
-    "http.requestsTotal",
+    "http.requestsTotal"
   ];
 
   for (const path of increaseByTwo) {
@@ -64,7 +64,7 @@ describe('request statistics', function () {
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByTwo = [ // the inital statistics request is also counted
-      "http.requestsGet",
+      "http.requestsGet"
     ];
     for (const path of increaseByTwo) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 2);
@@ -78,7 +78,7 @@ describe('request statistics', function () {
       "http.requestsPatch",
       "http.requestsDelete",
       "http.requestsOptions",
-      "http.requestsOther",
+      "http.requestsOther"
     ];
     for (const path of equal) {
       expect(_.get(finalStats, path), path).to.not.be.undefined;
@@ -96,7 +96,7 @@ describe('request statistics', function () {
 
     const increaseByOne = [
       "http.requestsGet", // the inital statistics request is also counted
-      "http.requestsPost",
+      "http.requestsPost"
     ];
     for (const path of increaseByOne) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
@@ -109,7 +109,7 @@ describe('request statistics', function () {
       "http.requestsPatch",
       "http.requestsDelete",
       "http.requestsOptions",
-      "http.requestsOther",
+      "http.requestsOther"
     ];
     for (const path of equal) {
       expect(_.get(finalStats, path), path).to.not.be.undefined;
@@ -126,7 +126,7 @@ describe('request statistics', function () {
 
     const increaseByOne = [
       "http.requestsGet", // the inital statistics request is also counted
-      "http.requestsDelete",
+      "http.requestsDelete"
     ];
     for (const path of increaseByOne) {
       expect(_.get(finalStats, path), path).to.be.equal(_.get(initialStats, path) + 1);
@@ -139,7 +139,7 @@ describe('request statistics', function () {
       "http.requestsPut",
       "http.requestsPatch",
       "http.requestsOptions",
-      "http.requestsOther",
+      "http.requestsOther"
     ];
     for (const path of equal) {
       expect(_.get(finalStats, path), path).to.not.be.undefined;

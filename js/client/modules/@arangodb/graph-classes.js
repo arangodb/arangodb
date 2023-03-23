@@ -43,7 +43,7 @@ let AbstractGraph = ggc.__GraphClass;
 // thrown first).
 
 class GeneralGraph extends AbstractGraph {
-  _deleteEdgeDefinition(name, dropCollection = false) {
+  _deleteEdgeDefinition (name, dropCollection = false) {
     let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + encodeURIComponent(name);
     if (dropCollection === true) {
       uri += "?dropCollections=true";
@@ -64,7 +64,7 @@ class GeneralGraph extends AbstractGraph {
     }
   }
 
-  _extendEdgeDefinitions(edgeDefinition, options = {}) {
+  _extendEdgeDefinitions (edgeDefinition, options = {}) {
     const data = _.clone(edgeDefinition) || {};
     data.options = options || {};
     const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
@@ -76,7 +76,7 @@ class GeneralGraph extends AbstractGraph {
     }
   }
 
-  _editEdgeDefinitions(edgeDefinition, options = {}) {
+  _editEdgeDefinitions (edgeDefinition, options = {}) {
     const data = _.clone(edgeDefinition) || {};
     data.options = options || {};
     const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
@@ -88,7 +88,7 @@ class GeneralGraph extends AbstractGraph {
     }
   }
 
-  _addVertexCollection(name, createCollection = true, options = {}) {
+  _addVertexCollection (name, createCollection = true, options = {}) {
     const data = {options};
     if (name) {
       data.collection = name;
@@ -112,7 +112,7 @@ class GeneralGraph extends AbstractGraph {
     }
   }
 
-  _removeVertexCollection(name, dropCollection = false) {
+  _removeVertexCollection (name, dropCollection = false) {
     let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/vertex/" + encodeURIComponent(name);
     if (dropCollection === true) {
       uri += "?dropCollection=true";

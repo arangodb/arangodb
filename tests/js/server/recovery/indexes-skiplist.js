@@ -38,7 +38,8 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
-  c.ensureIndex({ type: "skiplist", fields: ["value"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -48,7 +49,9 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  c.ensureIndex({ type: "skiplist", fields: ["a.value"], unique: true });
+  c.ensureIndex({ type: "skiplist",
+fields: ["a.value"],
+unique: true });
 
   docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -58,12 +61,15 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3');
-  c.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["a", "b"] });
 
   docs = [];
   for (let i = 0; i < 500; ++i) {
-    docs.push({ a: (i % 2) + 1, b: 1 });
-    docs.push({ a: (i % 2) + 1, b: 2 });
+    docs.push({ a: (i % 2) + 1,
+b: 1 });
+    docs.push({ a: (i % 2) + 1,
+b: 2 });
   }
   c.insert(docs);
 
@@ -116,10 +122,14 @@ function recoverySuite () {
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'a', 'b' ], idx.fields);
-      assertEqual(250, c.byExample({ a: 1, b: 1 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 1, b: 2 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 2, b: 1 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 2, b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1,
+b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1,
+b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2,
+b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2,
+b: 2 }).toArray().length);
       assertEqual(250, db._query("FOR doc IN UnitTestsRecovery3 FILTER doc.a == 1 && doc.b == 1 RETURN doc").toArray().length);
     }
 

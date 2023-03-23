@@ -99,7 +99,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  return  AQL_EXECUTE(query, bindVars, options).stats;
+  return AQL_EXECUTE(query, bindVars, options).stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -115,7 +115,8 @@ function getModifyQueryResultsRaw (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars, options = {}) {
-  var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
+  var finalOptions = Object.assign({ count: true,
+batchSize: 3000 }, options);
   var queryResult = AQL_EXECUTE(query, bindVars, finalOptions);
   return queryResult.json;
 }
@@ -283,8 +284,10 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   var allPlans = [];
   var results = [];
   var resetTest = false;
-  var paramNone = { optimizer: { rules: [ '-all' ]},  verbosePlans: true};
-  var paramAllPlans = { allPlans: true, verbosePlans: true};
+  var paramNone = { optimizer: { rules: [ '-all' ]},
+verbosePlans: true};
+  var paramAllPlans = { allPlans: true,
+verbosePlans: true};
 
   if (testObject !== undefined) {
     resetTest = true;
@@ -352,7 +355,8 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require('internal').print('done\n');
   }
-  return {'plans': plans, 'results': results};
+  return {'plans': plans,
+'results': results};
 }
 
 function removeAlwaysOnClusterRules (rules) {
@@ -373,9 +377,9 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
-/// @brief recursively removes keys named "estimatedCost" or "selectivityEstimate" of a given object
-/// used in tests where we do not want to test those values because of floating-point values used in "AsserEqual"
-/// This method should only be used where we explicitly don't want to test those values. 
+// / @brief recursively removes keys named "estimatedCost" or "selectivityEstimate" of a given object
+// / used in tests where we do not want to test those values because of floating-point values used in "AsserEqual"
+// / This method should only be used where we explicitly don't want to test those values.
 function removeCost (obj) {
   if (Array.isArray(obj)) {
     return obj.map(removeCost);
@@ -409,7 +413,9 @@ function unpackRawExpression (node, transform = false) {
       node.subNodes = [];
       let keys = Object.keys(node.raw);
       keys.forEach((k) => {
-        node.subNodes.push({ type: "object element", name: k, subNodes: [unpackRawExpression(node.raw[k], true)] });
+        node.subNodes.push({ type: "object element",
+name: k,
+subNodes: [unpackRawExpression(node.raw[k], true)] });
       });
       delete node.raw;
     } else {
@@ -418,7 +424,8 @@ function unpackRawExpression (node, transform = false) {
   } else if (node.hasOwnProperty('subNodes') && node.subNodes.length) {
     node.subNodes.map((s) => unpackRawExpression(s, false));
   } else if (transform) {
-    return { type: 'value', value: node };
+    return { type: 'value',
+value: node };
   }
   return node;
 }

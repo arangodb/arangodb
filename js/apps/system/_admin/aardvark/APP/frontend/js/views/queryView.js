@@ -67,7 +67,7 @@
     initialize: function () {
       this.refreshAQL();
     },
-    initSorting: function() {
+    initSorting: function () {
       if (!localStorage.getItem('queryViewSortOrder')) {
         localStorage.setItem('queryViewSortOrder', 1);
       }
@@ -76,7 +76,7 @@
       }
       this.initQuerySortCheckboxes();
     },
-    initQuerySortCheckboxes: function() {
+    initQuerySortCheckboxes: function () {
       var sortBy = localStorage.getItem("queryViewSortBy");
       var sortOrder = localStorage.getItem("queryViewSortOrder");
       if (sortOrder === "-1") {
@@ -133,7 +133,7 @@
       'change #querySearchInput': 'restrictToSearchPhrase',
       'keydown #querySearchInput': 'restrictToSearchPhraseKey',
       'click #sortOptionsToggle': 'toggleSortOptions',
-      'click #querySortOrder': 'sortOrder',
+      'click #querySortOrder': 'sortOrder'
     },
     toggleSortOptions: function () {
       $('#sortOptionsToggle').toggleClass('activated');
@@ -145,12 +145,12 @@
           (
             event.originalEvent.key &&
             (
-              event.originalEvent.key === 'Control' || 
-              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Control' ||
+              event.originalEvent.key === 'Alt' ||
               event.originalEvent.key === 'Shift'
             )
-          ) || 
-          event.originalEvent.ctrlKey || 
+          ) ||
+          event.originalEvent.ctrlKey ||
           event.originalEvent.altKey
         )
       ) {
@@ -407,7 +407,7 @@
           this.deselect(this.queryPreview);
         } else {
           // this means we are viewing list of queries
-          if ($('#sortOptionsDropdown').is(':visible')) { 
+          if ($('#sortOptionsDropdown').is(':visible')) {
             $('#sortOptionsDropdown').hide();
             $('#sortOptionsToggle').toggleClass('activated');
           }
@@ -424,7 +424,7 @@
         }
       } else {
         // this means toggle happend due to some other reason (copy button)
-        if ($('#sortOptionsDropdown').is(':visible')) { 
+        if ($('#sortOptionsDropdown').is(':visible')) {
           $('#sortOptionsDropdown').hide();
           $('#sortOptionsToggle').toggleClass('activated');
         }
@@ -548,8 +548,8 @@
       $('#lastQuery').remove();
 
       if (lastQueryName !== name) {
-        $('#queryContent .arangoToolbarTop .pull-left')
-          .append('<span id="lastQuery" class="clickable">Previous Query</span>');
+        $('#queryContent .arangoToolbarTop .pull-left').
+          append('<span id="lastQuery" class="clickable">Previous Query</span>');
 
         this.breadcrumb(name);
       }
@@ -1498,7 +1498,9 @@
       _.each(editors, function (editor) {
         editor.commands.addCommand({
           name: 'togglecomment',
-          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          bindKey: {win: 'Ctrl-Shift-C',
+linux: 'Ctrl-Shift-C',
+mac: 'Command-Shift-C'},
           exec: function (editor) {
             editor.toggleCommentLines();
           },
@@ -1507,7 +1509,9 @@
 
         editor.commands.addCommand({
           name: 'increaseFontSize',
-          bindKey: {win: 'Shift-Alt-Up', linux: 'Shift-Alt-Up', mac: 'Shift-Alt-Up'},
+          bindKey: {win: 'Shift-Alt-Up',
+linux: 'Shift-Alt-Up',
+mac: 'Shift-Alt-Up'},
           exec: function (editor) {
             var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0], 10) + 1;
             newSize += 'pt';
@@ -1519,7 +1523,9 @@
 
         editor.commands.addCommand({
           name: 'decreaseFontSize',
-          bindKey: {win: 'Shift-Alt-Down', linux: 'Shift-Alt-Down', mac: 'Shift-Alt-Down'},
+          bindKey: {win: 'Shift-Alt-Down',
+linux: 'Shift-Alt-Down',
+mac: 'Shift-Alt-Down'},
           exec: function (editor) {
             var newSize = parseInt(self.aqlEditor.getFontSize().match(/\d+/)[0], 10) - 1;
             newSize += 'pt';
@@ -1531,7 +1537,9 @@
 
         editor.commands.addCommand({
           name: 'executeQuery',
-          bindKey: {win: 'Ctrl-Return', mac: 'Command-Return', linux: 'Ctrl-Return'},
+          bindKey: {win: 'Ctrl-Return',
+mac: 'Command-Return',
+linux: 'Ctrl-Return'},
           exec: function () {
             self.executeQuery();
           }
@@ -1539,7 +1547,9 @@
 
         editor.commands.addCommand({
           name: 'executeSelectedQuery',
-          bindKey: {win: 'Ctrl-Alt-Return', mac: 'Command-Alt-Return', linux: 'Ctrl-Alt-Return'},
+          bindKey: {win: 'Ctrl-Alt-Return',
+mac: 'Command-Alt-Return',
+linux: 'Ctrl-Alt-Return'},
           exec: function () {
             self.executeQuery(undefined, true);
           }
@@ -1547,7 +1557,9 @@
 
         editor.commands.addCommand({
           name: 'saveQuery',
-          bindKey: {win: 'Ctrl-Shift-S', mac: 'Command-Shift-S', linux: 'Ctrl-Shift-S'},
+          bindKey: {win: 'Ctrl-Shift-S',
+mac: 'Command-Shift-S',
+linux: 'Ctrl-Shift-S'},
           exec: function () {
             self.addAQL();
           }
@@ -1555,7 +1567,9 @@
 
         editor.commands.addCommand({
           name: 'explainQuery',
-          bindKey: {win: 'Ctrl-Shift-Return', mac: 'Command-Shift-Return', linux: 'Ctrl-Shift-Return'},
+          bindKey: {win: 'Ctrl-Shift-Return',
+mac: 'Command-Shift-Return',
+linux: 'Ctrl-Shift-Return'},
           exec: function () {
             self.explainQuery();
           }
@@ -1563,7 +1577,9 @@
 
         editor.commands.addCommand({
           name: 'togglecomment',
-          bindKey: {win: 'Ctrl-Shift-C', linux: 'Ctrl-Shift-C', mac: 'Command-Shift-C'},
+          bindKey: {win: 'Ctrl-Shift-C',
+linux: 'Ctrl-Shift-C',
+mac: 'Command-Shift-C'},
           exec: function (editor) {
             editor.toggleCommentLines();
           },
@@ -1572,7 +1588,9 @@
 
         editor.commands.addCommand({
           name: 'showSpotlight',
-          bindKey: {win: 'Ctrl-Space', mac: 'Ctrl-Space', linux: 'Ctrl-Space'},
+          bindKey: {win: 'Ctrl-Space',
+mac: 'Ctrl-Space',
+linux: 'Ctrl-Space'},
           exec: function () {
             self.showSpotlight();
           }
@@ -1609,7 +1627,7 @@
         delete k.value;
         delete k.modified_at;
       });
-      
+
       _.each(this.queries, function (val) {
         if (val.hasOwnProperty('parameter')) {
           delete val.parameter;
@@ -1626,7 +1644,7 @@
 
       this.$(this.myQueriesId).html(this.table.render({content: this.myQueriesTableDesc}));
     },
-    sortRows: function(rows) { 
+    sortRows: function (rows) {
       function compare (a, b) {
         var x;
         if (a.name < b.name) {
@@ -1696,7 +1714,7 @@
       }
       return rows.sort(compare);
     },
-    filterRows: function(rows) {
+    filterRows: function (rows) {
       var searchPhrase = this.collection.searchOptions.searchPhrase;
       if (searchPhrase !== null && searchPhrase !== undefined && searchPhrase !== '') {
         return rows.filter(row => {
@@ -2579,10 +2597,10 @@
           queryProfile.hide();
 
           // var outputPosition = $(element + ' .fa-caret-down').first().offset();
-          queryProfile
-            .css('position', 'absolute')
-            .css('left', 215)
-            .css('top', 55);
+          queryProfile.
+            css('position', 'absolute').
+            css('left', 215).
+            css('top', 55);
 
           // $("#el").offset().top - $(document).scrollTop()
           var profileWidth = 590;
@@ -2902,7 +2920,8 @@
         } catch (ignore) {
         }
 
-        this.aqlEditor.selection.moveCursorToPosition({row: row, column: 0});
+        this.aqlEditor.selection.moveCursorToPosition({row: row,
+column: 0});
         this.aqlEditor.selection.selectLine();
       }
       window.setTimeout(function () {

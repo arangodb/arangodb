@@ -33,7 +33,13 @@ const FoxxManager = require('@arangodb/foxx/manager');
 const basePath1 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb1');
 const basePath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb2');
 const basePath3 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'perdb3');
-const dbs = {"testDatabase": false, "abc123": false, "maçã": true, "mötör": true,"😀": true, "ﻚﻠﺑ ﻞﻄﻴﻓ": true, "かわいい犬": true};
+const dbs = {"testDatabase": false,
+"abc123": false,
+"maçã": true,
+"mötör": true,
+"😀": true,
+"ﻚﻠﺑ ﻞﻄﻴﻓ": true,
+"かわいい犬": true};
 
 function multipleDatabasesSuite () {
   'use strict';
@@ -63,33 +69,33 @@ function multipleDatabasesSuite () {
         try {
           let res = arango.GET(`/_db/_system/${mount1}/echo`);
           assertEqual("_system", res.db);
-          
+
           res = arango.GET(`/_db/_system/${mount1}/echo-piff`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/_system/${mount1}/echo-nada`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/_system/${mount2}/echo`);
           assertTrue(res.echo);
-          
+
           res = arango.GET(`/_db/_system/${mount2}/echo-piff`);
           assertTrue(res.piff);
-          
+
           res = arango.GET(`/_db/_system/${mount2}/echo-nada`);
           assertEqual({}, res);
         } finally {
           FoxxManager.uninstall(mount2, {force: true});
-        } 
+        }
       } finally {
         FoxxManager.uninstall(mount1, {force: true});
       }
     },
-    
+
     testCustomDatabaseMultipleApps: function () {
       assertEqual("_system", db._name());
       db._useDatabase("UnitTestsFoxx");
@@ -100,33 +106,33 @@ function multipleDatabasesSuite () {
         try {
           let res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo`);
           assertEqual("UnitTestsFoxx", res.db);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo-piff`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo-nada`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount2}/echo`);
           assertTrue(res.echo); // issue
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount2}/echo-piff`);
           assertTrue(res.piff);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount2}/echo-nada`);
           assertEqual({}, res);
         } finally {
           FoxxManager.uninstall(mount2, {force: true});
-        } 
+        }
       } finally {
         FoxxManager.uninstall(mount1, {force: true});
       }
     },
-    
+
     testCustomDatabaseAndSystemDifferentAppsSameMount: function () {
       assertEqual("_system", db._name());
 
@@ -137,34 +143,34 @@ function multipleDatabasesSuite () {
         try {
           let res = arango.GET(`/_db/_system/${mount1}/echo`);
           assertEqual("_system", res.db);
-          
+
           res = arango.GET(`/_db/_system/${mount1}/echo-piff`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/_system/${mount1}/echo-nada`);
           assertTrue(res.error);
           assertEqual(404, res.code);
           assertEqual(404, res.errorNum);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo`);
           assertTrue(res.echo);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo-piff`);
           assertTrue(res.piff);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo-nada`);
           assertEqual({}, res);
         } finally {
           FoxxManager.uninstall(mount2, {force: true});
-        } 
+        }
       } finally {
         db._useDatabase("_system");
         FoxxManager.uninstall(mount1, {force: true});
       }
     },
-    
+
     testCustomDatabaseAndSystemSameApp: function () {
       assertEqual("_system", db._name());
 
@@ -175,24 +181,24 @@ function multipleDatabasesSuite () {
         try {
           let res = arango.GET(`/_db/_system/${mount1}/echo`);
           assertEqual("_system", res.db);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo`);
           assertEqual("UnitTestsFoxx", res.db);
-          
+
           res = arango.GET(`/_db/_system/${mount1}/echo`);
           assertEqual("_system", res.db);
-          
+
           res = arango.GET(`/_db/UnitTestsFoxx/${mount1}/echo`);
           assertEqual("UnitTestsFoxx", res.db);
         } finally {
           FoxxManager.uninstall(mount2, {force: true});
-        } 
+        }
       } finally {
         db._useDatabase("_system");
         FoxxManager.uninstall(mount1, {force: true});
       }
     },
-    
+
     testDirectoryCreationWithDatabaseNames: function () {
       assertEqual("_system", db._name());
       Object.keys(dbs).forEach((databaseName) => {

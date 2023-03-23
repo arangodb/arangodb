@@ -38,7 +38,7 @@ const functionsDocumentation = {
   'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
-  'shell_client_traffic': 'traffic metrics tests',
+  'shell_client_traffic': 'traffic metrics tests'
 };
 const optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
@@ -62,11 +62,11 @@ const testPaths = {
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
-  'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
+  'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ]
 };
 
-/// ensure that we have enough db servers in cluster tests
-function ensureServers(options, numServers) {
+// / ensure that we have enough db servers in cluster tests
+function ensureServers (options, numServers) {
   if (options.cluster && options.dbServers < numServers) {
     let localOptions = _.clone(options);
     localOptions.dbServers = numServers;
@@ -75,8 +75,8 @@ function ensureServers(options, numServers) {
   return options;
 }
 
-/// ensure that we have enough coordinators in cluster tests
-function ensureCoordinators(options, numServers) {
+// / ensure that we have enough coordinators in cluster tests
+function ensureCoordinators (options, numServers) {
   if (options.cluster && options.coordinators < numServers) {
     let localOptions = _.clone(options);
     localOptions.coordinators = numServers;
@@ -90,12 +90,12 @@ function ensureCoordinators(options, numServers) {
 // //////////////////////////////////////////////////////////////////////////////
 
 class shellv8Runner extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "shellv8Runner";
   }
 
-  run(testcases) {
+  run (testcases) {
     let obj = this;
     let res = {};
     let filtered = {};
@@ -103,10 +103,10 @@ class shellv8Runner extends tu.runLocalInArangoshRunner {
     this.instanceManager = {
       rootDir: rootDir,
       endpoint: 'tcp://127.0.0.1:8888',
-      findEndpoint: function() {
+      findEndpoint: function () {
         return 'tcp://127.0.0.1:8888';
       },
-      getStructure: function() {
+      getStructure: function () {
         return {
           endpoint: 'tcp://127.0.0.1:8888',
           rootDir: rootDir
@@ -155,12 +155,13 @@ function shellApiClient (options) {
 
   var opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = { "agency.supervision-ok-threshold": "15",
+"agency.supervision-grace-period": "30" };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -177,12 +178,13 @@ function shellApiMulti (options) {
 
   var opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = { "agency.supervision-ok-threshold": "15",
+"agency.supervision-grace-period": "30" };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api_multi', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -199,12 +201,13 @@ function shellClient (options) {
 
   var opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = { "agency.supervision-ok-threshold": "15",
+"agency.supervision-grace-period": "30" };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -221,12 +224,13 @@ function shellClientMulti (options) {
 
   var opts = ensureServers(options, 3);
   opts = ensureCoordinators(opts, 2);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
+  let moreOptions = { "agency.supervision-ok-threshold": "15",
+"agency.supervision-grace-period": "30" };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_multi', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -276,7 +280,9 @@ function shellServerAql (options) {
     testCases = tu.scanTestPaths(testPaths.shell_server_aql, options);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
+                           function (p) {
+ return p.indexOf('ranges-combined') === -1;
+});
       name = 'shell_server_aql_skipranges';
     }
 
@@ -308,7 +314,9 @@ function shellClientAql (options) {
     testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
     if (options.skipRanges) {
       testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
+                           function (p) {
+ return p.indexOf('ranges-combined') === -1;
+});
       name = 'shell_client_aql_skipranges';
     }
 
@@ -332,12 +340,12 @@ function shellClientAql (options) {
 // / @brief TEST: shell_client_traffic
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellClientTraffic(options) {
+function shellClientTraffic (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_client_traffic, options);
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_traffic', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -348,16 +356,16 @@ function shellClientTraffic(options) {
 // / @brief TEST: shell_client_transaction
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellClientTransaction(options) {
+function shellClientTransaction (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_client_transaction, options);
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   let moreOptions = {
     "agency.supervision-ok-threshold": "1.5",
-    "agency.supervision-grace-period": "3.0",
+    "agency.supervision-grace-period": "3.0"
   };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -368,21 +376,21 @@ function shellClientTransaction(options) {
 // / @brief TEST: shell_client_replication2_recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellClientReplication2Recovery(options) {
+function shellClientReplication2Recovery (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_client_replication2_recovery, options);
   testCases = tu.splitBuckets(options, testCases);
 
   var opts = ensureServers(options, 5);
   opts = ensureCoordinators(opts, 2);
   opts.enableAliveMonitor = false;
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
+  opts['httpTrustedOrigin'] = 'http://was-erlauben-strunz.it';
 
   let moreOptions = {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-admin-execute': 'true',
     'javascript.allow-port-testing': 'true',
     "agency.supervision-ok-threshold": "1.5",
-    "agency.supervision-grace-period": "3.0",
+    "agency.supervision-grace-period": "3.0"
   };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_replication2_recovery', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -408,6 +416,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

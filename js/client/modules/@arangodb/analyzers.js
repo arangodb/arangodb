@@ -1,51 +1,51 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrey Abramov
+// / @author Vasiliy Nabatchikov
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
 const errors = require('@arangodb').errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoAnalyzer instance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief ArangoAnalyzer instance
+// //////////////////////////////////////////////////////////////////////////////
 
-function ArangoAnalyzer(data) {
+function ArangoAnalyzer (data) {
   this._data = data;
 }
 
-ArangoAnalyzer.prototype.features = function() {
+ArangoAnalyzer.prototype.features = function () {
   return this._data['features'];
 };
 
-ArangoAnalyzer.prototype.name = function() {
+ArangoAnalyzer.prototype.name = function () {
   return this._data['name'];
 };
 
-ArangoAnalyzer.prototype.properties = function() {
+ArangoAnalyzer.prototype.properties = function () {
   return this._data['properties'];
 };
 
-ArangoAnalyzer.prototype.type = function() {
+ArangoAnalyzer.prototype.type = function () {
   return this._data['type'];
 };
 
@@ -66,28 +66,32 @@ ArangoAnalyzer.prototype._help = function () {
   internal.print(help);
 };
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief pretty print
-///////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief pretty print
+// /////////////////////////////////////////////////////////////////////////////
 
-ArangoAnalyzer.prototype._PRINT = function(context) {
+ArangoAnalyzer.prototype._PRINT = function (context) {
   var colors = internal.COLORS;
   var useColor = context.useColor;
 
   context.output += '[ArangoAnalyzer "';
-  if (useColor) { context.output += colors.COLOR_STRING; }
+  if (useColor) {
+ context.output += colors.COLOR_STRING;
+}
   context.output += this.name();
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += '" (type ' + this.type() + ')]';
 };
 
 exports.ArangoAnalyzer = ArangoAnalyzer;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the base url for analyzers usage
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief return the base url for analyzers usage
+// //////////////////////////////////////////////////////////////////////////////
 
-var _baseurl = function(suffix) {
+var _baseurl = function (suffix) {
   var url = '/_api/analyzer';
 
   if (suffix) {
@@ -97,18 +101,18 @@ var _baseurl = function(suffix) {
   return url;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exported members and functions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exported members and functions
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.analyzer = function(name) {
+exports.analyzer = function (name) {
   var db = internal.db;
   var url = _baseurl(name);
   var result = db._connection.GET(url);
 
-  if (result.hasOwnProperty('error')
-     && result.hasOwnProperty('error')
-     && errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code === result.errorNum) {
+  if (result.hasOwnProperty('error') &&
+     result.hasOwnProperty('error') &&
+     errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code === result.errorNum) {
     return null;
   }
 
@@ -117,7 +121,7 @@ exports.analyzer = function(name) {
   return new ArangoAnalyzer(result);
 };
 
-exports.remove = function(name, force) {
+exports.remove = function (name, force) {
   var db = internal.db;
   var url = _baseurl(name);
 
@@ -130,7 +134,7 @@ exports.remove = function(name, force) {
   arangosh.checkRequestResult(result);
 };
 
-exports.save = function(name, type, properties, features) {
+exports.save = function (name, type, properties, features) {
   var body = {};
 
   if (name !== undefined) {
@@ -156,7 +160,7 @@ exports.save = function(name, type, properties, features) {
   return arangosh.checkRequestResult(result);
 };
 
-exports.toArray = function() {
+exports.toArray = function () {
   var db = internal.db;
   var url = _baseurl();
   var result = db._connection.GET(url);

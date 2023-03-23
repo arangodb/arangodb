@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertEqual, assertNotEqual, require, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -37,12 +37,12 @@ const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorE
 const servers = getCoordinatorEndpoints();
 const ERRORS = require("@arangodb").errors;
 
-function KeyGeneratorSuite() {
+function KeyGeneratorSuite () {
   'use strict';
   const cn = 'UnitTestsCollection';
   let coordinators = [];
 
-  function sendRequest(method, db, endpoint, body, headers, usePrimary) {
+  function sendRequest (method, db, endpoint, body, headers, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -55,7 +55,7 @@ function KeyGeneratorSuite() {
     return res;
   }
 
-  function generateCollectionAndTest(name) {
+  function generateCollectionAndTest (name) {
     let lastKey = null;
     let url = "/_db/" + cn + "/_api/document/" + name;
     let keyOptions = {};
@@ -64,45 +64,52 @@ function KeyGeneratorSuite() {
       keyOptions = {keyOptions: {type: "autoincrement"}};
     } else if (Number(name[name.length - 1]) === 2) {
       increment = 55;
-      keyOptions = {keyOptions: {type: "autoincrement", offset: 10, increment: increment}};
+      keyOptions = {keyOptions: {type: "autoincrement",
+offset: 10,
+increment: increment}};
     } else {
       increment = 10;
-      keyOptions = {keyOptions: {type: "autoincrement", offset: 4, increment: increment}};
+      keyOptions = {keyOptions: {type: "autoincrement",
+offset: 4,
+increment: increment}};
     }
     db._create(name, keyOptions);
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
     for (let i = 0; i < 10000; ++i) {
-      let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
+      let result = sendRequest('POST_RAW', cn, url, /* payload*/ {}, {}, i % 2 === 0);
       assertEqual(result.code, 202);
       let key = result.parsedBody._key;
-      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
+      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key,
+lastKey});
       lastKey = key;
     }
   }
 
   return {
-    setUpAll: function() {
+    setUpAll: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
     },
 
-    testPadded: function() {
+    testPadded: function () {
       // check that the generated keys are sequential when we send the requests
       // via multiple coordinators.
-      db._create(cn, {numberOfShards: 1, keyOptions: {type: "padded"}});
+      db._create(cn, {numberOfShards: 1,
+keyOptions: {type: "padded"}});
 
       try {
         let lastKey = null;
         let url = "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', '_system', url, /*payload*/ {}, {}, i % 2 === 0);
+          let result = sendRequest('POST_RAW', '_system', url, /* payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.code, 202);
           let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+          assertTrue(key > lastKey || lastKey === null, {key,
+lastKey});
           lastKey = key;
         }
       } finally {
@@ -110,13 +117,13 @@ function KeyGeneratorSuite() {
       }
     },
 
-    testPaddedOnOneShard: function() {
+    testPaddedOnOneShard: function () {
       if (!isEnterprise) {
         return;
       }
 
       db._createDatabase(cn, {sharding: "single"});
-      // this test will connect to all coordinators in the cluster a 
+      // this test will connect to all coordinators in the cluster a
       // few lines further down. the createDatabase call will return
       // once the current coordinator is aware of the new database. it
       // is not guaranteed that all other coordinators are aware of the
@@ -136,10 +143,11 @@ function KeyGeneratorSuite() {
         let url = "/_db/" + cn + "/_api/document/" + cn;
         // send documents to both coordinators
         for (let i = 0; i < 10000; ++i) {
-          let result = sendRequest('POST_RAW', cn, url, /*payload*/ {}, {}, i % 2 === 0);
+          let result = sendRequest('POST_RAW', cn, url, /* payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.code, 202);
           let key = result.parsedBody._key;
-          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
+          assertTrue(key > lastKey || lastKey === null, {key,
+lastKey});
           lastKey = key;
         }
       } finally {
@@ -148,21 +156,22 @@ function KeyGeneratorSuite() {
       }
     },
 
-    testAutoincrementOnMultipleShards: function() {
+    testAutoincrementOnMultipleShards: function () {
       try {
-        db._create(cn, {numberOfShards: 5, keyOptions: {type: "autoincrement"}});
+        db._create(cn, {numberOfShards: 5,
+keyOptions: {type: "autoincrement"}});
       } catch (error) {
         assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, error.errorNum);
       }
     },
 
-    testAutoincrementOnOneShard: function() {
+    testAutoincrementOnOneShard: function () {
       if (!isEnterprise) {
         return;
       }
-      
+
       db._createDatabase(cn, {sharding: "single"});
-      // this test will connect to all coordinators in the cluster a 
+      // this test will connect to all coordinators in the cluster a
       // few lines further down. the createDatabase call will return
       // once the current coordinator is aware of the new database. it
       // is not guaranteed that all other coordinators are aware of the
@@ -179,7 +188,7 @@ function KeyGeneratorSuite() {
         db._useDatabase("_system");
         db._dropDatabase(cn);
       }
-    },
+    }
 
   };
 }

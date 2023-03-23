@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 5000 */
+/* global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, sort optimizations
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, sort optimizations
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -34,9 +34,9 @@ const findExecutionNodes = helper.findExecutionNodes;
 const getQueryResults = helper.getQueryResults;
 const db = require("internal").db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryOptimizerSortTestSuite () {
   const cn = "UnitTestsAhuacatlOptimizerSort";
@@ -56,9 +56,15 @@ function ahuacatlQueryOptimizerSortTestSuite () {
     // Static data we will use in our AQL Queries.
     // We do not need collection/document access or dynamic data.
     return [
-      {"friend": {"name": "piotr"}, id: 1, age: 10},
-      {"friend": {"name": "heiko"}, id: 2, age: 20},
-      {"friend": {"name": "micha"}, id: 3, age: 30}
+      {"friend": {"name": "piotr"},
+id: 1,
+age: 10},
+      {"friend": {"name": "heiko"},
+id: 2,
+age: 20},
+      {"friend": {"name": "micha"},
+id: 3,
+age: 30}
     ];
   };
 
@@ -79,31 +85,32 @@ function ahuacatlQueryOptimizerSortTestSuite () {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({"value": i, "value2": i});
+        docs.push({"value": i,
+"value2": i});
       }
       collection.insert(docs);
     },
 
-    setUp: function() {
+    setUp: function () {
       idx = null;
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       internal.db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       if (idx != null) {
         db._dropIndex(idx);
         idx = null;
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization without index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization without index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNoIndex1 : function () {
+    testNoIndex1: function () {
       var query = "FOR c IN " + cn + " SORT c.value RETURN c";
 
       var actual = getQueryResults(query);
@@ -124,11 +131,11 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization without index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization without index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNoIndex2 : function () {
+    testNoIndex2: function () {
       var query = "FOR c IN " + cn + " SORT c.value DESC RETURN c";
 
       var actual = getQueryResults(query);
@@ -149,12 +156,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testPersistentIndex1 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testPersistentIndex1: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " SORT c.value RETURN c";
 
@@ -175,12 +183,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
         explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testPersistentIndex2 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testPersistentIndex2: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value RETURN c";
 
@@ -202,12 +211,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testPersistentIndex3 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testPersistentIndex3: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 15 SORT c.value DESC RETURN c";
 
@@ -229,12 +239,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleSorts1 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testMultipleSorts1: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value RETURN c";
 
@@ -258,12 +269,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleSorts2 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testMultipleSorts2: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value SORT c.value DESC RETURN c";
 
@@ -287,12 +299,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                    explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleSorts3 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testMultipleSorts3: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value DESC SORT c.value RETURN c";
 
@@ -316,9 +329,9 @@ function ahuacatlQueryOptimizerSortTestSuite () {
         explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort tripplets
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort tripplets
+// //////////////////////////////////////////////////////////////////////////////
 
     testSortTripplets1: function () {
       const query = `
@@ -401,12 +414,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
         explainMultipleSorts(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
     testMultipleFields1: function () {
-      idx = collection.ensureIndex({type: "persistent", fields: ["value", "value2"]});
+      idx = collection.ensureIndex({type: "persistent",
+fields: ["value", "value2"]});
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -443,12 +457,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleFields2 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
+    testMultipleFields2: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value, c.value2 RETURN c";
 
@@ -487,12 +502,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                    explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleFields3 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
+    testMultipleFields3: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value2 >= 0 SORT c.value RETURN c";
 
@@ -515,12 +531,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleFields4 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
+    testMultipleFields4: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value", "value2"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 && c.value2 >= 0 SORT c.value RETURN c";
 
@@ -543,12 +560,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization with index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort optimization with index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMultipleFields5 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value2", "value"] });
+    testMultipleFields5: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value2", "value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -572,12 +590,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNonFieldSort1 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testNonFieldSort1: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value + 1 RETURN c";
 
@@ -601,12 +620,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNonFieldSort2 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testNonFieldSort2: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT 1 + c.value RETURN c";
 
@@ -630,12 +650,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                   explain(query));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check multiple sorts
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check multiple sorts
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNonFieldSort3 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value"] });
+    testNonFieldSort3: function () {
+      idx = collection.ensureIndex({ type: "persistent",
+fields: ["value"] });
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value * 2 RETURN c";
 
@@ -670,33 +691,36 @@ function sortTestsuite () {
   let collection = null;
 
   let explain = function (query, params) {
-    return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; }));
+    return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function (node) {
+ return node.type;
+}));
   };
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { numberOfShards : 9 });
+      collection = internal.db._create(cn, { numberOfShards: 9 });
 
       let docs = [];
       for (let i = 0; i < testStrings.length; i++) {
-        docs.push({ "value" : i, "testString" : testStrings[i] });
+        docs.push({ "value": i,
+"testString": testStrings[i] });
       }
       collection.insert(docs);
 
-      testStringsSorted=AQL_EXECUTE("FOR t IN @bla SORT t RETURN t", {"bla": testStrings}).json;
+      testStringsSorted = AQL_EXECUTE("FOR t IN @bla SORT t RETURN t", {"bla": testStrings}).json;
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort results
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSortOrderAsc : function () {
+    testSortOrderAsc: function () {
       var Query = "FOR i in " + cn + " SORT i.testString ASC RETURN i.testString";
       var result = getQueryResults(Query);
       var length = result.length;
@@ -723,10 +747,10 @@ function sortTestsuite () {
       assertTrue(isEqual(sortNode.elements, gatherNode.elements), "elements match");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort results for reverse sort
-////////////////////////////////////////////////////////////////////////////////
-    testSortOrderDesc : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check sort results for reverse sort
+// //////////////////////////////////////////////////////////////////////////////
+    testSortOrderDesc: function () {
       var Query = "FOR i in " + cn + " SORT i.testString DESC RETURN i.testString";
       var result = getQueryResults(Query);
       var length = result.length;

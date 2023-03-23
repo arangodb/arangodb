@@ -1,68 +1,69 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for cost estimation
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for cost estimation
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const {assertEqual} = jsunity.jsUnity.assertions;
 const db = require("@arangodb").db;
 const helper = require("@arangodb/aql-helper");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerCostsTestSuite () {
   var c;
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
       for (var i = 0; i < 150; ++i) {
-        c.save({ _key: "test" + i, value: i });
+        c.save({ _key: "test" + i,
+value: i });
       }
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cost of LimitNode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cost of LimitNode
+// //////////////////////////////////////////////////////////////////////////////
 
-    testLimitNodeCost : function () {
+    testLimitNodeCost: function () {
       const query = "FOR i IN 1..10000 LIMIT @offset, @limit RETURN i";
 
       // [ offset, limit, expected number of items ]
-      let tests = [ 
+      let tests = [
         [ 0, 0, 0, 10002 ],
         [ 0, 1, 1, 10003 ],
         [ 0, 10, 10, 10012 ],
@@ -135,11 +136,12 @@ function optimizerCostsTestSuite () {
         [ 100000000000, 10, 0, 10002.01000 ],
         [ 100000000000, 1000, 0, 10002.01000 ],
         [ 100000000000, 10000000, 0, 10002.01000 ],
-        [ 100000000000, 10000000000000, 0, 10002.01000 ],
+        [ 100000000000, 10000000000000, 0, 10002.01000 ]
       ];
 
-      tests.forEach(function(test) {
-        let plan = AQL_EXPLAIN(query, { offset: test[0], limit: test[1] });
+      tests.forEach(function (test) {
+        let plan = AQL_EXPLAIN(query, { offset: test[0],
+limit: test[1] });
         let node = helper.findExecutionNodes(plan, "LimitNode")[0];
 
         // number of nodes cannot be estimated properly due to function call
@@ -149,50 +151,50 @@ function optimizerCostsTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cost of EnumerateListNode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cost of EnumerateListNode
+// //////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListNodeConst : function () {
+    testEnumerateListNodeConst: function () {
       var query = "FOR i IN [ 1, 2, 3 ] RETURN i";
 
       var plan = AQL_EXPLAIN(query);
       var node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
-      
-      // number of nodes can be estimated properly 
+
+      // number of nodes can be estimated properly
       assertEqual("EnumerateListNode", node.type);
       assertEqual(3, node.estimatedNrItems);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cost of EnumerateListNode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cost of EnumerateListNode
+// //////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListNodeFunction : function () {
+    testEnumerateListNodeFunction: function () {
       var query = "FOR i IN NOOPT([ 1, 2, 3 ]) RETURN i";
 
       var plan = AQL_EXPLAIN(query);
       var node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
-       
+
       // number of nodes cannot be estimated properly due to function call
       assertEqual("EnumerateListNode", node.type);
       assertEqual(100, node.estimatedNrItems);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cost of EnumerateListNode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cost of EnumerateListNode
+// //////////////////////////////////////////////////////////////////////////////
 
-    testEnumerateListNodeSubquery : function () {
+    testEnumerateListNodeSubquery: function () {
       var query = "FOR i IN (FOR j IN [ 1, 2, 3, 4 ] RETURN j) RETURN i";
 
-      var plan = AQL_EXPLAIN(query, { }, { optimizer: { "rules" : [ "-all" ] } });
+      var plan = AQL_EXPLAIN(query, { }, { optimizer: { "rules": [ "-all" ] } });
       var node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
-       
+
       // number of nodes cannot be estimated properly due to function call
       assertEqual("EnumerateListNode", node.type);
       assertEqual(4, node.estimatedNrItems);
-      
+
       // find the subquery node of the plan
       node = helper.findExecutionNodes(plan, "SubqueryEndNode")[0];
       // subquery always produces one result
@@ -203,12 +205,12 @@ function optimizerCostsTestSuite () {
       assertEqual(4, node.estimatedNrItems);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that spliced subqueries restore the number of lines at their end
-///        node correctly.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that spliced subqueries restore the number of lines at their end
+// /        node correctly.
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSplicedSubquery : function () {
+    testSplicedSubquery: function () {
       const query = `
         FOR i IN 1..3
           LET sq = (
@@ -284,13 +286,12 @@ nodeTypes);
     },
 
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test that in spliced subquerys NoResult blocks ask their parent for
+// /        cost estimates. Otherwise the subquery end will pop from an empty stack
+// //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test that in spliced subquerys NoResult blocks ask their parent for
-///        cost estimates. Otherwise the subquery end will pop from an empty stack
-////////////////////////////////////////////////////////////////////////////////
-
-    testSplicedSubqueryNoResults : function () {
+    testSplicedSubqueryNoResults: function () {
       const query = `
         FOR i IN 1..3
           LET sq = (
@@ -370,14 +371,14 @@ nodeTypes);
       assertEqual("ReturnNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerCostsTestSuite);
 

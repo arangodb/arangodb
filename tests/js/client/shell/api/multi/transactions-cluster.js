@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,19 +31,20 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/transaction";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   return {
-    test_returns_an_error_if_a_wrong_method_type_is_used: function() {
+    test_returns_an_error_if_a_wrong_method_type_is_used: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : " for " };
+      let body = { "collections": { },
+"action": " for " };
       let doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
@@ -53,7 +54,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
     },
 
-    test_returns_an_error_if_no_body_is_posted: function() {
+    test_returns_an_error_if_no_body_is_posted: function () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
 
@@ -64,9 +65,9 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_no_collections_attribute_is_present: function() {
+    test_returns_an_error_if_no_collections_attribute_is_present: function () {
       let cmd = api;
-      let body = { "foo" : "bar" };
+      let body = { "foo": "bar" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -76,7 +77,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_the_collections_attribute_has_a_wrong_type: function() {
+    test_returns_an_error_if_the_collections_attribute_has_a_wrong_type: function () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
 
@@ -87,9 +88,9 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_collections_sub_attribute_is_wrong: function() {
+    test_returns_an_error_if_collections_sub_attribute_is_wrong: function () {
       let cmd = api;
-      let body = { "collections" : { "write": false } };
+      let body = { "collections": { "write": false } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -99,9 +100,9 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_no_action_is_specified: function() {
+    test_returns_an_error_if_no_action_is_specified: function () {
       let cmd = api;
-      let body = { "collections" : { } };
+      let body = { "collections": { } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -111,9 +112,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_action_attribute_has_a_wrong_type: function() {
+    test_returns_an_error_if_action_attribute_has_a_wrong_type: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : false };
+      let body = { "collections": { },
+"action": false };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -123,9 +125,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_action_attribute_contains_broken_code_1: function() {
+    test_returns_an_error_if_action_attribute_contains_broken_code_1: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : " for " };
+      let body = { "collections": { },
+"action": " for " };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -135,9 +138,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_action_attribute_contains_broken_code_2: function() {
+    test_returns_an_error_if_action_attribute_contains_broken_code_2: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : "return 1;" };
+      let body = { "collections": { },
+"action": "return 1;" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -147,9 +151,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_action_attribute_contains_broken_code_3: function() {
+    test_returns_an_error_if_action_attribute_contains_broken_code_3: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : "function() {" };
+      let body = { "collections": { },
+"action": "function() {" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -159,9 +164,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_if_transactions_are_nested_1: function() {
+    test_returns_an_error_if_transactions_are_nested_1: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : "function () { return TRANSACTION({ collections: { }, action: function() { return 1; } }); }" };
+      let body = { "collections": { },
+"action": "function () { return TRANSACTION({ collections: { }, action: function() { return 1; } }); }" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -171,9 +177,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_TRANSACTION_NESTED.code);
     },
 
-    test_returns_an_error_if_transactions_are_nested_2: function() {
+    test_returns_an_error_if_transactions_are_nested_2: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function () { return TRANSACTION({ collections: { }, action: "function () { return 1; }" }); }` };
+      let body = { "collections": { },
+"action": `function () { return TRANSACTION({ collections: { }, action: "function () { return 1; }" }); }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -185,26 +192,27 @@ function error_handlingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // using "wrong" collections;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function using_wrong_collectionsSuite () {
   let cn1 = "UnitTestsTransactions1";
   let cn2 = "UnitTestsTransactions2";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn1);
       db._create(cn2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    test_returns_an_error_if_referring_to_a_non_existing_collection: function() {
+    test_returns_an_error_if_referring_to_a_non_existing_collection: function () {
       let cmd = api;
-      let body = { "collections" : { "write": "_meow" }, "action" : "function () { return 1; }" };
+      let body = { "collections": { "write": "_meow" },
+"action": "function () { return 1; }" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -214,9 +222,10 @@ function using_wrong_collectionsSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_returns_an_error_when_using_a_disallowed_operation: function() {
+    test_returns_an_error_when_using_a_disallowed_operation: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function () { require("internal").db._create("abc"); }` };
+      let body = { "collections": { },
+"action": `function () { require("internal").db._create("abc"); }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -228,14 +237,16 @@ function using_wrong_collectionsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // params;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function using_parametersSuite () {
   return {
-    test_checking_return_parameters: function() {
+    test_checking_return_parameters: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function (params) { return [ params[1], params[4] ]; }`, "params" : [ 1, 2, 3, 4, 5 ] };
+      let body = { "collections": { },
+"action": `function (params) { return [ params[1], params[4] ]; }`,
+"params": [ 1, 2, 3, 4, 5 ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -245,9 +256,11 @@ function using_parametersSuite () {
       assertEqual(doc.parsedBody['result'], [ 2, 5 ]);
     },
 
-    test_checking_return_parameters__other_argument_name: function() {
+    test_checking_return_parameters__other_argument_name: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function (args) { return [ args[1], args[4] ]; }`, "params" : [ 1, 2, 3, 4, 5 ] };
+      let body = { "collections": { },
+"action": `function (args) { return [ args[1], args[4] ]; }`,
+"params": [ 1, 2, 3, 4, 5 ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -257,9 +270,11 @@ function using_parametersSuite () {
       assertEqual(doc.parsedBody['result'], [ 2, 5 ]);
     },
 
-    test_checking_return_parameters__object_1: function() {
+    test_checking_return_parameters__object_1: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function (params) { return params['foo']; }`, "params" : { "foo" : "bar" } };
+      let body = { "collections": { },
+"action": `function (params) { return params['foo']; }`,
+"params": { "foo": "bar" } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -269,9 +284,11 @@ function using_parametersSuite () {
       assertEqual(doc.parsedBody['result'], "bar");
     },
 
-    test_checking_return_parameters__object_2: function() {
+    test_checking_return_parameters__object_2: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function (params) { return params['meow']; }`, "params" : { "foo" : "bar" } };
+      let body = { "collections": { },
+"action": `function (params) { return params['meow']; }`,
+"params": { "foo": "bar" } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -281,9 +298,11 @@ function using_parametersSuite () {
       assertEqual(doc.parsedBody['result'], null);
     },
 
-    test_checking_return_parameters__undefined_1: function() {
+    test_checking_return_parameters__undefined_1: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function (params) { return params['meow']; }`, "params" : null };
+      let body = { "collections": { },
+"action": `function (params) { return params['meow']; }`,
+"params": null };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -293,9 +312,11 @@ function using_parametersSuite () {
       assertEqual(doc.parsedBody['errorNum'], 17); // # TypeErro);
   },
 
-  test_checking_return_parameters__undefined_2: function() {
+  test_checking_return_parameters__undefined_2: function () {
     let cmd = api;
-    let body = { "collections" : { }, "action" : `function (params) { return params['meow']; }`, "params" : { } };
+    let body = { "collections": { },
+"action": `function (params) { return params['meow']; }`,
+"params": { } };
     let doc = arango.POST_RAW(cmd, body);
 
     assertEqual(doc.code, 200);
@@ -305,9 +326,10 @@ function using_parametersSuite () {
     assertEqual(doc.parsedBody['result'], null);
   },
 
-  test_checking_return_parameters__undefined_3: function() {
+  test_checking_return_parameters__undefined_3: function () {
     let cmd = api;
-    let body = { "collections" : { }, "action" : "function (params) { return params; }" };
+    let body = { "collections": { },
+"action": "function (params) { return params; }" };
     let doc = arango.POST_RAW(cmd, body);
 
     assertEqual(doc.code, 200);
@@ -319,14 +341,15 @@ function using_parametersSuite () {
 };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // non-collection transactions;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function non_collection_transactionsSuite () {
   return {
-    test_returning_a_simple_type: function() {
+    test_returning_a_simple_type: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : "function () { return 42; }" };
+      let body = { "collections": { },
+"action": "function () { return 42; }" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -336,21 +359,25 @@ function non_collection_transactionsSuite () {
       assertEqual(doc.parsedBody['result'], 42);
     },
 
-    test_returning_a_compound_type: function() {
+    test_returning_a_compound_type: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function () { return [ true, { a: 42, b: [ null, true ], c: "foo" } ]; }` };
+      let body = { "collections": { },
+"action": `function () { return [ true, { a: 42, b: [ null, true ], c: "foo" } ]; }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['result'], [ true, { "a": 42, "b": [ null, true ], "c": "foo" } ]);
+      assertEqual(doc.parsedBody['result'], [ true, { "a": 42,
+"b": [ null, true ],
+"c": "foo" } ]);
     },
 
-    test_returning_an_exception: function() {
+    test_returning_an_exception: function () {
       let cmd = api;
-      let body = { "collections" : { }, "action" : `function () { throw "doh!"; }` };
+      let body = { "collections": { },
+"action": `function () { throw "doh!"; }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_SERVER_ERROR.code);
@@ -362,21 +389,21 @@ function non_collection_transactionsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // single-collection transactions;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function single_collection_transactionsSuite () {
   let cn = "UnitTestsTransactions";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_read_only__using_write_1: function() {
+    test_read_only__using_write_1: function () {
       let body = { };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
@@ -385,7 +412,8 @@ function single_collection_transactionsSuite () {
       assertEqual(db[cn].count(), 3);
 
       let cmd = api;
-      body = { "collections" : { "write": cn}, "action" : `function () { var c = require("internal").db.UnitTestsTransactions; return c.count(); }` };
+      body = { "collections": { "write": cn},
+"action": `function () { var c = require("internal").db.UnitTestsTransactions; return c.count(); }` };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200, doc);
@@ -398,7 +426,7 @@ function single_collection_transactionsSuite () {
       assertEqual(db[cn].count(), 3);
     },
 
-    test_read_only__using_read_1: function() {
+    test_read_only__using_read_1: function () {
       let body = { };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
@@ -407,7 +435,8 @@ function single_collection_transactionsSuite () {
       assertEqual(db[cn].count(), 3);
 
       let cmd = api;
-      body = { "collections" : { "read": cn }, "action" : `function () { var c = require("internal").db.UnitTestsTransactions; return c.count(); }` };
+      body = { "collections": { "read": cn },
+"action": `function () { var c = require("internal").db.UnitTestsTransactions; return c.count(); }` };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -420,9 +449,10 @@ function single_collection_transactionsSuite () {
       assertEqual(db[cn].count(), 3);
     },
 
-    test_committing_1: function() {
+    test_committing_1: function () {
       let cmd = api;
-      let body = { "collections" : { "write": cn }, "action" : `function () { var c = require("internal").db.UnitTestsTransactions; c.save({ }); c.save({ }); return c.count(); }` };
+      let body = { "collections": { "write": cn },
+"action": `function () { var c = require("internal").db.UnitTestsTransactions; c.save({ }); c.save({ }); return c.count(); }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -437,23 +467,23 @@ function single_collection_transactionsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // multi-collection transactions;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function multi_collection_transactionsSuite () {
   let cn1 = "UnitTestsTransactions1";
   let cn2 = "UnitTestsTransactions2";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn1);
       db._create(cn2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
-    test_read_only__using_write_2: function() {
+    test_read_only__using_write_2: function () {
       let body = { };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
       doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
@@ -464,7 +494,8 @@ function multi_collection_transactionsSuite () {
       assertEqual(db[cn2].count(), 1);
 
       let cmd = api;
-      body = { "collections" : { "write": [ cn1, cn2 ] }, "action" : `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; return [ c1.count(), c2.count() ]; }` };
+      body = { "collections": { "write": [ cn1, cn2 ] },
+"action": `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; return [ c1.count(), c2.count() ]; }` };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -478,7 +509,7 @@ function multi_collection_transactionsSuite () {
       assertEqual(db[cn2].count(), 1);
     },
 
-    test_read_only__using_read_2: function() {
+    test_read_only__using_read_2: function () {
       let body = { };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
       doc = arango.POST_RAW(`/_api/document?collection=${cn1}`, body);
@@ -489,7 +520,8 @@ function multi_collection_transactionsSuite () {
       assertEqual(db[cn2].count(), 1);
 
       let cmd = api;
-      body = { "collections" : { "read": [ cn1, cn2 ] }, "action" : `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; return [ c1.count(), c2.count() ]; }` };
+      body = { "collections": { "read": [ cn1, cn2 ] },
+"action": `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; return [ c1.count(), c2.count() ]; }` };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -503,9 +535,10 @@ function multi_collection_transactionsSuite () {
       assertEqual(db[cn2].count(), 1);
     },
 
-    test_committing_2: function() {
+    test_committing_2: function () {
       let cmd = api;
-      let body = { "collections" : { "write": [ cn1, cn2 ] }, "action" : `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; c1.save({ }); c1.save({ }); c2.save({ }); return [ c1.count(), c2.count() ]; }` };
+      let body = { "collections": { "write": [ cn1, cn2 ] },
+"action": `function () { var c1 = require("internal").db.${cn1}; var c2 = require("internal").db.${cn2}; c1.save({ }); c1.save({ }); c2.save({ }); return [ c1.count(), c2.count() ]; }` };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);

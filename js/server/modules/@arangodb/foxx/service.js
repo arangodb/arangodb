@@ -710,7 +710,7 @@ module.exports =
       let dirName = internal.db._name();
       if (!internal.isAllowedDatabaseName(dirName, false)) {
         dirName = internal.db._id();
-      } 
+      }
       return APP_PATH ? (
         path.join(APP_PATH, '_db', dirName)
       ) : undefined;

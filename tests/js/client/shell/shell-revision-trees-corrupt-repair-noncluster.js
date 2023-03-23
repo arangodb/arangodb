@@ -35,7 +35,7 @@ const wait = internal.wait;
 const primaryEndpoint = arango.getEndpoint();
 const helper = require("@arangodb/test-helper");
 
-function waitForTreeReady(c) {
+function waitForTreeReady (c) {
   while (true) {
     let name = c.name();
     let pending = db._connection.POST("/_admin/execute?returnAsJSON=true",
@@ -75,7 +75,7 @@ function corruptRepairSuite () {
       db._drop(colName1);
     },
 
-    testRevisionTreeCorrupt: function() {
+    testRevisionTreeCorrupt: function () {
       const c1 = db._collection(colName1);
       let trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
@@ -93,7 +93,7 @@ function corruptRepairSuite () {
         `require("internal").db._collection("${colName1}")._revisionTreeRebuild(); return true;`);
       trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
-    },
+    }
 
   };
 }

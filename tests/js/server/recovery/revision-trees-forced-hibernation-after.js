@@ -64,7 +64,7 @@ function runSetup () {
       docs = [];
     }
   }
-  
+
   c = db._create(colName4);
   for (let i = 0; i < 100000; ++i) {
     docs.push({ _key: "test" + i });
@@ -95,7 +95,7 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-  
+
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -110,7 +110,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeHibernation: function() {
+    testRevisionTreeHibernation: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1000);
@@ -118,7 +118,7 @@ function recoverySuite () {
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 500);
-      
+
       const c3 = db._collection(colName3);
       assertEqual(c3._revisionTreeSummary().count, c3.count());
       assertEqual(c3._revisionTreeSummary().count, 100000);
@@ -126,7 +126,7 @@ function recoverySuite () {
       const c4 = db._collection(colName4);
       assertEqual(c4._revisionTreeSummary().count, c4.count());
       assertEqual(c4._revisionTreeSummary().count, 1);
-    },
+    }
 
   };
 }

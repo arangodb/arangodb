@@ -657,7 +657,7 @@
           // do have the focus -> the user cannot see that is has changed meanwhile.
           // So for now, we remove that entry (as duplicate edge names are invalid)
           // and notify the user via "arangoHelper.arangoWarning".
-          /*$('input[id*="newEdgeDefinitions' + id + '"]').attr(
+          /* $('input[id*="newEdgeDefinitions' + id + '"]').attr(
             'placeholder', 'The collection ' + e.added.id + ' is already used.'
           );*/
           return;
@@ -737,16 +737,16 @@
       // if no edge definition is left
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css('border-color', 'red');
-        $('#s2id_newEdgeDefinitions0')
-          .parent()
-          .parent()
-          .next().find('.select2-choices').css('border-color', 'red');
-        $('#s2id_newEdgeDefinitions0').parent()
-          .parent()
-          .next()
-          .next()
-          .find('.select2-choices')
-          .css('border-color', 'red');
+        $('#s2id_newEdgeDefinitions0').
+          parent().
+          parent().
+          next().find('.select2-choices').css('border-color', 'red');
+        $('#s2id_newEdgeDefinitions0').parent().
+          parent().
+          next().
+          next().
+          find('.select2-choices').
+          css('border-color', 'red');
         return;
       }
 
@@ -803,7 +803,7 @@
       let satellites = $('#s2id_new-hybridSatelliteCollections').select2('data');
       if (satellites.length > 0) {
         edgeDefOptions.satellites = [];
-        _.forEach(satellites, function(sat) {
+        _.forEach(satellites, function (sat) {
           edgeDefOptions.satellites.push(sat.id);
         });
       }
@@ -926,17 +926,17 @@
 
       if (edgeDefinitions.length === 0) {
         $('#s2id_newEdgeDefinitions0 .select2-choices').css('border-color', 'red');
-        $('#s2id_newEdgeDefinitions0').parent()
-          .parent()
-          .next()
-          .find('.select2-choices')
-          .css('border-color', 'red');
-        $('#s2id_newEdgeDefinitions0').parent()
-          .parent()
-          .next()
-          .next()
-          .find('.select2-choices')
-          .css('border-color', 'red');
+        $('#s2id_newEdgeDefinitions0').parent().
+          parent().
+          next().
+          find('.select2-choices').
+          css('border-color', 'red');
+        $('#s2id_newEdgeDefinitions0').parent().
+          parent().
+          next().
+          next().
+          find('.select2-choices').
+          css('border-color', 'red');
         return;
       }
 
@@ -1053,7 +1053,7 @@
           title: 'Name',
           description: 'String value. The name to identify the graph. Has to be unique and must follow the' +
             ' <b>Document Keys</b> naming conventions.',
-          placeholder: 'Insert the name of the graph',
+          placeholder: 'Insert the name of the graph'
         },
         numberOfShards: {
           title: 'Shards',
@@ -1114,7 +1114,9 @@
       var tableContent = [];
       var self = this;
       var name = '';
-      var edgeDefinitions = [{collection: '', from: '', to: ''}];
+      var edgeDefinitions = [{collection: '',
+from: '',
+to: ''}];
       var hybridSatelliteCollections = '';
       var orphanCollections = '';
       var title;
@@ -1148,7 +1150,9 @@
         name = graph.get('_key');
         edgeDefinitions = graph.get('edgeDefinitions');
         if (!edgeDefinitions || edgeDefinitions.length === 0) {
-          edgeDefinitions = [{collection: '', from: '', to: ''}];
+          edgeDefinitions = [{collection: '',
+from: '',
+to: ''}];
         }
         orphanCollections = graph.get('orphanCollections');
 
@@ -1215,7 +1219,7 @@
               'isDisjoint',
               'Disjoint SmartGraph',
               isDisjoint,
-              'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.',
+              'Disjoint SmartGraph: Creating edges between different SmartGraph components is not allowed.'
             )
           );
 
@@ -1327,7 +1331,7 @@
             'new-isDisjoint',
             'Create disjoint graph',
             false,
-            'Creates a Disjoint SmartGraph. Creating edges between different SmartGraph components is not allowed.',
+            'Creates a Disjoint SmartGraph. Creating edges between different SmartGraph components is not allowed.'
           )
         );
 
@@ -1426,7 +1430,7 @@
 
         if (counter !== 0) {
           // means we're not creating the initial entry
-          id =  'newEdgeDefinitions' + self.counter;
+          id = 'newEdgeDefinitions' + self.counter;
           isMandatory = false;
           addDelete = true;
           addAdd = false;
@@ -1449,8 +1453,8 @@
             addAdd,
             1,
             self.getEdgesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
-            undefined, /*style*/
-            'first', /*cssClass*/
+            undefined, /* style*/
+            'first', /* cssClass*/
             self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
           )
         );
@@ -1473,8 +1477,8 @@
               false,
               null,
               self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
-              undefined, /*style*/
-              'middle', /*cssClass*/
+              undefined, /* style*/
+              'middle', /* cssClass*/
               self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
@@ -1491,8 +1495,8 @@
               false,
               null,
               self.getVerticesAutoCompletionList(graph ? self.currentGraphEditType : undefined),
-              undefined, /*style*/
-              'last', /*cssClass*/
+              undefined, /* style*/
+              'last', /* cssClass*/
               self.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(graph ? self.currentGraphEditType : undefined)
             )
           );
@@ -1603,11 +1607,11 @@
         tags: collections,
         showSearchBox: false,
         minimumResultsForSearch: -1,
-        width: '336px',
+        width: '336px'
       };
 
       if (type === 'edge') {
-        options.maximumSelectionSize =  1;
+        options.maximumSelectionSize = 1;
       }
 
       if (this.isEnterpriseOnlyGraphOrIsDefaultIsEnterprise(

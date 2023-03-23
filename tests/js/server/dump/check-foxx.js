@@ -55,13 +55,13 @@ const options = {
   json: true
 };
 
-function getCoordinators() {
+function getCoordinators () {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(serviceUrl);
+  return instanceInfo.arangods.filter(isCoordinator).
+                              map(toEndpoint).
+                              map(serviceUrl);
 }
 
 

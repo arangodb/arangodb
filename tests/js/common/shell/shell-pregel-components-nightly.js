@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -51,20 +51,20 @@ const {Parser} = require("acorn");
 
 
 const expressionDispatch = {
-  'Literal': function(expr) {
+  'Literal': function (expr) {
     // TODO translate objects, arrays?
     return expr.value;
   },
-  'CallExpression': function(expr) {
+  'CallExpression': function (expr) {
     return [toAir(expr.callee)].concat(expr.arguments.map(toAir));
   }
 };
 
 const dispatch = {
-  'Program': function(node) {
+  'Program': function (node) {
     return node.body.map(toAir);
   },
-  'ExpressionStatement': function(node) {
+  'ExpressionStatement': function (node) {
     console.log(JSON.stringify(node, null, 4));
     const exprType = node.expression.type;
     if (exprType in expressionDispatch) {
@@ -75,41 +75,41 @@ const dispatch = {
     }
     return [];
   },
-  'IfStatement': function(node) {
+  'IfStatement': function (node) {
     return ["if",
             [toAir(node.test),
              toAir(node.consequent)],
             [true,
              toAir(node.alternate)]];
   },
-  'BinaryExpression': function(node) {
+  'BinaryExpression': function (node) {
     return [node.operator, toAir(node.left), toAir(node.right)];
   },
-  'Identifier': function(node) {
+  'Identifier': function (node) {
     return node.name;
   },
-  'BlockStatement': function(node) {
+  'BlockStatement': function (node) {
     return ["seq"].concat(node.body.map(toAir));
   },
-  'FunctionDeclaration': function(node) {
+  'FunctionDeclaration': function (node) {
     return toAir(node.body);
   },
-  'ReturnStatement': function(node) {
+  'ReturnStatement': function (node) {
     return ["imperative-returns-suck", toAir(node.argument)];
   },
-  'Literal': function(node) {
+  'Literal': function (node) {
     return node.value;
   },
-  'ForInStatement': function(node) {
+  'ForInStatement': function (node) {
     return ["for-each", [], toAir(node.body)];
   },
-  'CallExpression': function(node) {
+  'CallExpression': function (node) {
     return [toAir(node.callee)].concat(node.arguments.map(toAir));
   }
 
 };
 
-function toAir(astNode) {
+function toAir (astNode) {
   let nodeType = astNode.type;
 
   if (nodeType in dispatch) {
@@ -119,11 +119,11 @@ function toAir(astNode) {
   }
 }
 
-function codeToAst(code) {
+function codeToAst (code) {
   return Parser.parse(code, { ecmaVersion: 2020});
 }
 
-function codeToAir(code) {
+function codeToAir (code) {
   return toAir(codeToAst(code));
 }
 

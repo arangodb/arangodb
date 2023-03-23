@@ -61,7 +61,7 @@ const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoP
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
- 
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief key regex
 // //////////////////////////////////////////////////////////////////////////////
@@ -345,7 +345,7 @@ ArangoDatabase.prototype._collections = function () {
     let result = [];
 
     // add all collections to object
-    for (let i = 0;  i < collections.length;  ++i) {
+    for (let i = 0; i < collections.length; ++i) {
       let collection = new ArangoCollection(this, collections[i]);
       this[collection._name] = collection;
       result.push(collection);
@@ -375,9 +375,9 @@ ArangoDatabase.prototype._collection = function (id) {
   let requestResult = this._connection.GET(this._collectionurl(id));
 
   // return null in case of not found
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+      requestResult.error === true &&
+      requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -401,9 +401,9 @@ ArangoDatabase.prototype._replicatedLog = function (id) {
   let requestResult = this._connection.GET(this._replicatedlogurl(id));
 
   // return null in case of not found
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+      requestResult.error === true &&
+      requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -421,9 +421,9 @@ ArangoDatabase.prototype._prototypeState = function (id) {
   let requestResult = this._connection.GET(this._prototypestateurl(id));
 
   // return null in case of not found
-  if (requestResult !== null
-      && requestResult.error === true
-      && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+      requestResult.error === true &&
+      requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -690,9 +690,9 @@ ArangoDatabase.prototype._dropIndex = function (id) {
   }
 
   let requestResult = this._connection.DELETE(this._indexurl(id));
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult.error === true &&
+    requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
     return false;
   }
 
@@ -1072,13 +1072,15 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   return new ArangoStatement(this, payload).execute();
 };
 
-const buildQueryPayload = (query, bindVars, options) => { 
+const buildQueryPayload = (query, bindVars, options) => {
   let payload = {};
-  
+
   if (typeof query === 'object' && query.hasOwnProperty('query')) {
     payload = query;
   } else {
-    payload = { query, bindVars, options };
+    payload = { query,
+bindVars,
+options };
   }
   // query
   if (typeof payload.query === 'object' && typeof payload.query.toAQL === 'function') {
@@ -1407,7 +1409,7 @@ ArangoDatabase.prototype._views = function () {
     let views = requestResult.result;
 
     // add all views to object
-    for (let i = 0;  i < views.length;  ++i) {
+    for (let i = 0; i < views.length; ++i) {
       let view = new ArangoView(this, views[i]);
       this[view._name] = view;
       result.push(view);
@@ -1430,10 +1432,10 @@ ArangoDatabase.prototype._views = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._view = function (id) {
-  if (typeof id !== 'number'
-      && this.hasOwnProperty(id)
-      && this[id]
-      && this[id] instanceof ArangoView) {
+  if (typeof id !== 'number' &&
+      this.hasOwnProperty(id) &&
+      this[id] &&
+      this[id] instanceof ArangoView) {
     return this[id];
   }
 
@@ -1441,9 +1443,9 @@ ArangoDatabase.prototype._view = function (id) {
   let requestResult = this._connection.GET(url);
 
   // return null in case of not found
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult.error === true &&
+    requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 

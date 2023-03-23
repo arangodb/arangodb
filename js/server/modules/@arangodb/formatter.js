@@ -65,7 +65,7 @@ exports.number = function (value, info, lang) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.formatFloat = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return null;
   }
 
@@ -95,7 +95,7 @@ exports.formatFloat = function (value, args) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.formatDatetime = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return null;
   }
 
@@ -123,7 +123,7 @@ exports.formatDatetime = function (value, args) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.joinNumbers = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return null;
   }
 
@@ -135,7 +135,7 @@ exports.joinNumbers = function (value, args) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.parseFloat = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return null;
   }
 
@@ -151,7 +151,7 @@ exports.parseFloat = function (value, args) {
   str += value;
   str = str.replace(thouSeparator, '');
 
-  if ('.' !== decSeparator) {
+  if (decSeparator !== '.') {
     str = str.replace(decSeparator, '.');
   }
 
@@ -167,7 +167,7 @@ exports.parseFloat = function (value, args) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.parseDatetime = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return null;
   }
 
@@ -216,7 +216,7 @@ exports.splitNumbers = function (value, args) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.validateNotNull = function (value, args) {
-  if (undefined === value || null === value) {
+  if (undefined === value || value === null) {
     return false;
   }
 

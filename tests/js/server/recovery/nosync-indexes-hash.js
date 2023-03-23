@@ -43,12 +43,13 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  // turn off syncing of counters etc.
+  internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
   db._drop(colName1);
   let c = db._create(colName1);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -58,7 +59,9 @@ function runSetup () {
 
   db._drop(colName2);
   c = db._create(colName2);
-  c.ensureIndex({ type: "hash", fields: ["a.value"], unique: true });
+  c.ensureIndex({ type: "hash",
+fields: ["a.value"],
+unique: true });
 
   docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -68,12 +71,15 @@ function runSetup () {
 
   db._drop(colName3);
   c = db._create(colName3);
-  c.ensureIndex({ type: "hash", fields: ["a", "b"] });
+  c.ensureIndex({ type: "hash",
+fields: ["a", "b"] });
 
   docs = [];
   for (let i = 0; i < 500; ++i) {
-    docs.push({ a: (i % 2) + 1, b: 1 });
-    docs.push({ a: (i % 2) + 1, b: 2 });
+    docs.push({ a: (i % 2) + 1,
+b: 1 });
+    docs.push({ a: (i % 2) + 1,
+b: 2 });
   }
   c.insert(docs);
 
@@ -102,7 +108,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testNoSyncSingleAttributeHashIndexInfo: function() {
+    testNoSyncSingleAttributeHashIndexInfo: function () {
       let c = db._collection(colName1);
       assertEqual(c.count(), 1000);
       let idx = c.getIndexes()[1];
@@ -111,14 +117,14 @@ function recoverySuite () {
       assertEqual([ 'value' ], idx.fields);
     },
 
-    testNoSyncSingleAttributeHashIndexByExample: function() {
+    testNoSyncSingleAttributeHashIndexByExample: function () {
       let c = db._collection(colName1);
       for (let i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ value: i }).toArray().length);
       }
     },
 
-    testNoSyncSingleAttributeHashIndexAql: function() {
+    testNoSyncSingleAttributeHashIndexAql: function () {
       assertEqual(1, db._query(`FOR doc IN ${colName1} FILTER doc.value == 0 RETURN doc`).toArray().length);
     },
 
@@ -128,7 +134,7 @@ function recoverySuite () {
       assertEqual(est1, idx.selectivityEstimate);
     },
 
-    testNoSyncNestedAttributeHashIndexInfo: function() {
+    testNoSyncNestedAttributeHashIndexInfo: function () {
       let c = db._collection(colName2);
       assertEqual(c.count(), 1000);
       let idx = c.getIndexes()[1];
@@ -137,14 +143,14 @@ function recoverySuite () {
       assertEqual([ 'a.value' ], idx.fields);
     },
 
-    testNoSyncNestedAttributeHashIndexByExample: function() {
+    testNoSyncNestedAttributeHashIndexByExample: function () {
       let c = db._collection(colName2);
       for (let i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExample({ 'a.value': i }).toArray().length);
       }
     },
 
-    testNoSyncNestedAttributeHashIndexAql: function() {
+    testNoSyncNestedAttributeHashIndexAql: function () {
       assertEqual(1, db._query(`FOR doc IN ${colName2} FILTER doc.a.value == 0 RETURN doc`).toArray().length);
     },
 
@@ -154,7 +160,7 @@ function recoverySuite () {
       assertEqual(est2, idx.selectivityEstimate);
     },
 
-    testNoSyncManyAttributesHashIndexInfo: function() {
+    testNoSyncManyAttributesHashIndexInfo: function () {
       let c = db._collection(colName3);
       let idx = c.getIndexes()[1];
       assertFalse(idx.unique);
@@ -162,15 +168,19 @@ function recoverySuite () {
       assertEqual([ 'a', 'b' ], idx.fields);
     },
 
-    testNoSyncManyAttributesHashIndexByExample: function() {
+    testNoSyncManyAttributesHashIndexByExample: function () {
       let c = db._collection(colName3);
-      assertEqual(250, c.byExample({ a: 1, b: 1 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 1, b: 2 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 2, b: 1 }).toArray().length);
-      assertEqual(250, c.byExample({ a: 2, b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1,
+b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 1,
+b: 2 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2,
+b: 1 }).toArray().length);
+      assertEqual(250, c.byExample({ a: 2,
+b: 2 }).toArray().length);
     },
 
-    testNoSyncManyAttributesHashIndexAql: function() {
+    testNoSyncManyAttributesHashIndexAql: function () {
       assertEqual(250, db._query(`FOR doc IN ${colName3} FILTER doc.a == 1 && doc.b == 1 RETURN doc`).toArray().length);
     },
 
@@ -179,7 +189,7 @@ function recoverySuite () {
       assertEqual(c.count(), 1000);
       let idx = c.getIndexes()[1];
       assertEqual(est3, idx.selectivityEstimate);
-    },
+    }
 
   };
 }

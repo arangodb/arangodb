@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen : 4000 */
+/* jshint globalstrict:false, strict:false, maxlen : 4000 */
 /* global arango, assertTrue, assertFalse, assertEqual, assertNotEqual, _ */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for inventory
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for inventory
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const jsunity = require('jsunity');
@@ -65,18 +65,18 @@ function clusterInventorySuite () {
     assertTrue(Array.isArray(view.primarySort));
     assertEqual("string", typeof view.primarySortCompression);
     assertTrue(Array.isArray(view.storedValues));
-    view.storedValues.forEach(function(storedValue) {
+    view.storedValues.forEach(function (storedValue) {
       assertEqual("object", typeof storedValue);
       assertTrue(Array.isArray(storedValue.fields));
       assertEqual("string", typeof storedValue.compression);
     });
-    //assertEqual("number", typeof view.version);
+    // assertEqual("number", typeof view.version);
     assertEqual("number", typeof view.writebufferActive);
     assertEqual("number", typeof view.writebufferIdle);
     assertEqual("number", typeof view.writebufferSizeMax);
 
     assertEqual("object", typeof view.links);
-    Object.keys(view.links).forEach(function(collection) {
+    Object.keys(view.links).forEach(function (collection) {
       let link = view.links[collection];
       assertEqual(11, Object.keys(link).length);
       assertEqual("number", typeof link.version);
@@ -84,7 +84,7 @@ function clusterInventorySuite () {
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual("string", typeof link.collectionName);
       assertEqual(collection, link.collectionName);
-      link.analyzerDefinitions.forEach(function(analyzer) {
+      link.analyzerDefinitions.forEach(function (analyzer) {
         assertEqual("object", typeof analyzer);
         assertEqual("string", typeof analyzer.name);
         assertEqual("string", typeof analyzer.type);
@@ -102,7 +102,7 @@ function clusterInventorySuite () {
       assertEqual("boolean", typeof link.trackListPositions);
     });
   };
-  
+
   let validateSearchAliasAttributes = function (view) {
     assertEqual("string", typeof view.globallyUniqueId);
     assertEqual("string", typeof view.id);
@@ -110,7 +110,7 @@ function clusterInventorySuite () {
     assertEqual("string", typeof view.type);
 
     assertTrue(Array.isArray(view.indexes));
-    view.indexes.forEach(function(index) {
+    view.indexes.forEach(function (index) {
       assertEqual("string", typeof index.collection);
       assertEqual(db._collection(index.collection).name(), index.collection);
       let indexes = db._collection(index.collection).indexes().filter((idx) => idx.name === index.index);
@@ -206,16 +206,28 @@ function clusterInventorySuite () {
       db._createEdgeCollection("UnitTestsDumpEdges");
 
       let c = db._create("UnitTestsDumpIndexes");
-      c.ensureIndex({ type: "hash", fields: ["a_uc"], unique: true });
-      c.ensureIndex({ type: "skiplist", fields: ["a_s1", "a_s2"] });
-      c.ensureIndex({ type: "hash", fields: ["a_h1", "a_h2"] });
-      c.ensureIndex({ type: "skiplist", fields: ["a_su"], unique: true });
-      c.ensureIndex({ type: "hash", fields: ["a_hs1", "a_hs2"], sparse: true });
-      c.ensureIndex({ type: "skiplist", fields: ["a_ss1", "a_ss2"], sparse: true });
-      c.ensureIndex({ type: "fulltext", fields: ["a_f"] });
-      c.ensureIndex({ type: "geo", fields: ["a_la", "a_lo"] });
-      
-      let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+      c.ensureIndex({ type: "hash",
+fields: ["a_uc"],
+unique: true });
+      c.ensureIndex({ type: "skiplist",
+fields: ["a_s1", "a_s2"] });
+      c.ensureIndex({ type: "hash",
+fields: ["a_h1", "a_h2"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["a_su"],
+unique: true });
+      c.ensureIndex({ type: "hash",
+fields: ["a_hs1", "a_hs2"],
+sparse: true });
+      c.ensureIndex({ type: "skiplist",
+fields: ["a_ss1", "a_ss2"],
+sparse: true });
+      c.ensureIndex({ type: "fulltext",
+fields: ["a_f"] });
+      c.ensureIndex({ type: "geo",
+fields: ["a_la", "a_lo"] });
+
+      let analyzer = analyzers.save("custom", "delimiter", { delimiter: " " }, [ "frequency" ]);
 
       // setup an empty view
       db._createView("UnitTestsDumpViewEmpty", "arangosearch", {});
@@ -232,10 +244,11 @@ function clusterInventorySuite () {
           commitIntervalMsec: 12345,
           consolidationIntervalMsec: 0,
           links: {
-            "UnitTestsDumpEmpty" : {
+            "UnitTestsDumpEmpty": {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+                text: { analyzers: [ "text_en", analyzer.name ],
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
               }
             }
           }
@@ -250,20 +263,23 @@ function clusterInventorySuite () {
           commitIntervalMsec: 12345,
           consolidationIntervalMsec: 0,
           links: {
-            "UnitTestsDumpEmpty" : {
+            "UnitTestsDumpEmpty": {
               includeAllFields: true,
               fields: {
-                text: { analyzers: [ "text_en", analyzer.name ], "fields": { "value": {}}}
+                text: { analyzers: [ "text_en", analyzer.name ],
+"fields": { "value": {}}}
               }
             }
           }
         };
       }
       view.properties(viewMeta);
-      
+
       c = db._create("UnitTestsDumpSearchAliasCollection");
-      let idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
-     
+      let idx = c.ensureIndex({ type: "inverted",
+fields: [{ name: "value",
+analyzer: analyzer.name }] });
+
       view = db._createView("UnitTestsDumpViewSearchAlias", "search-alias", {});
       view.properties({
         indexes: [
@@ -273,10 +289,12 @@ function clusterInventorySuite () {
           }
         ]
       });
-      
+
       c = db._create("UnitTestsDumpSearchAliasCollection2");
-      idx = c.ensureIndex({ type: "inverted", fields: [{ name: "value", analyzer: analyzer.name }] });
-     
+      idx = c.ensureIndex({ type: "inverted",
+fields: [{ name: "value",
+analyzer: analyzer.name }] });
+
       db._createView("UnitTestsDumpViewSearchAlias2", "search-alias", {
         indexes: [
           {
@@ -285,25 +303,27 @@ function clusterInventorySuite () {
           }
         ]
       });
-     
-      db._create("UnitTestsDumpShards", { numberOfShards : 9 });
+
+      db._create("UnitTestsDumpShards", { numberOfShards: 9 });
       if (isEnterprise) {
         db._create("UnitTestsDumpSatelliteCollection", {"replicationFactor": "satellite"});
       }
 
-      db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
-      db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
+      db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1,
+numberOfShards: 7 });
+      db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2,
+numberOfShards: 6 });
     },
-    
-    tearDownAll : function () {
+
+    tearDownAll: function () {
       db._useDatabase("_system");
       db._dropDatabase("UnitTestsDumpSrc");
       db._dropDatabase("UnitTestsDumpDst");
     },
 
-    testData : function () {
+    testData: function () {
       db._useDatabase("UnitTestsDumpSrc");
-      
+
       let results = arango.GET("/_api/replication/clusterInventory");
       assertTrue(results.hasOwnProperty("collections"));
 
@@ -313,11 +333,11 @@ function clusterInventorySuite () {
         validateCollectionAttributes(collection);
         byName[collection.parameters.name] = collection;
       });
-      
+
       let collection = byName["UnitTestsDumpEmpty"];
       assertEqual(2, collection.parameters.type);
       assertEqual(0, collection.indexes.length);
-      
+
       collection = byName["UnitTestsDumpEdges"];
       assertEqual(3, collection.parameters.type);
       assertEqual(0, collection.indexes.length);
@@ -353,11 +373,11 @@ function clusterInventorySuite () {
       assertEqual("fulltext", collection.indexes[6].type);
       assertEqual(["a_la", "a_lo"], collection.indexes[7].fields);
       assertEqual("geo", collection.indexes[7].type);
-      
+
       assertTrue(results.hasOwnProperty("views"));
       assertTrue(Array.isArray(results.views));
       assertEqual(4, results.views.length);
-      
+
       results.views.forEach(function (view) {
         assertTrue(view.type === "arangosearch" || view.type === "search-alias");
         if (view.type === "arangosearch") {
@@ -368,7 +388,7 @@ function clusterInventorySuite () {
       });
 
       // make view result order deterministic
-      results.views.sort(function(l, r) {
+      results.views.sort(function (l, r) {
         if (l.name !== r.name) {
           return l.name < r.name ? -1 : 1;
         }
@@ -427,17 +447,21 @@ function clusterInventorySuite () {
       assertEqual("delimiter", a.type);
       assertEqual({"delimiter": " "}, a.properties);
       assertEqual(["frequency"], a.features);
-      
+
       a = link.analyzerDefinitions[1];
       assertEqual("identity", a.name);
       assertEqual("identity", a.type);
       assertEqual({}, a.properties);
       assertEqual(["frequency", "norm"], a.features.sort());
-      
+
       a = link.analyzerDefinitions[2];
       assertEqual("text_en", a.name);
       assertEqual("text", a.type);
-      assertEqual({locale: "en", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
+      assertEqual({locale: "en",
+case: "lower",
+stopwords: [],
+accent: false,
+stemming: true}, a.properties);
       assertEqual(["frequency", "norm", "position"], a.features.sort());
 
       view = results.views[1];
@@ -448,38 +472,38 @@ function clusterInventorySuite () {
       assertEqual(1000, view.consolidationIntervalMsec);
       assertEqual("tier", view.consolidationPolicy.type);
       assertEqual([], view.primarySort);
-        
+
       view = results.views[2];
       assertEqual("search-alias", view.type);
       assertEqual("UnitTestsDumpViewSearchAlias", view.name);
       assertEqual(1, view.indexes.length);
       assertEqual("UnitTestsDumpSearchAliasCollection", view.indexes[0].collection);
-        
+
       view = results.views[3];
       assertEqual("search-alias", view.type);
       assertEqual("UnitTestsDumpViewSearchAlias2", view.name);
       assertEqual("UnitTestsDumpSearchAliasCollection2", view.indexes[0].collection);
     },
 
-    testEmptyDatabase : function () {
+    testEmptyDatabase: function () {
       db._useDatabase("UnitTestsDumpDst");
-      
+
       let results = arango.GET("/_api/replication/clusterInventory");
       assertTrue(results.hasOwnProperty("collections"));
       assertTrue(Array.isArray(results.collections));
       assertNotEqual(0, results.collections.length);
 
-      results.collections.forEach(function(collection) {
+      results.collections.forEach(function (collection) {
         validateCollectionAttributes(collection);
         assertEqual('_', collection.parameters.name[0]);
         assertTrue(collection.parameters.isSystem);
       });
-      
+
       assertTrue(results.hasOwnProperty("views"));
       assertTrue(Array.isArray(results.views));
       assertEqual(0, results.views.length);
     }
-    
+
   };
 }
 

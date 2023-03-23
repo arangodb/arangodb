@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Arango Simple Query Language
@@ -144,7 +144,7 @@ SimpleQuery.prototype.skip = function (skip) {
 
     if (this._skip === null || this._skip === 0) {
       query._skip = skip;
-    }else {
+    } else {
       query._skip += skip;
     }
   }
@@ -204,7 +204,7 @@ SimpleQuery.prototype.setBatchSize = function (value) {
 SimpleQuery.prototype.count = function (applyPagination) {
   this.execute();
 
-  if (applyPagination === undefined || ! applyPagination) {
+  if (applyPagination === undefined || !applyPagination) {
     return this._countTotal;
   }
 
@@ -231,7 +231,7 @@ SimpleQuery.prototype.next = function () {
   return this._execution.next();
 };
 
-SimpleQuery.prototype[Symbol.iterator] = function * () {
+SimpleQuery.prototype[Symbol.iterator] = function *() {
   this.execute();
   for (const item of this._execution) {
     yield item;
@@ -521,11 +521,11 @@ function SimpleQueryGeo (collection, index) {
 SimpleQueryGeo.prototype._PRINT = function (context) {
   var text;
 
-  text = 'GeoIndex('
-    + this._collection.name()
-    + ', '
-    + this._index
-    + ')';
+  text = 'GeoIndex(' +
+    this._collection.name() +
+    ', ' +
+    this._index +
+    ')';
 
   context.output += text;
 };
@@ -571,14 +571,13 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
   if (iid === undefined) {
     idx = collection.getIndexes();
 
-    for (i = 0;  i < idx.length;  ++i) {
+    for (i = 0; i < idx.length; ++i) {
       var index = idx[i];
 
       if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
-        }
-        else if (index.id < this._index) {
+        } else if (index.id < this._index) {
           this._index = index.id;
         }
       }
@@ -620,15 +619,15 @@ SimpleQueryNear.prototype.clone = function () {
 SimpleQueryNear.prototype._PRINT = function (context) {
   var text;
 
-  text = 'SimpleQueryNear('
-    + this._collection.name()
-    + ', '
-    + this._latitude
-    + ', '
-    + this._longitude
-    + ', '
-    + this._index
-    + ')';
+  text = 'SimpleQueryNear(' +
+    this._collection.name() +
+    ', ' +
+    this._latitude +
+    ', ' +
+    this._longitude +
+    ', ' +
+    this._index +
+    ')';
 
   if (this._skip !== null && this._skip !== 0) {
     text += '.skip(' + this._skip + ')';
@@ -652,7 +651,7 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 
   if (attribute) {
     clone._distance = attribute;
-  }else {
+  } else {
     clone._distance = 'distance';
   }
 
@@ -677,14 +676,13 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
   if (iid === undefined) {
     idx = collection.getIndexes();
 
-    for (i = 0;  i < idx.length;  ++i) {
+    for (i = 0; i < idx.length; ++i) {
       var index = idx[i];
 
       if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
-        }
-        else if (index.id < this._index) {
+        } else if (index.id < this._index) {
           this._index = index.id;
         }
       }
@@ -728,17 +726,17 @@ SimpleQueryWithin.prototype.clone = function () {
 SimpleQueryWithin.prototype._PRINT = function (context) {
   var text;
 
-  text = 'SimpleQueryWithin('
-    + this._collection.name()
-    + ', '
-    + this._latitude
-    + ', '
-    + this._longitude
-    + ', '
-    + this._radius
-    + ', '
-    + this._index
-    + ')';
+  text = 'SimpleQueryWithin(' +
+    this._collection.name() +
+    ', ' +
+    this._latitude +
+    ', ' +
+    this._longitude +
+    ', ' +
+    this._radius +
+    ', ' +
+    this._index +
+    ')';
 
   if (this._skip !== null && this._skip !== 0) {
     text += '.skip(' + this._skip + ')';
@@ -762,7 +760,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
 
   if (attribute) {
     clone._distance = attribute;
-  }else {
+  } else {
     clone._distance = 'distance';
   }
 
@@ -787,14 +785,13 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
   if (iid === undefined) {
     idx = collection.getIndexes();
 
-    for (i = 0;  i < idx.length;  ++i) {
+    for (i = 0; i < idx.length; ++i) {
       var index = idx[i];
 
       if (index.type === 'geo' || index.type === 'geo1' || index.type === 'geo2') {
         if (this._index === null) {
           this._index = index.id;
-        }
-        else if (index.id < this._index) {
+        } else if (index.id < this._index) {
           this._index = index.id;
         }
       }
@@ -838,19 +835,19 @@ SimpleQueryWithinRectangle.prototype.clone = function () {
 SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
   var text;
 
-  text = 'SimpleQueryWithinRectangle('
-    + this._collection.name()
-    + ', '
-    + this._latitude1
-    + ', '
-    + this._longitude1
-    + ', '
-    + this._latitude2
-    + ', '
-    + this._longitude2
-    + ', '
-    + this._index
-    + ')';
+  text = 'SimpleQueryWithinRectangle(' +
+    this._collection.name() +
+    ', ' +
+    this._latitude1 +
+    ', ' +
+    this._longitude1 +
+    ', ' +
+    this._latitude2 +
+    ', ' +
+    this._longitude2 +
+    ', ' +
+    this._index +
+    ')';
 
   if (this._skip !== null && this._skip !== 0) {
     text += '.skip(' + this._skip + ')';
@@ -877,14 +874,13 @@ function SimpleQueryFulltext (collection, attribute, query, iid) {
     var idx = collection.getIndexes();
     var i;
 
-    for (i = 0;  i < idx.length;  ++i) {
+    for (i = 0; i < idx.length; ++i) {
       var index = idx[i];
 
       if (index.type === 'fulltext' && index.fields[0] === attribute) {
         if (this._index === null) {
           this._index = index.id;
-        }
-        else if (index.indexSubstrings && ! this._index.indexSubstrings) {
+        } else if (index.indexSubstrings && !this._index.indexSubstrings) {
           // prefer indexes that have substrings indexed
           this._index = index.id;
         }
@@ -926,13 +922,13 @@ SimpleQueryFulltext.prototype.clone = function () {
 SimpleQueryFulltext.prototype._PRINT = function (context) {
   var text;
 
-  text = 'SimpleQueryFulltext('
-    + this._collection.name()
-    + ', '
-    + this._attribute
-    + ', "'
-    + this._query
-    + '")';
+  text = 'SimpleQueryFulltext(' +
+    this._collection.name() +
+    ', ' +
+    this._attribute +
+    ', "' +
+    this._query +
+    '")';
 
   if (this._skip !== null && this._skip !== 0) {
     text += '.skip(' + this._skip + ')';

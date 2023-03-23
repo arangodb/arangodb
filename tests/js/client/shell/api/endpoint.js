@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,24 +31,24 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
 let api = "/_api/endpoint";
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
 
 function error_handlingSuite () {
   let name = "UnitTestsDatabase";
   return {
 
-    setUp: function() {
+    setUp: function () {
       arango.DELETE_RAW(`/_api/database/${name}`);
 
-      let body = {"name" : name };
+      let body = {"name": name };
       let doc = arango.POST_RAW("/_api/database", body);
 
       assertEqual(doc.code, 201);
@@ -58,11 +58,11 @@ function error_handlingSuite () {
       assertFalse(response["error"]);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(`/_api/database/${name}`);
     },
 
-    test_use_non_system_database: function() {
+    test_use_non_system_database: function () {
       let doc = arango.GET_RAW(`/_db/${name}${api}`);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_FORBIDDEN.code);
@@ -72,7 +72,7 @@ function error_handlingSuite () {
       assertEqual(response["errorNum"], internal.errors.ERROR_ARANGO_USE_SYSTEM_DATABASE.code);
     },
 
-    test_use_non_existent_database: function() {
+    test_use_non_existent_database: function () {
       let doc = arango.GET_RAW("/_db/foobar${api}");
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -80,24 +80,24 @@ function error_handlingSuite () {
       let response = doc.parsedBody;
       assertTrue(response["error"]);
       assertEqual(response["errorNum"], internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code);
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // endpoints;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function retrieving_endpointsSuite () {
   return {
-    test_retrieves_endpoints: function() {
+    test_retrieves_endpoints: function () {
       let doc = arango.GET_RAW(api);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       let response = doc.parsedBody;
       assertEqual(typeof response[0]["endpoint"], 'string');
-    },
+    }
 
   };
 }

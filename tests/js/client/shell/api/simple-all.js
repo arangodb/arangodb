@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,33 +31,33 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/simple";
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // all query;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function all_query_will_take_a_while_when_using_sslSuite () {
   let cn = "UnitTestsCollectionSimple";
   return {
-    setUpAll: function() {
-      db._create(cn, { "numberOfShards" : 8 });
+    setUpAll: function () {
+      db._create(cn, { "numberOfShards": 8 });
 
-      let docs=[];
+      let docs = [];
       for (var i = 0; i < 1500; ++i) {
         docs.push({ n: i });
       }
       db[cn].save(docs);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    test_get_all_documents: function() {
+    test_get_all_documents: function () {
       let cmd = api + "/all";
-      let body = { "collection" : cn };
+      let body = { "collection": cn };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -69,9 +69,10 @@ function all_query_will_take_a_while_when_using_sslSuite () {
       assertEqual(doc.parsedBody['count'], 1500);
     },
 
-    test_get_all_documents_with_limit: function() {
+    test_get_all_documents_with_limit: function () {
       let cmd = api + "/all";
-      let body = { "collection" : cn, "limit" : 100 };
+      let body = { "collection": cn,
+"limit": 100 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -83,9 +84,10 @@ function all_query_will_take_a_while_when_using_sslSuite () {
       assertEqual(doc.parsedBody['count'], 100);
     },
 
-    test_get_all_documents_with_negative_skip: function() {
+    test_get_all_documents_with_negative_skip: function () {
       let cmd = api + "/all";
-      let body = { "collection" : cn, "skip" : -100 };
+      let body = { "collection": cn,
+"skip": -100 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -95,9 +97,10 @@ function all_query_will_take_a_while_when_using_sslSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code);
     },
 
-    test_get_all_documents_with_skip: function() {
+    test_get_all_documents_with_skip: function () {
       let cmd = api + "/all";
-      let body = { "collection" : cn, "skip" : 1400 };
+      let body = { "collection": cn,
+"skip": 1400 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -109,9 +112,11 @@ function all_query_will_take_a_while_when_using_sslSuite () {
       assertEqual(doc.parsedBody['count'], 100);
     },
 
-    test_get_all_documents_with_skip_and_limit: function() {
+    test_get_all_documents_with_skip_and_limit: function () {
       let cmd = api + "/all";
-      let body = { "collection" : cn, "skip" : 1400, "limit" : 2 };
+      let body = { "collection": cn,
+"skip": 1400,
+"limit": 2 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -121,7 +126,7 @@ function all_query_will_take_a_while_when_using_sslSuite () {
       assertFalse(doc.parsedBody['hasMore']);
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
-    },
+    }
   };
 }
 jsunity.run(all_query_will_take_a_while_when_using_sslSuite);

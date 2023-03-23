@@ -42,19 +42,20 @@ function vstDumpSuite () {
     tearDown: function () {
       db._drop(cn);
     },
-    
+
     testVstDump: function () {
-      db[cn].insert({ _key: "test", value: 1 });
+      db[cn].insert({ _key: "test",
+value: 1 });
 
       let doc = arango.GET("/_api/document/" + encodeURIComponent(cn) + "/test", {
         accept: "application/json"
       });
- 
+
       assertEqual("test", doc._key);
       assertEqual(cn + "/test", doc._id);
       assertEqual(1, doc.value);
-    },
-    
+    }
+
   };
 }
 

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, unused: false */
-/*global assertEqual, assertTrue, assertFalse, arango, ARGUMENTS */
+/* jshint globalstrict:false, strict:false, unused: false */
+/* global assertEqual, assertTrue, assertFalse, arango, ARGUMENTS */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the replication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2017, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the replication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2017, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -39,40 +39,40 @@ const internal = require("internal");
 const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function ReplicationSuite () {
   'use strict';
   var cn = "UnitTestsReplication";
 
-  var connectToLeader = function() {
+  var connectToLeader = function () {
     reconnectRetry(leaderEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
-  var connectToFollower = function() {
+  var connectToFollower = function () {
     reconnectRetry(followerEndpoint, db._name(), "root", "");
     db._flushCache();
   };
 
-  var collectionChecksum = function(name) {
+  var collectionChecksum = function (name) {
     var c = db._collection(name).checksum(true, true);
     return c.checksum;
   };
 
-  var collectionCount = function(name) {
+  var collectionCount = function (name) {
     return db._collection(name).count();
   };
 
-  var compare = function(leaderFunc, leaderFunc2, followerFuncFinal) {
+  var compare = function (leaderFunc, leaderFunc2, followerFuncFinal) {
     var state = {};
 
     assertEqual(cn, db._name());
     db._flushCache();
     leaderFunc(state);
-    
+
     connectToFollower();
     assertEqual(cn, db._name());
 
@@ -82,7 +82,7 @@ function ReplicationSuite() {
       password: "",
       verbose: true,
       includeSystem: false,
-      keepBarrier: true,
+      keepBarrier: true
     });
 
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -96,8 +96,8 @@ function ReplicationSuite() {
     let applierConfiguration = {
       endpoint: leaderEndpoint,
       username: "root",
-      password: "", 
-      requireFromPresent: true 
+      password: "",
+      requireFromPresent: true
     };
 
     connectToFollower();
@@ -126,7 +126,7 @@ function ReplicationSuite() {
         console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
         break;
       }
-        
+
       if (!printed) {
         console.topic("replication=debug", "waiting for follower to catch up");
         printed = true;
@@ -140,7 +140,7 @@ function ReplicationSuite() {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._useDatabase("_system");
       connectToLeader();
       try {
@@ -152,7 +152,7 @@ function ReplicationSuite() {
 
       db._useDatabase("_system");
       connectToFollower();
-      
+
       try {
         db._dropDatabase(cn);
       } catch (err) {}
@@ -160,7 +160,7 @@ function ReplicationSuite() {
       db._createDatabase(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._useDatabase("_system");
       connectToLeader();
 
@@ -168,27 +168,27 @@ function ReplicationSuite() {
       connectToFollower();
       replication.applier.stop();
       replication.applier.forget();
-      
+
       db._useDatabase("_system");
       db._dropDatabase(cn);
     },
-    
-    tearDownAll: function() {
+
+    tearDownAll: function () {
       connectToLeader();
       db._useDatabase("_system");
       db._dropDatabase(cn);
     },
-    
-    testAqlInsert: function() {
+
+    testAqlInsert: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          db._create(cn); 
+        function (state) {
+          db._create(cn);
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 2000; ++i) {
             db._query("INSERT { _key: \"test" + i + "\", value1: " + i + ", value2: " + (i % 100) + " } IN " + cn);
           }
@@ -198,12 +198,12 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 2000; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == \"test" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == \"test" + i + "\" RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertEqual(i, docs[0].value1);
@@ -212,20 +212,22 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlRemove: function() {
+
+    testAqlRemove: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " REMOVE doc IN " + cn);
           }
@@ -235,63 +237,68 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(0, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
         }
       );
     },
-    
-    testAqlRemoveMulti: function() {
+
+    testAqlRemoveMulti: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "hash",
+fields: ["value2"] });
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value2 == " + i + " REMOVE doc IN " + cn);
           }
-   
+
           assertEqual(0, collectionCount(cn));
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(0, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
         }
       );
     },
-    
-    testAqlUpdate: function() {
+
+    testAqlUpdate: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " UPDATE doc WITH { value3: doc.value1 + 1 } IN " + cn);
           }
@@ -300,12 +307,12 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertEqual(i, docs[0].value1);
@@ -316,20 +323,23 @@ function ReplicationSuite() {
       );
     },
 
-    testAqlUpdateMulti: function() {
+    testAqlUpdateMulti: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "hash",
+fields: ["value2"] });
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value2 == " + i + " UPDATE doc WITH { value3: doc.value1 + 1 } IN " + cn);
           }
@@ -338,26 +348,28 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
         }
       );
     },
 
-    testAqlUpdateEdge: function() {
+    testAqlUpdateEdge: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._createEdgeCollection(cn); 
+        function (state) {
+          let c = db._createEdgeCollection(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + i, _to: "test/y" + i });
+            c.insert({ _key: "test" + i,
+_from: "test/v" + i,
+_to: "test/y" + i });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" UPDATE doc WITH { _from: \"test/x" + i + "\" } IN " + cn);
           }
@@ -366,17 +378,17 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
 
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertEqual("test/x" + i, docs[0]._from);
@@ -385,20 +397,22 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlUpdateEdgeMulti: function() {
+
+    testAqlUpdateEdgeMulti: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._createEdgeCollection(cn); 
+        function (state) {
+          let c = db._createEdgeCollection(cn);
           for (let i = 0; i < 1000; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
+            c.insert({ _key: "test" + i,
+_from: "test/v" + (i % 100),
+_to: "test/y" + (i % 100) });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" UPDATE doc WITH { _from: \"test/x" + i + "\" } IN " + cn);
           }
@@ -407,17 +421,17 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
 
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray();
             assertEqual(10, docs.length);
             assertEqual("test/x" + i, docs[0]._from);
             assertEqual("test/y" + i, docs[0]._to);
@@ -425,21 +439,25 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlUpdateEdgeExtraIndex: function() {
+
+    testAqlUpdateEdgeExtraIndex: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._createEdgeCollection(cn); 
+        function (state) {
+          let c = db._createEdgeCollection(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + i, _to: "test/y" + i });
+            c.insert({ _key: "test" + i,
+_from: "test/v" + i,
+_to: "test/y" + i });
           }
-          c.ensureIndex({ type: "hash", fields: ["_from", "_to"], unique: true });
+          c.ensureIndex({ type: "hash",
+fields: ["_from", "_to"],
+unique: true });
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" UPDATE doc WITH { _from: \"test/x" + i + "\" } IN " + cn);
           }
@@ -448,17 +466,17 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
 
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertEqual("test/x" + i, docs[0]._from);
@@ -467,20 +485,22 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlReplace: function() {
+
+    testAqlReplace: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value1 == " + i + " REPLACE doc WITH { value3: doc.value1 + 1 } IN " + cn);
           }
@@ -489,12 +509,12 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == 'test" + i + "' RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._key == 'test" + i + "' RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertFalse(docs[0].hasOwnProperty('value1'));
@@ -504,21 +524,24 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlReplaceMulti: function() {
+
+    testAqlReplaceMulti: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._create(cn); 
+        function (state) {
+          let c = db._create(cn);
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            c.insert({ _key: "test" + i,
+value1: i,
+value2: (i % 100) });
           }
-          c.ensureIndex({ type: "hash", fields: ["value2"] });
+          c.ensureIndex({ type: "hash",
+fields: ["value2"] });
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc.value2 == " + i + " REPLACE doc WITH { value3: doc.value1 + 1 } IN " + cn);
           }
@@ -527,26 +550,28 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
         }
       );
     },
-    
-    testAqlReplaceEdge: function() {
+
+    testAqlReplaceEdge: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._createEdgeCollection(cn); 
+        function (state) {
+          let c = db._createEdgeCollection(cn);
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + i, _to: "test/y" + i });
+            c.insert({ _key: "test" + i,
+_from: "test/v" + i,
+_to: "test/y" + i });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" REPLACE doc WITH { _from: \"test/x" + i + "\", _to: \"test/y" + i + "\" } IN " + cn);
           }
@@ -555,17 +580,17 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
 
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray();
             assertEqual(1, docs.length);
             assertEqual("test" + i, docs[0]._key);
             assertEqual("test/x" + i, docs[0]._from);
@@ -574,20 +599,22 @@ function ReplicationSuite() {
         }
       );
     },
-    
-    testAqlReplaceEdgeMulti: function() {
+
+    testAqlReplaceEdgeMulti: function () {
       db._useDatabase(cn);
       connectToLeader();
 
       compare(
-        function(state) {
-          let c = db._createEdgeCollection(cn); 
+        function (state) {
+          let c = db._createEdgeCollection(cn);
           for (let i = 0; i < 1000; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
+            c.insert({ _key: "test" + i,
+_from: "test/v" + (i % 100),
+_to: "test/y" + (i % 100) });
           }
         },
 
-        function(state) {
+        function (state) {
           for (let i = 0; i < 100; ++i) {
             db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" REPLACE doc WITH { _from: \"test/x" + i + "\", _to: doc._to } IN " + cn);
           }
@@ -596,32 +623,32 @@ function ReplicationSuite() {
           state.count = collectionCount(cn);
         },
 
-        function(state) {
+        function (state) {
           assertEqual(state.checksum, collectionChecksum(cn));
           assertEqual(state.count, collectionCount(cn));
-          
+
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/v" + i + "\" RETURN doc").toArray();
             assertEqual(0, docs.length);
           }
 
           for (let i = 0; i < 100; ++i) {
-            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray(); 
+            let docs = db._query("FOR doc IN " + cn + " FILTER doc._from == \"test/x" + i + "\" RETURN doc").toArray();
             assertEqual(10, docs.length);
             assertEqual("test/x" + i, docs[0]._from);
             assertEqual("test/y" + i, docs[0]._to);
           }
         }
       );
-    },
+    }
 
   };
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
 

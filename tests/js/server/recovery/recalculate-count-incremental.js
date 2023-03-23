@@ -33,9 +33,9 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
+
   internal.debugSetFailAt('DisableCommitCounts');
-  
+
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   let c = db._create('UnitTestsRecovery1');
@@ -43,37 +43,51 @@ function runSetup () {
 
   // count = 0
   c.recalculateCount();
-  control.insert({ _key: "step1", expected: 0, actual: c.count() });
+  control.insert({ _key: "step1",
+expected: 0,
+actual: c.count() });
 
   c.insert({ _key: "test1" });
   // count = 1
   c.recalculateCount();
-  control.insert({ _key: "step2", expected: 1, actual: c.count() });
-  
+  control.insert({ _key: "step2",
+expected: 1,
+actual: c.count() });
+
   c.insert({ _key: "test2" });
   // count = 2
   c.recalculateCount();
-  control.insert({ _key: "step3", expected: 2, actual: c.count() });
+  control.insert({ _key: "step3",
+expected: 2,
+actual: c.count() });
 
   c.insert({ _key: "test3" });
   // count = 3
   c.recalculateCount();
-  control.insert({ _key: "step4", expected: 3, actual: c.count() });
-  
+  control.insert({ _key: "step4",
+expected: 3,
+actual: c.count() });
+
   c.remove("test2");
   // count = 2
   c.recalculateCount();
-  control.insert({ _key: "step5", expected: 2, actual: c.count() });
+  control.insert({ _key: "step5",
+expected: 2,
+actual: c.count() });
 
   c.update("test1", { foo: "bar" });
   // count = 2
   c.recalculateCount();
-  control.insert({ _key: "step6", expected: 2, actual: c.count() });
+  control.insert({ _key: "step6",
+expected: 2,
+actual: c.count() });
 
   c.truncate();
   // count = 0;
   c.recalculateCount();
-  control.insert({ _key: "step7", expected: 0, actual: c.count() }, { waitForSync: true });
+  control.insert({ _key: "step7",
+expected: 0,
+actual: c.count() }, { waitForSync: true });
 
   internal.debugTerminate('crashing server');
 }
@@ -94,7 +108,7 @@ function recoverySuite () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(0, c.count());
       assertTrue([], c.toArray());
-      
+
       let control = db._collection('UnitTestsRecovery2');
       assertEqual(7, control.count());
 

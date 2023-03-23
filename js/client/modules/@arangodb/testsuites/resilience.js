@@ -4,24 +4,24 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Max Neunhoeffer
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -62,7 +62,7 @@ const testPaths = {
 // / @brief TEST: resilience*
 // //////////////////////////////////////////////////////////////////////////////
 
-var _resilience = function(path, enableAliveMonitor) {
+var _resilience = function (path, enableAliveMonitor) {
   this.func = function resilience (options) {
     let suiteName = path;
     let localOptions = _.clone(options);
@@ -84,7 +84,7 @@ var _resilience = function(path, enableAliveMonitor) {
     let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
-      'javascript.allow-admin-execute': 'true',
+      'javascript.allow-admin-execute': 'true'
     }).run(testCases);
     options.cleanup = options.cleanup && localOptions.cleanup;
     return rc;
@@ -117,7 +117,7 @@ function clientResilience (options) {
   let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
-    'javascript.allow-admin-execute': 'true',
+    'javascript.allow-admin-execute': 'true'
   }).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
@@ -143,10 +143,10 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
+  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover', Object.assign({}, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
-      'javascript.allow-admin-execute': 'true',
+      'javascript.allow-admin-execute': 'true'
     }, tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
@@ -165,6 +165,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
   testFns['active_failover'] = activeFailover;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

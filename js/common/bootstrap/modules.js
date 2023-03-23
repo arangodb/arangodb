@@ -1,9 +1,9 @@
-/*jshint ignore:start */
-/*eslint no-unused-vars:0, quotes:0 */
+/* jshint ignore:start */
+/* eslint no-unused-vars:0, quotes:0 */
 /*eslint-disable */
 ;(function () {
   'use strict'
-  /*eslint-enable */
+  /* eslint-enable */
 
   // //////////////////////////////////////////////////////////////////////////////
   // / DISCLAIMER
@@ -76,9 +76,13 @@
   delete global.MODULES_PATH;
 
   function internalModuleStat (path) {
-    if (fs.isDirectory(path)) return 1;
-    else if (fs.isFile(path)) return 0;
-    else return -1;
+    if (fs.isDirectory(path)) {
+return 1;
+} else if (fs.isFile(path)) {
+return 0;
+} else {
+return -1;
+}
   }
 
   // If obj.hasOwnProperty has been overridden, then calling
@@ -147,10 +151,10 @@
     Object.defineProperty(this, 'filename', {
       configurable: true,
       enumerable: true,
-      get() {
+      get () {
         return this[$_MODULE_CONTEXT].__filename;
       },
-      set(filename) {
+      set (filename) {
         this[$_MODULE_CONTEXT].__filename = filename;
         this[$_MODULE_CONTEXT].__dirname = filename === null ? null : path.dirname(filename);
       }
@@ -211,7 +215,9 @@
   function tryPackage (requestPath, exts) {
     var pkg = readPackage(requestPath);
 
-    if (!pkg) return false;
+    if (!pkg) {
+return false;
+}
 
     var filename = path.resolve(requestPath, pkg);
     return tryFile(filename) || tryExtensions(filename, exts) ||
@@ -247,7 +253,8 @@
     var s = request.slice(-1);
     var trailingSlash = (s === '/' || s === '\\');
 
-    var cacheKey = JSON.stringify({request: request, paths: paths});
+    var cacheKey = JSON.stringify({request: request,
+paths: paths});
     if (Module._pathCache[cacheKey]) {
       return Module._pathCache[cacheKey];
     }
@@ -255,7 +262,9 @@
     // For each path
     for (var i = 0, PL = paths.length; i < PL; i++) {
       // Don't search further if path doesn't exist
-      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) continue;
+      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) {
+continue;
+}
       var basePath = path.resolve(paths[i], request);
       var filename;
 
@@ -319,9 +328,13 @@
 
     for (var tip = parts.length - 1; tip >= 0; tip--) {
       // don't search in .../node_modules/node_modules
-      if (parts[tip] === 'node_modules') continue;
+      if (parts[tip] === 'node_modules') {
+continue;
+}
       var dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
-      if (inRoot && dir.indexOf(root) !== 0) break;
+      if (inRoot && dir.indexOf(root) !== 0) {
+break;
+}
       paths.push(dir);
     }
 
@@ -337,7 +350,9 @@
     if (start !== './' && start !== '..') {
       var paths = modulePaths.slice(0);
       if (parent) {
-        if (!parent.paths) parent.paths = [];
+        if (!parent.paths) {
+parent.paths = [];
+}
         paths = parent.paths.concat(paths);
       }
 
@@ -440,8 +455,8 @@
       if (!dbModule) {
         throw new internal.ArangoError({
           errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
-          errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
-            + '\nFile: ' + request
+          errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message +
+            '\nFile: ' + request
         });
       }
     } else {
@@ -482,7 +497,8 @@
     }
 
     cache[filename] = module;
-    var loading = {cache, filename};
+    var loading = {cache,
+filename};
     LOADING.push(loading);
 
     var hadException = true;
@@ -529,8 +545,8 @@
     if (!filename) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
-        errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
-          + '\nFile: ' + request
+        errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message +
+          '\nFile: ' + request
       });
     }
     return filename;
@@ -543,7 +559,9 @@
     this.paths = Module._nodeModulePaths(path.dirname(filename), this[$_MODULE_ROOT]);
 
     var extension = path.extname(filename) || '.js';
-    if (!Module._extensions[extension]) extension = '.js';
+    if (!Module._extensions[extension]) {
+extension = '.js';
+}
 
     try {
       Module._extensions[extension](this, filename);

@@ -41,20 +41,21 @@ const db = internal.db;
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-const planNodes = function(plan) {
+const planNodes = function (plan) {
   return plan.plan.nodes.map(n => n.type);
 };
 
-function pruneTraversalSuite() {
+function pruneTraversalSuite () {
   const optionsToTest = {
     DFS: {bfs: false},
     BFS: {bfs: true},
-    Neighbors: {bfs: true, uniqueVertices: 'global'}
+    Neighbors: {bfs: true,
+uniqueVertices: 'global'}
   };
 
   // We have identical tests for all traversal options.
   const appendTests = (testObj, name, opts) => {
-    
+
     testObj['testRenameConditionVariablesNested'] = () => {
       const q = `
         WITH ${vn}
@@ -89,7 +90,7 @@ function pruneTraversalSuite() {
         assertEqual(res.toArray().sort(), ['A', 'C', 'C', 'E', 'F'].sort(), `In query ${q}`);
       }
     };
-    
+
     testObj['testRenamePruneVariablesNested'] = () => {
       const q = `
         WITH ${vn}
@@ -269,7 +270,7 @@ function pruneTraversalSuite() {
       // The Second traversal will find:
       // A => C,E
       // C => [] // it shall prune the startvertex
-      // E => A,C,C 
+      // E => A,C,C
       const res = db._query(q, {}, {count: true});
 
       if (name === "Neighbors") {

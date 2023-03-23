@@ -41,7 +41,7 @@ let { getEndpointById,
       getMetric
     } = require('@arangodb/test-helper');
 
-function assertInSync(leader, follower, shardId) {
+function assertInSync (leader, follower, shardId) {
   const leaderChecksum = getChecksum(leader, shardId);
   let followerChecksum;
   let tries = 0;
@@ -55,7 +55,7 @@ function assertInSync(leader, follower, shardId) {
   assertEqual(leaderChecksum, followerChecksum);
 }
 
-function transactionIntermediateCommitsSingleSuite() {
+function transactionIntermediateCommitsSingleSuite () {
   'use strict';
   const cn = 'UnitTestsTransaction';
 
@@ -70,16 +70,17 @@ function transactionIntermediateCommitsSingleSuite() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },
-    
+
     testSoftAbort: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
       let follower = getEndpointById(shards[shardId][1]);
       debugSetFailAt(leader, "returnManagedTrxForceSoftAbort");
       debugSetFailAt(follower, "returnManagedTrxForceSoftAbort");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
 
@@ -90,7 +91,7 @@ function transactionIntermediateCommitsSingleSuite() {
         intermediateCommitCount: 1000,
         options: { intermediateCommitCount: 1000 }
       };
-      
+
       const trx = db._createTransaction(opts);
       const tc = trx.collection(cn);
       // the transaction will be soft-aborted after this call on the server
@@ -111,16 +112,17 @@ function transactionIntermediateCommitsSingleSuite() {
       // follower must not have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
-      
+
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore, intermediateCommitsAfter);
       assertInSync(leader, follower, shardId);
     },
-    
+
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testSingleAqlIntermediateCommitsOnFollower: function () {
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
@@ -129,7 +131,7 @@ function transactionIntermediateCommitsSingleSuite() {
       debugSetFailAt(leader, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i) } IN ' + cn, {}, {intermediateCommitCount: 1000});
@@ -137,17 +139,18 @@ function transactionIntermediateCommitsSingleSuite() {
       // follower must not have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
-      
+
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
-      
+
       assertInSync(leader, follower, shardId);
     },
-    
+
     // make follower execute intermediate commits (before the leader), and let the
     // transaction fail
     testSingleAqlIntermediateCommitsOnFollowerWithRollback: function () {
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
@@ -156,7 +159,7 @@ function transactionIntermediateCommitsSingleSuite() {
       debugSetFailAt(leader, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       let didWork = false;
@@ -166,21 +169,22 @@ function transactionIntermediateCommitsSingleSuite() {
       } catch (err) {
       }
       assertEqual(didWork, false);
-      
+
       // follower must have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
-    
+
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
-      
+
       assertInSync(leader, follower, shardId);
     },
-    
+
     // make follower execute intermediate commits (before the leader), but make the
     // transaction succeed
     testSingleTransactionIntermediateCommitsOnFollower: function () {
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
@@ -189,12 +193,12 @@ function transactionIntermediateCommitsSingleSuite() {
       debugSetFailAt(leader, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       db._executeTransaction({
         collections: { write: cn },
-        action: function(params) {
+        action: function (params) {
           let db = require("internal").db;
           let c = db[params.cn];
           let docs = [];
@@ -207,23 +211,24 @@ function transactionIntermediateCommitsSingleSuite() {
           }
         },
         params: { cn },
-        intermediateCommitCount: 1000,
+        intermediateCommitCount: 1000
       });
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
-    
+
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
-      
+
       assertInSync(leader, follower, shardId);
     },
-    
+
     // make follower execute intermediate commits (before the leader), and let the
     // transaction fail
     testSingleTransactionIntermediateCommitsOnFollowerWithRollback: function () {
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
@@ -233,14 +238,14 @@ function transactionIntermediateCommitsSingleSuite() {
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
       debugSetFailAt(follower, "logAfterIntermediateCommit");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
       let didWork = false;
       try {
         db._executeTransaction({
           collections: { write: cn },
-          action: function(params) {
+          action: function (params) {
             let db = require("internal").db;
             let c = db[params.cn];
             let docs = [];
@@ -254,7 +259,7 @@ function transactionIntermediateCommitsSingleSuite() {
             throw "peng!";
           },
           params: { cn },
-          intermediateCommitCount: 1000,
+          intermediateCommitCount: 1000
         });
         didWork = true;
       } catch (ignore) {
@@ -272,11 +277,12 @@ function transactionIntermediateCommitsSingleSuite() {
 
       debugClearFailAt(follower, "logAfterIntermediateCommit");
     },
-    
+
     // make follower execute intermediate commits (before the leader), and let the
     // transaction fail
     testSingleStreamingIntermediateCommitsOnFollowerWithRollback: function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       let shards = db._collection(cn).shards(true);
       let shardId = Object.keys(shards)[0];
       let leader = getEndpointById(shards[shardId][0]);
@@ -285,10 +291,10 @@ function transactionIntermediateCommitsSingleSuite() {
       debugSetFailAt(leader, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
-      
+
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
-      
+
       const opts = {
         collections: {
           write: [cn]
@@ -296,7 +302,7 @@ function transactionIntermediateCommitsSingleSuite() {
         intermediateCommitCount: 1000,
         options: { intermediateCommitCount: 1000 }
       };
-      
+
       const trx = db._createTransaction(opts);
       const tc = trx.collection(cn);
       let docs = [];
@@ -311,22 +317,22 @@ function transactionIntermediateCommitsSingleSuite() {
       assertEqual(0, c.count());
       assertEqual(9950, tc.count());
       trx.abort();
-      
+
       // follower must have been dropped
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
-    
+
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 9, intermediateCommitsAfter);
-      
+
       assertEqual(0, c.count());
       assertInSync(leader, follower, shardId);
-    },
-    
+    }
+
   };
 }
 
-function transactionIntermediateCommitsMultiSuite() {
+function transactionIntermediateCommitsMultiSuite () {
   'use strict';
   const cn = 'UnitTestsTransaction';
 
@@ -343,11 +349,12 @@ function transactionIntermediateCommitsMultiSuite() {
       db._drop(cn + "1");
       db._drop(cn + "2");
     },
-    
+
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testMultiAqlIntermediateCommitsOnFollower: function () {
-      db._create(cn + "1", { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn + "1", { numberOfShards: 1,
+replicationFactor: 2 });
       let shards1 = db._collection(cn + "1").shards(true);
       let shardId1 = Object.keys(shards1)[0];
       let leader1 = getEndpointById(shards1[shardId1][0]);
@@ -359,8 +366,9 @@ function transactionIntermediateCommitsMultiSuite() {
       // try to set up 2 collections with different leaders but the same follower
       // DB server
       while (tries++ < 250) {
-        db._create(cn + "2", { numberOfShards: 1, replicationFactor: 2 });
-      
+        db._create(cn + "2", { numberOfShards: 1,
+replicationFactor: 2 });
+
         shards2 = db._collection(cn + "2").shards(true);
         shardId2 = Object.keys(shards2)[0];
         leader2 = getEndpointById(shards2[shardId2][0]);
@@ -374,7 +382,7 @@ function transactionIntermediateCommitsMultiSuite() {
       }
       assertNotEqual(leader1, leader2);
       assertEqual(follower1, follower2);
-      
+
       // disable intermediate commits on leaders
       debugSetFailAt(leader1, "noIntermediateCommits");
       debugSetFailAt(leader2, "noIntermediateCommits");
@@ -384,21 +392,22 @@ function transactionIntermediateCommitsMultiSuite() {
       let droppedFollowersBefore1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersBefore2 = getMetric(leader2, "arangodb_dropped_followers_total");
       db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i) } IN ' + cn + '1 INSERT { _key: CONCAT("test", i) } IN ' + cn + '2', {}, {intermediateCommitCount: 1000});
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersAfter2 = getMetric(leader2, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore1, droppedFollowersAfter1);
       assertEqual(droppedFollowersBefore2, droppedFollowersAfter2);
-    
+
       assertInSync(leader1, follower1, shardId1);
       assertInSync(leader2, follower2, shardId2);
     },
-    
+
     // make follower execute intermediate commits (before the leader), and let the
     // transaction fail
     testMultiAqlIntermediateCommitsOnFollowerWithRollback: function () {
-      db._create(cn + "1", { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn + "1", { numberOfShards: 1,
+replicationFactor: 2 });
       let shards1 = db._collection(cn + "1").shards(true);
       let shardId1 = Object.keys(shards1)[0];
       let leader1 = getEndpointById(shards1[shardId1][0]);
@@ -410,8 +419,9 @@ function transactionIntermediateCommitsMultiSuite() {
       // try to set up 2 collections with different leaders but the same follower
       // DB server
       while (tries++ < 250) {
-        db._create(cn + "2", { numberOfShards: 1, replicationFactor: 2 });
-      
+        db._create(cn + "2", { numberOfShards: 1,
+replicationFactor: 2 });
+
         shards2 = db._collection(cn + "2").shards(true);
         shardId2 = Object.keys(shards2)[0];
         leader2 = getEndpointById(shards2[shardId2][0]);
@@ -425,7 +435,7 @@ function transactionIntermediateCommitsMultiSuite() {
       }
       assertNotEqual(leader1, leader2);
       assertEqual(follower1, follower2);
-      
+
       // disable intermediate commits on leaders
       debugSetFailAt(leader1, "noIntermediateCommits");
       debugSetFailAt(leader2, "noIntermediateCommits");
@@ -441,21 +451,22 @@ function transactionIntermediateCommitsMultiSuite() {
       } catch (err) {
       }
       assertEqual(didWork, false);
-      
+
       // follower must have been dropped
       let droppedFollowersAfter1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersAfter2 = getMetric(leader2, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore1 + 1, droppedFollowersAfter1);
       assertEqual(droppedFollowersBefore2 + 1, droppedFollowersAfter2);
-    
+
       assertInSync(leader1, follower1, shardId1);
       assertInSync(leader2, follower2, shardId2);
     },
-    
+
     // make two leaders write to the same follower, using exclusive locks and
     // intermediate commits
     testMultiAqlIntermediateCommitsOnFollowerExclusive: function () {
-      db._create(cn + "1", { numberOfShards: 1, replicationFactor: 2 });
+      db._create(cn + "1", { numberOfShards: 1,
+replicationFactor: 2 });
       let shards1 = db._collection(cn + "1").shards(true);
       let shardId1 = Object.keys(shards1)[0];
       let leader1 = getEndpointById(shards1[shardId1][0]);
@@ -467,8 +478,9 @@ function transactionIntermediateCommitsMultiSuite() {
       // try to set up 2 collections with different leaders but the same follower
       // DB server
       while (tries++ < 250) {
-        db._create(cn + "2", { numberOfShards: 1, replicationFactor: 2 });
-      
+        db._create(cn + "2", { numberOfShards: 1,
+replicationFactor: 2 });
+
         shards2 = db._collection(cn + "2").shards(true);
         shardId2 = Object.keys(shards2)[0];
         leader2 = getEndpointById(shards2[shardId2][0]);
@@ -482,7 +494,7 @@ function transactionIntermediateCommitsMultiSuite() {
       }
       assertNotEqual(leader1, leader2);
       assertEqual(follower1, follower2);
-      
+
       // disable intermediate commits on leaders
       debugSetFailAt(leader1, "noIntermediateCommits");
       debugSetFailAt(leader2, "noIntermediateCommits");
@@ -492,21 +504,22 @@ function transactionIntermediateCommitsMultiSuite() {
       let droppedFollowersBefore1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersBefore2 = getMetric(leader2, "arangodb_dropped_followers_total");
       db._query('FOR i IN 1..10000 INSERT { _key: CONCAT("test", i) } IN ' + cn + '1 OPTIONS { exclusive: true } INSERT { _key: CONCAT("test", i) } IN ' + cn + '2 OPTIONS { exclusive: true }', {}, {intermediateCommitCount: 1000});
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersAfter2 = getMetric(leader2, "arangodb_dropped_followers_total");
       assertEqual(droppedFollowersBefore1, droppedFollowersAfter1);
       assertEqual(droppedFollowersBefore2, droppedFollowersAfter2);
-    
+
       assertInSync(leader1, follower1, shardId1);
       assertInSync(leader2, follower2, shardId2);
     },
-    
+
     // make two leaders write to the same follower, using exclusive locks and
     // intermediate commits
     testMultiStreamingIntermediateCommitsOnFollowerExclusive: function () {
-      let c1 = db._create(cn + "1", { numberOfShards: 1, replicationFactor: 2 });
+      let c1 = db._create(cn + "1", { numberOfShards: 1,
+replicationFactor: 2 });
       let shards1 = db._collection(cn + "1").shards(true);
       let shardId1 = Object.keys(shards1)[0];
       let leader1 = getEndpointById(shards1[shardId1][0]);
@@ -519,8 +532,9 @@ function transactionIntermediateCommitsMultiSuite() {
       // DB server
       let c2;
       while (tries++ < 250) {
-        c2 = db._create(cn + "2", { numberOfShards: 1, replicationFactor: 2 });
-      
+        c2 = db._create(cn + "2", { numberOfShards: 1,
+replicationFactor: 2 });
+
         shards2 = db._collection(cn + "2").shards(true);
         shardId2 = Object.keys(shards2)[0];
         leader2 = getEndpointById(shards2[shardId2][0]);
@@ -534,17 +548,17 @@ function transactionIntermediateCommitsMultiSuite() {
       }
       assertNotEqual(leader1, leader2);
       assertEqual(follower1, follower2);
-      
+
       // disable intermediate commits on leaders
       debugSetFailAt(leader1, "noIntermediateCommits");
       debugSetFailAt(leader2, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower1, "noIntermediateCommits");
-      
+
       let droppedFollowersBefore1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersBefore2 = getMetric(leader2, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower1, "arangodb_intermediate_commits_total");
-      
+
       const opts = {
         collections: {
           write: [cn + "1", cn + "2" ]
@@ -552,7 +566,7 @@ function transactionIntermediateCommitsMultiSuite() {
         intermediateCommitCount: 1000,
         options: { intermediateCommitCount: 1000 }
       };
-      
+
       const trx = db._createTransaction(opts);
       const tc1 = trx.collection(cn + "1");
       const tc2 = trx.collection(cn + "2");
@@ -570,20 +584,20 @@ function transactionIntermediateCommitsMultiSuite() {
       assertEqual(0, c1.count());
       assertEqual(0, c2.count());
       trx.commit();
-      
+
       assertEqual(9950, c1.count());
       assertEqual(9950, c2.count());
-      
+
       let droppedFollowersAfter1 = getMetric(leader1, "arangodb_dropped_followers_total");
       let droppedFollowersAfter2 = getMetric(leader2, "arangodb_dropped_followers_total");
       let intermediateCommitsAfter = getMetric(follower1, "arangodb_intermediate_commits_total");
       assertEqual(droppedFollowersBefore1, droppedFollowersAfter1);
       assertEqual(droppedFollowersBefore2, droppedFollowersAfter2);
       assertEqual(intermediateCommitsBefore + Math.floor((9950 + 9950) / 1000), intermediateCommitsAfter);
-    
+
       assertInSync(leader1, follower1, shardId1);
       assertInSync(leader2, follower2, shardId2);
-    },
+    }
   };
 }
 

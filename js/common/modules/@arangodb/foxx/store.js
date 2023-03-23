@@ -138,10 +138,12 @@ var updateFishbowlFromZip = function (filename) {
     if (!fishbowl) {
       // collection is not present. now create it
       try {
-        fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_graphs' });
+        fishbowl = db._create('_fishbowl', { isSystem: true,
+distributeShardsLike: '_graphs' });
       } catch (err) {
         try {
-          fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_users' });
+          fishbowl = db._create('_fishbowl', { isSystem: true,
+distributeShardsLike: '_users' });
         } catch (err) {
           require('console').warn('Unable to create _fishbowl collection for application results: ' + String(err));
         }
@@ -156,7 +158,7 @@ var updateFishbowlFromZip = function (filename) {
       toSave.forEach((doc) => {
         delete toRemove[doc._key];
       });
-     
+
       // first insert/replace all apps that are new or remain
       fishbowl.insert(toSave, { overwriteMode: "replace" });
 
@@ -193,7 +195,8 @@ var searchJson = function (name) {
     name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
     // get results by looking in "description" and "name" attributes
-    return db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) || CONTAINS(doc.name, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
+    return db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) || CONTAINS(doc.name, @name) RETURN doc', { name,
+'@collection': fishbowl.name() }).toArray();
   }
 };
 
@@ -306,7 +309,7 @@ var update = function () {
   let url = utils.buildGithubUrl(getFishbowlUrl());
   let filename = fs.getTempFile('bundles', false);
   let internal = require('internal');
-    
+
   if (internal.isFoxxStoreDisabled && internal.isFoxxStoreDisabled()) {
     throw new Error('Foxx store is disabled in configuration');
   }
@@ -382,7 +385,8 @@ var infoJson = function (name) {
 
   var desc = db._query(
     'FOR u IN @@storage FILTER u.name == @name OR @name IN u.aliases RETURN DISTINCT u',
-    { '@storage': fishbowl.name(), 'name': name }).toArray();
+    { '@storage': fishbowl.name(),
+'name': name }).toArray();
 
   if (desc.length === 0) {
     arangodb.print("No service '" + name + "' available, please try 'search'");
@@ -462,7 +466,8 @@ var installationInfo = function (serviceInfo) {
     manifest.provides = versionInfo.provides;
   }
 
-  return {url, manifest};
+  return {url,
+manifest};
 };
 
 // //////////////////////////////////////////////////////////////////////////////

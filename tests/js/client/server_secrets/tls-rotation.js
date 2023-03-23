@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false */
-/*global fail, assertTrue */
+/* jshint globalstrict:false, strict:false */
+/* global fail, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the server TLS key rotation feature
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2020, ArangoDB GmbH Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the server TLS key rotation feature
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2020, ArangoDB GmbH Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
@@ -37,11 +37,11 @@ const print = require('internal').print;
 const crypto = require('@arangodb/crypto');
 const sha256 = require('internal').sha256;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function TLSRotation() {
+function TLSRotation () {
   'use strict';
   var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -50,7 +50,8 @@ function TLSRotation() {
   const jwtSecret1 = 'jwtsecret-1';
   const jwt1 = crypto.jwtEncode(jwtSecret1, {
     "server_id": "ABCD",
-    "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+    "iss": "arangodb",
+"exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
 
   //   const user = 'hackers@arangodb.com';
@@ -59,26 +60,26 @@ function TLSRotation() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
     },
 
-    testCheckGETTLS: function() {
+    testCheckGETTLS: function () {
       let res = request.get({
         url: baseUrl() + "/_admin/server/tls",
         auth: {
-          bearer: jwt1,
+          bearer: jwt1
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
@@ -99,7 +100,7 @@ function TLSRotation() {
       let res = request.get({
         url: baseUrl() + "/_admin/server/tls",
         auth: {
-          bearer: jwt1,
+          bearer: jwt1
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
@@ -124,7 +125,7 @@ function TLSRotation() {
       res = request.post({
         url: baseUrl() + "/_admin/server/tls",
         auth: {
-          bearer: jwt1,
+          bearer: jwt1
         }
       });
       expect(res).to.be.an.instanceof(request.Response);
@@ -140,7 +141,7 @@ function TLSRotation() {
       res = request.get({
         url: baseUrl() + "/_admin/server/tls",
         auth: {
-          bearer: jwt1,
+          bearer: jwt1
         }
       });
 
@@ -157,9 +158,9 @@ function TLSRotation() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(TLSRotation);
 

@@ -1,58 +1,59 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, sort optimizations
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Heiko Kernbach
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, sort optimizations
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Heiko Kernbach
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let internal = require("internal");
 let helper = require("@arangodb/aql-helper");
 let getQueryResults = helper.getQueryResults;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryOptimizerCollectTestSuite() {
+function ahuacatlQueryOptimizerCollectTestSuite () {
   let collection = null;
   let cn = "UnitTestsAhuacatlOptimizerCountCollect";
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
       // create an index with two attributes (first: boolean, second: array)
-      collection.ensureIndex({type: "persistent", fields: ["someBoolean", "someArray[*]"]});
+      collection.ensureIndex({type: "persistent",
+fields: ["someBoolean", "someArray[*]"]});
 
       // create 100 (50+50) documents in total
       let docsToInsert = [];
@@ -63,23 +64,25 @@ function ahuacatlQueryOptimizerCollectTestSuite() {
           // write numeric strings
           myArray.push(JSON.stringify(inner));
         }
-        docsToInsert.push({"someBoolean": true, "someArray": myArray});
-        docsToInsert.push({"someBoolean": false, "someArray": myArray});
+        docsToInsert.push({"someBoolean": true,
+"someArray": myArray});
+        docsToInsert.push({"someBoolean": false,
+"someArray": myArray});
       }
       collection.save(docsToInsert);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check collect with count with index (on array index attribute)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check collect with count with index (on array index attribute)
+// //////////////////////////////////////////////////////////////////////////////
 
     testCountWithMultipleAttributesIncludingIndexArray: function () {
       let countWithLengthQuery = "RETURN LENGTH(" + cn + ")";
@@ -102,9 +105,9 @@ function ahuacatlQueryOptimizerCollectTestSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryOptimizerCollectTestSuite);
 

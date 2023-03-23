@@ -51,7 +51,7 @@ const outfn = fs.join(instanceManager.rootDir, 'stats.jsonl');
 const opts = Object.assign(pu.makeAuthorizationHeaders(options, {}),
                            { method: 'GET' });
 
-while(true) {
+while (true) {
   let state = {
     state: true,
     before: time(),

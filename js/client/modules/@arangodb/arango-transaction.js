@@ -29,15 +29,15 @@ const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
 const ArangoError = require('@arangodb').ArangoError;
 const ArangoQueryCursor = require('@arangodb/arango-query-cursor').ArangoQueryCursor;
-    
-function throwNotRunning() {
+
+function throwNotRunning () {
   throw new ArangoError({
     error: true,
     code: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
     errorNum: internal.errors.ERROR_TRANSACTION_INTERNAL.code,
     errorMessage: internal.errors.ERROR_TRANSACTION_INTERNAL.message
   });
-};
+}
 
 function ArangoTransaction (database, data) {
   this._id = 0;
@@ -114,7 +114,7 @@ function ArangoTransaction (database, data) {
   this._collections = data.collections;
   let body = {collections: this._collections};
   // copy transaction options
-  [ 'lockTimeout', 'maxTransactionSize', 'intermediateCommitSize', 'intermediateCommitCount', 'waitForSync' ].forEach(function(o) {
+  [ 'lockTimeout', 'maxTransactionSize', 'intermediateCommitSize', 'intermediateCommitCount', 'waitForSync' ].forEach(function (o) {
     if (data.hasOwnProperty(o)) {
       body[o] = data[o];
     }
@@ -133,7 +133,7 @@ function ArangoTransaction (database, data) {
 
 exports.ArangoTransaction = ArangoTransaction;
 
-function ArangoTransactionCollection(trx, coll) {
+function ArangoTransactionCollection (trx, coll) {
   if (!trx || !coll || !coll.isArangoCollection) {
     throw "invaliid input";
   }
@@ -145,7 +145,7 @@ ArangoTransaction.prototype._url = function () {
   return this._dbPrefix + '/_api/transaction';
 };
 
-ArangoTransaction.prototype.id = function() {
+ArangoTransaction.prototype.id = function () {
   return this._id;
 };
 
@@ -154,20 +154,24 @@ ArangoTransaction.prototype._PRINT = function (context) {
   let useColor = context.useColor;
 
   context.output += '[ArangoTransaction ';
-  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  if (useColor) {
+ context.output += colors.COLOR_NUMBER;
+}
   context.output += this._id;
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += ']';
 };
 
-ArangoTransaction.prototype.collection = function(col) {
+ArangoTransaction.prototype.collection = function (col) {
   if (col.isArangoCollection) {
     return new ArangoTransactionCollection(this, col);
   }
   return new ArangoTransactionCollection(this, this._database._collection(col));
 };
 
-ArangoTransaction.prototype.commit = function() {
+ArangoTransaction.prototype.commit = function () {
   let url = this._url() + '/' + this._id;
   var requestResult = this._database._connection.PUT(url, "");
   arangosh.checkRequestResult(requestResult);
@@ -175,7 +179,7 @@ ArangoTransaction.prototype.commit = function() {
   return requestResult.result;
 };
 
-ArangoTransaction.prototype.abort = function() {
+ArangoTransaction.prototype.abort = function () {
   let url = this._url() + '/' + this._id;
   var requestResult = this._database._connection.DELETE(url, "");
   arangosh.checkRequestResult(requestResult);
@@ -183,18 +187,18 @@ ArangoTransaction.prototype.abort = function() {
   return requestResult.result;
 };
 
-ArangoTransaction.prototype.status = function() {
+ArangoTransaction.prototype.status = function () {
   let url = this._url() + '/' + this._id;
   var requestResult = this._database._connection.GET(url);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoTransaction.prototype.running = function() {
+ArangoTransaction.prototype.running = function () {
   return this._id !== 0 && !this._done;
 };
 
-ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, options) {
+ArangoTransaction.prototype.query = function (query, bindVars, cursorOptions, options) {
   if (!this.running()) {
     throwNotRunning();
   }
@@ -208,13 +212,13 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   let body = {
     query: query,
     count: (cursorOptions && cursorOptions.count) || false,
-    bindVars: bindVars || undefined,
+    bindVars: bindVars || undefined
   };
 
   if (cursorOptions && cursorOptions.batchSize) {
     body.batchSize = cursorOptions.batchSize;
   }
-  
+
   if (options) {
     body.options = options;
   }
@@ -223,7 +227,7 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
     body.cache = cursorOptions.cache;
   }
 
-  const headers = {'x-arango-trx-id' : this.id()};
+  const headers = {'x-arango-trx-id': this.id()};
   var requestResult = this._database._connection.POST('/_api/cursor', body, headers);
   arangosh.checkRequestResult(requestResult);
 
@@ -235,28 +239,28 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   return new ArangoQueryCursor(this._database, requestResult, isStream);
 };
 
-ArangoTransactionCollection.prototype.name = function() {
+ArangoTransactionCollection.prototype.name = function () {
   return this._collection.name();
 };
 
-ArangoTransactionCollection.prototype.document = function(id) {
+ArangoTransactionCollection.prototype.document = function (id) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
-  let opts = { transactionId : this._transaction.id() };
+  let opts = { transactionId: this._transaction.id() };
   return this._collection.document(id, opts);
 };
 
-ArangoTransactionCollection.prototype.exists = function(id) {
+ArangoTransactionCollection.prototype.exists = function (id) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
-  let opts = { transactionId : this._transaction.id() };
+  let opts = { transactionId: this._transaction.id() };
   return this._collection.exists(id, opts);
 };
 
-ArangoTransactionCollection.prototype.save = 
-ArangoTransactionCollection.prototype.insert = function(data, opts) {
+ArangoTransactionCollection.prototype.save =
+ArangoTransactionCollection.prototype.insert = function (data, opts) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
@@ -265,7 +269,7 @@ ArangoTransactionCollection.prototype.insert = function(data, opts) {
   return this._collection.insert(data, opts);
 };
 
-ArangoTransactionCollection.prototype.remove = function(id, options) {
+ArangoTransactionCollection.prototype.remove = function (id, options) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
@@ -276,7 +280,7 @@ ArangoTransactionCollection.prototype.remove = function(id, options) {
   return this._collection.remove(id, options);
 };
 
-ArangoTransactionCollection.prototype.replace = function(id, data, options) {
+ArangoTransactionCollection.prototype.replace = function (id, data, options) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
@@ -287,7 +291,7 @@ ArangoTransactionCollection.prototype.replace = function(id, data, options) {
   return this._collection.replace(id, data, options);
 };
 
-ArangoTransactionCollection.prototype.update = function(id, data, options) {
+ArangoTransactionCollection.prototype.update = function (id, data, options) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
@@ -298,7 +302,7 @@ ArangoTransactionCollection.prototype.update = function(id, data, options) {
   return this._collection.update(id, data, options);
 };
 
-ArangoTransactionCollection.prototype.truncate = function(opts) {
+ArangoTransactionCollection.prototype.truncate = function (opts) {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
@@ -307,13 +311,13 @@ ArangoTransactionCollection.prototype.truncate = function(opts) {
   return this._collection.truncate(opts);
 };
 
-ArangoTransactionCollection.prototype.count = function() {
+ArangoTransactionCollection.prototype.count = function () {
   if (!this._transaction.running()) {
     throwNotRunning();
   }
-  
+
   const url = this._collection._baseurl('count');
-  const headers = {'x-arango-trx-id' : this._transaction.id()};
+  const headers = {'x-arango-trx-id': this._transaction.id()};
   let requestResult = this._transaction._database._connection.GET(url, headers);
   arangosh.checkRequestResult(requestResult);
 

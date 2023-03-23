@@ -1,26 +1,26 @@
 /* global describe, beforeEach, afterEach, it, instanceManager, before */
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andreas Streichardt
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andreas Streichardt
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 'use strict';
 
 const jsunity = require("jsunity");
@@ -45,12 +45,12 @@ let dbServerCount = instanceManager.arangods.filter(arangod => {
   return arangod.instanceRole === 'dbserver';
 }).length;
 
-function ShardDistributionTest({replVersion}) {
+function ShardDistributionTest ({replVersion}) {
 
   let distribution;
   const nrShards = 16;
 
-  function waitForClusterHealth() {
+  function waitForClusterHealth () {
     // First wait until the cluster is complete, otherwise the creation
     // of the collection with replicationFactor dbServerCount will
     // fail, we use the health api:
@@ -73,7 +73,8 @@ function ShardDistributionTest({replVersion}) {
       }
       require("internal").wait(1);
     }
-    internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
+    internal.db._create(colName, {replicationFactor: dbServerCount,
+numberOfShards: nrShards});
     var d = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
     distribution = JSON.parse(d.body).results[colName];
     assert.isObject(distribution, 'The distribution for each collection has to be an object');
@@ -122,9 +123,9 @@ function ShardDistributionTest({replVersion}) {
   const replicationFactor = 3;
   // Note here: We have to make sure that numberOfShards * replicationFactor is not disible by the number of DBServers
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief order the cluster to clean out a server:
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief order the cluster to clean out a server:
+  // //////////////////////////////////////////////////////////////////////////////
 
   const cleanOutServer = function (id) {
     var coordEndpoint =
@@ -151,7 +152,8 @@ function ShardDistributionTest({replVersion}) {
 
     try {
       const envelope =
-          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
+          {method: "GET",
+url: url + "/_admin/cluster/numberOfServers"};
       let res = request(envelope);
       if (res.statusCode !== 200) {
         return {cleanedServers: []};
@@ -241,7 +243,8 @@ function ShardDistributionTest({replVersion}) {
 
     testProperlyDistributeShards: function () {
       internal.db._drop(colName);
-      internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
+      internal.db._create(colName, {replicationFactor: 2,
+numberOfShards: 16});
       var d = request.get(coordinator.url + '/_db/' + dbname + '/_admin/cluster/shardDistribution');
       let distribution = JSON.parse(d.body).results;
 
@@ -333,15 +336,21 @@ function ShardDistributionTest({replVersion}) {
 
     testDistributeShardsLikeDistribution: function () {
       cleanUp();
-      internal.db._create(colName, {replicationFactor, numberOfShards});
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      internal.db._create(colName, {replicationFactor,
+numberOfShards});
+      internal.db._create(followCollection, {replicationFactor,
+numberOfShards,
+distributeShardsLike: colName});
       compareDistributions();
     },
 
     testDistributeShardsLikeOnIdenticalServers: function () {
-      internal.db._create(colName, {replicationFactor, numberOfShards});
+      internal.db._create(colName, {replicationFactor,
+numberOfShards});
       expect(waitForSynchronousReplication(colName)).to.equal(true);
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      internal.db._create(followCollection, {replicationFactor,
+numberOfShards,
+distributeShardsLike: colName});
       expect(waitForSynchronousReplication(followCollection)).to.equal(true);
       compareDistributions();
     },
@@ -350,7 +359,8 @@ function ShardDistributionTest({replVersion}) {
       if (replVersion === "2") {
         return;
       }
-      internal.db._create(colName, {replicationFactor, numberOfShards});
+      internal.db._create(colName, {replicationFactor,
+numberOfShards});
       expect(waitForSynchronousReplication(colName)).to.equal(true);
       var server = global.ArangoClusterInfo.getDBServers()[1].serverId;
       // Clean out the server that is scheduled second.
@@ -358,20 +368,22 @@ function ShardDistributionTest({replVersion}) {
       expect(waitForCleanout(server)).to.equal(true);
       expect(waitForSynchronousReplication(colName)).to.equal(true);
       // Now we have moved around some shards.
-      internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+      internal.db._create(followCollection, {replicationFactor,
+numberOfShards,
+distributeShardsLike: colName});
       expect(waitForSynchronousReplication(followCollection)).to.equal(true);
       compareDistributions();
     }
   };
 }
 
-jsunity.run(function ShardDistributionTest_R1() {
+jsunity.run(function ShardDistributionTest_R1 () {
   let derivedSuite = {};
   deriveTestSuite(ShardDistributionTest({replVersion: "1"}), derivedSuite, "_R1");
   return derivedSuite;
 });
 
-jsunity.run(function ShardDistributionTest_R2() {
+jsunity.run(function ShardDistributionTest_R2 () {
   let derivedSuite = {};
   deriveTestSuite(ShardDistributionTest({replVersion: "2"}), derivedSuite, "_R2");
   return derivedSuite;

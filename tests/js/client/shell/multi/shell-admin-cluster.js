@@ -36,7 +36,7 @@ let { getEndpointById,
     } = require('@arangodb/test-helper');
 const primaryEndpoint = arango.getEndpoint();
 
-function endpointToURL(endpoint) {
+function endpointToURL (endpoint) {
   if (endpoint.substr(0, 6) === 'ssl://') {
     return 'https://' + endpoint.substr(6);
   }
@@ -47,7 +47,7 @@ function endpointToURL(endpoint) {
   return 'http' + endpoint.substr(pos);
 }
 
-function adminClusterSuite() {
+function adminClusterSuite () {
   'use strict';
 
   return {
@@ -63,7 +63,7 @@ function adminClusterSuite() {
     testRemoveServerNonExisting: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       // this is assumed to be an invalid server id, so the operation must fail
       try {
         reconnectRetry(coords[0].endpoint, db._name(), "root", "");
@@ -79,7 +79,7 @@ function adminClusterSuite() {
     testRemoveNonFailedCoordinatorString: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -97,11 +97,11 @@ function adminClusterSuite() {
         reconnectRetry(primaryEndpoint, "_system", "root", "");
       }
     },
-    
+
     testRemoveNonFailedCoordinatorObject: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -119,11 +119,11 @@ function adminClusterSuite() {
         reconnectRetry(primaryEndpoint, "_system", "root", "");
       }
     },
-    
+
     testRemoveNonFailedDBServersString: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -145,11 +145,11 @@ function adminClusterSuite() {
         reconnectRetry(primaryEndpoint, "_system", "root", "");
       }
     },
-    
+
     testRemoveNonFailedDBServersObject: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -172,11 +172,11 @@ function adminClusterSuite() {
         reconnectRetry(primaryEndpoint, "_system", "root", "");
       }
     },
-    
+
     testCleanoutServerStringNonExisting: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -196,7 +196,7 @@ function adminClusterSuite() {
     testCleanoutServerObjectNonExisting: function () {
       let coords = getCoordinators();
       assertTrue(coords.length > 0);
-      
+
       let coordinatorId = coords[0].id;
       let ep = coords[0].endpoint;
       try {
@@ -230,9 +230,9 @@ function adminClusterSuite() {
           assertEqual("Failed", res.parsedBody.status);
           assertTrue(res.parsedBody.hasOwnProperty("type"));
           assertEqual("cleanOutServer", res.parsedBody.type);
-          return;   // all good, and job is terminated
+          return; // all good, and job is terminated
         }
-        assertEqual(200, res);   // will fail if loop ends
+        assertEqual(200, res); // will fail if loop ends
       } finally {
         reconnectRetry(primaryEndpoint, "_system", "root", "");
       }

@@ -31,11 +31,11 @@ const {
   getDBServers
 } = require('@arangodb/test-helper');
 
-function shardStatisticsSuite() {
+function shardStatisticsSuite () {
   'use strict';
 
   const cn = "UnitTestsDatabase";
-  
+
   let fetchStatsRaw = function (append = '') {
     let old = db._name();
     db._useDatabase("_system");
@@ -60,15 +60,15 @@ function shardStatisticsSuite() {
   };
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._useDatabase("_system");
       try {
         db._dropDatabase(cn);
       } catch (err) {}
       db._createDatabase(cn);
     },
-    
-    tearDownAll : function () {
+
+    tearDownAll: function () {
       db._useDatabase("_system");
       try {
         db._dropDatabase(cn);
@@ -80,7 +80,7 @@ function shardStatisticsSuite() {
       let result = fetchStatsRaw("?DBserver=foobar");
       assertTrue(result.error);
       assertEqual(400, result.code);
-        
+
       // fetch statistics for a coordinator
       let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
@@ -88,7 +88,7 @@ function shardStatisticsSuite() {
       assertTrue(result.error);
       assertEqual(400, result.code);
     },
-    
+
     testShardStatisticsNewDatabase: function () {
       let baseValues = fetchStats();
 
@@ -109,7 +109,7 @@ function shardStatisticsSuite() {
         db._dropDatabase(cn + "xxxx");
       }
     },
-    
+
     testShardStatisticsPerDatabase: function () {
       let baseValues = fetchStats();
 
@@ -154,7 +154,7 @@ function shardStatisticsSuite() {
           leaders: 0,
           followers: 0,
           realLeaders: 0,
-          servers: 0,
+          servers: 0
         };
 
         dbservers.forEach((server) => {
@@ -163,7 +163,7 @@ function shardStatisticsSuite() {
             partialValues[k] += part[k];
           });
         });
-        
+
         let allValues = fetchStats();
 
         assertEqual(allValues.shards, partialValues.shards);
@@ -187,7 +187,8 @@ function shardStatisticsSuite() {
         // create some collections
         db._useDatabase(cn);
         for (let i = 0; i < 5; ++i) {
-          db._create(cn + i, { numberOfShards: 1, replicationFactor: 1 });
+          db._create(cn + i, { numberOfShards: 1,
+replicationFactor: 1 });
         }
 
         let newValues = fetchStats();
@@ -202,7 +203,7 @@ function shardStatisticsSuite() {
         cleanCollections();
       }
     },
-    
+
     testShardStatisticsSingleWithReplicationFactor: function () {
       let baseValues = fetchStats();
 
@@ -210,7 +211,8 @@ function shardStatisticsSuite() {
         // create some collections
         db._useDatabase(cn);
         for (let i = 0; i < 5; ++i) {
-          db._create(cn + i, { numberOfShards: 1, replicationFactor: 2 });
+          db._create(cn + i, { numberOfShards: 1,
+replicationFactor: 2 });
         }
 
         let newValues = fetchStats();
@@ -225,7 +227,7 @@ function shardStatisticsSuite() {
         cleanCollections();
       }
     },
-    
+
     testShardStatisticsMulti: function () {
       let baseValues = fetchStats();
 
@@ -233,7 +235,8 @@ function shardStatisticsSuite() {
         // create some collections
         db._useDatabase(cn);
         for (let i = 0; i < 5; ++i) {
-          db._create(cn + i, { numberOfShards: 4, replicationFactor: 1 });
+          db._create(cn + i, { numberOfShards: 4,
+replicationFactor: 1 });
         }
 
         let newValues = fetchStats();
@@ -248,7 +251,7 @@ function shardStatisticsSuite() {
         cleanCollections();
       }
     },
-    
+
     testShardStatisticsMultiWithReplicationFactor: function () {
       let baseValues = fetchStats();
 
@@ -256,7 +259,8 @@ function shardStatisticsSuite() {
         // create some collections
         db._useDatabase(cn);
         for (let i = 0; i < 5; ++i) {
-          db._create(cn + i, { numberOfShards: 4, replicationFactor: 2 });
+          db._create(cn + i, { numberOfShards: 4,
+replicationFactor: 2 });
         }
 
         let newValues = fetchStats();
@@ -271,13 +275,16 @@ function shardStatisticsSuite() {
         cleanCollections();
       }
     },
-    
+
     testShardStatisticsByDBServer: function () {
       const dbservers = getDBServers();
       assertTrue(dbservers.length > 0);
-      
+
       let baseValues = fetchStats("?DBserver=all");
-      let aggregatedBaseValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
+      let aggregatedBaseValues = { shards: 0,
+leaders: 0,
+followers: 0,
+realLeaders: 0 };
 
       dbservers.map((s) => s.id).forEach((s) => {
         assertTrue(baseValues.hasOwnProperty(s));
@@ -291,11 +298,15 @@ function shardStatisticsSuite() {
         // create some collections
         db._useDatabase(cn);
         for (let i = 0; i < 5; ++i) {
-          db._create(cn + i, { numberOfShards: 4, replicationFactor: 2 });
+          db._create(cn + i, { numberOfShards: 4,
+replicationFactor: 2 });
         }
 
         let newValues = fetchStats("?DBserver=all");
-        let aggregatedNewValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
+        let aggregatedNewValues = { shards: 0,
+leaders: 0,
+followers: 0,
+realLeaders: 0 };
         dbservers.map((s) => s.id).forEach((s) => {
           assertTrue(newValues.hasOwnProperty(s));
           aggregatedNewValues.shards += newValues[s].shards;
@@ -311,7 +322,7 @@ function shardStatisticsSuite() {
       } finally {
         cleanCollections();
       }
-    },
+    }
 
   };
 }

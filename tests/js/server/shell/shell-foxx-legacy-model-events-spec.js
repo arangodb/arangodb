@@ -16,7 +16,9 @@ describe('Model Events', function () {
       type: sinon.stub().returns(2),
       remove: function () {}
     };
-    instance = new Model({ random: '', beforeCalled: false, afterCalled: false });
+    instance = new Model({ random: '',
+beforeCalled: false,
+afterCalled: false });
     repository = new FoxxRepository(collection, {model: Model});
   });
 

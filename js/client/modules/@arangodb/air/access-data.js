@@ -31,7 +31,7 @@ const testhelpers = require("@arangodb/air/test-helpers");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.write_vertex_program = data_access_write_vertex_program;
 exports.write_vertex = write_vertex;
@@ -41,7 +41,7 @@ exports.test = test;
 exports.benchmark = benchmark;
 
 /* returns a program that writes {"someKeyA": "someValueA, "someKeyB": "someValueB"} into every vertex */
-function data_access_write_vertex_program() {
+function data_access_write_vertex_program () {
   return {
     dataAccess: {
       writeVertex: [
@@ -62,7 +62,7 @@ function data_access_write_vertex_program() {
   };
 }
 
-function write_vertex(
+function write_vertex (
   graphName) {
   return pregel.start(
     "ppa",
@@ -72,7 +72,7 @@ function write_vertex(
 }
 
 /* returns a program that reads only particular data instead of copying all vertex data */
-function data_access_read_vertex_program(expectedKeys, nested) {
+function data_access_read_vertex_program (expectedKeys, nested) {
   let initProgram = [
     "seq",
     ["accum-set!", "copiedDocumentKeys", ["dict-keys", ["this-doc"]]]
@@ -109,7 +109,7 @@ function data_access_read_vertex_program(expectedKeys, nested) {
   };
 }
 
-function read_vertex(
+function read_vertex (
   graphName, expectedKeys, nested) {
   return pregel.start(
     "ppa",
@@ -121,7 +121,7 @@ function read_vertex(
 /*
  * Write Vertex tests
  */
-function exec_test_write_vertex_on_graph(graphSpec, amount) {
+function exec_test_write_vertex_on_graph (graphSpec, amount) {
   // amount = expectation of writes that will happen
   let status = testhelpers.wait_for_pregel("AIR write-vertex", write_vertex(graphSpec.name));
 
@@ -151,7 +151,7 @@ function exec_test_write_vertex_on_graph(graphSpec, amount) {
 
 // TODO: Also add tests for nested paths e.g.: {a: {b: "value"}}
 
-function array_compare(a1, a2) {
+function array_compare (a1, a2) {
   if (a1.length !== a2.length) {
     return false;
   }
@@ -167,7 +167,7 @@ function array_compare(a1, a2) {
   return true;
 }
 
-function exec_test_read_vertex_on_graph(graphSpec, expectedKeys, nested) {
+function exec_test_read_vertex_on_graph (graphSpec, expectedKeys, nested) {
   let status = testhelpers.wait_for_pregel("AIR write-vertex", read_vertex(graphSpec.name, expectedKeys, nested));
 
   let result = db._query(`
@@ -205,7 +205,7 @@ function exec_test_read_vertex_on_graph(graphSpec, expectedKeys, nested) {
  * Write Vertex Benchmark (AQL Comparison)
  */
 
-function exec_benchmark_write_vertex_on_graph(graphSpec, runs) {
+function exec_benchmark_write_vertex_on_graph (graphSpec, runs) {
   // Pregel Run
   let statusOfRuns = [];
   let pregelTotalRuntime = 0;
@@ -244,7 +244,7 @@ function exec_benchmark_write_vertex_on_graph(graphSpec, runs) {
   }
 }
 
-function exec_test_data_access() {
+function exec_test_data_access () {
   let results = [];
 
   // write vertex validation
@@ -302,16 +302,16 @@ function exec_test_data_access() {
   }
 }
 
-function exec_benchmark_data_access() {
+function exec_benchmark_data_access () {
   // write vertex benchmark
   exec_benchmark_write_vertex_on_graph(examplegraphs.create_line_graph("LineGraph500000", 500000, 1), 5);
 }
 
 // run tests
-function test() {
+function test () {
   return exec_test_data_access();
 }
 
-function benchmark() {
+function benchmark () {
   exec_benchmark_data_access();
 }

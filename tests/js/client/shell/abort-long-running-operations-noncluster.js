@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2018, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -31,9 +31,9 @@ const tasks = require("@arangodb/tasks");
 const internal = require("internal");
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
-  
+
 const cn = "UnitTestsCollection";
-  
+
 let setupCollection = (type) => {
   let c;
   if (type === 'edge') {
@@ -43,14 +43,17 @@ let setupCollection = (type) => {
   }
   let docs = [];
   for (let i = 0; i < 5000; ++i) {
-    docs.push({ value1: i, value2: "test" + i, _from: "v/test" + i, _to: "v/test" + i });
+    docs.push({ value1: i,
+value2: "test" + i,
+_from: "v/test" + i,
+_to: "v/test" + i });
   }
   for (let i = 0; i < 350000; i += docs.length) {
     c.insert(docs);
   }
   return c;
 };
-  
+
 let shutdownTask = (task) => {
   while (true) {
     try {
@@ -65,12 +68,13 @@ let shutdownTask = (task) => {
 
 function BaseTestConfig (dropCb, expectedError) {
   return {
-    testIndexCreationAborts : function () {
+    testIndexCreationAborts: function () {
       let c = setupCollection('document');
       let task = dropCb();
 
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
+        c.ensureIndex({ type: "persistent",
+fields: ["value1", "value2"] });
         fail();
       } catch (err) {
         // unfortunately it is possible that this fails because of unexpected
@@ -81,13 +85,15 @@ function BaseTestConfig (dropCb, expectedError) {
 
       shutdownTask(task);
     },
-    
-    testIndexCreationInBackgroundAborts : function () {
+
+    testIndexCreationInBackgroundAborts: function () {
       let c = setupCollection('document');
       let task = dropCb();
 
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value1", "value2"], inBackground: true });
+        c.ensureIndex({ type: "persistent",
+fields: ["value1", "value2"],
+inBackground: true });
         fail();
       } catch (err) {
         // unfortunately it is possible that this fails because of unexpected
@@ -98,14 +104,14 @@ function BaseTestConfig (dropCb, expectedError) {
 
       shutdownTask(task);
     },
-    
-    testWarmupAborts : function () {
+
+    testWarmupAborts: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
 
       internal.debugSetFailAt("warmup::executeDirectly");
-      
+
       let c = setupCollection('edge');
       let task = dropCb();
 
@@ -120,20 +126,22 @@ function BaseTestConfig (dropCb, expectedError) {
       }
 
       shutdownTask(task);
-    },
+    }
 
   };
 }
 
-function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
+function AbortLongRunningOperationsWhenCollectionIsDroppedSuite () {
   'use strict';
 
   let dropCb = () => {
     let task = tasks.register({
-      command: function() {
+      command: function () {
         let db = require("internal").db;
         let cn = "UnitTestsCollection";
-        db[cn].insert({ _key: "runner1", _from: "v/test1", _to: "v/test2" });
+        db[cn].insert({ _key: "runner1",
+_from: "v/test1",
+_to: "v/test2" });
 
         while (!db[cn].exists("runner2")) {
           require("internal").sleep(0.02);
@@ -141,13 +149,15 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
 
         require("internal").sleep(0.02);
         db._drop(cn);
-      },
+      }
     });
 
     while (!db[cn].exists("runner1")) {
       require("internal").sleep(0.02);
     }
-    db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+    db[cn].insert({ _key: "runner2",
+_from: "v/test1",
+_to: "v/test2" });
     return task;
   };
 
@@ -162,7 +172,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   return suite;
 }
 
-function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
+function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite () {
   'use strict';
 
   let dropCb = () => {
@@ -170,11 +180,13 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
     db._useDatabase('_system');
     try {
       let task = tasks.register({
-        command: function(params) {
+        command: function (params) {
           let db = require("internal").db;
           db._useDatabase(params.old);
           let cn = "UnitTestsCollection";
-          db[cn].insert({ _key: "runner1", _from: "v/test1", _to: "v/test2" });
+          db[cn].insert({ _key: "runner1",
+_from: "v/test1",
+_to: "v/test2" });
 
           while (!db[cn].exists("runner2")) {
             require("internal").sleep(0.02);
@@ -185,14 +197,16 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
           db._dropDatabase(cn);
         },
         params: { old },
-        isSystem: true,
+        isSystem: true
       });
 
       db._useDatabase(old);
       while (!db[cn].exists("runner1")) {
         require("internal").sleep(0.02);
       }
-      db[cn].insert({ _key: "runner2", _from: "v/test1", _to: "v/test2" });
+      db[cn].insert({ _key: "runner2",
+_from: "v/test1",
+_to: "v/test2" });
       return task;
     } finally {
       db._useDatabase(old);

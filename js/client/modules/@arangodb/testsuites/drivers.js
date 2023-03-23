@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'driver': 'generic driver test - requires driver adaptor script',
+  'driver': 'generic driver test - requires driver adaptor script'
 };
 const optionsDocumentation = [
   '   - `driversource`: directory of the respective driver',
@@ -70,11 +70,11 @@ const host_re = new RegExp('([a-z]*)://([0-9.:]*):(\d*)');
 
 function driver (options) {
   class runInDriverTest extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runInDriverTest";
     }
-    runOneTest(file) {
+    runOneTest (file) {
       let topology;
       let results = {
         'message': ''
@@ -91,7 +91,7 @@ function driver (options) {
         matchTopology = /^SINGLE_SERVER/;
       }
       let m = this.instanceManager.url.split(host_re);
-      
+
       let args = [
         this.options.driverScript,
         '--instanceUrl', this.instanceManager.url,
@@ -101,9 +101,9 @@ function driver (options) {
         '--auth', false,
         '--username', 'root',
         '--password', '',
-        (isEnterprise())? '--enterprise' : '--no-enterprise',
+        (isEnterprise()) ? '--enterprise' : '--no-enterprise',
         '--deployment-mode', topology
-        
+
       ];
       if (testFilter) {
         args.push('--testsuite');
@@ -169,6 +169,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts.driverScript = 'run_tests.sh';
   opts.driverScriptInterpreter = '/bin/bash';
   testFns['driver'] = driver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

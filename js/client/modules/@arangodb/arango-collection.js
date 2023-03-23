@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -80,7 +80,7 @@ let appendOverwriteModeParameter = function (url, mode) {
   if (mode) {
     if (url.includes('?')) {
       url += '&';
-    }else {
+    } else {
       url += '?';
     }
     url += 'overwriteMode=' + mode;
@@ -193,8 +193,8 @@ ArangoCollection.prototype._edgesQuery = function (vertex, direction) {
   });
 
   // get the edges
-  let url = '/_api/edges/' + encodeURIComponent(this.name())
-    + (direction ? '?direction=' + direction : '');
+  let url = '/_api/edges/' + encodeURIComponent(this.name()) +
+    (direction ? '?direction=' + direction : '');
 
   let requestResult = this._database._connection.POST(this._prefixurl(url), vertex);
   arangosh.checkRequestResult(requestResult);
@@ -320,8 +320,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'cacheEnabled': true,
     'computedValues': true,
     'syncByRevision': false,
-    'schema' : true,
-    'isDisjoint': false,
+    'schema': true,
+    'isDisjoint': false
   };
 
   let requestResult;
@@ -436,10 +436,10 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
-    && requestResult !== undefined
-    && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult !== undefined &&
+    requestResult.error === true &&
+    requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"
     arangosh.checkRequestResult(requestResult);
   }
@@ -474,7 +474,7 @@ ArangoCollection.prototype.truncate = function (options) {
   if (!options.hasOwnProperty('compact')) {
     options.compact = true;
   }
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ false);
   let url = this._baseurl('truncate');
   if (options.waitForSync) {
     url = appendBoolParameter(url, 'waitForSync', options.waitForSync);
@@ -599,9 +599,9 @@ ArangoCollection.prototype.dropIndex = function (id) {
 
   let requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));
 
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult.error === true &&
+    requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
     return false;
   }
 
@@ -650,7 +650,7 @@ ArangoCollection.prototype.document = function (id, options) {
     });
   }
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ true);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ true);
   let requestResult;
   if (Array.isArray(id)) {
     let url = this._documentcollectionurl() + '?onlyget=true&ignoreRevs=false';
@@ -707,7 +707,7 @@ ArangoCollection.prototype.exists = function (id, options) {
     }
   }
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ true);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ true);
   let requestResult;
   if (rev === null) {
     requestResult = this._database._connection.GET(this._documenturl(id), headers);
@@ -727,7 +727,9 @@ ArangoCollection.prototype.exists = function (id, options) {
   }
 
   arangosh.checkRequestResult(requestResult);
-  return {_id: requestResult._id, _key: requestResult._key, _rev: requestResult._rev};
+  return {_id: requestResult._id,
+_key: requestResult._key,
+_rev: requestResult._rev};
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -754,7 +756,7 @@ ArangoCollection.prototype.firstExample = function (example) {
     // example is given as list
     e = {};
 
-    for (let i = 0;  i < arguments.length;  i += 2) {
+    for (let i = 0; i < arguments.length; i += 2) {
       e[arguments[i]] = arguments[i + 1];
     }
   }
@@ -769,9 +771,9 @@ ArangoCollection.prototype.firstExample = function (example) {
     data
   );
 
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult.error === true &&
+    requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
     return null;
   }
 
@@ -799,8 +801,7 @@ ArangoCollection.prototype.save =
     if (type === ArangoCollection.TYPE_DOCUMENT || data === undefined) {
       data = from;
       options = to;
-    }
-    else if (type === ArangoCollection.TYPE_EDGE) {
+    } else if (type === ArangoCollection.TYPE_EDGE) {
       if (typeof data === 'object' && Array.isArray(data)) {
         throw new ArangoError({
           errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -837,7 +838,7 @@ ArangoCollection.prototype.save =
       url = appendSyncParameter(url, options.waitForSync);
     }
 
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function (key) {
       if (options[key]) {
         url = appendBoolParameter(url, key, options[key]);
       }
@@ -852,7 +853,7 @@ ArangoCollection.prototype.save =
 
       url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects, true);
     }
-    
+
     url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
     if (data === undefined || typeof data !== 'object') {
@@ -862,7 +863,7 @@ ArangoCollection.prototype.save =
       });
     }
 
-    let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+    let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ false);
     let requestResult = this._database._connection.POST(
       url, data, headers
     );
@@ -947,7 +948,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
   }
@@ -1099,7 +1100,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
   }
@@ -1155,7 +1156,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     }
     params = '?skipDocumentValidation=' + options.skipDocumentValidation;
 
-    if (! options.hasOwnProperty('keepNull')) {
+    if (!options.hasOwnProperty('keepNull')) {
       options.keepNull = true;
     }
     params += '&keepNull=' + options.keepNull;
@@ -1222,7 +1223,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
 
-  let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
+  let headers = buildTransactionHeaders(options, /* allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
   }
@@ -1406,12 +1407,12 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   return { result: true };
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief MerkleTreeVerification
-//////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////
+// / @brief MerkleTreeVerification
+// ////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._revisionTreeVerification = function() {
-  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl : 3600});
+ArangoCollection.prototype._revisionTreeVerification = function () {
+  let batch = this._database._connection.POST(this._prefixurl('/_api/replication/batch'), {ttl: 3600});
   if (!batch.hasOwnProperty("id")) {
     throw "Could not create batch!";
   }
@@ -1422,11 +1423,11 @@ ArangoCollection.prototype._revisionTreeVerification = function() {
   return requestResult;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief MerkleTreeRebuilding
-//////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////
+// / @brief MerkleTreeRebuilding
+// ////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._revisionTreeRebuild = function() {
+ArangoCollection.prototype._revisionTreeRebuild = function () {
   // For some reason we need a batch ID here, which is not used!
   let requestResult = this._database._connection.POST(this._prefixurl(
     `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});

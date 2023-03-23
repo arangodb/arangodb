@@ -44,11 +44,13 @@ function runSetup () {
   db._dropView('UnitTestsRecovery2');
   v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
   v.properties({ links: { 'UnitTestsDummy': { includeAllFields: true } } });
-  db._collection('UnitTestsDummy').save({ _key: 'foo', num: 1 }, { waitForSync: true });
+  db._collection('UnitTestsDummy').save({ _key: 'foo',
+num: 1 }, { waitForSync: true });
 
   v.rename('UnitTestsRecovery2');
 
-  db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
+  db._collection('UnitTestsDummy').save({ _key: 'bar',
+num: 2 }, { waitForSync: true });
 
   internal.debugTerminate('crashing server');
 }

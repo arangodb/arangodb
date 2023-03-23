@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse, assertNotNull */
+/* jshint globalstrict:false, strict:false, maxlen:4000 */
+/* global assertEqual, assertTrue, assertFalse, assertNotNull */
 
 // /////////////////////////////////////////////////////////////////////////////
 // @brief tests for dump/reload
@@ -37,7 +37,7 @@ function dumpMaskingSuite () {
   var db = internal.db;
 
   return {
-    testGeneral : function () {
+    testGeneral: function () {
       var c = db._collection("maskings1");
       var d = c.document("1");
 
@@ -58,7 +58,7 @@ function dumpMaskingSuite () {
       assertEqual(d.sub.email[1], "with more than one entry");
     },
 
-    testRandomString : function () {
+    testRandomString: function () {
       var c = db._collection("maskings2");
       var d = c.document("2");
 

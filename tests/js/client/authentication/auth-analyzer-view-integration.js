@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global assertTrue, assertFalse, assertEqual, fail */
 
 const jsunity = require('jsunity');
@@ -8,25 +8,25 @@ const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
 const internal = require('internal');
 
-function testSuite() {
+function testSuite () {
   const user = 'bob';
   const system = "_system";
 
   const name = "TestAuthAnalyzer";
 
   return {
-    setUp: function() {
+    setUp: function () {
       helper.switchUser("root", system);
       try {
         users.remove(user);
       } catch (err) {}
-      
+
       try {
         db._dropDatabase(name);
       } catch (err) {}
     },
 
-    tearDown: function() {
+    tearDown: function () {
       helper.switchUser("root", system);
       try {
         db._dropDatabase(name);
@@ -37,11 +37,12 @@ function testSuite() {
       } catch (err) {}
     },
 
-    testIntegration : function() {
+    testIntegration: function () {
       const analyzerName = "more_text_de";
 
       analyzers.save(analyzerName, "text",
-                   { locale: "de.UTF-8", stopwords: [ ] },
+                   { locale: "de.UTF-8",
+stopwords: [ ] },
                    [ "frequency", "norm", "position" ]);
 
       try {
@@ -49,19 +50,19 @@ function testSuite() {
         // create new user for new database.
         // user does not have any permissions on _system database, thus
         // no permissions on the above analyzer
-        users.save(user, "", true); 
-        users.grantDatabase(user, name, "rw"); 
+        users.save(user, "", true);
+        users.grantDatabase(user, name, "rw");
 
         helper.switchUser(user, name);
 
         db._createView("test1", "arangosearch", {});
         let view = db._view("test1");
-        view.properties({links:{}});
-        
+        view.properties({links: {}});
+
         db._createView("test2", "search-alias", {});
         view = db._view("test2");
-        view.properties({indexes:[]});
-       
+        view.properties({indexes: []});
+
         try {
           analyzers.remove(analyzerName);
           fail();
@@ -72,10 +73,10 @@ function testSuite() {
         helper.switchUser("root", system);
         analyzers.remove(analyzerName);
       }
-    },
+    }
 
   };
-} 
+}
 
 jsunity.run(testSuite);
 return jsunity.done();

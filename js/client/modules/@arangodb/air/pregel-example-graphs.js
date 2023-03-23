@@ -30,7 +30,7 @@ const _ = require("lodash");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 // graph
 //
@@ -39,21 +39,21 @@ const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@a
 // edges pairs of integers referring to docs in the list of vertices
 
 // add a sequence of edges specified by a sequence of vertices
-function add_arc(graph, vids) {
+function add_arc (graph, vids) {
   for (var i = 0; i < vids.length - 1; i++) {
-    graph.edges.push([vids[i], vids[i+1]]);
+    graph.edges.push([vids[i], vids[i + 1]]);
   }
 }
 exports.add_arc = add_arc;
 
 // circle
-function add_circle(graph, vids) {
+function add_circle (graph, vids) {
   add_arc(graph, [...vids, vids[0]]);
 }
 exports.add_circle = add_circle;
 
 // complete graph
-function add_complete(graph, vids) {
+function add_complete (graph, vids) {
   for (let i = 0; i < vids.length; i++) {
     for (let j = 0; j < vids.length; j++) {
       if (i !== j) {
@@ -64,7 +64,7 @@ function add_complete(graph, vids) {
 }
 exports.add_complete = add_complete;
 
-function add_binary_tree(graph, vids) {
+function add_binary_tree (graph, vids) {
   let i = 0;
 
   while (i < vids.length) {
@@ -79,7 +79,7 @@ function add_binary_tree(graph, vids) {
 }
 exports.add_binary_tree = add_binary_tree;
 
-function create_graph_spec(name, smartGraphAttribute, numberOfShards) {
+function create_graph_spec (name, smartGraphAttribute, numberOfShards) {
   return {
     name: name,
     vname: name + "_V",
@@ -92,7 +92,7 @@ function create_graph_spec(name, smartGraphAttribute, numberOfShards) {
 }
 exports.create_graph_spec = create_graph_spec;
 
-function create_graph(graphSpec) {
+function create_graph (graphSpec) {
   try {
     graphModule._drop(graphSpec.name, true);
   } catch (e) {}
@@ -100,21 +100,23 @@ function create_graph(graphSpec) {
     graphSpec.name,
     [graphModule._relation(graphSpec.ename, graphSpec.vname, graphSpec.vname)],
     [],
-    { smartGraphAttribute: graphSpec.smartGraphAttribute, numberOfShards: graphSpec.numberOfShards }
+    { smartGraphAttribute: graphSpec.smartGraphAttribute,
+numberOfShards: graphSpec.numberOfShards }
   );
 
   let vids = db._collection(graphSpec.vname).save(graphSpec.vertices);
 
   // TODO: edge weights/costs/docs?
   const ecoll = db._collection(graphSpec.ename);
-  graphSpec.edges.forEach( function(e) {
-    let edgeDoc = {_from: vids[e[0]]._id, _to: vids[e[1]]._id};
+  graphSpec.edges.forEach(function (e) {
+    let edgeDoc = {_from: vids[e[0]]._id,
+_to: vids[e[1]]._id};
     ecoll.save(edgeDoc);
   });
 }
 exports.create_graph = create_graph;
 
-function create_disjoint_circle_and_complete_graph(name, shards) {
+function create_disjoint_circle_and_complete_graph (name, shards) {
   var spec = create_graph_spec(name, "id", shards);
 
   for (let i = 0; i < 10; i++) {
@@ -125,7 +127,7 @@ function create_disjoint_circle_and_complete_graph(name, shards) {
   for (let i = 0; i < 10; i++) {
     spec.vertices.push({ "id": "B" + i});
   }
-  add_complete(spec, _.range(10,20));
+  add_complete(spec, _.range(10, 20));
 
   create_graph(spec);
 
@@ -133,7 +135,7 @@ function create_disjoint_circle_and_complete_graph(name, shards) {
 }
 exports.create_disjoint_circle_and_complete_graph = create_disjoint_circle_and_complete_graph;
 
-function create_circle_graph(name, shards) {
+function create_circle_graph (name, shards) {
   var spec = create_graph_spec(name, "id", shards);
 
   for (var i = 0; i < 10; i++) {
@@ -146,7 +148,7 @@ function create_circle_graph(name, shards) {
 }
 exports.create_circle_graph = create_circle_graph;
 
-function create_complete_graph(name, shards, numVertices = 100) {
+function create_complete_graph (name, shards, numVertices = 100) {
   var spec = create_graph_spec(name, "id", shards);
 
   for (var i = 0; i < numVertices; i++) {
@@ -159,14 +161,14 @@ function create_complete_graph(name, shards, numVertices = 100) {
 }
 exports.create_complete_graph = create_complete_graph;
 
-exports.create_tadpole_graph = function(name, shards) {
+exports.create_tadpole_graph = function (name, shards) {
   var spec = create_graph_spec(name, "id", shards);
 
   for (var i = 0; i < 10; i++) {
     spec.vertices.push({ "id": "A" + i});
   }
-  add_arc(spec, [0,1,2,3,4]);
-  add_circle(spec, [4,5,6,7,8,9]);
+  add_arc(spec, [0, 1, 2, 3, 4]);
+  add_circle(spec, [4, 5, 6, 7, 8, 9]);
   create_graph(spec);
 
   return spec;
@@ -174,7 +176,7 @@ exports.create_tadpole_graph = function(name, shards) {
 
 // This should maybe also be using other example graphs from
 // for example the traversal suite.
-function createCircle(graphName, numberOfVertices, numberOfShards) {
+function createCircle (graphName, numberOfVertices, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
   try {
@@ -184,7 +186,8 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "id",
+numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -199,21 +202,22 @@ function createCircle(graphName, numberOfVertices, numberOfShards) {
   for (let i = 0; i < numberOfVertices; i++) {
     es.push({
       _from: vids[i]._id,
-      _to: vids[(i+1)%numberOfVertices]._id,
-      cost: 1,
+      _to: vids[(i + 1) % numberOfVertices]._id,
+      cost: 1
     });
-  };
+  }
 
   db._collection(ename).save(es);
 
-  return { vname: vname, ename: ename };
+  return { vname: vname,
+ename: ename };
 }
 
-function writeToLeaf(obj, path) {
+function writeToLeaf (obj, path) {
   path = path.split('.');
   let res = obj;
 
-  for (var i=0; i < path.length; i++) {
+  for (var i = 0; i < path.length; i++) {
     if (res[path[i]]) {
       res = res[path[i]];
     } else {
@@ -222,7 +226,7 @@ function writeToLeaf(obj, path) {
   }
 }
 
-function objectInsertHelper(arr, valueToInsert) {
+function objectInsertHelper (arr, valueToInsert) {
   let obj = {};
   arr.forEach((key) => {
     if (typeof key === "string") {
@@ -236,7 +240,7 @@ function objectInsertHelper(arr, valueToInsert) {
   return obj;
 }
 
-function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeysToInsert) {
+function createLineGraph (graphName, numberOfVertices, numberOfShards, vertexKeysToInsert) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
 
@@ -247,7 +251,8 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeys
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "id",
+numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -272,17 +277,19 @@ function createLineGraph(graphName, numberOfVertices, numberOfShards, vertexKeys
   for (let i = 0; i < numberOfVertices - 1; i++) {
     es.push({
       _from: vids[i]._id,
-      _to: vids[i+1]._id,
-      cost: 1,
+      _to: vids[i + 1]._id,
+      cost: 1
     });
-  };
+  }
 
   db._collection(ename).save(es);
 
-  return { name: graphName, vname: vname, ename: ename };
+  return { name: graphName,
+vname: vname,
+ename: ename };
 }
 
-function createStarGraph(graphName, numberOfVertices, numberOfShards) {
+function createStarGraph (graphName, numberOfVertices, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
 
@@ -293,7 +300,8 @@ function createStarGraph(graphName, numberOfVertices, numberOfShards) {
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "id",
+numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -308,17 +316,19 @@ function createStarGraph(graphName, numberOfVertices, numberOfShards) {
   for (let i = 1; i < numberOfVertices - 1; i++) {
     es.push({
       _from: vids[0]._id,
-      _to: vids[i+1]._id,
-      cost: 1,
+      _to: vids[i + 1]._id,
+      cost: 1
     });
   }
 
   db._collection(ename).save(es);
 
-  return { name: graphName, vname: vname, ename: ename };
+  return { name: graphName,
+vname: vname,
+ename: ename };
 }
 
-function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
+function createPageRankGraph (graphName, numberOfVertices, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
   try {
@@ -328,7 +338,8 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "id",
+numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -337,7 +348,7 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
   // vertices data
   let vertices = ['A', 'B', 'C', 'D', 'E'];
   let smartGraphValue = 0;
-  vertices.forEach(function(v) {
+  vertices.forEach(function (v) {
     vs.push({
       name: v,
       id: smartGraphValue.toString()
@@ -378,10 +389,12 @@ function createPageRankGraph(graphName, numberOfVertices, numberOfShards) {
 
   // E -> E
   storeEdge(vids[4]._id, vids[4]._id, 1);
-  return { name: graphName, vname: vname, ename: ename };
+  return { name: graphName,
+vname: vname,
+ename: ename };
 }
 
-function createWikiVoteGraph(graphName, numberOfShards) {
+function createWikiVoteGraph (graphName, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
   const N = 889;
@@ -3299,7 +3312,7 @@ function createWikiVoteGraph(graphName, numberOfShards) {
     [882, 862],
     [870, 864],
     [874, 864],
-    [885, 884],
+    [885, 884]
   ];
 
   try {
@@ -3309,7 +3322,8 @@ function createWikiVoteGraph(graphName, numberOfShards) {
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "id", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "id",
+numberOfShards: numberOfShards }
   );
 
   var vs = [];
@@ -3325,13 +3339,15 @@ function createWikiVoteGraph(graphName, numberOfShards) {
     es.push({
       _from: vids[item[0] - 1]._id,
       _to: vids[item[1] - 1]._id,
-      cost: Math.random() * 10000,
+      cost: Math.random() * 10000
     });
   });
 
   db._collection(ename).save(es);
 
-  return { name: graphName, vname: vname, ename: ename };
+  return { name: graphName,
+vname: vname,
+ename: ename };
 }
 
 exports.create_wiki_vote_graph = createWikiVoteGraph;

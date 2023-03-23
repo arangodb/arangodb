@@ -46,8 +46,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       body._from = from;
       body._to = to;
       newEdge = JSON.stringify(body);
-    }
-    catch (x) {
+    } catch (x) {
       body = {};
       return this.createTypeEdge(collectionID, from, to, key, body, callback);
     }
@@ -90,8 +89,7 @@ window.ArangoDocument = Backbone.Collection.extend({
       } else if (key) {
         newDocument._key = key;
       }
-    }
-    catch (x) {
+    } catch (x) {
       body = {};
       return this.createTypeDocument(collectionID, key, body, callback, returnNew,
                                      smartJoinAttribute, smartJoinAttributeValue,

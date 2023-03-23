@@ -1,34 +1,34 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertFalse, assertTrue, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server startup options
-/// DISCLAIMER
-///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Julia Puget
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for server startup options
+// / DISCLAIMER
+// /
+// / Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Julia Puget
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
     'server.authentication': 'true',
-    'server.jwt-secret': 'haxxmann',
+    'server.jwt-secret': 'haxxmann'
   };
 }
 const jsunity = require('jsunity');
@@ -40,27 +40,27 @@ let maintainerMode = require('internal').db._version(true)['details']['maintaine
 const helper = require('@arangodb/testutils/user-helper');
 const user = "testUser";
 
-let connectWith = function(protocol, user, password) {
+let connectWith = function (protocol, user, password) {
   let endpoint = arango.getEndpoint().replace(/^[a-zA-Z0-9\+]+:/, protocol + ':');
   arango.reconnect(endpoint, db._name(), user, password);
 };
 
-function HttpAuthenticateSuite() {
+function HttpAuthenticateSuite () {
 
   return {
 
-    setUp: function() {
+    setUp: function () {
       connectWith("tcp", "root", "");
       users.save(user, "");
       users.grantDatabase(user, '_system', 'rw');
     },
 
-    tearDown: function() {
+    tearDown: function () {
       connectWith("tcp", "root", "");
       users.remove(user);
     },
 
-    testUnauthorized: function() {
+    testUnauthorized: function () {
       protocols.forEach((protocol) => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
@@ -75,7 +75,7 @@ function HttpAuthenticateSuite() {
       });
     },
 
-    testUnauthorizedOmit: function() {
+    testUnauthorizedOmit: function () {
       protocols.forEach(protocol => {
         connectWith(protocol, user, "");
         // need to change password, otherwise, the request will return 200
@@ -90,7 +90,7 @@ function HttpAuthenticateSuite() {
       });
     },
 
-    testAuthorized: function() {
+    testAuthorized: function () {
       const jwtSecret = 'haxxmann';
       const jwtRoot = crypto.jwtEncode(jwtSecret, {
         "preferred_username": "root",
@@ -103,7 +103,7 @@ function HttpAuthenticateSuite() {
         assertEqual(200, result.code);
         assertFalse(result.headers.hasOwnProperty('www-authenticate'));
       });
-    },
+    }
   };
 }
 

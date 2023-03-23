@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXECUTE, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for regression returning blocks to the manager
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// @author Markus Pfeiffer
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for regression returning blocks to the manager
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / @author Markus Pfeiffer
+// / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
@@ -36,24 +36,24 @@ var db = require("@arangodb").db,
 // crash in the TraversalExecutor code
 const collectionName = "SubqueryChaosCollection2";
 
-var cleanup = function() {
+var cleanup = function () {
   db._drop(collectionName);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function multiDependencyRegressionSuite() {
+function multiDependencyRegressionSuite () {
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll: function() {
+    setUpAll: function () {
       cleanup();
       let c = db._create(collectionName, { numberOfShards: 5 });
-      
+
       const docs = [];
       for (let i = 1; i < 11; ++i) {
         docs.push({ value: i });
@@ -61,18 +61,18 @@ function multiDependencyRegressionSuite() {
       c.save(docs);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       cleanup();
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief 
-    ////////////////////////////////////////////////////////////////////////////////
-    testMultiDependencyRegression: function() {
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief
+    // //////////////////////////////////////////////////////////////////////////////
+    testMultiDependencyRegression: function () {
       const query = `
 	  LET sq1 = (FOR fv2 IN 1..10
 	    LET sq3 = (FOR fv4 IN ${collectionName}
@@ -87,18 +87,21 @@ function multiDependencyRegressionSuite() {
       var actual = db._query(query, {});
       assertEqual(actual.toArray(), [
         [
-          { fv2: 6, sq3: [{ counter: 0 }] },
-          { fv2: 7, sq3: [{ counter: 0 }] },
-          { fv2: 8, sq3: [{ counter: 0 }] }
+          { fv2: 6,
+sq3: [{ counter: 0 }] },
+          { fv2: 7,
+sq3: [{ counter: 0 }] },
+          { fv2: 8,
+sq3: [{ counter: 0 }] }
         ]
       ]);
     }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(multiDependencyRegressionSuite);
 

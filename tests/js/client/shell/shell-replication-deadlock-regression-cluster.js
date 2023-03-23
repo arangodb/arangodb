@@ -36,7 +36,7 @@ const {
   waitForShardsInSync
 } = require('@arangodb/test-helper');
 
-function ReplicationDeadLockSuite() {
+function ReplicationDeadLockSuite () {
   const collectionName = "UnitTestCollection";
   const clearAllFailurePoints = () => {
     for (const server of getDBServers()) {

@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotEqual, assertMatch, assertUndefined, assertNotUndefined, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -36,11 +36,11 @@ let reId = /^\d+$/;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_error_handlingSuite() {
+function dealing_with_cursorsSuite_error_handlingSuite () {
   return {
     test_returns_an_error_if_body_is_missing: function () {
       let cmd = api;
@@ -153,7 +153,8 @@ function dealing_with_cursorsSuite_error_handlingSuite() {
 
     test_returns_an_error_if_memory_limit_is_violated: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..100000 SORT i RETURN i", "memoryLimit": 100000};
+      let body = {"query": "FOR i IN 1..100000 SORT i RETURN i",
+"memoryLimit": 100000};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_SERVER_ERROR.code);
@@ -165,7 +166,8 @@ function dealing_with_cursorsSuite_error_handlingSuite() {
 
     test_returns_no_errors_but_warnings_if_fail_on_warning_is_not_triggered: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..5 RETURN i / 0", "options": {"failOnWarning": false}};
+      let body = {"query": "FOR i IN 1..5 RETURN i / 0",
+"options": {"failOnWarning": false}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -185,7 +187,9 @@ function dealing_with_cursorsSuite_error_handlingSuite() {
 
     test_returns_no_errors_but_warnings_if_fail_on_warning_is_not_triggered__limiting_number_of_warnings: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..5 RETURN i / 0", "options": {"failOnWarning": false, "maxWarningCount": 3}};
+      let body = {"query": "FOR i IN 1..5 RETURN i / 0",
+"options": {"failOnWarning": false,
+"maxWarningCount": 3}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -215,11 +219,11 @@ function dealing_with_cursorsSuite_error_handlingSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // create and using cursors, continuation;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite() {
+function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite () {
   let cn = "users";
   return {
     setUpAll: function () {
@@ -239,7 +243,8 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite() {
 
     test_creates_a_cursor_and_consumes_data_incrementally___PUT: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "count": true};
+      let body = {"query": `FOR u IN ${cn} RETURN u`,
+"count": true};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -294,7 +299,8 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite() {
 
     test_creates_a_cursor_and_consumes_data_incrementally___POST: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "count": true};
+      let body = {"query": `FOR u IN ${cn} RETURN u`,
+"count": true};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -350,11 +356,11 @@ function dealing_with_cursorsSuite_handling_a_cursor_with_continuationSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // create and using cursors;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_handling_a_cursorSuite() {
+function dealing_with_cursorsSuite_handling_a_cursorSuite () {
   let cn = "users";
   return {
     setUpAll: function () {
@@ -374,7 +380,10 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_single_run: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`, "count": true, "bindVars": {}, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`,
+"count": true,
+"bindVars": {},
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -390,7 +399,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_single_run__without_count: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`, "count": false, "bindVars": {}};
+      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`,
+"count": false,
+"bindVars": {}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -406,7 +417,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_single_run__large_batch_size: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`, "count": true, "batchSize": 5};
+      let body = {"query": `FOR u IN ${cn} LIMIT 2 RETURN u.n`,
+"count": true,
+"batchSize": 5};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -422,7 +435,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_usable_cursor_and_consumes_data_incrementally___PUT: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -478,7 +493,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_usable_cursor_and_consumes_data_incrementally___POST: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -534,7 +551,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_and_deletes_it_in_the_middle___PUT: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -578,7 +597,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_and_deletes_it_in_the_middle___POST: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -622,7 +643,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_deleting_a_cursor: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -651,7 +674,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_deleting_a_deleted_cursor: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 2};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -741,7 +766,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_non_streaming_cursor_with_a_low_TTL: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..10 LET x = SLEEP(5) RETURN i", "batchSize": 1, "ttl": 2};
+      let body = {"query": "FOR i IN 1..10 LET x = SLEEP(5) RETURN i",
+"batchSize": 1,
+"ttl": 2};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -776,7 +803,10 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_that_will_expire___PUT: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 5};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 1,
+"ttl": 5};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -838,7 +868,10 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_that_will_expire___POST: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 5};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 1,
+"ttl": 5};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -900,7 +933,10 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_that_will_not_expire___PUT: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 60};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 1,
+"ttl": 60};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -961,7 +997,10 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_cursor_that_will_not_expire___POST: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`, "count": true, "batchSize": 1, "ttl": 60};
+      let body = {"query": `FOR u IN ${cn} LIMIT 5 RETURN u.n`,
+"count": true,
+"batchSize": 1,
+"ttl": 60};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1111,7 +1150,9 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
 
     test_creates_a_query_that_survives_memory_limit_constraints: function () {
       let cmd = api;
-      let body = {"query": "FOR i IN 1..10000 SORT i RETURN i", "memoryLimit": 10000000, "batchSize": 10};
+      let body = {"query": "FOR i IN 1..10000 SORT i RETURN i",
+"memoryLimit": 10000000,
+"batchSize": 10};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1126,11 +1167,11 @@ function dealing_with_cursorsSuite_handling_a_cursorSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking a query;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_checking_a_querySuite() {
+function dealing_with_cursorsSuite_checking_a_querySuite () {
   let cn = "users";
   return {
     setUpAll: function () {
@@ -1179,11 +1220,11 @@ function dealing_with_cursorsSuite_checking_a_querySuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // floating point values;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_fetching_floating_point_valuesSuite() {
+function dealing_with_cursorsSuite_fetching_floating_point_valuesSuite () {
   let cn = "users";
   let cid;
   return {
@@ -1192,10 +1233,14 @@ function dealing_with_cursorsSuite_fetching_floating_point_valuesSuite() {
       cid = db._create(cn);
 
       db[cn].save([
-        {"_key": "big", "value": 4e+262},
-        {"_key": "neg", "value": -4e262},
-        {"_key": "pos", "value": 4e262},
-        {"_key": "small", "value": 4e-262}
+        {"_key": "big",
+"value": 4e+262},
+        {"_key": "neg",
+"value": -4e262},
+        {"_key": "pos",
+"value": 4e262},
+        {"_key": "small",
+"value": 4e-262}
       ]);
     },
 
@@ -1235,11 +1280,11 @@ function dealing_with_cursorsSuite_fetching_floating_point_valuesSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // cursor with retriable request for the last batch;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
-function dealing_with_cursorsSuite_retriable_request_last_batch() {
+function dealing_with_cursorsSuite_retriable_request_last_batch () {
   let cn = "users";
   return {
     setUpAll: function () {
@@ -1260,7 +1305,9 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_non_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": false, "allowRetry": true}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`,
+"options": {"stream": false,
+"allowRetry": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1346,7 +1393,9 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_stream_request_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "allowRetry": true}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`,
+"options": {"stream": true,
+"allowRetry": true}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1431,7 +1480,9 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
 
     test_cursor_stream_request_non_retriable: function () {
       let cmd = api;
-      let body = {"query": `FOR u IN ${cn} RETURN u`, "options": {"stream": true, "allowRetry": false}};
+      let body = {"query": `FOR u IN ${cn} RETURN u`,
+"options": {"stream": true,
+"allowRetry": false}};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -1474,7 +1525,8 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
     test_cursor_non_stream_retriable: function () {
       const stmt = db._createStatement({
         query: `FOR u IN ${cn} RETURN u`,
-        options: {stream: false, allowRetry: true},
+        options: {stream: false,
+allowRetry: true},
         batchSize: 100
       });
       let cursor = stmt.execute();
@@ -1498,7 +1550,8 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
     test_cursor_stream_retriable: function () {
       const stmt = db._createStatement({
         query: `FOR u IN ${cn} RETURN u`,
-        options: {stream: true, allowRetry: true},
+        options: {stream: true,
+allowRetry: true},
         batchSize: 100
       });
       let cursor = stmt.execute();
@@ -1514,7 +1567,7 @@ function dealing_with_cursorsSuite_retriable_request_last_batch() {
         assertEqual(i !== 2000, cursor.hasNext());
       }
       assertFalse(cursor.hasNext());
-    },
+    }
   };
 }
 

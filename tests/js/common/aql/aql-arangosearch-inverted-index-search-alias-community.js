@@ -1,27 +1,27 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alexey Bakharev
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alexey Bakharev
+// //////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");
 let db = arangodb.db;
@@ -34,10 +34,12 @@ const isCluster = require("internal").isCluster();
 const { triggerMetrics } = require("@arangodb/test-helper");
 const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 
-function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
+function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity () {
     let cleanup = function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(dbName); } catch (err) { }
+        try {
+ db._dropDatabase(dbName);
+} catch (err) { }
     };
 
     let assertInvertedIndexCreation = function (collName, indexDefinition, isNewlyCreated = true) {
@@ -62,8 +64,10 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
             analyzers.save("AqlAnalyzerRound", "aql", { queryString: "RETURN ROUND(@param)" }, ["frequency", "norm", "position"]);
             analyzers.save("myDelimiterAnalyzer", "delimiter", { delimiter: " " }, ["frequency", "norm", "position"]);
             analyzers.save("AqlAnalyzerHash", "aql", { queryString: "return to_hex(to_string(@param))" }, []);
-            analyzers.save("norm_lower", "norm", { locale: "de.utf-8", case: "lower" }, ["frequency", "norm", "position"]);
-            analyzers.save("norm_lower_dup", "norm", { locale: "de.utf-8", case: "lower" }, ["frequency", "norm", "position"]);
+            analyzers.save("norm_lower", "norm", { locale: "de.utf-8",
+case: "lower" }, ["frequency", "norm", "position"]);
+            analyzers.save("norm_lower_dup", "norm", { locale: "de.utf-8",
+case: "lower" }, ["frequency", "norm", "position"]);
 
             db._create("c0");
             db._create("c1");
@@ -81,7 +85,8 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 // useless index
                 assertInvertedIndexCreation("_analyzers",
                     {
-                        'type': 'inverted', 'name': 'system_statistics_system',
+                        'type': 'inverted',
+'name': 'system_statistics_system',
                         'fields': [
                             "_key",
                             "_rev",
@@ -99,7 +104,8 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
 
                 assertInvertedIndexCreation("_analyzers",
                     {
-                        'type': 'inverted', 'name': 'system_analyzer_system',
+                        'type': 'inverted',
+'name': 'system_analyzer_system',
                         'fields': [
                             "_key",
                             "_rev",
@@ -651,7 +657,8 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         testNegativeInvertedIndexCreation: function () {
             let failDefinitions = [
                 {
-                    'type': 'inverted', 'name': 'nest0', // nested fields - EE only
+                    'type': 'inverted',
+'name': 'nest0', // nested fields - EE only
                     'fields': [
                         {
                             "name": "foo.boo.nest",
@@ -692,11 +699,13 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                     ]
                 },
                 {
-                    'type': 'inverted', 'name': 'nest1', // empty fields
+                    'type': 'inverted',
+'name': 'nest1', // empty fields
                     'fields': []
                 },
                 {
-                    'type': 'inverted', 'name': 'nest2', // empty name
+                    'type': 'inverted',
+'name': 'nest2', // empty name
                     'fields': [
                         {
                             "expression": "RETURN SPLIT(@param, '.') ",
@@ -730,27 +739,49 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
         },
 
         testInvertedIndexRegressions: function () {
-            let testColl = db._create("testColl", { replicationFactor: 1, writeConcern: 1, numberOfShards: 1 });
+            let testColl = db._create("testColl", { replicationFactor: 1,
+writeConcern: 1,
+numberOfShards: 1 });
             for (let i = 0; i < 5; i++) {
                 let cv_field = String(i) + String(i + 1);
-                testColl.save({ a: "foo", b: "bar", c: i, cv_field: cv_field });
-                testColl.save({ a: "foo", b: "baz", c: i, cv_field: cv_field });
-                testColl.save({ a: "bar", b: "foo", c: i, cv_field: cv_field });
-                testColl.save({ a: "baz", b: "foo", c: i, cv_field: cv_field });
+                testColl.save({ a: "foo",
+b: "bar",
+c: i,
+cv_field: cv_field });
+                testColl.save({ a: "foo",
+b: "baz",
+c: i,
+cv_field: cv_field });
+                testColl.save({ a: "bar",
+b: "foo",
+c: i,
+cv_field: cv_field });
+                testColl.save({ a: "baz",
+b: "foo",
+c: i,
+cv_field: cv_field });
             }
 
             // SEARCH-353
             {
-                assertInvertedIndexCreation("testColl", { name: "i1", type: "inverted", fields: ["a"] });
+                assertInvertedIndexCreation("testColl", { name: "i1",
+type: "inverted",
+fields: ["a"] });
 
-                assertInvertedIndexCreation("testColl", { name: "i2", type: "inverted", fields: ["b"] });
+                assertInvertedIndexCreation("testColl", { name: "i2",
+type: "inverted",
+fields: ["b"] });
                 assertEqual(testColl.indexes().length, 3);
             }
 
             // SEARCH-346
             {
-                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i3", fields: ["cv_field"] });
-                assertInvertedIndexCreation("testColl", { type: "inverted", name: "i4", fields: ["cv_field"] }, false);
+                assertInvertedIndexCreation("testColl", { type: "inverted",
+name: "i3",
+fields: ["cv_field"] });
+                assertInvertedIndexCreation("testColl", { type: "inverted",
+name: "i4",
+fields: ["cv_field"] }, false);
                 // sync indexes
                 db._query("for d in testColl OPTIONS {'indexHint': 'i1', 'forceIndexHint': true, 'waitForSync': true} filter d.a == 'foo' collect with count into c return c");
                 db._query("for d in testColl OPTIONS {'indexHint': 'i2', 'forceIndexHint': true, 'waitForSync': true} filter d.b == 'bar' collect with count into c return c");
@@ -763,14 +794,14 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                 if (isCluster) {
                     triggerMetrics();
                 }
-                checkIndexMetrics( function () {
+                checkIndexMetrics(function () {
                     let stats = testColl.getIndexes(true, true);
                     for (let i = 0; i < stats.length; i++) {
                         let index = stats[i];
                         if (index["type"] === "primary") {
                             continue;
                         }
-    
+
                         assertEqual(index["name"], `i${i}`);
                         assertEqual(index["figures"]["numDocs"], 20);
                         assertEqual(index["figures"]["numPrimaryDocs"], 20);
@@ -785,9 +816,12 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
 
         testNegativeSearchAliasCreation: function () {
             let failDefinitions = [
-                { indexes: [{ 'collection': 'wrong_collection', 'index': 'c0_i0', 'operation': 'add' }] }, // not existing collection
-                { indexes: [{ 'collection': 'c0', 'index': 'wrong_index' }] }, // not existing index
-                {    // index duplication
+                { indexes: [{ 'collection': 'wrong_collection',
+'index': 'c0_i0',
+'operation': 'add' }] }, // not existing collection
+                { indexes: [{ 'collection': 'c0',
+'index': 'wrong_index' }] }, // not existing index
+                { // index duplication
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -799,7 +833,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {    // index duplication
+                { // index duplication
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -813,7 +847,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // deletion of non-existing index
+                { // deletion of non-existing index
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -822,7 +856,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // del, add
+                { // del, add
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -836,7 +870,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // wrong operation
+                { // wrong operation
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -845,7 +879,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   //  Same field in indexes from same collection   
+                { //  Same field in indexes from same collection
                     'indexes': [
                         {
                             'collection': 'c3',
@@ -854,11 +888,11 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         },
                         {
                             'collection': 'c3',
-                            'index': 'c3_i3',
+                            'index': 'c3_i3'
                         }
                     ]
                 },
-                {   // searchField mismatch
+                { // searchField mismatch
                     'indexes': [
                         {
                             'collection': 'c2',
@@ -866,11 +900,11 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         },
                         {
                             'collection': 'c3',
-                            'index': 'c3_i2',
+                            'index': 'c3_i2'
                         }
                     ]
                 },
-                {   // analyzer mismatch in root
+                { // analyzer mismatch in root
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -882,7 +916,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // analyzer mismatch in root (analyzers def are same, but names are different)
+                { // analyzer mismatch in root (analyzers def are same, but names are different)
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -894,7 +928,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // analyzer mismatch field
+                { // analyzer mismatch field
                     'indexes': [
                         {
                             'collection': 'c3',
@@ -906,7 +940,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // storedValues mismatch in root
+                { // storedValues mismatch in root
                     'indexes': [
                         {
                             'collection': 'c2',
@@ -918,7 +952,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // includeAllFields is true in index in one collection
+                { // includeAllFields is true in index in one collection
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -930,7 +964,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // includeAllFields is true in indexes in one collection
+                { // includeAllFields is true in indexes in one collection
                     'indexes': [
                         {
                             'collection': 'c0',
@@ -942,7 +976,7 @@ function IResearchInvertedIndexSearchAliasAqlTestSuiteCommunity() {
                         }
                     ]
                 },
-                {   // primarySort mismatch
+                { // primarySort mismatch
                     'indexes': [
                         {
                             'collection': 'c3',

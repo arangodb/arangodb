@@ -39,7 +39,9 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery'), i;
   for (i = 0; i < 10000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+    c.save({ _key: 'test' + i,
+value1: 'test' + i,
+value2: i });
   }
 
   internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');

@@ -5,10 +5,10 @@
 
 const Test = require('@arangodb/mocha/test');
 
-module.exports = function bddInterface(suite) {
+module.exports = function bddInterface (suite) {
   var suites = [suite];
 
-  suite.on('pre-require', function(context, file, mocha) {
+  suite.on('pre-require', function (context, file, mocha) {
     var common = require('@arangodb/mocha/interface/common')(suites, context, mocha);
 
     context.before = common.before;
@@ -17,7 +17,7 @@ module.exports = function bddInterface(suite) {
     context.afterEach = common.afterEach;
     context.run = mocha.options.delay && common.runWithSuite(suite);
 
-    context.describe = context.context = function(title, fn) {
+    context.describe = context.context = function (title, fn) {
       return common.suite.create({
         title: title,
         file: file,
@@ -25,7 +25,7 @@ module.exports = function bddInterface(suite) {
       });
     };
 
-    context.xdescribe = context.xcontext = context.describe.skip = function(
+    context.xdescribe = context.xcontext = context.describe.skip = function (
       title,
       fn
     ) {
@@ -36,7 +36,7 @@ module.exports = function bddInterface(suite) {
       });
     };
 
-    context.describe.only = function(title, fn) {
+    context.describe.only = function (title, fn) {
       return common.suite.only({
         title: title,
         file: file,
@@ -44,7 +44,7 @@ module.exports = function bddInterface(suite) {
       });
     };
 
-    context.it = context.specify = function(title, fn) {
+    context.it = context.specify = function (title, fn) {
       var suite = suites[0];
       if (suite.isPending()) {
         fn = null;
@@ -55,15 +55,15 @@ module.exports = function bddInterface(suite) {
       return test;
     };
 
-    context.it.only = function(title, fn) {
+    context.it.only = function (title, fn) {
       return common.test.only(mocha, context.it(title, fn));
     };
 
-    context.xit = context.xspecify = context.it.skip = function(title) {
+    context.xit = context.xspecify = context.it.skip = function (title) {
       return context.it(title);
     };
 
-    context.it.retries = function(n) {
+    context.it.retries = function (n) {
       context.retries(n);
     };
   });

@@ -17,14 +17,14 @@ global.DEFINE_MODULE('process', (function () {
 
   exports.stdout = {
     isTTY: internal.COLOR_OUTPUT,
-    write(text) {
+    write (text) {
       console.infoLines(text);
     }
   };
 
   exports.stderr = {
     isTTY: internal.COLOR_OUTPUT,
-    write(text) {
+    write (text) {
       console.errorLines(text);
     }
   };

@@ -213,8 +213,12 @@
           agents.push(node);
         }
       });
-      coords = _.sortBy(coords, function (o) { return o.ShortName; });
-      dbs = _.sortBy(dbs, function (o) { return o.ShortName; });
+      coords = _.sortBy(coords, function (o) {
+ return o.ShortName;
+});
+      dbs = _.sortBy(dbs, function (o) {
+ return o.ShortName;
+});
 
       if (scaling.numberOfDBServers !== null && scaling.numberOfCoordinators !== null) {
         scale = true;

@@ -31,55 +31,55 @@ let user_examples = require("@arangodb/examples/example-users.js");
 
 exports.Examples = {
   'traversalGraph': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("traversalGraph");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("traversalGraph");
     }
   },
   'kShortestPathsGraph': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("kShortestPathsGraph");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("kShortestPathsGraph");
     }
   },
   'mps_graph': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("mps_graph");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("mps_graph");
     }
   },
   'knows_graph': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("knows_graph");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("knows_graph");
     }
   },
   'routeplanner': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("routeplanner");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("routeplanner");
     }
   },
   'connectedComponentsGraph': {
-    createDS: function() {
+    createDS: function () {
       examples.loadGraph("connectedComponentsGraph");
     },
-    removeDS: function() {
+    removeDS: function () {
       examples.dropGraph("connectedComponentsGraph");
     }
   },
   'joinSampleDataset': {
-    createDS: function() {
+    createDS: function () {
       db._create("users");
       db._create("relations");
 
@@ -89,7 +89,7 @@ exports.Examples = {
         [4, "Mariah", true ],
         [5, "John", false]
       ].forEach(function (v) {
-        db.users.save( {
+        db.users.save({
           _key: v[1],
           name: v[1],
           active: v[2],
@@ -98,24 +98,24 @@ exports.Examples = {
       });
 
       [
-        [1,2,"friend"],
-        [1,3,"friend"],
-        [1,4,"friend"],
-        [2,5,"friend"],
-        [2,2,"friend"],
-        [3,4,"friend"],
-        [3,1,"friend"],
-        [4,1,"friend"],
-        [4,2,"friend"]
+        [1, 2, "friend"],
+        [1, 3, "friend"],
+        [1, 4, "friend"],
+        [2, 5, "friend"],
+        [2, 2, "friend"],
+        [3, 4, "friend"],
+        [3, 1, "friend"],
+        [4, 1, "friend"],
+        [4, 2, "friend"]
       ].forEach(function (v) {
-        db.relations.save( {
+        db.relations.save({
           type: v[2],
           friendOf: v[0],
           thisUser: v[1]
         });
       });
     },
-    removeDS: function() {
+    removeDS: function () {
       try {
         db._drop("users");
       } catch (e) {}
@@ -125,33 +125,51 @@ exports.Examples = {
     }
   },
   'observationsSampleDataset': {
-    createDS: function() {
+    createDS: function () {
       db._create("observations");
       db.observations.save([
-        { "time": "2021-05-25 07:00:00", "subject": "st113", "val": 10 },
-        { "time": "2021-05-25 07:15:00", "subject": "st113", "val": 9 },
-        { "time": "2021-05-25 07:30:00", "subject": "st113", "val": 25 },
-        { "time": "2021-05-25 07:45:00", "subject": "st113", "val": 20 },
-        { "time": "2021-05-25 07:00:00", "subject": "xh458", "val": 0 },
-        { "time": "2021-05-25 07:15:00", "subject": "xh458", "val": 10 },
-        { "time": "2021-05-25 07:30:00", "subject": "xh458", "val": 5 },
-        { "time": "2021-05-25 07:45:00", "subject": "xh458", "val": 30 },
-        { "time": "2021-05-25 08:00:00", "subject": "xh458", "val": 25 },
+        { "time": "2021-05-25 07:00:00",
+"subject": "st113",
+"val": 10 },
+        { "time": "2021-05-25 07:15:00",
+"subject": "st113",
+"val": 9 },
+        { "time": "2021-05-25 07:30:00",
+"subject": "st113",
+"val": 25 },
+        { "time": "2021-05-25 07:45:00",
+"subject": "st113",
+"val": 20 },
+        { "time": "2021-05-25 07:00:00",
+"subject": "xh458",
+"val": 0 },
+        { "time": "2021-05-25 07:15:00",
+"subject": "xh458",
+"val": 10 },
+        { "time": "2021-05-25 07:30:00",
+"subject": "xh458",
+"val": 5 },
+        { "time": "2021-05-25 07:45:00",
+"subject": "xh458",
+"val": 30 },
+        { "time": "2021-05-25 08:00:00",
+"subject": "xh458",
+"val": 25 }
       ]);
     },
-    removeDS: function() {
+    removeDS: function () {
       try {
         db._drop("observations");
       } catch (e) {}
     }
   },
   'usersDataset': {
-    createDS: function() {
+    createDS: function () {
       let u = user_examples.createUsers('users');
       let r = user_examples.createRegions('regions');
       user_examples.createLocations('locations', u);
     },
-    removeDS: function() {
+    removeDS: function () {
       try {
         db._drop("users");
         db._drop("regions");

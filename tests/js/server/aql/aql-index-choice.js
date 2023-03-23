@@ -1,17 +1,21 @@
-/*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 7000 */
+/* global assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
 
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const cn = 'UnitTestsCollection';
 
-let setupCollection = function(cn, n) {
+let setupCollection = function (cn, n) {
   db._drop(cn);
   let c = db._create(cn);
   let docs = [];
   for (let i = 0; i < n; ++i) {
-    docs.push({ _key: "test" + i, uid: i, pid: (i % 100), dt: Date.now() - ((i * 10) % 10000), other: i });
+    docs.push({ _key: "test" + i,
+uid: i,
+pid: (i % 100),
+dt: Date.now() - ((i * 10) % 10000),
+other: i });
     if (docs.length === 5000) {
       c.insert(docs);
       docs = [];
@@ -24,38 +28,43 @@ let setupCollection = function(cn, n) {
 
 
 function BaseTestConfig () {
-  let resetIndexes = function(cn) {
+  let resetIndexes = function (cn) {
     db[cn].indexes().filter((idx) => idx.type !== 'primary').forEach((idx) => {
       db[cn].dropIndex(idx);
     });
   };
 
   return {
-    tearDownAll : function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    setUp: function() {
+    setUp: function () {
       resetIndexes(cn);
     },
-    
-    tearDown: function() {
+
+    tearDown: function () {
       resetIndexes(cn);
     },
-    
-    testStoredValues: function() {
-      // we must create different indexes with different "fields" here, as creating 
+
+    testStoredValues: function () {
+      // we must create different indexes with different "fields" here, as creating
       // multiple indexes with the same "fields" value but different "storedValues"
       // has no effect (indexes are distinguished only because of their "fields"
       // attributes - "storedValues" are not taken into account).
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "uid"], storedValues: ["dt", "other"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt"], storedValues: ["uid"] });
-      
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid", "uid"],
+storedValues: ["dt", "other"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid", "dt"],
+storedValues: ["uid"] });
+
       [
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 RETURN doc`, ["pid", "dt"], ["uid"] ],
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "uid"], ["dt", "other"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "uid"], ["dt", "other"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "uid"], ["dt", "other"] ]
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q[0]).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -69,20 +78,29 @@ function BaseTestConfig () {
       });
     },
 
-    testManyIndexesWithPrefixes: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other2"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other3", "other4", "other5"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other3", "other4"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other6", "other4", "other5"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other6", "other4"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["other5", "uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other6", "pid", "other5"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other6", "pid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt", "uid", "other4"] });
-      
+    testManyIndexesWithPrefixes: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other2"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other3", "other4", "other5"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other3", "other4"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other6", "other4", "other5"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other6", "other4"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["other5", "uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other6", "pid", "other5"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other6", "pid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid", "dt", "uid", "other4"] });
+
       [
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 RETURN doc`, ["pid", "dt", "uid", "other4"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 FILTER doc.dt == 1234 FILTER doc.uid == 1234 SORT doc.other5 RETURN doc`, ["pid", "dt", "uid", "other4"] ]
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q[0]).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -94,25 +112,35 @@ function BaseTestConfig () {
         assertEqual(q[1], index.fields, q);
       });
     },
-    
-    testIndexPrefixes: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["pid", "dt"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "pid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "pid", "dt"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "pid", "dt"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["dt", "other"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "other", "pid"] });
-     
+
+    testIndexPrefixes: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["pid", "dt"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "pid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "pid", "dt"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "pid", "dt"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["dt", "other"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "other", "pid"] });
+
       [
         [ `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 RETURN doc`, ["pid", "dt"] ],
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
         [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 RETURN doc`, ["pid", "dt"] ],
-        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ],
+        [ `FOR doc IN ${cn} FILTER doc.pid == 1234 && doc.dt == 1234 && doc.uid == 1234 RETURN doc`, ["uid", "pid", "dt"] ]
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q[0]).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -124,10 +152,11 @@ function BaseTestConfig () {
         assertEqual(q[1], index.fields, q);
       });
     },
-    
-    testSingleIndexSingleFilter: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexSingleFilter: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`,
@@ -144,10 +173,11 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testSingleIndexSingleFilterAndProjection: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexSingleFilterAndProjection: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`,
@@ -164,11 +194,13 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testMultipleIndexesSingleFilter: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
-      
+
+    testMultipleIndexesSingleFilter: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc`,
@@ -188,11 +220,13 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testMultipleIndexesSingleFilterAndProjection: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
-      
+
+    testMultipleIndexesSingleFilterAndProjection: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.uid`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.uid`,
@@ -211,7 +245,7 @@ function BaseTestConfig () {
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN doc.dt`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN doc.dt`,
@@ -230,7 +264,7 @@ function BaseTestConfig () {
         // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 RETURN [doc.dt, doc.uid]`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 RETURN [doc.dt, doc.uid]`,
@@ -250,10 +284,11 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testSingleIndexMultipleFilters: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexMultipleFilters: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc`,
@@ -271,10 +306,11 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testSingleIndexMultipleFiltersAndProjection: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexMultipleFiltersAndProjection: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.uid`,
@@ -291,7 +327,7 @@ function BaseTestConfig () {
         assertEqual("persistent", index.type);
         assertEqual(["uid"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`,
@@ -309,10 +345,12 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testMultipleIndexesMultipleFilters: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+    testMultipleIndexesMultipleFilters: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
 
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc`,
@@ -331,10 +369,12 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testMultipleIndexesMultipleFiltersAndProjection: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+    testMultipleIndexesMultipleFiltersAndProjection: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
 
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.uid`,
@@ -352,7 +392,7 @@ function BaseTestConfig () {
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN doc.dt`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 RETURN doc.dt`,
@@ -369,9 +409,9 @@ function BaseTestConfig () {
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
       });
-      
+
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN [doc.dt, doc.uid]`,
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 RETURN [doc.dt, doc.uid]`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -400,10 +440,11 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testSingleIndexSingleFilterAndSort1: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexSingleFilterAndSort1: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.dt RETURN doc`,
@@ -421,10 +462,11 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testSingleIndexSingleFilterAndSort2: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      
+
+    testSingleIndexSingleFilterAndSort2: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.uid RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid > 1234 SORT doc.uid RETURN doc`,
@@ -442,13 +484,15 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testMultipleIndexesSingleFilterAndSort: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
-      
+
+    testMultipleIndexesSingleFilterAndSort: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
+
       [
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt RETURN doc`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -478,16 +522,18 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testMultipleIndexesMultipleFiltersAndSort: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+    testMultipleIndexesMultipleFiltersAndSort: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
 
       [
         `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -500,12 +546,12 @@ function BaseTestConfig () {
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -537,13 +583,15 @@ function BaseTestConfig () {
         assertEqual(["uid", "dt"], index.fields);
       });
     },
-    
-    testMultipleIndexesFiltersAndSort: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
+
+    testMultipleIndexesFiltersAndSort: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["dt"] });
 
       [
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -556,11 +604,11 @@ function BaseTestConfig () {
         assertEqual("persistent", index.type);
         assertEqual(["dt"], index.fields);
       });
-      
+
       [
         `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
         `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
-        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -574,15 +622,16 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
-    
-    testSortedCollect: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
+
+    testSortedCollect: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["dt"] });
 
       [
         `FOR doc IN ${cn} COLLECT dt = doc.dt RETURN dt`,
         `FOR doc IN ${cn} FILTER doc.dt == 1234 COLLECT dt = doc.dt RETURN dt`,
         `FOR doc IN ${cn} SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -598,14 +647,16 @@ function BaseTestConfig () {
         assertEqual("sorted", collectNode.collectOptions.method);
       });
     },
-    
-    testSortedCollectMultipleIndexes: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+    testSortedCollectMultipleIndexes: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["dt"] });
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid", "dt"] });
 
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 COLLECT dt = doc.dt RETURN dt`,
-        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -621,9 +672,10 @@ function BaseTestConfig () {
         assertEqual("sorted", collectNode.collectOptions.method);
       });
     },
-    
-    testSingleFilterUpperAndLowerBound: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
+
+    testSingleFilterUpperAndLowerBound: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
       [
         `
           FOR doc IN ${cn}
@@ -659,16 +711,17 @@ function BaseTestConfig () {
         assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
       });
     },
-    
-    testSingleFilterUpperAndLowerBoundWithRedunantCondition: function() {
-      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
+
+    testSingleFilterUpperAndLowerBoundWithRedunantCondition: function () {
+      db[cn].ensureIndex({ type: "persistent",
+fields: ["uid"] });
       // generate the cross product of the given arrays
       const product = (...a) => a.reduce((a, b) => a.flatMap(d => b.map(e => [d, e].flat())));
       // generate a list of all permutations of the given array
       const perm = a => a.length
         ? a.reduce((r, v, i) => [...r, ...perm([...a.slice(0, i), ...a.slice(i + 1)]).map(x => [v, ...x])], [])
         : [[]];
-        
+
       // lowerBound = 10
       // upperBound = 100
       const lowerBound = ["doc.uid >= lowerBound", "lowerBound <= doc.uid"];
@@ -682,20 +735,20 @@ function BaseTestConfig () {
         [["doc.uid > 5", "5 < doc.uid"], ">=", 10, "<=", 100],
         [["doc.uid >= 5", "5 <= doc.uid"], ">=", 10, "<=", 100],
         [["doc.uid > 42", "42 < doc.uid"], ">", 42, "<=", 100],
-        //[["doc.uid >= 42", "42 <= doc.uid"], ">=", 42, "<=", 100],
+        // [["doc.uid >= 42", "42 <= doc.uid"], ">=", 42, "<=", 100],
         [["doc.uid < 42", "42 > doc.uid"], ">=", 10, "<", 42],
-        //[["doc.uid <= 42", "42 >= doc.uid"], ">=", 10, "<=", 42],
-        //[["doc.uid < 1234", "1234 > doc.uid"], ">=", 10, "<=", 100],
-        //[["doc.uid <= 1234", "1234 >= doc.uid"], ">=", 10, "<=", 100],
+        // [["doc.uid <= 42", "42 >= doc.uid"], ">=", 10, "<=", 42],
+        // [["doc.uid < 1234", "1234 > doc.uid"], ">=", 10, "<=", 100],
+        // [["doc.uid <= 1234", "1234 >= doc.uid"], ">=", 10, "<=", 100],
         [["doc.uid != 5"], ">=", 10, "<=", 100],
         [["doc.uid != 1234"], ">=", 10, "<=", 100],
-        [product(["doc.uid > 20", "20 < doc.uid"],  ["doc.uid < 90", "90 > doc.uid"]), ">", 20, "<", 90],
-        //[product(["doc.uid >= 20", "20 <= doc.uid"],  ["doc.uid <= 90", "90 >= doc.uid"]), ">=", 20, "<=", 90],
+        [product(["doc.uid > 20", "20 < doc.uid"], ["doc.uid < 90", "90 > doc.uid"]), ">", 20, "<", 90]
+        // [product(["doc.uid >= 20", "20 <= doc.uid"],  ["doc.uid <= 90", "90 >= doc.uid"]), ">=", 20, "<=", 90],
       ].forEach(([filters, lbOp, lb, ubOp, ub]) => {
-        product(bounds, filters)
-          .map(list => perm(list.flat()))
-          .flat(1)
-          .forEach(filter => {
+        product(bounds, filters).
+          map(list => perm(list.flat())).
+          flat(1).
+          forEach(filter => {
             const q = `
                 FOR doc IN ${cn}
                   LET lowerBound = 10
@@ -719,7 +772,7 @@ function BaseTestConfig () {
             assertEqual(0, nodes.filter((n) => n.type === 'FilterNode').length);
           });
       });
-    },
+    }
   };
 }
 
@@ -727,9 +780,9 @@ function aqlIndexChoiceMiniCollectionSuite () {
   'use strict';
 
   let suite = {
-    setUpAll: function() {
+    setUpAll: function () {
       setupCollection(cn, 100);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_MiniCollectionSuite');
@@ -740,9 +793,9 @@ function aqlIndexChoiceSmallCollectionSuite () {
   'use strict';
 
   let suite = {
-    setUpAll: function() {
+    setUpAll: function () {
       setupCollection(cn, 5000);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_SmallCollectionSuite');
@@ -753,9 +806,9 @@ function aqlIndexChoiceMediumCollectionSuite () {
   'use strict';
 
   let suite = {
-    setUpAll: function() {
+    setUpAll: function () {
       setupCollection(cn, 50000);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_MediumCollectionSuite');
@@ -766,9 +819,9 @@ function aqlIndexChoiceLargeCollectionSuite () {
   'use strict';
 
   let suite = {
-    setUpAll: function() {
+    setUpAll: function () {
       setupCollection(cn, 150000);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_LargeCollectionSuite');

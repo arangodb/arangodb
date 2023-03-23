@@ -37,16 +37,21 @@ var createTraversalExample = function () {
   var g = Graph._create('knows_graph',
     [Graph._relation('knows', 'persons', 'persons')]
   );
-  var a = g.persons.save({name: 'Alice', _key: 'alice'});
-  var b = g.persons.save({name: 'Bob', _key: 'bob'});
-  var c = g.persons.save({name: 'Charlie', _key: 'charlie'});
-  var d = g.persons.save({name: 'Dave', _key: 'dave'});
-  var e = g.persons.save({name: 'Eve', _key: 'eve'});
-  g.knows.save(a._id, b._id, {vertex:a._key});
-  g.knows.save(b._id, c._id, {vertex:b._key});
-  g.knows.save(b._id, d._id, {vertex:b._key});
-  g.knows.save(e._id, a._id, {vertex:e._key});
-  g.knows.save(e._id, b._id, {vertex:e._key});
+  var a = g.persons.save({name: 'Alice',
+_key: 'alice'});
+  var b = g.persons.save({name: 'Bob',
+_key: 'bob'});
+  var c = g.persons.save({name: 'Charlie',
+_key: 'charlie'});
+  var d = g.persons.save({name: 'Dave',
+_key: 'dave'});
+  var e = g.persons.save({name: 'Eve',
+_key: 'eve'});
+  g.knows.save(a._id, b._id, {vertex: a._key});
+  g.knows.save(b._id, c._id, {vertex: b._key});
+  g.knows.save(b._id, d._id, {vertex: b._key});
+  g.knows.save(e._id, a._id, {vertex: e._key});
+  g.knows.save(e._id, b._id, {vertex: e._key});
   return g;
 };
 
@@ -54,20 +59,20 @@ var createTraversalExample = function () {
 var createMpsTraversal = function () {
   var g = Graph._create('mps_graph',
     [Graph._relation('mps_edges', 'mps_verts', 'mps_verts')]
-  );  
+  );
   var a = g.mps_verts.save({_key: 'A'});
   var b = g.mps_verts.save({_key: 'B'});
   var c = g.mps_verts.save({_key: 'C'});
   var d = g.mps_verts.save({_key: 'D'});
   var e = g.mps_verts.save({_key: 'E'});
   var f = g.mps_verts.save({_key: 'F'});
-  g.mps_edges.save(a._id, b._id, {vertex:a._key});
-  g.mps_edges.save(a._id, e._id, {vertex:a._key});
-  g.mps_edges.save(a._id, d._id, {vertex:a._key});
-  g.mps_edges.save(b._id, c._id, {vertex:b._key});
-  g.mps_edges.save(d._id, c._id, {vertex:d._key});
-  g.mps_edges.save(e._id, f._id, {vertex:e._key});
-  g.mps_edges.save(f._id, c._id, {vertex:f._key});
+  g.mps_edges.save(a._id, b._id, {vertex: a._key});
+  g.mps_edges.save(a._id, e._id, {vertex: a._key});
+  g.mps_edges.save(a._id, d._id, {vertex: a._key});
+  g.mps_edges.save(b._id, c._id, {vertex: b._key});
+  g.mps_edges.save(d._id, c._id, {vertex: d._key});
+  g.mps_edges.save(e._id, f._id, {vertex: e._key});
+  g.mps_edges.save(f._id, c._id, {vertex: f._key});
   return g;
 };
 
@@ -75,22 +80,30 @@ var createMpsTraversal = function () {
 // we create a graph with 'relation' pointing from 'female' to 'male' and 'male
 var createSocialGraph = function () {
   db._create("female");
-  db._create("male", {distributeShardsLike:"female"});
+  db._create("male", {distributeShardsLike: "female"});
   db._createEdgeCollection("relation", {
-                            shardKeys:["vertex"],
-                            distributeShardsLike:"female"});
+                            shardKeys: ["vertex"],
+                            distributeShardsLike: "female"});
 
   var edgeDefinition = [];
   edgeDefinition.push(Graph._relation('relation', ['female', 'male'], ['female', 'male']));
   var g = Graph._create('social', edgeDefinition);
-  var a = g.female.save({name: 'Alice', _key: 'alice'});
-  var b = g.male.save({name: 'Bob', _key: 'bob'});
-  var c = g.male.save({name: 'Charly', _key: 'charly'});
-  var d = g.female.save({name: 'Diana', _key: 'diana'});
-  g.relation.save(a._id, b._id, {type: 'married', vertex:a._key});
-  g.relation.save(a._id, c._id, {type: 'friend', vertex:a._key});
-  g.relation.save(c._id, d._id, {type: 'married', vertex:c._key});
-  g.relation.save(b._id, d._id, {type: 'friend', vertex:b._key});
+  var a = g.female.save({name: 'Alice',
+_key: 'alice'});
+  var b = g.male.save({name: 'Bob',
+_key: 'bob'});
+  var c = g.male.save({name: 'Charly',
+_key: 'charly'});
+  var d = g.female.save({name: 'Diana',
+_key: 'diana'});
+  g.relation.save(a._id, b._id, {type: 'married',
+vertex: a._key});
+  g.relation.save(a._id, c._id, {type: 'friend',
+vertex: a._key});
+  g.relation.save(c._id, d._id, {type: 'married',
+vertex: c._key});
+  g.relation.save(b._id, d._id, {type: 'friend',
+vertex: b._key});
   return g;
 };
 
@@ -147,8 +160,12 @@ var createRoutePlannerGraph = function () {
       'type': 'Point',
       'coordinates': [2.3508, 48.8567]
     }});
-  g.germanCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
-  g.frenchCity.ensureIndex({ type: "geo", fields: [ "geometry" ], geoJson:true });
+  g.germanCity.ensureIndex({ type: "geo",
+fields: [ "geometry" ],
+geoJson: true });
+  g.frenchCity.ensureIndex({ type: "geo",
+fields: [ "geometry" ],
+geoJson: true });
   g.germanHighway.save(berlin._id, cologne._id, {distance: 850});
   g.germanHighway.save(berlin._id, hamburg._id, {distance: 400});
   g.germanHighway.save(hamburg._id, cologne._id, {distance: 500});
@@ -167,7 +184,7 @@ var saveWorldCountryGraphData = function () {
   // it expects to find the collections to be already created.
   // It can be called either via createWorldCountryGraph() that will create a managed graph
   // or via dropWorldCountryUnManaged that will simply generate a set of vertex and edge collections.
-  // instead of using 
+  // instead of using
   //    var world  = worldCountryGraph.worldVertices.save({ _key: "world", name: "World", type: "root" })
   //    var africa = worldCountryGraph.worldVertices.save({ _key: "continent-africa", name: "Africa", type: "continent" })
   //    worldCountryGraph.worldEdges.save(world._id, africa._id, { type: "is-in" })
@@ -175,103 +192,317 @@ var saveWorldCountryGraphData = function () {
   // we will directly put the documents into their respective collections
   // and have to ensure graph consistency by ourselves.
 
-  // vertices: root node 
+  // vertices: root node
   var db = require('internal').db;
-  db.worldVertices.save({ _key: 'world', name: 'World', type: 'root' });
+  db.worldVertices.save({ _key: 'world',
+name: 'World',
+type: 'root' });
 
-  // vertices: continents 
-  db.worldVertices.save({ _key: 'continent-africa', name: 'Africa', type: 'continent' });
-  db.worldVertices.save({ _key: 'continent-asia', name: 'Asia', type: 'continent' });
-  db.worldVertices.save({ _key: 'continent-australia', name: 'Australia', type: 'continent' });
-  db.worldVertices.save({ _key: 'continent-europe', name: 'Europe', type: 'continent' });
-  db.worldVertices.save({ _key: 'continent-north-america', name: 'North America', type: 'continent' });
-  db.worldVertices.save({ _key: 'continent-south-america', name: 'South America', type: 'continent' });
+  // vertices: continents
+  db.worldVertices.save({ _key: 'continent-africa',
+name: 'Africa',
+type: 'continent' });
+  db.worldVertices.save({ _key: 'continent-asia',
+name: 'Asia',
+type: 'continent' });
+  db.worldVertices.save({ _key: 'continent-australia',
+name: 'Australia',
+type: 'continent' });
+  db.worldVertices.save({ _key: 'continent-europe',
+name: 'Europe',
+type: 'continent' });
+  db.worldVertices.save({ _key: 'continent-north-america',
+name: 'North America',
+type: 'continent' });
+  db.worldVertices.save({ _key: 'continent-south-america',
+name: 'South America',
+type: 'continent' });
 
-  // vertices: countries 
-  db.worldVertices.save({ _key: 'country-afghanistan', name: 'Afghanistan', type: 'country', code: 'AFG' });
-  db.worldVertices.save({ _key: 'country-albania', name: 'Albania', type: 'country', code: 'ALB' });
-  db.worldVertices.save({ _key: 'country-algeria', name: 'Algeria', type: 'country', code: 'DZA' });
-  db.worldVertices.save({ _key: 'country-andorra', name: 'Andorra', type: 'country', code: 'AND' });
-  db.worldVertices.save({ _key: 'country-angola', name: 'Angola', type: 'country', code: 'AGO' });
-  db.worldVertices.save({ _key: 'country-antigua-and-barbuda', name: 'Antigua and Barbuda', type: 'country', code: 'ATG' });
-  db.worldVertices.save({ _key: 'country-argentina', name: 'Argentina', type: 'country', code: 'ARG' });
-  db.worldVertices.save({ _key: 'country-australia', name: 'Australia', type: 'country', code: 'AUS' });
-  db.worldVertices.save({ _key: 'country-austria', name: 'Austria', type: 'country', code: 'AUT' });
-  db.worldVertices.save({ _key: 'country-bahamas', name: 'Bahamas', type: 'country', code: 'BHS' });
-  db.worldVertices.save({ _key: 'country-bahrain', name: 'Bahrain', type: 'country', code: 'BHR' });
-  db.worldVertices.save({ _key: 'country-bangladesh', name: 'Bangladesh', type: 'country', code: 'BGD' });
-  db.worldVertices.save({ _key: 'country-barbados', name: 'Barbados', type: 'country', code: 'BRB' });
-  db.worldVertices.save({ _key: 'country-belgium', name: 'Belgium', type: 'country', code: 'BEL' });
-  db.worldVertices.save({ _key: 'country-bhutan', name: 'Bhutan', type: 'country', code: 'BTN' });
-  db.worldVertices.save({ _key: 'country-bolivia', name: 'Bolivia', type: 'country', code: 'BOL' });
-  db.worldVertices.save({ _key: 'country-bosnia-and-herzegovina', name: 'Bosnia and Herzegovina', type: 'country', code: 'BIH' });
-  db.worldVertices.save({ _key: 'country-botswana', name: 'Botswana', type: 'country', code: 'BWA' });
-  db.worldVertices.save({ _key: 'country-brazil', name: 'Brazil', type: 'country', code: 'BRA' });
-  db.worldVertices.save({ _key: 'country-brunei', name: 'Brunei', type: 'country', code: 'BRN' });
-  db.worldVertices.save({ _key: 'country-bulgaria', name: 'Bulgaria', type: 'country', code: 'BGR' });
-  db.worldVertices.save({ _key: 'country-burkina-faso', name: 'Burkina Faso', type: 'country', code: 'BFA' });
-  db.worldVertices.save({ _key: 'country-burundi', name: 'Burundi', type: 'country', code: 'BDI' });
-  db.worldVertices.save({ _key: 'country-cambodia', name: 'Cambodia', type: 'country', code: 'KHM' });
-  db.worldVertices.save({ _key: 'country-cameroon', name: 'Cameroon', type: 'country', code: 'CMR' });
-  db.worldVertices.save({ _key: 'country-canada', name: 'Canada', type: 'country', code: 'CAN' });
-  db.worldVertices.save({ _key: 'country-chad', name: 'Chad', type: 'country', code: 'TCD' });
-  db.worldVertices.save({ _key: 'country-chile', name: 'Chile', type: 'country', code: 'CHL' });
-  db.worldVertices.save({ _key: 'country-colombia', name: 'Colombia', type: 'country', code: 'COL' });
-  db.worldVertices.save({ _key: 'country-cote-d-ivoire', name: "Cote d'Ivoire", type: 'country', code: 'CIV' });
-  db.worldVertices.save({ _key: 'country-croatia', name: 'Croatia', type: 'country', code: 'HRV' });
-  db.worldVertices.save({ _key: 'country-czech-republic', name: 'Czech Republic', type: 'country', code: 'CZE' });
-  db.worldVertices.save({ _key: 'country-denmark', name: 'Denmark', type: 'country', code: 'DNK' });
-  db.worldVertices.save({ _key: 'country-ecuador', name: 'Ecuador', type: 'country', code: 'ECU' });
-  db.worldVertices.save({ _key: 'country-egypt', name: 'Egypt', type: 'country', code: 'EGY' });
-  db.worldVertices.save({ _key: 'country-eritrea', name: 'Eritrea', type: 'country', code: 'ERI' });
-  db.worldVertices.save({ _key: 'country-finland', name: 'Finland', type: 'country', code: 'FIN' });
-  db.worldVertices.save({ _key: 'country-france', name: 'France', type: 'country', code: 'FRA' });
-  db.worldVertices.save({ _key: 'country-germany', name: 'Germany', type: 'country', code: 'DEU' });
-  db.worldVertices.save({ _key: 'country-people-s-republic-of-china', name: "People's Republic of China", type: 'country', code: 'CHN' });
+  // vertices: countries
+  db.worldVertices.save({ _key: 'country-afghanistan',
+name: 'Afghanistan',
+type: 'country',
+code: 'AFG' });
+  db.worldVertices.save({ _key: 'country-albania',
+name: 'Albania',
+type: 'country',
+code: 'ALB' });
+  db.worldVertices.save({ _key: 'country-algeria',
+name: 'Algeria',
+type: 'country',
+code: 'DZA' });
+  db.worldVertices.save({ _key: 'country-andorra',
+name: 'Andorra',
+type: 'country',
+code: 'AND' });
+  db.worldVertices.save({ _key: 'country-angola',
+name: 'Angola',
+type: 'country',
+code: 'AGO' });
+  db.worldVertices.save({ _key: 'country-antigua-and-barbuda',
+name: 'Antigua and Barbuda',
+type: 'country',
+code: 'ATG' });
+  db.worldVertices.save({ _key: 'country-argentina',
+name: 'Argentina',
+type: 'country',
+code: 'ARG' });
+  db.worldVertices.save({ _key: 'country-australia',
+name: 'Australia',
+type: 'country',
+code: 'AUS' });
+  db.worldVertices.save({ _key: 'country-austria',
+name: 'Austria',
+type: 'country',
+code: 'AUT' });
+  db.worldVertices.save({ _key: 'country-bahamas',
+name: 'Bahamas',
+type: 'country',
+code: 'BHS' });
+  db.worldVertices.save({ _key: 'country-bahrain',
+name: 'Bahrain',
+type: 'country',
+code: 'BHR' });
+  db.worldVertices.save({ _key: 'country-bangladesh',
+name: 'Bangladesh',
+type: 'country',
+code: 'BGD' });
+  db.worldVertices.save({ _key: 'country-barbados',
+name: 'Barbados',
+type: 'country',
+code: 'BRB' });
+  db.worldVertices.save({ _key: 'country-belgium',
+name: 'Belgium',
+type: 'country',
+code: 'BEL' });
+  db.worldVertices.save({ _key: 'country-bhutan',
+name: 'Bhutan',
+type: 'country',
+code: 'BTN' });
+  db.worldVertices.save({ _key: 'country-bolivia',
+name: 'Bolivia',
+type: 'country',
+code: 'BOL' });
+  db.worldVertices.save({ _key: 'country-bosnia-and-herzegovina',
+name: 'Bosnia and Herzegovina',
+type: 'country',
+code: 'BIH' });
+  db.worldVertices.save({ _key: 'country-botswana',
+name: 'Botswana',
+type: 'country',
+code: 'BWA' });
+  db.worldVertices.save({ _key: 'country-brazil',
+name: 'Brazil',
+type: 'country',
+code: 'BRA' });
+  db.worldVertices.save({ _key: 'country-brunei',
+name: 'Brunei',
+type: 'country',
+code: 'BRN' });
+  db.worldVertices.save({ _key: 'country-bulgaria',
+name: 'Bulgaria',
+type: 'country',
+code: 'BGR' });
+  db.worldVertices.save({ _key: 'country-burkina-faso',
+name: 'Burkina Faso',
+type: 'country',
+code: 'BFA' });
+  db.worldVertices.save({ _key: 'country-burundi',
+name: 'Burundi',
+type: 'country',
+code: 'BDI' });
+  db.worldVertices.save({ _key: 'country-cambodia',
+name: 'Cambodia',
+type: 'country',
+code: 'KHM' });
+  db.worldVertices.save({ _key: 'country-cameroon',
+name: 'Cameroon',
+type: 'country',
+code: 'CMR' });
+  db.worldVertices.save({ _key: 'country-canada',
+name: 'Canada',
+type: 'country',
+code: 'CAN' });
+  db.worldVertices.save({ _key: 'country-chad',
+name: 'Chad',
+type: 'country',
+code: 'TCD' });
+  db.worldVertices.save({ _key: 'country-chile',
+name: 'Chile',
+type: 'country',
+code: 'CHL' });
+  db.worldVertices.save({ _key: 'country-colombia',
+name: 'Colombia',
+type: 'country',
+code: 'COL' });
+  db.worldVertices.save({ _key: 'country-cote-d-ivoire',
+name: "Cote d'Ivoire",
+type: 'country',
+code: 'CIV' });
+  db.worldVertices.save({ _key: 'country-croatia',
+name: 'Croatia',
+type: 'country',
+code: 'HRV' });
+  db.worldVertices.save({ _key: 'country-czech-republic',
+name: 'Czech Republic',
+type: 'country',
+code: 'CZE' });
+  db.worldVertices.save({ _key: 'country-denmark',
+name: 'Denmark',
+type: 'country',
+code: 'DNK' });
+  db.worldVertices.save({ _key: 'country-ecuador',
+name: 'Ecuador',
+type: 'country',
+code: 'ECU' });
+  db.worldVertices.save({ _key: 'country-egypt',
+name: 'Egypt',
+type: 'country',
+code: 'EGY' });
+  db.worldVertices.save({ _key: 'country-eritrea',
+name: 'Eritrea',
+type: 'country',
+code: 'ERI' });
+  db.worldVertices.save({ _key: 'country-finland',
+name: 'Finland',
+type: 'country',
+code: 'FIN' });
+  db.worldVertices.save({ _key: 'country-france',
+name: 'France',
+type: 'country',
+code: 'FRA' });
+  db.worldVertices.save({ _key: 'country-germany',
+name: 'Germany',
+type: 'country',
+code: 'DEU' });
+  db.worldVertices.save({ _key: 'country-people-s-republic-of-china',
+name: "People's Republic of China",
+type: 'country',
+code: 'CHN' });
 
-  // vertices: capitals 
-  db.worldVertices.save({ _key: 'capital-algiers', name: 'Algiers', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-andorra-la-vella', name: 'Andorra la Vella', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-asmara', name: 'Asmara', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-bandar-seri-begawan', name: 'Bandar Seri Begawan', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-beijing', name: 'Beijing', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-berlin', name: 'Berlin', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-bogota', name: 'Bogota', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-brasilia', name: 'Brasilia', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-bridgetown', name: 'Bridgetown', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-brussels', name: 'Brussels', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-buenos-aires', name: 'Buenos Aires', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-bujumbura', name: 'Bujumbura', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-cairo', name: 'Cairo', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-canberra', name: 'Canberra', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-copenhagen', name: 'Copenhagen', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-dhaka', name: 'Dhaka', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-gaborone', name: 'Gaborone', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-helsinki', name: 'Helsinki', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-kabul', name: 'Kabul', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-la-paz', name: 'La Paz', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-luanda', name: 'Luanda', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-manama', name: 'Manama', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-nassau', name: 'Nassau', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-n-djamena', name: "N'Djamena", type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-ottawa', name: 'Ottawa', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-ouagadougou', name: 'Ouagadougou', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-paris', name: 'Paris', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-phnom-penh', name: 'Phnom Penh', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-prague', name: 'Prague', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-quito', name: 'Quito', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-saint-john-s', name: "Saint John's", type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-santiago', name: 'Santiago', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-sarajevo', name: 'Sarajevo', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-sofia', name: 'Sofia', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-thimphu', name: 'Thimphu', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-tirana', name: 'Tirana', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-vienna', name: 'Vienna', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-yamoussoukro', name: 'Yamoussoukro', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-yaounde', name: 'Yaounde', type: 'capital' });
-  db.worldVertices.save({ _key: 'capital-zagreb', name: 'Zagreb', type: 'capital' });
+  // vertices: capitals
+  db.worldVertices.save({ _key: 'capital-algiers',
+name: 'Algiers',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-andorra-la-vella',
+name: 'Andorra la Vella',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-asmara',
+name: 'Asmara',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-bandar-seri-begawan',
+name: 'Bandar Seri Begawan',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-beijing',
+name: 'Beijing',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-berlin',
+name: 'Berlin',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-bogota',
+name: 'Bogota',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-brasilia',
+name: 'Brasilia',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-bridgetown',
+name: 'Bridgetown',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-brussels',
+name: 'Brussels',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-buenos-aires',
+name: 'Buenos Aires',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-bujumbura',
+name: 'Bujumbura',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-cairo',
+name: 'Cairo',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-canberra',
+name: 'Canberra',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-copenhagen',
+name: 'Copenhagen',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-dhaka',
+name: 'Dhaka',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-gaborone',
+name: 'Gaborone',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-helsinki',
+name: 'Helsinki',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-kabul',
+name: 'Kabul',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-la-paz',
+name: 'La Paz',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-luanda',
+name: 'Luanda',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-manama',
+name: 'Manama',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-nassau',
+name: 'Nassau',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-n-djamena',
+name: "N'Djamena",
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-ottawa',
+name: 'Ottawa',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-ouagadougou',
+name: 'Ouagadougou',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-paris',
+name: 'Paris',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-phnom-penh',
+name: 'Phnom Penh',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-prague',
+name: 'Prague',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-quito',
+name: 'Quito',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-saint-john-s',
+name: "Saint John's",
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-santiago',
+name: 'Santiago',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-sarajevo',
+name: 'Sarajevo',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-sofia',
+name: 'Sofia',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-thimphu',
+name: 'Thimphu',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-tirana',
+name: 'Tirana',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-vienna',
+name: 'Vienna',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-yamoussoukro',
+name: 'Yamoussoukro',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-yaounde',
+name: 'Yaounde',
+type: 'capital' });
+  db.worldVertices.save({ _key: 'capital-zagreb',
+name: 'Zagreb',
+type: 'capital' });
 
-  // edges: continent -> world 
+  // edges: continent -> world
   db.worldEdges.save('worldVertices/continent-africa', 'worldVertices/world', { type: 'is-in' });
   db.worldEdges.save('worldVertices/continent-asia', 'worldVertices/world', { type: 'is-in' });
   db.worldEdges.save('worldVertices/continent-australia', 'worldVertices/world', { type: 'is-in' });
@@ -279,7 +510,7 @@ var saveWorldCountryGraphData = function () {
   db.worldEdges.save('worldVertices/continent-north-america', 'worldVertices/world', { type: 'is-in' });
   db.worldEdges.save('worldVertices/continent-south-america', 'worldVertices/world', { type: 'is-in' });
 
-  // edges: country -> continent 
+  // edges: country -> continent
   db.worldEdges.save('worldVertices/country-afghanistan', 'worldVertices/continent-asia', { type: 'is-in' });
   db.worldEdges.save('worldVertices/country-albania', 'worldVertices/continent-europe', { type: 'is-in' });
   db.worldEdges.save('worldVertices/country-algeria', 'worldVertices/continent-africa', { type: 'is-in' });
@@ -321,7 +552,7 @@ var saveWorldCountryGraphData = function () {
   db.worldEdges.save('worldVertices/country-germany', 'worldVertices/continent-europe', { type: 'is-in' });
   db.worldEdges.save('worldVertices/country-people-s-republic-of-china', 'worldVertices/continent-asia', { type: 'is-in' });
 
-  // edges: capital -> country 
+  // edges: capital -> country
   db.worldEdges.save('worldVertices/capital-algiers', 'worldVertices/country-algeria', { type: 'is-in' });
   db.worldEdges.save('worldVertices/capital-andorra-la-vella', 'worldVertices/country-andorra', { type: 'is-in' });
   db.worldEdges.save('worldVertices/capital-asmara', 'worldVertices/country-eritrea', { type: 'is-in' });
@@ -400,36 +631,67 @@ var createTraversalGraph = function () {
     graph_module._relation('edges', 'circles', ['circles'])]);
 
   // Add circle circles
-  graph.circles.save({'_key': 'A', 'label': '1'});
-  graph.circles.save({'_key': 'B', 'label': '2'});
-  graph.circles.save({'_key': 'C', 'label': '3'});
-  graph.circles.save({'_key': 'D', 'label': '4'});
-  graph.circles.save({'_key': 'E', 'label': '5'});
-  graph.circles.save({'_key': 'F', 'label': '6'});
-  graph.circles.save({'_key': 'G', 'label': '7'});
-  graph.circles.save({'_key': 'H', 'label': '8'});
-  graph.circles.save({'_key': 'I', 'label': '9'});
-  graph.circles.save({'_key': 'J', 'label': '10'});
-  graph.circles.save({'_key': 'K', 'label': '11'});
+  graph.circles.save({'_key': 'A',
+'label': '1'});
+  graph.circles.save({'_key': 'B',
+'label': '2'});
+  graph.circles.save({'_key': 'C',
+'label': '3'});
+  graph.circles.save({'_key': 'D',
+'label': '4'});
+  graph.circles.save({'_key': 'E',
+'label': '5'});
+  graph.circles.save({'_key': 'F',
+'label': '6'});
+  graph.circles.save({'_key': 'G',
+'label': '7'});
+  graph.circles.save({'_key': 'H',
+'label': '8'});
+  graph.circles.save({'_key': 'I',
+'label': '9'});
+  graph.circles.save({'_key': 'J',
+'label': '10'});
+  graph.circles.save({'_key': 'K',
+'label': '11'});
 
   // Add relevant edges - left branch:
-  graph.edges.save('circles/A', 'circles/B', {theFalse: false, theTruth: true, 'label': 'left_bar'});
-  graph.edges.save('circles/B', 'circles/C', {theFalse: false, theTruth: true, 'label': 'left_blarg'});
-  graph.edges.save('circles/C', 'circles/D', {theFalse: false, theTruth: true, 'label': 'left_blorg'});
-  graph.edges.save('circles/B', 'circles/E', {theFalse: false, theTruth: true, 'label': 'left_blub'});
-  graph.edges.save('circles/E', 'circles/F', {theFalse: false, theTruth: true, 'label': 'left_schubi'});
+  graph.edges.save('circles/A', 'circles/B', {theFalse: false,
+theTruth: true,
+'label': 'left_bar'});
+  graph.edges.save('circles/B', 'circles/C', {theFalse: false,
+theTruth: true,
+'label': 'left_blarg'});
+  graph.edges.save('circles/C', 'circles/D', {theFalse: false,
+theTruth: true,
+'label': 'left_blorg'});
+  graph.edges.save('circles/B', 'circles/E', {theFalse: false,
+theTruth: true,
+'label': 'left_blub'});
+  graph.edges.save('circles/E', 'circles/F', {theFalse: false,
+theTruth: true,
+'label': 'left_schubi'});
 
   // Add relevant edges - right branch:
-  graph.edges.save('circles/A', 'circles/G', {theFalse: false, theTruth: true, 'label': 'right_foo'});
-  graph.edges.save('circles/G', 'circles/H', {theFalse: false, theTruth: true, 'label': 'right_blob'});
-  graph.edges.save('circles/H', 'circles/I', {theFalse: false, theTruth: true, 'label': 'right_blub'});
-  graph.edges.save('circles/G', 'circles/J', {theFalse: false, theTruth: true, 'label': 'right_zip'});
-  graph.edges.save('circles/J', 'circles/K', {theFalse: false, theTruth: true, 'label': 'right_zup'});
+  graph.edges.save('circles/A', 'circles/G', {theFalse: false,
+theTruth: true,
+'label': 'right_foo'});
+  graph.edges.save('circles/G', 'circles/H', {theFalse: false,
+theTruth: true,
+'label': 'right_blob'});
+  graph.edges.save('circles/H', 'circles/I', {theFalse: false,
+theTruth: true,
+'label': 'right_blub'});
+  graph.edges.save('circles/G', 'circles/J', {theFalse: false,
+theTruth: true,
+'label': 'right_zip'});
+  graph.edges.save('circles/J', 'circles/K', {theFalse: false,
+theTruth: true,
+'label': 'right_zup'});
 
   return graph;
 };
 
-var createKShortestPathsGraph = function() {
+var createKShortestPathsGraph = function () {
   var graph_module = require('@arangodb/general-graph');
 
   var graph = graph_module._create('kShortestPathsGraph', [
@@ -478,7 +740,8 @@ var createKShortestPathsGraph = function() {
   ];
 
   for (var p of places) {
-    graph.places.save({ _key: p, label: p});
+    graph.places.save({ _key: p,
+label: p});
   }
   for (var c of connections) {
     graph.connections.save('places/' + c[0], 'places/' + c[1], {'travelTime': c[2]});
@@ -531,7 +794,7 @@ var createConnectedComponentsGraph = function () {
     ["C5", "C7"],
     ["C7", "C8"],
     ["C8", "C9"],
-    ["C8", "C10"],
+    ["C8", "C10"]
   ];
 
   var vertices = new Set(edges.flat());
@@ -541,40 +804,50 @@ var createConnectedComponentsGraph = function () {
   }
 
   for (var [from, to] of edges) {
-    graph.connections.save({ _from: `components/${from}`, _to: `components/${to}` });
+    graph.connections.save({ _from: `components/${from}`,
+_to: `components/${to}` });
   }
 
   return graph;
 };
 
 var knownGraphs = {
-  'knows_graph': {create: createTraversalExample, dependencies: [
+  'knows_graph': {create: createTraversalExample,
+dependencies: [
       'knows', 'persons'
   ]},
-  'mps_graph': {create: createMpsTraversal, dependencies: [
+  'mps_graph': {create: createMpsTraversal,
+dependencies: [
       'mps_edges', 'mps_verts'
   ]},
-  'routeplanner': {create: createRoutePlannerGraph, dependencies: [
+  'routeplanner': {create: createRoutePlannerGraph,
+dependencies: [
       'frenchHighway', 'frenchCity', 'germanCity', 'germanHighway', 'internationalHighway'
   ]},
-  'social': {create: createSocialGraph, dependencies: [
+  'social': {create: createSocialGraph,
+dependencies: [
       'relation', 'female', 'male'
   ]},
-  'worldCountry': {create: createWorldCountryGraph, dependencies: [
+  'worldCountry': {create: createWorldCountryGraph,
+dependencies: [
       'worldVertices', 'worldEdges'
   ]},
-  'worldCountryUnManaged': {create: createWorldCountryGraphUnManaged, dependencies: [
+  'worldCountryUnManaged': {create: createWorldCountryGraphUnManaged,
+dependencies: [
       'worldVertices', 'worldEdges'
   ]},
-  'traversalGraph': {create: createTraversalGraph, dependencies: [
+  'traversalGraph': {create: createTraversalGraph,
+dependencies: [
       'edges', 'circles'
   ]},
-  'kShortestPathsGraph': {create: createKShortestPathsGraph, dependencies: [
+  'kShortestPathsGraph': {create: createKShortestPathsGraph,
+dependencies: [
       'connections', 'places'
   ]},
-  'connectedComponentsGraph': {create: createConnectedComponentsGraph, dependencies: [
+  'connectedComponentsGraph': {create: createConnectedComponentsGraph,
+dependencies: [
       'connections', 'components'
-  ]},
+  ]}
 };
 
 var unManagedGraphs = {

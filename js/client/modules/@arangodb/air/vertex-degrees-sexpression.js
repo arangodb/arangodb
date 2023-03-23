@@ -40,7 +40,7 @@ exports.vertex_degrees = vertex_degrees;
 exports.test = test;
 
 /* returns a program that compputes the vertex degree of every vertex */
-function vertex_degrees_program(resultField) {
+function vertex_degrees_program (resultField) {
     return {
         resultField: resultField,
         maxGSS: 2,
@@ -69,7 +69,7 @@ function vertex_degrees_program(resultField) {
       } ] };
 }
 
-function vertex_degrees(
+function vertex_degrees (
     graphName,
     resultField) {
     return pregel.start(
@@ -80,11 +80,10 @@ function vertex_degrees(
 }
 
 
-
 /*
  * Vertex Degree tests
  */
-function exec_test_vertex_degrees_on_graph(graphSpec) {
+function exec_test_vertex_degrees_on_graph (graphSpec) {
   testhelpers.wait_for_pregel("AIR vertex-degree", vertex_degrees(graphSpec.name, "vertexDegrees"));
 
   return testhelpers.compare_pregel(db._query(`
@@ -98,7 +97,7 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
                                     "@E": graphSpec.ename }));
 }
 
-function exec_test_vertex_degrees() {
+function exec_test_vertex_degrees () {
   exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1));
   exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph1000", 1000, 9));
   exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph10000", 10000, 18));
@@ -112,6 +111,6 @@ function exec_test_vertex_degrees() {
 }
 
 // run tests
-function test() {
+function test () {
   exec_test_vertex_degrees();
 }

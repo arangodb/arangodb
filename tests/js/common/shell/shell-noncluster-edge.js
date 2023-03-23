@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the edges interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the edges interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -36,9 +36,9 @@ var db = arangodb.db;
 var wait = require("internal").wait;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: normal operations
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: normal operations
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuite () {
   'use strict';
@@ -53,27 +53,27 @@ function CollectionEdgeSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(en);
-      edge = db._createEdgeCollection(en, { waitForSync : false });
+      edge = db._createEdgeCollection(en, { waitForSync: false });
       assertEqual(ArangoCollection.TYPE_EDGE, edge.type());
 
       db._drop(vn);
-      vertex = db._create(vn, { waitForSync : false });
+      vertex = db._create(vn, { waitForSync: false });
 
-      v1 = vertex.save({ a : 1 });
-      v2 = vertex.save({ a : 2 });
+      v1 = vertex.save({ a: 1 });
+      v2 = vertex.save({ a: 2 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       edge.drop();
       vertex.drop();
       edge = null;
@@ -81,13 +81,13 @@ function CollectionEdgeSuite () {
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief edges query list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief edges query list
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadEdgesList : function () {
-      var d1 = edge.save(v1, v2, { "Hello" : "World" });
-      var d2 = edge.save(v2, v1, { "World" : "Hello" });
+    testReadEdgesList: function () {
+      var d1 = edge.save(v1, v2, { "Hello": "World" });
+      var d2 = edge.save(v2, v1, { "World": "Hello" });
 
       var e = edge.edges([v1]);
 
@@ -100,8 +100,7 @@ function CollectionEdgeSuite () {
         assertEqual(d2._id, e[1]._id);
         assertEqual(v1._id, e[1]._to);
         assertEqual(v2._id, e[1]._from);
-      }
-      else {
+      } else {
         assertEqual(v1._id, e[0]._to);
         assertEqual(v2._id, e[0]._from);
 
@@ -116,12 +115,12 @@ function CollectionEdgeSuite () {
       assertEqual(2, e.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief in edges query list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief in edges query list
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadInEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+    testReadInEdgesList: function () {
+      var d = edge.save(v1, v2, { "Hello": "World" });
 
       var e = edge.inEdges([v2]);
 
@@ -139,12 +138,12 @@ function CollectionEdgeSuite () {
       assertEqual(1, e.length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief out edges query list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief out edges query list
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadOutEdgesList : function () {
-      var d = edge.save(v1, v2, { "Hello" : "World" });
+    testReadOutEdgesList: function () {
+      var d = edge.save(v1, v2, { "Hello": "World" });
 
       var e = edge.outEdges([v1]);
 
@@ -166,9 +165,9 @@ function CollectionEdgeSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionEdgeSuite);
 

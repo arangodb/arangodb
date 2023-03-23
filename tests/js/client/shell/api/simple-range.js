@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,36 +31,38 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/simple";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // range query;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function range_querySuite () {
   let cn = "UnitTestsCollectionRange";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_finds_the_examples: function() {
+    test_finds_the_examples: function () {
       // create data;
       let docs = [];
-      [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ].forEach( i => 
-        docs.push({ "i" : i })
+      [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ].forEach(i =>
+        docs.push({ "i": i })
       );
       db[cn].save(docs);
 
       // create index;
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "i" ] };
+      let body = { "type": "skiplist",
+"unique": true,
+"fields": [ "i" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201, doc);
@@ -69,7 +71,10 @@ function range_querySuite () {
 
       // range;
       cmd = api + "/range";
-      body = { "collection" : cn, "attribute" : "i", "left" : 2, "right" : 4 };
+      body = { "collection": cn,
+"attribute": "i",
+"left": 2,
+"right": 4 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201, doc);
@@ -80,12 +85,16 @@ function range_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
       let other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['i']));
-      assertEqual(other, [2,3]);
+      doc.parsedBody['result'].forEach(i => other.push(i['i']));
+      assertEqual(other, [2, 3]);
 
       // closed range;
       cmd = api + "/range";
-      body = { "collection" : cn, "attribute" : "i", "left" : 2, "right" : 4, "closed" : true };
+      body = { "collection": cn,
+"attribute": "i",
+"left": 2,
+"right": 4,
+"closed": true };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -96,32 +105,39 @@ function range_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 3);
       assertEqual(doc.parsedBody['count'], 3);
       other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['i']));
-      assertEqual(other, [2,3,4]);
+      doc.parsedBody['result'].forEach(i => other.push(i['i']));
+      assertEqual(other, [2, 3, 4]);
     },
 
-    test_finds_the_examples__big_result: function() {
+    test_finds_the_examples__big_result: function () {
       // create data;
       let docs = [];
       for (let i = 0; i < 499; i++) {
-        docs.push({ "i" : i });
+        docs.push({ "i": i });
       }
       db[cn].save(docs);
 
       // create index;
       let cmd = `/_api/index?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : false, "fields" : [ "i" ] };
+      let body = { "type": "skiplist",
+"unique": false,
+"fields": [ "i" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
 
       // range;
       cmd = api + "/range";
-      body = { "collection" : cn, "attribute" : "i", "left" : 5, "right" : 498 };
+      body = { "collection": cn,
+"attribute": "i",
+"left": 5,
+"right": 498 };
       doc = arango.PUT_RAW(cmd, body);
 
       let cmp = [ ];
-      for (let i = 5; i <= 497; i++){ cmp.push(i); }
+      for (let i = 5; i <= 497; i++) {
+ cmp.push(i);
+}
 
       assertEqual(doc.code, 201);
       assertEqual(doc.headers['content-type'], contentType);
@@ -131,15 +147,21 @@ function range_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 493);
       assertEqual(doc.parsedBody['count'], 493);
       let other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['i']));
+      doc.parsedBody['result'].forEach(i => other.push(i['i']));
       assertEqual(other, cmp);
 
       // closed range;
-      body = { "collection" : cn, "attribute" : "i", "left" : 2, "right" : 498, "closed" : true };
+      body = { "collection": cn,
+"attribute": "i",
+"left": 2,
+"right": 498,
+"closed": true };
       doc = arango.PUT_RAW(cmd, body);
 
       cmp = [ ];
-      for (let i = 2; i <= 498; i++){ cmp.push(i); }
+      for (let i = 2; i <= 498; i++) {
+ cmp.push(i);
+}
 
       assertEqual(doc.code, 201);
       assertEqual(doc.headers['content-type'], contentType);
@@ -149,7 +171,7 @@ function range_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 497);
       assertEqual(doc.parsedBody['count'], 497);
       other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['i']));
+      doc.parsedBody['result'].forEach(i => other.push(i['i']));
       assertEqual(other, cmp);
     }
   };

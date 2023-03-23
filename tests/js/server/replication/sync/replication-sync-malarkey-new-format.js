@@ -40,7 +40,7 @@ const {
 
 const cn = 'UnitTestsReplication';
 
-function ReplicationIncrementalMalarkeyNewFormat() {
+function ReplicationIncrementalMalarkeyNewFormat () {
   'use strict';
 
   let suite = {
@@ -54,7 +54,7 @@ function ReplicationIncrementalMalarkeyNewFormat() {
       // clear all failure points
       clearFailurePoints();
       db._drop(cn);
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');

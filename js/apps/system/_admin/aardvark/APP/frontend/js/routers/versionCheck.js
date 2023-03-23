@@ -66,13 +66,13 @@
           timeout: 3000,
           dataType: 'jsonp',
           url: 'https://www.arangodb.com/versions.php' +
-            '?jsonp=parseVersions'
-            + '&version=' + encodeURIComponent(data.version)
-            + '&platform=' + encodeURIComponent(data.platform)
-            + '&engine=' + encodeURIComponent(data.engine)
-            + '&license=' + encodeURIComponent(data.license)
-            + '&source=ui'
-            + '&hash=' + encodeURIComponent(data.hash),
+            '?jsonp=parseVersions' +
+            '&version=' + encodeURIComponent(data.version) +
+            '&platform=' + encodeURIComponent(data.platform) +
+            '&engine=' + encodeURIComponent(data.engine) +
+            '&license=' + encodeURIComponent(data.license) +
+            '&source=ui' +
+            '&hash=' + encodeURIComponent(data.hash),
           error: function (e) {
             if (e.status === 200) {
               window.activeInternetConnection = true;

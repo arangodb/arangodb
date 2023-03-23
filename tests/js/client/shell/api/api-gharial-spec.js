@@ -157,7 +157,7 @@ describe('_api/gharial', () => {
 
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
-    
+
       expect(req).to.have.keys("error", "code", "graph");
       expect(req.code).to.equal(200);
       expect(req.error).to.be.false;
@@ -286,7 +286,7 @@ describe('_api/gharial', () => {
             _from: 'persons/bob',
             _to: 'persons/charlie'
           };
-          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef );
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(202);
 
           expect(db._collection(eName)).to.not.be.null;
@@ -766,10 +766,10 @@ describe('_api/gharial', () => {
           expect(res.error).to.equal(false);
           expect(res.edge._key).to.equal(e._key);
 
-          expect(db.knows.document(e._key))
-            .to.be.an('object')
-            .that.has.property('newAttribute')
-            .which.equals('new value');
+          expect(db.knows.document(e._key)).
+            to.be.an('object').
+            that.has.property('newAttribute').
+            which.equals('new value');
         });
 
       });
@@ -809,13 +809,13 @@ describe('_api/gharial', () => {
               newEdge);
 
             expect(res.code, description).to.equal(400);
-            expect(res.errorNum, description)
-              .to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+            expect(res.errorNum, description).
+              to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
           }
 
-          expect(db.knows.document(e._key))
-            .to.be.an('object')
-            .that.does.not.have.property('new');
+          expect(db.knows.document(e._key)).
+            to.be.an('object').
+            that.does.not.have.property('new');
         });
 
         it('_to attribute is invalid (string)', () => {
@@ -1087,8 +1087,8 @@ describe('_api/gharial', () => {
         // check that the edges outside of g are still there
         let remainingEdges = ngEdges.all().toArray();
         expect(remainingEdges.length).to.equal(2);
-        expect(remainingEdges.map(x => x.name))
-          .to.have.members(['bob->charlie', 'dave->bob']);
+        expect(remainingEdges.map(x => x.name)).
+          to.have.members(['bob->charlie', 'dave->bob']);
       });
     });
 
@@ -1112,7 +1112,9 @@ describe('_api/gharial', () => {
           // add a new edge definition to the knows graph pointing from knows -> knows (edge to edge)
           const G = require('@arangodb/general-graph');
           const graph = G._graph(exampleGraphName);
-          graph._extendEdgeDefinitions({collection: "knows_2", from: ["knows_2"], to: ["knows_2"]});
+          graph._extendEdgeDefinitions({collection: "knows_2",
+from: ["knows_2"],
+to: ["knows_2"]});
 
           // vertices
           const alice = 'alice'; // edge from alice to bob exists
@@ -1195,7 +1197,8 @@ describe('_api/gharial', () => {
           const bob = 'bob';
 
           // get the edge from alice to bob
-          const aliceToBob = db.knows.byExample({_from: vName + "/" + alice, _to: vName + "/" + bob}).toArray()[0];
+          const aliceToBob = db.knows.byExample({_from: vName + "/" + alice,
+_to: vName + "/" + bob}).toArray()[0];
 
           //                                     ( A --> B )
           //                                         /\

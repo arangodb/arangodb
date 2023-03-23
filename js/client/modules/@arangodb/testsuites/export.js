@@ -53,12 +53,12 @@ const testPaths = {
 // / @brief TEST: export
 // //////////////////////////////////////////////////////////////////////////////
 class exportRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runExport";
     this.instanceManage = null;
   }
-  
+
   shutdown (results) {
     print(CYAN + 'Shutting down...' + RESET);
     results['shutdown'] = this.instanceManager.shutdownInstance(false);
@@ -69,7 +69,7 @@ class exportRunner extends tu.runInArangoshRunner {
     return results;
   }
 
-  run() {
+  run () {
     const timeout = 60;
     const tmpPath = fs.join(this.options.testOutputDirectory, 'export');
     const DOMParser = new xmldom.DOMParser({
@@ -122,7 +122,7 @@ class exportRunner extends tu.runInArangoshRunner {
       keyfile = fs.join(this.instanceManager.rootDir, 'secret-key');
       fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
     }
-    
+
     let databases = [
       "UnitTestsExport",
       "اسم قاعدة بيانات يونيكود",
@@ -266,9 +266,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseJsonl" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.read(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
 
           results[testName] = {
             failed: 0,
@@ -299,9 +299,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseJsonlGz" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
 
           results[testName] = {
             failed: 0,
@@ -394,7 +394,7 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
-      
+
       print(CYAN + Date() + ': Export query from file (jsonl)' + RESET);
       {
         let tempFile = fs.join(tmpPath, 'query-string');
@@ -412,9 +412,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseQueryFile" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
           results[testName] = {
             failed: 0,
             status: true
@@ -445,9 +445,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseQuery" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
           results[testName] = {
             failed: 0,
             status: true
@@ -467,8 +467,8 @@ class exportRunner extends tu.runInArangoshRunner {
       {
         let args = Object.assign({}, commonArgValues);
         args['type'] = 'jsonl';
-        //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
-        //the double @s will be removed when this feature is deprecated
+        // these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+        // the double @s will be removed when this feature is deprecated
         args['custom-query'] = 'FOR doc IN @@@@collectionName FILTER doc.value2 == @@value2 RETURN doc';
         args['custom-query-bindvars'] = '{"@@collectionName": "UnitTestsExport", "value2": "this is export"}';
 
@@ -481,9 +481,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseQueryWithBindvars" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
           results[testName] = {
             failed: 0,
             status: true
@@ -514,9 +514,9 @@ class exportRunner extends tu.runInArangoshRunner {
         testName = "parseQueryGz" + idx;
         print(GREEN + Date() + " Executing " + testName + RESET);
         try {
-          fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n')
-            .filter(line => line.trim() !== '')
-            .forEach(line => JSON.parse(line));
+          fs.readGzip(fs.join(tmpPath, 'query.jsonl.gz')).split('\n').
+            filter(line => line.trim() !== '').
+            forEach(line => JSON.parse(line));
           results[testName] = {
             failed: 0,
             status: true
@@ -561,7 +561,7 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
-      
+
       print(CYAN + Date() + ': Export data (csv, escaping)' + RESET);
       {
         let args = Object.assign({}, commonArgValues);
@@ -596,7 +596,7 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
-      
+
       print(CYAN + Date() + ': Export data (csv, escaping formulae)' + RESET);
       {
         let args = Object.assign({}, commonArgValues);
@@ -632,7 +632,7 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
-      
+
       print(CYAN + Date() + ': Export data (csv, not escaping formulae)' + RESET);
       {
         let args = Object.assign({}, commonArgValues);
@@ -668,7 +668,7 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
-      
+
       print(CYAN + Date() + ': Export query (maxRuntime, failure)' + RESET);
       {
         let args = Object.assign({}, commonArgValues);
@@ -683,7 +683,7 @@ class exportRunner extends tu.runInArangoshRunner {
         results[testName].status = !results[testName].status;
         results[testName].failed = results[testName].status ? 0 : 1;
       }
-      
+
       print(CYAN + Date() + ': Export query (maxRuntime, ok)' + RESET);
       {
         let args = Object.assign({}, commonArgValues);
@@ -708,6 +708,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

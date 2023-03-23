@@ -5,10 +5,10 @@
 
 const Test = require('@arangodb/mocha/test');
 
-module.exports = function(suite) {
+module.exports = function (suite) {
   var suites = [suite];
 
-  suite.on('pre-require', function(context, file, mocha) {
+  suite.on('pre-require', function (context, file, mocha) {
     var common = require('@arangodb/mocha/interface/common')(suites, context, mocha);
 
     context.setup = common.beforeEach;
@@ -17,7 +17,7 @@ module.exports = function(suite) {
     context.suiteTeardown = common.after;
     context.run = mocha.options.delay && common.runWithSuite(suite);
 
-    context.suite = function(title, fn) {
+    context.suite = function (title, fn) {
       return common.suite.create({
         title: title,
         file: file,
@@ -25,7 +25,7 @@ module.exports = function(suite) {
       });
     };
 
-    context.suite.skip = function(title, fn) {
+    context.suite.skip = function (title, fn) {
       return common.suite.skip({
         title: title,
         file: file,
@@ -33,7 +33,7 @@ module.exports = function(suite) {
       });
     };
 
-    context.suite.only = function(title, fn) {
+    context.suite.only = function (title, fn) {
       return common.suite.only({
         title: title,
         file: file,
@@ -41,7 +41,7 @@ module.exports = function(suite) {
       });
     };
 
-    context.test = function(title, fn) {
+    context.test = function (title, fn) {
       var suite = suites[0];
       if (suite.isPending()) {
         fn = null;
@@ -52,7 +52,7 @@ module.exports = function(suite) {
       return test;
     };
 
-    context.test.only = function(title, fn) {
+    context.test.only = function (title, fn) {
       return common.test.only(mocha, context.test(title, fn));
     };
 

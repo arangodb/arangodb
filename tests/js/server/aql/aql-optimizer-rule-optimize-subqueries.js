@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
@@ -35,7 +35,7 @@ const db = require("@arangodb").db;
 const ruleName = "optimize-subqueries";
 
 function optimizerRuleTestSuite () {
-  // various choices to control the optimizer: 
+  // various choices to control the optimizer:
   const paramNone = { optimizer: { rules: [ "-all" ] } };
   const paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   const paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
@@ -43,42 +43,42 @@ function optimizerRuleTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       db._create(cn, { numberOfShards: 4 });
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect when explicitly disabled
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect when explicitly disabled
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRuleDisabled : function () {
-      const queries = [ 
+    testRuleDisabled: function () {
+      const queries = [
         "RETURN FIRST(FOR doc IN " + cn + " RETURN doc)",
         "RETURN (FOR doc IN " + cn + " RETURN doc)[0]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[0]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[1]",
         "RETURN LENGTH(FOR doc IN " + cn + " RETURN doc)",
         "RETURN LENGTH(FOR doc IN " + cn + " RETURN 1)",
-        "LET x = (FOR doc IN " + cn + " RETURN doc) RETURN LENGTH(x)",
+        "LET x = (FOR doc IN " + cn + " RETURN doc) RETURN LENGTH(x)"
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         let result = AQL_EXPLAIN(query, { }, paramNone);
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRuleNoEffect : function () {
-      const queries = [ 
+    testRuleNoEffect: function () {
+      const queries = [
         "RETURN (INSERT {} INTO " + cn + " RETURN NEW)[0]",
         "RETURN (FOR doc IN " + cn + " RETURN doc)[-1]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[-1]",
@@ -89,10 +89,10 @@ function optimizerRuleTestSuite () {
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [LENGTH(docs), FIRST(docs)]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [LENGTH(docs), SUM(docs)]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN UNIQUE(docs)",
-        "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [docs[0], UNIQUE(docs)]",
+        "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [docs[0], UNIQUE(docs)]"
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         let result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
@@ -100,12 +100,12 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has an effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has an effect
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect : function () {
-      const queries = [ 
+    testRuleHasEffect: function () {
+      const queries = [
         "RETURN (FOR doc IN " + cn + " RETURN doc)[0]",
         "RETURN (FOR doc IN " + cn + " RETURN doc)[0]",
         "RETURN (FOR doc IN " + cn + " FILTER doc.value > 0 RETURN doc)[0]",
@@ -119,27 +119,27 @@ function optimizerRuleTestSuite () {
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[0]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[1]",
         "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN docs[100]",
-        "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [docs[0], docs[1]]",
+        "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN [docs[0], docs[1]]"
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         let result = AQL_EXPLAIN(query, { }, paramEnabled);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
         let resultDisabled = AQL_EXECUTE(query, { }, paramDisabled).json;
-        let resultEnabled  = AQL_EXECUTE(query, { }, paramEnabled).json;
+        let resultEnabled = AQL_EXECUTE(query, { }, paramEnabled).json;
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test generated results
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test generated results
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testResults : function () {
+    testResults: function () {
       for (let i = 0; i < 1000; ++i) {
-        db[cn].insert({ value : i });
+        db[cn].insert({ value: i });
       }
 
       let queries = [
@@ -157,9 +157,9 @@ function optimizerRuleTestSuite () {
         [ "RETURN COUNT(FOR doc IN " + cn + " RETURN doc)", [ 1000 ] ],
         [ "LET docs = (FOR doc IN " + cn + " RETURN doc) RETURN COUNT(docs)", [ 1000 ] ],
         [ "RETURN COUNT(FOR doc IN " + cn + " FILTER doc.value < 10 RETURN doc)", [ 10 ] ],
-        [ "LET docs = (FOR doc IN " + cn + " FILTER doc.value < 10 RETURN doc) RETURN COUNT(docs)", [ 10 ] ],
+        [ "LET docs = (FOR doc IN " + cn + " FILTER doc.value < 10 RETURN doc) RETURN COUNT(docs)", [ 10 ] ]
       ];
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         let result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
 

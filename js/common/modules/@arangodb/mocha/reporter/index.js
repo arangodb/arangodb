@@ -6,7 +6,7 @@
 const util = require('util');
 
 class BaseReporter {
-  constructor(runner, options) {
+  constructor (runner, options) {
     var failures = (this.failures = []);
 
     if (!runner) {
@@ -16,7 +16,7 @@ class BaseReporter {
     this.runner = runner;
     this.stats = runner.stats; // assigned so Reporters keep a closer reference
 
-    runner.on("pass", function(test) {
+    runner.on("pass", function (test) {
       if (test.duration > test.slow()) {
         test.speed = 'slow';
       } else if (test.duration > test.slow() / 2) {
@@ -26,7 +26,7 @@ class BaseReporter {
       }
     });
 
-    runner.on("fail", function(test, err) {
+    runner.on("fail", function (test, err) {
       if (
         err &&
         err.showDiff !== false &&

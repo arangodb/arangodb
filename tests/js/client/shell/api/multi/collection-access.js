@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/collection";
@@ -40,15 +40,15 @@ function readingSuite () {
   let cn = "UnitTestsCollectionAccess";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_finds_the_collection_by_identifier: function() {
+    test_finds_the_collection_by_identifier: function () {
       let cmd = api + "/" + cid._id;
       let doc = arango.GET_RAW(cmd);
 
@@ -60,7 +60,7 @@ function readingSuite () {
       assertEqual(doc.parsedBody['name'], cn);
     },
 
-    test_retrieves_the_collection_s_figures_by_identifier: function() {
+    test_retrieves_the_collection_s_figures_by_identifier: function () {
       let cmd = api + "/" + cid._id + "/figures";
       let doc = arango.GET_RAW(cmd);
 

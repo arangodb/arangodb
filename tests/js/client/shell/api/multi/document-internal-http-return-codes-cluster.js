@@ -34,12 +34,13 @@ function leaderTestSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
   let shardName;
-  
+
   return {
     setUpAll: function () {
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
-      const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      const c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       const shards = c.shards(true);
       // We create exactly one shard
       assertEqual(Object.entries(shards).length, 1);
@@ -68,7 +69,7 @@ function leaderTestSuite () {
     testLeaderCodePost: function () {
       // This fakes an insert replication request to a leader, which
       // must respond with 406 FORBIDDEN:
-      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo":1});
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo": 1});
       assertEqual(406, result.code);
     },
 
@@ -98,7 +99,7 @@ function leaderTestSuite () {
       // must respond with 406 FORBIDDEN:
       let result = arango.PUT_RAW("/_api/collection/" + encodeURIComponent(shardName) + "/truncate?isSynchronousReplication=someServer", {});
       assertEqual(406, result.code);
-    },
+    }
   };
 }
 
@@ -106,12 +107,13 @@ function followerTestSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
   let shardName;
-  
+
   return {
     setUpAll: function () {
       db._drop(cn);
       // We create only one shard so we have exactly 1 leader and 1 follower.
-      const c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      const c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
       c.insert({_key: "test"});
       const shards = c.shards(true);
       // We create exactly one shard
@@ -141,7 +143,7 @@ function followerTestSuite () {
     testFollowerReplCodePost: function () {
       // This fakes an insert replication request to a follower from the
       // wrong leader, which must respond with 406 FORBIDDEN:
-      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo":1});
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName) + "?isSynchronousReplication=someServer", {"Hallo": 1});
       assertEqual(406, result.code);
     },
 
@@ -176,7 +178,7 @@ function followerTestSuite () {
     testFollowerCodePost: function () {
       // This fakes an insert request to a follower, which must respond
       // with 421 MISDIRECTED REQUEST:
-      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName), {"Hallo":1});
+      let result = arango.POST_RAW("/_api/document/" + encodeURIComponent(shardName), {"Hallo": 1});
       assertEqual(421, result.code);
     },
 
@@ -213,11 +215,10 @@ function followerTestSuite () {
       // with 421 MISDIRECTED REQUEST:
       let result = arango.GET_RAW("/_api/document/" + encodeURIComponent(shardName) + "/test");
       assertEqual(421, result.code);
-    },
+    }
 
   };
 }
-
 
 
 jsunity.run(leaderTestSuite);

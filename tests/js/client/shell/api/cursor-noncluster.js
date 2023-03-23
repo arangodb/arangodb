@@ -2,7 +2,7 @@
 /* global fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertIdentical, assertNotIdentical, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -36,12 +36,12 @@ const errors = require('@arangodb').errors;
 const jsunity = require("jsunity");
 let api = "/_api/cursor";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // query cache;
-////////////////////////////////////////////////////////////////////////////////;
-function testing_the_query_cacheSuite() {
+// //////////////////////////////////////////////////////////////////////////////;
+function testing_the_query_cacheSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       let doc = arango.GET_RAW("/_api/query-cache/properties");
       let mode = doc.parsedBody['mode'];
       arango.PUT_RAW("/_api/query-cache/properties", "{ \"mode\" : \"demand\" }");
@@ -49,11 +49,11 @@ function testing_the_query_cacheSuite() {
       arango.DELETE_RAW("/_api/query-cache");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.PUT_RAW("/_api/query-cache/properties", "{ \"mode\" : \"${mode}\" }");
     },
 
-    test_testing_without_cache_attribute_set: function() {
+    test_testing_without_cache_attribute_set: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -81,7 +81,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_explicitly_disabled_cache: function() {
+    test_testing_explicitly_disabled_cache: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : false }";
       let doc = arango.POST_RAW(cmd, body);
@@ -109,7 +109,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_enabled_cache: function() {
+    test_testing_enabled_cache: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : true }";
       let doc = arango.POST_RAW(cmd, body);
@@ -139,7 +139,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_clearing_the_cache: function() {
+    test_testing_clearing_the_cache: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..5 RETURN i\", \"cache\" : true }";
       let doc = arango.POST_RAW(cmd, body);
@@ -191,7 +191,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_fullCount_off: function() {
+    test_testing_fullCount_off: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..10000 LIMIT 5 RETURN i\", \"cache\" : true, \"fullCount\" : false }";
       let doc = arango.POST_RAW(cmd, body);
@@ -223,7 +223,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_fullCount_on: function() {
+    test_testing_fullCount_on: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..10000 LIMIT 5 RETURN i\", \"cache\" : true, \"options\": { \"fullCount\" : true } }";
       let doc = arango.POST_RAW(cmd, body);
@@ -257,7 +257,7 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['warnings'], []);
     },
 
-    test_testing_fullCount_on_off: function() {
+    test_testing_fullCount_on_off: function () {
       let cmd = api;
       let body = "{ \"query\" : \"FOR i IN 1..10000 LIMIT 5 RETURN i\", \"cache\" : true, \"options\": { \"fullCount\" : true } }";
       let doc = arango.POST_RAW(cmd, body);
@@ -302,12 +302,12 @@ function testing_the_query_cacheSuite() {
       assertEqual(doc.parsedBody['extra']['stats'], stats);
       assertTrue(doc.parsedBody['extra'].hasOwnProperty(('warnings')));
       assertEqual(doc.parsedBody['extra']['warnings'], []);
-    },
+    }
 
   };
 }
 
-function testing_the_query_cache_in_transcationSuite() {
+function testing_the_query_cache_in_transcationSuite () {
   const cn = "testCollection";
   const cn2 = "testCollection2";
   const cn3 = "testCollection3";
@@ -315,7 +315,7 @@ function testing_the_query_cache_in_transcationSuite() {
   let mode = "demand";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
       db._create(cn2);
       db._create(cn3);
@@ -328,7 +328,7 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 200);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       const res = queryCache.properties({"mode": mode});
       assertEqual(res.mode, mode);
       db._drop(cn);
@@ -336,7 +336,7 @@ function testing_the_query_cache_in_transcationSuite() {
       db._drop(cn3);
     },
 
-    test_testing_streaming_transaction_aborted_set: function() {
+    test_testing_streaming_transaction_aborted_set: function () {
       let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
       res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
@@ -347,7 +347,8 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 201);
       assertFalse(res.cached);
       assertEqual(res.result[0].value, 0);
-      let trx = db._createTransaction({collections: {write: [cn, cn2], read: cn3}});
+      let trx = db._createTransaction({collections: {write: [cn, cn2],
+read: cn3}});
       let trxStatus = trx.status();
       assertTrue(trxStatus.hasOwnProperty("id"));
       assertTrue(trxStatus.hasOwnProperty("status"));
@@ -426,7 +427,7 @@ function testing_the_query_cache_in_transcationSuite() {
     },
 
 
-    test_testing_streaming_transaction_committed_set: function() {
+    test_testing_streaming_transaction_committed_set: function () {
       let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
       res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
@@ -437,7 +438,8 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 201);
       assertFalse(res.cached);
       assertEqual(res.result[0].value, 0);
-      let trx = db._createTransaction({collections: {write: [cn, cn2], read: cn3}});
+      let trx = db._createTransaction({collections: {write: [cn, cn2],
+read: cn3}});
       let trxStatus = trx.status();
       assertTrue(trxStatus.hasOwnProperty("id"));
       assertTrue(trxStatus.hasOwnProperty("status"));
@@ -552,7 +554,7 @@ function testing_the_query_cache_in_transcationSuite() {
       }
     },
 
-    test_testing_js_transaction_aborted_set: function() {
+    test_testing_js_transaction_aborted_set: function () {
       let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
       res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
@@ -567,8 +569,9 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.result[0].value, 0);
       try {
         res = db._executeTransaction({
-          collections: {write: [cn], read: [cn2]},
-          action: function() {
+          collections: {write: [cn],
+read: [cn2]},
+          action: function () {
             const arangodb = require("@arangodb");
             const db = arangodb.db;
             db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
@@ -597,7 +600,7 @@ function testing_the_query_cache_in_transcationSuite() {
       }
     },
 
-    test_testing_js_transaction_committed_set: function() {
+    test_testing_js_transaction_committed_set: function () {
       let res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn}`).data;
       assertEqual(res.code, 201);
       res = db._query(`INSERT { _key: "a", value: 0 } IN ${cn2}`).data;
@@ -611,8 +614,9 @@ function testing_the_query_cache_in_transcationSuite() {
       assertFalse(res.cached);
       assertEqual(res.result[0].value, 0);
       res = db._executeTransaction({
-        collections: {write: [cn], read: [cn2]},
-        action: function() {
+        collections: {write: [cn],
+read: [cn2]},
+        action: function () {
           const arangodb = require("@arangodb");
           const db = arangodb.db;
           const res = db._query("UPDATE { _key: 'a', value: 1 } IN testCollection");
@@ -634,7 +638,7 @@ function testing_the_query_cache_in_transcationSuite() {
       assertEqual(res.code, 201);
       assertTrue(res.cached);
       assertEqual(res.result[0].value, 0);
-    },
+    }
   };
 }
 

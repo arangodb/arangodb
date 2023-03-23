@@ -64,7 +64,7 @@ function runSetup () {
   internal.sleep(5);
 
   assertTrue(c1._revisionTreeVerification().equal);
- 
+
   // don't take into account any buffered updates when decided whether we
   // need to persist a tree to disk
   internal.debugSetFailAt("needToPersistRevisionTree::checkBuffers");
@@ -72,19 +72,19 @@ function runSetup () {
   // we bump our sequence number to
   internal.debugSetFailAt("serializeMeta::delayCallToLastSerializedRevisionTree");
   internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
-  
+
   // let background thread finish
   internal.sleep(2);
 
   // create another collection, for which the initial tree will be persisted
   let c2 = db._create(colName2);
   c2.insert(docs);
-  
+
   // insert into the original collection
   c1.insert(docs);
 
   waitForUpdatesToFinish(c2);
-  
+
   // wait long enough so that the tree of c2 is persisted.
   // the tree for c1 will not be persisted anymore because of the checkBuffers
   // failure point above.
@@ -106,7 +106,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeInconsistency: function() {
+    testRevisionTreeInconsistency: function () {
       const c1 = db._collection(colName1);
       waitForUpdatesToFinish(c1);
       assertEqual(2000, c1.count());
@@ -120,7 +120,7 @@ function recoverySuite () {
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 1000);
       assertTrue(c2._revisionTreeVerification().equal);
-    },
+    }
 
   };
 }

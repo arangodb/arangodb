@@ -39,7 +39,9 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   c = db._create('UnitTestsRecovery');
 
-  c.save({ _key: 'foo', value1: 1, value2: 'test' }, true);
+  c.save({ _key: 'foo',
+value1: 1,
+value2: 'test' }, true);
 
   internal.debugTerminate('crashing server');
 }

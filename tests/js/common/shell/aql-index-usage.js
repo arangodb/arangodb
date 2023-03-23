@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertNotEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test index usage
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2018, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 
@@ -41,7 +41,7 @@ function IndexUsageSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cnData);
       db._drop(cnComm);
       db._create(cnData);
@@ -54,7 +54,7 @@ function IndexUsageSuite () {
       db[cnData].insert(docs);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cnData);
       db._drop(cnComm);
       if (debugCanUseFailAt()) {
@@ -62,14 +62,15 @@ function IndexUsageSuite () {
       }
     },
 
-    testIndexUsage : function () {
+    testIndexUsage: function () {
       let task = tasks.register({
-        command: function(params) {
+        command: function (params) {
           require('jsunity').jsUnity.attachAssertions();
           let db = require("internal").db;
           let comm = db[params.cnComm];
           let errors = require("@arangodb").errors;
-          comm.insert({ _key: "runner1", value: 0 });
+          comm.insert({ _key: "runner1",
+value: 0 });
 
           while (!comm.exists("runner2")) {
             require("internal").sleep(0.02);
@@ -85,12 +86,13 @@ function IndexUsageSuite () {
             } catch (err) {
               // if the index that was picked for the query is dropped in the meantime,
               // we will get one of the following errors back
-              assertTrue(err.errorNum === errors.ERROR_QUERY_BAD_JSON_PLAN.code || 
+              assertTrue(err.errorNum === errors.ERROR_QUERY_BAD_JSON_PLAN.code ||
                          err.errorNum === errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
             }
           } while (time() - start < 10.0);
         },
-        params: { cnComm, cnData }
+        params: { cnComm,
+cnData }
       });
 
       let comm = db[cnComm];
@@ -107,7 +109,9 @@ function IndexUsageSuite () {
         if (indexes.length > 1) {
           db[cnData].dropIndex(indexes[1]);
         }
-        db[cnData].ensureIndex({ type: "hash", fields: ["value"], inBackground: true });
+        db[cnData].ensureIndex({ type: "hash",
+fields: ["value"],
+inBackground: true });
         ++success;
       } while (time() - start < 10.0);
 
@@ -127,16 +131,17 @@ function IndexUsageSuite () {
       assertTrue(success > 0, success);
     },
 
-    testPrimaryIndexLookupConsistency : function () {
+    testPrimaryIndexLookupConsistency: function () {
       if (debugCanUseFailAt()) {
         debugSetFailAt("RocksDBCollection::read-delay");
 
         const task = tasks.register({
-          command: function(params) {
+          command: function (params) {
             require('jsunity').jsUnity.attachAssertions();
             const {db, time} = require("internal");
             const comm = db[params.cnComm];
-            comm.insert({ _key: "runner1", value: 0 });
+            comm.insert({ _key: "runner1",
+value: 0 });
 
             while (!comm.exists("runner2")) {
               require("internal").sleep(0.02);
@@ -149,7 +154,8 @@ function IndexUsageSuite () {
               comm.update("runner1", { value: ++cnt });
             } while (time() - start < 10.0);
           },
-          params: { cnComm, cnData }
+          params: { cnComm,
+cnData }
         });
 
         const comm = db[cnComm];
@@ -175,7 +181,7 @@ function IndexUsageSuite () {
           }
         }
       }
-    },
+    }
   };
 }
 

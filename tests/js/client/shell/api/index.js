@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,27 +31,27 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/index";
 let reFull = new RegExp('^[a-zA-Z0-9_\-]+/[0-9]+$');
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
+    test_returns_an_error_if_collection_identifier_is_unknown: function () {
       let cmd = api + "/123456/123456";
       let doc = arango.GET_RAW(cmd);
 
@@ -62,7 +62,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_returns_an_error_if_index_identifier_is_unknown: function() {
+    test_returns_an_error_if_index_identifier_is_unknown: function () {
       let cmd = api + `/${cn}/123456`;
       let doc = arango.GET_RAW(cmd);
 
@@ -75,23 +75,25 @@ function error_handlingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // creating a unique constraint;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creating_unique_constraintsSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_either_201_for_new_or_200_for_unique_old_indexes: function() {
+    test_returns_either_201_for_new_or_200_for_unique_old_indexes: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "hash", "unique" : true, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": true,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -122,9 +124,12 @@ function creating_unique_constraintsSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_unique_indexes__sparse_indexes: function() {
+    test_returns_either_201_for_new_or_200_for_old_unique_indexes__sparse_indexes: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "hash", "unique" : true, "fields" : [ "a", "b" ], "sparse" : true };
+      let body = { "type": "hash",
+"unique": true,
+"fields": [ "a", "b" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -157,23 +162,25 @@ function creating_unique_constraintsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // creating a hash index;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creating_hash_indexesSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_hash_indexes: function() {
+    test_returns_either_201_for_new_or_200_for_old_hash_indexes: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -204,9 +211,12 @@ function creating_hash_indexesSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_hash_indexes__sparse_index: function() {
+    test_returns_either_201_for_new_or_200_for_old_hash_indexes__sparse_index: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ], "sparse" : true };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -237,9 +247,11 @@ function creating_hash_indexesSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_hash_indexes__mixed_sparsity: function() {
+    test_returns_either_201_for_new_or_200_for_old_hash_indexes__mixed_sparsity: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -255,7 +267,10 @@ function creating_hash_indexesSuite () {
 
       let iid = doc.parsedBody['id'];
 
-      body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ], "sparse" : true };
+      body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ],
+"sparse": true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -273,23 +288,25 @@ function creating_hash_indexesSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // creating a skiplist;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creating_skiplistsSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes: function() {
+    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "skiplist",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -320,9 +337,12 @@ function creating_skiplistsSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes__sparse_index: function() {
+    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes__sparse_index: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ], "sparse" : true };
+      let body = { "type": "skiplist",
+"unique": false,
+"fields": [ "a", "b" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -353,9 +373,11 @@ function creating_skiplistsSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes__mixed_sparsity: function() {
+    test_returns_either_201_for_new_or_200_for_old_skiplist_indexes__mixed_sparsity: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "skiplist",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -371,7 +393,10 @@ function creating_skiplistsSuite () {
 
       let iid = doc.parsedBody['id'];
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "a", "b" ], "sparse" : true };
+      body = { "type": "skiplist",
+"unique": false,
+"fields": [ "a", "b" ],
+"sparse": true };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -389,23 +414,25 @@ function creating_skiplistsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // creating a unique skiplist;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creating_unique_skiplistsSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_unique_skiplist_indexes: function() {
+    test_returns_either_201_for_new_or_200_for_old_unique_skiplist_indexes: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a", "b" ] };
+      let body = { "type": "skiplist",
+"unique": true,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -436,9 +463,12 @@ function creating_unique_skiplistsSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_returns_either_201_for_new_or_200_for_old_unique_skiplist_indexes__sparse_index: function() {
+    test_returns_either_201_for_new_or_200_for_old_unique_skiplist_indexes__sparse_index: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a", "b" ], "sparse" : true };
+      let body = { "type": "skiplist",
+"unique": true,
+"fields": [ "a", "b" ],
+"sparse": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -471,21 +501,21 @@ function creating_unique_skiplistsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // reading all indexes;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function reading_all_indexesSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_all_index_for_a_collection_identifier: function() {
+    test_returns_all_index_for_a_collection_identifier: function () {
       let cmd = api + `?collection=${cn}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -502,7 +532,7 @@ function reading_all_indexesSuite () {
       });
     },
 
-    test_returns_all_index_for_a_collection_name: function() {
+    test_returns_all_index_for_a_collection_name: function () {
       let cmd = api + `?collection=${cn}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -522,21 +552,21 @@ function reading_all_indexesSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // reading one index;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function reading_an_indexSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_primary_index_for_a_collection_identifier: function() {
+    test_returns_primary_index_for_a_collection_identifier: function () {
       let cmd = api + `/${cn}/0`;
       let doc = arango.GET_RAW(cmd);
 
@@ -548,7 +578,7 @@ function reading_an_indexSuite () {
       assertEqual(doc.parsedBody['type'], "primary");
     },
 
-    test_returns_primary_index_for_a_collection_name: function() {
+    test_returns_primary_index_for_a_collection_name: function () {
       let cmd = api + `/${cn}/0`;
       let doc = arango.GET_RAW(cmd);
 
@@ -561,30 +591,32 @@ function reading_an_indexSuite () {
     }
   };
 }
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // deleting an index;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function deleting_an_indexSuite () {
   let cn = "UnitTestsCollectionIndexes";
   return {
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_deleting_an_index: function() {
+    test_deleting_an_index: function () {
       let cmd = api + `?collection=${cn}`;
-      let body = { "type" : "skiplist", "unique" : true, "fields" : [ "a", "b" ] };
+      let body = { "type": "skiplist",
+"unique": true,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 201);
-      assertMatch(reFull,doc.parsedBody['id']);
+      assertMatch(reFull, doc.parsedBody['id']);
       assertEqual(doc.parsedBody['type'], "skiplist");
       assertTrue(doc.parsedBody['unique']);
       assertFalse(doc.parsedBody['sparse']);
@@ -600,7 +632,7 @@ function deleting_an_indexSuite () {
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-      assertMatch(reFull,doc.parsedBody['id']);
+      assertMatch(reFull, doc.parsedBody['id']);
       assertEqual(doc.parsedBody['id'], iid);
 
       cmd = api + `/${iid}`;

@@ -33,9 +33,9 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
-  // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+
+  // turn off syncing of counters etc.
+  internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
   // write some documents with autoincrement keys
   db._drop('UnitTestsRecovery1');
@@ -48,9 +48,9 @@ function runSetup () {
       docs = [];
     }
   }
- 
+
   // should trigger range deletion
-  db._drop('UnitTestsRecovery1'); 
+  db._drop('UnitTestsRecovery1');
 
   c = db._create('UnitTestsRecovery2');
   c.save({ }, { waitForSync: true });

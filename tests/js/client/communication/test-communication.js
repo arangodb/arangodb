@@ -62,12 +62,12 @@ const debug = function (text) {
   console.warn(text);
 };
 
-function getEndpointById(id) {
+function getEndpointById (id) {
   const toEndpoint = (d) => (d.endpoint);
   const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toEndpoint)
-    .map(endpointToURL)[0];
+  return instanceInfo.arangods.filter((d) => (d.id === id)).
+    map(toEndpoint).
+    map(endpointToURL)[0];
 }
 
 const runShell = function (args, prefix) {
@@ -92,7 +92,7 @@ const runShell = function (args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(arangosh, argv, false /*usePipes*/);
+  let result = internal.executeExternal(arangosh, argv, false /* usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -100,7 +100,7 @@ const runShell = function (args, prefix) {
 };
 
 
-function CommunicationSuite() {
+function CommunicationSuite () {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
@@ -127,7 +127,9 @@ function CommunicationSuite() {
     let args = {'javascript.execute': file};
     let pid = runShell(args, file);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, file, pid };
+    return { key,
+file,
+pid };
   };
 
   let runTests = function (tests, duration) {
@@ -215,7 +217,7 @@ function CommunicationSuite() {
             let status = internal.statusExternal(client.pid).status;
             if (status === 'RUNNING') {
               debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
+              internal.killExternal(client.pid, 9 /* SIGKILL*/);
             }
           } catch (err) { }
         }
@@ -225,7 +227,7 @@ function CommunicationSuite() {
 
   // TODO externalize
 
-  function getEndpointsByType(type) {
+  function getEndpointsByType (type) {
     const isType = (d) => (d.role.toLowerCase() === type);
     const toEndpoint = (d) => (d.endpoint);
     const endpointToURL = (endpoint) => {
@@ -240,9 +242,9 @@ function CommunicationSuite() {
     };
 
     const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    return instanceInfo.arangods.filter(isType)
-      .map(toEndpoint)
-      .map(endpointToURL);
+    return instanceInfo.arangods.filter(isType).
+      map(toEndpoint).
+      map(endpointToURL);
   }
 
   return {
@@ -254,13 +256,20 @@ function CommunicationSuite() {
       db._drop("UnitTestsTemp");
       let c = db._create("UnitTestsTemp");
       if (isEnterprise) {
-        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value", "nested": [{"name": "nested_1", "nested": ["nested_2"]}]}]});
+        c.ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: [{ "name": "new_value",
+"nested": [{"name": "nested_1",
+"nested": ["nested_2"]}]}]});
       } else {
-        c.ensureIndex({type: 'inverted', name: 'inverted', fields: [{ "name": "new_value.nested_1.nested_2"}]});
+        c.ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: [{ "name": "new_value.nested_1.nested_2"}]});
       }
       let docs = [];
       for (let i = 0; i < 50000; ++i) {
-        docs.push({ value: i , new_value: [{nested_1: [{nested_2: i.toString()}]}]});
+        docs.push({ value: i,
+new_value: [{nested_1: [{nested_2: i.toString()}]}]});
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -278,21 +287,21 @@ function CommunicationSuite() {
         ['simple-1', 'db._query("FOR doc IN _users RETURN doc");'],
         ['simple-2', 'db._query("FOR doc IN _users RETURN doc");'],
         ['insert-remove', 'db._executeTransaction({ collections: { write: "UnitTestsTemp" }, action: function() { let db = require("internal").db; let docs = []; for (let i = 0; i < 1000; ++i) docs.push({ _key: "test" + i }); let c = db.UnitTestsTemp; c.insert(docs); c.remove(docs); } });'],
-        ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");'],
+        ['aql', 'db._query("FOR doc IN UnitTestsTemp RETURN doc._key");']
       ];
 
       // add some cluster stuff
       if (internal.isCluster()) {
         tests.push(['cluster-health', 'if (arango.GET("/_admin/cluster/health").code !== 200) { throw "nono cluster"; }']);
-      };
+      }
 
       // run the suite for 5 minutes
       runTests(tests, 5 * 60);
-    },
+    }
   };
 }
 
-function GenericAqlSetupPathSuite(type) {
+function GenericAqlSetupPathSuite (type) {
   'use strict';
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
@@ -380,7 +389,7 @@ function GenericAqlSetupPathSuite(type) {
       case "SearchAliasView":
         return `db._query("FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x")`;
       case "InvertedIndex":
-        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;  
+        return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       case "Satellite":
         return `db._query("FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x")`;
       default:
@@ -518,7 +527,8 @@ function GenericAqlSetupPathSuite(type) {
     let args = {'javascript.execute-string': cmd};
     let pid = runShell(args, key);
     debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-    return { key, pid };
+    return { key,
+pid };
   };
 
   const singleRun = (tests) => {
@@ -593,7 +603,7 @@ function GenericAqlSetupPathSuite(type) {
             let status = internal.statusExternal(client.pid).status;
             if (status === 'RUNNING') {
               debug("forcefully killing test client with pid " + client.pid);
-              internal.killExternal(client.pid, 9 /*SIGKILL*/);
+              internal.killExternal(client.pid, 9 /* SIGKILL*/);
             }
           } catch (err) { }
         }
@@ -679,35 +689,39 @@ function GenericAqlSetupPathSuite(type) {
         case "NamedGraph": {
           // We create a graph with a single vertex that has a self reference.
           const g = graphModule._create(graphName, [graphModule._relation(edgeName, vertexName, vertexName)], [], { numberOfShards: 3 });
-          const v = g[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'bar'}]}] });
-          g[edgeName].save({ _from: v._id, _to: v._id, "b": [{"c": [{"d": 'foo'}]}] });
+          const v = g[vertexName].save({ _key: "a",
+"b": [{"c": [{"d": 'bar'}]}] });
+          g[edgeName].save({ _from: v._id,
+_to: v._id,
+"b": [{"c": [{"d": 'foo'}]}] });
           break;
         }
         case "View": {
           db._create(vertexName, { numberOfShards: 3 });
           let meta = {};
           if (isEnterprise) {
-            meta = { links: { [vertexName]: { 
-              includeAllFields: true, 
+            meta = { links: { [vertexName]: {
+              includeAllFields: true,
               fields: {
                 "b": {
                   "nested": {
                     "c": {
-                      "nested":{
+                      "nested": {
                         "d": {}
-                      } 
+                      }
                     }
                   }
                 }
-              } 
+              }
             }}};
           } else {
-            meta = { links: { [vertexName]: { 
+            meta = { links: { [vertexName]: {
               includeAllFields: true
             }}};
           }
           db._createView(viewName, "arangosearch", meta);
-          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobar'}]}] });
+          db[vertexName].save({ _key: "a",
+"b": [{"c": [{"d": 'foobar'}]}] });
           break;
         }
         case "SearchAliasView": {
@@ -715,21 +729,30 @@ function GenericAqlSetupPathSuite(type) {
           let meta = {};
           if (isEnterprise) {
             meta = {
-              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+              type: 'inverted',
+name: 'inverted',
+includeAllFields: true,
+fields: [{"name": "b",
+"nested": [{"name": "c",
+"nested": [{"name": "d"}]}]}]
             };
           } else {
             meta = {
-              type: 'inverted', name: 'inverted', includeAllFields: true
+              type: 'inverted',
+name: 'inverted',
+includeAllFields: true
             };
           }
-          let i1 = c.ensureIndex(meta);;
+          let i1 = c.ensureIndex(meta);
           let i2 = c2.ensureIndex(meta);
 
           db._createView(searchAliasViewName, "search-alias", {
-            indexes: [{collection: vertexName, index: i2.name}]
+            indexes: [{collection: vertexName,
+index: i2.name}]
           });
 
-          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
+          db[vertexName].save({ _key: "a",
+"b": [{"c": [{"d": 'foooof'}]}] });
           break;
         }
         case "InvertedIndex": {
@@ -737,23 +760,32 @@ function GenericAqlSetupPathSuite(type) {
           let meta = {};
           if (isEnterprise) {
             meta = {
-              type: 'inverted', name: 'inverted', includeAllFields: true, fields: [{"name": "b", "nested": [{"name": "c", "nested": [{"name": "d"}]}]}]
+              type: 'inverted',
+name: 'inverted',
+includeAllFields: true,
+fields: [{"name": "b",
+"nested": [{"name": "c",
+"nested": [{"name": "d"}]}]}]
             };
           } else {
             meta = {
-              type: 'inverted', name: 'inverted', includeAllFields: true
+              type: 'inverted',
+name: 'inverted',
+includeAllFields: true
             };
           }
-          
-          let i1 = c.ensureIndex(meta);;
+
+          let i1 = c.ensureIndex(meta);
           let i2 = c2.ensureIndex(meta);
 
-          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foooof'}]}] });
+          db[vertexName].save({ _key: "a",
+"b": [{"c": [{"d": 'foooof'}]}] });
           break;
         }
         case "Satellite": {
           db._create(vertexName, { replicationFactor: "satellite" });
-          db[vertexName].save({ _key: "a", "b": [{"c": [{"d": 'foobuz'}]}] });
+          db[vertexName].save({ _key: "a",
+"b": [{"c": [{"d": 'foobuz'}]}] });
           break;
         }
       }
@@ -814,30 +846,30 @@ function GenericAqlSetupPathSuite(type) {
   return testSuite;
 }
 
-function AqlSetupPathSuite() {
+function AqlSetupPathSuite () {
   return GenericAqlSetupPathSuite("Plain");
 }
 
-function AqlGraphSetupPathSuite() {
+function AqlGraphSetupPathSuite () {
   return GenericAqlSetupPathSuite("Graph");
 }
-function AqlNamedGraphSetupPathSuite() {
+function AqlNamedGraphSetupPathSuite () {
   return GenericAqlSetupPathSuite("NamedGraph");
 }
 
-function AqlViewSetupPathSuite() {
+function AqlViewSetupPathSuite () {
   return GenericAqlSetupPathSuite("View");
 }
 
-function AqlSearchAliasViewSetupPathSuite() {
+function AqlSearchAliasViewSetupPathSuite () {
   return GenericAqlSetupPathSuite("SearchAliasView");
 }
 
-function AqlSearchInvertedIndexSetupPathSuite() {
+function AqlSearchInvertedIndexSetupPathSuite () {
   return GenericAqlSetupPathSuite("InvertedIndex");
 }
 
-function AqlSatelliteSetupPathSuite() {
+function AqlSatelliteSetupPathSuite () {
   return GenericAqlSetupPathSuite("Satellite");
 }
 

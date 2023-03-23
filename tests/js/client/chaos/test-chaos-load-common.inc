@@ -1,29 +1,29 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global fail, assertTrue, assertFalse, assertEqual,
    assertNotEqual, arango, print */
-   
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Manuel Pöter
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Manuel Pöter
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 const _ = require('lodash');
@@ -45,17 +45,21 @@ const {
 } = require('@arangodb/test-helper');
 
 const fetchRevisionTree = (serverUrl, shardId) => {
-  let result = request({ method: "POST", url: serverUrl + "/_api/replication/batch", body: {ttl : 3600}, json: true });
+  let result = request({ method: "POST",
+url: serverUrl + "/_api/replication/batch",
+body: {ttl: 3600},
+json: true });
   assertEqual(200, result.statusCode);
   const batch = JSON.parse(result.body);
   if (!batch.hasOwnProperty("id")) {
     throw "Could not create batch!";
   }
-  
+
   result = request({ method: "GET",
     url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}`});
   assertEqual(200, result.statusCode);
-  request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
+  request({ method: "DELETE",
+url: serverUrl + `/_api/replication/batch/${batch.id}`});
   return JSON.parse(result.body);
 };
 
@@ -63,7 +67,7 @@ const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
   const servers = getDBServers();
   const shardInfo = c.shards(true);
-  
+
   let failed = false;
   const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
   let tries = 0;
@@ -81,7 +85,7 @@ const checkCollectionConsistency = (cn) => {
           console.error(`Leader has inconsistent tree for shard ${shard}:`, leaderTree);
           failed = true;
         }
-        
+
         const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
         followerTree.computed.nodes = "<reduced>";
         followerTree.stored.nodes = "<reduced>";
@@ -104,7 +108,7 @@ const checkCollectionConsistency = (cn) => {
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
       internal.sleep(10);
     }
-  } while(failed);
+  } while (failed);
 };
 
 const viewName = (name, isSearchAlias) => {
@@ -158,7 +162,7 @@ const clearAllFailurePoints = () => {
   }
 };
 
-function BaseChaosSuite(testOpts) {
+function BaseChaosSuite (testOpts) {
   // generate a random collection name
   const cn = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const coordination_cn = cn + "_coord";
@@ -201,14 +205,16 @@ function BaseChaosSuite(testOpts) {
       let i = db._collection(cn).ensureIndex({
         type: "inverted",
         includeAllFields: true,
-        analyzer: "testAnalyzer",
+        analyzer: "testAnalyzer"
       });
       db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
+        indexes: [{collection: cn,
+index: i.name}]
       });
     } else {
       db._createView(vn, "arangosearch", {
-        links: {[cn]: {analyzers: ["testAnalyzer", "identity"], includeAllFields: true}}
+        links: {[cn]: {analyzers: ["testAnalyzer", "identity"],
+includeAllFields: true}}
       });
     }
 
@@ -218,15 +224,20 @@ function BaseChaosSuite(testOpts) {
         type: "inverted",
         includeAllFields: true,
         analyzer: "testAnalyzer",
-        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
+        primarySort: {fields: [{field: "_id",
+asc: false}, {field: "_key",
+asc: true}]}
       });
       db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
+        indexes: [{collection: cn,
+index: i.name}]
       });
     } else {
       db._createView(vn, "arangosearch", {
         links: {[cn]: {includeAllFields: true}},
-        primarySort: [{field: "_id", asc: false}, {field: "_key", asc: true}],
+        primarySort: [{field: "_id",
+asc: false}, {field: "_key",
+asc: true}]
       });
     }
 
@@ -236,15 +247,16 @@ function BaseChaosSuite(testOpts) {
         type: "inverted",
         includeAllFields: true,
         analyzer: "testAnalyzer",
-        storedValues: [["_id"], ["_key"]],
+        storedValues: [["_id"], ["_key"]]
       });
       db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
+        indexes: [{collection: cn,
+index: i.name}]
       });
     } else {
       db._createView(vn, "arangosearch", {
         links: {[cn]: {includeAllFields: true}},
-        storedValues: [["_id"], ["_key"]],
+        storedValues: [["_id"], ["_key"]]
       });
     }
 
@@ -255,16 +267,21 @@ function BaseChaosSuite(testOpts) {
         includeAllFields: true,
         analyzer: "testAnalyzer",
         storedValues: [["_id"], ["_key"]],
-        primarySort: {fields: [{field: "_id", asc: false}, {field: "_key", asc: true}]},
+        primarySort: {fields: [{field: "_id",
+asc: false}, {field: "_key",
+asc: true}]}
       });
       db._createView(vn, "search-alias", {
-        indexes: [{collection: cn, index: i.name}]
+        indexes: [{collection: cn,
+index: i.name}]
       });
     } else {
       db._createView(vn, "arangosearch", {
         links: {[cn]: {includeAllFields: true}},
         storedValues: [["_id"], ["_key"]],
-        primarySort: [{field: "_id", asc: false}, {field: "_key", asc: true}],
+        primarySort: [{field: "_id",
+asc: false}, {field: "_key",
+asc: true}]
       });
     }
   };
@@ -275,7 +292,8 @@ function BaseChaosSuite(testOpts) {
       db._drop(cn);
       db._drop(coordination_cn);
       let rf = Math.max(2, getDBServers().length);
-      db._create(cn, {numberOfShards: rf * 2, replicationFactor: rf});
+      db._create(cn, {numberOfShards: rf * 2,
+replicationFactor: rf});
       // TODO when we fix intermediate commit needs to remove this and add checkView option to matrix
       testOpts.withViews = true;
       if (testOpts.withViews) {
@@ -340,7 +358,7 @@ function BaseChaosSuite(testOpts) {
       db._drop(coordination_cn);
       print(Date() + " tearDown: done.");
     },
-    
+
     testWorkInParallel: function () {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
@@ -368,12 +386,12 @@ function BaseChaosSuite(testOpts) {
           if (testOpts.withIntermediateCommits) {
             if (Math.random() <= 0.5) {
               result.intermediateCommitCount = 7 + Math.floor(Math.random() * 10);
-              if (2 <= length && length <= result.intermediateCommitCount) {
+              if (length >= 2 && length <= result.intermediateCommitCount) {
                 result.intermediateCommitCount = length / 2;
               }
             }
           }
-          
+
           if (testOpts.withVaryingOverwriteMode) {
             const r = Math.random();
             if (r >= 0.75) {
@@ -382,14 +400,14 @@ function BaseChaosSuite(testOpts) {
               result.overwriteMode = "update";
             } else if (r >= 0.25) {
               result.overwriteMode = "ignore";
-            } 
+            }
           }
           return result;
         };
-        
+
         let query = (...args) => db._query(...args);
         let trx = null;
-        
+
         const logAllOps = false; // can be set to true for debugging purposes
         const log = (msg) => {
           if (logAllOps) {
@@ -476,7 +494,7 @@ function BaseChaosSuite(testOpts) {
             }
           } catch (err) {}
         }
-        
+
         if (trx) {
           if (Math.random() < 0.2) {
             log(`ABORTING`);
@@ -490,7 +508,7 @@ function BaseChaosSuite(testOpts) {
 
       testOpts.collection = cn;
       code = `(${code.toString()})(${JSON.stringify(testOpts)});`;
-      
+
       let tests = [];
       for (let i = 0; i < 3; ++i) {
         tests.push(["p" + i, code]);
@@ -516,7 +534,11 @@ function BaseChaosSuite(testOpts) {
         checkViewConsistency(cn, true, true);
       }
       print(Date() + " checking consistency done.");
-      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully"); }});
+      client_ret.forEach(client => {
+ if (client.failed) {
+ throw new Error("clients did not finish successfully");
+}
+});
     }
   };
 }
@@ -537,7 +559,8 @@ const makeConfig = (paramValues) => {
     suffix += "_with_" + p;
     opts["with" + p] = true;
   }
-  return { suffix: suffix, options: opts };
+  return { suffix: suffix,
+options: opts };
 };
 
 const run = () => {
@@ -547,13 +570,14 @@ const run = () => {
   const { options, suffix } = global.currentTestConfig;
   print("Running chaos test with config ", options);
 
-  let func = function() {
+  let func = function () {
     let suite = {};
     deriveTestSuite(BaseChaosSuite(options), suite, suffix);
     return suite;
   };
   // define the function name as it shows up as suiteName
-  Object.defineProperty(func, 'name', {value: "ChaosSuite" + suffix, writable: false});
+  Object.defineProperty(func, 'name', {value: "ChaosSuite" + suffix,
+writable: false});
 
   jsunity.run(func);
 

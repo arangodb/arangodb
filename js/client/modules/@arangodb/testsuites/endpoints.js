@@ -31,7 +31,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `skipEndpoints`: if set to true endpoints tests are skipped',
   '   - `skipEndpointsIpv6`: if set to true endpoints tests using IPv6 are skipped',
-  '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped',
+  '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped'
 ];
 
 const _ = require('lodash');
@@ -58,9 +58,9 @@ const testPaths = {
 };
 
 class endpointRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
-    
+
     this.info = "EndpointsTest";
     // we append one cleanup directory for the invoking logic...
     this.dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
@@ -78,10 +78,10 @@ class endpointRunner extends tu.runInArangoshRunner {
                                       new inst.agencyConfig(this.options, null));
     this.endpoint = this.instance.args['server.endpoint'];
   }
-  getEndpoint() {
+  getEndpoint () {
     return this.endpoint;
   }
-  run() {
+  run () {
     let obj = this;
     this.instanceManager = new im.instanceManager(this.options.protocol,
                                                   this.options,
@@ -89,55 +89,69 @@ class endpointRunner extends tu.runInArangoshRunner {
                                                   this.friendlyName);
     this.instanceManager['arangods'] = [this.instance];
     this.instanceManager.rootDir = this.instance.rootDir;
-    
+
     const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'etc', 'testing', 'server.pem');
 
     let endpoints = {
       ssl: {
-        skip: function () { return obj.options.skipEndpointsSSL; },
+        skip: function () {
+ return obj.options.skipEndpointsSSL;
+},
         protocol: 'ssl',
         serverArgs: function () {
           return {
             'server.endpoint': 'ssl://127.0.0.1:' + obj.instance.pm.findFreePort(obj.options.minPort, obj.options.maxPort),
-            'ssl.keyfile': keyFile,
+            'ssl.keyfile': keyFile
           };
         },
         shellTests: [
           {
             name: 'tcp',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'any',
-            endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\/.*:/, 'ssl://0.0.0.0:'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^ssl:\/\/.*:/, 'ssl://0.0.0.0:');
+},
             success: false,
             forceJson: false
           },
-          { 
+          {
             name: 'vst',
-            endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\//, 'vst+ssl://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^ssl:\/\//, 'vst+ssl://');
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'h2',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2+ssl://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'h2+ssl://');
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'non-ssl',
-            endpoint: function (endpoint) { return endpoint.replace(/^ssl:\/\//, 'tcp://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^ssl:\/\//, 'tcp://');
+},
             success: false,
             forceJson: false
-          },
-        ],
+          }
+        ]
       },
 
       tcpv4: {
-        skip: function () { return obj.options.skipEndpointsIpv4; },
+        skip: function () {
+ return obj.options.skipEndpointsIpv4;
+},
         protocol: 'tcp',
         serverArgs: function () {
           return {
@@ -147,44 +161,58 @@ class endpointRunner extends tu.runInArangoshRunner {
         shellTests: [
           {
             name: 'tcp-json',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true,
             forceJson: true
           },
           {
             name: 'tcp',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'tcp-any',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\/.*:/, 'tcp://0.0.0.0:'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\/.*:/, 'tcp://0.0.0.0:');
+},
             success: false,
             forceJson: false
           },
-          { 
+          {
             name: 'vst',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'vst://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'vst://');
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'h2',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'h2://');
+},
             success: true,
             forceJson: false
           },
           {
             name: 'ssl',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'ssl://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'ssl://');
+},
             success: false
-          },
-        ],
+          }
+        ]
       },
 
       tcpv6: {
-        skip: function () { return obj.options.skipEndpointsIpv6; },
+        skip: function () {
+ return obj.options.skipEndpointsIpv6;
+},
         protocol: 'tcp',
         serverArgs: function () {
           return {
@@ -194,45 +222,59 @@ class endpointRunner extends tu.runInArangoshRunner {
         shellTests: [
           {
             name: 'tcp-json',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true,
             forceJson: false
           },
           {
             name: 'tcp',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'tcp-any',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\/\[::1\]:/, 'tcp://[::]:'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\/\[::1\]:/, 'tcp://[::]:');
+},
             success: false,
             forceJson: false
           },
-          { 
+          {
             name: 'vst',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'vst://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'vst://');
+},
             success: true,
             forceJson: false
           },
-          { 
+          {
             name: 'h2',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'h2://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'h2://');
+},
             success: true,
             forceJson: false
           },
           {
             name: 'ssl',
-            endpoint: function (endpoint) { return endpoint.replace(/^tcp:\/\//, 'ssl://'); },
+            endpoint: function (endpoint) {
+ return endpoint.replace(/^tcp:\/\//, 'ssl://');
+},
             success: false,
             forceJson: false
-          },
-        ],
+          }
+        ]
       },
 
       unix: {
-        skip: function () { return obj.options.skipEndpointsUnix || platform.substr(0, 3) === 'win'; },
+        skip: function () {
+ return obj.options.skipEndpointsUnix || platform.substr(0, 3) === 'win';
+},
         protocol: 'unix',
         serverArgs: function () {
           // use a random filename
@@ -243,11 +285,13 @@ class endpointRunner extends tu.runInArangoshRunner {
         shellTests: [
           {
             name: 'unix',
-            endpoint: function (endpoint) { return endpoint; },
+            endpoint: function (endpoint) {
+ return endpoint;
+},
             success: true
-          },
+          }
         ]
-      },
+      }
     };
     obj.orgArgs = _.clone(obj.instance.args);
     let fatalError = false;
@@ -266,7 +310,7 @@ class endpointRunner extends tu.runInArangoshRunner {
           failed: 0,
           skipped: true,
           status: true,
-          message: fatalError? 'test skipped because of fatal error': 'test skipped'
+          message: fatalError ? 'test skipped because of fatal error' : 'test skipped'
         };
         return results;
       }
@@ -307,16 +351,17 @@ class endpointRunner extends tu.runInArangoshRunner {
       const specFile = testPaths.endpoints[0];
       let filtered = {};
 
-      testCase.shellTests.forEach(function(testCase) {
+      testCase.shellTests.forEach(function (testCase) {
         if (tu.filterTestcaseByOptions(testCase.name, obj.options, filtered)) {
           let old = obj.instance.endpoint;
           let shellEndpoint = testCase.endpoint(serverArgs['server.endpoint']);
           obj.endpoint = shellEndpoint;
           if (obj.options.extremeVerbosity) {
-            print("Testing " + endpointName + '-' +testCase.name + " Endpoint: " + shellEndpoint);
+            print("Testing " + endpointName + '-' + testCase.name + " Endpoint: " + shellEndpoint);
           }
           try {
-            let arangoshOpts = { 'server.connection-timeout': 2, 'server.request-timeout': 2 };
+            let arangoshOpts = { 'server.connection-timeout': 2,
+'server.request-timeout': 2 };
             if (testCase.forceJson) {
               arangoshOpts['server.force-json'] = true;
             }
@@ -324,7 +369,7 @@ class endpointRunner extends tu.runInArangoshRunner {
             let result = obj.runOneTest(specFile);
 
             let success = result.status === testCase.success;
-            results[endpointName + '-' + testCase.name] = { status: success }; 
+            results[endpointName + '-' + testCase.name] = { status: success };
             if (!success) {
               // arangosh or the test returned an error
               results[endpointName + '-' + testCase.name].message = result.message;
@@ -362,7 +407,8 @@ class endpointRunner extends tu.runInArangoshRunner {
         results.message += message;
       }
       return results;
-    }, { failed: 0, shutdown: true });
+    }, { failed: 0,
+shutdown: true });
     if (this.options.cleanup) {
       fs.removeDirectoryRecursive(this.dummyDir, true);
     }
@@ -383,6 +429,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipEndpointsSSL'] = false;
   opts['skipEndpointsUnix'] = (platform.substr(0, 3) === 'win');
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

@@ -65,7 +65,7 @@ function runSetup () {
       docs = [];
     }
   }
-  
+
   c = db._create(colName4);
   for (let i = 0; i < 100000; ++i) {
     docs.push({ _key: "test" + i });
@@ -96,7 +96,7 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-    
+
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -111,7 +111,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeCompression: function() {
+    testRevisionTreeCompression: function () {
       internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
 
       const c1 = db._collection(colName1);
@@ -121,7 +121,7 @@ function recoverySuite () {
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 500);
-      
+
       const c3 = db._collection(colName3);
       assertEqual(c3._revisionTreeSummary().count, c3.count());
       assertEqual(c3._revisionTreeSummary().count, 100000);
@@ -129,22 +129,22 @@ function recoverySuite () {
       const c4 = db._collection(colName4);
       assertEqual(c4._revisionTreeSummary().count, c4.count());
       assertEqual(c4._revisionTreeSummary().count, 1);
-     
+
       // it depends a bit on luck how compressible the trees actually are.
       // the reason is that _rev values and thus rangeMax in the trees are
       // dynamic.
       let summary = db[colName1]._revisionTreeSummary();
       assertTrue(summary.byteSize < 15000, summary);
-      
+
       summary = db[colName2]._revisionTreeSummary();
       assertTrue(summary.byteSize < 15000, summary);
-      
+
       summary = db[colName3]._revisionTreeSummary();
       assertTrue(summary.byteSize < 700000, summary);
-      
+
       summary = db[colName4]._revisionTreeSummary();
       assertTrue(summary.byteSize < 500, summary);
-    },
+    }
 
   };
 }

@@ -77,21 +77,23 @@ function makeDataWrapper (options) {
   }
 
   class rtaMakedataRunner extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runRtaInArangosh";
       this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
     }
-    filter(te, filtered) {
+    filter (te, filtered) {
       return true;
     }
-    runOneTest(file) {
-      let res = {'total':0, 'duration':0.0, 'status':true};
+    runOneTest (file) {
+      let res = {'total': 0,
+'duration': 0.0,
+'status': true};
       let tests = [
         fs.join(this.options.rtasource, 'test_data', 'makedata.js'),
         fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
         fs.join(this.options.rtasource, 'test_data', 'checkdata.js'),
-        fs.join(this.options.rtasource, 'test_data', 'cleardata.js'),
+        fs.join(this.options.rtasource, 'test_data', 'cleardata.js')
       ];
       let count = 0;
       let counters = { nonAgenciesCount: 1};
@@ -125,7 +127,7 @@ function makeDataWrapper (options) {
             }
           });
           print('stopping dbserver ' + stoppedDbServerInstance.name +
-                ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+                ' ID: ' + stoppedDbServerInstance.id + JSON.stringify(stoppedDbServerInstance.getStructure()));
           stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
           stoppedDbServerInstance.waitForExit();
           argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
@@ -142,7 +144,7 @@ function makeDataWrapper (options) {
         if ((this.options.cluster) && (count === 3)) {
           print('relaunching dbserver');
           stoppedDbServerInstance.restartOneInstance({});
-          
+
         }
       });
       return res;
@@ -162,7 +164,11 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..','release-test-automation'));
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..', 'release-test-automation'));
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

@@ -41,7 +41,10 @@ describe('Model Events', function () {
       type: sinon.stub().returns(2)
     };
     instance = new Model();
-    repository = new FoxxRepository(collection, {model: Model, random: '', beforeCalled: false, afterCalled: false});
+    repository = new FoxxRepository(collection, {model: Model,
+random: '',
+beforeCalled: false,
+afterCalled: false});
   });
 
   it('should be possible to subscribe and emit events', function () {

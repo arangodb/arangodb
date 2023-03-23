@@ -135,7 +135,7 @@ global.tutorial = require('@arangodb/tutorial');
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  let withTimeout = function(connection, timeout, cb) {
+  let withTimeout = function (connection, timeout, cb) {
     if (!connection) {
       return;
     }
@@ -160,11 +160,11 @@ global.tutorial = require('@arangodb/tutorial');
       // the list of collections
       // this allows going on and using the arangosh even if the list
       // of collections cannot be fetched in sensible time
-      withTimeout(internal.db._connection, 10, function() {
+      withTimeout(internal.db._connection, 10, function () {
         internal.db._collections();
       });
     } catch (e) {}
-   
+
     if (arango.isConnected()) {
       try {
         let remoteVersion = arango.getVersion();

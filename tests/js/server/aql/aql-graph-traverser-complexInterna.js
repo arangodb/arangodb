@@ -39,7 +39,7 @@ const db = internal.db;
 const errors = require('@arangodb').errors;
 const gh = require("@arangodb/graph/helpers");
 
-function complexInternaSuite() {
+function complexInternaSuite () {
   var ruleName = 'optimize-traversals';
   var paramEnabled = {optimizer: {rules: ['-all', '+' + ruleName]}};
   var opts = _.clone(paramEnabled);
@@ -162,16 +162,16 @@ function complexInternaSuite() {
        */
 
       const isValidResult = result => {
-        return true
+        return true &&
           // all results must be depth 1 vertices
-          && result.every(v => -1 !== ['0', '1', '2'].indexOf(v))
+          result.every(v => ['0', '1', '2'].indexOf(v) !== -1) &&
           // we expect exactly 8 results
-          && result.length === 8
+          result.length === 8 &&
           // but only two different vertices (because we skipped one subtree)
-          && _.uniq(result).length === 2
+          _.uniq(result).length === 2 &&
           // first one (any) of the subtrees must be returned, then the other
-          && _.uniq(result.slice(0, 4)).length === 1
-          && _.uniq(result.slice(4, 8)).length === 1;
+          _.uniq(result.slice(0, 4)).length === 1 &&
+          _.uniq(result.slice(4, 8)).length === 1;
       };
 
       // Check that we can get all of them out again.
@@ -185,7 +185,8 @@ function complexInternaSuite() {
       const plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
         const jsonResult = AQL_EXECUTEJSON(plan, {optimizer: {rules: ['-all']}}).json;
-        assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult, plan}));
+        assertTrue(isValidResult(jsonResult), JSON.stringify({jsonResult,
+plan}));
       });
     },
 
@@ -350,7 +351,7 @@ function complexInternaSuite() {
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
-    },
+    }
 
   };
 }

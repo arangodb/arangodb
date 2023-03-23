@@ -29,7 +29,7 @@ const jsunity = require('jsunity');
 const { fail,
   assertTrue,
   assertFalse,
-  assertEqual,
+  assertEqual
 } = jsunity.jsUnity.assertions;
 
 const arangodb = require('@arangodb');
@@ -47,7 +47,7 @@ const isReplication2Enabled = internal.db._version(true).details['replication2-e
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
  * For the commit test, we additionally look at the follower contents.
  */
-function transactionReplication2ReplicateOperationSuite() {
+function transactionReplication2ReplicateOperationSuite () {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
@@ -61,7 +61,9 @@ function transactionReplication2ReplicateOperationSuite() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, {"numberOfShards": 4, "writeConcern": rc, "replicationFactor": rc});
+      c = db._create(cn, {"numberOfShards": 4,
+"writeConcern": rc,
+"replicationFactor": rc});
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -75,7 +77,8 @@ function transactionReplication2ReplicateOperationSuite() {
         collections: {write: c.name()}
       });
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test2', value: 2});
+      tc.insert({_key: 'test2',
+value: 2});
       trx.abort();
 
       let shards = c.shards();
@@ -186,8 +189,8 @@ function transactionReplication2ReplicateOperationSuite() {
     testTransactionLeaderChangeBeforeCommit: function () {
       let obj = {
         collections: {
-          write: [cn],
-        },
+          write: [cn]
+        }
       };
 
       const trx = db._createTransaction(obj);
@@ -219,7 +222,7 @@ function transactionReplication2ReplicateOperationSuite() {
       if (logsWithCommit.length > 0) {
         fail(`Found commit operation(s) in one or more log ${JSON.stringify(logsWithCommit[0].head(1000))}.`);
       }
-    },
+    }
   };
 }
 
@@ -228,7 +231,7 @@ function transactionReplication2ReplicateOperationSuite() {
  * All tests must use a single shard, so we don't have to guess where the keys are saved.
  * writeConcern must be equal to replicationFactor, so we replicate all documents on all followers.
  */
-function transactionReplicationOnFollowersSuite(dbParams) {
+function transactionReplicationOnFollowersSuite (dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
@@ -243,7 +246,9 @@ function transactionReplicationOnFollowersSuite(dbParams) {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, {"numberOfShards": 1, "writeConcern": rc, "replicationFactor": rc});
+      c = db._create(cn, {"numberOfShards": 1,
+"writeConcern": rc,
+"replicationFactor": rc});
     }),
     tearDown: tearDownAnd(() => {
       if (c !== null) {
@@ -361,11 +366,11 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       const ids = Object.values(localValues).map(value => value._id);
       assertTrue(ids.every((val, i, arr) => val === arr[0]), `_id mismatch ${JSON.stringify(localValues)}` +
         `\n${replication2Log}`);
-    },
+    }
   };
 }
 
-function makeTestSuites(testSuite) {
+function makeTestSuites (testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
   helper.deriveTestSuite(testSuite({}), suiteV1, "_V1");
@@ -376,11 +381,11 @@ function makeTestSuites(testSuite) {
   return [suiteV1, suiteV2];
 }
 
-function transactionReplicationOnFollowersSuiteV1() {
+function transactionReplicationOnFollowersSuiteV1 () {
   return makeTestSuites(transactionReplicationOnFollowersSuite)[0];
 }
 
-function transactionReplicationOnFollowersSuiteV2() {
+function transactionReplicationOnFollowersSuiteV2 () {
   return makeTestSuites(transactionReplicationOnFollowersSuite)[1];
 }
 
@@ -389,7 +394,7 @@ jsunity.run(transactionReplicationOnFollowersSuiteV1);
 if (isReplication2Enabled) {
   let suites = [
     transactionReplication2ReplicateOperationSuite,
-    transactionReplicationOnFollowersSuiteV2,
+    transactionReplicationOnFollowersSuiteV2
   ];
 
   for (const suite of suites) {

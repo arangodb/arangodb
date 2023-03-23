@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,13 +31,12 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json; charset=utf-8" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
-
 class ArangoMultipartBody {
-  constructor(boundary = null) {
+  constructor (boundary = null) {
     this.parts = [ ];
     if (boundary === null) {
       this.boundary = "XXXArangoBatchXXX";
@@ -46,12 +45,16 @@ class ArangoMultipartBody {
     }
   }
 
-  getBoundary() {
+  getBoundary () {
     return this.boundary;
   }
 
-  addPart(method, url, headers, body, contentId = "") {
-    let part = { method: method, url: url, headers: headers, body: body, contentId: contentId };
+  addPart (method, url, headers, body, contentId = "") {
+    let part = { method: method,
+url: url,
+headers: headers,
+body: body,
+contentId: contentId };
     this.parts.push(part);
   }
 
@@ -117,7 +120,7 @@ class ArangoMultipartBody {
 
       // parse headers and status code
 
-      partHeader.split("\r\n").forEach( line => {
+      partHeader.split("\r\n").forEach(line => {
         if (lineNumber === 0) {
           position = line.search("HTTP/1.1 ");
           // TOOD if (position === undefined) {
@@ -130,7 +133,10 @@ class ArangoMultipartBody {
         }
         lineNumber = lineNumber + 1;
       });
-      let part = { headers: partHeaders, body: partBody, status: status, contentId: contentId };
+      let part = { headers: partHeaders,
+body: partBody,
+status: status,
+contentId: contentId };
       this.parts.push(part);
       body = body.slice(nextBoundary, body.length);
     }
@@ -142,11 +148,11 @@ class ArangoMultipartBody {
     return this.parts;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////;
+  // //////////////////////////////////////////////////////////////////////////////;
   // get the string representation of a multipart message body;
-  ////////////////////////////////////////////////////////////////////////////////;
+  // //////////////////////////////////////////////////////////////////////////////;
 
-  stringify() {
+  stringify () {
     let body = "";
     this.parts.forEach(part => {
       // boundary;
@@ -168,20 +174,20 @@ class ArangoMultipartBody {
       }
       // header/body separator;
       body += "\r\n";
-      
+
       // body;
       body += part.body + "\r\n";
     });
     body += "--" + this.boundary + "--\r\n";
     return body;
   }
-};
+}
 
 
 function using_disallowed_methodsSuite () {
   return {
 
-    test_checks_whether_GET_is_allowed_on___api_batch: function() {
+    test_checks_whether_GET_is_allowed_on___api_batch: function () {
       let cmd = "/_api/batch";
       let doc = arango.GET_RAW(cmd);
 
@@ -190,7 +196,7 @@ function using_disallowed_methodsSuite () {
       assertEqual(doc.parsedBody['code'], 405);
     },
 
-    test_checks_whether_HEAD_is_allowed_on___api_batch: function() {
+    test_checks_whether_HEAD_is_allowed_on___api_batch: function () {
       let cmd = "/_api/batch";
       let doc = arango.HEAD_RAW(cmd);
 
@@ -198,7 +204,7 @@ function using_disallowed_methodsSuite () {
       assertUndefined(doc.body);
     },
 
-    test_checks_whether_DELETE_is_allowed_on___api_batch: function() {
+    test_checks_whether_DELETE_is_allowed_on___api_batch: function () {
       let cmd = "/_api/batch";
       let doc = arango.DELETE_RAW(cmd);
 
@@ -207,7 +213,7 @@ function using_disallowed_methodsSuite () {
       assertEqual(doc.parsedBody['code'], 405);
     },
 
-    test_checks_whether_PATCH_is_allowed_on___api_batch: function() {
+    test_checks_whether_PATCH_is_allowed_on___api_batch: function () {
       let cmd = "/_api/batch";
       let doc = arango.PATCH_RAW(cmd, "");
 
@@ -218,68 +224,68 @@ function using_disallowed_methodsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking invalid posts;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_wrong_missing_content_type_boundarySuite () {
   return {
-    test_checks_missing_content_type: function() {
+    test_checks_missing_content_type: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx" );
+      let doc = arango.POST_RAW(cmd, "xx");
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_invalid_content_type_xxx: function() {
+    test_checks_invalid_content_type_xxx: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "xxx/xxx" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "xxx/xxx" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_invalid_content_type_json: function() {
+    test_checks_invalid_content_type_json: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "application/json" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "application/json" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_valid_content_type_with_missing_boundary: function() {
+    test_checks_valid_content_type_with_missing_boundary: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_valid_content_type_with_unexpected_boundary: function() {
+    test_checks_valid_content_type_with_unexpected_boundary: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; peng" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; peng" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_valid_content_type_with_broken_boundary: function() {
+    test_checks_valid_content_type_with_broken_boundary: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; boundary=" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; boundary=" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_valid_content_type_with_too_short_boundary: function() {
+    test_checks_valid_content_type_with_too_short_boundary: function () {
       let cmd = "/_api/batch";
-      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; boundary=a" } );
+      let doc = arango.POST_RAW(cmd, "xx", { "Content-Type": "multipart/form-data; boundary=a" });
 
       assertEqual(doc.code, 400);
       assertTrue(doc.parsedBody['error']);
@@ -288,13 +294,13 @@ function checking_wrong_missing_content_type_boundarySuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking simple batches;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_simple_requestsSuite () {
   return {
 
-    test_checks_a_multipart_message_assembled_manually__broken_boundary: function() {
+    test_checks_a_multipart_message_assembled_manually__broken_boundary: function () {
       let cmd = "/_api/batch";
       let body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n--NotExistingBoundaryValue--";
       let doc = arango.POST_RAW(cmd, body);
@@ -302,7 +308,7 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.code, 400);
     },
 
-    test_checks_a_multipart_message_assembled_manually__no_boundary: function() {
+    test_checks_a_multipart_message_assembled_manually__no_boundary: function () {
       let cmd = "/_api/batch";
       let body = "Content-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n";
       let doc = arango.POST_RAW(cmd, body);
@@ -311,7 +317,7 @@ function checking_simple_requestsSuite () {
     },
 
 
-    test_checks_a_multipart_message_assembled_manually: function() {
+    test_checks_a_multipart_message_assembled_manually: function () {
       let cmd = "/_api/batch";
       let body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/version HTTP/1.1\r\n\r\n--SomeBoundaryValue--";
       let doc = arango.POST_RAW(cmd, body);
@@ -319,7 +325,7 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.code, 200);
     },
 
-    test_checks_a_multipart_message_assembled_manually__with_404_URLs: function() {
+    test_checks_a_multipart_message_assembled_manually__with_404_URLs: function () {
       let cmd = "/_api/batch";
       let body = "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/nonexisting1 HTTP/1.1\r\n\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nGET /_api/nonexisting2 HTTP/1.1\r\n\r\n--SomeBoundaryValue--";
       let doc = arango.POST_RAW(cmd, body);
@@ -328,7 +334,7 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.headers['x-arango-errors'], "2");
     },
 
-    test_checks_an_empty_operation_multipart_message: function() {
+    test_checks_an_empty_operation_multipart_message: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       let doc = arango.POST_RAW(cmd,
@@ -342,7 +348,7 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_checks_a_multipart_message_with_a_single_operation: function() {
+    test_checks_a_multipart_message_with_a_single_operation: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       multipart.addPart("GET", "/_api/version", { }, "");
@@ -355,35 +361,12 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.code, 200);
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
       });
     },
 
-    test_checks_valid_content_type_with_boundary_in_quotes: function() {
-      let cmd = "/_api/batch";
-      let multipart = new ArangoMultipartBody();
-
-      multipart.addPart("GET", "/_api/version", { }, "");
-      multipart.addPart("GET", "/_api/version", { }, "");
-      multipart.addPart("GET", "/_api/version", { }, "");
-      multipart.addPart("GET", "/_api/version", { }, "");
-      let doc = arango.POST_RAW(cmd,
-                                multipart.stringify(),
-                                {
-                                  "Content-Type": `multipart/form-data; boundary="${multipart.getBoundary()}"`
-                                });
-
-      assertEqual(doc.code, 200);
-
-      let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
-      parts.forEach( part => {
-        assertEqual(part.status, 200);
-      });
-    },
-
-
-    test_checks_a_multipart_message_with_a_multiple_operations: function() {
+    test_checks_valid_content_type_with_boundary_in_quotes: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
 
@@ -400,16 +383,39 @@ function checking_simple_requestsSuite () {
       assertEqual(doc.code, 200);
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
       });
     },
 
-    test_checks_a_multipart_message_with_many_operations: function() {
+
+    test_checks_a_multipart_message_with_a_multiple_operations: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
 
-      for (let i = 1; i < 128; i++ ){ 
+      multipart.addPart("GET", "/_api/version", { }, "");
+      multipart.addPart("GET", "/_api/version", { }, "");
+      multipart.addPart("GET", "/_api/version", { }, "");
+      multipart.addPart("GET", "/_api/version", { }, "");
+      let doc = arango.POST_RAW(cmd,
+                                multipart.stringify(),
+                                {
+                                  "Content-Type": `multipart/form-data; boundary="${multipart.getBoundary()}"`
+                                });
+
+      assertEqual(doc.code, 200);
+
+      let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
+      parts.forEach(part => {
+        assertEqual(part.status, 200);
+      });
+    },
+
+    test_checks_a_multipart_message_with_many_operations: function () {
+      let cmd = "/_api/batch";
+      let multipart = new ArangoMultipartBody();
+
+      for (let i = 1; i < 128; i++) {
         multipart.addPart("GET", "/_api/version", { }, "");
       }
       let doc = arango.POST_RAW(cmd,
@@ -422,12 +428,12 @@ function checking_simple_requestsSuite () {
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
       });
     },
 
-    test_checks_a_multipart_message_inside_a_multipart_message: function() {
+    test_checks_a_multipart_message_inside_a_multipart_message: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       let inner = new ArangoMultipartBody("innerBoundary");
@@ -444,12 +450,12 @@ function checking_simple_requestsSuite () {
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
       });
     },
 
-    test_checks_a_few_multipart_messages_inside_a_multipart_message: function() {
+    test_checks_a_few_multipart_messages_inside_a_multipart_message: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       let inner = new ArangoMultipartBody("innerBoundary");
@@ -471,28 +477,28 @@ function checking_simple_requestsSuite () {
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
       });
     }
   };
 }
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking batch document creation;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_batch_document_creationSuite () {
   let cn = "UnitTestsBatch";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_checks_batch_document_creation: function() {
+    test_checks_batch_document_creation: function () {
       let cmd = "/_api/batch";
       // create 10 documents;
       let multipart = new ArangoMultipartBody();
@@ -513,7 +519,7 @@ function checking_batch_document_creationSuite () {
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
       let partNumber = 0;
-      parts.forEach( part => {
+      parts.forEach(part => {
         if (partNumber === 0) {
           assertEqual(part.status, 200);
         } else {
@@ -535,30 +541,30 @@ function checking_batch_document_creationSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking document creation with a few errors;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_batch_document_creation_with_some_errorsSuite () {
   let cn = "UnitTestsBatch";
   let cn2 = "UnitTestsBatch2";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       db._drop(cn2);
-      db._create(cn, { waitForSync: true } );
+      db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
       db._drop(cn2);
     },
 
-    test_checks_batch_document_creation_error: function() {
+    test_checks_batch_document_creation_error: function () {
       let cmd = "/_api/batch";
       let n = 10;
       let multipart = new ArangoMultipartBody();
-      for (let partNumber = 0; partNumber < n; partNumber++ ) {
+      for (let partNumber = 0; partNumber < n; partNumber++) {
         if (partNumber % 2 === 1) {
           // should succeed;
           multipart.addPart("POST", `/_api/document?collection=${cn}`, { }, `{"a":1,"b":2}`);
@@ -580,8 +586,8 @@ function checking_batch_document_creation_with_some_errorsSuite () {
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
       let partNumber = 0;
-      parts.forEach( part => {
-        if (partNumber %2 === 1) {
+      parts.forEach(part => {
+        if (partNumber % 2 === 1) {
           assertEqual(part.status, 201);
         } else {
           assertEqual(part.status, 404);
@@ -602,17 +608,17 @@ function checking_batch_document_creation_with_some_errorsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking document creation with errors;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_batch_document_creation_with_non_existing_collectionSuite () {
   let cn = "UnitTestsBatch";
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
     },
 
-    test_checks_batch_document_creation_nx_collection: function() {
+    test_checks_batch_document_creation_nx_collection: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       for (let i = 0; i < 10; i++) {
@@ -629,7 +635,7 @@ function checking_batch_document_creation_with_non_existing_collectionSuite () {
       assertEqual(doc.headers['x-arango-errors'], "10");
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 404);
       });
 
@@ -645,13 +651,13 @@ function checking_batch_document_creation_with_non_existing_collectionSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // checking content ids;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function checking_content_idsSuite () {
   return {
 
-    test_checks_a_multipart_message_with_content_ids: function() {
+    test_checks_a_multipart_message_with_content_ids: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       multipart.addPart("GET", "/_api/version", { }, "", "part1");
@@ -670,14 +676,14 @@ function checking_content_idsSuite () {
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
       let i = 1;
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
         assertEqual(part.contentId, "part" + i);
         i = i + 1;
       });
     },
-    
-    test_checks_a_multipart_message_with_identical_content_ids: function() {
+
+    test_checks_a_multipart_message_with_identical_content_ids: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       multipart.addPart("GET", "/_api/version", { }, "", "part1");
@@ -693,13 +699,13 @@ function checking_content_idsSuite () {
       assertEqual(doc.code, 200, doc);
 
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
         assertEqual(part.contentId, "part1");
       });
     },
 
-    test_checks_a_multipart_message_with_very_different_content_ids: function() {
+    test_checks_a_multipart_message_with_very_different_content_ids: function () {
       let cmd = "/_api/batch";
       let multipart = new ArangoMultipartBody();
       multipart.addPart("GET", "/_api/version", { }, "", "    abcdef.gjhdjslrt.sjgfjss@024n5nhg.sdffns.gdfnkddgme-fghnsnfg");
@@ -716,7 +722,7 @@ function checking_content_idsSuite () {
       let parts = multipart.getParts(multipart.getBoundary(), doc.body.toString());
 
       let i = 1;
-      parts.forEach( part => {
+      parts.forEach(part => {
         assertEqual(part.status, 200);
         if (i === 1) {
           assertEqual(part.contentId, "abcdef.gjhdjslrt.sjgfjss@024n5nhg.sdffns.gdfnkddgme-fghnsnfg");

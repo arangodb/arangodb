@@ -55,7 +55,7 @@ helper.generateAllUsers();
 
 describe('User Rights Management', () => {
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     for (let name of userSet) {
       let canUse = false;
       try {
@@ -149,7 +149,7 @@ describe('User Rights Management', () => {
                 try {
                   db._createDatabase(testDBName);
                 } catch (e) {
-                  //print(e);
+                  // print(e);
                 }
                 expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
               }
@@ -167,7 +167,7 @@ describe('User Rights Management', () => {
                 try {
                   db._createDatabase(testDBName);
                 } catch (e) {
-                  //print(e);
+                  // print(e);
                 }
                 expect(rootTestDB()).to.equal(false, `${name} was able to create a database with insufficent rights`);
               }

@@ -40,14 +40,14 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   db._create('UnitTestsRecovery1');
-  
+
   for (i = 0; i < 10000; ++i) {
     db.UnitTestsRecovery1.save({ a: i });
   }
 
   db._create('UnitTestsRecovery2');
   db._query("FOR doc IN UnitTestsRecovery1 INSERT doc INTO UnitTestsRecovery2");
-  
+
   db._drop('UnitTestsRecovery1');
   db.UnitTestsRecovery2.rename('UnitTestsRecovery1');
 

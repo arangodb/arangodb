@@ -70,7 +70,8 @@
             buttons = [
               Noty.button('Close', 'btn btn-error', function (n) {
                 n.close();
-              }, {id: 'button1', 'data-status': 'ok'})
+              }, {id: 'button1',
+'data-status': 'ok'})
             ];
           } else if (latestModel.get('type') === 'warning') {
             time = 15000;
@@ -78,12 +79,14 @@
             buttons = [
               Noty.button('Close', 'btn btn-warning', function (n) {
                 n.close();
-              }, {id: 'button2', 'data-status': 'true'}),
+              }, {id: 'button2',
+'data-status': 'true'}),
 
               Noty.button('Do not show again.', 'btn btn-error', function (n) {
                 window.arangoHelper.doNotShowAgain();
                 n.close();
-              }, {id: 'button3', 'data-status': 'false'})
+              }, {id: 'button3',
+'data-status': 'false'})
             ];
           } else if (latestModel.get('type') === 'info') {
             time = 10000;

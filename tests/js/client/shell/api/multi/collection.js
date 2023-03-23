@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,34 +31,34 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
 const jsunity = require("jsunity");
 
 let api = "/_api/collection";
 
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // reading all collections;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function all_collectionsSuite () {
   let cid;
   let cols = ["units", "employees", "locations" ];
   return {
-    setUp: function() {
+    setUp: function () {
       cols.forEach(cn => {
         db._drop(cn);
         db._create(cn);
       });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       cols.forEach(cn => {
         db._drop(cn);
       });
     },
 
-    test_returns_all_collections: function() {
+    test_returns_all_collections: function () {
       let cmd = api;
       let doc = arango.GET_RAW(cmd);
 
@@ -67,7 +67,7 @@ function all_collectionsSuite () {
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
 
-      let collections = doc.parsedBody["result"];;
+      let collections = doc.parsedBody["result"];
 
       let total = 0;
       let realCollections = [ ];
@@ -81,7 +81,7 @@ function all_collectionsSuite () {
       assertTrue(total > 3);
     },
 
-    test_returns_all_collections__exclude_system_collections: function() {
+    test_returns_all_collections__exclude_system_collections: function () {
       let cmd = api + '/?excludeSystem=true';
       let doc = arango.GET_RAW(cmd);
 
@@ -106,13 +106,13 @@ function all_collectionsSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
 function error_handlingSuite () {
   return {
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
+    test_returns_an_error_if_collection_identifier_is_unknown: function () {
       let cmd = api + "/123456";
       let doc = arango.GET_RAW(cmd);
 
@@ -146,7 +146,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code);
     },
 
-    test_creating_a_collection_with_an_illegal_name: function() {
+    test_creating_a_collection_with_an_illegal_name: function () {
       let cmd = api;
       let body = "{ \"name\" : \"1\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -158,7 +158,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code);
     },
 
-    test_creating_a_collection_with_a_duplicate_name: function() {
+    test_creating_a_collection_with_a_duplicate_name: function () {
       let cn = "UnitTestsCollectionBasics";
       let cid = db._create(cn);
 
@@ -173,7 +173,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DUPLICATE_NAME.code);
     },
 
-    test_creating_a_collection_with_an_illegal_body: function() {
+    test_creating_a_collection_with_an_illegal_body: function () {
       let cmd = api;
       let body = "{ name : world }";
       let doc = arango.POST_RAW(cmd, body);
@@ -186,7 +186,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorMessage'], "VPackError error: Expecting '\"' or '}'");
     },
 
-    test_creating_a_collection_with_a_null_body: function() {
+    test_creating_a_collection_with_a_null_body: function () {
       let cmd = api;
       let body = "null";
       let doc = arango.POST_RAW(cmd, body);
@@ -196,27 +196,27 @@ function error_handlingSuite () {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 400);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_ILLEGAL_NAME.code);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // schema validation;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function schema_validationSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_sets_an_invalid_schema: function() {
+    test_sets_an_invalid_schema: function () {
       let cmd = api + "/" + cn + "/properties";
       let body = "{ \"schema\": { \"rule\": \"peng!\", \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }";
       let doc = arango.PUT_RAW(cmd, body);
@@ -227,7 +227,7 @@ function schema_validationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_VALIDATION_BAD_PARAMETER.code);
     },
 
-    test_sets_a_valid_schema: function() {
+    test_sets_a_valid_schema: function () {
       let cmd = api + "/" + cn + "/properties";
       let body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }";
       let doc = arango.PUT_RAW(cmd, body);
@@ -243,7 +243,7 @@ function schema_validationSuite () {
       assertEqual(doc.parsedBody['schema']['message'], "document has an invalid schema!");
     },
 
-    test_stores_valid_documents: function() {
+    test_stores_valid_documents: function () {
       let cmd = api + "/" + cn + "/properties";
       let body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }";
       let doc = arango.PUT_RAW(cmd, body);
@@ -259,7 +259,7 @@ function schema_validationSuite () {
       assertEqual(doc.code, 202);
     },
 
-    test_stores_invalid_documents: function() {
+    test_stores_invalid_documents: function () {
       let cmd = api + "/" + cn + "/properties";
       let body = "{ \"schema\": { \"rule\": { \"properties\": { \"_key\": { \"type\": \"string\" }, \"_rev\": { \"type\": \"string\" }, \"_id\": { \"type\": \"string\" }, \"name\": { \"type\": \"object\", \"properties\": { \"first\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 }, \"last\": { \"type\": \"string\", \"minLength\": 1, \"maxLength\": 50 } }, \"required\": [\"first\", \"last\"] }, \"status\": { \"enum\": [\"active\", \"inactive\", \"deleted\"] } }, \"additionalProperties\": false, \"required\": [\"name\", \"status\"] }, \"level\": \"strict\", \"message\": \"document has an invalid schema!\" } }";
       let doc = arango.PUT_RAW(cmd, body);
@@ -299,24 +299,24 @@ function schema_validationSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // reading a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function readingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
     // get;
-    test_finds_the_collection_by_identifier: function() {
+    test_finds_the_collection_by_identifier: function () {
       let cmd = api + `/${cid._id}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -344,11 +344,11 @@ function readingSuite () {
       // 2 = unloaded, 3 = loaded, 4 = unloading;
       // additionally, in a cluster there is no such thing as one status for a;
       // collection, as each shard can have a different status;
-      assertTrue([2,3,4].includes(doc.parsedBody['status']));
+      assertTrue([2, 3, 4].includes(doc.parsedBody['status']));
     },
 
     // get;
-    test_finds_the_collection_by_name: function() {
+    test_finds_the_collection_by_name: function () {
       let cmd = api + "/" + cn;
       let doc = arango.GET_RAW(cmd);
 
@@ -376,11 +376,11 @@ function readingSuite () {
       // 2 = unloaded, 3 = loaded, 4 = unloading;
       // additionally, in a cluster there is no such thing as one status for a;
       // collection, as each shard can have a different status;
-      assertTrue([2,3,4].includes(doc.parsedBody['status']));
+      assertTrue([2, 3, 4].includes(doc.parsedBody['status']));
     },
 
     // get count;
-    test_checks_the_size_of_a_collection: function() {
+    test_checks_the_size_of_a_collection: function () {
       let cmd = api + "/" + cn + "/count";
       let doc = arango.GET_RAW(cmd);
 
@@ -395,7 +395,7 @@ function readingSuite () {
     },
 
     // get count;
-    test_checks_the_properties_of_a_collection: function() {
+    test_checks_the_properties_of_a_collection: function () {
       let cmd = api + "/" + cn + "/properties";
       let doc = arango.GET_RAW(cmd);
 
@@ -411,7 +411,7 @@ function readingSuite () {
     },
 
     // get figures;
-    test_extracting_the_figures_for_a_collection: function() {
+    test_extracting_the_figures_for_a_collection: function () {
       let cmd = api + "/" + cn + "/figures";
       let doc = arango.GET_RAW(cmd);
 
@@ -437,8 +437,8 @@ function readingSuite () {
       }
       // create a few documents, this should increase counts;
       let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "test" : i});
+      for (let i = 0; i < 10; i++) {
+        docs.push({ "test": i});
       }
       db[cn].save(docs);
 
@@ -460,8 +460,8 @@ function readingSuite () {
 
       // create a few different documents, this should increase counts;
       docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "test" : i});
+      for (let i = 0; i < 10; i++) {
+        docs.push({ "test": i});
       }
       db[cn].save(docs);
 
@@ -509,7 +509,7 @@ function readingSuite () {
     },
 
     // get revision id
-    test_extracting_the_revision_id_of_a_collection: function() {
+    test_extracting_the_revision_id_of_a_collection: function () {
       let cmd = api + "/" + cn + "/revision";
       let doc = arango.GET_RAW(cmd);
 
@@ -539,7 +539,7 @@ function readingSuite () {
 
       let r2 = doc.parsedBody['revision'];
       assertTrue(r2.length > 0);
-      assertNotEqual(r1, r2);;
+      assertNotEqual(r1, r2);
 
       // create another document;
       doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
@@ -576,13 +576,13 @@ function readingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // deleting of collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function deletingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_delete_an_existing_collection_by_identifier: function() {
+    test_delete_an_existing_collection_by_identifier: function () {
       let cid = db._create(cn);
       let cmd = api + "/" + cn;
       let doc = arango.DELETE_RAW(cmd);
@@ -600,7 +600,7 @@ function deletingSuite () {
       assertEqual(doc.parsedBody['code'], 404);
     },
 
-    test_delete_an_existing_collection_by_name: function() {
+    test_delete_an_existing_collection_by_name: function () {
       let cid = db._create(cn);
       let cmd = api + "/" + cn;
       let doc = arango.DELETE_RAW(cmd);
@@ -616,17 +616,17 @@ function deletingSuite () {
 
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 404);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // creating a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creatingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_create_a_collection: function() {
+    test_create_a_collection: function () {
       let cmd = api;
       let body = `{ \"name\" : \"${cn}\" }`;
       let doc = arango.POST_RAW(cmd, body);
@@ -647,7 +647,7 @@ function creatingSuite () {
       db._drop(cn);
     },
 
-    test_create_a_collection__sync: function() {
+    test_create_a_collection__sync: function () {
       let cmd = api;
       let body = `{ \"name\" : \"${cn}\", \"waitForSync\" : true }`;
       let doc = arango.POST_RAW(cmd, body);
@@ -668,7 +668,7 @@ function creatingSuite () {
       db._drop(cn);
     },
 
-    test_create_a_collection__invalid_name: function() {
+    test_create_a_collection__invalid_name: function () {
       let cmd = api;
       let body = "{ \"name\" : \"_invalid\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -679,7 +679,7 @@ function creatingSuite () {
       assertEqual(doc.parsedBody['code'], 400);
     },
 
-    test_create_a_collection__already_existing: function() {
+    test_create_a_collection__already_existing: function () {
       db._drop(cn);
       let cmd = api;
       let body = `{ \"name\" : \"${cn}\" }`;
@@ -699,17 +699,17 @@ function creatingSuite () {
       assertEqual(doc.parsedBody['code'], 409);
 
       db._drop(cn);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // load a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function loadingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_load_a_collection_by_identifier: function() {
+    test_load_a_collection_by_identifier: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
@@ -729,7 +729,7 @@ function loadingSuite () {
       db._drop(cn);
     },
 
-    test_load_a_collection_by_name: function() {
+    test_load_a_collection_by_name: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
@@ -749,13 +749,13 @@ function loadingSuite () {
       db._drop(cn);
     },
 
-    test_load_a_collection_by_name_with_explicit_count: function() {
+    test_load_a_collection_by_name_with_explicit_count: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
       let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
+      for (let i = 0; i < 10; i++) {
+        docs.push({ "hello": "world"});
       }
       db[cn].save(docs);
 
@@ -776,7 +776,7 @@ function loadingSuite () {
       db._drop(cn);
     },
 
-    test_load_a_collection_by_name_without_count: function() {
+    test_load_a_collection_by_name_without_count: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
@@ -802,14 +802,14 @@ function loadingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // unloading a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
 function unloadingSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    test_unload_a_collection_by_identifier: function() {
+    test_unload_a_collection_by_identifier: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
@@ -827,7 +827,7 @@ function unloadingSuite () {
       db._drop(cn);
     },
 
-    test_unload_a_collection_by_name: function() {
+    test_unload_a_collection_by_name: function () {
       db._drop(cn);
       let cid = db._create(cn);
 
@@ -843,30 +843,30 @@ function unloadingSuite () {
       assertEqual(doc.parsedBody['status'], 3);
 
       db._drop(cn);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // truncate a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function truncatingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_truncate_a_collection_by_identifier: function() {
+    test_truncate_a_collection_by_identifier: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
       let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
+      for (let i = 0; i < 10; i++) {
+        docs.push({ "hello": "world"});
       }
       db[cn].save(docs);
 
@@ -874,7 +874,7 @@ function truncatingSuite () {
 
       cmd = api + "/" + cn + "/truncate";
       let doc = arango.PUT_RAW(cmd, '');
-      
+
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
@@ -890,22 +890,22 @@ function truncatingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // properties of a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function propertiesSuite () {
   let cn = "UnitTestsCollectionBasics";
   return {
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
-    },      
-    test_changing_the_properties_of_a_collection_by_identifier: function() {
+    },
+    test_changing_the_properties_of_a_collection_by_identifier: function () {
       let cid = db._create(cn);
 
       let cmd = `/_api/document?collection=${cid._id}`;
       let docs = [];
-      for (let i = 0; i < 10; i++){
-        docs.push({ "hello" : "world"});
+      for (let i = 0; i < 10; i++) {
+        docs.push({ "hello": "world"});
       }
       db[cn].save(docs);
 
@@ -945,7 +945,7 @@ function propertiesSuite () {
 
     },
 
-    test_create_collection_with_explicit_keyOptions_property__traditional_keygen: function() {
+    test_create_collection_with_explicit_keyOptions_property__traditional_keygen: function () {
       let cmd = "/_api/collection";
       let body = `{ \"name\" : \"${cn}\", \"waitForSync\" : false, \"type\" : 2, \"keyOptions\" : {\"type\": \"traditional\", \"allowUserKeys\": true } }`;
       let doc = arango.POST_RAW(cmd, body);
@@ -970,7 +970,7 @@ function propertiesSuite () {
 
     },
 
-    test_create_collection_with_empty_keyOptions_property: function() {
+    test_create_collection_with_empty_keyOptions_property: function () {
       let cmd = "/_api/collection";
       let body = `{ \"name\" : \"${cn}\", \"waitForSync\" : false, \"type\" : 2 }`;
       let doc = arango.POST_RAW(cmd, body);

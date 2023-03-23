@@ -1,31 +1,31 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for truncate operation over aragosearch link
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for truncate operation over aragosearch link
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrey Abramov
+// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');
 const db = arangodb.db;
@@ -41,15 +41,21 @@ function runSetup () {
 
   db._drop(cn);
   var c = db._create(cn);
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
+  var i1 = c.ensureIndex({ type: "inverted",
+name: "i1",
+includeAllFields: true });
 
-  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
+  var meta = { indexes: [ { index: i1.name,
+collection: c.name() } ] };
   db._dropView(vn);
   db._createView(vn, 'search-alias', meta);
 
   // 35k to overcome RocksDB optimization and force use truncate
   for (let i = 0; i < 35000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+    c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i,
+_key: "doc_" + i });
   }
 
   c.save({ name: "crashme" }, { waitForSync: true });
@@ -66,7 +72,7 @@ function recoverySuite () {
     tearDown: function () {},
 
     testIResearchLinkPopulateTruncate: function () {
-      let checkView = function(viewName, indexName) {
+      let checkView = function (viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
         assertEqual(v.type(), 'search-alias');

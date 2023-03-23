@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -36,7 +36,8 @@ const communityGenerator = function (vColl, label) {
                 _to: `${vColl}/${label}_${to}`,
                 vertex: `${label}_${from}`
             };
-        }, makeVertex: function (name) {
+        },
+makeVertex: function (name) {
             return {
                 _key: `${label}_${name}`,
                 label: `${label}`
@@ -63,7 +64,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
     const makeSingleVertexNoEdges = function () {
         const vertices = makeVertices(1);
         const edges = [];
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     // length must be at least 2, shorter cycles make no sense and throw
@@ -79,7 +81,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
             edges.push(makeEdge(i, i + 1));
         }
         edges.push(makeEdge(length - 1, 0));
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
 
@@ -96,7 +99,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
         }
         edges.push(makeEdge(length - 1, 0));
         edges.push(makeEdge(0, length - 1));
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     // An alternating cycle is obtained from a directed cycle
@@ -124,7 +128,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 edges.push(makeEdge(length - 1, 0));
             }
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     // Creates a full binary tree of depth treeDepth (0 means: only the root) with edges directed away from the root.
@@ -132,7 +137,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
     // (v,w) is replaced by (w,v). (I.e., if alternating is true, two edges point to the root of the tree.)
     const makeFullBinaryTree = function (treeDepth, alternating = false) {
         if (treeDepth === 0) {
-            return {vertices: [0], edges: []};
+            return {vertices: [0],
+edges: []};
         }
         if (treeDepth > 14) {
             console.warn(`createFullBinaryTree WARNING: creating ${Math.pow(2, treeDepth + 1) - 1} vertices!`);
@@ -169,7 +175,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 leaves = leavesNestLevel;
             }
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
 // Creates a graph with size many vertices such that for each pair (v,w) of distinct vertices,
@@ -195,7 +202,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
             }
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     // a wrapper to unify the call of createDirectedCycle, createAlternatingCycle, createFullBinaryTree
@@ -231,7 +239,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
             }
 
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     // Creates a star with numberLeaves many rays. The center has index 0.
@@ -270,7 +279,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
                 break;
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     /**
@@ -329,7 +339,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
                 }
             }
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
     /**
@@ -357,7 +368,8 @@ const graphGenerator = function (verticesEdgesGenerator) {
             edges.push(makeEdge(source, i));
             edges.push(makeEdge(numberLayers * (thickness - 1) + i, target));
         }
-        return {vertices, edges};
+        return {vertices,
+edges};
     };
 
 
@@ -402,7 +414,8 @@ const unionGraph = function (subgraphs) {
     for (const subgraph of subgraphs) {
         edges = edges.concat(subgraph.edges);
     }
-    return {vertices, edges};
+    return {vertices,
+edges};
 };
 
 /**
@@ -438,7 +451,7 @@ const loadGraphGenerators = function (isSmart) {
 
 class Vertex {
 
-    constructor(key, label, value = 0) {
+    constructor (key, label, value = 0) {
         this.outEdges = [];
         this.outNeighbors = new Set();
         this.inEdges = [];
@@ -448,21 +461,21 @@ class Vertex {
         this.value = value;
     }
 
-    outDegree() {
+    outDegree () {
         return this.outNeighbors.size;
     }
 }
 
 class Graph {
 
-    vertex(key) {
+    vertex (key) {
         return this.vertices.get(key);
     }
 
-    printVertices(onlyKeys = false) {
+    printVertices (onlyKeys = false) {
         if (onlyKeys) {
             let listVertices = [];
-            for (const [vKey,] of this.vertices) {
+            for (const [vKey] of this.vertices) {
                 listVertices.push(vKey);
             }
             console.warn(listVertices);
@@ -485,7 +498,7 @@ class Graph {
      * @param edges Array of objects representing edges, each object should contain attributes "_from" and "_to"
      *      and for each value of "_from" and "_to" there should be a vertex whose _key is this value.
      */
-    constructor(vertices, edges) {
+    constructor (vertices, edges) {
         const getKey = function (v) {
             return v.substr(v.indexOf('/') + 1);
         };
@@ -527,7 +540,7 @@ class Graph {
      * @param cbOnPopVertex Either undefined or the callback function to run on a vertex
      *              that is being popped from the queue. The function must have one argument: the vertex being popped.
      */
-    bfs(source, cbOnFindVertex, cbOnPopVertex) {
+    bfs (source, cbOnFindVertex, cbOnPopVertex) {
         assertTrue(typeof (source) === `string`, `${source} is not a string`);
         assertTrue(this.vertices.has(`${source}`), `bfs: the given source "${JSON.stringify(source)}" is not a vertex`);
         let visited = new Set();
@@ -558,7 +571,7 @@ class Graph {
      * Performs DFS from source, calls cbOnFindVertex on a vertex when the vertex is reached and cbOnPopVertex
      * when the vertex is popped from the queue.
      */
-    dfs(source, cbOnFindVertex, cbOnPopVertex) {
+    dfs (source, cbOnFindVertex, cbOnPopVertex) {
         assertTrue(this.vertices.has(source), `dfs: the given source "${source}" is not a vertex`);
         let visited = new Set();
         visited.add(source);

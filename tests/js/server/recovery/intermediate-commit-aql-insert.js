@@ -40,12 +40,12 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery');
 
   try {
-    db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { value: i, modified: false } INTO UnitTestsRecovery", 
+    db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { value: i, modified: false } INTO UnitTestsRecovery",
               {}, {intermediateCommitCount: 1000});
   } catch (err) {
     // intentionally fail
   }
-          
+
   c.insert({ _key: 'crash' }, { waitForSync: true });
   internal.debugTerminate('crashing server');
 }

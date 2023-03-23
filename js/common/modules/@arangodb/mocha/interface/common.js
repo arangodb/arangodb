@@ -5,7 +5,7 @@
 
 const Suite = require('@arangodb/mocha/suite');
 
-function createMissingArgumentError(message, argument, expected) {
+function createMissingArgumentError (message, argument, expected) {
   var err = new TypeError(message);
   err.code = 'ERR_MOCHA_INVALID_ARG_TYPE';
   err.argument = argument;
@@ -14,8 +14,8 @@ function createMissingArgumentError(message, argument, expected) {
   return err;
 }
 
-module.exports = function(suites, context, mocha) {
-  function shouldBeTested(suite) {
+module.exports = function (suites, context, mocha) {
+  function shouldBeTested (suite) {
     return (
       !mocha.options.grep ||
       (mocha.options.grep &&
@@ -25,40 +25,40 @@ module.exports = function(suites, context, mocha) {
   }
 
   return {
-    runWithSuite: function runWithSuite(suite) {
-      return function run() {
+    runWithSuite: function runWithSuite (suite) {
+      return function run () {
         suite.run();
       };
     },
 
-    before: function(name, fn) {
+    before: function (name, fn) {
       suites[0].beforeAll(name, fn);
     },
 
-    after: function(name, fn) {
+    after: function (name, fn) {
       suites[0].afterAll(name, fn);
     },
 
-    beforeEach: function(name, fn) {
+    beforeEach: function (name, fn) {
       suites[0].beforeEach(name, fn);
     },
 
-    afterEach: function(name, fn) {
+    afterEach: function (name, fn) {
       suites[0].afterEach(name, fn);
     },
 
     suite: {
-      only: function only(opts) {
+      only: function only (opts) {
         opts.isOnly = true;
         return this.create(opts);
       },
 
-      skip: function skip(opts) {
+      skip: function skip (opts) {
         opts.pending = true;
         return this.create(opts);
       },
 
-      create: function create(opts) {
+      create: function create (opts) {
         var suite = Suite.create(suites[0], opts.title);
         suite.pending = Boolean(opts.pending);
         suite.file = opts.file;
@@ -96,16 +96,16 @@ module.exports = function(suites, context, mocha) {
     },
 
     test: {
-      only: function(mocha, test) {
+      only: function (mocha, test) {
         test.parent.appendOnlyTest(test);
         return test;
       },
 
-      skip: function(title) {
+      skip: function (title) {
         context.test(title);
       },
 
-      retries: function(n) {
+      retries: function (n) {
         context.retries(n);
       }
     }

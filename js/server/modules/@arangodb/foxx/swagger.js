@@ -93,7 +93,8 @@ module.exports = function createSwaggerRouteHandler (foxxMount, opts) {
           }
           throw e;
         }
-        swaggerJsonHandler(req, res, {mount, foxx});
+        swaggerJsonHandler(req, res, {mount,
+foxx});
         return;
       } else if (swaggerJsonHandler && typeof swaggerJsonHandler === 'object') {
         res.json(swaggerJsonHandler);

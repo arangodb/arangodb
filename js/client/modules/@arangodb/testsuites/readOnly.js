@@ -86,7 +86,7 @@ function readOnly (options) {
     });
 
   print(CYAN + 'readOnly tests...' + RESET);
-  
+
   let instanceManager = new im.instanceManager('tcp', options, conf, 'readOnly');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
@@ -103,12 +103,14 @@ function readOnly (options) {
   const requests = [
     [200, 'post', '/_api/collection', 'root', {name: 'testcol'}],
     [202, 'post', '/_api/document/testcol', 'root', {_key: 'abcd'}],
-    [201, 'post', '/_api/index?collection=testcol', 'root', {fields: ['abc'], type: 'hash'}],
+    [201, 'post', '/_api/index?collection=testcol', 'root', {fields: ['abc'],
+type: 'hash'}],
     [200, 'get', '/_api/index?collection=testcol', 'root', {}],
 
     // create and delete index
     [403, 'delete', '/_api/index/', 'test', {}],
-    [403, 'post', '/_api/index?collection=testcol', 'test', {fields: ['xyz'], type: 'hash'}],
+    [403, 'post', '/_api/index?collection=testcol', 'test', {fields: ['xyz'],
+type: 'hash'}],
 
     // create, delete, truncate collection
     [403, 'post', '/_api/collection', 'test', {name: 'testcol2'}],
@@ -148,7 +150,8 @@ function readOnly (options) {
       let req = {
         url: `${instanceManager.url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: { username: r[3], password: '' },
+        auth: { username: r[3],
+password: '' },
         timeout: 60.0
       };
       const res = request[r[1]](req);
@@ -202,7 +205,7 @@ function readOnly (options) {
     let shutdownStatus = instanceManager.shutdownInstance();
     instanceManager.destructor(false);
     return {
-      readOnly : {
+      readOnly: {
         status: false,
         total: 1,
         message: 'the readonly suite failed to setup the environment.',
@@ -232,6 +235,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['readOnly'] = readOnly;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

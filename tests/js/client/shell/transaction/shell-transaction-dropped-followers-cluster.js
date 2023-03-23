@@ -30,7 +30,7 @@ const _ = require('lodash');
 const db = arangodb.db;
 const { getEndpointById, getEndpointsByType, getMetric } = require('@arangodb/test-helper');
 
-function getDroppedFollowers(servers) {
+function getDroppedFollowers (servers) {
   let droppedFollowers = {};
   servers.forEach((serverId) => {
     let endpoint = getEndpointById(serverId);
@@ -39,7 +39,7 @@ function getDroppedFollowers(servers) {
   return droppedFollowers;
 }
 
-function getIntermediateCommits(servers) {
+function getIntermediateCommits (servers) {
   let intermediateCommits = {};
   servers.forEach((serverId) => {
     let endpoint = getEndpointById(serverId);
@@ -48,7 +48,7 @@ function getIntermediateCommits(servers) {
   return intermediateCommits;
 }
 
-function transactionDroppedFollowersSuite() {
+function transactionDroppedFollowersSuite () {
   'use strict';
   const cn = 'UnitTestsTransaction';
 
@@ -61,11 +61,12 @@ function transactionDroppedFollowersSuite() {
     tearDown: function () {
       db._drop(cn);
     },
-    
+
     testInsertSameFollower: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
       let docs = [];
-      for (let i = 0; i < 1000; ++i) { 
+      for (let i = 0; i < 1000; ++i) {
         docs.push({});
       }
 
@@ -77,16 +78,17 @@ function transactionDroppedFollowersSuite() {
       for (let i = 0; i < 50; ++i) {
         c.insert(docs);
       }
-      
+
       assertEqual(1000 * 50, c.count());
 
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
-    
+
     testInsertAQLSameFollower: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
 
       let shards = db._collection(cn).shards(true);
       let servers = shards[Object.keys(shards)[0]];
@@ -98,21 +100,22 @@ function transactionDroppedFollowersSuite() {
       }
 
       assertEqual(1000 * 50, c.count());
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
 
     testTransactionWritesSameFollower: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
       let docs = [];
-      for (let i = 0; i < 1000; ++i) { 
+      for (let i = 0; i < 1000; ++i) {
         docs.push({});
       }
       const opts = {
         collections: {
-          write: [ cn  ]
+          write: [ cn ]
         }
       };
 
@@ -121,7 +124,7 @@ function transactionDroppedFollowersSuite() {
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
 
-      for (let i = 0; i < 50; ++i) { 
+      for (let i = 0; i < 50; ++i) {
         const trx = db._createTransaction(opts);
         const tc = trx.collection(cn);
         tc.insert(docs);
@@ -130,21 +133,22 @@ function transactionDroppedFollowersSuite() {
       }
 
       assertEqual(1000 * 50, c.count());
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
-    
+
     testTransactionExclusiveSameFollower: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
       let docs = [];
-      for (let i = 0; i < 1000; ++i) { 
+      for (let i = 0; i < 1000; ++i) {
         docs.push({});
       }
       const opts = {
         collections: {
-          exclusive: [ cn  ]
+          exclusive: [ cn ]
         }
       };
 
@@ -153,7 +157,7 @@ function transactionDroppedFollowersSuite() {
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
 
-      for (let i = 0; i < 50; ++i) { 
+      for (let i = 0; i < 50; ++i) {
         const trx = db._createTransaction(opts);
         const tc = trx.collection(cn);
         tc.insert(docs);
@@ -162,21 +166,22 @@ function transactionDroppedFollowersSuite() {
       }
 
       assertEqual(1000 * 50, c.count());
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
-    
+
     testTransactionAbortsSameFollower: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
       let docs = [];
-      for (let i = 0; i < 1000; ++i) { 
+      for (let i = 0; i < 1000; ++i) {
         docs.push({});
       }
       const opts = {
         collections: {
-          write: [ cn  ]
+          write: [ cn ]
         }
       };
 
@@ -185,7 +190,7 @@ function transactionDroppedFollowersSuite() {
 
       let droppedFollowersBefore = getDroppedFollowers(servers);
 
-      for (let i = 0; i < 50; ++i) { 
+      for (let i = 0; i < 50; ++i) {
         const trx = db._createTransaction(opts);
         const tc = trx.collection(cn);
         tc.insert(docs);
@@ -194,21 +199,22 @@ function transactionDroppedFollowersSuite() {
       }
 
       assertEqual(0, c.count());
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
     },
 
     testTransactionWritesSameFollowerIntermediateCommit: function () {
-      let c = db._create(cn, { numberOfShards: 40, replicationFactor: 3 });
+      let c = db._create(cn, { numberOfShards: 40,
+replicationFactor: 3 });
       let docs = [];
-      for (let i = 0; i < 2000; ++i) { 
+      for (let i = 0; i < 2000; ++i) {
         docs.push({});
       }
       const opts = {
         collections: {
-          write: [ cn  ]
+          write: [ cn ]
         },
         intermediateCommitCount: 50
       };
@@ -219,7 +225,7 @@ function transactionDroppedFollowersSuite() {
       let droppedFollowersBefore = getDroppedFollowers(servers);
       let intermediateCommitsBefore = getIntermediateCommits(servers);
 
-      for (let i = 0; i < 10; ++i) { 
+      for (let i = 0; i < 10; ++i) {
         const trx = db._createTransaction(opts);
         const tc = trx.collection(cn);
         tc.insert(docs);
@@ -228,17 +234,17 @@ function transactionDroppedFollowersSuite() {
       }
 
       assertEqual(2000 * 10, c.count());
-      
+
       // follower must not have been dropped
       let droppedFollowersAfter = getDroppedFollowers(servers);
       assertEqual(droppedFollowersBefore, droppedFollowersAfter);
-      
+
       let intermediateCommitsAfter = getIntermediateCommits(servers);
 
       Object.keys(intermediateCommitsBefore).forEach((s) => {
         assertTrue(intermediateCommitsBefore[s] + 5 < intermediateCommitsAfter[s]);
       });
-    },
+    }
   };
 }
 

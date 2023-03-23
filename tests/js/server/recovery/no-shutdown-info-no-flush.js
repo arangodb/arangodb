@@ -42,7 +42,8 @@ function runSetup () {
   internal.debugSetFailAt('LogfileManagerWriteShutdown');
 
   for (i = 0; i < 100; ++i) {
-    c.save({ _key: 'old' + i, a: i });
+    c.save({ _key: 'old' + i,
+a: i });
   }
 
   db._executeTransaction({
@@ -54,7 +55,9 @@ function runSetup () {
       var c = db._collection('UnitTestsRecovery');
       var i;
       for (i = 0; i < 10000; ++i) {
-        c.save({ _key: 'test' + i, value1: i, value2: 'foobarbaz' + i });
+        c.save({ _key: 'test' + i,
+value1: i,
+value2: 'foobarbaz' + i });
       }
       for (i = 0; i < 50; ++i) {
         c.remove('old' + i, { waitForSync: i === 49 });

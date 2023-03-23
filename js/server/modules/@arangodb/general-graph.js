@@ -33,8 +33,8 @@ const internal = require('internal'); // OK: reloadAuth
 const ggc = require('@arangodb/general-graph-common');
 const GeneralGraphModule = internal.ArangoGeneralGraphModule;
 
-const {GeneralGraph, SmartGraph, EnterpriseGraph, SatelliteGraph} = internal.isEnterprise() ?
-  require('@arangodb/ee-graph-classes') : require('@arangodb/graph-classes');
+const {GeneralGraph, SmartGraph, EnterpriseGraph, SatelliteGraph} = internal.isEnterprise()
+  ? require('@arangodb/ee-graph-classes') : require('@arangodb/graph-classes');
 
 const graphToClass = graph => {
   if (internal.isEnterprise()) {

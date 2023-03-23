@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,23 +31,23 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 const isEnterprise = require("internal").isEnterprise();
 
 let api = "/_api/view";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function creationSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/test');
       arango.DELETE_RAW(api + '/dup');
     },
 
-    test_creating_a_view_without_body: function() {
+    test_creating_a_view_without_body: function () {
       let cmd = api;
       let doc = arango.POST_RAW(cmd, "");
 
@@ -58,9 +58,10 @@ function creationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_creating_a_view_without_name: function() {
+    test_creating_a_view_without_name: function () {
       let cmd = api;
-      let body = { "type": "arangosearch", "properties": {} };
+      let body = { "type": "arangosearch",
+"properties": {} };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -70,9 +71,10 @@ function creationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_creating_a_view_without_type: function() {
+    test_creating_a_view_without_type: function () {
       let cmd = api;
-      let body = { "name": "abc", "properties": {} };
+      let body = { "name": "abc",
+"properties": {} };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -82,9 +84,11 @@ function creationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_creating_a_view_with_invalid_type: function() {
+    test_creating_a_view_with_invalid_type: function () {
       let cmd = api;
-      let body = { "name": "test", "type": "foobar", "properties": {} };
+      let body = { "name": "test",
+"type": "foobar",
+"properties": {} };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -94,9 +98,10 @@ function creationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_creating_a_view_without_properties: function() {
+    test_creating_a_view_without_properties: function () {
       let cmd = api;
-      let body = { "name": "test", "type": "arangosearch" };
+      let body = { "name": "test",
+"type": "arangosearch" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -111,9 +116,11 @@ function creationSuite () {
       assertEqual(doc2.headers['content-type'], contentType);
     },
 
-    test_duplicate_name: function() {
+    test_duplicate_name: function () {
       let cmd1 = api;
-      let body1 = { "name": "dup", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "dup",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -122,7 +129,9 @@ function creationSuite () {
       assertEqual(doc1.parsedBody['type'], "arangosearch");
 
       let cmd2 = api;
-      let body2 = { "name": "dup", "type": "arangosearch", "properties": {} };
+      let body2 = { "name": "dup",
+"type": "arangosearch",
+"properties": {} };
       let doc2 = arango.POST_RAW(cmd2, body2);
 
       assertEqual(doc2.code, internal.errors.ERROR_HTTP_CONFLICT.code);
@@ -141,16 +150,18 @@ function creationSuite () {
 }
 function renameSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/testView');
       arango.DELETE_RAW(api + '/newName');
       arango.DELETE_RAW(api + '/dup');
       arango.DELETE_RAW(api + '/dup2');
     },
 
-    test_valid_change: function() {
+    test_valid_change: function () {
       let cmd1 = api;
-      let body1 = { "name": "testView", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "testView",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -173,9 +184,11 @@ function renameSuite () {
       assertEqual(doc3.headers['content-type'], contentType);
     },
 
-    test_same_name: function() {
+    test_same_name: function () {
       let cmd1 = api;
-      let body1 = { "name": "testView", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "testView",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -198,9 +211,11 @@ function renameSuite () {
       assertEqual(doc3.headers['content-type'], contentType);
     },
 
-    test_invalid_name: function() {
+    test_invalid_name: function () {
       let cmd1 = api;
-      let body1 = { "name": "testView", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "testView",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -225,9 +240,11 @@ function renameSuite () {
       assertEqual(doc3.headers['content-type'], contentType);
     },
 
-    test_ren_duplicate_name: function() {
+    test_ren_duplicate_name: function () {
       let cmd1 = api;
-      let body1 = { "name": "dup", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "dup",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -236,7 +253,9 @@ function renameSuite () {
       assertEqual(doc1.parsedBody['type'], "arangosearch");
 
       let cmd2 = api;
-      let body2 = { "name": "dup2", "type": "arangosearch", "properties": {} };
+      let body2 = { "name": "dup2",
+"type": "arangosearch",
+"properties": {} };
       let doc2 = arango.POST_RAW(cmd2, body2);
 
       assertEqual(doc2.code, 201);
@@ -271,7 +290,7 @@ function renameSuite () {
 
 function deletionSuite () {
   return {
-    test_deleting_a_non_existent_view: function() {
+    test_deleting_a_non_existent_view: function () {
       let cmd = api + "/foobar";
       let doc = arango.DELETE_RAW(cmd);
 
@@ -286,7 +305,7 @@ function deletionSuite () {
 
 function retrievalSuite () {
   return {
-    test_getting_a_non_existent_view: function() {
+    test_getting_a_non_existent_view: function () {
       let cmd = api + "/foobar";
       let doc = arango.GET_RAW(cmd);
 
@@ -297,7 +316,7 @@ function retrievalSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_getting_properties_of_a_non_existent_view: function() {
+    test_getting_properties_of_a_non_existent_view: function () {
       let cmd = api + "/foobar/properties";
       let doc = arango.GET_RAW(cmd);
 
@@ -312,11 +331,11 @@ function retrievalSuite () {
 
 function modificationSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/lemon');
     },
 
-    test_modifying_view_directly__not_properties: function() {
+    test_modifying_view_directly__not_properties: function () {
       let cmd = api + "/foobar";
       let body = { "level": "DEBUG" };
       let doc = arango.PUT_RAW(cmd, body);
@@ -328,7 +347,7 @@ function modificationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_BAD_PARAMETER.code);
     },
 
-    test_modifying_a_non_existent_view: function() {
+    test_modifying_a_non_existent_view: function () {
       let cmd = api + "/foobar/properties";
       let body = { "level": "DEBUG" };
       let doc = arango.PUT_RAW(cmd, body);
@@ -340,9 +359,11 @@ function modificationSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_modifying_a_view_with_unacceptable_properties: function() {
+    test_modifying_a_view_with_unacceptable_properties: function () {
       let cmd1 = api;
-      let body1 = { "name": "lemon", "type": "arangosearch", "properties": {} };
+      let body1 = { "name": "lemon",
+"type": "arangosearch",
+"properties": {} };
       let doc1 = arango.POST_RAW(cmd1, body1);
 
       assertEqual(doc1.code, 201);
@@ -351,7 +372,8 @@ function modificationSuite () {
       assertEqual(doc1.parsedBody['type'], "arangosearch");
 
       let cmd2 = api + '/lemon/properties';
-      let body2 = { "bogus": "junk", "consolidationIntervalMsec": 17 };
+      let body2 = { "bogus": "junk",
+"consolidationIntervalMsec": 17 };
       let doc2 = arango.PUT_RAW(cmd2, body2);
       assertEqual(doc2.code, 200);
       assertEqual(doc2.headers['content-type'], contentType);
@@ -374,13 +396,15 @@ function modificationSuite () {
 
 function add_dropSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/abc');
     },
 
-    test_creating_a_view: function() {
+    test_creating_a_view: function () {
       let cmd = api;
-      let body = { "name": "abc", "type": "arangosearch", "properties": {} };
+      let body = { "name": "abc",
+"type": "arangosearch",
+"properties": {} };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -389,9 +413,11 @@ function add_dropSuite () {
       assertEqual(doc.parsedBody['type'], "arangosearch");
     },
 
-    test_dropping_a_view: function() {
+    test_dropping_a_view: function () {
       let cmd = api;
-      let body = { "name": "abc", "type": "arangosearch", "properties": {} };
+      let body = { "name": "abc",
+"type": "arangosearch",
+"properties": {} };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -415,13 +441,15 @@ function add_dropSuite () {
 
 function add_with_link_to_non_existing_collectionSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/abc');
     },
 
-    test_creating_a_view_with_link_to_non_existing_collection: function() {
+    test_creating_a_view_with_link_to_non_existing_collection: function () {
       let cmd = api;
-      let body = { "name": "abc", "type": "arangosearch", "links": { "wrong" : {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}} } };
+      let body = { "name": "abc",
+"type": "arangosearch",
+"links": { "wrong": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}} } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -438,22 +466,24 @@ function add_with_link_to_existing_collectionSuite () {
   let cn = "right";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/abc');
       db._drop(cn);
     },
 
-    test_creating_a_view_with_link_to_existing_collection_drop: function() {
+    test_creating_a_view_with_link_to_existing_collection_drop: function () {
       let cmd = api;
       let meta = {};
       if (isEnterprise) {
-        meta = { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+        meta = { "right": { "includeAllFields": true,
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
       } else {
-        meta = { "right" : { "includeAllFields": true, "fields": { "value": {} } } };
+        meta = { "right": { "includeAllFields": true,
+"fields": { "value": {} } } };
       }
       let body = {
         "name": "abc",
@@ -469,16 +499,18 @@ function add_with_link_to_existing_collectionSuite () {
       assertEqual(typeof doc.parsedBody['links']['right'], 'object');
     },
 
-    test_dropping_a_view_with_link: function() {
+    test_dropping_a_view_with_link: function () {
       let cmd = api;
       let meta = {};
       if (isEnterprise) {
-        meta = { "right" : { "includeAllFields": true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
+        meta = { "right": { "includeAllFields": true,
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } };
       } else {
-        meta = { "right" : { "includeAllFields": true, "fields": { "value": {} } } };
+        meta = { "right": { "includeAllFields": true,
+"fields": { "value": {} } } };
       }
 
-      let body ={
+      let body = {
         "name": "abc",
         "type": "arangosearch",
         "links": meta
@@ -507,12 +539,12 @@ function add_with_link_to_existing_collectionSuite () {
 
 function retrieval_with_linSuite () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/abc');
       arango.DELETE_RAW(api + '/def');
     },
 
-    test_empty_list: function() {
+    test_empty_list: function () {
       let cmd = api;
       let doc = arango.GET_RAW(cmd);
 
@@ -521,9 +553,9 @@ function retrieval_with_linSuite () {
       assertEqual(doc.parsedBody['result'], []);
     },
 
-    test_short_list: function() {
+    test_short_list: function () {
       let cmd1 = api;
-      let body1 ={
+      let body1 = {
         "name": "abc",
         "type": "arangosearch",
         "consolidationIntervalMsec": 10
@@ -557,7 +589,7 @@ function retrieval_with_linSuite () {
       assertEqual(doc3.parsedBody['result'][1]['type'], "arangosearch");
     },
 
-    test_individual_views_with_link: function() {
+    test_individual_views_with_link: function () {
       let cmd1 = api;
       let body1 = {
         "name": "abc",
@@ -610,11 +642,11 @@ function retrieval_with_linSuite () {
 
 function modificationSuite2 () {
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + '/abc');
     },
 
-    test_change_properties: function() {
+    test_change_properties: function () {
       let cmd1 = api;
       let body1 = {
         "name": "abc",
@@ -644,7 +676,7 @@ function modificationSuite2 () {
       assertEqual(doc2.parsedBody['consolidationIntervalMsec'], 7);
     },
 
-    test_ignore_extra_properties: function() {
+    test_ignore_extra_properties: function () {
       let cmd1 = api;
       let body1 = {
         "name": "abc",
@@ -659,7 +691,8 @@ function modificationSuite2 () {
       assertEqual(doc1.code, 200);
 
       cmd1 = api + '/abc/properties';
-      body1 = { "consolidationIntervalMsec": 10, "extra": "foobar" };
+      body1 = { "consolidationIntervalMsec": 10,
+"extra": "foobar" };
       doc1 = arango.PUT_RAW(cmd1, body1);
       assertEqual(doc1.code, 200);
       assertEqual(doc1.headers['content-type'], contentType);
@@ -676,7 +709,7 @@ function modificationSuite2 () {
       assertEqual(doc2.parsedBody['extra'], undefined);
     },
 
-    test_accept_updates_via_PATCH_as_well: function() {
+    test_accept_updates_via_PATCH_as_well: function () {
       let cmd1 = api;
       let body1 = {
         "name": "abc",

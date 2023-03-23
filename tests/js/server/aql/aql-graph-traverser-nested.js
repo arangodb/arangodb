@@ -41,14 +41,7 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
-
-
-
-
-
-
-function nestedSuite() {
+function nestedSuite () {
   const gn = 'UnitTestGraph';
   var objects, tags, tagged;
 
@@ -84,7 +77,8 @@ function nestedSuite() {
         ['public', 'train'],
         ['public', 'boat']
       ].forEach(function (edge) {
-        tagged.insert({_from: tags.name() + '/' + edge[0], _to: objects.name() + '/' + edge[1]});
+        tagged.insert({_from: tags.name() + '/' + edge[0],
+_to: objects.name() + '/' + edge[1]});
       });
     },
 

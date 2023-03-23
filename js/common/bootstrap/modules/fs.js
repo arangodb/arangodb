@@ -619,7 +619,9 @@ global.DEFINE_MODULE('fs', (function () {
     delete global.FS_ZIP_FILE;
   }
 
-  exports.escapePath = function (s) { return s.replace(/\\/g,'\\\\'); };
+  exports.escapePath = function (s) {
+ return s.replace(/\\/g, '\\\\');
+};
 
   return exports;
 }()));

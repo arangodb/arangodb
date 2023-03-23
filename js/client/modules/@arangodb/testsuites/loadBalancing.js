@@ -2,28 +2,28 @@
 /* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'load_balancing': 'load balancing tests'
@@ -48,9 +48,9 @@ const testPaths = {
   'load_balancing': [tu.pathForTesting('client/load-balancing')]
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: load_balancing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: load_balancing
+// //////////////////////////////////////////////////////////////////////////////
 
 function loadBalancingClient (options) {
   if (options.skipLoadBalancing === true) {
@@ -64,9 +64,11 @@ function loadBalancingClient (options) {
   }
 
   print(CYAN + 'Load Balancing tests...' + RESET);
-  const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
-  let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
-      .filter(excludeAuth);
+  const excludeAuth = (fn) => {
+ return (fn.indexOf('-auth') === -1);
+};
+  let testCases = tu.scanTestPaths(testPaths.load_balancing, options).
+      filter(excludeAuth);
   let opts = _.clone(options);
   opts.cluster = true;
   if (opts.coordinators < 2) {
@@ -80,9 +82,9 @@ function loadBalancingClient (options) {
   return rc;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief TEST: load_balancing_auth
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: load_balancing_auth
+// //////////////////////////////////////////////////////////////////////////////
 
 function loadBalancingAuthClient (options) {
   if (options.skipLoadBalancing === true) {
@@ -96,9 +98,11 @@ function loadBalancingAuthClient (options) {
   }
 
   print(CYAN + 'Load Balancing with Authentication tests...' + RESET);
-  const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
-  let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
-                    .filter(excludeNoAuth);
+  const excludeNoAuth = (fn) => {
+ return (fn.indexOf('-noauth') === -1);
+};
+  let testCases = tu.scanTestPaths(testPaths.load_balancing, options).
+                    filter(excludeNoAuth);
   let opts = _.clone(options);
   opts.cluster = true;
   if (opts.coordinators < 2) {
@@ -119,6 +123,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
 
   opts['skipLoadBalancing'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

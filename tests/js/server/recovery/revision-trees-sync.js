@@ -42,7 +42,8 @@ function runSetup () {
 
   db._drop(colName1);
   let c = db._create(colName1);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -96,7 +97,7 @@ function runSetup () {
     internal.wait(0.25);
   }
 
-  internal.waitForEstimatorSync(); 
+  internal.waitForEstimatorSync();
   internal.sleep(2);
 
   internal.debugTerminate('crashing server');
@@ -116,7 +117,7 @@ function recoverySuite () {
     },
     tearDown: function () {},
 
-    testRevisionTreeCounts: function() {
+    testRevisionTreeCounts: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1000);
@@ -128,7 +129,7 @@ function recoverySuite () {
       const c3 = db._collection(colName3);
       assertEqual(c3._revisionTreeSummary().count, c3.count());
       assertEqual(c3._revisionTreeSummary().count, 0);
-    },
+    }
 
   };
 }

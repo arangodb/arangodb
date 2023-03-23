@@ -76,7 +76,8 @@
         }
       }
 
-      return { prev: prev, next: next };
+      return { prev: prev,
+next: next };
     },
 
     getFiltered: function (options) {

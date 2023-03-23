@@ -29,7 +29,7 @@ const fs = require('fs');
 const platform = require('internal').platform;
 
 class tmpDirManager {
-  constructor(testName, options) {
+  constructor (testName, options) {
     this.tempDir = fs.join(fs.getTempPath(), testName);
     if (platform.substr(0, 3) === 'win') {
       this.orgTempDir = process.env.TMP;
@@ -43,7 +43,7 @@ class tmpDirManager {
       print("temporary directory now: " + this.tempDir);
     }
   }
-  destructor(cleanup) {
+  destructor (cleanup) {
     if (platform.substr(0, 3) === 'win') {
       process.env.TMP = this.orgTempDir;
     } else {

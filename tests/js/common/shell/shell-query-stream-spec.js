@@ -27,7 +27,7 @@ function sendQuery (count, async) {
     let cc = internal.db._query(query, { value: 3 }, opts);
     cursors.push(cc);
   }
-  /*if (async === true) {
+  /* if (async === true) {
     internal.wait(1);
   }*/
 }
@@ -109,7 +109,7 @@ describe('AQL query analyzer', function () {
       for (let cc of cursors) {
         try {
           cc.dispose();
-        } catch(e) {
+        } catch (e) {
           // noop
         }
       }
@@ -144,7 +144,7 @@ describe('AQL query analyzer', function () {
       sendQuery(1, true);
       expect(testee.current().filter(filterQueries).length).to.equal(1);
     });
-    
+
     it('should have proper running query descriptions', function () {
       sendQuery(1, true);
       let queries = testee.current().filter(filterQueries);
@@ -159,7 +159,7 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('stream', true);
       expect(queries[0]).to.have.property('state', 'executing');
     });
-    
+
     it('should have proper running query descriptions, without bind vars', function () {
       testee.properties({
         trackBindVars: false
@@ -278,7 +278,7 @@ describe('AQL query analyzer', function () {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
-    
+
     it('should not track slow queries if turned off but bind vars tracking is on', function () {
       testee.properties({
         slowQueryThreshold: 2,
@@ -290,7 +290,7 @@ describe('AQL query analyzer', function () {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
-    
+
     it('should track slow queries if only bind vars tracking is turned off', function () {
       testee.properties({
         slowQueryThreshold: 2,

@@ -1,98 +1,101 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXECUTE, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Florian Bartels
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2014 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Florian Bartels
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
 var db = require("@arangodb").db, indexId;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function withinRectangleSuite () {
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("geo");
       db._drop("geo2");
 
       db._create("geo");
-      indexId = db.geo.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
+      indexId = db.geo.ensureIndex({ type: "geo",
+fields: ["lat", "lon"] });
       let geodocs = [];
       for (let i = -40; i < 40; ++i) {
         for (let j = -40; j < 40; ++j) {
-          geodocs.push({ lat: i, lon: j });
+          geodocs.push({ lat: i,
+lon: j });
         }
       }
       db.geo.insert(geodocs);
       geodocs = [];
 
       db._create("geo2");
-      indexId = db.geo2.ensureIndex({ type: "geo", fields: ["pos"] });
+      indexId = db.geo2.ensureIndex({ type: "geo",
+fields: ["pos"] });
 
       for (let i = -40; i < 40; ++i) {
         for (let j = -40; j < 40; ++j) {
-          geodocs.push({ pos : [i, j] });
+          geodocs.push({ pos: [i, j] });
         }
       }
       db.geo2.insert(geodocs);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("geo");
       db._drop("geo2");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test WITHIN_RECTANGLE as result
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test WITHIN_RECTANGLE as result
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWithinRectangleAsResult : function () {
+    testWithinRectangleAsResult: function () {
       var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1, -1, 1, 1)").json[0];
-      assertEqual(actual.length , 4);
+      assertEqual(actual.length, 4);
     },
 
-    testWithinRectangleAsResultForSingleDocument : function () {
+    testWithinRectangleAsResultForSingleDocument: function () {
       var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -1.2, -1.2, -0.8, -0.8)").json[0];
-      assertEqual(actual.length , 1);
+      assertEqual(actual.length, 1);
     },
 
-    testWithinRectangleAsResultForMissingDocument : function () {
+    testWithinRectangleAsResultForMissingDocument: function () {
       var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo, -41, -41, -40.5, -40.5)").json[0];
-      assertEqual(actual.length , 0);
+      assertEqual(actual.length, 0);
     },
 
-    testWithinRectangleAsResultForUnknownCollection : function () {
-      try  {
+    testWithinRectangleAsResultForUnknownCollection: function () {
+      try {
         AQL_EXECUTE("RETURN WITHIN_RECTANGLE(unknown, -41, -41, -40.5, -40.5)");
         fail();
       } catch (e) {
@@ -100,8 +103,8 @@ function withinRectangleSuite () {
       }
     },
 
-    testWithinRectangleAsResultForCollectionWithoutGeoIndex : function () {
-      try  {
+    testWithinRectangleAsResultForCollectionWithoutGeoIndex: function () {
+      try {
         AQL_EXECUTE("RETURN WITHIN_RECTANGLE(_graphs, -41, -41, -40.5, -40.5)");
         fail();
       } catch (e) {
@@ -109,27 +112,27 @@ function withinRectangleSuite () {
       }
     },
 
-    testWithinRectangleAsResultWithPositionBasedGeoIndex : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1, -1, 1, 1)").json[0];
-      assertEqual(actual.length , 4);
+    testWithinRectangleAsResultWithPositionBasedGeoIndex: function () {
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1, -1, 1, 1)").json[0];
+      assertEqual(actual.length, 4);
     },
 
-    testWithinRectangleAsResultForSingleDocumentWithPositionBasedGeoIndex : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1.2, -1.2, -0.8, -0.8)").json[0];
-      assertEqual(actual.length , 1);
+    testWithinRectangleAsResultForSingleDocumentWithPositionBasedGeoIndex: function () {
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -1.2, -1.2, -0.8, -0.8)").json[0];
+      assertEqual(actual.length, 1);
     },
 
-    testWithinRectangleAsResultForMissingDocumentWithPositionBasedGeoIndex : function () {
-      var actual =AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -41, -41, -40.5, -40.5)").json[0];
-      assertEqual(actual.length , 0);
+    testWithinRectangleAsResultForMissingDocumentWithPositionBasedGeoIndex: function () {
+      var actual = AQL_EXECUTE("RETURN WITHIN_RECTANGLE(geo2, -41, -41, -40.5, -40.5)").json[0];
+      assertEqual(actual.length, 0);
     }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(withinRectangleSuite);
 

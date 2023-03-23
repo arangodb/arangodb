@@ -55,7 +55,7 @@ function dumpIntegrationSuite () {
       } catch (err) {
         assertTrue(err instanceof SyntaxError, err);
       }
-      
+
       assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
       assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
       try {

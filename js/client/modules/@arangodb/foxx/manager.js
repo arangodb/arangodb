@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global ARANGODB_CLIENT_VERSION */ 
+/* global ARANGODB_CLIENT_VERSION */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -55,7 +55,7 @@ var extractCommandLineOptions = function (args) {
   var reNumeric = /^(0|.0|([0-9]*(\.[0-9]*)?))$/;
   var arg, match, key, value;
 
-  for (i = 0;  i < args.length;  ++i) {
+  for (i = 0; i < args.length; ++i) {
     arg = args[i];
     match = reOption.exec(arg);
 
@@ -73,7 +73,8 @@ var extractCommandLineOptions = function (args) {
     }
   }
 
-  return { 'options': options, 'args': nargs };
+  return { 'options': options,
+'args': nargs };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -81,7 +82,7 @@ var extractCommandLineOptions = function (args) {
 // //////////////////////////////////////////////////////////////////////////////
 var extractOptions = function (args) {
   var opts = extractCommandLineOptions(args);
-  if (3 < opts.args.length) {
+  if (opts.args.length > 3) {
     var options = JSON.parse(opts.args[3]);
 
     if (options.hasOwnProperty('configuration')) {
@@ -247,8 +248,8 @@ var moveAppToServer = function (serviceInfo) {
   if (!response.filename) {
     throw new ArangoError({
       errorNum: errors.ERROR_SERVICE_UPLOAD_FAILED.code,
-      errorMessage: errors.ERROR_SERVICE_UPLOAD_FAILED.message
-        + ': ' + String(response.errorMessage)
+      errorMessage: errors.ERROR_SERVICE_UPLOAD_FAILED.message +
+        ': ' + String(response.errorMessage)
     });
   }
   return response.filename;
@@ -626,14 +627,14 @@ var run = function (args) {
         break;
       case 'list':
       case 'installed':
-        if (1 < args.length && args[1] === 'prefix') {
+        if (args.length > 1 && args[1] === 'prefix') {
           utils.list(true);
         } else {
           utils.list();
         }
         break;
       case 'listDevelopment':
-        if (1 < args.length && args[1] === 'prefix') {
+        if (args.length > 1 && args[1] === 'prefix') {
           utils.listDevelopment(true);
         } else {
           utils.listDevelopment();
@@ -712,8 +713,12 @@ var run = function (args) {
 };
 
 exports.install = install;
-exports.setup = function (mount, opts) {return runScript(mount, 'setup', opts);};
-exports.teardown = function (mount, opts) {return runScript(mount, 'teardown', opts);};
+exports.setup = function (mount, opts) {
+return runScript(mount, 'setup', opts);
+};
+exports.teardown = function (mount, opts) {
+return runScript(mount, 'teardown', opts);
+};
 exports.runScript = runScript;
 exports.tests = tests;
 exports.uninstall = uninstall;

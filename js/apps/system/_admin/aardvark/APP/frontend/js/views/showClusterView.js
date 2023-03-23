@@ -25,9 +25,9 @@
         var src = img.attr('src');
         $.get(src, function (d) {
           var svg = $(d).find('svg');
-          svg.attr('id', id)
-            .attr('class', 'icon')
-            .removeAttr('xmlns:a');
+          svg.attr('id', id).
+            attr('class', 'icon').
+            removeAttr('xmlns:a');
           img.replaceWith(svg);
         }, 'xml');
       });
@@ -321,7 +321,9 @@
 
       // create statistics collector for DB servers
       this.dbservers.forEach(function (dbserver) {
-        if (dbserver.get('status') !== 'ok') { return; }
+        if (dbserver.get('status') !== 'ok') {
+ return;
+}
 
         if (self.knownServers.indexOf(dbserver.id) === -1) {
           self.knownServers.push(dbserver.id);
@@ -338,7 +340,9 @@
 
       // create statistics collector for coordinator
       this.coordinators.forEach(function (coordinator) {
-        if (coordinator.get('status') !== 'ok') { return; }
+        if (coordinator.get('status') !== 'ok') {
+ return;
+}
 
         if (self.knownServers.indexOf(coordinator.id) === -1) {
           self.knownServers.push(coordinator.id);
@@ -385,53 +389,59 @@
       // var color = d3.scale.category20()
       var color = this.dygraphConfig.colors;
 
-      var arc = d3.svg.arc() // each datapoint will create one later.
-        .outerRadius(radius - 20)
-        .innerRadius(0);
-      var pie = d3.layout.pie()
-        .sort(function (d) {
+      var arc = d3.svg.arc(). // each datapoint will create one later.
+        outerRadius(radius - 20).
+        innerRadius(0);
+      var pie = d3.layout.pie().
+        sort(function (d) {
           return d.value;
-        })
-        .value(function (d) {
+        }).
+        value(function (d) {
           return d.value;
         });
       d3.select('#clusterGraphs').select('svg').remove();
-      var pieChartSvg = d3.select('#clusterGraphs').append('svg')
+      var pieChartSvg = d3.select('#clusterGraphs').append('svg').
         // .attr("width", w)
         // .attr("height", h)
-        .attr('class', 'clusterChart')
-        .append('g') // someone to transform. Groups data.
-        .attr('transform', 'translate(' + w / 2 + ',' + ((h / 2) - 10) + ')');
+        attr('class', 'clusterChart').
+        append('g'). // someone to transform. Groups data.
+        attr('transform', 'translate(' + w / 2 + ',' + ((h / 2) - 10) + ')');
 
-      var arc2 = d3.svg.arc()
-        .outerRadius(radius - 2)
-        .innerRadius(radius - 2);
-      var slices = pieChartSvg.selectAll('.arc')
-        .data(pie(dataset))
-        .enter().append('g')
-        .attr('class', 'slice');
-      slices.append('path')
-        .attr('d', arc)
-        .style('fill', function (item, i) {
+      var arc2 = d3.svg.arc().
+        outerRadius(radius - 2).
+        innerRadius(radius - 2);
+      var slices = pieChartSvg.selectAll('.arc').
+        data(pie(dataset)).
+        enter().append('g').
+        attr('class', 'slice');
+      slices.append('path').
+        attr('d', arc).
+        style('fill', function (item, i) {
           return color[i % color.length];
-        })
-        .style('stroke', function (item, i) {
+        }).
+        style('stroke', function (item, i) {
           return color[i % color.length];
         });
-      slices.append('text')
-        .attr('transform', function (d) { return 'translate(' + arc.centroid(d) + ')'; })
+      slices.append('text').
+        attr('transform', function (d) {
+ return 'translate(' + arc.centroid(d) + ')';
+}).
         // .attr("dy", "0.35em")
-        .style('text-anchor', 'middle')
-        .text(function (d) {
+        style('text-anchor', 'middle').
+        text(function (d) {
           var v = d.data.value / 1024 / 1024 / 1024;
           return v.toFixed(2);
         });
 
-      slices.append('text')
-        .attr('transform', function (d) { return 'translate(' + arc2.centroid(d) + ')'; })
+      slices.append('text').
+        attr('transform', function (d) {
+ return 'translate(' + arc2.centroid(d) + ')';
+}).
         // .attr("dy", "1em")
-        .style('text-anchor', 'middle')
-        .text(function (d) { return d.data.key; });
+        style('text-anchor', 'middle').
+        text(function (d) {
+ return d.data.key;
+});
     },
 
     renderLineChart: function () {

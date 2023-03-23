@@ -38,12 +38,15 @@ const runSetup = function () {
 
   db._drop(colName);
   const c = db._create(colName);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
-    docs.push({value: i % 250, value2: i % 100});
+    docs.push({value: i % 250,
+value2: i % 100});
   }
   // Add two packs of 10.000 Documents.
   // Intermediate commits will commit after 10.000 removals
@@ -85,15 +88,17 @@ const recoverySuite = function () {
       let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
       for (let i = 0; i < 250; ++i) {
         // This validates that all documents can be found again
-        let res = db._query(q, {"@c": colName, i: i}).toArray();
+        let res = db._query(q, {"@c": colName,
+i: i}).toArray();
         let c = res.length;
-        assertTrue(c <  docsWithEqHash);
+        assertTrue(c < docsWithEqHash);
         sum += c;
       }
       assertEqual(sum, 10000);
 
       // just validate that no other values are inserted.
-      let res2 = db._query(q, {"@c": colName, i: 251}).toArray();
+      let res2 = db._query(q, {"@c": colName,
+i: 251}).toArray();
       assertEqual(res2.length, 0);
     },
 
@@ -103,15 +108,17 @@ const recoverySuite = function () {
       let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
       for (let i = 0; i < 100; ++i) {
         // This validates that all documents can be found again
-        let res = db._query(q, {"@c": colName, i: i}).toArray();
+        let res = db._query(q, {"@c": colName,
+i: i}).toArray();
         let c = res.length;
-        assertTrue(c <  docsWithEqSkip);
+        assertTrue(c < docsWithEqSkip);
         sum += c;
       }
       assertEqual(sum, 10000);
 
       // just validate that no other values are inserted.
-      let res2 = db._query(q, {"@c": colName, i: 101}).toArray();
+      let res2 = db._query(q, {"@c": colName,
+i: 101}).toArray();
       assertEqual(res2.length, 0);
     },
 
@@ -138,9 +145,9 @@ const recoverySuite = function () {
 
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
   'use strict';

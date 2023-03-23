@@ -1,31 +1,31 @@
-/*global arango, assertTrue, assertEqual, assertFalse */
+/* global arango, assertTrue, assertEqual, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup collections for backup tests
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief setup collections for backup tests
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -35,11 +35,11 @@ const users = require("@arangodb/users");
 const colname = 'UnitTestBkpCollection';
 const isCluster = false;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function backupTestSuite() {
+function backupTestSuite () {
 
   return {
 
@@ -50,9 +50,9 @@ function backupTestSuite() {
 
     tearDown: function () { },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the non system collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the non system collection
+// //////////////////////////////////////////////////////////////////////////////
 
     testNonSystemCollection: function () {
       const col = db._collection(colname);
@@ -66,9 +66,9 @@ function backupTestSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the users (should not be imported)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the users (should not be imported)
+// //////////////////////////////////////////////////////////////////////////////
 
     testUserRWRW: function () {
       const user = 'UnitTestUserRWRW';
@@ -120,11 +120,11 @@ function backupTestSuite() {
     }
 
   };
-};
+}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(backupTestSuite);
 

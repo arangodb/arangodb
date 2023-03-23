@@ -1,4 +1,4 @@
-/*global describe, it, afterEach */
+/* global describe, it, afterEach */
 'use strict';
 const FoxxManager = require('@arangodb/foxx/manager');
 const FoxxService = require('@arangodb/foxx/service');

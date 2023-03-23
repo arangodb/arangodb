@@ -1,28 +1,28 @@
-/*jshint strict: false */
+/* jshint strict: false */
 
 // /////////////////////////////////////////////////////////////////////////////
 // @brief ArangoView
-// 
+//
 // @file
-// 
+//
 // DISCLAIMER
-// 
+//
 // Copyright 2013 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is triAGENS GmbH, Cologne, Germany
-// 
+//
 // @author Daniel H. Larkin
 // @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
@@ -44,8 +44,7 @@ function ArangoView (database, data) {
     this._id = null;
     this._name = data;
     this._type = null;
-  }
-  else if (data !== undefined) {
+  } else if (data !== undefined) {
     this._id = data.id;
     this._name = data.name;
     this._type = data.type;
@@ -70,13 +69,21 @@ ArangoView.prototype._PRINT = function (context) {
   const useColor = context.useColor;
 
   context.output += '[ArangoView ';
-  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  if (useColor) {
+ context.output += colors.COLOR_NUMBER;
+}
   context.output += this._id;
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += ', "';
-  if (useColor) { context.output += colors.COLOR_STRING; }
+  if (useColor) {
+ context.output += colors.COLOR_STRING;
+}
   context.output += name || 'unknown';
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += '" (type ' + type + ')]';
 };
 
@@ -183,7 +190,7 @@ ArangoView.prototype.properties = function (properties, partialUpdate) {
     'globallyUniqueId': true,
     'id': true,
     'name': true,
-    'type': true,
+    'type': true
   };
   var result = {};
 
@@ -209,10 +216,10 @@ ArangoView.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
-    && requestResult !== undefined
-    && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+  if (requestResult !== null &&
+    requestResult !== undefined &&
+    requestResult.error === true &&
+    requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "view not found"
     arangosh.checkRequestResult(requestResult);
   }

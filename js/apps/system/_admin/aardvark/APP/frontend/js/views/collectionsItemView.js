@@ -48,7 +48,7 @@
       window.App.navigate(
         'collection/' + encodeURIComponent(this.model.get('name')) + '/documents/1', {trigger: true}
       );
-    },
+    }
 
   });
 }());

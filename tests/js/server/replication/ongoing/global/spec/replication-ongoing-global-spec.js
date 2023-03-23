@@ -1,31 +1,31 @@
 /* global describe, it, arango, ARGUMENTS, after, before, beforeEach */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the replication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the replication
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -63,7 +63,7 @@ const delay = 10;
 // Flag if we need to reconnect.
 let onLeader = true;
 
-const compareIndexes = function(l, r, eq) {
+const compareIndexes = function (l, r, eq) {
   // This can modify l and r and remove id and selectivityEstimate
   expect(l).to.be.an("array");
   expect(r).to.be.an("array");
@@ -83,7 +83,7 @@ const compareIndexes = function(l, r, eq) {
 };
 
 
-const waitForReplication = function() {
+const waitForReplication = function () {
   const wasOnLeader = onLeader;
   connectToLeader();
   // use lastLogTick as of now
@@ -92,7 +92,7 @@ const waitForReplication = function() {
   const timeOut = time() + delay * 1000;
   connectToFollower();
 
-  internal.sleep(0.5);  
+  internal.sleep(0.5);
   while (true) {
     // Guard to abort if failed to replicate
     expect(time()).to.be.below(timeOut, `Replication did not succeed for ${delay} seconds`);
@@ -100,7 +100,7 @@ const waitForReplication = function() {
     const state = replication.globalApplier.state().state;
     expect(state.lastError.errorNum).to.equal(0, `Error occured on follower: ${JSON.stringify(state.lastError)}`);
     expect(state.running).to.equal(true, "Follower is not running");
-    
+
     if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
         compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
       // Replication caught up.
@@ -108,8 +108,8 @@ const waitForReplication = function() {
     }
     internal.sleep(1.0);
   }
-  //internal.print(state);
-  //internal.print("lastLogTick: " + lastLogTick);
+  // internal.print(state);
+  // internal.print("lastLogTick: " + lastLogTick);
 
   if (wasOnLeader) {
     connectToLeader();
@@ -121,7 +121,7 @@ const waitForReplication = function() {
 
 // We always connect to _system DB because it is always present.
 // You do not need to monitor any state.
-const connectToLeader = function() {
+const connectToLeader = function () {
   if (!onLeader) {
     reconnectRetry(leaderEndpoint, "_system", username, password);
     db._flushCache();
@@ -131,7 +131,7 @@ const connectToLeader = function() {
   }
 };
 
-const connectToFollower = function() {
+const connectToFollower = function () {
   if (onLeader) {
     reconnectRetry(followerEndpoint, "_system", username, password);
     db._flushCache();
@@ -141,23 +141,27 @@ const connectToFollower = function() {
   }
 };
 
-const testCollectionExists = function(name) {
-  expect(db._collections().map(function(c) { return c.name(); }).indexOf(name)).to.not.equal(-1, 
+const testCollectionExists = function (name) {
+  expect(db._collections().map(function (c) {
+ return c.name();
+}).indexOf(name)).to.not.equal(-1,
     `Collection ${name} does not exist although it should`);
 };
 
-const testCollectionDoesNotExists = function(name) {
-  expect(db._collections().map(function(c) { return c.name(); }).indexOf(name)).to.equal(-1, 
+const testCollectionDoesNotExists = function (name) {
+  expect(db._collections().map(function (c) {
+ return c.name();
+}).indexOf(name)).to.equal(-1,
     `Collection ${name} does exist although it should not`);
 };
 
-const testDBDoesExist= function(name) {
-  expect(db._databases().indexOf(name)).to.not.equal(-1, 
+const testDBDoesExist = function (name) {
+  expect(db._databases().indexOf(name)).to.not.equal(-1,
     `Database ${name} does not exist although it should`);
 };
 
-const testDBDoesNotExist = function(name) {
-  expect(db._databases().indexOf(name)).to.equal(-1, 
+const testDBDoesNotExist = function (name) {
+  expect(db._databases().indexOf(name)).to.equal(-1,
     `Database ${name} does exist although it should not`);
 };
 
@@ -185,7 +189,7 @@ const cleanUpAllData = function () {
   testCollectionDoesNotExists(edgeColName);
 };
 
-const startReplication = function() {
+const startReplication = function () {
   // Setup global replication
   connectToFollower();
 
@@ -195,7 +199,7 @@ const startReplication = function() {
 
 const stopReplication = function () {
   // Clear the follower
-  connectToFollower(); 
+  connectToFollower();
 
   // First stop replication
   try {
@@ -214,7 +218,7 @@ const stopReplication = function () {
   }
 };
 
-const cleanUp = function() {
+const cleanUp = function () {
   stopReplication();
   cleanUpAllData();
 
@@ -224,7 +228,7 @@ const cleanUp = function() {
 
 describe('Global Replication on a fresh boot', function () {
 
-  before(function() {
+  before(function () {
     cleanUp();
 
     // Setup global replication
@@ -236,7 +240,7 @@ describe('Global Replication on a fresh boot', function () {
 
   describe("In _system database", function () {
 
-    before(function() {
+    before(function () {
       db._useDatabase("_system");
     });
 
@@ -267,7 +271,7 @@ describe('Global Replication on a fresh boot', function () {
       waitForReplication();
       testCollectionDoesNotExists(docColName);
     });
-    
+
     it("should create and drop an empty edge collection", function () {
       connectToLeader();
       // First Part Create Collection
@@ -326,7 +330,7 @@ describe('Global Replication on a fresh boot', function () {
 
     describe("modify an existing collection", function () {
 
-      before(function() {
+      before(function () {
         connectToLeader();
         db._create(docColName);
 
@@ -336,7 +340,7 @@ describe('Global Replication on a fresh boot', function () {
         testCollectionExists(docColName);
       });
 
-      after(function() {
+      after(function () {
         connectToLeader();
         db._drop(docColName);
 
@@ -433,7 +437,8 @@ describe('Global Replication on a fresh boot', function () {
 
         let oIdx = db._collection(docColName).getIndexes();
 
-        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
+        db._collection(docColName).ensureIndex({ type: "hash",
+fields: ["value"] });
 
         let mIdx = db._collection(docColName).getIndexes();
 
@@ -454,15 +459,16 @@ describe('Global Replication on a fresh boot', function () {
 
         c.truncate({ compact: false });
         let docs = [];
-        for(let i = 1; i <= 10000; i++) {
-          docs.push({value2 : i});
+        for (let i = 1; i <= 10000; i++) {
+          docs.push({value2: i});
           if (i % 1000 === 0) {
             c.save(docs);
             docs = [];
           }
         }
 
-        c.ensureIndex({ type: "hash", fields: ["value2"] });
+        c.ensureIndex({ type: "hash",
+fields: ["value2"] });
         let mIdx = c.getIndexes();
 
         waitForReplication();
@@ -480,7 +486,7 @@ describe('Global Replication on a fresh boot', function () {
 
   describe(`In ${dbName} database`, function () {
 
-    before(function() {
+    before(function () {
       connectToLeader();
       testDBDoesNotExist(dbName);
 
@@ -493,7 +499,7 @@ describe('Global Replication on a fresh boot', function () {
       testDBDoesExist(dbName);
     });
 
-    after(function() {
+    after(function () {
       connectToFollower();
       testDBDoesExist(dbName);
 
@@ -505,7 +511,7 @@ describe('Global Replication on a fresh boot', function () {
 
       waitForReplication();
       connectToFollower();
-      testDBDoesNotExist(dbName); 
+      testDBDoesNotExist(dbName);
     });
 
     it("should create and drop an empty document collection", function () {
@@ -515,13 +521,13 @@ describe('Global Replication on a fresh boot', function () {
       let mcol = db._create(docColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
-      testCollectionExists(docColName); 
+      testCollectionExists(docColName);
 
       connectToFollower();
       // Validate it is created properly
       waitForReplication();
       db._useDatabase(dbName);
-      testCollectionExists(docColName); 
+      testCollectionExists(docColName);
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
@@ -573,7 +579,7 @@ describe('Global Replication on a fresh boot', function () {
 
     describe("modify an existing collection", function () {
 
-      before(function() {
+      before(function () {
         connectToLeader();
         db._useDatabase(dbName);
         db._create(docColName);
@@ -585,7 +591,7 @@ describe('Global Replication on a fresh boot', function () {
         testCollectionExists(docColName);
       });
 
-      after(function() {
+      after(function () {
         connectToLeader();
         db._useDatabase(dbName);
         db._drop(docColName);
@@ -694,7 +700,8 @@ describe('Global Replication on a fresh boot', function () {
         db._useDatabase(dbName);
         let oIdx = db._collection(docColName).getIndexes();
 
-        db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
+        db._collection(docColName).ensureIndex({ type: "hash",
+fields: ["value"] });
 
         let mIdx = db._collection(docColName).getIndexes();
 
@@ -704,7 +711,7 @@ describe('Global Replication on a fresh boot', function () {
 
         internal.sleep(5); // makes test more reliable
         let sIdx = db._collection(docColName).getIndexes();
-        
+
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
       });
@@ -718,15 +725,16 @@ describe('Global Replication on a fresh boot', function () {
 
         c.truncate();
         let docs = [];
-        for(let i = 1; i <= 10000; i++) {
-          docs.push({value2 : i});
+        for (let i = 1; i <= 10000; i++) {
+          docs.push({value2: i});
           if (i % 1000 === 0) {
             c.save(docs);
             docs = [];
           }
         }
 
-        c.ensureIndex({ type: "hash", fields: ["value2"] });
+        c.ensureIndex({ type: "hash",
+fields: ["value2"] });
         let mIdx = c.getIndexes();
 
         waitForReplication();
@@ -756,7 +764,8 @@ const fillLeaderWithInitialData = function () {
     docs.push({value: i});
   }
   let col = db._create(docColName);
-  col.ensureIndex({ type: "hash", fields: ["value"] });
+  col.ensureIndex({ type: "hash",
+fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   col.save(docs);
@@ -766,7 +775,8 @@ const fillLeaderWithInitialData = function () {
   db._useDatabase(dbName);
 
   let dcol = db._create(docColName);
-  dcol.ensureIndex({ type: "hash", fields: ["value"] });
+  dcol.ensureIndex({ type: "hash",
+fields: ["value"] });
   db._createEdgeCollection(edgeColName);
 
   dcol.save(docs);
@@ -774,8 +784,8 @@ const fillLeaderWithInitialData = function () {
 };
 
 describe('Setup global replication on empty follower and leader has some data', function () {
-  
-  before(function() {
+
+  before(function () {
     cleanUp();
 
     fillLeaderWithInitialData();
@@ -795,10 +805,10 @@ describe('Setup global replication on empty follower and leader has some data', 
 
   describe("In _system database", function () {
 
-    before(function() {
+    before(function () {
       db._useDatabase("_system");
     });
-    
+
     it("should have synced the document collection", function () {
       connectToLeader();
       // First Part Create Collection
@@ -898,9 +908,9 @@ describe('Setup global replication on empty follower and leader has some data', 
   });
 });
 
-describe('Test switch off and restart replication', function() {
+describe('Test switch off and restart replication', function () {
 
-  before(function() {
+  before(function () {
     cleanUp();
 
     startReplication();
@@ -910,9 +920,9 @@ describe('Test switch off and restart replication', function() {
 
   after(cleanUp);
 
-  describe('in _system database', function() {
+  describe('in _system database', function () {
 
-    beforeEach(function() {
+    beforeEach(function () {
       connectToFollower();
       if (!replication.globalApplier.state().state.running) {
         startReplication();
@@ -920,7 +930,7 @@ describe('Test switch off and restart replication', function() {
       connectToLeader();
     });
 
-    after(function() {
+    after(function () {
       connectToFollower();
       stopReplication();
       try {
@@ -941,7 +951,7 @@ describe('Test switch off and restart replication', function() {
       } catch (e) {}
     });
 
-    it('should replicate offline creation / deletion of collection', function() {
+    it('should replicate offline creation / deletion of collection', function () {
       const col = "UnittestOtherCollection";
 
       stopReplication();
@@ -988,7 +998,8 @@ describe('Test switch off and restart replication', function() {
       connectToLeader();
       let mcol = db._collection(col);
       let omidx = mcol.getIndexes();
-      mcol.ensureIndex({ type: "hash", fields: ["value"] });
+      mcol.ensureIndex({ type: "hash",
+fields: ["value"] });
 
       let midxs = mcol.getIndexes();
 

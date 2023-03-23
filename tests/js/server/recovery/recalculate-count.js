@@ -33,20 +33,21 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
+
   internal.debugSetFailAt('DisableCommitCounts');
-  
+
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ _key: "test" + i, value: i });
+    docs.push({ _key: "test" + i,
+value: i });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
- 
+
   c.recalculateCount();
 
   // this is our marker that we got past the "recalculateCount()" call

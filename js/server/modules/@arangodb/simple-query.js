@@ -92,7 +92,8 @@ SimpleQueryAll.prototype.execute = function () {
   var bindVars = { '@collection': this._collection.name() };
 
   var query = 'FOR doc IN @@collection ' + limitString(this._skip, this._limit) + ' RETURN doc';
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  var documents = require('internal').db._query({ query,
+bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length;
@@ -133,7 +134,8 @@ SimpleQueryByExample.prototype.execute = function () {
   var query = 'FOR doc IN @@collection ' + filters.join(' ') + ' ' +
     limitString(this._skip, this._limit) + ' RETURN doc';
 
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  var documents = require('internal').db._query({ query,
+bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length;
@@ -167,7 +169,8 @@ SimpleQueryRange.prototype.execute = function () {
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  var documents = require('internal').db._query({ query, bindVars}).toArray();
+  var documents = require('internal').db._query({ query,
+bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -197,7 +200,7 @@ SimpleQueryNear.prototype.execute = function () {
   if (this._limit <= 0) {
     this._limit = 100;
   }
-  
+
   let cluster = require('@arangodb/cluster');
   if (cluster.isCoordinator()) {
     if (this._distance === null || this._distance === undefined) {
@@ -219,14 +222,15 @@ SimpleQueryNear.prototype.execute = function () {
   } else {
     query = 'FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit) ';
   }
-  
+
   if (cluster.isCoordinator()) {
     query += 'SORT doc.@distance ';
   }
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  let documents = require('internal').db._query({ query,
+bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -252,7 +256,7 @@ SimpleQueryWithin.prototype.execute = function () {
     err.errorMessage = 'skip must be non-negative';
     throw err;
   }
-  
+
   let cluster = require('@arangodb/cluster');
   if (cluster.isCoordinator()) {
     if (this._distance === null || this._distance === undefined) {
@@ -274,14 +278,15 @@ SimpleQueryWithin.prototype.execute = function () {
   } else {
     query = 'FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius) ';
   }
-  
+
   if (cluster.isCoordinator()) {
     query += 'SORT doc.@distance ';
   }
 
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  let documents = require('internal').db._query({ query,
+bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -304,7 +309,8 @@ SimpleQueryFulltext.prototype.execute = function () {
   };
   let query = 'FOR doc IN FULLTEXT(@@collection, @attribute, @query) ' +
               limitString(this._skip, this._limit) + ' RETURN doc';
-  let documents = require('internal').db._query({ query, bindVars}).toArray();
+  let documents = require('internal').db._query({ query,
+bindVars}).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;
@@ -330,7 +336,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     err.errorMessage = 'skip must be non-negative';
     throw err;
   }
-  
+
   var bindVars = {
     '@collection': this._collection.name(),
     latitude1: this._latitude1,
@@ -340,10 +346,11 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
   };
 
   let query = 'FOR doc IN WITHIN_RECTANGLE(@@collection, @latitude1, @longitude1, @latitude2, @longitude2) ';
-  
+
   query += limitString(this._skip, this._limit) + ' RETURN doc';
 
-  let documents = require('internal').db._query({ query, bindVars }).toArray();
+  let documents = require('internal').db._query({ query,
+bindVars }).toArray();
 
   this._execution = new GeneralArrayCursor(documents);
   this._countQuery = documents.length - this._skip;

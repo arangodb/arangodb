@@ -74,7 +74,7 @@ function recoverySuite () {
       assertEqual(v.type(), 'arangosearch');
       assertEqual(v.properties().links, {});
 
-      var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
+      var meta = { links: { "UnitTestsRecoveryDummy": { includeAllFields: true } } };
       v = db._view('UnitTestsRecoveryWithLink');
       assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
       assertEqual(v.type(), 'arangosearch');

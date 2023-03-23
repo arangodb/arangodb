@@ -44,7 +44,7 @@ const en = 'UnitTestEdgeCollection';
 
 const gh = require('@arangodb/graph/helpers');
 
-function optimizeNonVertexCentricIndexesSuite() {
+function optimizeNonVertexCentricIndexesSuite () {
   let explain = function (query, params) {
     return AQL_EXPLAIN(query, params, {optimizer: {rules: ['+all']}});
   };
@@ -69,17 +69,44 @@ function optimizeNonVertexCentricIndexesSuite() {
       vertices.FOO = vc.save({_key: 'FOO'})._id;
       vertices.BAR = vc.save({_key: 'BAR'})._id;
 
-      edges.AB = ec.save({_key: 'AB', _from: vertices.A, _to: vertices.B, foo: 'A', bar: true})._id;
-      edges.BC = ec.save({_key: 'BC', _from: vertices.B, _to: vertices.C, foo: 'B', bar: true})._id;
-      edges.BD = ec.save({_key: 'BD', _from: vertices.B, _to: vertices.D, foo: 'C', bar: false})._id;
-      edges.AE = ec.save({_key: 'AE', _from: vertices.A, _to: vertices.E, foo: 'D', bar: true})._id;
-      edges.EF = ec.save({_key: 'EF', _from: vertices.E, _to: vertices.F, foo: 'E', bar: true})._id;
-      edges.EG = ec.save({_key: 'EG', _from: vertices.E, _to: vertices.G, foo: 'F', bar: false})._id;
+      edges.AB = ec.save({_key: 'AB',
+_from: vertices.A,
+_to: vertices.B,
+foo: 'A',
+bar: true})._id;
+      edges.BC = ec.save({_key: 'BC',
+_from: vertices.B,
+_to: vertices.C,
+foo: 'B',
+bar: true})._id;
+      edges.BD = ec.save({_key: 'BD',
+_from: vertices.B,
+_to: vertices.D,
+foo: 'C',
+bar: false})._id;
+      edges.AE = ec.save({_key: 'AE',
+_from: vertices.A,
+_to: vertices.E,
+foo: 'D',
+bar: true})._id;
+      edges.EF = ec.save({_key: 'EF',
+_from: vertices.E,
+_to: vertices.F,
+foo: 'E',
+bar: true})._id;
+      edges.EG = ec.save({_key: 'EG',
+_from: vertices.E,
+_to: vertices.G,
+foo: 'F',
+bar: false})._id;
 
       // Adding these edges to make the estimate for the edge-index extremly bad
       let badEdges = [];
       for (let j = 0; j < 1000; ++j) {
-        badEdges.push({_from: vertices.FOO, _to: vertices.BAR, foo: 'foo' + j, bar: j});
+        badEdges.push({_from: vertices.FOO,
+_to: vertices.BAR,
+foo: 'foo' + j,
+bar: j});
       }
       ec.save(badEdges);
     },
@@ -95,7 +122,10 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'hash',
+fields: ['foo'],
+unique: true,
+sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
@@ -119,7 +149,10 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'skiplist',
+fields: ['foo'],
+unique: true,
+sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[0].foo == 'A'
@@ -143,7 +176,10 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueHashIndex: () => {
-      var idx = db[en].ensureIndex({type: 'hash', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'hash',
+fields: ['foo'],
+unique: true,
+sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'
@@ -166,7 +202,10 @@ function optimizeNonVertexCentricIndexesSuite() {
     },
 
     testAllUniqueSkiplistIndex: () => {
-      var idx = db[en].ensureIndex({type: 'skiplist', fields: ['foo'], unique: true, sparse: false});
+      var idx = db[en].ensureIndex({type: 'skiplist',
+fields: ['foo'],
+unique: true,
+sparse: false});
       // This index is assumed to be better than edge-index, but does not contain _from/_to
       let q = `WITH ${vn} FOR v,e,p IN OUTBOUND '${vertices.A}' ${en}
       FILTER p.edges[*].foo ALL == 'A'

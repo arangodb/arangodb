@@ -40,7 +40,7 @@ const testPaths = {
   'paths_server': [tu.pathForTesting('server/paths')]
 };
 
-function paths_server(options) {
+function paths_server (options) {
   let testCases = tu.scanTestPaths(testPaths.paths_server, options);
   let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
   let tmpPath = fs.getTempPath();
@@ -63,5 +63,7 @@ function paths_server(options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['paths_server'] = paths_server;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
 };

@@ -41,7 +41,7 @@ function dumpIntegrationSuite () {
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION"));
       assertEqual("none", data.toString());
-      
+
       const prefix = "UnitTestsDumpEdges_8a31b923e9407ab76b6ca41131b8acf1";
 
       let structure = prefix + ".structure.json";
@@ -50,16 +50,16 @@ function dumpIntegrationSuite () {
       }
 
       let structureFile = fs.join(dumpDir, structure);
-      assertTrue(fs.isFile(structureFile),"structure file does not exist: " + structureFile);
+      assertTrue(fs.isFile(structureFile), "structure file does not exist: " + structureFile);
       assertNotEqual(-1, tree.indexOf(structure));
       data = JSON.parse(fs.readFileSync(fs.join(dumpDir, structure)).toString());
       assertEqual(cn, data.parameters.name);
-      
+
       assertEqual(-1, tree.indexOf(prefix + ".data.json.gz"));
       assertNotEqual(-1, tree.indexOf(prefix + ".data.json"));
       data = fs.readFileSync(fs.join(dumpDir, prefix + ".data.json")).toString().trim().split('\n');
       assertEqual(10, data.length);
-      data.forEach(function(line) {
+      data.forEach(function (line) {
         line = JSON.parse(line);
         assertEqual(2300, line.type);
         assertTrue(line.data.hasOwnProperty('_key'));

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNull, fail, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertNull, fail, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the collection interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -34,7 +34,7 @@ const db = arangodb.db;
 const internal = require("internal");
 const ERRORS = arangodb.errors;
 
-function DocumentOperationsFailuresSuite() {
+function DocumentOperationsFailuresSuite () {
   'use strict';
   const cn = "UnitTestsDocuments";
 
@@ -43,12 +43,12 @@ function DocumentOperationsFailuresSuite() {
     setUp: function () {
       internal.debugClearFailAt();
     },
-    
+
     tearDown: function () {
       internal.debugClearFailAt();
       db._drop(cn);
     },
-    
+
     testInsertSizeLimit: function () {
       let c = db._create(cn);
 
@@ -63,7 +63,7 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(0, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.insert({ _key: "testi" });
@@ -84,13 +84,13 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(0, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
     },
-    
+
     testInsertFailure2: function () {
       let c = db._create(cn);
 
@@ -105,13 +105,13 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(0, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
     },
-    
+
     testRemoveSizeLimit: function () {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
@@ -127,13 +127,13 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(1, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
     },
-    
+
     testRemoveFailure1: function () {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
@@ -149,13 +149,13 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(1, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
     },
-    
+
     testRemoveFailure2: function () {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
@@ -171,16 +171,17 @@ function DocumentOperationsFailuresSuite() {
       }
 
       assertEqual(1, c.count());
-    
+
       internal.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
     },
-    
+
     testModifySizeLimit: function () {
       let c = db._create(cn);
-      c.insert({ _key: "testi", value: 1 });
+      c.insert({ _key: "testi",
+value: 1 });
 
       internal.debugSetFailAt("addOperationSizeError");
 
@@ -194,17 +195,18 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
-    
+
       internal.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
       assertEqual(3, c.document("testi").value);
     },
-    
+
     testModifyFailure1: function () {
       let c = db._create(cn);
-      c.insert({ _key: "testi", value: 1 });
+      c.insert({ _key: "testi",
+value: 1 });
 
       internal.debugSetFailAt("RocksDBCollection::modifyFail1Always");
 
@@ -218,17 +220,18 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
-    
+
       internal.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
       assertEqual(3, c.document("testi").value);
     },
-    
+
     testModifyFailure2: function () {
       let c = db._create(cn);
-      c.insert({ _key: "testi", value: 1 });
+      c.insert({ _key: "testi",
+value: 1 });
 
       internal.debugSetFailAt("RocksDBCollection::modifyFail3Always");
 
@@ -242,17 +245,18 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
-    
+
       internal.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
       assertEqual(3, c.document("testi").value);
     },
-    
+
     testModifyFailure3: function () {
       let c = db._create(cn);
-      c.insert({ _key: "testi", value: 1 });
+      c.insert({ _key: "testi",
+value: 1 });
 
       internal.debugSetFailAt("RocksDBCollection::modifyFail2Always");
 
@@ -266,18 +270,18 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
-    
+
       internal.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
       assertEqual(3, c.document("testi").value);
-    },
+    }
   };
 }
 
 
-function CollectionTruncateFailuresSuite() {
+function CollectionTruncateFailuresSuite () {
   'use strict';
   const cn = "UnitTestsTruncate";
   let c;
@@ -285,12 +289,13 @@ function CollectionTruncateFailuresSuite() {
     internal.debugClearFailAt();
     try {
       db._drop(cn);
-    } catch(_) { }
+    } catch (_) { }
   };
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
-    docs.push({value: i % 250, value2: i % 100});
+    docs.push({value: i % 250,
+value2: i % 100});
   }
 
   return {
@@ -298,15 +303,17 @@ function CollectionTruncateFailuresSuite() {
     setUp: function () {
       cleanUp();
       c = db._create(cn);
-      c.ensureIndex({ type: "hash", fields: ["value"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "hash",
+fields: ["value"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
 
       // Add two packs of 10.000 Documents.
       // Intermediate commits will commit after 10.000 removals
       c.insert(docs);
       c.insert(docs);
     },
-    
+
     tearDown: cleanUp,
 
     testTruncateFailsAfterAllCommits: function () {
@@ -336,12 +343,14 @@ function CollectionTruncateFailuresSuite() {
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
           assertEqual(res.length, 0);
         }
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 251}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -350,12 +359,14 @@ function CollectionTruncateFailuresSuite() {
         let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
         for (let i = 0; i < 100; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
           assertEqual(res.length, 0);
         }
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -408,12 +419,14 @@ function CollectionTruncateFailuresSuite() {
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
           assertEqual(res.length, docsWithEqHash);
         }
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 251}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -422,12 +435,14 @@ function CollectionTruncateFailuresSuite() {
         let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
         for (let i = 0; i < 100; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
           assertEqual(res.length, docsWithEqSkip);
         }
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -483,14 +498,16 @@ function CollectionTruncateFailuresSuite() {
         let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
         for (let i = 0; i < 250; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
           assertTrue(res.length < docsWithEqHash);
           sum += res.length;
         }
         assertEqual(sum, 10000);
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 251}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -500,14 +517,16 @@ function CollectionTruncateFailuresSuite() {
         let sum = 0;
         for (let i = 0; i < 100; ++i) {
           // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertTrue(res.length <  docsWithEqSkip);
+          let res = db._query(q, {"@c": cn,
+i: i}).toArray();
+          assertTrue(res.length < docsWithEqSkip);
           sum += res.length;
         }
         assertEqual(sum, 10000);
 
         // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
+        let res2 = db._query(q, {"@c": cn,
+i: 101}).toArray();
         assertEqual(res2.length, 0);
       }
 
@@ -532,12 +551,12 @@ function CollectionTruncateFailuresSuite() {
           }
         }
       }
-    },
+    }
 
   };
 }
 
-function IntermediateCommitFailureSuite() {
+function IntermediateCommitFailureSuite () {
   'use strict';
   const cn = "UnitTestsIntermediate";
   let c;
@@ -545,12 +564,13 @@ function IntermediateCommitFailureSuite() {
     internal.debugClearFailAt();
     try {
       db._drop(cn);
-    } catch(_) { }
+    } catch (_) { }
   };
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
-    docs.push({value: i % 250, value2: i % 100});
+    docs.push({value: i % 250,
+value2: i % 100});
   }
 
   return {
@@ -566,7 +586,7 @@ function IntermediateCommitFailureSuite() {
     testFailOnRemoveAql: function () {
       internal.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn": cn }, { intermediateCommitCount: 10000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -576,11 +596,11 @@ function IntermediateCommitFailureSuite() {
       assertEqual(c.count(), 10000);
       assertEqual(c.toArray().length, 10000);
     },
-    
+
     testFailOnUpdateAql: function () {
       internal.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn": cn }, { intermediateCommitCount: 10000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -589,14 +609,14 @@ function IntermediateCommitFailureSuite() {
 
       assertEqual(c.count(), 10000);
       assertEqual(c.toArray().length, 10000);
- 
+
       assertNull(c.firstExample({ aha: 1 }));
     },
-    
+
     testFailOnReplaceAql: function () {
       internal.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn": cn }, { intermediateCommitCount: 10000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -605,14 +625,14 @@ function IntermediateCommitFailureSuite() {
 
       assertEqual(c.count(), 10000);
       assertEqual(c.toArray().length, 10000);
- 
+
       assertNull(c.firstExample({ aha: 1 }));
     },
-    
+
     testFailOnInsertAql: function () {
       internal.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
-        db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
+        db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn": cn }, { intermediateCommitCount: 10000 });
         fail();
       } catch (e) {
         // Validate that we died with debug
@@ -621,11 +641,11 @@ function IntermediateCommitFailureSuite() {
 
       assertEqual(c.count(), 10000);
       assertEqual(c.toArray().length, 10000);
-    },
+    }
 
   };
 }
-    
+
 if (internal.debugCanUseFailAt()) {
   jsunity.run(DocumentOperationsFailuresSuite);
   jsunity.run(CollectionTruncateFailuresSuite);

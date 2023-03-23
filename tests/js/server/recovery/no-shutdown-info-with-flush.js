@@ -40,7 +40,9 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery'), i;
 
   for (i = 0; i < 1000; ++i) {
-    c.save({ _key: 'test' + i, value1: i, value2: 'foobarbaz' + i });
+    c.save({ _key: 'test' + i,
+value1: i,
+value2: 'foobarbaz' + i });
   }
 
   // flush the logfile but do not write shutdown info

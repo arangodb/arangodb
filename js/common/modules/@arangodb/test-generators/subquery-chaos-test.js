@@ -1,61 +1,61 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-///
-/// Fuzzing tests for nested subquery execution. Generates random nested subqueries
-/// and then runs spliced subqueries against "old style" subqueries and compares
-/// results.
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
-///
-/// This module is aimed at testing varying interactions between subquery, limit
-/// and collect by generating random queries.
-///
-/// To make debugging not too annoying, we use a seeded random number generator
-/// and print the seed with every test. This means that, should you be faced with
-/// the thankless task of debugging a query that has been produced by this code,
-/// all you have to do is to run `testQueryWithSeed` or `testModifyingQueryWithSeed`
-/// with the seed that the test suite printed out for you and you'll get the exact
-/// failing query.
-///
-/// the two exported functions in this module take an object with options. The
-/// following options are understood:
-///
-/// seed:             an integer, the random seed to use
-/// numberSubqueries: an integer, how many subqueries to generate
-/// printQuery:       a boolean, whether to print the query string *before* running
-///                   any test
-/// explainQuery:     explain the query before running it. Note that this option
-///                   causes the query to be explained twice: once with subquery
-///                   splicing, and once without.
-///
-///
+// //////////////////////////////////////////////////////////////////////////////
+// /
+// / Fuzzing tests for nested subquery execution. Generates random nested subqueries
+// / and then runs spliced subqueries against "old style" subqueries and compares
+// / results.
+// /
+// / DISCLAIMER
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// //////////////////////////////////////////////////////////////////////////////
+// /
+// / This module is aimed at testing varying interactions between subquery, limit
+// / and collect by generating random queries.
+// /
+// / To make debugging not too annoying, we use a seeded random number generator
+// / and print the seed with every test. This means that, should you be faced with
+// / the thankless task of debugging a query that has been produced by this code,
+// / all you have to do is to run `testQueryWithSeed` or `testModifyingQueryWithSeed`
+// / with the seed that the test suite printed out for you and you'll get the exact
+// / failing query.
+// /
+// / the two exported functions in this module take an object with options. The
+// / following options are understood:
+// /
+// / seed:             an integer, the random seed to use
+// / numberSubqueries: an integer, how many subqueries to generate
+// / printQuery:       a boolean, whether to print the query string *before* running
+// /                   any test
+// / explainQuery:     explain the query before running it. Note that this option
+// /                   causes the query to be explained twice: once with subquery
+// /                   splicing, and once without.
+// /
+// /
 const db = require("@arangodb").db;
 const _ = require("lodash");
 
 // This is a seedable RandomNumberGenerator
 // it is not operfect for Random numbers,
 // but good enough for what we are doing here
-function randomNumberGeneratorGenerator(seed) {
-  const rng = (function* (seed) {
+function randomNumberGeneratorGenerator (seed) {
+  const rng = (function *(seed) {
     while (true) {
       const nextVal = Math.cos(seed++) * 10000;
       yield nextVal - Math.floor(nextVal);
@@ -67,7 +67,7 @@ function randomNumberGeneratorGenerator(seed) {
   };
 }
 
-function coinToss(generator, bias) {
+function coinToss (generator, bias) {
   if (typeof bias === "number") {
     return generator() < Math.min(bias, 1);
   } else if (typeof bias === "undefined") {
@@ -76,7 +76,7 @@ function coinToss(generator, bias) {
   throw "coinToss: bias must be a number if given (actual " + typeof bias + ")";
 }
 
-function randomInt(generator, from, to) {
+function randomInt (generator, from, to) {
   if (typeof from === "number") {
     if (typeof to === "undefined") {
       to = from;
@@ -90,7 +90,7 @@ function randomInt(generator, from, to) {
   return 0;
 }
 
-function pickRandomElement(generator, list) {
+function pickRandomElement (generator, list) {
   if (list.length > 0) {
     return list[randomInt(generator, list.length)];
   } else {
@@ -101,7 +101,7 @@ function pickRandomElement(generator, list) {
 
 // chooses a random element from list,
 // removes it from the list, and returns it.
-function popRandomElement(generator, list) {
+function popRandomElement (generator, list) {
   if (list.length > 0) {
     const idx = randomInt(generator, list.length);
     return list.splice(idx, 1);
@@ -111,7 +111,7 @@ function popRandomElement(generator, list) {
   }
 }
 
-function randomFilter(generator, indent, bias, variables = []) {
+function randomFilter (generator, indent, bias, variables = []) {
   if (variables.length > 0 && coinToss(generator, bias)) {
     var variable = Math.trunc(randomInt(generator, 0, variables.length));
     return (
@@ -126,7 +126,7 @@ function randomFilter(generator, indent, bias, variables = []) {
   return "";
 }
 
-function randomLimit(generator, indent, bias) {
+function randomLimit (generator, indent, bias) {
   return (
     indent +
     " LIMIT " +
@@ -137,7 +137,7 @@ function randomLimit(generator, indent, bias) {
   );
 }
 
-function randomCollectWithCount(generator, indent, bias) {
+function randomCollectWithCount (generator, indent, bias) {
   if (coinToss(generator, bias)) {
     return indent + " COLLECT WITH COUNT INTO counter \n";
   } else {
@@ -145,7 +145,7 @@ function randomCollectWithCount(generator, indent, bias) {
   }
 }
 
-function randomUpsert(generator, indent, bias, variables, collectionName) {
+function randomUpsert (generator, indent, bias, variables, collectionName) {
   if (coinToss(generator, bias)) {
     const variable = pickRandomElement(generator, variables);
     return `${indent} UPSERT { value: ${variable}.value } INSERT { value: ${variable}.value } UPDATE {updated: true} IN ${collectionName}\n`;
@@ -154,7 +154,7 @@ function randomUpsert(generator, indent, bias, variables, collectionName) {
   }
 }
 
-function* idGeneratorGenerator() {
+function *idGeneratorGenerator () {
   var counter = 0;
   while (true) {
     yield counter;
@@ -162,7 +162,7 @@ function* idGeneratorGenerator() {
   }
 }
 
-function createChaosQuery(seed, numberSubqueries) {
+function createChaosQuery (seed, numberSubqueries) {
   var subqueryTotal = numberSubqueries;
   const idGenerator = idGeneratorGenerator();
   const randomGenerator = randomNumberGeneratorGenerator(seed);
@@ -173,7 +173,7 @@ function createChaosQuery(seed, numberSubqueries) {
     // but we don't want them to leak outside, so we take a copy
     var variables = {
       forVariables: [...outerVariables.forVariables],
-      subqueryVariables: [...outerVariables.subqueryVariables],
+      subqueryVariables: [...outerVariables.subqueryVariables]
     };
 
     const for_variable = "fv" + idGenerator.next().value;
@@ -200,7 +200,8 @@ function createChaosQuery(seed, numberSubqueries) {
     var collect = randomCollectWithCount(randomGenerator, indent, 0.1);
     if (collect !== "") {
       my_query = my_query + collect;
-      variables = { forVariables: [], subqueryVariables: ["counter"] };
+      variables = { forVariables: [],
+subqueryVariables: ["counter"] };
     } else {
       variables.forVariables = [for_variable];
     }
@@ -216,17 +217,18 @@ function createChaosQuery(seed, numberSubqueries) {
   };
   return {
     collectionNames: [],
-    queryString: query("", { forVariables: [], subqueryVariables: [] }),
+    queryString: query("", { forVariables: [],
+subqueryVariables: [] })
   };
 }
 
-function createModifyingChaosQuery(seed, numberSubqueries) {
+function createModifyingChaosQuery (seed, numberSubqueries) {
   var subqueryTotal = numberSubqueries;
   const idGenerator = idGeneratorGenerator();
   const randomGenerator = randomNumberGeneratorGenerator(seed);
   const collectionSize = 20;
 
-  const collectionIdGenerator = (function* () {
+  const collectionIdGenerator = (function *() {
     var counter = 0;
     while (true) {
       var cn = "SubqueryChaosCollection" + counter;
@@ -239,7 +241,7 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
     var variables = {
       forVariables: [...outerVariables.forVariables],
       subqueryVariables: [...outerVariables.subqueryVariables],
-      collectionNames: [...outerVariables.collectionNames],
+      collectionNames: [...outerVariables.collectionNames]
     };
 
     const for_variable = "fv" + idGenerator.next().value;
@@ -287,32 +289,32 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
       variables = {
         forVariables: [],
         collectionNames: variables.collectionNames,
-        subqueryVariables: ["counter"],
+        subqueryVariables: ["counter"]
       };
     } else {
       variables.forVariables = [for_variable];
     }
 
-    const returns = [...variables.forVariables, ...variables.subqueryVariables]
-      .map((x) => x + ": UNSET_RECURSIVE(" + x + ',"_rev", "_id", "_key")')
-      .join(", ");
+    const returns = [...variables.forVariables, ...variables.subqueryVariables].
+      map((x) => x + ": UNSET_RECURSIVE(" + x + ',"_rev", "_id", "_key")').
+      join(", ");
 
     my_query = my_query + indent + " RETURN {" + returns + "}";
 
     return {
       collectionNames: variables.collectionNames,
-      queryString: my_query,
+      queryString: my_query
     };
   };
   return query("", {
     forVariables: [],
     subqueryVariables: [],
     collectionNames: [],
-    modifiableCollectionNames: [],
+    modifiableCollectionNames: []
   });
 }
 
-function runQuery(query, queryOptions, testOptions) {
+function runQuery (query, queryOptions, testOptions) {
   /* Create collections required for this query */
   for (const cn of query.collectionNames) {
     db._drop(cn);
@@ -335,7 +337,7 @@ function runQuery(query, queryOptions, testOptions) {
   return result;
 }
 
-function testQuery(query, testOptions) {
+function testQuery (query, testOptions) {
   /* Print query string */
   if (testOptions.printQuery === true) {
     console.log(`testing query: ${query.queryString}`);
@@ -347,7 +349,8 @@ function testQuery(query, testOptions) {
   /* Run query without subquery splicing */
   const result2 = runQuery(
     query,
-    { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } },
+    { fullCount: true,
+optimizer: { rules: ["-splice-subqueries"] } },
     testOptions
   );
 
@@ -368,7 +371,7 @@ function testQuery(query, testOptions) {
   }
 }
 
-function testQueryWithSeed(testOptions) {
+function testQueryWithSeed (testOptions) {
   if (testOptions.showReproduce) {
     console.log(
       `require("@arangodb/test-generators/subquery-chaos-test").testQueryWithSeed(${JSON.stringify(
@@ -384,7 +387,7 @@ function testQueryWithSeed(testOptions) {
   testQuery(query, testOptions);
 }
 
-function testModifyingQueryWithSeed(testOptions) {
+function testModifyingQueryWithSeed (testOptions) {
   if (testOptions.showReproduce) {
     console.log(
       `require("@arangodb/test-generators/subquery-chaos-test").testModifyingQueryWithSeed(${JSON.stringify(

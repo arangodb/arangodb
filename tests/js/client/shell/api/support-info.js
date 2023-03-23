@@ -28,10 +28,10 @@ const request = require('@arangodb/request');
 const isCluster = require("internal").isCluster();
 const { getEndpointsByType } = require('@arangodb/test-helper');
 
-function supportInfoApiSuite() {
+function supportInfoApiSuite () {
   'use strict';
 
-  let validateHost = function(host) {
+  let validateHost = function (host) {
     assertTrue(host.hasOwnProperty("maintenance"));
     assertEqual("boolean", typeof host.maintenance);
     assertFalse(host.maintenance);
@@ -51,7 +51,7 @@ function supportInfoApiSuite() {
     assertEqual("number", typeof host.processStats.numberOfThreads);
     assertEqual("number", typeof host.processStats.virtualSize);
     assertEqual("number", typeof host.processStats.residentSetSize);
-    
+
     if (host.hasOwnProperty("cpuStats")) {
       // cpuStats is not present on all OSes
       assertEqual("number", typeof host.cpuStats.userPercent);
@@ -79,7 +79,7 @@ function supportInfoApiSuite() {
         assertTrue(res.deployment.hasOwnProperty("servers"));
         Object.keys(res.deployment.servers).forEach((server) => {
           let host = res.deployment.servers[server];
-      
+
           assertTrue(host.hasOwnProperty("id"));
           assertTrue(host.hasOwnProperty("alias"));
           assertTrue(host.hasOwnProperty("endpoint"));
@@ -123,7 +123,7 @@ function supportInfoApiSuite() {
         assertTrue(res.json.host.role === "PRIMARY");
         validateHost(res.json.host);
       });
-    },
+    }
   };
 }
 

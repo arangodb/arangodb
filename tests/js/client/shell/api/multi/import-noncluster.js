@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,27 +31,27 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/import";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // import with complete=true;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function import_with_completeEQtruSuite () {
   let cn = "UnitTestsImport";
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
       db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_regular: function() {
+    test_regular: function () {
       let cmd = api + `?collection=${cn}&type=auto&details=true&complete=true`;
       let body = "[{\"_key\":\"abc\",\"value1\":25,\"value2\":\"test\",\"allowed\":true},{\"_key\":\"abc\",\"name\":\"baz\"},{\"name\":{\"detailed\":\"detailed name\",\"short\":\"short name\"}}]";
 
@@ -62,7 +62,7 @@ function import_with_completeEQtruSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
 
       assertEqual(db[cn].count(), 0);
-    },
+    }
   };
 }
 

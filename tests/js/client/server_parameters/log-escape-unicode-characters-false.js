@@ -1,29 +1,29 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, arango, assertEqual, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server startup options
-/// DISCLAIMER
-///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Julia Puget
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for server startup options
+// / DISCLAIMER
+// /
+// / Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Julia Puget
+// //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
 
@@ -37,18 +37,18 @@ if (getOptions === true) {
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
-    'log.escape-unicode-chars': 'false',
+    'log.escape-unicode-chars': 'false'
   };
 }
 
 const jsunity = require('jsunity');
 
-function EscapeUnicodeFalseSuite() {
+function EscapeUnicodeFalseSuite () {
   'use strict';
 
 
   return {
-    testEscapeUnicodeFalse: function() {
+    testEscapeUnicodeFalse: function () {
       const testValues = ["°", "mötör", "maçã", "犬"];
 
       const res = arango.POST("/_admin/execute", `
@@ -92,7 +92,7 @@ function EscapeUnicodeFalseSuite() {
       }
       assertMatch(/testmann: done/, filtered[testValues.length + 1]);
 
-    },
+    }
 
   };
 }

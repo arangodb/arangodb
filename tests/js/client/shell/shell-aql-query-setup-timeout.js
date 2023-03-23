@@ -36,8 +36,8 @@ let { getEndpointsByType,
       waitForShardsInSync
     } = require('@arangodb/test-helper');
 const ERRORS = arangodb.errors;
-      
-function aqlQuerySetupTimeout() {
+
+function aqlQuerySetupTimeout () {
   'use strict';
   const cn = 'UnitTestsReplication';
 
@@ -54,10 +54,11 @@ function aqlQuerySetupTimeout() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },
-    
-    testSetupTimeout: function() {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
-     
+
+    testSetupTimeout: function () {
+      let c = db._create(cn, { numberOfShards: 1,
+replicationFactor: 2 });
+
       // these failure points will make the query setup sleep for 3 seconds
       // on the db server, and set the setup timeout for query on the coordinator
       // to 0.1 seconds.
@@ -82,7 +83,7 @@ function aqlQuerySetupTimeout() {
       // make sure that query isn't executed after the sleep period on the db server
       require("internal").sleep(5);
       assertEqual(0, c.count());
-    },
+    }
   };
 }
 

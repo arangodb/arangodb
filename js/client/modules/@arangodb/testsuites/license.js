@@ -28,7 +28,7 @@ const functionsDocumentation = {
   'license': 'license tests'
 };
 const optionsDocumentation = [
-  '   - `skipLicense` : if set to true the license tests are skipped',
+  '   - `skipLicense` : if set to true the license tests are skipped'
 ];
 
 const _ = require('lodash');
@@ -46,14 +46,14 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
-  'license': [tu.pathForTesting('client/license')],
+  'license': [tu.pathForTesting('client/license')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Shared conf
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.setup = function(testFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   // just a convenience wrapper for the regular tests
   testFns['license'] = ['license-api'];

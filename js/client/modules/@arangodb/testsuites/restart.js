@@ -55,11 +55,11 @@ const testPaths = {
 };
 
 class broadcastInstance extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "localArangosh";
   }
-  postStart() {
+  postStart () {
     global.theInstanceManager = this.instanceManager;
     return { state: true };
   }
@@ -88,5 +88,7 @@ function restart (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['restart'] = restart;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
 };

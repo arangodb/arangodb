@@ -64,7 +64,7 @@ function recoverySuite () {
 
       assertTrue(fs.isFile(crashFile), crashFile);
 
-      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
+      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function (line) {
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
@@ -78,8 +78,8 @@ function recoverySuite () {
       // symbols we get
       let expected = [ /crashHandlerSignalHandler/, /sigprocmask/, /TerminateDebugging/ ];
       let matches = 0;
-      lines.forEach(function(line) {
-        expected.forEach(function(ex) {
+      lines.forEach(function (line) {
+        expected.forEach(function (ex) {
           if (line.match(/ frame /) && line.match(ex)) {
             ++matches;
           }

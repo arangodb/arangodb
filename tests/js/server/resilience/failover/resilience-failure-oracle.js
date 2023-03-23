@@ -1,28 +1,28 @@
-/*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/* jshint strict: true */
+/* global assertTrue, assertEqual*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alexandru Petenchea
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const request = require('@arangodb/request');
@@ -39,25 +39,25 @@ const {
   getServerHealth,
   getServerUrl,
   continueServerWaitOk,
-  stopServerWaitFailed,
+  stopServerWaitFailed
 } = helper;
 const {
-  allServersHealthy,
+  allServersHealthy
 } = lpreds;
 
-function getFailureOracleStatus(url) {
+function getFailureOracleStatus (url) {
   const status = request.get(`${url}/_admin/cluster/failureOracle/status`);
   checkRequestResult(status);
   return status.json.result;
 }
 
-function flushFailureOracle(url, global = false) {
+function flushFailureOracle (url, global = false) {
   const status = request.post(`${url}/_admin/cluster/failureOracle/flush?global=${global}`);
   checkRequestResult(status);
   return status.json.result;
 }
 
-function getAgencyFailureStatus(serverId) {
+function getAgencyFailureStatus (serverId) {
   return getServerHealth(serverId) !== "GOOD";
 }
 
@@ -154,7 +154,7 @@ const FailureOracleSuite = function () {
       for (const dbs of dbservers) {
         assertEqual(response[dbs], 200);
       }
-    },
+    }
   };
 };
 

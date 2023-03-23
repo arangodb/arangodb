@@ -41,15 +41,7 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
-
-
-
-
-
-
-
-function limitSuite() {
+function limitSuite () {
   const gn = 'UnitTestGraph';
 
   return {
@@ -68,13 +60,17 @@ function limitSuite() {
 
       c = db._createEdgeCollection(gn + 'e');
       for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + i});
+        c.insert({_from: gn + 'v/test' + i,
+_to: gn + 'v/test' + i});
       }
 
       c = db._createEdgeCollection(gn + 'e2');
-      c.insert({_from: gn + 'v/test1', _to: gn + 'v/test0'});
-      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test0'});
-      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test1'});
+      c.insert({_from: gn + 'v/test1',
+_to: gn + 'v/test0'});
+      c.insert({_from: gn + 'v/test2',
+_to: gn + 'v/test0'});
+      c.insert({_from: gn + 'v/test2',
+_to: gn + 'v/test1'});
     },
 
     tearDownAll: function () {

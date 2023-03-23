@@ -81,7 +81,7 @@
         this.resize();
         $('#swagger').show();
         $('#swaggerIframe').remove();
-        
+
         // load swagger iframe
         var path = window.location.pathname.split('/');
 

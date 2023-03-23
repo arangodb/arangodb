@@ -30,22 +30,22 @@ let jsunity = require('jsunity');
 
 function adminStatusSuite () {
   'use strict';
-  
+
   return {
 
     testShort: function () {
       let result = arango.GET('/_admin/status');
 
       assertEqual("arango", result.server);
-      
+
       assertTrue(result.hasOwnProperty("version"));
-      
+
       assertTrue(result.hasOwnProperty("pid"));
       assertEqual("number", typeof result.pid);
-      
+
       assertTrue(result.hasOwnProperty("license"));
       assertNotEqual(-1, ["enterprise", "community"].indexOf(result.license));
-      
+
       assertEqual("server", result.mode);
       assertEqual("server", result.operationMode);
 
@@ -53,7 +53,7 @@ function adminStatusSuite () {
 
       assertTrue(result.hasOwnProperty("host"));
       assertEqual("string", typeof result.host);
-      
+
       assertTrue(result.hasOwnProperty("serverInfo"));
       assertTrue(result.serverInfo.hasOwnProperty("maintenance"));
       assertTrue(result.serverInfo.hasOwnProperty("role"));
@@ -61,7 +61,7 @@ function adminStatusSuite () {
       assertTrue(result.serverInfo.hasOwnProperty("readOnly"));
       assertTrue(result.serverInfo.hasOwnProperty("writeOpsEnabled"));
     },
-    
+
     testOverview: function () {
       let result = arango.GET('/_admin/status?overview=true');
 
@@ -74,7 +74,7 @@ function adminStatusSuite () {
       assertNotEqual(-1, ["SINGLE", "COORDINATOR"].indexOf(result.role));
       assertTrue(result.hasOwnProperty("hash"));
       assertTrue(result.hash.length > 0);
-    },
+    }
 
   };
 }

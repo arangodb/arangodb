@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,7 @@ const pregelTestReadWriteHelpers = require("@arangodb/graph/pregel-test-read-wri
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
-function componentsTestSuite() {
+function componentsTestSuite () {
 
     const numComponents = 20; // components
     const n = 200; // vertices
@@ -113,7 +113,9 @@ function componentsTestSuite() {
                     let toID = String(c) + ":" + Math.floor(lcg() * n);
                     let from = vColl + '/' + fromID;
                     let to = vColl + '/' + toID;
-                    edges.push({_from: from, _to: to, vertex: String(fromID)});
+                    edges.push({_from: from,
+_to: to,
+vertex: String(fromID)});
                 }
 
                 for (let x = 0; x < n; x++) {
@@ -121,7 +123,9 @@ function componentsTestSuite() {
                     let toID = String(c) + ":" + (x + 1);
                     let from = vColl + '/' + fromID;
                     let to = vColl + '/' + toID;
-                    vertices.push({_from: from, _to: to, vertex: String(fromID)});
+                    vertices.push({_from: from,
+_to: to,
+vertex: String(fromID)});
                 }
             }
             db[eColl].insert(edges);
@@ -170,7 +174,7 @@ function componentsTestSuite() {
                     ["C5", "C7"],
                     ["C7", "C8"],
                     ["C8", "C9"],
-                    ["C8", "C10"],
+                    ["C8", "C10"]
                 ];
 
                 const vertices = new Set(edges.flat());
@@ -190,7 +194,8 @@ function componentsTestSuite() {
 
                 let edgedocs = [];
                 edges.forEach(([from, to]) => {
-                    edgedocs.push({_from: `${v}/${from}`, _to: `${v}/${to}`});
+                    edgedocs.push({_from: `${v}/${from}`,
+_to: `${v}/${to}`});
                 });
                 db[e].save(edgedocs);
             }
@@ -202,7 +207,8 @@ function componentsTestSuite() {
         },
 
         testWCC: function () {
-            var pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
+            var pid = pregel.start("wcc", graphName, {resultField: "result",
+store: true});
             const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
             assertEqual(stats.vertexCount, numComponents * n, stats);
@@ -223,7 +229,8 @@ function componentsTestSuite() {
 
             // weakly connected components algorithm
             var pid = pregel.start('wcc', problematicGraphName, {
-                maxGSS: 250, resultField: 'component'
+                maxGSS: 250,
+resultField: 'component'
             });
             pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid, 120, 0.2);
 
@@ -244,10 +251,12 @@ function componentsTestSuite() {
     };
 }
 
-function wccRegressionTestSuite() {
+function wccRegressionTestSuite () {
 
     const makeEdge = (from, to) => {
-        return {_from: `${vColl}/${from}`, _to: `${vColl}/${to}`, vertex: `${from}`};
+        return {_from: `${vColl}/${from}`,
+_to: `${vColl}/${to}`,
+vertex: `${from}`};
     };
     return {
 
@@ -292,7 +301,8 @@ function wccRegressionTestSuite() {
             db[vColl].save(vertices);
             db[eColl].save(edges);
 
-            const pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
+            const pid = pregel.start("wcc", graphName, {resultField: "result",
+store: true});
             pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
             // Now test the result.
@@ -354,7 +364,8 @@ function wccRegressionTestSuite() {
             db[vColl].save(vertices);
             db[eColl].save(edges);
 
-            const pid = pregel.start("wcc", graphName, {resultField: "result", store: true});
+            const pid = pregel.start("wcc", graphName, {resultField: "result",
+store: true});
             pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
             // Now test the result.
@@ -368,7 +379,7 @@ function wccRegressionTestSuite() {
             assertEqual(computedComponents.length, 1, `We expected 1 component instead got ${JSON.stringify(computedComponents)}`);
             // we have all 20 elements
             assertEqual(computedComponents[0].size, 20);
-        },
+        }
 
     };
 }

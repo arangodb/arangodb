@@ -1353,8 +1353,12 @@
 
         // hover functions
         _.each(descriptions, function (val, key) {
-          wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
-          wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+          wheel.navItems[key].navTitle.mouseover(function () {
+ self.drawHelp(val);
+});
+          wheel.navItems[key].navTitle.mouseout(function () {
+ self.removeHelp();
+});
         });
 
         // deselect active default entry
@@ -1422,8 +1426,12 @@
 
         // hover functions
         _.each(descriptions, function (val, key) {
-          wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
-          wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+          wheel.navItems[key].navTitle.mouseover(function () {
+ self.drawHelp(val);
+});
+          wheel.navItems[key].navTitle.mouseout(function () {
+ self.removeHelp();
+});
         });
 
         // deselect active default entry
@@ -1488,7 +1496,8 @@
         wheel.colors = hotaru;
         wheel.multiSelect = false;
         wheel.clickModeRotate = false;
-        wheel.sliceHoverAttr = {stroke: '#fff', 'stroke-width': 2};
+        wheel.sliceHoverAttr = {stroke: '#fff',
+'stroke-width': 2};
         wheel.slicePathFunction = slicePath().DonutSlice;
 
         if (!self.noDefinedGraph) {
@@ -1571,8 +1580,12 @@
 
           // hover functions
           _.each(descriptions, function (val, key) {
-            wheel.navItems[key].navTitle.mouseover(function () { self.drawHelp(val); });
-            wheel.navItems[key].navTitle.mouseout(function () { self.removeHelp(); });
+            wheel.navItems[key].navTitle.mouseover(function () {
+ self.drawHelp(val);
+});
+            wheel.navItems[key].navTitle.mouseout(function () {
+ self.removeHelp();
+});
           });
 
           // deselect active default entry
@@ -1673,10 +1686,10 @@
         });
 
         if (found === false) {
-          if(ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
+          if (ajaxData.nodeColorAttribute !== undefined && ajaxData.nodeColorAttribute !== '') {
           let color = self.nodeColorAttributes.get(newNode.nodeColorAttributeValue);
-          if(!color) {
-              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+          if (!color) {
+              const tempNodeColor = Math.floor(Math.random() * 16777215).toString(16).substring(1, 3) + Math.floor(Math.random() * 16777215).toString(16).substring(1, 3) + Math.floor(Math.random() * 16777215).toString(16).substring(1, 3);
               self.nodeColorAttributes.set(newNode.nodeColorAttributeValue, tempNodeColor);
               color = tempNodeColor;
             }
@@ -1920,13 +1933,13 @@
       */
     },
 
-    colorNodesByAttribute: function(s, attribute) {
+    colorNodesByAttribute: function (s, attribute) {
       var self = this;
-          
+
       s.graph.nodes().forEach(function (n) {
         let color = self.nodeColorAttributes.get(n.nodeColorAttributeValue);
-        if(!color) {
-          const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+        if (!color) {
+          const tempNodeColor = Math.floor(Math.random() * 16777215).toString(16).substring(1, 3) + Math.floor(Math.random() * 16777215).toString(16).substring(1, 3) + Math.floor(Math.random() * 16777215).toString(16).substring(1, 3);
           self.nodeColorAttributes.set(n.nodeColorAttributeValue, tempNodeColor);
           color = tempNodeColor;
         }
@@ -2440,7 +2453,7 @@
         $('#toggleForce').fadeOut('fast');
       }
 
-      if(graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
+      if (graph.settings.nodeColorAttribute !== undefined && graph.settings.nodeColorAttribute !== '') {
         this.colorNodesByAttribute(s, graph.settings.nodeColorAttribute);
       }
     },

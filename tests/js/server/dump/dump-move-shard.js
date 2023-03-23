@@ -28,20 +28,20 @@
 let internal = require("internal");
 let jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function dumpTestSuite () {
   'use strict';
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the empty collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the empty collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMoveShard : function () {
+    testMoveShard: function () {
 
       if (arango.getRole() !== "COORDINATOR") {
         return;
@@ -63,8 +63,8 @@ function dumpTestSuite () {
             dbServers.push(clusterHealth[entry].ShortName);
           }
         });
-      assertTrue (dbServers.length >= 3);
-      
+      assertTrue(dbServers.length >= 3);
+
       Object.keys(planShards).forEach(
         function (shard) {
           let dbs = dbServers;
@@ -86,7 +86,11 @@ function dumpTestSuite () {
               return;
           }
 
-          let body = {fromServer, toServer, database, collection, shard};
+          let body = {fromServer,
+toServer,
+database,
+collection,
+shard};
           let result = arango.POST("_admin/cluster/moveShard", body);
           assertFalse(result.error);
           assertEqual(result.code, 202);
@@ -110,14 +114,14 @@ function dumpTestSuite () {
         pending = pending.filter((p) => done.indexOf(p) !== -1);
         require("internal").sleep(0.25);
       }
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(dumpTestSuite);
 

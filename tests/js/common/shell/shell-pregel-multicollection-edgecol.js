@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertNotEqual, assertFalse */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
-function multiCollectionTestSuite() {
+function multiCollectionTestSuite () {
   'use strict';
 
   const numComponents = 20; // components
@@ -50,15 +50,15 @@ function multiCollectionTestSuite() {
   const cn = 10;
   const cm = cn * cn;
 
-  // a simple LCG to create deterministic pseudorandom numbers, 
+  // a simple LCG to create deterministic pseudorandom numbers,
   // from https://gist.github.com/Protonk/5389384
-  let createRand = function(seed) {
+  let createRand = function (seed) {
     const m = 25;
     const a = 11;
     const c = 17;
 
     let z = seed || 3;
-    return function() {
+    return function () {
       z = (a * z + c) % m;
       return z / m;
     };
@@ -66,16 +66,16 @@ function multiCollectionTestSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
 
-      console.log("Beginning to insert test data with " + (numComponents * n) + 
+      console.log("Beginning to insert test data with " + (numComponents * n) +
                   " vertices, " + (numComponents * (m + n)) + " edges spread " +
                   "across " + cn + " vertex collections and " + cm + " edge " +
-                  "collections" );
+                  "collections");
 
       // var exists = graph_module._list().indexOf("random") !== -1;
       // if (exists || db.demo_v) {
@@ -87,7 +87,8 @@ function multiCollectionTestSuite() {
       graph._addVertexCollection(v0);
       for (let i = 1; i < cn; ++i) {
         const vi = `${vColl}_${i}`;
-        db._create(vi, { numberOfShards: 4, distributeShardsLike: v0 });
+        db._create(vi, { numberOfShards: 4,
+distributeShardsLike: v0 });
         graph._addVertexCollection(vi);
       }
 
@@ -159,7 +160,9 @@ function multiCollectionTestSuite() {
           const vTo = (toId + c) % cn;
           const from = `${vColl}_${vFrom}/${fromKey}`;
           const to = `${vColl}_${vTo}/${toKey}`;
-          edges[vFrom][vTo].push({ _from: from, _to: to, vertex: String(fromKey) });
+          edges[vFrom][vTo].push({ _from: from,
+_to: to,
+vertex: String(fromKey) });
         }
         for (let i = 0; i < cn; ++i) {
           for (let j = 0; j < cn; ++j) {
@@ -184,13 +187,15 @@ function multiCollectionTestSuite() {
           if (!cols.hasOwnProperty(coln)) {
             cols[coln] = [];
           }
-          edgeCols[coln] = edgeCols[coln].concat({ _from: from, _to: to, vertex: String(fromKey) });
+          edgeCols[coln] = edgeCols[coln].concat({ _from: from,
+_to: to,
+vertex: String(fromKey) });
         }
       }
       Object.keys(edgeCols).forEach(coln => {
         db[coln].insert(edgeCols[coln]);
       });
-      
+
       let count = 0;
       for (let i = 0; i < cn; ++i) {
         for (let j = 0; j < cn; ++j) {
@@ -201,16 +206,17 @@ function multiCollectionTestSuite() {
       assertEqual(count, numComponents * m + numComponents * n);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       graph_module._drop(graphName, true);
     },
 
     testMultiWCC: function () {
-      var pid = pregel.start("wcc", graphName, { resultField: "result", store: true });
+      var pid = pregel.start("wcc", graphName, { resultField: "result",
+store: true });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
       assertEqual(stats.vertexCount, numComponents * n, stats);
@@ -227,13 +233,15 @@ function multiCollectionTestSuite() {
       assertEqual(allUniquePregelResults.size, numComponents);
 
     },
-    
+
     testMultiWCCParallelism: function () {
       [ 1, 2, 4, 8 ].forEach((parallelism) => {
-        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism });
+        let pid = pregel.start("wcc", graphName, { resultField: "result",
+store: true,
+parallelism });
         const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
-        assertTrue( stats.gss <= 25);
+        assertTrue(stats.gss <= 25);
         assertEqual(stats.vertexCount, numComponents * n, stats);
         assertEqual(stats.edgeCount, numComponents * (m + n), stats);
         assertTrue(stats.hasOwnProperty("parallelism"));
@@ -248,10 +256,13 @@ function multiCollectionTestSuite() {
         assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
-    
+
     testMultiWCCParallelismMemoryMapping: function () {
       [ 1, 2, 4, 8 ].forEach((parallelism) => {
-        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
+        let pid = pregel.start("wcc", graphName, { resultField: "result",
+store: true,
+parallelism,
+useMemoryMaps: true });
         const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
         assertTrue(stats.gss <= 25, stats);
@@ -268,17 +279,17 @@ function multiCollectionTestSuite() {
         }
         assertEqual(allUniquePregelResults.size, numComponents);
       });
-    },
+    }
 
   };
 }
 
-function edgeCollectionRestrictionsTestSuite() {
+function edgeCollectionRestrictionsTestSuite () {
   'use strict';
 
   const cn = 'UnitTestCollection';
 
-  let checkResult = function(pid) {
+  let checkResult = function (pid) {
     const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
     assertEqual(200, stats.vertexCount, stats);
@@ -310,11 +321,11 @@ function edgeCollectionRestrictionsTestSuite() {
         ++toComponents[doc.result];
       });
     }
-    assertEqual(100, Object.keys(fromComponents).length); 
+    assertEqual(100, Object.keys(fromComponents).length);
     Object.keys(fromComponents).forEach((k) => {
       assertEqual(1, fromComponents[k]);
     });
-    assertEqual(100, Object.keys(toComponents).length); 
+    assertEqual(100, Object.keys(toComponents).length);
     Object.keys(toComponents).forEach((k) => {
       assertEqual(1, toComponents[k]);
     });
@@ -329,7 +340,7 @@ function edgeCollectionRestrictionsTestSuite() {
 
       db._createDatabase('PregelTest');
       db._useDatabase('PregelTest');
-        
+
       // only used as a prototype for sharding
       const numberOfShards = 3;
       db._create("proto", { numberOfShards });
@@ -338,24 +349,35 @@ function edgeCollectionRestrictionsTestSuite() {
 
       let vertices = [];
       for (let i = 0; i < 10; ++i) {
-        vertices.push({ vertex: "test" + i, order: i });
+        vertices.push({ vertex: "test" + i,
+order: i });
       }
       for (let i = 0; i < 10; ++i) {
         let fromName = cn + 'VertexFrom' + i;
         let toName = cn + 'VertexTo' + i;
-        let f = db._create(fromName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["_key"] });
-        let fromKeys = f.insert(vertices).map((doc) => doc._key );
-        let t = db._create(toName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["_key"] });
-        let toKeys = t.insert(vertices).map((doc) => doc._key );
+        let f = db._create(fromName, { numberOfShards,
+distributeShardsLike: 'proto',
+shardKeys: ["_key"] });
+        let fromKeys = f.insert(vertices).map((doc) => doc._key);
+        let t = db._create(toName, { numberOfShards,
+distributeShardsLike: 'proto',
+shardKeys: ["_key"] });
+        let toKeys = t.insert(vertices).map((doc) => doc._key);
 
         let edges = [];
         for (let j = 0; j < i; ++j) {
           // requirement for connectedcomponents is that we have edges in both directions!
-          edges.push({ _from: fromName + "/" + fromKeys[j], _to: toName + "/" + toKeys[j], vertex: fromKeys[j] });
-          edges.push({ _to: fromName + "/" + fromKeys[j], _from: toName + "/" + toKeys[j], vertex: toKeys[j] });
+          edges.push({ _from: fromName + "/" + fromKeys[j],
+_to: toName + "/" + toKeys[j],
+vertex: fromKeys[j] });
+          edges.push({ _to: fromName + "/" + fromKeys[j],
+_from: toName + "/" + toKeys[j],
+vertex: toKeys[j] });
         }
         let edgeName = cn + 'Edge_' + fromName + '_' + toName;
-        let e = db._createEdgeCollection(edgeName, { numberOfShards, distributeShardsLike: 'proto', shardKeys: ["vertex"] });
+        let e = db._createEdgeCollection(edgeName, { numberOfShards,
+distributeShardsLike: 'proto',
+shardKeys: ["vertex"] });
         e.insert(edges);
 
         edgeDefinitions.push(graph_module._relation(edgeName, [fromName], [toName]));
@@ -370,14 +392,19 @@ function edgeCollectionRestrictionsTestSuite() {
     },
 
     testWithEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, parallelism: 4 });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result",
+store: true,
+parallelism: 4 });
       checkResult(pid);
     },
-    
+
     testNoEdgeCollectionRestrictions: function () {
-      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result", store: true, edgeCollectionRestrictions: {}, parallelism: 4 });
+      let pid = pregel.start("connectedcomponents", graphName, { resultField: "result",
+store: true,
+edgeCollectionRestrictions: {},
+parallelism: 4 });
       checkResult(pid);
-    },
+    }
   };
 }
 

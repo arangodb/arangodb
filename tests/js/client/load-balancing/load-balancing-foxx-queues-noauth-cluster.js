@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -41,8 +41,8 @@ function FoxxQueuesSuite () {
   const databaseName = "UnitTestsDatabase";
   const qn = "FoxxQueue";
   const adminPath = "_admin/execute?returnBodyAsJSON=true";
- 
-  function sendRequest(method, endpoint, body, usePrimary) {
+
+  function sendRequest (method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -53,7 +53,7 @@ function FoxxQueuesSuite () {
         url: `${coordinators[i]}${endpoint}`
       };
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -65,8 +65,8 @@ function FoxxQueuesSuite () {
   }
 
   return {
-    
-    setUpAll: function() {
+
+    setUpAll: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -74,7 +74,7 @@ function FoxxQueuesSuite () {
 
       db._createDatabase(databaseName + "1");
       db._createDatabase(databaseName + "2");
-      
+
       // create queues
       let req, result;
       req = `require("@arangodb/foxx/queues").create("${qn}"); return "ok";`;
@@ -88,7 +88,7 @@ function FoxxQueuesSuite () {
       require("internal").sleep(10);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._useDatabase("_system");
       try {
         db._dropDatabase(databaseName + "1");
@@ -97,8 +97,8 @@ function FoxxQueuesSuite () {
         db._dropDatabase(databaseName + "2");
       } catch (err) {}
     },
-    
-    testPushIntoDBQueuesOnNonFoxxmaster: function() {
+
+    testPushIntoDBQueuesOnNonFoxxmaster: function () {
       // determine Foxxmaster
       let primaryIsFoxxmaster = sendRequest('GET', `/_admin/status`, "", true).coordinator.isFoxxmaster;
       if (!primaryIsFoxxmaster) {
@@ -131,18 +131,18 @@ function FoxxQueuesSuite () {
         } finally {
           db._useDatabase("_system");
         }
-        
+
         if (pending === 0) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      
+
       assertTrue(tries < maxTries, "timeout waiting for Foxx queue processing");
     },
-    
-    testPushIntoDBQueuesOnTwoCoordinators: function() {
+
+    testPushIntoDBQueuesOnTwoCoordinators: function () {
       let req, result;
 
       // create queue jobs
@@ -174,17 +174,17 @@ function FoxxQueuesSuite () {
         } finally {
           db._useDatabase("_system");
         }
-        
+
         if (pending === 0) {
           break;
         }
 
         require("internal").sleep(0.5);
       }
-      
+
       assertTrue(tries < maxTries, "timeout waiting for Foxx queue processing");
-    },
-    
+    }
+
   };
 }
 

@@ -40,7 +40,10 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   c = db._create('UnitTestsRecovery', { 'id': "9999990" });
   for (i = 0; i < 10; ++i) {
-    c.save({ _key: 'test' + i, value1: i, value2: 'test', value3: [ 'foo', i ] });
+    c.save({ _key: 'test' + i,
+value1: i,
+value2: 'test',
+value3: [ 'foo', i ] });
   }
 
   // drop the collection
@@ -49,7 +52,10 @@ function runSetup () {
 
   c = db._create('UnitTestsRecovery', { 'id': "9999990" });
   for (i = 0; i < 10; ++i) {
-    c.save({ _key: 'test' + i, value3: i, value1: 'test', value2: [ 'foo', i ] });
+    c.save({ _key: 'test' + i,
+value3: i,
+value1: 'test',
+value2: [ 'foo', i ] });
   }
 
   db._drop('test');

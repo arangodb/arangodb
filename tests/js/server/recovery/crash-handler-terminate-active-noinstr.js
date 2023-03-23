@@ -74,7 +74,7 @@ function recoverySuite () {
       assertTrue(versionDetails.hasOwnProperty("asan"));
       const asan = versionDetails.asan === "true";
 
-      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
+      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function (line) {
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
@@ -82,7 +82,7 @@ function recoverySuite () {
       // check message
       let line = lines.shift();
       if (asan) {
-        // using asan,  
+        // using asan,
         assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*handler for std::terminate\(\) invoked without active exception/, line);
       } else {
         assertMatch(/FATAL.*thread \d+.*caught unexpected signal 6.*handler for std::terminate\(\) invoked with an std::exception: /, line);
@@ -93,8 +93,8 @@ function recoverySuite () {
       // symbols we get
       let expected = [ /std::rethrow_exception/, /installCrashHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
-      lines.forEach(function(line) {
-        expected.forEach(function(ex) {
+      lines.forEach(function (line) {
+        expected.forEach(function (ex) {
           if (line.match(/ frame /) && line.match(ex)) {
             ++matches;
           }

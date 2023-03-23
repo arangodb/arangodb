@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -31,26 +31,26 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 
 const jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_an_error_if_document_identifier_is_missing: function() {
+    test_returns_an_error_if_document_identifier_is_missing: function () {
       let cmd = "/_api/document";
       let doc = arango.DELETE_RAW(cmd);
 
@@ -61,7 +61,7 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted_1: function() {
+    test_returns_an_error_if_document_identifier_is_corrupted_1: function () {
       let cmd = "/_api/document/123456";
       let doc = arango.DELETE_RAW(cmd);
 
@@ -72,10 +72,10 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted_2: function() {
+    test_returns_an_error_if_document_identifier_is_corrupted_2: function () {
       let cmd = "/_api/document//123456";
       let doc = arango.DELETE_RAW(cmd);
-      
+
       if (arango.protocol() === 'vst') {
         assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
         assertTrue(doc.parsedBody['error']);
@@ -91,7 +91,7 @@ function error_handlingSuite () {
       }
     },
 
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
+    test_returns_an_error_if_collection_identifier_is_unknown: function () {
       let cmd = "/_api/document/123456/234567";
       let doc = arango.DELETE_RAW(cmd);
 
@@ -102,7 +102,7 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_document_identifier_is_unknown: function() {
+    test_returns_an_error_if_document_identifier_is_unknown: function () {
       let cmd = `/_api/document/${cid._id}/234567`;
       let doc = arango.DELETE_RAW(cmd);
 
@@ -111,26 +111,26 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // deleting documents;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function deleting_documentsSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_create_a_document_and_delete_it: function() {
+    test_create_a_document_and_delete_it: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -161,9 +161,9 @@ function deleting_documentsSuite () {
       assertEqual(cid.count(), 0);
     },
 
-    test_create_a_document_and_delete_it__using_if_match: function() {
+    test_create_a_document_and_delete_it__using_if_match: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -210,9 +210,9 @@ function deleting_documentsSuite () {
       assertEqual(cid.count(), 0);
     },
 
-    test_create_a_document_and_delete_it__using_an_invalid_revision: function() {
+    test_create_a_document_and_delete_it__using_an_invalid_revision: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -253,9 +253,9 @@ function deleting_documentsSuite () {
       assertEqual(cid.count(), 0);
     },
 
-    test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_false: function() {
+    test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_false: function () {
       let cmd = `/_api/document?collection=${cid._id}&waitForSync=false`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -284,9 +284,9 @@ function deleting_documentsSuite () {
       assertEqual(cid.count(), 0);
     },
 
-    test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_true: function() {
+    test_create_a_document_and_delete_it__waitForSync_URL_param_EQ_true: function () {
       let cmd = `/_api/document?collection=${cid._id}&waitForSync=true`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -313,7 +313,7 @@ function deleting_documentsSuite () {
       assertEqual(rev2, rev);
 
       assertEqual(cid.count(), 0);
-    },
+    }
   };
 }
 

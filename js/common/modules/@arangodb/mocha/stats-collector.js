@@ -5,7 +5,7 @@
 
 var Date = global.Date;
 
-function createStatsCollector(runner) {
+function createStatsCollector (runner) {
   var stats = {
     suites: 0,
     tests: 0,
@@ -20,25 +20,25 @@ function createStatsCollector(runner) {
 
   runner.stats = stats;
 
-  runner.once('start', function() {
+  runner.once('start', function () {
     stats.start = new Date();
   });
-  runner.on('suite', function(suite) {
+  runner.on('suite', function (suite) {
     suite.root || stats.suites++;
   });
-  runner.on('pass', function() {
+  runner.on('pass', function () {
     stats.passes++;
   });
-  runner.on('fail', function() {
+  runner.on('fail', function () {
     stats.failures++;
   });
-  runner.on('pending', function() {
+  runner.on('pending', function () {
     stats.pending++;
   });
-  runner.on('test end', function() {
+  runner.on('test end', function () {
     stats.tests++;
   });
-  runner.once('end', function() {
+  runner.once('end', function () {
     stats.end = new Date();
     stats.duration = stats.end - stats.start;
   });

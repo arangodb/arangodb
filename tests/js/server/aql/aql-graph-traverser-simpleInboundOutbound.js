@@ -41,15 +41,7 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
-
-
-
-
-
-
-
-function simpleInboundOutboundSuite() {
+function simpleInboundOutboundSuite () {
   const gn = 'UnitTestGraph';
 
   return {
@@ -67,7 +59,8 @@ function simpleInboundOutboundSuite() {
       c.insert({_key: "test"});
 
       c = db._createEdgeCollection(gn + 'e', {numberOfShards: 5});
-      c.insert({_from: gn + "v2/test", _to: gn + "v1/test"});
+      c.insert({_from: gn + "v2/test",
+_to: gn + "v1/test"});
     },
 
     tearDown: function () {

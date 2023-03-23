@@ -40,8 +40,11 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery'), i;
 
   for (i = 0; i < 1000; ++i) {
-    c.insert({ _key: 'foo' + i, value1: i, value2: "test" + i });
-    c.replace('foo' + i, { value23: i, value42: "test" + i });
+    c.insert({ _key: 'foo' + i,
+value1: i,
+value2: "test" + i });
+    c.replace('foo' + i, { value23: i,
+value42: "test" + i });
   }
 
   c.save({ _key: 'crashme' }, true); // wait for sync

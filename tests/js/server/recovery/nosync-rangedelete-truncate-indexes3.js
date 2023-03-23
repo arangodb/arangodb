@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
+
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
 
@@ -41,10 +41,12 @@ function runSetup () {
   let c2 = db._create('UnitTestsRecovery2');
   c2.insert({}); // make sure count is initalized
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ _key: "test" + i, value: i % 1000});
+    docs.push({ _key: "test" + i,
+value: i % 1000});
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
@@ -54,10 +56,10 @@ function runSetup () {
   // make sure the estimate is synced once
   internal.waitForEstimatorSync();
   // turn off any background op like sync
-  internal.debugSetFailAt("RocksDBBackgroundThread::run"); 
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   // force a sync right before truncate
-  internal.debugSetFailAt("RocksDBCollection::truncate::forceSync"); 
- 
+  internal.debugSetFailAt("RocksDBCollection::truncate::forceSync");
+
   // should trigger range deletion
   c.truncate();
 
@@ -81,12 +83,13 @@ function recoverySuite () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(0, c.count());
       assertNotNull(db._collection('UnitTestsRecovery2'));
-  
+
       let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
-      
+
       for (let i = 0; i < 100000; i += 1000) {
         assertFalse(c.exists("key" + i));
-        assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
+        assertEqual([], db._query(query, { "@collection": c.name(),
+value: i }).toArray());
       }
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent

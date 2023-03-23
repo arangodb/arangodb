@@ -106,12 +106,12 @@ describe('AQL query analyzer', function () {
       }
       // kill all async tasks that will execute the query that we
       // are looking for
-      tasks.get().forEach(function(task) {
+      tasks.get().forEach(function (task) {
         if (task.command.match(/SLEEP\(@value\)/)) {
           try {
             tasks.unregister(task.id);
           } catch (err) {
-            // not an error if this fails, as the task may have completed 
+            // not an error if this fails, as the task may have completed
             // between `tasks.get()` and `tasks.unregister()`
           }
         }
@@ -159,7 +159,7 @@ describe('AQL query analyzer', function () {
       }
       expect(q).to.equal(1);
     });
-    
+
     it('should have proper running query descriptions', function () {
       let now = (new Date()).toISOString();
       sendQuery(1, true);
@@ -189,7 +189,7 @@ describe('AQL query analyzer', function () {
       expect(q[0]).to.have.property('state', 'executing');
       expect(q[0]).to.have.property('stream', false);
     });
-    
+
     it('should have proper running query descriptions, without bind vars', function () {
       let now = (new Date()).toISOString();
       testee.properties({
@@ -281,11 +281,11 @@ describe('AQL query analyzer', function () {
       expect(queries[0]).to.have.property('state', 'finished');
       expect(queries[0]).to.have.property('stream', false);
     });
-    
+
     it('should track peak memory usage', function () {
       const query = 'RETURN (FOR x IN 1..@amount FILTER SLEEP(0.0001) RETURN CONCAT("testmann", x))';
       const filterQueries = (q) => q.query === query;
-      
+
       testee.properties({
         slowQueryThreshold: 0.2
       });
@@ -356,7 +356,7 @@ describe('AQL query analyzer', function () {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
-    
+
     it('should not track slow queries if turned off but bind vars tracking is on', function () {
       testee.properties({
         slowQueryThreshold: 2,
@@ -367,7 +367,7 @@ describe('AQL query analyzer', function () {
       expect(testee.current().filter(filterQueries).length).to.equal(0);
       expect(testee.slow().filter(filterQueries).length).to.equal(0);
     });
-    
+
     it('should track slow queries if only bind vars tracking is turned off', function () {
       testee.properties({
         slowQueryThreshold: 2,

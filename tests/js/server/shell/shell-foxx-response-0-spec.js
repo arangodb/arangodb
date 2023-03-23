@@ -180,7 +180,8 @@ describe('SyntheticResponse', function () {
     });
     it('has no effect when called without a name', function () {
       require("console").log('has no effect when called without a name');
-      const rawRes = {headers: {}, contentType: 'application/x-wat'};
+      const rawRes = {headers: {},
+contentType: 'application/x-wat'};
       const res = new SyntheticResponse(rawRes, {});
       Object.freeze(rawRes.headers);
       Object.freeze(rawRes);

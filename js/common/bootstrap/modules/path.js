@@ -1,9 +1,9 @@
-/*eslint curly:0, no-redeclare:0, quotes:0 */
-/*jshint ignore:start */
+/* eslint curly:0, no-redeclare:0, quotes:0 */
+/* jshint ignore:start */
 /*eslint-disable */
 global.DEFINE_MODULE('path', (function () {
   'use strict'
-  /*eslint-enable */
+  /* eslint-enable */
 
   const module = {};
 
@@ -315,12 +315,12 @@ global.DEFINE_MODULE('path', (function () {
 
   win32._makeLong = function (path) {
     return path;
-    // UNC path building is currently deactivated. 
+    // UNC path building is currently deactivated.
     // The reason is that the internal file access functions cannot handle
-    // UNC names at all. They would need to be changed to use the special 
+    // UNC names at all. They would need to be changed to use the special
     // Windows wide-char file system function variants.
 
-  /* 
+  /*
     // Note: this will *probably* throw somewhere.
     if (typeof path !== 'string')
       return path

@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global arango, db, assertTrue */
+/* jshint strict: false */
+/* global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -83,7 +83,7 @@ exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSucc
   try {
     db._executeTransaction(trx);
   } catch (ex) {
-    if ((!abortArangoshOnly || global.arango) &&  // only on arangosh...
+    if ((!abortArangoshOnly || global.arango) && // only on arangosh...
       (ex instanceof arangodb.ArangoError) && // only regular arango errors has the subsequent:
       (ex.errorNum === errorCode) && // check for right error code
       (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
@@ -110,7 +110,7 @@ exports.truncateFailure = function (collection) {
   internal.debugTerminate('crashing server');
 };
 
-function getInstanceInfo() {
+function getInstanceInfo () {
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -136,15 +136,15 @@ exports.getServersByType = function (type) {
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
   const instanceInfo = getInstanceInfo();
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toEndpoint)[0];
+  return instanceInfo.arangods.filter((d) => (d.id === id)).
+    map(toEndpoint)[0];
 };
 
 exports.getUrlById = function (id) {
   const toUrl = (d) => (d.url);
   const instanceInfo = getInstanceInfo();
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toUrl)[0];
+  return instanceInfo.arangods.filter((d) => (d.id === id)).
+    map(toUrl)[0];
 };
 
 exports.getEndpointsByType = function (type) {
@@ -162,9 +162,9 @@ exports.getEndpointsByType = function (type) {
   };
 
   const instanceInfo = getInstanceInfo();
-  return instanceInfo.arangods.filter(isType)
-    .map(toEndpoint)
-    .map(endpointToURL);
+  return instanceInfo.arangods.filter(isType).
+    map(toEndpoint).
+    map(endpointToURL);
 };
 
 exports.helper = {
@@ -179,7 +179,7 @@ exports.helper = {
   waitUnload: function (collection, waitForCollector) {
     let internal = require('internal');
     internal.wal.flush(true, waitForCollector || false);
-  },
+  }
 };
 
 exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
@@ -323,37 +323,37 @@ exports.isEqual = function (lhs, rhs) {
 // copied from lib/Basics/HybridLogicalClock.cpp
 let decodeTable = [
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  //   0 - 15
+  -1, -1, -1, -1, -1, -1, -1, -1, //   0 - 15
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  //  16 - 31
+  -1, -1, -1, -1, -1, -1, -1, -1, //  16 - 31
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, 0, -1, -1,  //  32 - 47
+  -1, -1, -1, -1, -1, 0, -1, -1, //  32 - 47
   54, 55, 56, 57, 58, 59, 60, 61,
-  62, 63, -1, -1, -1, -1, -1, -1,  //  48 - 63
+  62, 63, -1, -1, -1, -1, -1, -1, //  48 - 63
   -1, 2, 3, 4, 5, 6, 7, 8,
-  9, 10, 11, 12, 13, 14, 15, 16,  //  64 - 79
+  9, 10, 11, 12, 13, 14, 15, 16, //  64 - 79
   17, 18, 19, 20, 21, 22, 23, 24,
-  25, 26, 27, -1, -1, -1, -1, 1,  //  80 - 95
+  25, 26, 27, -1, -1, -1, -1, 1, //  80 - 95
   -1, 28, 29, 30, 31, 32, 33, 34,
-  35, 36, 37, 38, 39, 40, 41, 42,  //  96 - 111
+  35, 36, 37, 38, 39, 40, 41, 42, //  96 - 111
   43, 44, 45, 46, 47, 48, 49, 50,
-  51, 52, 53, -1, -1, -1, -1, -1,  // 112 - 127
+  51, 52, 53, -1, -1, -1, -1, -1, // 112 - 127
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 128 - 143
+  -1, -1, -1, -1, -1, -1, -1, -1, // 128 - 143
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 144 - 159
+  -1, -1, -1, -1, -1, -1, -1, -1, // 144 - 159
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 160 - 175
+  -1, -1, -1, -1, -1, -1, -1, -1, // 160 - 175
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 176 - 191
+  -1, -1, -1, -1, -1, -1, -1, -1, // 176 - 191
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 192 - 207
+  -1, -1, -1, -1, -1, -1, -1, -1, // 192 - 207
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 208 - 223
+  -1, -1, -1, -1, -1, -1, -1, -1, // 208 - 223
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1,  // 224 - 239
+  -1, -1, -1, -1, -1, -1, -1, -1, // 224 - 239
   -1, -1, -1, -1, -1, -1, -1, -1,
-  -1, -1, -1, -1, -1, -1, -1, -1   // 240 - 255
+  -1, -1, -1, -1, -1, -1, -1, -1 // 240 - 255
 ];
 
 let decode = function (value) {

@@ -33,7 +33,9 @@ const db = internal.db;
 
 */
 exports.propagation_demo_program = demand_propagation_demo_program;
-exports.create_demo_graph = function() { create_demo_propagation_graph("Propagation_Demo", 1); };
+exports.create_demo_graph = function () {
+ create_demo_propagation_graph("Propagation_Demo", 1);
+};
 exports.test = test;
 exports.demo = demo;
 
@@ -57,7 +59,7 @@ const _ = require("lodash");
                               '   '
                               I   J
 */
-function create_demo_propagation_graph(graphName, numberOfShards) {
+function create_demo_propagation_graph (graphName, numberOfShards) {
   const vname = graphName + "_V";
   const ename = graphName + "_E";
   try {
@@ -67,47 +69,88 @@ function create_demo_propagation_graph(graphName, numberOfShards) {
     graphName,
     [graphModule._relation(ename, vname, vname)],
     [],
-    { smartGraphAttribute: "name", numberOfShards: numberOfShards }
+    { smartGraphAttribute: "name",
+numberOfShards: numberOfShards }
   );
 
   var vdocs = db._collection(vname).save([
-    { name: "A", demandBucket0:  0, demandBucket1: 0 },
-    { name: "B", demandBucket0:  1, demandBucket1: 2 },
-    { name: "C", demandBucket0:  0, demandBucket1: 0 },
-    { name: "D", demandBucket0:  0, demandBucket1: 0 },
-    { name: "E", demandBucket0:  7, demandBucket1: 1 },
-    { name: "F", demandBucket0: 11, demandBucket1: 0 },
-    { name: "G", demandBucket0: 10, demandBucket1: 9 },
-    { name: "H", demandBucket0:  0, demandBucket1: 0 },
-    { name: "I", demandBucket0:  2, demandBucket1: 7 },
-    { name: "J", demandBucket0:  1, demandBucket1: 5 },
+    { name: "A",
+demandBucket0: 0,
+demandBucket1: 0 },
+    { name: "B",
+demandBucket0: 1,
+demandBucket1: 2 },
+    { name: "C",
+demandBucket0: 0,
+demandBucket1: 0 },
+    { name: "D",
+demandBucket0: 0,
+demandBucket1: 0 },
+    { name: "E",
+demandBucket0: 7,
+demandBucket1: 1 },
+    { name: "F",
+demandBucket0: 11,
+demandBucket1: 0 },
+    { name: "G",
+demandBucket0: 10,
+demandBucket1: 9 },
+    { name: "H",
+demandBucket0: 0,
+demandBucket1: 0 },
+    { name: "I",
+demandBucket0: 2,
+demandBucket1: 7 },
+    { name: "J",
+demandBucket0: 1,
+demandBucket1: 5 }
   ]);
   let [A, B, C, D, E, F, G, H, I, J, ...rest] = vdocs.map(x => x._id);
 
   var es = [];
 
-  es.push({ _from: A, _to: B, cost: 1});
-  es.push({ _from: A, _to: C, cost: 1});
-  es.push({ _from: A, _to: D, cost: 1});
+  es.push({ _from: A,
+_to: B,
+cost: 1});
+  es.push({ _from: A,
+_to: C,
+cost: 1});
+  es.push({ _from: A,
+_to: D,
+cost: 1});
 
-  es.push({ _from: C, _to: E, cost: 1});
-  es.push({ _from: C, _to: F, cost: 1});
+  es.push({ _from: C,
+_to: E,
+cost: 1});
+  es.push({ _from: C,
+_to: F,
+cost: 1});
 
-  es.push({ _from: D, _to: G, cost: 1});
-  es.push({ _from: D, _to: H, cost: 1});
+  es.push({ _from: D,
+_to: G,
+cost: 1});
+  es.push({ _from: D,
+_to: H,
+cost: 1});
 
-  es.push({ _from: H, _to: I, cost: 1});
-  es.push({ _from: H, _to: J, cost: 1});
+  es.push({ _from: H,
+_to: I,
+cost: 1});
+  es.push({ _from: H,
+_to: J,
+cost: 1});
 
   db._collection(ename).save(es);
 
-  return { name: graphName, vname: vname, ename: ename };
+  return { name: graphName,
+vname: vname,
+ename: ename };
 }
 
 
 /* Todo: can we fold "update sums" into this accumulator (i.e. we keep an update and the sum,
    and fold these two things into one accumulator) */
-function bucketizedSumAccumulator(nrBuckets) {
+function bucketizedSumAccumulator (nrBuckets) {
     let entry = null;
     return {
       updateProgram: [
@@ -125,7 +168,7 @@ function bucketizedSumAccumulator(nrBuckets) {
       clearProgram: ["this-set!", Array(nrBuckets).fill(0)],
       getProgram: ["current-value"],
       setProgram: ["this-set!", ["input-value"]],
-      finalizeProgram: ["current-value"],
+      finalizeProgram: ["current-value"]
     };
 }
 
@@ -134,7 +177,7 @@ function bucketizedSumAccumulator(nrBuckets) {
  * "upwards"
  *
  */
-function demand_propagation_demo_program(resultField) {
+function demand_propagation_demo_program (resultField) {
     return {
         /* The field into which we write the result (which is currently an object
          * containing all accumulator values)
@@ -167,7 +210,7 @@ function demand_propagation_demo_program(resultField) {
                 "accumulatorType": "custom",
                 "customType": "bucketizedSum",
                 "valueType": "any"
-            },
+            }
         },
         "customAccumulators": {
             bucketizedSum: bucketizedSumAccumulator()
@@ -237,9 +280,9 @@ function demand_propagation_demo_program(resultField) {
   }
 */
 
-function test() {}
+function test () {}
 
-function demo() {
+function demo () {
   create_demo_propagation_graph("Propagation_Demo", 1);
   return testhelpers.wait_for_pregel(
     "propagation demo",

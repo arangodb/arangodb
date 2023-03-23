@@ -57,6 +57,6 @@
       this.unbind();
       delete this.el;
       return this;
-    },
+    }
   });
 }());

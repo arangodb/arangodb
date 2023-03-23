@@ -639,16 +639,16 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function() {
+    logger: function () {
       this.checkUser();
 
       this.init.then(() => {
-        const redirectCallback = function() {
+        const redirectCallback = function () {
           this.navigate('#collections', {trigger: true});
         }.bind(this);
 
 
-        const loggerCallback = function() {
+        const loggerCallback = function () {
           if (this.loggerView) {
             this.loggerView.remove();
           }

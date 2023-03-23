@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -48,7 +48,7 @@ function AsyncSuite () {
   const baseCursorUrl = `/_api/cursor`;
   const baseJobUrl = `/_api/job`;
 
-  function sendRequest(method, endpoint, headers, body, usePrimary) {
+  function sendRequest (method, endpoint, headers, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -62,7 +62,7 @@ function AsyncSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -78,7 +78,7 @@ function AsyncSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -97,7 +97,7 @@ function AsyncSuite () {
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       const url = `${baseJobUrl}/all`;
       const result = sendRequest('DELETE', url, {}, {}, true);
       assertFalse(result === undefined || result === {});
@@ -109,13 +109,13 @@ function AsyncSuite () {
       coordinators = [];
     },
 
-    testAsyncCursorForwardingBasic: function() {
+    testAsyncCursorForwardingBasic: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
       };
       let result = sendRequest('POST', url, headers, query, true);
 
@@ -155,13 +155,13 @@ function AsyncSuite () {
       assertFalse(result.body.hasMore);
     },
 
-    testAsyncCursorForwardingDelete: function() {
+    testAsyncCursorForwardingDelete: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
       };
       let result = sendRequest('POST', url, headers, query, true);
 
@@ -187,13 +187,13 @@ function AsyncSuite () {
       assertEqual(result.headers["x-arango-async-id"], undefined);
     },
 
-    testAsyncCursorForwardingCancel: function() {
+    testAsyncCursorForwardingCancel: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
       };
       const query = {
-        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`,
+        query: `FOR i IN 1..10 LET x = sleep(1.0) FILTER i == 5 RETURN 42`
       };
       let result = sendRequest('POST', url, headers, query, true);
 
@@ -217,7 +217,7 @@ function AsyncSuite () {
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 200);
       assertEqual(result.headers["x-arango-async-id"], undefined);
-    },
+    }
 
   };
 }

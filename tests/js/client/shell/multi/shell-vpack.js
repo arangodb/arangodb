@@ -1,39 +1,39 @@
-/*jshint globalstrict:false, strict:false */
-/*global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull */
+/* jshint globalstrict:false, strict:false */
+/* global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test request module
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-/// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test request module
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2015 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// / @author Copyright 2016, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
 var jsunity = require('jsunity');
 var expect = require('chai').expect;
 
-function RequestSuite() {
+function RequestSuite () {
   return {
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
@@ -42,12 +42,12 @@ function RequestSuite() {
     testEchoVpackVpack: echoVpackVpack,
     testAdminExecuteWithHeaderVpack: adminExecuteWithHeaderVpack,
     testAdminExecuteWithHeaderVpack2: adminExecuteWithHeaderVpack2,
-    testAdminExecuteNoHeaderVpack: adminExecuteNoHeaderVpack,
+    testAdminExecuteNoHeaderVpack: adminExecuteNoHeaderVpack
   };
-};
+}
 
 
-function versionJsonJson() {
+function versionJsonJson () {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
@@ -68,9 +68,9 @@ function versionJsonJson() {
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
 
   expect(obj.license).to.match(/enterprise|community/g);
-};
+}
 
-function versionVpackJson() {
+function versionVpackJson () {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
@@ -91,9 +91,9 @@ function versionVpackJson() {
   expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
-};
+}
 
-function versionJsonVpack() {
+function versionJsonVpack () {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
@@ -113,9 +113,9 @@ function versionJsonVpack() {
   expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
-};
+}
 
-function versionVpackVpack() {
+function versionVpackVpack () {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
@@ -135,16 +135,17 @@ function versionVpackVpack() {
   expect(obj.server).to.be.equal('arango');
   expect(obj.version).to.match(/[0-9]+\.[0-9]+\.([0-9]+|(milestone|alpha|beta|devel|rc)[0-9]*)/);
   expect(obj.license).to.match(/enterprise|community/g);
-};
+}
 
-function echoVpackVpack() {
+function echoVpackVpack () {
   const path = '/_admin/echo';
   const headers = {
     'content-type': 'application/x-velocypack',
     'accept': 'application/x-velocypack'
   };
 
-  const obj = {"server": "arango", "version": "3.0.devel"};
+  const obj = {"server": "arango",
+"version": "3.0.devel"};
   const body = V8_TO_VPACK(obj);
 
   const res = arango.POST_RAW(path, body, headers);
@@ -153,7 +154,7 @@ function echoVpackVpack() {
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
   const replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
-};
+}
 
 
 /*
@@ -162,10 +163,10 @@ It's only interpreted as velocypack if the header has the content type for veloc
 Otherwise, as it happens when there's no content-type in the header, it's interpreted as JSON and will return an error
  */
 
-function adminExecuteWithHeaderVpack() {
+function adminExecuteWithHeaderVpack () {
   const path = '/_admin/execute';
   const headers = {
-    'content-type': 'application/x-velocypack',
+    'content-type': 'application/x-velocypack'
   };
 
   const obj = "require(\"console\").log(\"abc\");";
@@ -178,10 +179,10 @@ function adminExecuteWithHeaderVpack() {
   assertNull(res.parsedBody);
 }
 
-function adminExecuteWithHeaderVpack2() {
+function adminExecuteWithHeaderVpack2 () {
   const path = '/_admin/execute';
   const headers = {
-    'content-type': 'application/x-velocypack',
+    'content-type': 'application/x-velocypack'
   };
 
   const obj = "return \"abc\"";
@@ -194,7 +195,7 @@ function adminExecuteWithHeaderVpack2() {
   assertEqual(res.parsedBody, "abc");
 }
 
-function adminExecuteNoHeaderVpack() {
+function adminExecuteNoHeaderVpack () {
   const path = '/_admin/execute';
   const obj = "return \"abc\"";
   const body = V8_TO_VPACK(obj);

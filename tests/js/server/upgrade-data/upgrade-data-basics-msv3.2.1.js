@@ -1,56 +1,56 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the view interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the view interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = require('internal').db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: upgrade with data from mmfiles instance
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: upgrade with data from mmfiles instance
+// //////////////////////////////////////////////////////////////////////////////
 
 function UpgradeData () {
   'use strict';
   return {
 
-    ////////////////////////////////////////////////////////////////////////////
-    /// @brief bad name (empty)
-    ////////////////////////////////////////////////////////////////////////////
-    testLargeCollection : function () {
+    // //////////////////////////////////////////////////////////////////////////
+    // / @brief bad name (empty)
+    // //////////////////////////////////////////////////////////////////////////
+    testLargeCollection: function () {
       const c = db._collection('LargeCollection');
       assertEqual(c.count(), 10000);
 
       // verify documents and contents
       for (let i = 0; i < 10000; i++) {
-        const doc = c.document( { _key: `key${i}` } );
-        assertEqual(doc.even, ( ( i % 2 ) === 0 ));
+        const doc = c.document({ _key: `key${i}` });
+        assertEqual(doc.even, ((i % 2) === 0));
         assertEqual(doc.name, `Name ${i}`);
         assertEqual(doc.num, i);
         assertEqual(doc.num100, i % 100);
@@ -94,7 +94,9 @@ function UpgradeData () {
       assertNotEqual(-1, nhExplain.plan.rules.indexOf('use-indexes'));
       const nhResults = db._query(nhQuery).toArray();
       assertEqual(nhResults.length, 5000);
-      nhResults.forEach( ( doc ) => { assertTrue(doc.even); } );
+      nhResults.forEach((doc) => {
+ assertTrue(doc.even);
+});
 
       // unique skiplist
       assertEqual(indices[3].type, "skiplist");
@@ -128,15 +130,17 @@ function UpgradeData () {
       assertNotEqual(-1, nsExplain.plan.rules.indexOf('use-indexes'));
       const nsResults = db._query(nsQuery).toArray();
       assertEqual(nsResults.length, 100);
-      nsResults.forEach( ( doc ) => { assertEqual(doc.num100, 57); } );
+      nsResults.forEach((doc) => {
+ assertEqual(doc.num100, 57);
+});
     }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(UpgradeData);
 

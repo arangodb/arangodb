@@ -42,7 +42,7 @@ describe('Repository', function () {
   beforeEach(function () {
     collection = {};
     TestModel = FoxxModel.extend({
-      forDB() {
+      forDB () {
         return {fancy: 1};
       }
     });
@@ -94,9 +94,12 @@ describe('Repository Indexes', function () {
   it('should create indexes on instantiation', function () {
     const collection = {ensureIndex: sinon.spy()};
     const indexes = Object.freeze([
-      {type: 'skiplist', xyz: 'abcdef'},
-      {type: 'geo', more: 'args'},
-      {type: 'foo', bar: 'qux'}
+      {type: 'skiplist',
+xyz: 'abcdef'},
+      {type: 'geo',
+more: 'args'},
+      {type: 'foo',
+bar: 'qux'}
     ]);
     const TestRepository = FoxxRepository.extend({
       indexes: indexes
@@ -220,7 +223,8 @@ describe('Repository Methods', function () {
       };
       collection.all = sinon.stub().returns(cursor);
 
-      const models = repository.all({skip: 4, limit: 2});
+      const models = repository.all({skip: 4,
+limit: 2});
       expect(models.length).to.equal(1);
       expect(models[0]).to.be.an.instanceOf(FoxxModel);
       expect(cursor.skip.callCount).to.equal(1);

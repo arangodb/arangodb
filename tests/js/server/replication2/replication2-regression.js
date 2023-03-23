@@ -1,27 +1,27 @@
-/*jshint strict: true */
+/* jshint strict: true */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
@@ -38,11 +38,11 @@ const {
   waitFor,
   getServerUrl,
   checkRequestResult,
-  replicatedLogDeleteTarget,
+  replicatedLogDeleteTarget
 } = helper;
 const preds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
-  allServersHealthy,
+  allServersHealthy
 } = preds;
 
 const database = "replication2_supervision_test_db";
@@ -119,7 +119,8 @@ const replicatedLogRegressionSuite = function () {
   }());
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: registerAgencyTestBegin,
     tearDown: function (test) {
       resumeAll();
@@ -134,7 +135,7 @@ const replicatedLogRegressionSuite = function () {
     testFailedServerDoesNotPreventProgress: function () {
       const targetConfig = {
         writeConcern: 3,
-        waitForSync: false,
+        waitForSync: false
       };
       const {logId, followers, leader} = helper.createReplicatedLog(database, targetConfig);
       const waitForFailureOracleServerStatus = waitForFailureOracleServerStatusOn(leader);
@@ -169,8 +170,8 @@ const replicatedLogRegressionSuite = function () {
       // wait for followers[1] to have received the log entries, and the leader to take note of that
       waitFor(() => {
         const followerSpearhead = log.status().participants[leader].response.follower[followers[1]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        return logIdx === followerSpearhead ||
+            new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       // stop the other follower as well
@@ -184,8 +185,8 @@ const replicatedLogRegressionSuite = function () {
       // wait for followers[0] to have received the log entries, and the leader to take note of that
       waitFor(() => {
         const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
-        return logIdx === followerSpearhead
-            || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
+        return logIdx === followerSpearhead ||
+            new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.
@@ -218,10 +219,12 @@ const replicatedLogRegressionSuite = function () {
       const servers = _.sampleSize(helper.dbservers, replicationFactor);
       helper.replicatedLogSetTarget(database, logId, {
         id: logId,
-        config: {writeConcern, waitForSync: false},
+        config: {writeConcern,
+waitForSync: false},
         participants: helper.getParticipantsObjectForServers(servers),
         supervision: {maxActionsTraceLength: 20},
-        properties: {implementation: {type: "black-hole", parameters: {}}},
+        properties: {implementation: {type: "black-hole",
+parameters: {}}}
       });
 
       waitFor(function () {
@@ -257,11 +260,13 @@ const replicatedLogRegressionSuite = function () {
       const servers = _.sampleSize(helper.dbservers, replicationFactor);
       helper.replicatedLogSetTarget(database, logId, {
         id: logId,
-        config: {writeConcern, waitForSync: false},
+        config: {writeConcern,
+waitForSync: false},
         participants: helper.getParticipantsObjectForServers(servers),
         supervision: {maxActionsTraceLength: 20},
         version: 1,
-        properties: {implementation: {type: "black-hole", parameters: {}}},
+        properties: {implementation: {type: "black-hole",
+parameters: {}}}
       });
       waitFor(preds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
@@ -279,7 +284,7 @@ const replicatedLogRegressionSuite = function () {
       });
 
       waitFor(preds.replicatedLogTargetVersion(database, logId, lastVersion));
-    },
+    }
 
 
   };

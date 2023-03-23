@@ -41,7 +41,7 @@ let numberOfCollections = 1;
 let maxIterations = 5;
 // maximum runtime for each iteration
 let maxRunTime = 20;
-  
+
 const stateFile = require("internal").env['state-file'];
 let iteration = 1;
 try {
@@ -60,7 +60,7 @@ function runSetup (config) {
   if (db._collection("control") === null) {
     db._create("control");
   }
-  
+
   // test runtime is also dynamic
   let runTime = 5 + Math.random() * (maxRunTime - 5);
 
@@ -74,8 +74,9 @@ function runSetup (config) {
     }
     collectionCounts[c.name()] = c.count();
   }
-  
-  db.control.insert({ _key: "working", collectionCounts }, { overwriteMode: "replace" });
+
+  db.control.insert({ _key: "working",
+collectionCounts }, { overwriteMode: "replace" });
 
   require("console").warn("Collection counts from control:", JSON.stringify(collectionCounts));
 
@@ -90,7 +91,7 @@ function runSetup (config) {
     "needToPersistRevisionTree::checkBuffers",
     "RocksDBMetaCollection::forceSerialization",
     "RocksDBMetaCollection::serializeRevisionTree",
-    "TransactionChaos::blockerOnSync",
+    "TransactionChaos::blockerOnSync"
   ];
 
   try {
@@ -128,19 +129,25 @@ function runSetup (config) {
         // multi-document insert
         let docs = [];
         for (let i = 0; i < numOps; ++i) {
-          docs.push({ value: i, valueString: String(i), type: "multi" });
+          docs.push({ value: i,
+valueString: String(i),
+type: "multi" });
         }
         c.insert(docs);
         collectionCounts[c.name()] += numOps;
       } else if (opType >= 0.5) {
         // single doc inserts
         for (let i = 0; i < numOps; ++i) {
-          c.insert({ value: i, valueString: String(i), type: "individual" });
+          c.insert({ value: i,
+valueString: String(i),
+type: "individual" });
         }
         collectionCounts[c.name()] += numOps;
       } else if (opType >= 0.3) {
         // single operation insert
-        c.insert({ value: 666, valueString: "666", type: "single" });
+        c.insert({ value: 666,
+valueString: "666",
+type: "single" });
         collectionCounts[c.name()] += 1;
       } else if (opType >= 0.05) {
         // remove
@@ -161,9 +168,10 @@ function runSetup (config) {
         collectionCounts[c.name()] = 0;
       }
     } while (time() < end);
-   
+
     console.warn("storing collection counts at exit:", collectionCounts);
-    db.control.insert({ _key: "counts", collectionCounts }, { overwriteMode: "replace" });
+    db.control.insert({ _key: "counts",
+collectionCounts }, { overwriteMode: "replace" });
     db.control.remove("working", { waitForSync: true });
   } catch (err) {
     console.warn(String(err), String(err.stack));
@@ -178,7 +186,7 @@ function runSetup (config) {
 
 function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
-  
+
   if (iteration < maxIterations) {
     ++iteration;
     // update iteration counter
@@ -193,7 +201,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testConsistency: function() {
+    testConsistency: function () {
       const counts = db.control.document("counts");
       assertNotNull(counts);
 
@@ -227,7 +235,7 @@ function recoverySuite () {
         assertEqual(c._revisionTreeSummary().count, c.count());
         assertTrue(c._revisionTreeVerification().equal);
       });
-    },
+    }
 
   };
 }

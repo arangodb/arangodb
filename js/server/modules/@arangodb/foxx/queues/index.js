@@ -131,8 +131,8 @@ function getJobs (queue, status, type) {
 
   if (type !== undefined) {
     query = query.filter(
-      qb.ref('@type.name').eq('job.type.name')
-        .and(qb.ref('@type.mount').eq('job.type.mount'))
+      qb.ref('@type.name').eq('job.type.name').
+        and(qb.ref('@type.mount').eq('job.type.mount'))
     );
     vars.type = {
       name: type.name,

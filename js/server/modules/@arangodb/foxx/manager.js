@@ -45,7 +45,7 @@ const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
 const isZipBuffer = require('@arangodb/util').isZipBuffer;
 const codeFrame = require('@arangodb/util').codeFrame;
-const internal  = require('internal');
+const internal = require('internal');
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -155,7 +155,7 @@ function selfHeal () {
 
   const serviceCollection = utils.getStorage();
   const bundleCollection = utils.getBundleStorage();
-  // The selfHeal comment will be included in debug output if activated or in slow query logs, 
+  // The selfHeal comment will be included in debug output if activated or in slow query logs,
   // which helps us distinguish it from user-written queries.
   const serviceDefinitions = db._query(aql`/*selfHeal*/ FOR doc IN ${serviceCollection}
     FILTER LEFT(doc.mount, 2) != "/_"
@@ -287,11 +287,11 @@ function startup () {
       // we just did a selfheal, can delay the first automatic one
       offset = period;
     } else {
-      // for all databases that exist at startup, create a per-database 
+      // for all databases that exist at startup, create a per-database
       // keyspace that indicates we still need to run the initial self-heal in it
       let dbName = db._name();
       try {
-        db._databases().forEach(function(database) {
+        db._databases().forEach(function (database) {
           db._useDatabase(dbName);
           global.KEYSPACE_CREATE('FoxxFirstSelfHeal', 1, true);
         });
@@ -299,7 +299,7 @@ function startup () {
         db._useDatabase(dbName);
       }
     }
-    
+
     // in a cluster, move the initial self-heal job to a background thread,
     // so that we do not block on startup
     try {
@@ -606,7 +606,7 @@ function _prepareService (serviceInfo, legacy = false) {
         _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
-      const info = !internal.isFoxxApiDisabled() && store.installationInfo(serviceInfo);  //disable foxx store
+      const info = !internal.isFoxxApiDisabled() && store.installationInfo(serviceInfo); // disable foxx store
       if (!info) {
         throw new ArangoError({
           errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,

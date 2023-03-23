@@ -1,27 +1,27 @@
-/*jshint strict: true */
+/* jshint strict: true */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
@@ -42,7 +42,7 @@ const readFollowerLogsSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    waitForSync: false,
+    waitForSync: false
   };
 
   const setupReplicatedLog = function () {
@@ -58,11 +58,17 @@ const readFollowerLogsSuite = function () {
       assertEqual(result.index, i);
     }
 
-    return {log, leader, servers, followers};
+    return {log,
+leader,
+servers,
+followers};
   };
 
   return {
-    setUpAll, tearDownAll, setUp, tearDown,
+    setUpAll,
+tearDownAll,
+setUp,
+tearDown,
 
     testFollowerHead: function () {
       const {log, followers} = setupReplicatedLog();
@@ -116,7 +122,7 @@ const readFollowerLogsSuite = function () {
         assertEqual(entry.logIndex, i);
         assertEqual(entry.payload.value, i);
       }
-    },
+    }
   };
 };
 
@@ -124,11 +130,14 @@ const logInfoSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    waitForSync: false,
+    waitForSync: false
   };
 
   return {
-    setUpAll, tearDownAll, setUp, tearDown,
+    setUpAll,
+tearDownAll,
+setUp,
+tearDown,
 
     testApiLog: function () {
       const log1 = lh.createReplicatedLog(database, targetConfig);
@@ -148,7 +157,7 @@ const logInfoSuite = function () {
       assertTrue(_.isEqual(_.sortBy(coordRes.result[log2.logId]), _.sortBy(log2.servers)));
       assertEqual(log1.leader, coordRes.result[log1.logId][0]);
       assertEqual(log2.leader, coordRes.result[log2.logId][0]);
-    },
+    }
   };
 };
 

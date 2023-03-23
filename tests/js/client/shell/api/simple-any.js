@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,35 +31,36 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
 let api = "/_api/simple";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // any query;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function any_querySuite () {
   let cn = "UnitTestsCollectionSimple";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
 
-      let body = { "name" : cn, "numberOfShards" : 8 };
+      let body = { "name": cn,
+"numberOfShards": 8 };
       let doc = arango.POST_RAW("/_api/collection", body);
       assertEqual(doc.code, 200);
       cid = doc.parsedBody['id'];
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_get_any_document__wrong_collection: function() {
+    test_get_any_document__wrong_collection: function () {
       let cmd = api + "/any";
-      let body = { "collection" : "NonExistingCollection" };
+      let body = { "collection": "NonExistingCollection" };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -69,9 +70,9 @@ function any_querySuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_get_any_document__empty_collection: function() {
+    test_get_any_document__empty_collection: function () {
       let cmd = api + "/any";
-      let body = { "collection" : cn };
+      let body = { "collection": cn };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -79,11 +80,11 @@ function any_querySuite () {
       assertEqual(doc.parsedBody['document'], null);
     },
 
-    test_get_any_document__single_document_collection: function() {
-      arango.POST_RAW(`/_api/document?collection=${cn}`, { "n" : 30 });
+    test_get_any_document__single_document_collection: function () {
+      arango.POST_RAW(`/_api/document?collection=${cn}`, { "n": 30 });
 
       let cmd = api + "/any";
-      let body = { "collection" : cn };
+      let body = { "collection": cn };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -93,15 +94,15 @@ function any_querySuite () {
       assertEqual(doc.parsedBody['document']['n'], 30);
     },
 
-    test_get_any_document__non_empty_collection: function() {
+    test_get_any_document__non_empty_collection: function () {
       let docs = [];
       for (let i = 0; i < 10; i++) {
-        docs.push({ "n" : i });
+        docs.push({ "n": i });
       }
       db[cn].save(docs);
 
       let cmd = api + "/any";
-      let body = { "collection" : cn };
+      let body = { "collection": cn };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -109,7 +110,7 @@ function any_querySuite () {
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(typeof doc.parsedBody['document']['n'], 'number');
-    },
+    }
   };
 }
 jsunity.run(any_querySuite);

@@ -6,7 +6,7 @@
 const JsonReporter = require('@arangodb/mocha/reporter/json');
 
 class TapReporter extends JsonReporter {
-  constructor(runner) {
+  constructor (runner) {
     super(runner);
     runner.on('end', function () {
       const result = runner.testResults;

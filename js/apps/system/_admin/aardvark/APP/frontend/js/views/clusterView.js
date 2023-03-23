@@ -227,7 +227,7 @@
           arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents);
         }
 
-      }.bind(this);
+      };
 
       if (window.App && window.App.lastHealthCheckResult) {
         callbackFunction(window.App.lastHealthCheckResult.Health);
@@ -266,7 +266,7 @@
       _.each(self.chartsOptions, function (val1, key1) {
         _.each(val1.options, function (val2, key2) {
           if (val2.values.length < self.maxValues - 1) {
-            let dummyElementsToInsert =  self.maxValues - val2.values.length;
+            let dummyElementsToInsert = self.maxValues - val2.values.length;
             let initTimeToUse;
             try {
               initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
@@ -308,14 +308,18 @@
       if (!self.historyInit) {
         _.each(data.times, function (time, key) {
           // DATA
-          self.chartsOptions[0].options[0].values.push({x: time, y: data.bytesSentPerSecond[key]});
-          self.chartsOptions[0].options[1].values.push({x: time, y: data.bytesReceivedPerSecond[key]});
+          self.chartsOptions[0].options[0].values.push({x: time,
+y: data.bytesSentPerSecond[key]});
+          self.chartsOptions[0].options[1].values.push({x: time,
+y: data.bytesReceivedPerSecond[key]});
 
           // HTTP
-          self.chartsOptions[1].options[0].values.push({x: time, y: self.calcTotalHttp(data.http, key)});
+          self.chartsOptions[1].options[0].values.push({x: time,
+y: self.calcTotalHttp(data.http, key)});
 
           // AVERAGE
-          self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key]});
+          self.chartsOptions[2].options[0].values.push({x: time,
+y: data.avgRequestTime[key]});
         });
         self.historyInit = true;
         // will insert zero entries in case we're below max history array size
@@ -401,27 +405,27 @@
 
       _.each(self.chartsOptions, function (c) {
         nv.addGraph(function () {
-          self.charts[c.id] = nv.models.stackedAreaChart()
-            .options({
+          self.charts[c.id] = nv.models.stackedAreaChart().
+            options({
               useInteractiveGuideline: true,
               showControls: false,
               noData: noData,
               duration: 0
             });
 
-          self.charts[c.id].xAxis
-            .axisLabel('')
-            .tickFormat(function (d) {
+          self.charts[c.id].xAxis.
+            axisLabel('').
+            tickFormat(function (d) {
               var x = new Date(d * 1000);
               return (x.getHours() < 10 ? '0' : '') + x.getHours() + ':' +
                 (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ':' +
                 (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
-            })
-            .staggerLabels(false);
+            }).
+            staggerLabels(false);
 
-          self.charts[c.id].yAxis
-            .axisLabel('')
-            .tickFormat(function (d) {
+          self.charts[c.id].yAxis.
+            axisLabel('').
+            tickFormat(function (d) {
               var formatted;
 
               if (c.type === 'bytes') {
@@ -456,11 +460,11 @@
           }
           data = c.options;
 
-          self.chartData[c.id] = d3.select(c.id).append('svg')
-            .datum(data)
-            .transition().duration(300)
-            .call(self.charts[c.id])
-            .each('start', function () {
+          self.chartData[c.id] = d3.select(c.id).append('svg').
+            datum(data).
+            transition().duration(300).
+            call(self.charts[c.id]).
+            each('start', function () {
               window.setTimeout(function () {
                 d3.selectAll(c.id + ' *').each(function () {
                   if (this.__transition__) {

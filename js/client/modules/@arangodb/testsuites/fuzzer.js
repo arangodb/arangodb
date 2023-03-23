@@ -42,7 +42,7 @@ const testPaths = {
 // / @brief TEST: shell_fuzzer
 // //////////////////////////////////////////////////////////////////////////////
 
-function shellFuzzer(options) {
+function shellFuzzer (options) {
   if (!versionHas('failure-tests')) {
     return {
       recovery: {

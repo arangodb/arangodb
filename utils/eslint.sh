@@ -46,5 +46,5 @@ fi
 # shellcheck disable=2086
 exec eslint \
   -c js/.eslintrc \
-  --quiet \
+  --fix \
   ${JAVASCRIPT_JSLINT}

@@ -39,12 +39,15 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
 
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
 
   let docs = [];
   for (let i = 0; i < 100; ++i) {
-    docs.push({ value1: i, value2: i });
+    docs.push({ value1: i,
+value2: i });
   }
   c.insert(docs);
 

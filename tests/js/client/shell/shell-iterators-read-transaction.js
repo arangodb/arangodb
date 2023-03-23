@@ -33,21 +33,21 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require(fs.join(internal.pathForTesting('client'),
                              'shell', 'shell-iterators.inc'));
 
-function TransactionIteratorReadSuite() {
+function TransactionIteratorReadSuite () {
   'use strict';
-  
-  let permute = function(run) {
-    [ {}, /*{intermediateCommitCount: 111}*/ ].forEach((opts) => {
+
+  let permute = function (run) {
+    [ {} /* {intermediateCommitCount: 111}*/ ].forEach((opts) => {
       const trxOpts = {
         collections: {
           write: [base.cn, base.ecn]
-        },
+        }
       };
       const ctx = internal.db._createTransaction(Object.assign(trxOpts, opts));
       run(ctx, opts);
     });
   };
-  
+
   let suite = {};
   deriveTestSuite(base.IteratorReadSuite(permute), suite, '_StreamingTrx');
   return suite;

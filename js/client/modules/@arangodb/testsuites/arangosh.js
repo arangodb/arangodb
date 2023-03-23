@@ -50,14 +50,14 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
-  'arangosh': 'arangosh exit codes tests',
+  'arangosh': 'arangosh exit codes tests'
 };
 const optionsDocumentation = [
   '   - `skipShebang`: if set, the shebang tests are skipped.'
 ];
 
 const testPaths = {
-  'arangosh': [],
+  'arangosh': []
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -103,7 +103,7 @@ function arangosh (options) {
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
     let tmpMgr = new tmpDirMmgr(fs.join('arangosh_tests', ...weirdNames), options);
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
@@ -114,7 +114,7 @@ function arangosh (options) {
     }
 
     const startTime = time();
-    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0 /*, coverageEnvironment() */);
+    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0 /* , coverageEnvironment() */);
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
@@ -139,7 +139,7 @@ function arangosh (options) {
       print('expect rc: ' + expectedReturnCode);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
     print('\n--------------------------------------------------------------------------------');
     print(title + ' With js file');
@@ -159,7 +159,7 @@ function arangosh (options) {
     }
 
     const startTime2 = time();
-    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0 /*, coverageEnvironment() */);
+    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0 /* , coverageEnvironment() */);
     const deltaTime2 = time() - startTime;
     const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
 
@@ -192,14 +192,14 @@ function arangosh (options) {
           0,
           {'version': 'true'});
   print();
-  
+
   runTest('testArangoshExitCodeConnectAny',
           'Starting arangosh with failing connect:',
           'db._databases();',
           1,
           {'server.endpoint': 'tcp://0.0.0.0:8529'});
   print();
-  
+
   runTest('testArangoshExitCodeConnectAnyIp6',
           'Starting arangosh with failing connect:',
           'db._databases();',
@@ -217,14 +217,14 @@ function arangosh (options) {
   runTest('testArangoshExitCodeSyntaxError',
           'Starting arangosh with unparseable script:',
           'tis not js!',
-          1, 
+          1,
           {'server.endpoint': 'none'});
   print();
 
   runTest('testArangoshExitCodeSyntaxErrorInSubScript',
           'Starting arangosh with unparseable script:',
           'let x="tis not js!"; require("internal").executeScript(`${x}`, undefined, "/tmp/1")',
-          1, 
+          1,
           {'server.endpoint': 'none'});
   print();
 
@@ -234,14 +234,14 @@ function arangosh (options) {
           {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:', 
+  runTest('testArangoshExitCodeFailButCaught', 'Starting arangosh with a caught exception:',
           'try { throw(\'foo\'); } catch (err) {}', 0, {'server.endpoint': 'none'});
   print();
 
   runTest('testArangoshExitCodeEmpty', 'Starting arangosh with empty script:', '', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ';', 0, 
+  runTest('testArangoshExitCodeSuccess', 'Starting arangosh with regular terminating script:', ';', 0,
           {'server.endpoint': 'none'});
   print();
 
@@ -253,7 +253,7 @@ function arangosh (options) {
           'var a = 1;\nif (a !== 1) throw("boom!");\nif (a === 1) print("success");', 0, {'server.endpoint': 'none'});
   print();
 
-  runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:', 
+  runTest('testArangoshExitCodeNewlines', 'Starting arangosh with newlines:',
           'q = `FOR i\nIN [1,2,3]\nRETURN i`;\nq += "abc"\n', 0, {'server.endpoint': 'none'});
   print();
 
@@ -265,7 +265,7 @@ function arangosh (options) {
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
-  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0 /*, coverageEnvironment() */);
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0 /* , coverageEnvironment() */);
   const deltaTime = time() - startTime;
 
   fs.writePipe(res.pid, "bla\n");
@@ -304,7 +304,7 @@ function arangosh (options) {
 
   ret[section]['duration'] = time() - startTime;
   print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
-  
+
   if (platform.substr(0, 3) !== 'win') {
     var echoSuccess = true;
     var deltaTime2 = 0;
@@ -402,6 +402,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['arangosh'] = arangosh;
   opts['skipShebang'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

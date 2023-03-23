@@ -44,9 +44,9 @@ function clear () {
     return [];
   }
   return db._query(
-    qb.for('entry').in(foxxlogCol)
-    .filter(qb.eq('entry.mount', qb.str(mountPath)))
-    .remove('entry').in(foxxlogCol)
+    qb.for('entry').in(foxxlogCol).
+    filter(qb.eq('entry.mount', qb.str(mountPath))).
+    remove('entry').in(foxxlogCol)
   ).toArray();
 }
 
@@ -118,7 +118,7 @@ function ConsoleTestSuite () {
       const max = Date.now();
       console.timeEnd('hi');
       const end = Date.now();
-      expect(max).to.be.greaterThan(min); 
+      expect(max).to.be.greaterThan(min);
       const logs = console.logs.list();
       const match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
       expect(match).to.be.ok;

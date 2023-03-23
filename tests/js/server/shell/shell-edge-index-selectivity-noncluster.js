@@ -173,7 +173,8 @@ function EdgeIndexSuite () {
     testIndexSelectivityAfterAbortion: function () {
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+        docs.push({_from: `${vn}/from${i % 32}`,
+_to: `${vn}/to${i % 47}`});
       }
       edge.save(docs);
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -187,7 +188,8 @@ function EdgeIndexSuite () {
             const en = 'UnitTestsCollectionEdge';
             let docs = [];
             for (let i = 0; i < 1000; ++i) {
-              docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+              docs.push({_from: `${vn}/from${i % 32}`,
+_to: `${vn}/to${i % 47}`});
             }
             // This should significantly modify the estimate
             // if successful
@@ -205,7 +207,7 @@ function EdgeIndexSuite () {
         assertEqual(idx.selectivityEstimate, estimateBefore);
       }
 
-    },
+    }
   };
 }
 

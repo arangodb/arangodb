@@ -25,27 +25,27 @@
 
 let jsunity = require('jsunity');
 
-let canUseFailAt = function() {
+let canUseFailAt = function () {
   return arango.GET("/_admin/debug/failat") === true;
 };
 
-function failAtApiSuite() {
+function failAtApiSuite () {
   'use strict';
   return {
     setUp: function () {
       arango.DELETE("/_admin/debug/failat");
     },
-    
+
     tearDown: function () {
       arango.DELETE("/_admin/debug/failat");
     },
-    
+
     testCanUse: function () {
       let res = arango.GET("/_admin/debug/failat");
       assertEqual(typeof res, "boolean");
       assertTrue(res);
     },
-    
+
     testFailurePointsSet: function () {
       let res = arango.GET("/_admin/debug/failat/all");
       assertEqual([], res);
@@ -55,7 +55,7 @@ function failAtApiSuite() {
       assertTrue(res);
       res = arango.GET("/_admin/debug/failat/all");
       assertEqual(["piff"], res);
-      
+
       res = arango.PUT("/_admin/debug/failat/der-fuppes-wird-immer-schlimmer", {});
       assertEqual(typeof res, "boolean");
       assertTrue(res);
@@ -73,14 +73,14 @@ function failAtApiSuite() {
       assertTrue(res);
       res = arango.GET("/_admin/debug/failat/all");
       assertEqual([], res);
-      
+
       res = arango.DELETE("/_admin/debug/failat/abc");
       assertEqual(typeof res, "boolean");
       assertTrue(res);
       res = arango.GET("/_admin/debug/failat/all");
       assertEqual([], res);
-    },
-    
+    }
+
   };
 }
 

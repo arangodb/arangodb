@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertEqual, assertTrue, assertNotNull, assertNotEqual, fail*/
+/* jshint globalstrict:false, strict:false, maxlen: 5000 */
+/* global assertEqual, assertTrue, assertNotNull, assertNotEqual, fail*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Julia Puget
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Julia Puget
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -32,10 +32,10 @@ const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ �
 
 function EvilDatabaseNamesSuite () {
   'use strict';
-      
+
   return {
 
-    setUp : function () {
+    setUp: function () {
       dbs.forEach((database) => {
         db._createDatabase(database);
         db._useDatabase(database);
@@ -44,7 +44,7 @@ function EvilDatabaseNamesSuite () {
       });
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._useDatabase("_system");
       dbs.forEach((database) => {
         db._dropDatabase(database);
@@ -66,7 +66,8 @@ function EvilDatabaseNamesSuite () {
       dbs.forEach((database) => {
         db._useDatabase(database);
         assertNotNull(db._collection("collection123"));
-        const obj = db["collection123"].insert({"name": "abc123", "value": [{"nested_1": [{"nested_2": "foo123"}]}]});
+        const obj = db["collection123"].insert({"name": "abc123",
+"value": [{"nested_1": [{"nested_2": "foo123"}]}]});
         assertEqual(db["collection123"].count(), 1);
         db["collection123"].update(obj._id, {"test": "123"});
         const documentObj = db["collection123"].document(obj._id);
@@ -89,7 +90,8 @@ function EvilDatabaseNamesSuite () {
         db._create("tmpColl");
         let view;
         if (isEnterprise) {
-          view = db._createView("view123", "arangosearch", {"links": {"tmpColl": {"fields": {"a": {"nested": {"b": {}}}}}, "collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}});
+          view = db._createView("view123", "arangosearch", {"links": {"tmpColl": {"fields": {"a": {"nested": {"b": {}}}}},
+"collection123": {"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}});
         } else {
           view = db._createView("view123", "arangosearch", {});
         }
@@ -108,7 +110,7 @@ function EvilDatabaseNamesSuite () {
         db._useDatabase(database);
         const analyzers = require("@arangodb/analyzers");
         const analyzer = analyzers.save("abc123", "identity", {});
-        let  analyzerNames = analyzers.toArray().map((analyzer) => analyzer.name());
+        let analyzerNames = analyzers.toArray().map((analyzer) => analyzer.name());
         assertNotEqual(analyzerNames.indexOf(database + "::abc123"), -1);
         analyzers.remove("abc123");
         analyzerNames = analyzers.toArray().map((analyzer) => analyzer.name());
@@ -120,11 +122,19 @@ function EvilDatabaseNamesSuite () {
       dbs.forEach((database) => {
         db._useDatabase(database);
         assertNotNull(db._collection("collection123"));
-        db["collection123"].ensureIndex({type: 'persistent', name: 'test123', fields: ['value']});
+        db["collection123"].ensureIndex({type: 'persistent',
+name: 'test123',
+fields: ['value']});
         if (isEnterprise) {
-          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]});
+          db["collection123"].ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: [{"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}]});
         } else {
-          db["collection123"].ensureIndex({type: 'inverted', name: 'inverted', fields: ['value']});
+          db["collection123"].ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: ['value']});
         }
 
         assertEqual(db["collection123"].indexes().length, 3);
@@ -134,11 +144,11 @@ function EvilDatabaseNamesSuite () {
         db["collection123"].dropIndex("test123");
         db["collection123"].dropIndex("inverted");
         assertEqual(db["collection123"].indexes().length, 1);
-        try{
+        try {
           assertEqual(db["collection123"].index("test123"));
           assertEqual(db["collection123"].index("inverted"));
           fail();
-        } catch(err) {
+        } catch (err) {
           assertEqual(err.errorNum, arangodb.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
         }
       });
@@ -160,7 +170,7 @@ function EvilDatabaseNamesSuite () {
         assertEqual(result[0].id, 1);
         assertEqual(db["collection123"].count(), 0);
 
-        //testing for larger result sets
+        // testing for larger result sets
         result = db._query('FOR n IN 1 .. 2000 INSERT {"name": CONCAT("abc", n), "id": n, "_key": CONCAT("abc", n), "value": [{"nested_1": [{"nested_2": n}]}]} INTO collection123 RETURN NEW').toArray();
         assertEqual(db["collection123"].count(), 2000);
         assertEqual(result.length, 2000);

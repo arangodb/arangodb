@@ -42,12 +42,12 @@ function runSetup () {
   db._query("FOR i IN 1..10000 INSERT { value: i, modified: false } INTO UnitTestsRecovery");
 
   try {
-    db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery", 
+    db._query("FOR doc IN UnitTestsRecovery UPDATE doc WITH { modified: true } INTO UnitTestsRecovery",
     {}, { intermediateCommitCount: 1000});
   } catch (err) {
     // intentionally fail
   }
-          
+
   c.insert({ _key: 'crash' }, { waitForSync: true });
   internal.debugTerminate('crashing server');
 }
@@ -72,7 +72,7 @@ function recoverySuite () {
       var c = db._collection('UnitTestsRecovery');
 
       assertEqual(10001, c.count());
-      assertNull(c.firstExample({ modified : false }));
+      assertNull(c.firstExample({ modified: false }));
     }
 
   };

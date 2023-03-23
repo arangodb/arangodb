@@ -32,14 +32,14 @@ const db = internal.db;
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.vertex_degrees_program = vertex_degrees_program;
 exports.vertex_degrees = vertex_degrees;
 exports.test = test;
 
 /* returns a program that computes the vertex degree of every vertex */
-function vertex_degrees_program() {
+function vertex_degrees_program () {
   return {
     dataAccess: {
       writeVertex: [
@@ -75,7 +75,7 @@ function vertex_degrees_program() {
   };
 }
 
-function vertex_degrees(
+function vertex_degrees (
   graphName,
   resultField) {
   return pregel.start(
@@ -89,7 +89,7 @@ function vertex_degrees(
 /*
  * Vertex Degree tests
  */
-function exec_test_vertex_degrees_on_graph(graphSpec) {
+function exec_test_vertex_degrees_on_graph (graphSpec) {
   testhelpers.wait_for_pregel("AIR vertex-degree", vertex_degrees(graphSpec.name, "vertexDegrees"));
 
   return testhelpers.compare_pregel(db._query(`
@@ -105,7 +105,7 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
     }));
 }
 
-function exec_test_vertex_degrees() {
+function exec_test_vertex_degrees () {
   let results = [];
   results.push(exec_test_vertex_degrees_on_graph(examplegraphs.create_line_graph("LineGraph100", 100, 1)));
   try {
@@ -149,6 +149,6 @@ function exec_test_vertex_degrees() {
 }
 
 // run tests
-function test() {
+function test () {
   return exec_test_vertex_degrees();
 }

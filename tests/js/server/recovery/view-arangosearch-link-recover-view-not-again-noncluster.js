@@ -40,29 +40,33 @@ function runSetup () {
   let c = db._create(cn);
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({ value1: i, value2: "test" + i });
+    docs.push({ value1: i,
+value2: "test" + i });
   }
   c.insert(docs);
 
   let v = db._createView(vn, 'arangosearch', {});
-  
+
   internal.debugSetFailAt("StatisticsWorker::bypass");
-  
+
   let lastTick = replication.logger.state().state.lastLogTick;
-  c.insert({ _key: "lastLogTick1", tick: lastTick });
+  c.insert({ _key: "lastLogTick1",
+tick: lastTick });
 
   let meta = { links: { [cn]: { includeAllFields: true } } };
   v.properties(meta);
-  
+
   lastTick = replication.logger.state().state.lastLogTick;
-  c.insert({ _key: "lastLogTick2", tick: lastTick });
- 
+  c.insert({ _key: "lastLogTick2",
+tick: lastTick });
+
   // make sure view has caught up
   db._query(`FOR doc IN ${vn} SEARCH doc.value1 == 42 OPTIONS {waitForSync: true} RETURN doc`);
   internal.waitForEstimatorSync();
-  
+
   lastTick = replication.logger.state().state.lastLogTick;
-  c.insert({ _key: "lastLogTick3", tick: lastTick }, true);
+  c.insert({ _key: "lastLogTick3",
+tick: lastTick }, true);
 
   internal.debugTerminate('crashing server');
 }
@@ -82,10 +86,22 @@ function recoverySuite () {
       let storedTick3 = db._collection(cn).document("lastLogTick3").tick;
       let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
 
-      assertTrue(replication.compareTicks(storedTick1, storedTick2) <= 0, { storedTick1, storedTick2, storedTick3, recoverTick });
-      assertTrue(replication.compareTicks(storedTick2, storedTick3) <= 0, { storedTick1, storedTick2, storedTick3, recoverTick });
-      assertTrue(replication.compareTicks(recoverTick, storedTick2) >= 0, { storedTick1, storedTick2, storedTick3, recoverTick });
-      assertTrue(replication.compareTicks(recoverTick, storedTick3) <= 0, { storedTick1, storedTick2, storedTick3, recoverTick });
+      assertTrue(replication.compareTicks(storedTick1, storedTick2) <= 0, { storedTick1,
+storedTick2,
+storedTick3,
+recoverTick });
+      assertTrue(replication.compareTicks(storedTick2, storedTick3) <= 0, { storedTick1,
+storedTick2,
+storedTick3,
+recoverTick });
+      assertTrue(replication.compareTicks(recoverTick, storedTick2) >= 0, { storedTick1,
+storedTick2,
+storedTick3,
+recoverTick });
+      assertTrue(replication.compareTicks(recoverTick, storedTick3) <= 0, { storedTick1,
+storedTick2,
+storedTick3,
+recoverTick });
 
       let v = db._view(vn);
       assertEqual(v.name(), vn);

@@ -267,7 +267,8 @@ exports.jwtCanonicalAlgorithmName = function (algorithm) {
 
 exports.jwtEncode = function (key, message, algorithm) {
   algorithm = algorithm ? exports.jwtCanonicalAlgorithmName(algorithm) : 'HS256';
-  const header = {typ: 'JWT', alg: algorithm};
+  const header = {typ: 'JWT',
+alg: algorithm};
   const segments = [];
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(header)).toString('base64')));
   segments.push(jwtUrlEncode(new Buffer(JSON.stringify(message)).toString('base64')));

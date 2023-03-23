@@ -24,9 +24,9 @@
     lap: 0,
     reconnectTimeout: null,
     // last time of JWT renewal call, in seconds.
-    // this is initialized to the current time so we don't 
+    // this is initialized to the current time so we don't
     // fire off a renewal request at the very beginning.
-    lastTokenRenewal: Date.now() / 1000, 
+    lastTokenRenewal: Date.now() / 1000,
 
     changeDB: function () {
       window.location.hash = '#login';
@@ -87,13 +87,13 @@
 
       // track an activity once when we initialize this view
       arangoHelper.noteActivity();
-      
+
       window.setInterval(() => {
         if (this.isOffline) {
           // only try to renew token if we are still online
           return;
         }
-        
+
         var frac = (frontendConfig.sessionTimeout >= 1800) ? 0.95 : 0.8;
         // threshold for renewal: once session is x% over
         var renewalThreshold = frontendConfig.sessionTimeout * frac;
@@ -110,12 +110,12 @@
         }
 
         if (lastActivity > 0 && (now - lastActivity) > lastSignificantActivityTimePeriod) {
-          // don't make an attempt to renew the token if last 
+          // don't make an attempt to renew the token if last
           // user activity is longer than 90 minutes ago
           return;
         }
 
-        // to save some superfluous HTTP requests to the server, 
+        // to save some superfluous HTTP requests to the server,
         // try to renew only if session time is x% or more over
         if (now - this.lastTokenRenewal < renewalThreshold) {
           return;
@@ -263,7 +263,7 @@
         switch (status) {
         case 'expiring':
           let remains = expires - Math.round(serverTime);
-          let daysInfo = Math.ceil(remains / (3600*24));
+          let daysInfo = Math.ceil(remains / (3600 * 24));
           let hoursInfo = '';
           let minutesInfo = '';
           infotext = 'Your license is expiring in under ';
@@ -283,7 +283,7 @@
           this.appendLicenseInfoToUi(infotext, alertClasses);
           break;
         case 'expired':
-          daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600*24));
+          daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600 * 24));
           infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
           alertClasses += ' alert-danger';
           this.appendLicenseInfoToUi(infotext, alertClasses);
@@ -299,7 +299,7 @@
       }
     },
 
-    appendLicenseInfoToUi: function(infotext, alertClasses) {
+    appendLicenseInfoToUi: function (infotext, alertClasses) {
       var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
       $('#licenseInfoArea').append(infoElement);
     },

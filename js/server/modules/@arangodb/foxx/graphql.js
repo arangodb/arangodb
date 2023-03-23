@@ -46,16 +46,16 @@ module.exports = function graphql (cfg) {
 
   const router = createRouter();
 
-  router.get(handler, 'get')
-  .queryParam('query', joi.string().optional())
-  .queryParam('variables', joi.string().optional())
-  .queryParam('operationName', joi.string().optional());
+  router.get(handler, 'get').
+  queryParam('query', joi.string().optional()).
+  queryParam('variables', joi.string().optional()).
+  queryParam('operationName', joi.string().optional());
 
-  router.post(handler, 'post')
-  .body(['json', 'application/x-www-form-urlencoded', 'application/graphql'])
-  .queryParam('query', joi.string().optional())
-  .queryParam('variables', joi.string().optional())
-  .queryParam('operationName', joi.string().optional());
+  router.post(handler, 'post').
+  body(['json', 'application/x-www-form-urlencoded', 'application/graphql']).
+  queryParam('query', joi.string().optional()).
+  queryParam('variables', joi.string().optional()).
+  queryParam('operationName', joi.string().optional());
 
   return router;
 

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-/// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the collection interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// / @author Copyright 2019, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -39,7 +39,7 @@ const request = require('@arangodb/request');
 
 const defaultReplicationFactor = db._properties().replicationFactor;
 
-function getEndpointsByType(type) {
+function getEndpointsByType (type) {
   const isType = (d) => (d.instanceRole === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
@@ -54,12 +54,12 @@ function getEndpointsByType(type) {
   };
 
   const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceManager.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+  return instanceManager.arangods.filter(isType).
+                              map(toEndpoint).
+                              map(endpointToURL);
 }
 
-function checkDBServerSharding(db, expected) {
+function checkDBServerSharding (db, expected) {
   // connect to all db servers and check if they picked up the
   // "sharding" attribute correctly
   if (!require('@arangodb').isServer) {
@@ -94,7 +94,7 @@ function OneShardPropertiesSuite () {
       }
     },
 
-    testDefaultValues : function () {
+    testDefaultValues: function () {
       assertTrue(db._createDatabase(dn));
       db._useDatabase(dn);
       let props = db._properties();
@@ -106,9 +106,11 @@ function OneShardPropertiesSuite () {
         assertEqual(props.replicationFactor, undefined);
       }
     },
-    
-    testDefaultValuesOverridden : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+
+    testDefaultValuesOverridden: function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2,
+writeConcern: 2,
+sharding: "single" }));
       db._useDatabase(dn);
       let props = db._properties();
       if (isCluster) {
@@ -150,7 +152,9 @@ function OneShardPropertiesSuite () {
 
 
         // Allow creation where all values match
-        let c = db._create("test", {writeConcern: 2, replicationFactor: 2, numberOfShards: 1});
+        let c = db._create("test", {writeConcern: 2,
+replicationFactor: 2,
+numberOfShards: 1});
         props = c.properties();
         assertEqual(2, props.writeConcern);
         assertEqual(2, props.replicationFactor);
@@ -163,15 +167,15 @@ function OneShardPropertiesSuite () {
         assertEqual(props.writeConcern, undefined);
       }
     },
-    
-    testShardingFlexible : function () {
+
+    testShardingFlexible: function () {
       assertTrue(db._createDatabase(dn, { sharding: "flexible" }));
       db._useDatabase(dn);
       let props = db._properties();
       if (isCluster) {
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, defaultReplicationFactor);
-        
+
         checkDBServerSharding(dn, "");
       } else {
         assertEqual(props.sharding, undefined);
@@ -179,128 +183,141 @@ function OneShardPropertiesSuite () {
       }
     },
 
-    testDeviatingWriteConcernAndMinReplicationFactorForDatabase : function () {
+    testDeviatingWriteConcernAndMinReplicationFactorForDatabase: function () {
       if (!isCluster) {
         return;
       }
       try {
-        db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 1, writeConcern: 2, sharding: "flexible" });
+        db._createDatabase(dn, { replicationFactor: 2,
+minReplicationFactor: 1,
+writeConcern: 2,
+sharding: "flexible" });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-        
-      assertTrue(db._createDatabase(dn, { replicationFactor: 2, minReplicationFactor: 2, writeConcern: 2, sharding: "flexible" }));
+
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2,
+minReplicationFactor: 2,
+writeConcern: 2,
+sharding: "flexible" }));
     },
-    
-    testNormalDBAndTooManyServers : function () {
+
+    testNormalDBAndTooManyServers: function () {
       if (!isCluster) {
         return;
       }
       try {
-        db._createDatabase(dn, { replicationFactor : 5 });
+        db._createDatabase(dn, { replicationFactor: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       try {
-        db._createDatabase(dn, { writeConcern : 5 });
+        db._createDatabase(dn, { writeConcern: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
     },
-    
-    testNormalDBAndTooManyServers2 : function () {
+
+    testNormalDBAndTooManyServers2: function () {
       if (!isCluster) {
         return;
       }
-      db._createDatabase(dn, { replicationFactor : 2 });
+      db._createDatabase(dn, { replicationFactor: 2 });
       db._useDatabase(dn);
       try {
-        db._create("oneshardcol", { replicationFactor : 5 });
+        db._create("oneshardcol", { replicationFactor: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       try {
-        db._create("oneshardcol", { writeConcern : 5 });
+        db._create("oneshardcol", { writeConcern: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testNormalDBAndTooManyServers3 : function () {
+
+    testNormalDBAndTooManyServers3: function () {
       if (!isCluster) {
         return;
       }
-      db._createDatabase(dn, { writeConcern: 2, replicationFactor : 2 });
+      db._createDatabase(dn, { writeConcern: 2,
+replicationFactor: 2 });
       db._useDatabase(dn);
       try {
-        db._create("oneshardcol", { replicationFactor : 5 });
+        db._create("oneshardcol", { replicationFactor: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       try {
-        db._create("oneshardcol", { writeConcern : 5 });
+        db._create("oneshardcol", { writeConcern: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testOneShardDBAndTooManyServers : function () {
+
+    testOneShardDBAndTooManyServers: function () {
       if (!isCluster) {
         return;
       }
       try {
-        db._createDatabase(dn, { sharding : "single", replicationFactor : 5 });
+        db._createDatabase(dn, { sharding: "single",
+replicationFactor: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
       try {
-        db._createDatabase(dn, { sharding : "single", writeConcern : 5 });
+        db._createDatabase(dn, { sharding: "single",
+writeConcern: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
     },
-    
-    testOneShardDBAndTooManyServers2 : function () {
+
+    testOneShardDBAndTooManyServers2: function () {
       if (!isCluster) {
         return;
       }
-      db._createDatabase(dn, { sharding : "single", replicationFactor : 2 });
-      db._useDatabase(dn);
-      try {
-        // WriteConcern is specific to collection and is now greater than replicationFactor, which is disallowed
-        db._create("oneshardcol", { writeConcern : 5 });
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-    
-    testOneShardDBAndTooManyServers3 : function () {
-      if (!isCluster) {
-        return;
-      }
-      db._createDatabase(dn, { sharding : "single", writeConcern: 2, replicationFactor : 2 });
+      db._createDatabase(dn, { sharding: "single",
+replicationFactor: 2 });
       db._useDatabase(dn);
       try {
         // WriteConcern is specific to collection and is now greater than replicationFactor, which is disallowed
-        db._create("oneshardcol", { writeConcern : 5 });
+        db._create("oneshardcol", { writeConcern: 5 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testOneShardDBAndOverrides : function () {
-      assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : 2 }));
+
+    testOneShardDBAndTooManyServers3: function () {
+      if (!isCluster) {
+        return;
+      }
+      db._createDatabase(dn, { sharding: "single",
+writeConcern: 2,
+replicationFactor: 2 });
+      db._useDatabase(dn);
+      try {
+        // WriteConcern is specific to collection and is now greater than replicationFactor, which is disallowed
+        db._create("oneshardcol", { writeConcern: 5 });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
+
+    testOneShardDBAndOverrides: function () {
+      assertTrue(db._createDatabase(dn, { sharding: "single",
+replicationFactor: 2 }));
 
       db._useDatabase(dn);
       let props = db._properties();
@@ -350,16 +367,17 @@ function OneShardPropertiesSuite () {
         }
       }
     },
-    
-    testReplicationFactorAndOverrides : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : 2, writeConcern : 2 }));
+
+    testReplicationFactorAndOverrides: function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor: 2,
+writeConcern: 2 }));
 
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
-        assertEqual(props.minReplicationFactor, undefined);  // deprecated
+        assertEqual(props.minReplicationFactor, undefined); // deprecated
         assertEqual(props.writeConcern, undefined);
       } else {
         assertEqual(props.sharding, "");
@@ -370,21 +388,23 @@ function OneShardPropertiesSuite () {
           let col = db._create("somecollection");
           let colProperties = col.properties();
           assertEqual(colProperties.replicationFactor, 2);
-          assertEqual(colProperties.minReplicationFactor, 2);  // deprecated
+          assertEqual(colProperties.minReplicationFactor, 2); // deprecated
           assertEqual(colProperties.writeConcern, 2);
         }
 
         {
-          let col = db._create("overrideCollection1", { writeConcern : 1});
+          let col = db._create("overrideCollection1", { writeConcern: 1});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.minReplicationFactor, 1); // deprecated
           assertEqual(colProperties.writeConcern, 1);
         }
 
         {
-          let col = db._create("overrideCollection2", {writeConcern: 1, replicationFactor: 1, numberOfShards: 3});
+          let col = db._create("overrideCollection2", {writeConcern: 1,
+replicationFactor: 1,
+numberOfShards: 3});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.minReplicationFactor, 1); // deprecated
           assertEqual(colProperties.writeConcern, 1);
         }
 
@@ -401,7 +421,8 @@ function OneShardPropertiesSuite () {
 
         let col2 = db._collection("overrideCollection2");
         // Giving correct write concern we can do distributeShardsLike properly
-        let col3 = db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2", writeConcern: 1});
+        let col3 = db._create("overrideCollection3", {distributeShardsLike: "overrideCollection2",
+writeConcern: 1});
         let col2Properties = col2.properties();
         let col3Properties = col3.properties();
 
@@ -411,45 +432,45 @@ function OneShardPropertiesSuite () {
 
     },
 
-    testSatelliteDB : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
+    testSatelliteDB: function () {
+      assertTrue(db._createDatabase(dn, { replicationFactor: "satellite"}));
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
         assertEqual(props.sharding, undefined);
-      } else  {
+      } else {
         assertEqual(props.sharding, "");
         if (isEnterprise) {
           assertEqual(props.replicationFactor, "satellite");
         } else {
-          //without enterprise we can not have a replication factor of 1
+          // without enterprise we can not have a replication factor of 1
           assertEqual(props.replicationFactor, defaultReplicationFactor);
         }
       }
     },
-    
-    testValuesBelowMinReplicationFactor : function () {
+
+    testValuesBelowMinReplicationFactor: function () {
       let min = internal.minReplicationFactor;
       if (min > 0) {
         try {
-          db._createDatabase(dn, { replicationFactor : min - 1 });
+          db._createDatabase(dn, { replicationFactor: min - 1 });
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
       }
     },
 
-    testValuesAboveMaxReplicationFactor : function () {
+    testValuesAboveMaxReplicationFactor: function () {
       let max = internal.maxReplicationFactor;
       if (max > 0) {
         try {
-          db._createDatabase(dn, { replicationFactor : max + 1 });
+          db._createDatabase(dn, { replicationFactor: max + 1 });
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
       }
-    },
-  
+    }
+
   };
 }
 

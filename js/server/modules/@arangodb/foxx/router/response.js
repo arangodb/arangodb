@@ -100,7 +100,7 @@ module.exports =
       }
     }
 
-    transformations(which) {
+    transformations (which) {
       if (!this._raw.hasOwnProperty('transformations')) {
         this._raw.transformations = [];
       }
@@ -334,7 +334,8 @@ module.exports =
       }
       throw Object.assign(
         httperr(status, reason),
-        {statusCode: status, status},
+        {statusCode: status,
+status},
         options
       );
     }

@@ -104,7 +104,7 @@ helper.generateAllUsers();
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -149,7 +149,9 @@ describe('User Rights Management', () => {
                   if (!rootTestCollection(colName, false)) {
                     let c = db._create(colName);
                     if (colName === testCol1Name) {
-                      c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                      c.ensureIndex({ type: "inverted",
+name: indexName,
+fields: [ { name: "value" } ] });
                     }
                     if (colLevel['none'].has(name)) {
                       if (helper.isLdapEnabledExternal()) {
@@ -209,7 +211,7 @@ describe('User Rights Management', () => {
                   if (rootTestView(viewName, false)) {
                     db._dropView(viewName);
                   }
-                  let view =  db._createView(viewName, viewType, {});
+                  let view = db._createView(viewName, viewType, {});
                   if (properties !== null) {
                     view.properties(properties, false);
                   }
@@ -285,7 +287,7 @@ describe('User Rights Management', () => {
                     it('view with link to non-existing collection', () => {
                       rootDropView(testViewName);
                       rootCreateCollection("NonExistentCol");
-                      rootCreateView(testViewName, testViewType, { links: { "NonExistentCol" : { includeAllFields: true } } });
+                      rootCreateView(testViewName, testViewType, { links: { "NonExistentCol": { includeAllFields: true } } });
                       rootDropCollection("NonExistentCol");
                       expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
                       setKey(keySpaceId, key);
@@ -348,7 +350,7 @@ describe('User Rights Management', () => {
                   })(params);`
                       };
                       if (dbLevel['rw'].has(name)) {
-                        if(colLevel['rw'].has(name) || colLevel['ro'].has(name)){
+                        if (colLevel['rw'].has(name) || colLevel['ro'].has(name)) {
                           tasks.register(task);
                           wait(keySpaceId, key);
                           expect(rootTestView(testViewName)).to.equal(false, 'View deletion reported success, but view was found afterwards');
@@ -373,14 +375,15 @@ describe('User Rights Management', () => {
                     });
 
                     let itName = 'view with links to multiple collections (switching 1 of them as RW during RO/NONE of a user collection level)';
-                    !(colLevel['ro'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
-                      it(itName, () => {
+                    !(colLevel['ro'].has(name) || colLevel['none'].has(name)) ? it.skip(itName)
+                      : it(itName, () => {
                         rootDropView(testViewName);
                         rootDropCollection(testCol1Name);
 
                         rootCreateCollection(testCol1Name);
                         rootCreateCollection(testCol2Name);
-                        rootCreateView(testViewName, testViewType, { links: { [testCol1Name]: { includeAllFields: true }, [testCol2Name]: { includeAllFields: true } } });
+                        rootCreateView(testViewName, testViewType, { links: { [testCol1Name]: { includeAllFields: true },
+[testCol2Name]: { includeAllFields: true } } });
                         expect(rootTestView(testViewName)).to.equal(true, 'Precondition failed, the view doesn not exist');
                         rootGrantCollection(testCol2Name, name, 'rw');
 

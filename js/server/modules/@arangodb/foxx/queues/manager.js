@@ -1,4 +1,4 @@
-/*global BigInt, FOXX_QUEUE_VERSION, FOXX_QUEUE_VERSION_BUMP */
+/* global BigInt, FOXX_QUEUE_VERSION, FOXX_QUEUE_VERSION_BUMP */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -56,8 +56,8 @@ var runInDatabase = function () {
       exclusive: ['_jobs']
     },
     action: function () {
-      db._queues.all().toArray()
-        .forEach(function (queue) {
+      db._queues.all().toArray().
+        forEach(function (queue) {
           var numBusy = db._jobs.byExample({
             queue: queue._key,
             status: 'progress'
@@ -93,7 +93,8 @@ var runInDatabase = function () {
             const updateQuery = global.aqlQuery`
             UPDATE ${job} WITH ${update} IN _jobs
             `;
-            updateQuery.options = { ttl: 5, maxRuntime: 5 };
+            updateQuery.options = { ttl: 5,
+maxRuntime: 5 };
 
             db._query(updateQuery);
             // db._jobs.update(job, update);
@@ -144,7 +145,8 @@ const resetDeadJobs = function () {
           UPDATE doc
         WITH { status: 'pending' }
         IN _jobs`;
-  query.options = { ttl: 5, maxRuntime: 5 };
+  query.options = { ttl: 5,
+maxRuntime: 5 };
 
   const initialDatabase = db._name();
   db._databases().forEach(function (name) {
@@ -175,7 +177,7 @@ const resetDeadJobs = function () {
           global.KEYSPACE_CREATE('queue-control', 1, true);
         }
         done = true;
-      } catch(e) {
+      } catch (e) {
         if (e.code === errors.ERROR_SHUTTING_DOWN.code) {
           warn("Shutting down while resetting dead jobs on database " + name + ", aborting.");
           done = true; // we're quitting because shutdown is in progress
@@ -195,20 +197,20 @@ const resetDeadJobs = function () {
 };
 
 const resetDeadJobsOnFirstRun = function () {
-  const foxxmasterInitialized
-    = global.KEY_GET('queue-control', 'foxxmasterInitialized') || 0;
+  const foxxmasterInitialized =
+    global.KEY_GET('queue-control', 'foxxmasterInitialized') || 0;
   const foxxmasterSince = global.ArangoServerState.getFoxxmasterSince();
 
   if (foxxmasterSince <= 0) {
     console.error(
-      "It's unknown since when this is a Foxxmaster. "
-      + 'This is probably a bug in the Foxx queues, please report this error.'
+      "It's unknown since when this is a Foxxmaster. " +
+      'This is probably a bug in the Foxx queues, please report this error.'
     );
   }
   if (foxxmasterInitialized > foxxmasterSince) {
     console.error(
-      'HLC seems to have decreased, which can never happen. '
-      + 'This is probably a bug in the Foxx queues, please report this error.'
+      'HLC seems to have decreased, which can never happen. ' +
+      'This is probably a bug in the Foxx queues, please report this error.'
     );
   }
 
@@ -257,7 +259,7 @@ exports.manage = function () {
   }
 
   db._useDatabase("_system");
-  
+
   let recheckAllQueues = false;
   let clusterQueueVersion = BigInt("0");
   if (isCluster) {
@@ -301,10 +303,10 @@ exports.manage = function () {
       // this is not an error
       if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code &&
           e.errorNum !== errors.ERROR_SHUTTING_DOWN.code) {
-        warn("An exception occurred during Foxx queue handling in database '"
-              + database + "' "
-              + e.message + ": "
-              + JSON.stringify(e));
+        warn("An exception occurred during Foxx queue handling in database '" +
+              database + "' " +
+              e.message + ": " +
+              JSON.stringify(e));
         // noop
       }
     }

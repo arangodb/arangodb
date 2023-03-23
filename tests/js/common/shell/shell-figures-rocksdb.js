@@ -37,7 +37,7 @@ function FiguresSuite () {
   const isEnterprise = internal.isEnterprise();
 
   return {
-    
+
     testNonDetailed: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
@@ -63,7 +63,7 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedJustPrimary: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       for (let i = 0; i < 100; ++i) {
@@ -82,7 +82,7 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedEmptyEdge: function () {
       let c = db._createEdgeCollection(cn, { numberOfShards: 4 });
       try {
@@ -104,12 +104,13 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedEdge: function () {
       let c = db._createEdgeCollection(cn, { numberOfShards: 4 });
       try {
         for (let i = 0; i < 100; ++i) {
-          c.insert({ _from: "test/a", _to: "test/b" });
+          c.insert({ _from: "test/a",
+_to: "test/b" });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -129,14 +130,16 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedHash: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1"] }));
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
+          c.insert({ value1: i,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -153,14 +156,17 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedHashSparse: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1"], sparse: true }));
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1"],
+sparse: true }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i < 50 ? null : i, value2: "test" + i });
+          c.insert({ value1: i < 50 ? null : i,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -177,38 +183,17 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedHashUnique: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1", "_key"], unique: true }));
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1", "_key"],
+unique: true }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
-        } 
-        let figures = c.figures(true).engine;
-        assertEqual(100, figures.documents);
-
-        let indexes = figures.indexes;
-        assertEqual(2, indexes.length);
-        assertEqual("primary", indexes[0].type);
-        assertEqual(0, indexes[0].id);
-        assertEqual(100, indexes[0].count);
-        assertEqual("rocksdb-hash", indexes[1].type);
-        assertEqual(idxs[0].id, cn + '/' + indexes[1].id);
-        assertEqual(100, indexes[1].count);
-      } finally {
-        db._drop(cn);
-      }
-    },
-    
-    testDetailedHashCombined: function () {
-      let c = db._create(cn, { numberOfShards: 4 });
-      try {
-        let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1", "value2"] }));
-        for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
+          c.insert({ value1: i,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -225,14 +210,42 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
+    testDetailedHashCombined: function () {
+      let c = db._create(cn, { numberOfShards: 4 });
+      try {
+        let idxs = [];
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1", "value2"] }));
+        for (let i = 0; i < 100; ++i) {
+          c.insert({ value1: i,
+value2: "test" + i });
+        }
+        let figures = c.figures(true).engine;
+        assertEqual(100, figures.documents);
+
+        let indexes = figures.indexes;
+        assertEqual(2, indexes.length);
+        assertEqual("primary", indexes[0].type);
+        assertEqual(0, indexes[0].id);
+        assertEqual(100, indexes[0].count);
+        assertEqual("rocksdb-hash", indexes[1].type);
+        assertEqual(idxs[0].id, cn + '/' + indexes[1].id);
+        assertEqual(100, indexes[1].count);
+      } finally {
+        db._drop(cn);
+      }
+    },
+
     testDetailedHashArray: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1[*]"] }));
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1[*]"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: [1, 2, 3], value2: "test" + i });
+          c.insert({ value1: [1, 2, 3],
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -249,14 +262,17 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedHashArrayDeduplicate: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "hash", fields: ["value1[*]"], deduplicate: true }));
+        idxs.push(c.ensureIndex({ type: "hash",
+fields: ["value1[*]"],
+deduplicate: true }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: [1, 2, 1], value2: "test" + i });
+          c.insert({ value1: [1, 2, 1],
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -273,14 +289,16 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedSkiplist: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "skiplist", fields: ["value1"] }));
+        idxs.push(c.ensureIndex({ type: "skiplist",
+fields: ["value1"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
+          c.insert({ value1: i,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -297,14 +315,16 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedPersistent: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "persistent", fields: ["value1"] }));
+        idxs.push(c.ensureIndex({ type: "persistent",
+fields: ["value1"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: i, value2: "test" + i });
+          c.insert({ value1: i,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -321,14 +341,17 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedTtlInvalid: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "ttl", fields: ["value1"], expireAfter: 100000 }));
+        idxs.push(c.ensureIndex({ type: "ttl",
+fields: ["value1"],
+expireAfter: 100000 }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: "piffpaff", value2: "test" + i });
+          c.insert({ value1: "piffpaff",
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -345,15 +368,18 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedTtl: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "ttl", fields: ["value1"], expireAfter: 100000 }));
+        idxs.push(c.ensureIndex({ type: "ttl",
+fields: ["value1"],
+expireAfter: 100000 }));
         let dt = (new Date()).toISOString();
         for (let i = 0; i < 100; ++i) {
-          c.insert({ value1: dt, value2: "test" + i });
+          c.insert({ value1: dt,
+value2: "test" + i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -370,14 +396,16 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedGeoInvalid: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "geo", fields: ["lat", "lon"] }));
+        idxs.push(c.ensureIndex({ type: "geo",
+fields: ["lat", "lon"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ lat: "piff", lon: "paff" });
+          c.insert({ lat: "piff",
+lon: "paff" });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -394,14 +422,16 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedGeo: function () {
       let c = db._create(cn, { numberOfShards: 4 });
       try {
         let idxs = [];
-        idxs.push(c.ensureIndex({ type: "geo", fields: ["lat", "lon"] }));
+        idxs.push(c.ensureIndex({ type: "geo",
+fields: ["lat", "lon"] }));
         for (let i = 0; i < 100; ++i) {
-          c.insert({ lat: 50 - i, lon: 50 - i });
+          c.insert({ lat: 50 - i,
+lon: 50 - i });
         }
         let figures = c.figures(true).engine;
         assertEqual(100, figures.documents);
@@ -418,7 +448,7 @@ function FiguresSuite () {
         db._drop(cn);
       }
     },
-    
+
     testDetailedSmartEdge: function () {
       if (!isCluster || !isEnterprise) {
         return;
@@ -426,16 +456,24 @@ function FiguresSuite () {
 
       const vertexCollectionName = cn + "v";
       const edgeCollectionName = cn + "e";
-      db._create(vertexCollectionName, { numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1" });
+      db._create(vertexCollectionName, { numberOfShards: 4,
+isSmart: true,
+shardKeys: ["_key:"],
+smartGraphAttribute: "value1" });
       try {
         let c = db._createEdgeCollection(
           edgeCollectionName,
           {
-            numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: vertexCollectionName
+            numberOfShards: 4,
+isSmart: true,
+shardKeys: ["_key:"],
+distributeShardsLike: vertexCollectionName
           });
         try {
           for (let i = 0; i < 100; ++i) {
-            c.insert({ _from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/2:2`, value1: i });
+            c.insert({ _from: `${vertexCollectionName}/1:1`,
+_to: `${vertexCollectionName}/2:2`,
+value1: i });
           }
           let figures = c.figures(true).engine;
           assertEqual(100, figures.documents);
@@ -458,7 +496,7 @@ function FiguresSuite () {
         db._drop(vertexCollectionName);
       }
     },
-    
+
     testDetailedDisjointSmartEdge: function () {
       if (!isCluster || !isEnterprise) {
         return;
@@ -467,15 +505,24 @@ function FiguresSuite () {
       const vertexCollectionName = cn + "v";
       const edgeCollectionName = cn + "e";
       db._create(vertexCollectionName, {
-        numberOfShards: 4, isSmart: true, shardKeys: ["_key:"], smartGraphAttribute: "value1"
+        numberOfShards: 4,
+isSmart: true,
+shardKeys: ["_key:"],
+smartGraphAttribute: "value1"
       });
       try {
-        let c = db._createEdgeCollection(edgeCollectionName,{
-          numberOfShards: 4, isDisjoint: true, isSmart: true, shardKeys: ["_key:"], distributeShardsLike: vertexCollectionName
+        let c = db._createEdgeCollection(edgeCollectionName, {
+          numberOfShards: 4,
+isDisjoint: true,
+isSmart: true,
+shardKeys: ["_key:"],
+distributeShardsLike: vertexCollectionName
         });
         try {
           for (let i = 0; i < 100; ++i) {
-            c.insert({_from: `${vertexCollectionName}/1:1`, _to: `${vertexCollectionName}/1:2`, value1: i});
+            c.insert({_from: `${vertexCollectionName}/1:1`,
+_to: `${vertexCollectionName}/1:2`,
+value1: i});
           }
           let figures = c.figures(true).engine;
           assertEqual(100, figures.documents);
@@ -497,7 +544,7 @@ function FiguresSuite () {
       } finally {
         db._drop(vertexCollectionName);
       }
-    },
+    }
   };
 }
 

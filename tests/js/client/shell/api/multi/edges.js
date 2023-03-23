@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,23 +31,23 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionEdge";
   return {
-    setUp: function() {
+    setUp: function () {
       db._createEdgeCollection(cn);
     },
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
-    
-    test_returns_an_error_if_vertex_identifier_is_missing: function() {
+
+    test_returns_an_error_if_vertex_identifier_is_missing: function () {
       let cmd = `/_api/edges/${cn}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -58,7 +58,7 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_vertex_identifier_is_empty: function() {
+    test_returns_an_error_if_vertex_identifier_is_empty: function () {
       let cmd = `/_api/edges/${cn}?vertex=`;
       let doc = arango.GET_RAW(cmd);
 
@@ -69,7 +69,7 @@ function error_handlingSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if_collection_does_not_exist: function() {
+    test_returns_an_error_if_collection_does_not_exist: function () {
       let cmd = `/_api/edges/${cn}OTHERNAME?vertex=test`;
       let doc = arango.GET_RAW(cmd);
 
@@ -82,9 +82,9 @@ function error_handlingSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // known collection name;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function known_collection_nameSuite () {
   let ce = "UnitTestsCollectionEdge";
   let cv = "UnitTestsCollectionVertex";
@@ -92,21 +92,21 @@ function known_collection_nameSuite () {
   let reEdge = new RegExp('^' + ce + '/');
   let reVertex = new RegExp('^' + cv + '/');
   return {
-    setUp: function() {
+    setUp: function () {
       let eid = db._createEdgeCollection(ce, { waitForSync: true });
       let vid = db._create(cv, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(ce);
       db._drop(cv);
     },
 
-    test_creating_an_edge: function() {
+    test_creating_an_edge: function () {
       let cmd = `/_api/document?collection=${cv}`;
 
       // create first vertex;
-      let body = { "a" : 1 };
+      let body = { "a": 1 };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -118,7 +118,7 @@ function known_collection_nameSuite () {
       let id1 = doc.parsedBody['_id'];
 
       // create second vertex;
-      body = { "a" : 2 };
+      body = { "a": 2 };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -131,7 +131,8 @@ function known_collection_nameSuite () {
 
       // create edge;
       cmd = `/_api/document?collection=${ce}`;
-      body = {"_from":id1,"_to":id2};
+      body = {"_from": id1,
+"_to": id2};
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -154,7 +155,9 @@ function known_collection_nameSuite () {
 
       // create another edge;
       cmd = `/_api/document?collection=${ce}`;
-      body = { "e" : 1, "_from" : id1, "_to": id2 };
+      body = { "e": 1,
+"_from": id1,
+"_to": id2 };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -182,7 +185,9 @@ function known_collection_nameSuite () {
 
       // create third edge;
       cmd = `/_api/document?collection=${ce}`;
-      body = { "e" : 2, "_from" : id2, "_to" : id1 };
+      body = { "e": 2,
+"_from": id2,
+"_to": id1 };
       doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -212,7 +217,7 @@ function known_collection_nameSuite () {
 
       // check ANY edges;
       cmd = `/_api/edges/${ce}?vertex=${id1}`;
-      doc = arango.GET_RAW(cmd);;
+      doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
       assertTrue(Array.isArray(doc.parsedBody['edges']));
@@ -220,7 +225,7 @@ function known_collection_nameSuite () {
 
       // check IN edges;
       cmd = `/_api/edges/${ce}?vertex=${id1}&direction=in`;
-      doc = arango.GET_RAW(cmd);;
+      doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
       assertTrue(Array.isArray(doc.parsedBody['edges']));
@@ -228,7 +233,7 @@ function known_collection_nameSuite () {
 
       // check OUT edges;
       cmd = `/_api/edges/${ce}?vertex=${id1}&direction=out`;
-      doc = arango.GET_RAW(cmd);;
+      doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
       assertTrue(Array.isArray(doc.parsedBody['edges']));

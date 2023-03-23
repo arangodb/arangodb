@@ -50,7 +50,8 @@ function runSetup () {
   var j = 0;
   while (j++ < 20) {
     for (i = 0; i < 10000; ++i) {
-      c.save({ value1: 'test' + i, value2: i });
+      c.save({ value1: 'test' + i,
+value2: i });
     }
     internal.wal.flush(true, true);
   }

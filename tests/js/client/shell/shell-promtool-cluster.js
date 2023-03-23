@@ -1,28 +1,28 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global print, assertNotEqual, assertFalse, assertTrue, assertEqual, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const internal = require('internal');
@@ -47,25 +47,25 @@ const metricsUrlPath = "/_admin/metrics/v2";
 const serverIdPath = "/_admin/server/id";
 const healthUrl = "_admin/cluster/health";
 
-function getServerId(server) {
+function getServerId (server) {
   let res = request.get({
     url: server.url + serverIdPath
   });
   return res.json.id;
 }
 
-function getServerShortName(server) {
+function getServerShortName (server) {
   let serverId = getServerId(server);
   let clusterHealth = arango.GET_RAW(healthUrl).parsedBody.Health;
-  let shortName = Object.keys(clusterHealth)
-    .filter(x => {
+  let shortName = Object.keys(clusterHealth).
+    filter(x => {
       return x === serverId;
-    })
-    .map(x => clusterHealth[x]["ShortName"])[0];
+    }).
+    map(x => clusterHealth[x]["ShortName"])[0];
   return shortName;
 }
 
-function checkThatServerIsResponsive(server) {
+function checkThatServerIsResponsive (server) {
   try {
     let serverName = getServerShortName(server);
     print("Checking if server " + serverName + " is responsive.");
@@ -79,29 +79,29 @@ function checkThatServerIsResponsive(server) {
       print("Server " + serverName + " doesn't respond properly to requests.");
       return false;
     }
-  } catch(error){
+  } catch (error) {
     return false;
   }
 }
 
-function checkThatAllDbServersAreHealthy() {
+function checkThatAllDbServersAreHealthy () {
   print("Checking that all DB servers are healthy.");
   let clusterHealth = arango.GET_RAW(healthUrl).parsedBody.Health;
-  let dbServers = Object.keys(clusterHealth)
-    .filter(x => {
+  let dbServers = Object.keys(clusterHealth).
+    filter(x => {
       return clusterHealth[x]["Role"] === "DBServer";
-    })
-    .map(x => clusterHealth[x]);
-    for(let i = 0; i < dbServers.length; i++) {
-      print("Server "+ dbServers[i].ShortName + " status is " + dbServers[i]["Status"]);
-      if(!(dbServers[i]["Status"] === "GOOD")){
+    }).
+    map(x => clusterHealth[x]);
+    for (let i = 0; i < dbServers.length; i++) {
+      print("Server " + dbServers[i].ShortName + " status is " + dbServers[i]["Status"]);
+      if (!(dbServers[i]["Status"] === "GOOD")) {
         return false;
       }
     }
   return true;
 }
 
-function validateMetrics(metrics) {
+function validateMetrics (metrics) {
   let toRemove = [];
   try {
     // store output of /_admin/metrics/v2 into a temp file
@@ -140,7 +140,7 @@ function validateMetrics(metrics) {
   }
 }
 
-function checkMetricsBelongToServer(metrics, server) {
+function checkMetricsBelongToServer (metrics, server) {
   let serverName = getServerShortName(server);
   let positiveRegex = new RegExp('(shortname="(' + serverName + ').*")');
   let negativeRegex = new RegExp('(shortname="(?!' + serverName + ').*")');
@@ -151,7 +151,7 @@ function checkMetricsBelongToServer(metrics, server) {
   assertEqual(null, matchesAnyOtherName, "Metrics must NOT contain other servers' names.");
 }
 
-function validateMetricsOnServer(server) {
+function validateMetricsOnServer (server) {
   print("Querying server ", server.name);
   let res = request.get({
     url: server.url + metricsUrlPath
@@ -162,7 +162,7 @@ function validateMetricsOnServer(server) {
   validateMetrics(body);
 }
 
-function validateMetricsViaCoordinator(coordinator, server) {
+function validateMetricsViaCoordinator (coordinator, server) {
   let serverId = getServerId(server);
   let metricsUrl = coordinator.url + metricsUrlPath + "?serverId=" + serverId;
   let res = request.get({ url: metricsUrl });
@@ -173,7 +173,7 @@ function validateMetricsViaCoordinator(coordinator, server) {
   checkMetricsBelongToServer(body, server);
 }
 
-function promtoolClusterSuite() {
+function promtoolClusterSuite () {
   'use strict';
 
   if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
@@ -203,14 +203,14 @@ function promtoolClusterSuite() {
       }
     },
     testMetricsViaCoordinator: function () {
-      //exclude agents, because agents cannot be queried via coordinator
+      // exclude agents, because agents cannot be queried via coordinator
       let servers = dbServers.concat(coordinators);
       for (let i = 0; i < servers.length; i++) {
         validateMetricsViaCoordinator(coordinators[0], servers[i]);
       }
     },
     testInvalidServerId: function () {
-      //query metrics from coordinator, supplying invalid server id
+      // query metrics from coordinator, supplying invalid server id
       let coordinator = coordinators[0];
       let metricsUrl = coordinator.url + metricsUrlPath + "?serverId=" + "invalid-server-id";
       let res = request.get({ url: metricsUrl });
@@ -219,7 +219,7 @@ function promtoolClusterSuite() {
       expect(res.json.errorNum).to.equal(errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
     testServerDoesntRespond: function () {
-      //query metrics from coordinator, supplying id of a server, that is shut down
+      // query metrics from coordinator, supplying id of a server, that is shut down
       let dbServer = dbServers[0];
       let serverId = getServerId(dbServer);
       assertTrue(dbServer.suspend());
@@ -227,8 +227,8 @@ function promtoolClusterSuite() {
         let metricsUrl = metricsUrlPath + "?serverId=" + serverId;
         let res = arango.GET_RAW(metricsUrl);
         assertTrue(res.code === 500 || res.code === 503);
-        //Do not validate response body because errorNum and errorMessage can differ depending on whether there was an open connection
-        //between coordinator and db server when the later stopped responding. This cannot be reproduced consistently in the test.
+        // Do not validate response body because errorNum and errorMessage can differ depending on whether there was an open connection
+        // between coordinator and db server when the later stopped responding. This cannot be reproduced consistently in the test.
         //        let body = res.parsedBody;
         //        expect(body.errorNum).to.equal(errors.ERROR_CLUSTER_CONNECTION_LOST.code);
       } finally {

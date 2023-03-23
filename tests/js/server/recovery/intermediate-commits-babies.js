@@ -45,7 +45,7 @@ function runSetup () {
   } catch (err) {
     // intentionally fail
   }
-          
+
   c.insert({ _key: 'crash' }, { waitForSync: true });
   internal.debugTerminate('crashing server');
 }

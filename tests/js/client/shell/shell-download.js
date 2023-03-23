@@ -1,41 +1,41 @@
-/*jshint globalstrict:false, strict:false, sub: true */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
+/* jshint globalstrict:false, strict:false, sub: true */
+/* global fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test download function
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test download function
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
 var arangodb = require("@arangodb");
 var fs = require("fs");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test attributes
+// //////////////////////////////////////////////////////////////////////////////
 
 function DownloadSuite () {
   'use strict';
@@ -45,18 +45,18 @@ function DownloadSuite () {
   var buildUrl = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_admin/echo" + append;
   };
-  
+
   var buildUrlBroken = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_not-there" + append;
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       // create a name for a temporary directory we will run all tests in
       // as we are creating a new name, this shouldn't collide with any existing
       // directories, and we can also remove our directory when the tests are
@@ -67,16 +67,15 @@ function DownloadSuite () {
         // create this directory before any tests
         fs.makeDirectoryRecursive(tempDir);
         tempName = fs.join(tempDir, 'foo');
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       // some basic security checks as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
@@ -85,9 +84,9 @@ function DownloadSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test http GET
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test http GET
+// //////////////////////////////////////////////////////////////////////////////
 /*
     testGet : function () {
       var result, response = internal.download(buildUrl(""));
@@ -132,58 +131,60 @@ function DownloadSuite () {
       assertEqual("baz", result.parameters["bar"]);
     },
 */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test http GET error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test http GET error
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetErrorNoReturn : function () {
+    testGetErrorNoReturn: function () {
       var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
-                                       undefined, { timeout: 300 }, tempName );
+                                       undefined, { timeout: 300 }, tempName);
       assertEqual(404, response.code);
 
       assertFalse(fs.exists(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test http GET error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test http GET error
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetErrorDirect : function () {
+    testGetErrorDirect: function () {
       var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
-                                               undefined, { timeout: 300, returnBodyOnError: true });
+                                               undefined, { timeout: 300,
+returnBodyOnError: true });
 
       assertEqual(404, response.code);
-     
+
       result = JSON.parse(response.body);
       assertTrue(result.error);
       assertEqual(404, result.code);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test http GET error
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test http GET error
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetErrorSave : function () {
+    testGetErrorSave: function () {
       var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
-                                               undefined, { timeout: 300, returnBodyOnError: true },
+                                               undefined, { timeout: 300,
+returnBodyOnError: true },
                                                tempName);
 
       assertEqual(404, response.code);
-      
+
       result = JSON.parse(fs.read(tempName));
       assertTrue(result.error);
       assertEqual(404, result.code);
-    },
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test response headers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test response headers
+// //////////////////////////////////////////////////////////////////////////////
 /*
     testResponseHeaders : function () {
       var result, response = internal.download(buildUrl(""));
 
       assertEqual(200, response.code);
-      
+
       result = JSON.parse(response.body);
       assertEqual("GET", result.requestType);
       assertTrue(response.body.length > 0);
@@ -192,20 +193,20 @@ function DownloadSuite () {
       assertEqual("200 OK", response.headers["http/1.1"]);
     },
 */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test request headers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test request headers
+// //////////////////////////////////////////////////////////////////////////////
 /*
     testRequestHeaders : function () {
       var result, response = internal.download(buildUrl(""),
-                                               "I am broken", 
+                                               "I am broken",
                                                { method: "post",
                                                  headers: {
                                                    "Content-Type" : "x/broken"
                                                  } });
 
       assertEqual(200, response.code);
-      
+
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
       assertEqual(0, Object.getOwnPropertyNames(result.parameters).length);
@@ -369,9 +370,9 @@ function DownloadSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(DownloadSuite);
 

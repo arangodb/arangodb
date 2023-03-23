@@ -41,11 +41,10 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 var _ = require('lodash');
 
-function multiCollectionGraphSuite() {
+function multiCollectionGraphSuite () {
   /* *********************************************************************
    * Graph under test:
    *
@@ -193,7 +192,7 @@ function multiCollectionGraphSuite() {
         assertEqual(jsonResult, result, query);
       });
     },
-    
+
     testEdgeCollectionBindParameterNoCol: function () {
       var query = `WITH ${vn}
       FOR x, e, p IN OUTBOUND '${gh.vertex.B}' @eCol
@@ -210,7 +209,7 @@ function multiCollectionGraphSuite() {
         assertEqual(jsonResult, result, query);
       });
     },
-    
+
     testEdgeCollectionBindParameterNonExisting: function () {
       var query = `WITH ${vn}
       FOR x, e, p IN OUTBOUND '${gh.vertex.B}' @@eCol
@@ -226,7 +225,7 @@ function multiCollectionGraphSuite() {
         assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
     },
-    
+
     testEdgeCollectionBindParameterNoColNonExisting: function () {
       var query = `WITH ${vn}
       FOR x, e, p IN OUTBOUND '${gh.vertex.B}' @eCol

@@ -6,7 +6,7 @@
 const JsonReporter = require('@arangodb/mocha/reporter/json');
 
 class XunitReporter extends JsonReporter {
-  constructor(runner) {
+  constructor (runner) {
     super(runner);
     let start;
     runner.on('start', function () {

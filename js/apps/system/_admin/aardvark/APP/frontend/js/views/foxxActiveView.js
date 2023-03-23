@@ -54,11 +54,11 @@
         var conf = function () {
           if (this.model.needsConfiguration()) {
             if ($(this.el).find('.warning-icons').length > 0) {
-              $(this.el).find('.warning-icons')
-                .append('<span class="fa fa-cog" title="Needs configuration"></span>');
+              $(this.el).find('.warning-icons').
+                append('<span class="fa fa-cog" title="Needs configuration"></span>');
             } else {
-              $(this.el).find('img')
-                .after(
+              $(this.el).find('img').
+                after(
                   '<span class="warning-icons"><span class="fa fa-cog" title="Needs configuration"></span></span>'
                 );
             }
@@ -68,11 +68,11 @@
         var depend = function () {
           if (this.model.hasUnconfiguredDependencies()) {
             if ($(this.el).find('.warning-icons').length > 0) {
-              $(this.el).find('.warning-icons')
-                .append('<span class="fa fa-cubes" title="Unconfigured dependencies"></span>');
+              $(this.el).find('.warning-icons').
+                append('<span class="fa fa-cubes" title="Unconfigured dependencies"></span>');
             } else {
-              $(this.el).find('img')
-                .after(
+              $(this.el).find('img').
+                after(
                   '<span class="warning-icons"><span class="fa fa-cubes" title="Unconfigured dependencies"></span></span>'
                 );
             }

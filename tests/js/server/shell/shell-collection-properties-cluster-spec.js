@@ -1,31 +1,31 @@
-/*global describe, it, ArangoAgency, beforeEach, afterEach, fail */
+/* global describe, it, ArangoAgency, beforeEach, afterEach, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cluster collection creation tests
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Andreas Streichardt
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cluster collection creation tests
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Andreas Streichardt
+// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -38,7 +38,7 @@ const cn1 = "UnitTestPropertiesLeader";
 const cn2 = "UnitTestPropertiesFollower";
 
 // check whether all shards have the right amount of followers
-function checkReplicationFactor(name, fac) {
+function checkReplicationFactor (name, fac) {
     // first we need the plan id of the collection
     let plan = ArangoAgency.get('Plan/Collections/_system');
     let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
@@ -64,26 +64,27 @@ function checkReplicationFactor(name, fac) {
     }
     let current = ArangoAgency.get('Current/Collections/_system');
     let val = current.arango.Current.Collections['_system'][collectionId];
-    expect(true).to.equal(false, "Expected replicationFactor of " + fac + " in collection "
-      + name + " is not reflected properly in " +
-      "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val));
-};
+    expect(true).to.equal(false, "Expected replicationFactor of " + fac + " in collection " +
+      name + " is not reflected properly in " +
+      "/Current/Collections/_system/" + collectionId + ": " + JSON.stringify(val));
+}
 
-describe('Update collection properties', function() {
+describe('Update collection properties', function () {
 
-    beforeEach(function() {
+    beforeEach(function () {
         db._useDatabase("_system");
     });
 
-    afterEach(function() {
+    afterEach(function () {
         db._useDatabase("_system");
         try {
             db._drop(cn1);
         } catch (e) {}
     });
 
-    it('increase replication factor ', function() {
-        db._create(cn1, {replicationFactor: 1, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('increase replication factor ', function () {
+        db._create(cn1, {replicationFactor: 1,
+numberOfShards: 2}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 1);
 
@@ -95,8 +96,9 @@ describe('Update collection properties', function() {
         checkReplicationFactor(cn1, 2);
     });
 
-    it('decrease replication factor ', function() {
-        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('decrease replication factor ', function () {
+        db._create(cn1, {replicationFactor: 2,
+numberOfShards: 2}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
 
@@ -108,8 +110,9 @@ describe('Update collection properties', function() {
         checkReplicationFactor(cn1, 1);
     });
 
-    it('invalid replication factor', function() {
-        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('invalid replication factor', function () {
+        db._create(cn1, {replicationFactor: 2,
+numberOfShards: 2}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
 
@@ -118,7 +121,7 @@ describe('Update collection properties', function() {
             coll.properties({replicationFactor: -1});
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
-        } catch(e) {
+        } catch (e) {
             expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
         }
 
@@ -127,7 +130,7 @@ describe('Update collection properties', function() {
             coll.properties({replicationFactor: 100});
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
-        } catch(e) {
+        } catch (e) {
             expect(e.errorNum).to.equal(errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code);
         }
 
@@ -136,21 +139,21 @@ describe('Update collection properties', function() {
             coll.properties({replicationFactor: "satellite"});
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
-        } catch(e) {
+        } catch (e) {
             expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
         }
     });
 });
 
 
-describe('Update collection properties with distributeShardsLike, ', function() {
+describe('Update collection properties with distributeShardsLike, ', function () {
 
 
-    beforeEach(function() {
+    beforeEach(function () {
         db._useDatabase("_system");
     });
 
-    afterEach(function() {
+    afterEach(function () {
         db._useDatabase("_system");
 
         try {
@@ -162,8 +165,9 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         } catch (e) {}
     });
 
-    it('increase replication factor', function() {
-        db._create(cn1, {replicationFactor: 1, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('increase replication factor', function () {
+        db._create(cn1, {replicationFactor: 1,
+numberOfShards: 2}, {waitForSyncReplication: true});
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 1);
@@ -177,8 +181,9 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         checkReplicationFactor(cn2, 2);
     });
 
-    it('decrease replication factor', function() {
-        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('decrease replication factor', function () {
+        db._create(cn1, {replicationFactor: 2,
+numberOfShards: 2}, {waitForSyncReplication: true});
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
@@ -193,8 +198,9 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         checkReplicationFactor(cn2, 1);
     });
 
-    it('change replicationFactor of follower', function() {
-        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+    it('change replicationFactor of follower', function () {
+        db._create(cn1, {replicationFactor: 2,
+numberOfShards: 2}, {waitForSyncReplication: true});
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
@@ -205,18 +211,18 @@ describe('Update collection properties with distributeShardsLike, ', function() 
             follower.properties({replicationFactor: 1});
             expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
-        } catch(e) {
+        } catch (e) {
             expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
         }
     });
 });
 
-describe('Replication factor constraints', function() {
-    beforeEach(function() {
+describe('Replication factor constraints', function () {
+    beforeEach(function () {
         db._useDatabase("_system");
     });
 
-    afterEach(function() {
+    afterEach(function () {
         db._useDatabase("_system");
 
         try {
@@ -230,7 +236,7 @@ describe('Replication factor constraints', function() {
         } catch (e) {}
     });
 
-    it('should not allow to create a collection with more replicas than dbservers available', function() {
+    it('should not allow to create a collection with more replicas than dbservers available', function () {
         try {
             db._create(cn1, {replicationFactor: 5});
             throw new Error('Should not reach this');
@@ -239,18 +245,18 @@ describe('Replication factor constraints', function() {
         }
     });
 
-    it('should allow to create a collection with more replicas than dbservers when explicitly requested', function() {
+    it('should allow to create a collection with more replicas than dbservers when explicitly requested', function () {
         db._create(cn1, {replicationFactor: 5}, {enforceReplicationFactor: false});
     });
 
-    it('check replication factor of system collections', function() {
+    it('check replication factor of system collections', function () {
         ["_appbundles", "_apps", "_aqlfunctions", "_frontend", "_graphs",
          "_jobs", "_modules", "_queues", "_routing",
-         "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
+         "_statistics", "_statistics15", "_statisticsRaw", "_users"
         ].forEach(name => {
-          if(name === "_users"){
+          if (name === "_users") {
             expect(db[name].properties()['replicationFactor']).to.equal(2);
-          } else if(db[name]){
+          } else if (db[name]) {
             expect(db[name].properties()['replicationFactor']).to.equal(2);
             expect(db[name].properties()['distributeShardsLike']).to.equal("_users");
           }
@@ -259,7 +265,8 @@ describe('Replication factor constraints', function() {
     });
 
     it('distributeShardsLike should fail on additional parameters', function () {
-        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+        db._create(cn1, {replicationFactor: 2,
+numberOfShards: 2}, {waitForSyncReplication: true});
         try {
             db._create(cn2, {
                 distributeShardsLike: cn1,

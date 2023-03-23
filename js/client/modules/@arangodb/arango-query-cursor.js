@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor(database, data, stream) {
+function ArangoQueryCursor (database, data, stream) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -250,7 +250,7 @@ ArangoQueryCursor.prototype.next = function () {
   return result;
 };
 
-ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
+ArangoQueryCursor.prototype[Symbol.iterator] = function *() {
   while (this._hasNext) {
     yield this.next();
   }

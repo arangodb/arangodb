@@ -1,37 +1,37 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-///
-/// Fuzzing tests for nested subquery execution. Generates random nested subqueries
-/// and then runs spliced subqueries against "old style" subqueries and compares
-/// results.
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
-///
-/// This test runs randomly generated queries, but prints the code that is
-/// executed to run the test, so if you find yourself in the unfortunate situation
-/// that you have to debug a failing instance of this test, just copy and paste
-/// the line that preceded the crash/failure into arangosh or an arangod console
-/// and you should reproduce what happened in the random run.
-///
+// //////////////////////////////////////////////////////////////////////////////
+// /
+// / Fuzzing tests for nested subquery execution. Generates random nested subqueries
+// / and then runs spliced subqueries against "old style" subqueries and compares
+// / results.
+// /
+// / DISCLAIMER
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// //////////////////////////////////////////////////////////////////////////////
+// /
+// / This test runs randomly generated queries, but prints the code that is
+// / executed to run the test, so if you find yourself in the unfortunate situation
+// / that you have to debug a failing instance of this test, just copy and paste
+// / the line that preceded the crash/failure into arangosh or an arangod console
+// / and you should reproduce what happened in the random run.
+// /
 
 const jsunity = require("jsunity");
 const ct = require("@arangodb/test-generators/subquery-chaos-test");
@@ -73,27 +73,27 @@ const randomModificationDepth = () => {
   return 3;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for cross-collection queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite for cross-collection queries
+// //////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlSubqueryChaos() {
-  /// Some queries that caused errors before. We don't have the seeds
-  /// to create them, unfortunately, so we test them in here verbatim.
+function ahuacatlSubqueryChaos () {
+  // / Some queries that caused errors before. We don't have the seeds
+  // / to create them, unfortunately, so we test them in here verbatim.
   const specificQueries = {
     q1: {
       queryString: `FOR x IN 1..10
            LET sub = (FOR y in 1..10 RETURN y)
            LIMIT 3, 0
            RETURN sub`,
-      collectionNames: [],
+      collectionNames: []
     },
     q2: {
       queryString: `FOR x IN 1..10
            LET sub = (FOR y in 1..10 RETURN y)
            LIMIT 3, 1
            RETURN sub`,
-      collectionNames: [],
+      collectionNames: []
     },
     q3: {
       queryString: `FOR fv62 IN 1..100
@@ -120,7 +120,7 @@ function ahuacatlSubqueryChaos() {
             RETURN {counter})
           LIMIT 6,19
           RETURN {fv62, sq63}`,
-      collectionNames: [],
+      collectionNames: []
     },
     q4: {
       queryString: `FOR fv0 IN 1..20
@@ -148,18 +148,18 @@ function ahuacatlSubqueryChaos() {
              RETURN {fv8, sq1, sq9})
            LIMIT 13,14
            RETURN {fv0, sq1, sq7}`,
-      collectionNames: [],
-    },
+      collectionNames: []
+    }
   };
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
     setUp: function () {},
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
     tearDown: function () {},
 
     testSpecificQueries: function () {
@@ -174,7 +174,7 @@ function ahuacatlSubqueryChaos() {
           numberSubqueries: randomDepth(),
           seed: Math.trunc(Math.random() * 10000),
           showReproduce: true,
-          throwOnMismatch: true,
+          throwOnMismatch: true
         });
       }
     },
@@ -185,16 +185,16 @@ function ahuacatlSubqueryChaos() {
           numberSubqueries: randomModificationDepth(),
           seed: Math.trunc(Math.random() * 10000),
           showReproduce: true,
-          throwOnMismatch: true,
+          throwOnMismatch: true
         });
       }
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlSubqueryChaos);
 

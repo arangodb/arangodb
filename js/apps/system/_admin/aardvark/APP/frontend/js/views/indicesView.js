@@ -431,7 +431,7 @@
 
           if (v.fields !== undefined) {
             fieldsString = v.fields.map(
-              function(v) {
+              function (v) {
                 if (typeof v === 'object') {
                   return v.name;
                 }

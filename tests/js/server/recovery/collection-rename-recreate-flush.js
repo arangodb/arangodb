@@ -55,7 +55,7 @@ function runSetup () {
   }
 
   for (i = 0; i < 100000; ++i) {
-    //c is collection UnittestsRecovery2 (former 1)
+    // c is collection UnittestsRecovery2 (former 1)
     c.save({ a: 'this-is-a-longer-string-to-fill-up-logfiles' }); // 101000 documents in collection 2
   }
 

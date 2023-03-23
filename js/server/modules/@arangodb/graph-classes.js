@@ -33,27 +33,27 @@ const {ArangoGraph} = require('internal');
 let AbstractGraph = ggc.__GraphClass;
 
 class GeneralGraph extends AbstractGraph {
-  _deleteEdgeDefinition(edgeDefinition, dropCollection = false) {
+  _deleteEdgeDefinition (edgeDefinition, dropCollection = false) {
     let result = ArangoGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
   }
 
-  _extendEdgeDefinitions(edgeDefinitions, options = {}) {
+  _extendEdgeDefinitions (edgeDefinitions, options = {}) {
     let result = ArangoGraph._extendEdgeDefinitions(this.__name, edgeDefinitions, options);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
   }
 
-  _editEdgeDefinitions(edgeDefinitions, options = {}) {
+  _editEdgeDefinitions (edgeDefinitions, options = {}) {
     let result = ArangoGraph._editEdgeDefinitions(this.__name, edgeDefinitions, options);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
   }
 
-  _addVertexCollection(vertexName, createCollection = true, options = {}) {
+  _addVertexCollection (vertexName, createCollection = true, options = {}) {
     let result = ArangoGraph._addVertexCollection(this.__name, vertexName, createCollection, options);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
   }
 
-  _removeVertexCollection(vertexName, dropCollection = false) {
+  _removeVertexCollection (vertexName, dropCollection = false) {
     let result = ArangoGraph._removeVertexCollection(this.__name, vertexName, dropCollection);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
   }

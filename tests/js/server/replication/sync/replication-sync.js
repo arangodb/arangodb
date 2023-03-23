@@ -65,7 +65,7 @@ const collectionCount = function (name) {
 
 const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, incremental, system) {
   let state = {};
-  
+
   db._flushCache();
   leaderFunc(state);
 
@@ -94,11 +94,11 @@ function BaseTestConfig () {
   'use strict';
 
   return {
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
-    
+
     testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_admin/debug/failat");
@@ -160,7 +160,7 @@ function BaseTestConfig () {
         true
       );
     },
-    
+
     testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_admin/debug/failat");
@@ -178,7 +178,8 @@ function BaseTestConfig () {
             let docs = [];
 
             for (let i = 0; i < 10000; ++i) {
-              docs.push({ value: i, _key: "test" + i });
+              docs.push({ value: i,
+_key: "test" + i });
             }
             c.insert(docs);
 
@@ -234,7 +235,9 @@ function BaseTestConfig () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'skiplist', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'skiplist',
+id: '1234567',
+fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
@@ -259,14 +262,18 @@ function BaseTestConfig () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'hash',
+id: '1234567',
+fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the collection and index on the follower
           const c = db._create(cn);
-          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          const def = {type: 'skiplist',
+id: '1234567',
+fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -282,18 +289,22 @@ function BaseTestConfig () {
 
     testExistingSystemIndexIdConflict: function () {
       connectToLeader();
-      
+
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
-          state.indexDef = {type: 'hash', id: '1234567', fields: ['value']};
+          state.indexDef = {type: 'hash',
+id: '1234567',
+fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.id);
         },
         function (state) {
           //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
-          const def = {type: 'skiplist', id: '1234567', fields: ['value2']};
+          const def = {type: 'skiplist',
+id: '1234567',
+fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -313,7 +324,9 @@ function BaseTestConfig () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'skiplist', name: 'foo', fields: ['value']};
+          state.indexDef = {type: 'skiplist',
+name: 'foo',
+fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
@@ -338,14 +351,18 @@ function BaseTestConfig () {
       compare(
         function (state) {
           const c = db._create(cn);
-          state.indexDef = {type: 'hash', name: 'foo', fields: ['value']};
+          state.indexDef = {type: 'hash',
+name: 'foo',
+fields: ['value']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the collection and index on the follower
           const c = db._create(cn);
-          const def = {type: 'skiplist', name: 'foo', fields: ['value2']};
+          const def = {type: 'skiplist',
+name: 'foo',
+fields: ['value2']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -359,18 +376,22 @@ function BaseTestConfig () {
 
     testExistingSystemIndexNameConflict: function () {
       connectToLeader();
-      
+
       compare(
         function (state) {
           const c = db._create(sysCn, {isSystem: true});
-          state.indexDef = {type: 'hash', name: 'foo', fields: ['value3']};
+          state.indexDef = {type: 'hash',
+name: 'foo',
+fields: ['value3']};
           c.ensureIndex(state.indexDef);
           state.leaderProps = c.index(state.indexDef.name);
         },
         function (state) {
           //  already create the index on the follower
           const c = db._create(sysCn, {isSystem: true});
-          const def  = {type: 'skiplist', name: 'foo', fields: ['value4']};
+          const def = {type: 'skiplist',
+name: 'foo',
+fields: ['value4']};
           c.ensureIndex(def);
         },
         function (state) {
@@ -437,7 +458,7 @@ function BaseTestConfig () {
       assertEqual(st.count, collectionCount(cn));
       assertEqual(st.checksum, collectionChecksum(cn));
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
@@ -812,7 +833,7 @@ function BaseTestConfig () {
 
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
     },
-    
+
     testIntermediateCommitsUsageOnInsert: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_admin/debug/failat");
@@ -828,16 +849,16 @@ function BaseTestConfig () {
         docs.push({ _key: "test" + i });
       }
       c.insert(docs);
-      
+
       connectToFollower();
-      
+
       // sync almost empty collection to follower
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
-     
+
       // add a lot more data on the leader
       connectToLeader();
       c = db._collection(cn);
@@ -849,12 +870,12 @@ function BaseTestConfig () {
           docs = [];
         }
       }
-          
+
       assertEqual(100100, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
-          
+
       // set intermediate commit count to 1000 on follower
       arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
 
@@ -870,17 +891,18 @@ function BaseTestConfig () {
       db._flushCache();
       assertEqual(100100, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
-      
+
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
-      
+
       let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
       // unfortunately we don't know the exact number of intermediate commits that have
       // been made. this is because the intermediate commits will not be triggered
       // precisely at the specified intermediate commit count value of 1000, but only
       // after each individual batch, which can contain arbitrary amounts of documents.
-      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore,
+intermediateCommitsAfter });
     },
-    
+
     testIntermediateCommitsUsageOnUpdate: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_admin/debug/failat");
@@ -899,25 +921,25 @@ function BaseTestConfig () {
           docs = [];
         }
       }
-      
+
       connectToFollower();
-      
+
       // sync collection to follower
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
-     
+
       // update documents on the leader
       connectToLeader();
       db._query("FOR doc IN " + cn + " UPDATE doc WITH { value: 42 } IN " + cn);
-          
+
       assertEqual(100000, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
-          
+
       // set intermediate commit count to 1000 on follower
       arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
 
@@ -933,17 +955,18 @@ function BaseTestConfig () {
       db._flushCache();
       assertEqual(100000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
-      
+
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
-      
+
       let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
       // unfortunately we don't know the exact number of intermediate commits that have
       // been made. this is because the intermediate commits will not be triggered
       // precisely at the specified intermediate commit count value of 1000, but only
       // after each individual batch, which can contain arbitrary amounts of documents.
-      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore,
+intermediateCommitsAfter });
     },
-    
+
     testIntermediateCommitsUsageOnRemove: function () {
       // can only use this with failure tests enabled
       let r = arango.GET("/_admin/debug/failat");
@@ -956,31 +979,32 @@ function BaseTestConfig () {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 100000; ++i) {
-        docs.push({ _key: 'testmann' + i, value: i });
+        docs.push({ _key: 'testmann' + i,
+value: i });
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
         }
       }
-      
+
       connectToFollower();
-      
+
       // sync collection to follower
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: true
       });
-     
+
       // remove half the documents on the leader
       connectToLeader();
       db._query("FOR doc IN " + cn + " FILTER doc.value >= 50000 REMOVE doc IN " + cn);
-          
+
       assertEqual(50000, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
-          
+
       // set intermediate commit count to 1000 on follower
       arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
 
@@ -996,15 +1020,16 @@ function BaseTestConfig () {
       db._flushCache();
       assertEqual(50000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
-      
+
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
-      
+
       let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
       // unfortunately we don't know the exact number of intermediate commits that have
       // been made. this is because the intermediate commits will not be triggered
       // precisely at the specified intermediate commit count value of 1000, but only
       // after each individual batch, which can contain arbitrary amounts of documents.
-      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore,
+intermediateCommitsAfter });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1019,7 +1044,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            waitForSync: true,
+            waitForSync: true
           });
         },
         function (state) {
@@ -1046,7 +1071,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            waitForSync: true,
+            waitForSync: true
           });
         },
         function (state) {
@@ -1153,7 +1178,7 @@ function BaseTestConfig () {
       //  create view & collection on leader
       db._flushCache();
       db._create(cn);
-      db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
+      db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec: 0});
 
       db._flushCache();
       connectToFollower();
@@ -1235,8 +1260,9 @@ function BaseTestConfig () {
       //  create view & collection on leader
       db._flushCache();
       db._createView('analyzersView', 'arangosearch', {
-        consolidationIntervalMsec:0,
-        links: { _analyzers: { analyzers: [ analyzer.name ], includeAllFields:true } }
+        consolidationIntervalMsec: 0,
+        links: { _analyzers: { analyzers: [ analyzer.name ],
+includeAllFields: true } }
       });
 
       db._flushCache();
@@ -1252,7 +1278,7 @@ function BaseTestConfig () {
       assertEqual(1, db._analyzers.count());
       assertEqual(1, res.length);
       assertEqual(db._analyzers.toArray()[0], res[0]);
-      
+
       // check analyzer is usable on follower
       assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
@@ -1270,7 +1296,7 @@ function BaseTestConfig () {
         assertTrue(props.links['_analyzers'].analyzers[0], 'custom');
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test with search-alias views
     // //////////////////////////////////////////////////////////////////////////////
@@ -1281,10 +1307,12 @@ function BaseTestConfig () {
       //  create view & collection on leader
       db._flushCache();
       let c = db._create(cn);
-      let idx = c.ensureIndex({ type: "inverted", fields: [ { name: "value" } ], name: "inverted_idx" });
+      let idx = c.ensureIndex({ type: "inverted",
+fields: [ { name: "value" } ],
+name: "inverted_idx" });
       let view = db._createView(cn + 'View', 'search-alias', {
         indexes: [
-          { 
+          {
             collection: cn,
             index: idx.name
           }
@@ -1308,10 +1336,11 @@ function BaseTestConfig () {
         let props = view.properties();
         assertTrue(props.hasOwnProperty('indexes'));
         assertEqual(1, props.indexes.length);
-        assertEqual({ collection: cn, index: idx.name }, props.indexes[0]);
+        assertEqual({ collection: cn,
+index: idx.name }, props.indexes[0]);
       }
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test with search-alias views
     // //////////////////////////////////////////////////////////////////////////////
@@ -1322,7 +1351,9 @@ function BaseTestConfig () {
       //  create view & collection on leader
       db._flushCache();
       let c = db._create(cn);
-      let idx = c.ensureIndex({ type: "inverted", fields: [ { name: "value" } ], name: "inverted_idx" });
+      let idx = c.ensureIndex({ type: "inverted",
+fields: [ { name: "value" } ],
+name: "inverted_idx" });
       let view = db._createView(cn + 'View', 'search-alias', {});
       assertEqual(0, view.properties().indexes.length);
 
@@ -1349,9 +1380,9 @@ function BaseTestConfig () {
       //  update view properties
       {
         let view = db._view(cn + 'View');
-        view.properties({ 
+        view.properties({
           indexes: [
-            { 
+            {
               collection: cn,
               index: idx.name
             }
@@ -1373,7 +1404,8 @@ function BaseTestConfig () {
         let props = view.properties();
         assertTrue(props.hasOwnProperty('indexes'));
         assertEqual(1, props.indexes.length, props.indexes);
-        assertEqual({ collection: cn, index: idx.name }, props.indexes[0]);
+        assertEqual({ collection: cn,
+index: idx.name }, props.indexes[0]);
       }
     },
 
@@ -1995,7 +2027,7 @@ function BaseTestConfig () {
         true
       );
     },
-    
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test with existing documents - same on the follower but different keys
     // //////////////////////////////////////////////////////////////////////////////
@@ -2197,7 +2229,7 @@ function BaseTestConfig () {
         true
       );
     }
-  
+
   };
 }
 
@@ -2270,7 +2302,7 @@ function ReplicationSuite () {
       });
     }
   };
-  
+
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
   return suite;
 }
@@ -2411,7 +2443,7 @@ function ReplicationIncrementalKeyConflict () {
       });
       db._flushCache();
       c = db._collection(cn);
-      
+
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
 
@@ -2452,7 +2484,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
 
-      
+
       connectToLeader();
       db._flushCache();
       c = db._collection(cn);
@@ -2462,7 +2494,7 @@ function ReplicationIncrementalKeyConflict () {
         _key: 'z',
         value: 3
       });
-      
+
       assertEqual(3, c.count());
       assertEqual(1, c.document('x').value);
       assertEqual(2, c.document('y').value);
@@ -2483,7 +2515,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(2, c.document('y').value);
       assertEqual(3, c.document('z').value);
     },
-    
+
     testKeyConflictsRandom: function () {
       var c = db._create(cn);
       c.ensureIndex({
@@ -2499,21 +2531,22 @@ function ReplicationIncrementalKeyConflict () {
       });
       db._flushCache();
       c = db._collection(cn);
-     
+
       let keys = [];
       for (let i = 0; i < 1000; ++i) {
         keys.push(internal.genRandomAlphaNumbers(10));
       }
 
-      keys.forEach(function(key, i) {
-        c.insert({ _key: key, value: i });
+      keys.forEach(function (key, i) {
+        c.insert({ _key: key,
+value: i });
       });
 
       connectToLeader();
       db._flushCache();
       c = db._collection(cn);
-     
-      function shuffle(array) {
+
+      function shuffle (array) {
         for (let i = array.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [array[i], array[j]] = [array[j], array[i]];
@@ -2521,10 +2554,11 @@ function ReplicationIncrementalKeyConflict () {
       }
       shuffle(keys);
 
-      keys.forEach(function(key, i) {
-        c.insert({ _key: key, value: i });
+      keys.forEach(function (key, i) {
+        c.insert({ _key: key,
+value: i });
       });
-      
+
       assertEqual(1000, c.count());
       let checksum = collectionChecksum(c.name());
 
@@ -2544,7 +2578,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1000, c.count());
       assertEqual(checksum, collectionChecksum(c.name()));
     },
-    
+
     testKeyConflictsRandomDiverged: function () {
       var c = db._create(cn);
       c.ensureIndex({
@@ -2560,19 +2594,21 @@ function ReplicationIncrementalKeyConflict () {
       });
       db._flushCache();
       c = db._collection(cn);
-     
+
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: internal.genRandomAlphaNumbers(10), value: i });
+        c.insert({ _key: internal.genRandomAlphaNumbers(10),
+value: i });
       }
 
       connectToLeader();
       db._flushCache();
       c = db._collection(cn);
-      
+
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: internal.genRandomAlphaNumbers(10), value: i });
+        c.insert({ _key: internal.genRandomAlphaNumbers(10),
+value: i });
       }
-     
+
       assertEqual(1000, c.count());
       let checksum = collectionChecksum(c.name());
 
@@ -2592,7 +2628,7 @@ function ReplicationIncrementalKeyConflict () {
       assertEqual(1000, c.count());
       assertEqual(checksum, collectionChecksum(c.name()));
     },
-    
+
     testKeyConflictsIncrementalManyDocuments: function () {
       var c = db._create(cn);
       var i;
@@ -2772,7 +2808,7 @@ function ReplicationNonIncrementalKeyConflict () {
       assertEqual('hash', c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
     },
-    
+
     testKeyConflictsNonIncrementalManyDocuments: function () {
       var c = db._create(cn);
       var i;

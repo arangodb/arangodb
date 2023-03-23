@@ -137,7 +137,8 @@ window.UserConfig = Backbone.Model.extend({
         const existingEntry = dataFromDB.result[keyName];
         // We've found available data we need to merge
         if (isObject(existingEntry) && isObject(newObject)) {
-          return {...existingEntry, ...newObject};
+          return {...existingEntry,
+...newObject};
         } else {
           return newObject;
         }

@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
+
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
   let docs = [];
@@ -47,7 +47,7 @@ function runSetup () {
 
   // should trigger range deletion
   c.truncate();
-  
+
   for (let i = 0; i < 90000; i++) {
     docs.push({ value: i });
     if (docs.length === 10000) {
@@ -55,11 +55,11 @@ function runSetup () {
       docs = [];
     }
   }
-  
+
   c.truncate();
 
-  // turn off syncing of counters etc.  
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  // turn off syncing of counters etc.
+  internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
   c.insert({}, { waitForSync: true });
   internal.debugTerminate('crashing server');

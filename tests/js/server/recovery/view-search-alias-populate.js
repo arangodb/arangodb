@@ -1,31 +1,31 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief recovery tests for views
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief recovery tests for views
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Andrey Abramov
+// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
 var internal = require('internal');
@@ -41,16 +41,30 @@ function runSetup () {
 
   db._dropView('UnitTestsRecoveryView');
   db._dropView('UnitTestsRecoveryView2');
-  try { analyzers.remove('calcAnalyzer', true); } catch(e) {}
+  try {
+ analyzers.remove('calcAnalyzer', true);
+} catch (e) {}
 
-  analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
-  var i2 = c.ensureIndex({ type: "inverted", name: "i2", includeAllFields:true, analyzer: "calcAnalyzer", fields: [ "a", "b", "c" ] });
-  var i3 = c.ensureIndex({ type: "inverted", name: "i3", fields: ["_id"], includeAllFields:true });
+  analyzers.save('calcAnalyzer', "aql", {queryString: "RETURN SOUNDEX(@param)"});
+  var i1 = c.ensureIndex({ type: "inverted",
+name: "i1",
+fields: [ "a", "b", "c" ] });
+  var i2 = c.ensureIndex({ type: "inverted",
+name: "i2",
+includeAllFields: true,
+analyzer: "calcAnalyzer",
+fields: [ "a", "b", "c" ] });
+  var i3 = c.ensureIndex({ type: "inverted",
+name: "i3",
+fields: ["_id"],
+includeAllFields: true });
 
-  var meta1 = { indexes: [ { index: i1.name, collection: c.name() } ] };
-  var meta2 = { indexes: [ { index: i2.name, collection: c.name() } ] };
-  var meta3 = { indexes: [ { index: i3.name, collection: c.name() } ] };
+  var meta1 = { indexes: [ { index: i1.name,
+collection: c.name() } ] };
+  var meta2 = { indexes: [ { index: i2.name,
+collection: c.name() } ] };
+  var meta3 = { indexes: [ { index: i3.name,
+collection: c.name() } ] };
   db._createView('UnitTestsRecoveryView', 'search-alias', meta1);
   db._createView('UnitTestsRecoveryView2', 'search-alias', meta2);
   db._createView('UnitTestsRecoveryView3', 'search-alias', meta3);
@@ -60,7 +74,9 @@ function runSetup () {
   db._view('UnitTestsRecoveryView5').properties(meta2);
 
   for (let i = 0; i < 50000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+    c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i });
   }
 
   c.save({ name: 'crashme' }, { waitForSync: true });
@@ -77,7 +93,7 @@ function recoverySuite () {
     tearDown: function () {},
 
     testIResearchLinkPopulate: function () {
-      let checkView = function(viewName, indexName) {
+      let checkView = function (viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
         assertEqual(v.type(), 'search-alias');
@@ -93,7 +109,7 @@ function recoverySuite () {
       checkView("UnitTestsRecoveryView4", "i1");
       checkView("UnitTestsRecoveryView5", "i2");
 
-      let checkIndex = function(indexName, analyzer, includeAllFields, hasFields) {
+      let checkIndex = function (indexName, analyzer, includeAllFields, hasFields) {
         let c = db._collection("UnitTestsRecoveryDummy");
         let indexes = c.getIndexes().filter(i => i.type === "inverted" && i.name === indexName);
         assertEqual(1, indexes.length);

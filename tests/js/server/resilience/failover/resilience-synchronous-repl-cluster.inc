@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test synchronous replication in the cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test synchronous replication in the cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -44,20 +44,20 @@
   let shards;
   let failedPIDs = [];
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find out servers for the system collections
-  ////////////////////////////////////////////////////////////////////////////////
-  function findCollectionServers(database, collection) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief find out servers for the system collections
+  // //////////////////////////////////////////////////////////////////////////////
+  function findCollectionServers (database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for synchronous replication
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief wait for synchronous replication
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function waitForSynchronousReplication(database) {
+  function waitForSynchronousReplication (database) {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     cinfo = global.ArangoClusterInfo.getCollectionInfo(database, cn);
@@ -94,10 +94,10 @@
     return false;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal any not fixed instances
-  ////////////////////////////////////////////////////////////////////////////////
-  function healAny() {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal any not fixed instances
+  // //////////////////////////////////////////////////////////////////////////////
+  function healAny () {
     failedPIDs.forEach(pid => {
       console.warn(`heal any: healing ${pid}`);
       assertTrue(continueExternal(pid));
@@ -105,11 +105,11 @@
     failedPIDs = [];
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fail the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function failFollower() {
+  function failFollower () {
     var follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
@@ -124,11 +124,11 @@
   }
 
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function healFollower() {
+  function healFollower () {
     var follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
     // Now look for instanceManager:
@@ -141,11 +141,11 @@
     console.info("Have healed follower", follower);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fail the leader
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief fail the leader
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function failLeader() {
+  function failLeader () {
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -159,11 +159,11 @@
     return leader;
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal the follower
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal the follower
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function healLeader() {
+  function healLeader () {
     var leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
     // Now look for instanceManager:
@@ -176,11 +176,11 @@
     console.info("Have healed leader", leader);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief produce failure
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief produce failure
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function makeFailure(failure) {
+  function makeFailure (failure) {
     if (failure.follower) {
       failFollower();
     } else {
@@ -188,11 +188,11 @@
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief heal failure
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief heal failure
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function healFailure(failure) {
+  function healFailure (failure) {
     if (failure.follower) {
       healFollower();
     } else {
@@ -200,84 +200,130 @@
     }
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief basic operations, with various failure modes:
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief basic operations, with various failure modes:
+  // //////////////////////////////////////////////////////////////////////////////
 
-  function runBasicOperations(failure, healing) {
+  function runBasicOperations (failure, healing) {
     try {
-      if (failure.place === 1) { makeFailure(failure); }
+      if (failure.place === 1) {
+ makeFailure(failure);
+}
 
       // Insert with check:
       var id = c.insert({ Hallo: 12 });
       assertEqual(1, c.count());
 
-      if (healing.place === 1) { healFailure(healing); }
-      if (failure.place === 2) { makeFailure(failure); }
+      if (healing.place === 1) {
+ healFailure(healing);
+}
+      if (failure.place === 2) {
+ makeFailure(failure);
+}
 
       var doc = c.document(id._key);
       assertEqual(12, doc.Hallo);
 
-      if (healing.place === 2) { healFailure(healing); }
-      if (failure.place === 3) { makeFailure(failure); }
+      if (healing.place === 2) {
+ healFailure(healing);
+}
+      if (failure.place === 3) {
+ makeFailure(failure);
+}
 
       var ids = c.insert([{ Hallo: 13 }, { Hallo: 14 }]);
       assertEqual(3, c.count());
       assertEqual(2, ids.length);
 
-      if (healing.place === 3) { healFailure(healing); }
-      if (failure.place === 4) { makeFailure(failure); }
+      if (healing.place === 3) {
+ healFailure(healing);
+}
+      if (failure.place === 4) {
+ makeFailure(failure);
+}
 
       var docs = c.document([ids[0]._key, ids[1]._key]);
       assertEqual(2, docs.length);
       assertEqual(13, docs[0].Hallo);
       assertEqual(14, docs[1].Hallo);
 
-      if (healing.place === 4) { healFailure(healing); }
-      if (failure.place === 5) { makeFailure(failure); }
+      if (healing.place === 4) {
+ healFailure(healing);
+}
+      if (failure.place === 5) {
+ makeFailure(failure);
+}
 
       // Replace with check:
       c.replace(id._key, { "Hallo": 100 });
 
-      if (healing.place === 5) { healFailure(healing); }
-      if (failure.place === 6) { makeFailure(failure); }
+      if (healing.place === 5) {
+ healFailure(healing);
+}
+      if (failure.place === 6) {
+ makeFailure(failure);
+}
 
       doc = c.document(id._key);
       assertEqual(100, doc.Hallo);
 
-      if (healing.place === 6) { healFailure(healing); }
-      if (failure.place === 7) { makeFailure(failure); }
+      if (healing.place === 6) {
+ healFailure(healing);
+}
+      if (failure.place === 7) {
+ makeFailure(failure);
+}
 
       c.replace([ids[0]._key, ids[1]._key], [{ Hallo: 101 }, { Hallo: 102 }]);
 
-      if (healing.place === 7) { healFailure(healing); }
-      if (failure.place === 8) { makeFailure(failure); }
+      if (healing.place === 7) {
+ healFailure(healing);
+}
+      if (failure.place === 8) {
+ makeFailure(failure);
+}
 
       docs = c.document([ids[0]._key, ids[1]._key]);
       assertEqual(2, docs.length);
       assertEqual(101, docs[0].Hallo);
       assertEqual(102, docs[1].Hallo);
 
-      if (healing.place === 8) { healFailure(healing); }
-      if (failure.place === 9) { makeFailure(failure); }
+      if (healing.place === 8) {
+ healFailure(healing);
+}
+      if (failure.place === 9) {
+ makeFailure(failure);
+}
 
       // Update with check:
       c.update(id._key, { "Hallox": 105 });
 
-      if (healing.place === 9) { healFailure(healing); }
-      if (failure.place === 10) { makeFailure(failure); }
+      if (healing.place === 9) {
+ healFailure(healing);
+}
+      if (failure.place === 10) {
+ makeFailure(failure);
+}
 
       doc = c.document(id._key);
       assertEqual(100, doc.Hallo);
       assertEqual(105, doc.Hallox);
 
-      if (healing.place === 10) { healFailure(healing); }
-      if (failure.place === 11) { makeFailure(failure); }
+      if (healing.place === 10) {
+ healFailure(healing);
+}
+      if (failure.place === 11) {
+ makeFailure(failure);
+}
 
       c.update([ids[0]._key, ids[1]._key], [{ Hallox: 106 }, { Hallox: 107 }]);
 
-      if (healing.place === 11) { healFailure(healing); }
-      if (failure.place === 12) { makeFailure(failure); }
+      if (healing.place === 11) {
+ healFailure(healing);
+}
+      if (failure.place === 12) {
+ makeFailure(failure);
+}
 
       docs = c.document([ids[0]._key, ids[1]._key]);
       assertEqual(2, docs.length);
@@ -286,7 +332,9 @@
       assertEqual(106, docs[0].Hallox);
       assertEqual(107, docs[1].Hallox);
 
-      if (healing.place === 12) { healFailure(healing); }
+      if (healing.place === 12) {
+ healFailure(healing);
+}
       if (failure.place === 13) {
         makeFailure(failure);
         // Note that it is not guaranteed that an AQL query runs without an
@@ -309,54 +357,76 @@
       assertEqual(3, docs.length);
       assertEqual([{ Hallo: 100 }, { Hallo: 101 }, { Hallo: 102 }], docs);
 
-      if (healing.place === 13) { healFailure(healing); }
-      if (failure.place === 14) { makeFailure(failure); }
+      if (healing.place === 13) {
+ healFailure(healing);
+}
+      if (failure.place === 14) {
+ makeFailure(failure);
+}
 
       // Remove with check:
       c.remove(id._key);
 
-      if (healing.place === 14) { healFailure(healing); }
-      if (failure.place === 15) { makeFailure(failure); }
+      if (healing.place === 14) {
+ healFailure(healing);
+}
+      if (failure.place === 15) {
+ makeFailure(failure);
+}
 
       try {
         doc = c.document(id._key);
         fail();
-      }
-      catch (e1) {
+      } catch (e1) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e1.errorNum);
       }
 
-      if (healing.place === 15) { healFailure(healing); }
-      if (failure.place === 16) { makeFailure(failure); }
+      if (healing.place === 15) {
+ healFailure(healing);
+}
+      if (failure.place === 16) {
+ makeFailure(failure);
+}
 
       assertEqual(2, c.count());
 
-      if (healing.place === 16) { healFailure(healing); }
-      if (failure.place === 17) { makeFailure(failure); }
+      if (healing.place === 16) {
+ healFailure(healing);
+}
+      if (failure.place === 17) {
+ makeFailure(failure);
+}
 
       c.remove([ids[0]._key, ids[1]._key]);
 
-      if (healing.place === 17) { healFailure(healing); }
-      if (failure.place === 18) { makeFailure(failure); }
+      if (healing.place === 17) {
+ healFailure(healing);
+}
+      if (failure.place === 18) {
+ makeFailure(failure);
+}
 
       docs = c.document([ids[0]._key, ids[1]._key]);
       assertEqual(2, docs.length);
       assertTrue(docs[0].error);
       assertTrue(docs[1].error);
 
-      if (healing.place === 18) { healFailure(healing); }
+      if (healing.place === 18) {
+ healFailure(healing);
+}
     } finally {
       healAny();
     }
   }
 
-  function setUp() {
+  function setUp () {
     var systemCollServers = findCollectionServers("_system", "_graphs");
     console.info("System collections use servers:", systemCollServers);
     while (true) {
       db._drop(cn);
       c = db._create(cn, {
-        numberOfShards: 1, replicationFactor: 2,
+        numberOfShards: 1,
+replicationFactor: 2,
         avoidServers: systemCollServers
       });
       var servers = findCollectionServers("_system", cn);
@@ -365,14 +435,14 @@
         return;
       }
       console.info("Need to recreate collection to avoid system collection servers.");
-      //waitForSynchronousReplication("_system");
+      // waitForSynchronousReplication("_system");
       console.info("Synchronous replication has settled, now dropping again.");
     }
   }
 
-  function tearDown() {
+  function tearDown () {
     db._drop(cn);
-    //global.ArangoAgency.set('Target/FailedServers', {});
+    // global.ArangoAgency.set('Target/FailedServers', {});
   }
 
   return {
@@ -387,9 +457,8 @@
     failFollower: failFollower,
     healFollower: healFollower,
 
-    getCollection: () => c,
+    getCollection: () => c
   };
 }());
-
 
 

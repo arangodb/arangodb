@@ -38,12 +38,12 @@ const expect = require('chai').expect;
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 
 
-function testItzInstalled(mountpoint) {
+function testItzInstalled (mountpoint) {
   let doc = arango.GET_RAW(mountpoint + '/random');
   expect(doc.code).to.equal(200);
 }
 
-function testItzUnInstalled(mountpoint) {
+function testItzUnInstalled (mountpoint) {
   let doc = arango.GET_RAW(mountpoint + '/random');
   expect(doc.code).to.equal(404);
 }
@@ -92,7 +92,7 @@ describe('Foxx Manager', function () {
 
   describe('should install apps from the various sources', function () {
     let mount = '/itz';
-    afterEach(function() {
+    afterEach(function () {
       FoxxManager.uninstall(mount, {force: true});
     });
 

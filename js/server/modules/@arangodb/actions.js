@@ -493,7 +493,8 @@ function splitUrl (url) {
         cleaned.push({ parameters: ors });
       } else if (re2.test(part)) {
         ors = [ part.substr(1, part.length - 2) ];
-        cleaned.push({ parameters: ors, optional: true });
+        cleaned.push({ parameters: ors,
+optional: true });
       } else {
         cleaned.push(part);
       }
@@ -610,7 +611,8 @@ function defineRoutePart (storage, route, parts, pos, constraint, callback) {
     if (ok) {
       for (i = 0; i < part.parameters.length; i++) {
         var p = part.parameters[i];
-        var subsub = { parameter: p, match: {} };
+        var subsub = { parameter: p,
+match: {} };
         storage.parameters.push(subsub);
 
         if (constraint.hasOwnProperty(p)) {
@@ -781,7 +783,8 @@ function buildRoutingTree (routes) {
 
   var j;
 
-  var storage = { routes: {}, middleware: {} };
+  var storage = { routes: {},
+middleware: {} };
 
   for (j = 0; j < ALL_METHODS.length; j++) {
     var method = ALL_METHODS[j];
@@ -1021,7 +1024,8 @@ function buildRouting (dbname, internalRoute) {
     routes.push({
       name: "Foxx service mounted at '" + mountPoint + "'",
       url: { match: mountPoint + '/*' },
-      action: { callback: foxxRouting, options: { mount: mountPoint } }
+      action: { callback: foxxRouting,
+options: { mount: mountPoint } }
     });
   }
 
@@ -1319,7 +1323,7 @@ function defineHttp (options) {
     allowUseDatabase: false,
     isSystem: false
   };
-  
+
   if (options.hasOwnProperty('isSystem')) {
     parameters.isSystem = options.isSystem;
   }
@@ -1369,10 +1373,10 @@ function addCookie (res, name, value, lifeTime, path, domain, secure, httpOnly) 
     cookie.domain = domain;
   }
   if (secure !== undefined && secure !== null) {
-    cookie.secure = (secure) ? true : false;
+    cookie.secure = !!(secure);
   }
   if (httpOnly !== undefined && httpOnly !== null) {
-    cookie.httpOnly = (httpOnly) ? true : false;
+    cookie.httpOnly = !!(httpOnly);
   }
 
   if (res.cookies === undefined || res.cookies === null) {
@@ -1608,7 +1612,7 @@ function handleRedirect (req, res, options, headers) {
     if (options.relative) {
       var u = req.url;
 
-      if (0 < u.length && u[u.length - 1] === '/') {
+      if (u.length > 0 && u[u.length - 1] === '/') {
         url += '/_db/' + encodeURIComponent(req.database) + u + destination;
       } else {
         url += '/_db/' + encodeURIComponent(req.database) + u + '/' + destination;
@@ -1621,12 +1625,12 @@ function handleRedirect (req, res, options, headers) {
   }
 
   res.contentType = 'text/html';
-  res.body = '<html><head><title>Moved</title>'
-    + '</head><body><h1>Moved</h1><p>This page has moved to <a href="'
-    + url
-    + '">'
-    + url
-    + '</a>.</p></body></html>';
+  res.body = '<html><head><title>Moved</title>' +
+    '</head><body><h1>Moved</h1><p>This page has moved to <a href="' +
+    url +
+    '">' +
+    url +
+    '</a>.</p></body></html>';
 
   if (headers !== undefined) {
     res.headers = shallowCopy(headers);
@@ -1678,7 +1682,7 @@ function resultCursor (req, res, cursor, code, options) {
   if (Array.isArray(cursor)) {
     // performance optimization: if the value passed in is an array, we can
     // use it as it is
-    hasCount = ((options && options.countRequested) ? true : false);
+    hasCount = (!!((options && options.countRequested)));
     count = cursor.length;
     rows = cursor;
     hasNext = false;
@@ -1928,7 +1932,8 @@ function easyPostCallback (opts) {
 function echoRequest (req, res, options, next) {
   'use strict';
 
-  var result = { request: req, options: options };
+  var result = { request: req,
+options: options };
 
   res.responseCode = exports.HTTP_OK;
   res.contentType = 'application/json; charset=utf-8';

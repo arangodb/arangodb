@@ -47,7 +47,7 @@ function runSetup () {
 
   // should trigger range deletion
   c.truncate();
-  
+
   for (let i = 0; i < 90000; i++) {
     docs.push({ value: i });
     if (docs.length === 10000) {
@@ -55,7 +55,7 @@ function runSetup () {
       docs = [];
     }
   }
-  
+
   c.truncate();
   c.insert({}, { waitForSync: true });
 

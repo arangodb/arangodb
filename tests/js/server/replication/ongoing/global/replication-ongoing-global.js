@@ -469,7 +469,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testTruncateCollectionBiggerAndThenSome: function () {
       connectToLeader();
 
@@ -785,7 +785,7 @@ function BaseTestConfig () {
         }
       );
     },
-    
+
     testSearchAliasWithLinks: function () {
       connectToLeader();
       const idxName = "inverted_idx";
@@ -793,16 +793,19 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let idx = c.ensureIndex({ type: "inverted",
+name: idxName,
+fields: [ { name: "value" } ] });
           let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {
             indexes: [
               {
                 collection: cn,
-                index: idxName,
+                index: idxName
               }
             ]
           });
-          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+          assertEqual([{ collection: cn,
+index: idxName }], view.properties().indexes);
         },
         function () { },
         function () { },
@@ -812,12 +815,13 @@ function BaseTestConfig () {
           assertEqual("search-alias", view.type());
           let props = view.properties();
           assertEqual(1, props.indexes.length);
-          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+          assertEqual({ collection: cn,
+index: idxName }, props.indexes[0]);
         },
         {}
       );
     },
-    
+
     testSearchAliasWithLinksAddedLater: function () {
       connectToLeader();
       const idxName = "inverted_idx";
@@ -825,21 +829,24 @@ function BaseTestConfig () {
       compare(
         function (state) {
           let c = db._create(cn);
-          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let idx = c.ensureIndex({ type: "inverted",
+name: idxName,
+fields: [ { name: "value" } ] });
           let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
           assertEqual([], view.properties().indexes);
         },
-        function () { 
+        function () {
           let view = db._view('UnitTestsSyncSearchAlias');
           view.properties({
             indexes: [
               {
                 collection: cn,
-                index: idxName,
+                index: idxName
               }
             ]
           });
-          assertEqual([{ collection: cn, index: idxName }], view.properties().indexes);
+          assertEqual([{ collection: cn,
+index: idxName }], view.properties().indexes);
         },
         function () { },
         function (state) {
@@ -848,7 +855,8 @@ function BaseTestConfig () {
           assertEqual("search-alias", view.type());
           let props = view.properties();
           assertEqual(1, props.indexes.length);
-          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+          assertEqual({ collection: cn,
+index: idxName }, props.indexes[0]);
         },
         {}
       );
@@ -885,7 +893,7 @@ function BaseTestConfig () {
         {}
       );
     },
-    
+
     testViewCreateWithLinks: function () {
       connectToLeader();
 
@@ -914,7 +922,7 @@ function BaseTestConfig () {
         {}
       );
     },
-    
+
     testViewWithUpdateLater: function () {
       connectToLeader();
 
@@ -1296,7 +1304,9 @@ function ReplicationOtherDBSuite () {
       db._useDatabase('_system');
       connectToFollower();
       // wait until database is present on follower as well
-      waitUntil(function () { return (db._databases().indexOf(dbName) !== -1); });
+      waitUntil(function () {
+ return (db._databases().indexOf(dbName) !== -1);
+});
 
       // Section - Leader
       // Now do the evil stuff: drop the database that is replicating from right now.
@@ -1306,7 +1316,9 @@ function ReplicationOtherDBSuite () {
 
       db._useDatabase('_system');
       connectToFollower();
-      waitUntil(function () { return (db._databases().indexOf(dbName) === -1); });
+      waitUntil(function () {
+ return (db._databases().indexOf(dbName) === -1);
+});
 
       // Now recreate a new database with this name
       connectToLeader();
@@ -1319,7 +1331,9 @@ function ReplicationOtherDBSuite () {
       // Section - Follower
       db._useDatabase('_system');
       connectToFollower();
-      waitUntil(function () { return (db._databases().indexOf(dbName) !== -1); });
+      waitUntil(function () {
+ return (db._databases().indexOf(dbName) !== -1);
+});
       // database now present on follower
 
       // Now test if the Follower did replicate the new database...

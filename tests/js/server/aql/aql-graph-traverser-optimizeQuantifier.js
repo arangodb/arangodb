@@ -44,7 +44,7 @@ const en = 'UnitTestEdgeCollection';
 
 const gh = require('@arangodb/graph/helpers');
 
-function optimizeQuantifierSuite() {
+function optimizeQuantifierSuite () {
   /* ******************************
    * Graph under test
    * C <-+             +-> F
@@ -71,20 +71,58 @@ function optimizeQuantifierSuite() {
       gh.cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
-      vertices.A = vc.save({_key: 'A', foo: true, bar: true})._id;
-      vertices.B = vc.save({_key: 'B', foo: true, bar: true})._id;
-      vertices.C = vc.save({_key: 'C', foo: true, bar: true})._id;
-      vertices.D = vc.save({_key: 'D', foo: true, bar: false})._id;
-      vertices.E = vc.save({_key: 'E', foo: false, bar: true})._id;
-      vertices.F = vc.save({_key: 'F', foo: false, bar: true})._id;
-      vertices.G = vc.save({_key: 'G', foo: false, bar: false})._id;
+      vertices.A = vc.save({_key: 'A',
+foo: true,
+bar: true})._id;
+      vertices.B = vc.save({_key: 'B',
+foo: true,
+bar: true})._id;
+      vertices.C = vc.save({_key: 'C',
+foo: true,
+bar: true})._id;
+      vertices.D = vc.save({_key: 'D',
+foo: true,
+bar: false})._id;
+      vertices.E = vc.save({_key: 'E',
+foo: false,
+bar: true})._id;
+      vertices.F = vc.save({_key: 'F',
+foo: false,
+bar: true})._id;
+      vertices.G = vc.save({_key: 'G',
+foo: false,
+bar: false})._id;
 
-      edges.AB = ec.save({_key: 'AB', _from: vertices.A, _to: vertices.B, foo: true, bar: true})._id;
-      edges.BC = ec.save({_key: 'BC', _from: vertices.B, _to: vertices.C, foo: true, bar: true})._id;
-      edges.BD = ec.save({_key: 'BD', _from: vertices.B, _to: vertices.D, foo: true, bar: false})._id;
-      edges.AE = ec.save({_key: 'AE', _from: vertices.A, _to: vertices.E, foo: false, bar: true})._id;
-      edges.EF = ec.save({_key: 'EF', _from: vertices.E, _to: vertices.F, foo: false, bar: true})._id;
-      edges.EG = ec.save({_key: 'EG', _from: vertices.E, _to: vertices.G, foo: false, bar: false})._id;
+      edges.AB = ec.save({_key: 'AB',
+_from: vertices.A,
+_to: vertices.B,
+foo: true,
+bar: true})._id;
+      edges.BC = ec.save({_key: 'BC',
+_from: vertices.B,
+_to: vertices.C,
+foo: true,
+bar: true})._id;
+      edges.BD = ec.save({_key: 'BD',
+_from: vertices.B,
+_to: vertices.D,
+foo: true,
+bar: false})._id;
+      edges.AE = ec.save({_key: 'AE',
+_from: vertices.A,
+_to: vertices.E,
+foo: false,
+bar: true})._id;
+      edges.EF = ec.save({_key: 'EF',
+_from: vertices.E,
+_to: vertices.F,
+foo: false,
+bar: true})._id;
+      edges.EG = ec.save({_key: 'EG',
+_from: vertices.E,
+_to: vertices.G,
+foo: false,
+bar: false})._id;
 
       try {
         gm._drop(gn);

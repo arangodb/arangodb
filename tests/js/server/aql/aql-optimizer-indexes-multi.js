@@ -1,42 +1,42 @@
-/*jshint globalstrict:true, strict:true, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:true, strict:true, maxlen: 500 */
+/* global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index usage, case of multiple indexes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2015 triagens GmbH, Cologne, Germany
-/// Copyright 2010-2015 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for index usage, case of multiple indexes
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2015 triagens GmbH, Cologne, Germany
+// / Copyright 2010-2015 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function makeNumber (nr, len) {
   var s = nr.toString();
@@ -48,8 +48,8 @@ function makeNumber (nr, len) {
 
 function makeObj (i) {
   return { _key: "test" + i,
-           a: "a" + makeNumber(i,4),
-           b: "b" + makeNumber(i % 100,3),
+           a: "a" + makeNumber(i, 4),
+           b: "b" + makeNumber(i % 100, 3),
            c: "c" + makeNumber((((i * 17) % 2001) * 12) % 79, 3)
          };
 }
@@ -73,7 +73,7 @@ function optimizerIndexesMultiTestSuite () {
   let noMoveFilters = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
 
   return {
-    setUpAll: function (){
+    setUpAll: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -84,11 +84,11 @@ function optimizerIndexesMultiTestSuite () {
       c.insert(docs);
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop("UnitTestsCollection");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       if (idx0 !== null) {
         db._dropIndex(idx0);
         idx0 = null;
@@ -99,15 +99,19 @@ function optimizerIndexesMultiTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of two hash indexes for "||" and one for "&&"
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test use of two hash indexes for "||" and one for "&&"
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseTwoHashIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseTwoHashIndexesOr: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -120,7 +124,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b012" || x.c === "c017";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
@@ -129,7 +134,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b007" && x.c === "c023";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
@@ -138,7 +144,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b044" && x.c >= "c034";
                   });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare >=",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
@@ -147,7 +154,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c006" && x.b === "b012";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
@@ -156,7 +164,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c007" && x.b >= "b042";
                   });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare >=",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
@@ -165,7 +174,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c077" && x.b <= "b043";
                   });
-      filterchecks.push( { type : "compare <=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare <=",
+nrSubs: 2 });
 
 
       for (var i = 0; i < queries.length; i++) {
@@ -174,7 +184,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -201,22 +211,28 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of two skiplist indexes for "||" and one for "&&"
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test use of two skiplist indexes for "||" and one for "&&"
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseTwoSkiplistIndexesOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseTwoSkiplistIndexesOr: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -229,7 +245,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b012" || x.c === "c017";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
@@ -238,7 +255,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b007" && x.c === "c023";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
@@ -247,7 +265,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b044" && x.c >= "c034";
                   });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare >=",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
@@ -256,7 +275,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c006" && x.b === "b012";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b >= "b042"
@@ -265,7 +285,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c007" && x.b >= "b042";
                   });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare >=",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
@@ -274,7 +295,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c077" && x.b <= "b043";
                   });
-      filterchecks.push( { type : "compare <=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare <=",
+nrSubs: 2 });
 
 
       for (var i = 0; i < queries.length; i++) {
@@ -283,7 +305,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -310,22 +332,28 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test use of skiplist index and a hash index  for "||"
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test use of skiplist index and a hash index  for "||"
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkipAndHashIndexForOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseSkipAndHashIndexForOr: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -338,7 +366,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b012" || x.c === "c017";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b019" || x.c >= "c077"
@@ -347,7 +376,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b019" || x.c >= "c077";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b007" && x.c == "c023"
@@ -356,7 +386,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b007" && x.c === "c023";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.b == "b044" && x.c >= "c034"
@@ -365,7 +396,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.b === "b044" && x.c >= "c034";
                   });
-      filterchecks.push( { type : "compare >=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare >=",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c006" && x.b == "b012"
@@ -374,7 +406,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c006" && x.b === "b012";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c007" && x.b == "b042"
@@ -383,7 +416,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c007" && x.b === "b042";
                   });
-      filterchecks.push( { type : "compare ==", nrSubs : 2 } );
+      filterchecks.push({ type: "compare ==",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.c == "c077" && x.b <= "b043"
@@ -392,7 +426,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return x.c === "c077" && x.b <= "b043";
                   });
-      filterchecks.push( { type : "compare <=", nrSubs : 2 } );
+      filterchecks.push({ type: "compare <=",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -400,7 +435,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -427,20 +462,24 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b and c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a hash index on b and c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b", "c"] } );
+    testUseHashIndexForDNF: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b", "c"] });
 
       var queries = [];
       var makers = [];
@@ -453,7 +492,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -462,14 +502,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -481,20 +522,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a hash index on b
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
+    testUseHashIndexForDNF2: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
 
       var queries = [];
       var makers = [];
@@ -507,7 +552,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -516,14 +562,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -535,20 +582,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a hash index on c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF3 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseHashIndexForDNF3: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -561,7 +612,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -570,14 +622,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -589,22 +642,28 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on b and one on c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a hash index on b and one on c
+// //////////////////////////////////////////////////////////////////////////////
 
     testUseHashIndexForDNF4: function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c"] } );
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -617,7 +676,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -626,14 +686,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -645,20 +706,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a hash index on c and b
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a hash index on c and b
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c", "b"] } );
+    testUseHashIndexForDNF5: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c", "b"] });
 
       var queries = [];
       var makers = [];
@@ -671,7 +736,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -680,14 +746,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -699,20 +766,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b and c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a skiplist index on b and c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForDNF : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b", "c"] } );
+    testUseSkiplistIndexForDNF: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b", "c"] });
 
       var queries = [];
       var makers = [];
@@ -725,7 +796,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -734,14 +806,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -753,20 +826,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a skiplist index on b
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForDNF2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
+    testUseSkiplistIndexForDNF2: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
 
       var queries = [];
       var makers = [];
@@ -779,7 +856,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -788,14 +866,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -807,20 +886,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a skiplist index on c
+// //////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForDNF3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -833,7 +916,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -842,14 +926,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -861,22 +946,28 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on b and one on c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a skiplist index on b and one on c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForDNF4 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseSkiplistIndexForDNF4: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -889,7 +980,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -898,14 +990,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -917,20 +1010,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (b== || b==) && c==   with a skiplist index on c and b
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (b== || b==) && c==   with a skiplist index on c and b
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForDNF5 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c", "b"] } );
+    testUseSkiplistIndexForDNF5: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c", "b"] });
 
       var queries = [];
       var makers = [];
@@ -943,7 +1040,8 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.b === "b012" || x.b === "b073") && x.c === "c022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c == "c012" || x.c == "c073") && x.b == "b022"
@@ -952,14 +1050,15 @@ function optimizerIndexesMultiTestSuite () {
       makers.push(function (x) {
                     return (x.c === "c012" || x.c === "c073") && x.b === "b022";
                   });
-      filterchecks.push( { type : "logical and", nrSubs : 2 } );
+      filterchecks.push({ type: "logical and",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -971,20 +1070,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a== || a== || a== || a==)    with a skiplist index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (a== || a== || a== || a==)    with a skiplist index on a
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseSkiplistIndexForMultipleOr: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1008,13 +1111,13 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a0123" || x.a === "a1234" ||
                            x.a === "a4567" || x.a === "a5567";
                   });
-      
+
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query, null, noProjections).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1034,20 +1137,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual(-1, nodeTypes.indexOf("FilterNode"), "filter used for: " + query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a>= || a>= || a== || a==)    with a skiplist index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (a>= || a>= || a== || a==)    with a skiplist index on a
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForMultipleOr2 : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseSkiplistIndexForMultipleOr2: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1062,7 +1169,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a >= "a7800" || x.a >= "a7810" ||
                            x.a === "a1234" || x.a === "a6543";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a1234" || x.a >= "a7800" ||
@@ -1073,7 +1181,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a1234" || x.a >= "a7800" ||
                            x.a >= "a7810" || x.a === "a6543";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1081,7 +1190,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1108,20 +1217,24 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a> || a< || a== || a==)    with a skiplist index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (a> || a< || a== || a==)    with a skiplist index on a
+// //////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistIndexForMultipleOr3: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1136,7 +1249,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a < "a0123" || x.a > "a6964" ||
                            x.a === "a5555" || x.a === "a6666";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a5555" || x.a < "a0123" ||
@@ -1147,7 +1261,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a5555" || x.a < "a0123" ||
                            x.a > "a6964" || x.a === "a6666";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER x.a == "a5555" || x.a < "a5123" ||
@@ -1158,7 +1273,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a === "a5555" || x.a < "a5123" ||
                            x.a > "a4964" || x.a === "a6666";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1166,7 +1282,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1193,20 +1309,24 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test a in [...]    with a skiplist index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test a in [...]    with a skiplist index on a
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseSkiplistIndexForIn: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1232,7 +1352,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query, null, noProjections).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1250,20 +1370,24 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("CalculationNode", plan.nodes[2].type, query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a== || a== || a== || a==)    with a hash index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (a== || a== || a== || a==)    with a hash index on a
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForMultipleOr : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseHashIndexForMultipleOr: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1293,7 +1417,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query, null, noProjections).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1309,22 +1433,26 @@ function optimizerIndexesMultiTestSuite () {
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
         assertEqual("CalculationNode", plan.nodes[2].type, query);
-        
+
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test a in [...]    with a hash index on a
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test a in [...]    with a hash index on a
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexForIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseHashIndexForIn: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1350,7 +1478,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query, null, noProjections).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1366,24 +1494,30 @@ function optimizerIndexesMultiTestSuite () {
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
         assertEqual("CalculationNode", plan.nodes[2].type, query);
-        
+
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c in [...]      with hash indexes on b and c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test b in [...] || c in [...]      with hash indexes on b and c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseHashIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseHashIndexesForInOrIn: function () {
+      idx0 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -1398,7 +1532,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
@@ -1409,7 +1544,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
@@ -1420,7 +1556,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
@@ -1431,7 +1568,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1439,7 +1577,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1466,22 +1604,28 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c in [...]      with skiplist indexes on b and c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test b in [...] || c in [...]      with skiplist indexes on b and c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistIndexesForInOrIn : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseSkiplistIndexesForInOrIn: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -1496,7 +1640,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
@@ -1507,7 +1652,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c056", "c023"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b057", "b017"]) ||
@@ -1518,7 +1664,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.b IN ["b017", "b057"]) ||
@@ -1529,7 +1676,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b017", "b057"].indexOf(x.b) !== -1 ||
                            ["c023", "c056"].indexOf(x.c) !== -1;
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1537,7 +1685,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1564,22 +1712,28 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test b in [...] || c==      with skiplist index on b and hash on c
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test b in [...] || c==      with skiplist index on b and hash on c
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistRespHashIndexesForInOrEq : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["b"] } );
-      idx1 = c.ensureIndex( { type: "hash", sparse: false, unique: false,
-                              fields: ["c"] } );
+    testUseSkiplistRespHashIndexesForInOrEq: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["b"] });
+      idx1 = c.ensureIndex({ type: "hash",
+sparse: false,
+unique: false,
+                              fields: ["c"] });
 
       var queries = [];
       var makers = [];
@@ -1593,7 +1747,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["b057", "b017"].indexOf(x.b) !== -1 ||
                            x.c === "c056";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
@@ -1603,7 +1758,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["c017", "c057"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c057", "c017"]) || (x.b == "b056")
@@ -1613,7 +1769,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["c057", "c017"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.c IN ["c017", "c057"]) || (x.b == "b056")
@@ -1623,7 +1780,8 @@ function optimizerIndexesMultiTestSuite () {
                     return ["c017", "c057"].indexOf(x.c) !== -1 ||
                            x.b === "b056";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1631,7 +1789,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1658,20 +1816,24 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test (a>= && a<) || (a>= && a<) overlapping with skiplist index
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test (a>= && a<) || (a>= && a<) overlapping with skiplist index
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseSkiplistForOverlappingRanges : function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+    testUseSkiplistForOverlappingRanges: function () {
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
@@ -1686,7 +1848,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a >= "a0123" && x.a < "a0207" ||
                            x.a >= "a0200" && x.a < "a0300";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       queries.push(`FOR x IN ${c.name()}
                       FILTER (x.a >= "a0200" && x.a < "a0300") ||
@@ -1697,7 +1860,8 @@ function optimizerIndexesMultiTestSuite () {
                     return x.a >= "a0200" && x.a < "a0300" ||
                            x.a >= "a0123" && x.a < "a0207";
                   });
-      filterchecks.push( { type : "logical or", nrSubs : 2 } );
+      filterchecks.push({ type: "logical or",
+nrSubs: 2 });
 
       for (var i = 0; i < queries.length; i++) {
         var query = queries[i];
@@ -1705,7 +1869,7 @@ function optimizerIndexesMultiTestSuite () {
         var filtercheck = filterchecks[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1736,109 +1900,347 @@ function optimizerIndexesMultiTestSuite () {
         }
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test multiple ranges with ||
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test multiple ranges with ||
+// //////////////////////////////////////////////////////////////////////////////
 
     testUseSkiplistForMultipleRangesWithOr: function () {
-      idx0 = c.ensureIndex( { type: "skiplist", sparse: false, unique: false,
-                              fields: ["a"] } );
+      idx0 = c.ensureIndex({ type: "skiplist",
+sparse: false,
+unique: false,
+                              fields: ["a"] });
 
       var queries = [];
       var makers = [];
 
       var intervals = [
-           // First all combinations of two closed intervals:    
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0250", lowincl:true, high:"a0350", highincl:true }],
-           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
-           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
-           [{ low:"a0250", lowincl:true, high:"a0350", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           // First all combinations of two closed intervals:
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0250",
+lowincl: true,
+high: "a0350",
+highincl: true }],
+           [{ low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0250",
+lowincl: true,
+high: "a0350",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true }],
            // All combinations of two open intervals:
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
-            { low:"a0150", lowincl:false, high:"a0250", highincl:false }],
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
-            { low:"a0200", lowincl:false, high:"a0300", highincl:false }],
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:false },
-            { low:"a0250", lowincl:false, high:"a0350", highincl:false }],
-           [{ low:"a0150", lowincl:false, high:"a0250", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
-           [{ low:"a0200", lowincl:false, high:"a0300", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
-           [{ low:"a0250", lowincl:false, high:"a0350", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:false }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false },
+            { low: "a0150",
+lowincl: false,
+high: "a0250",
+highincl: false }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false },
+            { low: "a0200",
+lowincl: false,
+high: "a0300",
+highincl: false }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false },
+            { low: "a0250",
+lowincl: false,
+high: "a0350",
+highincl: false }],
+           [{ low: "a0150",
+lowincl: false,
+high: "a0250",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false }],
+           [{ low: "a0200",
+lowincl: false,
+high: "a0300",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false }],
+           [{ low: "a0250",
+lowincl: false,
+high: "a0350",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: false }],
            // All combinations of two half-open intervals:
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:false }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:false }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0250", lowincl:true, high:"a0350", highincl:false }],
-           [{ low:"a0150", lowincl:true, high:"a0250", highincl:false },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
-           [{ low:"a0200", lowincl:true, high:"a0300", highincl:false },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
-           [{ low:"a0250", lowincl:true, high:"a0350", highincl:false },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:false }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: false }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: false }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0250",
+lowincl: true,
+high: "a0350",
+highincl: false }],
+           [{ low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: false },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false }],
+           [{ low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: false },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false }],
+           [{ low: "a0250",
+lowincl: true,
+high: "a0350",
+highincl: false },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false }],
            // Other orientation:
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
-            { low:"a0150", lowincl:false, high:"a0250", highincl:true }],
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
-            { low:"a0200", lowincl:false, high:"a0300", highincl:true }],
-           [{ low:"a0100", lowincl:false, high:"a0200", highincl:true },
-            { low:"a0250", lowincl:false, high:"a0350", highincl:true }],
-           [{ low:"a0150", lowincl:false, high:"a0250", highincl:true },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
-           [{ low:"a0200", lowincl:false, high:"a0300", highincl:true },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
-           [{ low:"a0250", lowincl:false, high:"a0350", highincl:true },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true },
+            { low: "a0150",
+lowincl: false,
+high: "a0250",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true },
+            { low: "a0200",
+lowincl: false,
+high: "a0300",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true },
+            { low: "a0250",
+lowincl: false,
+high: "a0350",
+highincl: true }],
+           [{ low: "a0150",
+lowincl: false,
+high: "a0250",
+highincl: true },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0200",
+lowincl: false,
+high: "a0300",
+highincl: true },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0250",
+lowincl: false,
+high: "a0350",
+highincl: true },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
            // One open on the right, the other on the left:
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0150", lowincl:false, high:"a0250", highincl:true }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0200", lowincl:false, high:"a0300", highincl:true }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:false },
-            { low:"a0250", lowincl:false, high:"a0350", highincl:true }],
-           [{ low:"a0150", lowincl:true, high:"a0250", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
-           [{ low:"a0200", lowincl:true, high:"a0300", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
-           [{ low:"a0250", lowincl:true, high:"a0350", highincl:false },
-            { low:"a0100", lowincl:false, high:"a0200", highincl:true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0150",
+lowincl: false,
+high: "a0250",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0200",
+lowincl: false,
+high: "a0300",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: false },
+            { low: "a0250",
+lowincl: false,
+high: "a0350",
+highincl: true }],
+           [{ low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0250",
+lowincl: true,
+high: "a0350",
+highincl: false },
+            { low: "a0100",
+lowincl: false,
+high: "a0200",
+highincl: true }],
            // Three intervals in some permutations:
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:true },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
-           [{ low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:true },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
-           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:true }],
-           [{ low:"a0150", lowincl:true, high:"a0250", highincl:true },
-            { low:"a0200", lowincl:true, high:"a0300", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
-           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:true }],
-           [{ low:"a0200", lowincl:true, high:"a0300", highincl:true },
-            { low:"a0150", lowincl:true, high:"a0250", highincl:true },
-            { low:"a0100", lowincl:true, high:"a0200", highincl:true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true }],
+           [{ low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true }],
+           [{ low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true }],
+           [{ low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true },
+            { low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true }],
+           [{ low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true }],
+           [{ low: "a0200",
+lowincl: true,
+high: "a0300",
+highincl: true },
+            { low: "a0150",
+lowincl: true,
+high: "a0250",
+highincl: true },
+            { low: "a0100",
+lowincl: true,
+high: "a0200",
+highincl: true }]
           ];
 
       var j, k;
@@ -1883,7 +2285,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
 
         var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
+        var nodeTypes = plan.nodes.map(function (node) {
           return node.type;
         });
 
@@ -1899,19 +2301,21 @@ function optimizerIndexesMultiTestSuite () {
         assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
 
         var results = AQL_EXECUTE(query);
-        var correct = makeResult(maker).map(function(x) { return x.a; });
+        var correct = makeResult(maker).map(function (x) {
+ return x.a;
+});
         assertEqual(correct, results.json, query);
         assertEqual(0, results.stats.scannedFull);
         assertTrue(results.stats.scannedIndex > 0);
       }
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerIndexesMultiTestSuite);
 

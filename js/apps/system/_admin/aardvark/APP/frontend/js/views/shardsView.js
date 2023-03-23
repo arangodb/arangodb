@@ -45,7 +45,7 @@
       delete this.el;
       return this;
     },
-    
+
     toggleAllShards: function () {
       var wasVisible = (this.visibleCollections.length > 0);
       var self = this;
@@ -65,7 +65,7 @@
           $(elem).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
         }
       });
-            
+
       self.render(false);
     },
 
@@ -74,7 +74,9 @@
       var wasVisible = (this.visibleCollections.indexOf(colName) !== -1);
       if (wasVisible) {
         // remove the collection from the array
-        this.visibleCollections = this.visibleCollections.filter(function(c) { return c !== colName; });
+        this.visibleCollections = this.visibleCollections.filter(function (c) {
+ return c !== colName;
+});
         // hide it
         $(e.currentTarget).next().hide();
         $(e.currentTarget).find('.fa-arrow-down').removeClass('fa-arrow-down').addClass('fa-arrow-right');
@@ -84,7 +86,7 @@
         // show it
         $(e.currentTarget).next().show();
         $(e.currentTarget).find('.fa-arrow-right').removeClass('fa-arrow-right').addClass('fa-arrow-down');
-      
+
         this.getShardDetails(colName);
       }
     },
@@ -109,7 +111,7 @@
         var working = '';
 
         if (value.progress) {
-          if (value.progress.hasOwnProperty('followersSyncing') && 
+          if (value.progress.hasOwnProperty('followersSyncing') &&
               value.progress.followersSyncing > 0) {
             // number of followers currently running the synchronization for the shard
             followersSyncing = '<span>' + arangoHelper.escapeHtml(value.progress.followersSyncing) + ' follower';
@@ -384,7 +386,7 @@
 
       // order results
       var ordered = {};
-      Object.keys(collections).sort(function(l, r) {
+      Object.keys(collections).sort(function (l, r) {
         if (l[0] === '_' && r[0] !== '_') {
           return 1;
         } else if (l[0] !== '_' && r[0] === '_') {
@@ -398,15 +400,15 @@
       var serversFailed = {};
       var healthData = window.App.lastHealthCheckResult;
       if (healthData && healthData.Health) {
-        Object.keys(healthData.Health).forEach(function(id) {
+        Object.keys(healthData.Health).forEach(function (id) {
           serversFailed[healthData.Health[id].ShortName] = healthData.Health[id].Status === 'FAILED';
         });
       }
-        
+
       this.$el.html(this.template.render({
         collections: ordered,
         visible: this.visibleCollections,
-        serversFailed: serversFailed,
+        serversFailed: serversFailed
       }));
 
       // if we have only one collection to show, automatically open the entry

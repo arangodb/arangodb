@@ -39,14 +39,16 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery'), i;
   for (i = 0; i < 10000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
+    c.save({ value1: 'test' + i,
+value2: i });
   }
 
   internal.debugSetFailAt("RocksDBCounterManagerSync");
   internal.wal.flush(true, true);
 
   for (i = 10000; i < 200000; ++i) {
-    c.save({ value1: 'test' + i, value2: i });
+    c.save({ value1: 'test' + i,
+value2: i });
   }
 
   internal.debugTerminate('crashing server');
@@ -73,7 +75,8 @@ function recoverySuite () {
       assertEqual(200000, c.count());
 
       for (i = 200000; i < 210000; ++i) {
-        c.save({ value1: 'test' + i, value2: i });
+        c.save({ value1: 'test' + i,
+value2: i });
       }
       assertEqual(210000, c.count());
     }

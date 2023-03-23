@@ -64,9 +64,9 @@ module.exports =
     registerType (type, def) {
       assert(
         (
-        type instanceof RegExp
-        || typeof type === 'string'
-        || typeof type === 'function'
+        type instanceof RegExp ||
+        typeof type === 'string' ||
+        typeof type === 'function'
         ),
         'Type name must be a string, function or RegExp'
       );
@@ -82,8 +82,8 @@ module.exports =
 
       if (!def.fromClient && typeof def.toClient === 'function') {
         console.log(
-          `Found unexpected "toClient" method on type handler for "${type}".`
-          + ' Did you mean "forClient"?'
+          `Found unexpected "toClient" method on type handler for "${type}".` +
+          ' Did you mean "forClient"?'
         );
       }
 
@@ -110,10 +110,10 @@ module.exports =
 
     collectionName (name) {
       const fqn = (
-      this.collectionPrefix + name
-        .replace(/[^a-z0-9]/ig, '_')
-        .replace(/(^_+|_+$)/g, '')
-        .substr(0, 64)
+      this.collectionPrefix + name.
+        replace(/[^a-z0-9]/ig, '_').
+        replace(/(^_+|_+$)/g, '').
+        substr(0, 64)
       );
       assert(fqn.length > 0, `Cannot derive collection name from "${name}"`);
       return fqn;

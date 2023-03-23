@@ -102,13 +102,15 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   return new ArangoStatement(this, payload).execute();
 };
 
-const buildQueryPayload = (query, bindVars, options) => { 
+const buildQueryPayload = (query, bindVars, options) => {
   let payload = {};
-  
+
   if (typeof query === 'object' && query.hasOwnProperty('query')) {
     payload = query;
   } else {
-    payload = { query, bindVars, options };
+    payload = { query,
+bindVars,
+options };
   }
   // query
   if (typeof payload.query === 'object' && typeof payload.query.toAQL === 'function') {
@@ -272,7 +274,7 @@ ArangoDatabase.prototype._index = function (id) {
   var indexes = col.getIndexes();
   var i;
 
-  for (i = 0;  i < indexes.length;  ++i) {
+  for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
 
     if (index.id === id || index.name === name) {

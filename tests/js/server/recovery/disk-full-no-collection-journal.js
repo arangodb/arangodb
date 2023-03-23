@@ -50,7 +50,9 @@ function runSetup () {
 
       var i, c = db._collection('UnitTestsRecovery');
       for (i = 0; i < 100000; ++i) {
-        c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+        c.save({ _key: 'test' + i,
+value1: 'test' + i,
+value2: i });
       }
 
       for (i = 0; i < 100000; i += 2) {

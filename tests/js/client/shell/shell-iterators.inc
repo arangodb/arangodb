@@ -34,14 +34,17 @@ const db = arangodb.db;
 
 const cn = 'UnitTestsIterators';
 const ecn = 'UnitTestsEdgeIterators';
-const pad = function(value) {
+const pad = function (value) {
   value = String(value);
   return Array(6 - value.length).join("0") + value;
 };
 
 let vertices = [];
 for (let i = 0; i < 5000; ++i) {
-  vertices.push({ _key: "test" + pad(i), value1: i, value2: i % 113, value3: i });
+  vertices.push({ _key: "test" + pad(i),
+value1: i,
+value2: i % 113,
+value3: i });
 }
 let edges = [];
 for (let i = 0; i < 5000; ++i) {
@@ -51,28 +54,28 @@ for (let i = 0; i < 5000; ++i) {
     value1: i,
     value2: i % 113,
     value3: i,
-    uniqueValue: i,
+    uniqueValue: i
   });
 }
 
-function IteratorReadSuite(permuteConfigs) {
+function IteratorReadSuite (permuteConfigs) {
   'use strict';
-  const prepare = function(ctx) {
+  const prepare = function (ctx) {
     const col = ctx.collection(cn);
     col.insert(vertices);
     let ecol = ctx.collection(ecn);
     ecol.insert(edges);
   };
 
-  const permute = function(test) {
-    const run = function(ctx, opts) {
+  const permute = function (test) {
+    const run = function (ctx, opts) {
       prepare(ctx);
       try {
         test(ctx, opts);
       } finally {
         ctx.abort();
       }
-      
+
       db[cn].truncate();
       db[ecn].truncate();
     };
@@ -84,10 +87,15 @@ function IteratorReadSuite(permuteConfigs) {
     setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 3 });
-      c.ensureIndex({ type: "persistent", fields: ["value1"] });
-      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value2"] });
       if (!internal.isCluster()) {
-        c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+        c.ensureIndex({ type: "persistent",
+fields: ["uniqueValue"],
+unique: true,
+sparse: true });
       }
 
       db._drop(ecn);
@@ -98,7 +106,7 @@ function IteratorReadSuite(permuteConfigs) {
       db._drop(cn);
       db._drop(ecn);
     },
-    
+
     testForwardIterationReadOnly: function () {
       permute((ctx, opts) => {
         // full scan
@@ -219,18 +227,18 @@ function IteratorReadSuite(permuteConfigs) {
 }
 
 
-function IteratorWriteSuite(permuteConfigs) {
+function IteratorWriteSuite (permuteConfigs) {
   'use strict';
 
-  const prepare = function(ctx) {
+  const prepare = function (ctx) {
     const col = ctx.collection(cn);
     col.insert(vertices);
     let ecol = ctx.collection(ecn);
     ecol.insert(edges);
   };
 
-  const permute = function(test) {
-    const run = function(ctx, opts) {
+  const permute = function (test) {
+    const run = function (ctx, opts) {
       prepare(ctx);
       try {
         test(ctx, opts);
@@ -248,10 +256,15 @@ function IteratorWriteSuite(permuteConfigs) {
     setUp: function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 3 });
-      c.ensureIndex({ type: "persistent", fields: ["value1"] });
-      c.ensureIndex({ type: "persistent", fields: ["value2"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value2"] });
       if (!internal.isCluster()) {
-        c.ensureIndex({ type: "persistent", fields: ["uniqueValue"], unique: true, sparse: true });
+        c.ensureIndex({ type: "persistent",
+fields: ["uniqueValue"],
+unique: true,
+sparse: true });
       }
 
       db._drop(ecn);
@@ -282,7 +295,7 @@ function IteratorWriteSuite(permuteConfigs) {
       permute((ctx, opts) => {
         // full scan over a filtered range
         const tc = ctx.collection(cn);
-        const q =`
+        const q = `
           FOR doc IN @@c
             FILTER doc.value3 > 1 && doc.value3 <= 4995
             SORT doc.value3 ASC
@@ -478,12 +491,12 @@ function IteratorWriteSuite(permuteConfigs) {
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
-        
+
         let values = ctx.query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
     },
-    
+
     testSubqueryWithPrimaryIndex: function () {
       permute((ctx, opts) => {
         const tc = ctx.collection(cn);
@@ -500,7 +513,7 @@ function IteratorWriteSuite(permuteConfigs) {
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
-        
+
         let values = ctx.query('FOR doc in @@c FILTER doc._key == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
@@ -526,7 +539,7 @@ function IteratorWriteSuite(permuteConfigs) {
         assertEqual(5000 + 1, tc.count()); // only a single insert may succeed!
         assertEqual(1, result.length);
         assertEqual(2000, result[0].cnt);
-        
+
         let values = ctx.query('FOR doc in @@c FILTER doc.uniqueValue == "dummy" RETURN doc', { '@c': cn }, opts).toArray();
         assertEqual(1, values.length);
       });
@@ -609,7 +622,7 @@ function IteratorWriteSuite(permuteConfigs) {
         assertEqual(2000, values[0].cnt);
       });
     },
-    
+
     testUpsertEdgeIndex: function () {
       if (internal.isCluster()) {
         // temporarily disabled because ATM UPSERT is broken in the cluster and needs to be fixed separately
@@ -629,7 +642,7 @@ function IteratorWriteSuite(permuteConfigs) {
         assertEqual(1, values.length);
         assertEqual(2000, values[0].cnt);
       });
-    },
+    }
   };
 }
 

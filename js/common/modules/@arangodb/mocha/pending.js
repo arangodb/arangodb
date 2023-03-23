@@ -4,7 +4,7 @@
 // https://js.foundation
 
 class Pending {
-  constructor(message) {
+  constructor (message) {
     this.message = message;
   }
 }

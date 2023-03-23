@@ -43,7 +43,9 @@ function runSetup () {
 
   for (i = 0; i < 10; ++i) {
     for (j = 0; j < 1000; ++j) {
-      c.save({ _key: 'test-' + i + '-' + j, value1: 'test' + i, value2: 'test' + j });
+      c.save({ _key: 'test-' + i + '-' + j,
+value1: 'test' + i,
+value2: 'test' + j });
     }
 
     // make sure the next operations go into a separate log

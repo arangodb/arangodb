@@ -8,7 +8,7 @@ const EventEmitter = require('events').EventEmitter;
 const Pending = require('@arangodb/mocha/pending');
 const Runnable = require('@arangodb/mocha/runnable');
 
-function createInvalidExceptionError(message, value) {
+function createInvalidExceptionError (message, value) {
   var err = new Error(message);
   err.code = 'ERR_MOCHA_INVALID_EXCEPTION';
   err.valueType = typeof value;
@@ -28,7 +28,7 @@ var globals = [
 ];
 
 class Runner extends EventEmitter {
-  constructor(suite, delay) {
+  constructor (suite, delay) {
     super();
     var self = this;
     this._globals = [];
@@ -38,10 +38,10 @@ class Runner extends EventEmitter {
     this.started = false;
     this.total = suite.total();
     this.failures = 0;
-    this.on('test end', function(test) {
+    this.on('test end', function (test) {
       self.checkGlobals(test);
     });
-    this.on('hook end', function(hook) {
+    this.on('hook end', function (hook) {
       self.checkGlobals(hook);
     });
     this._defaultGrep = /.*/;
@@ -49,18 +49,18 @@ class Runner extends EventEmitter {
     this.globals(this.globalProps().concat(extraGlobals()));
   }
 
-  grep(re, invert) {
+  grep (re, invert) {
     this._grep = re;
     this._invert = invert;
     this.total = this.grepTotal(this.suite);
     return this;
   }
 
-  grepTotal(suite) {
+  grepTotal (suite) {
     var self = this;
     var total = 0;
 
-    suite.eachTest(function(test) {
+    suite.eachTest(function (test) {
       var match = self._grep.test(test.fullTitle());
       if (self._invert) {
         match = !match;
@@ -73,7 +73,7 @@ class Runner extends EventEmitter {
     return total;
   }
 
-  globalProps() {
+  globalProps () {
     var props = Object.keys(global);
 
     for (var i = 0; i < globals.length; ++i) {
@@ -86,7 +86,7 @@ class Runner extends EventEmitter {
     return props;
   }
 
-  globals(arr) {
+  globals (arr) {
     if (!arguments.length) {
       return this._globals;
     }
@@ -94,7 +94,7 @@ class Runner extends EventEmitter {
     return this;
   }
 
-  checkGlobals(test) {
+  checkGlobals (test) {
     if (this.ignoreLeaks) {
       return;
     }
@@ -126,7 +126,7 @@ class Runner extends EventEmitter {
     }
   }
 
-  fail(test, err) {
+  fail (test, err) {
     if (test.isPending()) {
       return;
     }
@@ -143,7 +143,7 @@ class Runner extends EventEmitter {
     this.emit('fail', test, err);
   }
 
-  failHook(hook, err) {
+  failHook (hook, err) {
     hook.originalTitle = hook.originalTitle || hook.title;
     if (hook.ctx && hook.ctx.currentTest) {
       hook.title =
@@ -161,12 +161,12 @@ class Runner extends EventEmitter {
     this.fail(hook, err);
   }
 
-  hook(name, fn) {
+  hook (name, fn) {
     var suite = this.suite;
     var hooks = suite.getHooks(name);
     var self = this;
 
-    function next(i) {
+    function next (i) {
       var hook = hooks[i];
       if (!hook) {
         return fn();
@@ -186,12 +186,12 @@ class Runner extends EventEmitter {
       self.emit('hook', hook);
 
       if (!hook.listeners('error').length) {
-        hook.on('error', function(err) {
+        hook.on('error', function (err) {
           self.failHook(hook, err);
         });
       }
 
-      hook.run(function(err) {
+      hook.run(function (err) {
         var testError = hook.error();
         if (testError) {
           self.fail(self.test, testError);
@@ -206,10 +206,10 @@ class Runner extends EventEmitter {
                 self.test.pending = true;
               }
             } else {
-              suite.tests.forEach(function(test) {
+              suite.tests.forEach(function (test) {
                 test.pending = true;
               });
-              suite.suites.forEach(function(suite) {
+              suite.suites.forEach(function (suite) {
                 suite.pending = true;
               });
               hook.pending = true;
@@ -228,11 +228,11 @@ class Runner extends EventEmitter {
     next(0);
   }
 
-  hooks(name, suites, fn) {
+  hooks (name, suites, fn) {
     var self = this;
     var orig = this.suite;
 
-    function next(suite) {
+    function next (suite) {
       self.suite = suite;
 
       if (!suite) {
@@ -240,7 +240,7 @@ class Runner extends EventEmitter {
         return fn();
       }
 
-      self.hook(name, function(err) {
+      self.hook(name, function (err) {
         if (err) {
           var errSuite = self.suite;
           self.suite = orig;
@@ -254,17 +254,17 @@ class Runner extends EventEmitter {
     next(suites.pop());
   }
 
-  hookUp(name, fn) {
+  hookUp (name, fn) {
     var suites = [this.suite].concat(this.parents()).reverse();
     this.hooks(name, suites, fn);
   }
 
-  hookDown(name, fn) {
+  hookDown (name, fn) {
     var suites = [this.suite].concat(this.parents());
     this.hooks(name, suites, fn);
   }
 
-  parents() {
+  parents () {
     var suite = this.suite;
     var suites = [];
     while (suite.parent) {
@@ -274,7 +274,7 @@ class Runner extends EventEmitter {
     return suites;
   }
 
-  runTest(fn) {
+  runTest (fn) {
     var self = this;
     var test = this.test;
 
@@ -287,7 +287,7 @@ class Runner extends EventEmitter {
       fn(new Error('`.only` forbidden'));
       return;
     }
-    test.on('error', function(err) {
+    test.on('error', function (err) {
       self.fail(test, err);
     });
     if (this.allowUncaught) {
@@ -301,18 +301,18 @@ class Runner extends EventEmitter {
     }
   }
 
-  runTests(suite, fn) {
+  runTests (suite, fn) {
     var self = this;
     var tests = suite.tests.slice();
     var test;
 
-    function hookErr(_, errSuite, after) {
+    function hookErr (_, errSuite, after) {
       var orig = self.suite;
 
       self.suite = after ? errSuite.parent : errSuite;
 
       if (self.suite) {
-        self.hookUp('afterEach', function(err2, errSuite2) {
+        self.hookUp('afterEach', function (err2, errSuite2) {
           self.suite = orig;
           if (err2) {
             return hookErr(err2, errSuite2, true);
@@ -325,7 +325,7 @@ class Runner extends EventEmitter {
       }
     }
 
-    function next(err, errSuite) {
+    function next (err, errSuite) {
       if (self.failures && suite._bail) {
         tests = [];
       }
@@ -366,7 +366,7 @@ class Runner extends EventEmitter {
       }
 
       self.emit('test', (self.test = test));
-      self.hookDown('beforeEach', function(err, errSuite) {
+      self.hookDown('beforeEach', function (err, errSuite) {
         if (test.isPending()) {
           if (self.forbidPending) {
             test.isPending = () => false;
@@ -382,7 +382,7 @@ class Runner extends EventEmitter {
           return hookErr(err, errSuite, false);
         }
         self.currentRunnable = self.test;
-        self.runTest(function(err) {
+        self.runTest(function (err) {
           test = self.test;
           if (err) {
             var retry = test.currentRetry();
@@ -424,7 +424,7 @@ class Runner extends EventEmitter {
     next();
   }
 
-  runSuite(suite, fn) {
+  runSuite (suite, fn) {
     var i = 0;
     var self = this;
     var total = this.grepTotal(suite);
@@ -437,7 +437,7 @@ class Runner extends EventEmitter {
 
     this.emit('suite', (this.suite = suite));
 
-    function next(errSuite) {
+    function next (errSuite) {
       if (errSuite) {
         if (errSuite === suite) {
           return done();
@@ -457,7 +457,7 @@ class Runner extends EventEmitter {
       self.runSuite(curr, next);
     }
 
-    function done(errSuite) {
+    function done (errSuite) {
       self.suite = suite;
       self.nextSuite = next;
 
@@ -468,7 +468,7 @@ class Runner extends EventEmitter {
 
         delete self.test;
 
-        self.hook('afterAll', function() {
+        self.hook('afterAll', function () {
           self.emit('suite end', suite);
           fn(errSuite);
         });
@@ -477,7 +477,7 @@ class Runner extends EventEmitter {
 
     this.nextSuite = next;
 
-    this.hook('beforeAll', function(err) {
+    this.hook('beforeAll', function (err) {
       if (err) {
         return done();
       }
@@ -485,7 +485,7 @@ class Runner extends EventEmitter {
     });
   }
 
-  uncaught(err) {
+  uncaught (err) {
     if (err instanceof Pending) {
       return;
     }
@@ -544,17 +544,17 @@ class Runner extends EventEmitter {
     this.emit('end');
   }
 
-  run(fn) {
+  run (fn) {
     var self = this;
     var rootSuite = this.suite;
 
-    fn = fn || function() {};
+    fn = fn || function () {};
 
-    function uncaught(err) {
+    function uncaught (err) {
       self.uncaught(err);
     }
 
-    function start() {
+    function start () {
       if (rootSuite.hasOnly()) {
         rootSuite.filterOnly();
       }
@@ -564,17 +564,17 @@ class Runner extends EventEmitter {
       }
       self.emit('start');
 
-      self.runSuite(rootSuite, function() {
+      self.runSuite(rootSuite, function () {
         self.emit('end');
       });
     }
 
 
-    this.on('suite end', function(suite) {
+    this.on('suite end', function (suite) {
       suite.cleanReferences();
     });
 
-    this.on('end', function() {
+    this.on('end', function () {
       process.removeListener('uncaughtException', uncaught);
       fn(self.failures);
     });
@@ -591,15 +591,15 @@ class Runner extends EventEmitter {
     return this;
   }
 
-  abort() {
+  abort () {
     this._abort = true;
 
     return this;
   }
 }
 
-function filterLeaks(ok, globals) {
-  return globals.filter(function(key) {
+function filterLeaks (ok, globals) {
+  return globals.filter(function (key) {
     if (/^\d+/.test(key)) {
       return false;
     }
@@ -608,7 +608,7 @@ function filterLeaks(ok, globals) {
       return false;
     }
 
-    var matched = ok.filter(function(ok) {
+    var matched = ok.filter(function (ok) {
       if (~ok.indexOf('*')) {
         return key.indexOf(ok.split('*')[0]) === 0;
       }
@@ -618,20 +618,20 @@ function filterLeaks(ok, globals) {
   });
 }
 
-function isError(err) {
+function isError (err) {
   return err instanceof Error || (err && typeof err.message === 'string');
 }
 
-function thrown2Error(err) {
+function thrown2Error (err) {
   return new Error(
     util.inspect(err) + ' was thrown, throw an Error :)'
   );
 }
 
-function extraGlobals() {
+function extraGlobals () {
   if (typeof process === 'object' && typeof process.version === 'string') {
     var parts = process.version.split('.');
-    var nodeVersion = parts.reduce(function(a, v) {
+    var nodeVersion = parts.reduce(function (a, v) {
       return (a << 8) | v;
     });
 

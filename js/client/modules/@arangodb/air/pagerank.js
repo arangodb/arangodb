@@ -32,13 +32,13 @@ const _ = require("lodash");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.pagerank_program = pagerank_program;
 exports.pagerank = pagerank;
 exports.test = test;
 
-function pagerank_program(resultField, dampingFactor, traceVertex) {
+function pagerank_program (resultField, dampingFactor, traceVertex) {
   return {
     resultField: resultField,
     // TODO: Karpott.
@@ -47,25 +47,25 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
       delta: {
         accumulatorType: "custom",
         valueType: "any",
-        customType: "maxAccumulator",
+        customType: "maxAccumulator"
       }
     },
     vertexAccumulators: {
       rank: {
         accumulatorType: "custom",
         valueType: "any",
-        customType: "storeAccumulator",
+        customType: "storeAccumulator"
       },
       receiver: {
         accumulatorType: "custom",
         valueType: "any",
-        customType: "sumAccumulator",
+        customType: "sumAccumulator"
       }
     },
     customAccumulators: {
       sumAccumulator: sumAccumulator(),
       storeAccumulator: storeAccumulator(),
-      maxAccumulator: maxAccumulator(),
+      maxAccumulator: maxAccumulator()
     },
     phases: [
       {
@@ -95,7 +95,7 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
                 [
                   "+",
                   ["/", ["-", 1, dampingFactor], ["vertex-count"]],
-                  ["*", dampingFactor, ["accum-ref", "receiver"]],
+                  ["*", dampingFactor, ["accum-ref", "receiver"]]
                 ]
               ]
             ],
@@ -109,7 +109,7 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
               "accum-set!",
               "rank",
               ["var-ref", "new-rank"]
-            ],
+            ]
           ],
           ["accum-set!", "receiver", 0],
           ["if",
@@ -118,18 +118,18 @@ function pagerank_program(resultField, dampingFactor, traceVertex) {
               [
                 "send-to-all-neighbours",
                 "receiver",
-                ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]],
+                ["/", ["accum-ref", "rank"], ["this-outbound-edges-count"]]
               ]
             ]
           ],
-          true,
-        ],
-      },
-    ],
+          true
+        ]
+      }
+    ]
   };
 }
 
-function pagerank(graphName, resultField, dampingFactor, vertex) {
+function pagerank (graphName, resultField, dampingFactor, vertex) {
   return pregel.start(
     "ppa",
     graphName,
@@ -137,14 +137,14 @@ function pagerank(graphName, resultField, dampingFactor, vertex) {
   );
 }
 
-function exec_test_pagerank_on_graph(graphSpec, vertex) {
+function exec_test_pagerank_on_graph (graphSpec, vertex) {
   testhelpers.wait_for_pregel(
     "Air Pagerank",
     pagerank(
       graphSpec.name,
       "pageRankResult",
       0.85,
-      vertex,
+      vertex
     ));
 
   testhelpers.wait_for_pregel(
@@ -167,7 +167,7 @@ function exec_test_pagerank_on_graph(graphSpec, vertex) {
   );
 }
 
-function exec_test_pagerank(vertex) {
+function exec_test_pagerank (vertex) {
   let results = [];
 
   results.push(exec_test_pagerank_on_graph(examplegraphs.create_pagerank_graph("PageRankGraph1", 1), vertex));
@@ -212,6 +212,6 @@ function exec_test_pagerank(vertex) {
   return true;
 }
 
-function test(vertex = "") {
+function test (vertex = "") {
   return exec_test_pagerank(vertex);
 }

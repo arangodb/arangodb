@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, simple queries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Tobias Goedderz, Heiko Kernbach
-/// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, simple queries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Tobias Goedderz, Heiko Kernbach
+// / @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const analyzers = require("@arangodb/analyzers");
@@ -38,18 +38,18 @@ const isEnterprise = require("internal").isEnterprise();
 
 const db = internal.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function aqlSkippingTestsuite () {
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       var c = db._createDocumentCollection('skipCollection', { numberOfShards: 5 });
       // c size > 1000 because of internal batchSize of 1000
       let docs = [];
@@ -59,11 +59,11 @@ function aqlSkippingTestsuite () {
       c.insert(docs);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop('skipCollection');
     },
 
@@ -100,7 +100,8 @@ function aqlSkippingTestsuite () {
       var query = "FOR i IN 1..100 LET p = i + 2 LIMIT 90, 10 RETURN p";
       var bindParams = {};
       // This way the CalculationBlock stays before the LimitBlock.
-      var queryOptions = {fullCount: true, optimizer: {"rules": ["-move-calculations-down", "-parallelize-gather"]}};
+      var queryOptions = {fullCount: true,
+optimizer: {"rules": ["-move-calculations-down", "-parallelize-gather"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
@@ -120,7 +121,8 @@ function aqlSkippingTestsuite () {
     testPassSkipEnumerateCollectionWithFullCount1: function () {
       var query = "FOR i IN skipCollection LIMIT 10, 20 RETURN i";
       var bindParams = {};
-      var queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
+      var queryOptions = {fullCount: true,
+optimizer: {"rules": ["-parallelize-gather"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(20, result.json.length);
@@ -129,7 +131,7 @@ function aqlSkippingTestsuite () {
     },
 
     // FIXME uncomment
-    //testPassSkipEnumerateCollectionWithFullCountHeapSort: function () {
+    // testPassSkipEnumerateCollectionWithFullCountHeapSort: function () {
     //  var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
     //  var bindParams = {};
     //  var queryOptions = { fullCount: true };
@@ -139,15 +141,18 @@ function aqlSkippingTestsuite () {
     //  assertEqual(result.stats.scannedFull, 2000);
     //  assertEqual(result.stats.fullCount, 2000);
     //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
-    //},
+    // },
 
     testPassSkipEnumerateCollectionWithFullCountDefaultSort: function () {
       var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 RETURN i";
       var bindParams = {};
-      var queryOptions = {optimizer : { rules : [ "-sort-limit", "-parallelize-gather" ] }, fullCount: true};
+      var queryOptions = {optimizer: { rules: [ "-sort-limit", "-parallelize-gather" ] },
+fullCount: true};
 
       var result = AQL_EXPLAIN(query, bindParams, queryOptions);
-      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function (node) {
+ return node.strategy;
+}).indexOf("standard"));
 
       result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(result.json.length, 20);
@@ -158,7 +163,8 @@ function aqlSkippingTestsuite () {
     testPassSkipEnumerateCollectionWithFullCount2: function () {
       var query = "FOR i IN skipCollection LIMIT 900, 300 RETURN i";
       var bindParams = {};
-      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
+      var queryOptions = {optimizer: { rules: [ "-parallelize-gather" ] },
+fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(300, result.json.length);
@@ -170,7 +176,8 @@ function aqlSkippingTestsuite () {
       // skip more as documents are available
       var query = "FOR i IN skipCollection LIMIT 2000, 100 return i";
       var bindParams = {};
-      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
+      var queryOptions = {optimizer: { rules: [ "-parallelize-gather" ] },
+fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(0, result.json.length);
@@ -182,13 +189,14 @@ function aqlSkippingTestsuite () {
       // skip more as documents are available, this will trigger done inside internal skip
       var query = "FOR i IN skipCollection LIMIT 3000, 100 return i";
       var bindParams = {};
-      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
+      var queryOptions = {optimizer: { rules: [ "-parallelize-gather" ] },
+fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(0, result.json.length);
       assertEqual(2000, result.stats.scannedFull);
       assertEqual(2000, result.stats.fullCount);
-    },
+    }
   };
 
 }
@@ -204,15 +212,18 @@ function aqlSkippingIndexTestsuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       const col = db._createDocumentCollection(skipCollection, { numberOfShards: 5 });
-      col.ensureIndex({ type: "hash", fields: [ "a" ]});
-      col.ensureIndex({ type: "hash", fields: [ "b" ]});
-      col.ensureIndex({ type: "hash", fields: [ "c" ]});
+      col.ensureIndex({ type: "hash",
+fields: [ "a" ]});
+      col.ensureIndex({ type: "hash",
+fields: [ "b" ]});
+      col.ensureIndex({ type: "hash",
+fields: [ "c" ]});
 
       const values = _.range(7); // 0..6
 
@@ -222,7 +233,10 @@ function aqlSkippingIndexTestsuite () {
         for (const b of values) {
           for (const c of values) {
             for (const d of values) {
-              docs.push({a, b, c, d});
+              docs.push({a,
+b,
+c,
+d});
             }
           }
         }
@@ -230,11 +244,11 @@ function aqlSkippingIndexTestsuite () {
       col.insert(docs);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(skipCollection);
     },
 
@@ -283,7 +297,8 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 43, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
+      const queryOptions = {fullCount: true,
+optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -358,7 +373,8 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 37, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
+      const queryOptions = {fullCount: true,
+optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -438,7 +454,8 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 89, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
+      const queryOptions = {fullCount: true,
+optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -451,7 +468,7 @@ function aqlSkippingIndexTestsuite () {
       assertEqual(100, result.json.length);
       assertEqual(889, result.stats.scannedIndex);
       assertEqual(889, result.stats.fullCount);
-    },
+    }
 
   };
 
@@ -465,11 +482,11 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollection1");
       c1 = db._create("UnitTestsCollection1");
 
@@ -485,30 +502,44 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         let indexFields = [];
         if (isEnterprise) {
           indexFields = [
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
-            {"name": "text", "analyzer": "text_en"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
+            {"name": "text",
+"analyzer": "text_en"},
             "a"
           ];
         } else {
           indexFields = [
             {"name": "value[*]"},
-            {"name": "text", "analyzer": "text_en"},
+            {"name": "text",
+"analyzer": "text_en"},
             "a"
           ];
         }
         let i = c1.ensureIndex({
           type: "inverted",
           includeAllFields: true,
-          fields: [{name: "text", analyzer: "text_en"}, {"name": "value[*]"}, "a", "b", "c", "anotherNullField"] 
+          fields: [{name: "text",
+analyzer: "text_en"}, {"name": "value[*]"}, "a", "b", "c", "anotherNullField"]
         });
         v = db._createView("UnitTestView", "search-alias", {});
-        v.properties({indexes: [{collection: c1.name(), index: i.name}]});
-        let i1 = c1.ensureIndex({type: "inverted", name: "inverted", includeAllFields: true, fields: indexFields});
-        let i2 = c2.ensureIndex({type: "inverted", name: "inverted", includeAllFields: true, fields: indexFields});
+        v.properties({indexes: [{collection: c1.name(),
+index: i.name}]});
+        let i1 = c1.ensureIndex({type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: indexFields});
+        let i2 = c2.ensureIndex({type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: indexFields});
         v2 = db._createView("CompoundView", "search-alias", {
           indexes: [
-            {collection: c1.name(), index: i1.name},
-            {collection: c2.name(), index: i2.name}]
+            {collection: c1.name(),
+index: i1.name},
+            {collection: c2.name(),
+index: i2.name}]
         });
       } else {
         v = db._createView("UnitTestsView", "arangosearch", {});
@@ -541,56 +572,84 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         }
         v.properties(meta);
         if (isEnterprise) {
-          meta = { links : {
-            UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
-            UnitTestsCollection2 : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
+          meta = { links: {
+            UnitTestsCollection1: { includeAllFields: true,
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
+            UnitTestsCollection2: { includeAllFields: true,
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
           }};
         } else {
-          meta = { links : {
+          meta = { links: {
             UnitTestsCollection1: { includeAllFields: true },
-            UnitTestsCollection2 : { includeAllFields: true }
+            UnitTestsCollection2: { includeAllFields: true }
           }};
         }
         v2 = db._createView("CompoundView", "arangosearch", meta);
       }
 
-      ac.save({ a: "foo", id : 0 });
-      ac.save({ a: "ba", id : 1 });
+      ac.save({ a: "foo",
+id: 0 });
+      ac.save({ a: "ba",
+id: 1 });
 
       let docs = [];
       let docs2 = [];
       for (let i = 0; i < 5; i++) {
-        docs.push({ a: "foo", b: "bar", c: i });
-        docs.push({ a: "foo", b: "baz", c: i });
-        docs.push({ a: "bar", b: "foo", c: i });
-        docs.push({ a: "baz", b: "foo", c: i });
-        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
+        docs.push({ a: "foo",
+b: "bar",
+c: i });
+        docs.push({ a: "foo",
+b: "baz",
+c: i });
+        docs.push({ a: "bar",
+b: "foo",
+c: i });
+        docs.push({ a: "baz",
+b: "foo",
+c: i });
+        docs.push({ name_1: i.toString(),
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
 
-        docs2.push({ a: "foo", b: "bar", c: i });
-        docs2.push({ a: "bar", b: "foo", c: i });
-        docs2.push({ a: "baz", b: "foo", c: i });
-        docs2.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `${i}foo`}]}]});
+        docs2.push({ a: "foo",
+b: "bar",
+c: i });
+        docs2.push({ a: "bar",
+b: "foo",
+c: i });
+        docs2.push({ a: "baz",
+b: "foo",
+c: i });
+        docs2.push({ name_1: i.toString(),
+"value": [{ "nested_1": [{ "nested_2": `${i}foo`}]}]});
       }
 
-      docs.push({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      docs.push({ name: "half", text: "quick fox over lazy" });
-      docs.push({ name: "other half", text: "the brown jumps the dog" });
-      docs.push({ name: "quarter", text: "quick over" });
+      docs.push({ name: "full",
+text: "the quick brown fox jumps over the lazy dog" });
+      docs.push({ name: "half",
+text: "quick fox over lazy" });
+      docs.push({ name: "other half",
+text: "the brown jumps the dog" });
+      docs.push({ name: "quarter",
+text: "quick over" });
 
-      docs2.push({ name: "numeric", anotherNumericField: 0 });
-      docs2.push({ name: "null", anotherNullField: null });
-      docs2.push({ name: "bool", anotherBoolField: true });
-      docs2.push({ _key: "foo", xyz: 1 });
+      docs2.push({ name: "numeric",
+anotherNumericField: 0 });
+      docs2.push({ name: "null",
+anotherNullField: null });
+      docs2.push({ name: "bool",
+anotherBoolField: true });
+      docs2.push({ _key: "foo",
+xyz: 1 });
       c1.insert(docs);
       c2.insert(docs2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
-      var meta = { links : { "UnitTestsCollection1": null } };
+    tearDownAll: function () {
+      var meta = { links: { "UnitTestsCollection1": null } };
       v.properties(meta);
       v.drop();
       v2.drop();
@@ -601,12 +660,12 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
 
     testPassSkipArangoSearch: function () {
       // skip 3, return 3, out of 10
-      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
-        + "LIMIT 3,3 RETURN doc");
+      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' " +
+        "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } " +
+        "LIMIT 3,3 RETURN doc");
 
       assertEqual(3, result.json.length);
-      result.json.forEach(function(res) {
+      result.json.forEach(function (res) {
         assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
@@ -615,9 +674,9 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         result = AQL_EXECUTE(`FOR doc IN UnitTestsCollection1 
         OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
         FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`);
-  
+
         assertEqual(3, result.json.length);
-        result.json.forEach(function(res) {
+        result.json.forEach(function (res) {
           assertEqual("foo", res.a);
           assertTrue(res._id.startsWith('UnitTestsCollection1/'));
         });
@@ -626,13 +685,13 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
 
     testPassSkipArangoSearchSorted: function () {
       // skip 3, return 3, out of 10
-      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
-        + "SORT BM25(doc) "
-        + "LIMIT 3,3 RETURN doc");
+      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' " +
+        "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } " +
+        "SORT BM25(doc) " +
+        "LIMIT 3,3 RETURN doc");
 
       assertEqual(3, result.json.length);
-      result.json.forEach(function(res) {
+      result.json.forEach(function (res) {
         assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
@@ -643,7 +702,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`);
 
         assertEqual(3, result.json.length);
-        result.json.forEach(function(res) {
+        result.json.forEach(function (res) {
           assertEqual("foo", res.a);
           assertTrue(res._id.startsWith('UnitTestsCollection1/'));
         });
@@ -653,12 +712,12 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
     testPassSkipArangoSearchFullCount: function () {
       const opts = {fullCount: true};
       // skip 3, return 3, out of 10
-      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
-        + "LIMIT 3,3 RETURN doc", {}, opts);
+      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' " +
+        "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } " +
+        "LIMIT 3,3 RETURN doc", {}, opts);
 
       assertEqual(3, result.json.length);
-      result.json.forEach(function(res) {
+      result.json.forEach(function (res) {
         assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
@@ -670,7 +729,7 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`, {}, opts);
 
         assertEqual(3, result.json.length);
-        result.json.forEach(function(res) {
+        result.json.forEach(function (res) {
           assertEqual("foo", res.a);
           assertTrue(res._id.startsWith('UnitTestsCollection1/'));
         });
@@ -678,8 +737,8 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
       }
     },
 
-    //FIXME uncomment
-    //testPassSkipArangoSearchSortedFullCountHeapSort: function () {
+    // FIXME uncomment
+    // testPassSkipArangoSearchSortedFullCountHeapSort: function () {
     //  const opts = {fullCount: true};
 
     //  const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
@@ -699,27 +758,29 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
     //    assertTrue(res._id.startsWith('UnitTestsCollection/'));
     //  });
     //  assertEqual(10, result.stats.fullCount);
-    //},
+    // },
 
     testPassSkipArangoSearchSortedFullCountDefaultSort: function () {
       const opts = {
-        optimizer: { rules : ["-sort-limit"] },
+        optimizer: { rules: ["-sort-limit"] },
         fullCount: true
       };
 
-      const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
-        + "SORT doc.a "
-        + "LIMIT 3,3 RETURN doc";
+      const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' " +
+        "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } " +
+        "SORT doc.a " +
+        "LIMIT 3,3 RETURN doc";
 
       var result = AQL_EXPLAIN(query, {}, opts);
-      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function (node) {
+ return node.strategy;
+}).indexOf("standard"));
 
       // skip 3, return 3, out of 10
       result = AQL_EXECUTE(query, {}, opts);
 
       assertEqual(3, result.json.length);
-      result.json.forEach(function(res) {
+      result.json.forEach(function (res) {
         assertEqual("foo", res.a);
         assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
@@ -731,24 +792,24 @@ function aqlSkippingIResearchTestsuite (isSearchAlias) {
         FILTER doc.a == 'foo' SORT doc.a LIMIT 3,3 RETURN doc`, {}, opts);
 
         assertEqual(3, result.json.length);
-        result.json.forEach(function(res) {
+        result.json.forEach(function (res) {
           assertEqual("foo", res.a);
           assertTrue(res._id.startsWith('UnitTestsCollection1/'));
         });
         assertEqual(10, result.stats.fullCount);
       }
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(aqlSkippingTestsuite);
 jsunity.run(aqlSkippingIndexTestsuite);
 
-function aqlSkippingArangoSearchTestsuite() {
+function aqlSkippingArangoSearchTestsuite () {
   let suite = {};
   deriveTestSuite(
     aqlSkippingIResearchTestsuite(false),
@@ -758,7 +819,7 @@ function aqlSkippingArangoSearchTestsuite() {
   return suite;
 }
 
-function aqlSkippingSearchAliasTestsuite() {
+function aqlSkippingSearchAliasTestsuite () {
   let suite = {};
   deriveTestSuite(
     aqlSkippingIResearchTestsuite(true),

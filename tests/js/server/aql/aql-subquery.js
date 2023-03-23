@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, subqueries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for Ahuacatl, subqueries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
@@ -37,162 +37,162 @@ const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
 const isEnterprise = require("internal").isEnterprise();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlSubqueryTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryReference1 : function () {
+    testSubqueryReference1: function () {
       var expected = [ [ [ 1 ], [ 1 ] ] ];
       var actual = getQueryResults("LET a = (RETURN 1) LET b = a RETURN [ a, b ]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryReference2 : function () {
+    testSubqueryReference2: function () {
       var expected = [ [ [ 1 ], [ 1 ], [ 1 ] ] ];
       var actual = getQueryResults("LET a = (RETURN 1) LET b = a LET c = b RETURN [ a, b, c ]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryReference3 : function () {
+    testSubqueryReference3: function () {
       var expected = [ [ [ 1 ], [ 1 ], [ 1 ] ] ];
       var actual = getQueryResults("LET a = (RETURN 1) LET b = a LET c = a RETURN [ a, b, c ]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryReferences1 : function () {
+    testSubqueryReferences1: function () {
       var expected = [ [ 1 ] ];
       var actual = getQueryResults("LET a = true ? (RETURN 1) : (RETURN 0) RETURN a");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryReferences2 : function () {
+    testSubqueryReferences2: function () {
       var expected = [ [ 1 ] ];
       var actual = getQueryResults("LET a = true ? (RETURN 1) : (RETURN 0) LET b = a RETURN b");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDependent1 : function () {
+    testSubqueryDependent1: function () {
       var expected = [ 2, 4, 6 ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 1, 2, 3 ] RETURN i * 2) RETURN s[i - 1]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDependent2 : function () {
+    testSubqueryDependent2: function () {
       var expected = [ 2, 4, 6 ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET t = (FOR k IN [ 1, 2, 3 ] RETURN k) LET s = (FOR j IN [ 1, 2, 3 ] RETURN t[i - 1] * 2) RETURN s[i - 1]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery evaluation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery evaluation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDependent3 : function () {
+    testSubqueryDependent3: function () {
       var expected = [ 4, 5, 6, 8, 10, 12, 12, 15, 18 ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] FOR j IN [ 4, 5, 6 ] LET s = (FOR k IN [ 1 ] RETURN i * j) RETURN s[0]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryIndependent1 : function () {
+    testSubqueryIndependent1: function () {
       var expected = [ 9, 8, 7 ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 9, 8, 7 ] RETURN j) RETURN s[i - 1]");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryIndependent2 : function () {
+    testSubqueryIndependent2: function () {
       var expected = [ [ 9, 8, 7 ] ];
       var actual = getQueryResults("LET s = (FOR j IN [ 9, 8, 7 ] RETURN j) RETURN s");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryIndependent3 : function () {
+    testSubqueryIndependent3: function () {
       var expected = [ [ 25 ], [ 25 ], [ 25 ], [ 25 ], [ 25 ], [ 25 ], [ 25 ], [ 25 ], [ 25 ] ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] FOR j IN [ 1, 2, 3 ] LET s = (FOR k IN [ 25 ] RETURN k) RETURN s");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryIndependent4 : function () {
+    testSubqueryIndependent4: function () {
       var expected = [ [ 2, 4, 6 ] ];
       var actual = getQueryResults("LET a = (FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 1, 2 ] RETURN j) RETURN i * s[1]) RETURN a");
 
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryOutVariableName : function () {
+    testSubqueryOutVariableName: function () {
       const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
       const subqueryNode = findExecutionNodes(explainResult, "SubqueryStartNode")[0];
 
       assertEqual(subqueryNode.subqueryOutVariable.name, "theLetVariable");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test splice-subqueries optimization
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test splice-subqueries optimization
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSpliceSubqueryOutVariableName : function () {
+    testSpliceSubqueryOutVariableName: function () {
       const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
 
       const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
@@ -200,9 +200,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery as function parameter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery as function parameter
+// //////////////////////////////////////////////////////////////////////////////
 
     testSubqueryAsFunctionParameter1: function () {
       var expected = [ [ 1, 2, 3 ] ];
@@ -213,9 +213,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery as function parameter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery as function parameter
+// //////////////////////////////////////////////////////////////////////////////
 
     testSubqueryAsFunctionParameter2: function () {
       var expected = [ 6 ];
@@ -237,9 +237,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test copying of subquery results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test copying of subquery results
+// //////////////////////////////////////////////////////////////////////////////
 
     testIndependentSubqueries1: function () {
       var expected = [ [ [ ], [ ] ] ];
@@ -253,9 +253,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test copying of subquery results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test copying of subquery results
+// //////////////////////////////////////////////////////////////////////////////
 
     testIndependentSubqueries2: function () {
       var expected = [ [ [ ], [ ] ] ];
@@ -269,9 +269,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test copying of subquery results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test copying of subquery results
+// //////////////////////////////////////////////////////////////////////////////
 
     testDependentSubqueries1: function () {
       var expected = [ [ [ ], [ ] ] ];
@@ -284,17 +284,16 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test copying of subquery results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test copying of subquery results
+// //////////////////////////////////////////////////////////////////////////////
 
     testDependentSubqueries2: function () {
       var expected = [ [ [ ], [ ] ] ];
       for (var i = 1; i <= 100; ++i) {
         if (i < 50) {
           expected[0][0].push(i);
-        }
-        else {
+        } else {
           expected[0][1].push(i);
         }
       }
@@ -303,9 +302,9 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test copying of subquery results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test copying of subquery results
+// //////////////////////////////////////////////////////////////////////////////
 
     testDependentSubqueries3: function () {
       var expected = [ ];
@@ -317,12 +316,12 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test limit with offset in a subquery
-/// This test was introduced due to a bug (that never made it into devel) where
-/// the offset in the LimitBlock was mutated during a subquery run and not reset
-/// in between.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test limit with offset in a subquery
+// / This test was introduced due to a bug (that never made it into devel) where
+// / the offset in the LimitBlock was mutated during a subquery run and not reset
+// / in between.
+// //////////////////////////////////////////////////////////////////////////////
 
     testSubqueriesWithLimitAndOffset: function () {
       const query = `
@@ -335,14 +334,14 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief this tests a rather complex interna of AQL execution combinations
-/// A subquery should only be executed if it has an input row, a count is supposed
-/// to count empty subqueries (e.g. no data row arrived)
-/// However in this case, the entire subquery is not executed once,
-/// so the count should not be triggered, and should not write an output row
-/// hence the INSERT will not be executed and we will not write a document.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief this tests a rather complex interna of AQL execution combinations
+// / A subquery should only be executed if it has an input row, a count is supposed
+// / to count empty subqueries (e.g. no data row arrived)
+// / However in this case, the entire subquery is not executed once,
+// / so the count should not be triggered, and should not write an output row
+// / hence the INSERT will not be executed and we will not write a document.
+// //////////////////////////////////////////////////////////////////////////////
     testCollectWithinEmptyNestedSubquery: function () {
       const colName = "UnitTestSubqueryCollection";
       try {
@@ -368,7 +367,7 @@ function ahuacatlSubqueryTestSuite () {
       } finally {
         db._drop(colName);
       }
-      
+
     },
 
     testCollectionAccessSubquery: function () {
@@ -384,7 +383,8 @@ function ahuacatlSubqueryTestSuite () {
         const docs = [];
         const expected = new Map();
         for (let i = 0; i < 2000; ++i) {
-          docs.push({value: i, mod100: i % 100});
+          docs.push({value: i,
+mod100: i % 100});
           const oldValue = expected.get(i % 100) || [];
           oldValue.push(i);
           expected.set(i % 100, oldValue);
@@ -428,7 +428,8 @@ function ahuacatlSubqueryTestSuite () {
         }
         // Second with Index
         {
-          col.ensureIndex({ type: "hash", fields: ["mod100"] });
+          col.ensureIndex({ type: "hash",
+fields: ["mod100"] });
 
           const cursor = db._query(query);
           const actual = cursor.toArray();
@@ -452,7 +453,7 @@ function ahuacatlSubqueryTestSuite () {
           for (const value of foundKeys.values()) {
             assertEqual(value, 20);
           }
-        }        
+        }
       } finally {
         db._drop(colName);
       }
@@ -501,7 +502,7 @@ function ahuacatlSubqueryTestSuite () {
         db._dropDatabase(dbName);
       }
     }
-  }; 
+  };
 }
 
 jsunity.run(ahuacatlSubqueryTestSuite);

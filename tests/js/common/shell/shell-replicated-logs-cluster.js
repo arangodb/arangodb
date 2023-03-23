@@ -1,27 +1,27 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -74,11 +74,11 @@ const {setUpAll, tearDownAll} = (function () {
       if (!databaseExisted) {
         db._dropDatabase(database);
       }
-    },
+    }
   };
 }());
 
-function ReplicatedLogsCreateSuite() {
+function ReplicatedLogsCreateSuite () {
   'use strict';
   const config = {
     writeConcern: 2,
@@ -87,11 +87,13 @@ function ReplicatedLogsCreateSuite() {
   };
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
 
     testCreateAndDropReplicatedLog: function () {
       const logId = 12;
-      const log = db._createReplicatedLog({id: logId, config});
+      const log = db._createReplicatedLog({id: logId,
+config});
 
       assertEqual(log.id(), logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
@@ -107,11 +109,11 @@ function ReplicatedLogsCreateSuite() {
     testCreateNoId: function () {
       const log = db._createReplicatedLog({config});
       assertEqual(log.id(), db._replicatedLog(log.id()).id());
-    },
+    }
   };
 }
 
-function ReplicatedLogsWriteSuite() {
+function ReplicatedLogsWriteSuite () {
   'use strict';
 
   const config = {
@@ -123,7 +125,8 @@ function ReplicatedLogsWriteSuite() {
   let log = null;
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: function () {
       log = db._createReplicatedLog({config});
     },
@@ -202,7 +205,7 @@ function ReplicatedLogsWriteSuite() {
         let head = log.head();
         assertEqual(head.length, 10);
         assertEqual(head[9].logIndex, 10);
-        head = log.head(11);  // skip first entry
+        head = log.head(11); // skip first entry
         assertEqual(head.length, 11);
         for (let i = 0; i < 10; i++) {
           assertEqual(head[i + 1].payload.foo, i);
@@ -222,7 +225,7 @@ function ReplicatedLogsWriteSuite() {
         var console = require('console');
         console.warn({
           status: log.status(),
-          head: log.head(200),
+          head: log.head(200)
         });
         throw e;
       }
@@ -280,11 +283,11 @@ function ReplicatedLogsWriteSuite() {
       for (let i = 0; i < 10; i++) {
         assertEqual(s[i].logIndex, 50 + i);
       }
-    },
+    }
   };
 }
 
-function ReplicatedLogsCompactSuite() {
+function ReplicatedLogsCompactSuite () {
   'use strict';
 
   const config = {
@@ -296,7 +299,8 @@ function ReplicatedLogsCompactSuite() {
   let log = null;
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: function () {
       log = db._createReplicatedLog({config});
     },

@@ -24,7 +24,7 @@ window.Users = Backbone.Model.extend({
     }
     return arangoHelper.databaseUrl('/_api/user');
   },
-  
+
   setPassword: function (passwd) {
     $.ajax({
       cache: false,
@@ -41,7 +41,8 @@ window.Users = Backbone.Model.extend({
       cache: false,
       type: 'PATCH',
       url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.get('user'))),
-      data: JSON.stringify({'extra': {'name': name, 'img': img}}),
+      data: JSON.stringify({'extra': {'name': name,
+'img': img}}),
       contentType: 'application/json',
       processData: false,
       success: function (data) {

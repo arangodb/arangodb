@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global fail, assertFalse, assertTrue, assertEqual */
+/* jshint globalstrict:false, strict:false */
+/* global fail, assertFalse, assertTrue, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test add/drop followers
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test add/drop followers
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 let db = require("@arangodb").db;
@@ -38,25 +38,26 @@ function FollowersSuite () {
   const cn = "UnitTestsCollection";
 
   return {
-    setUp : function () {
+    setUp: function () {
       internal.debugClearFailAt();
       db._drop(cn);
     },
-    
-    tearDown : function () {
+
+    tearDown: function () {
       internal.debugClearFailAt();
       db._drop(cn);
     },
-    
-    testNoReplication : function () {
-      let c = db._create(cn, { numberOfShards: 5, replicationFactor: 1 });
+
+    testNoReplication: function () {
+      let c = db._create(cn, { numberOfShards: 5,
+replicationFactor: 1 });
 
       let result = require("@arangodb/cluster").shardDistribution().results[cn];
 
       // validate Plan
       assertTrue(result.hasOwnProperty("Plan"));
       let shards = Object.keys(result.Plan);
-      shards.forEach(function(shard) {
+      shards.forEach(function (shard) {
         let data = result.Plan[shard];
         assertTrue(data.hasOwnProperty("leader"));
         assertTrue(data.hasOwnProperty("followers"));
@@ -69,7 +70,7 @@ function FollowersSuite () {
 
       shards = Object.keys(result.Current);
       assertEqual(5, shards.length);
-      shards.forEach(function(shard) {
+      shards.forEach(function (shard) {
         let data = result.Current[shard];
         assertTrue(data.hasOwnProperty("leader"));
         assertTrue(data.hasOwnProperty("followers"));
@@ -77,8 +78,9 @@ function FollowersSuite () {
       });
     },
 
-    testWithReplication : function () {
-      let c = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
+    testWithReplication: function () {
+      let c = db._create(cn, { numberOfShards: 5,
+replicationFactor: 2 });
 
       let result = require("@arangodb/cluster").shardDistribution().results[cn];
 
@@ -86,7 +88,7 @@ function FollowersSuite () {
       assertTrue(result.hasOwnProperty("Plan"));
       let shards = Object.keys(result.Plan);
       assertEqual(5, shards.length);
-      shards.forEach(function(shard) {
+      shards.forEach(function (shard) {
         let data = result.Plan[shard];
         assertTrue(data.hasOwnProperty("leader"));
         assertTrue(data.hasOwnProperty("followers"));
@@ -105,7 +107,7 @@ function FollowersSuite () {
         found = 0;
         shards = Object.keys(result.Current);
         assertEqual(5, shards.length);
-        shards.forEach(function(shard) {
+        shards.forEach(function (shard) {
           let data = result.Current[shard];
           assertTrue(data.hasOwnProperty("leader"));
           assertTrue(data.hasOwnProperty("followers"));
@@ -130,7 +132,7 @@ function FollowersSuite () {
       assertEqual(shards.length, found);
     },
 
-    testWithReplicationAndFailure : function () {
+    testWithReplicationAndFailure: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
@@ -140,7 +142,8 @@ function FollowersSuite () {
       // Note that with waitForSyncReplication: true, the collection creation
       // will run into a timeout while waiting for the followers to come in
       // sync.
-      db._create(cn, { numberOfShards: 5, replicationFactor: 2 }, { waitForSyncReplication: false });
+      db._create(cn, { numberOfShards: 5,
+replicationFactor: 2 }, { waitForSyncReplication: false });
 
       let result = require("@arangodb/cluster").shardDistribution().results[cn];
 
@@ -148,7 +151,7 @@ function FollowersSuite () {
       assertTrue(result.hasOwnProperty("Plan"));
       let shards = Object.keys(result.Plan);
       assertEqual(5, shards.length);
-      shards.forEach(function(shard) {
+      shards.forEach(function (shard) {
         let data = result.Plan[shard];
         assertTrue(data.hasOwnProperty("leader"));
         assertTrue(data.hasOwnProperty("followers"));
@@ -162,11 +165,11 @@ function FollowersSuite () {
       assertTrue(result.hasOwnProperty("Current"));
 
       let tries = 0;
-      // try for 10 seconds, and in this period no followers must show up 
+      // try for 10 seconds, and in this period no followers must show up
       while (++tries < 20) {
         shards = Object.keys(result.Current);
         assertEqual(5, shards.length);
-        shards.forEach(function(shard) {
+        shards.forEach(function (shard) {
           let data = result.Current[shard];
           assertTrue(data.hasOwnProperty("leader"));
           assertTrue(data.hasOwnProperty("followers"));

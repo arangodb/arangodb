@@ -38,20 +38,27 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
-  c.ensureIndex({ type: "geo", fields: ["loc"] });
-  c.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
+  c.ensureIndex({ type: "geo",
+fields: ["loc"] });
+  c.ensureIndex({ type: "geo",
+fields: ["lat", "lon"] });
 
   let docs = [];
   for (let i = -40; i < 40; ++i) {
     for (let j = -40; j < 40; ++j) {
-      docs.push({ loc: [ i, j ], lat: i, lon: j });
+      docs.push({ loc: [ i, j ],
+lat: i,
+lon: j });
     }
   }
   c.insert(docs);
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  c.ensureIndex({ type: "geo", fields: ["a.loc"], geoJson: true, sparse: true });
+  c.ensureIndex({ type: "geo",
+fields: ["a.loc"],
+geoJson: true,
+sparse: true });
 
   docs = [];
   for (let i = -40; i < 40; ++i) {
@@ -63,12 +70,15 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3');
-  c.ensureIndex({ type: "geo", fields: ["a.lat", "a.lon"], geoJson: false });
+  c.ensureIndex({ type: "geo",
+fields: ["a.lat", "a.lon"],
+geoJson: false });
 
   docs = [];
   for (let i = -40; i < 40; ++i) {
     for (let j = -40; j < 40; ++j) {
-      docs.push({ a: { lat: i, lon: j } });
+      docs.push({ a: { lat: i,
+lon: j } });
     }
   }
   c.insert(docs);

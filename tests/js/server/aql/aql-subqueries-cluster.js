@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, subqueries in cluster
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, subqueries in cluster
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 
 const jsunity = require("jsunity");
@@ -43,15 +43,15 @@ const c6 = "UnitTestSubQuery6";
 const c7 = "UnitTestSubQuery7";
 const c8 = "UnitTestSubQuery8";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief This suite is supposed to test subquery execution
  * in the cluster case. Planning for subqueries tend to be
  * complicated and thereby error prone.
- * 
+ *
  * NOTE: Please do not take the following AQLs as well designed
  * production queries or best practices. They are made artificially
  * complex for the internals.
@@ -113,7 +113,7 @@ function clusterSubqueriesTestSuite () {
       let seen = new Set();
       for (let d of c) {
         assertEqual(d.length, 5); // we have 5 values for each x
-        let first = d[0]; 
+        let first = d[0];
         seen.add(first);
         for (let q of d) {
           assertEqual(q, first);
@@ -142,7 +142,7 @@ function clusterSubqueriesTestSuite () {
       db[c1].save(docsA);
       db[c2].save(docsB);
       db[c3].save(docsC);
-  
+
       let q = `
         FOR a IN ${c1}
           LET sub = (
@@ -203,9 +203,11 @@ function clusterSubqueriesTestSuite () {
       // We add 5 times each of the values 1 -> 10
       for (let i = 1; i < 11; ++i) {
         fooVals.set(`${i}`, 0);
-        docsA.push({foo: `${i}`, val: "baz"});
+        docsA.push({foo: `${i}`,
+val: "baz"});
         for (let j = 0; j < 5; ++j) {
-          docsB.push({foo: `${i}`, val: "bar"});
+          docsB.push({foo: `${i}`,
+val: "bar"});
           docsC.push({foo: `${i}`});
         }
       }
@@ -213,10 +215,12 @@ function clusterSubqueriesTestSuite () {
       db[c2].save(docsB);
       db[c3].save(docsC);
       db[c4].save([
-        {_key: "a", val: "baz"},
-        {_key: "b", val: "bar"}
+        {_key: "a",
+val: "baz"},
+        {_key: "b",
+val: "bar"}
       ]);
-  
+
       let q = `
         LET src = DOCUMENT("${c4}/a")
         FOR a IN ${c1}
@@ -294,28 +298,55 @@ function clusterSubqueriesTestSuite () {
 
       for (let i = 0; i < numDocs; ++i) {
         docsA.push({val: `A${i}`});
-        docsB.push({val: `B${i}`, valA: `A${i}`});
-        docsC.push({val: `C${i}`, valA: `A${i}`, valB: `B${i}`});
-        docsD.push({val: `D${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`});
-        docsE.push({val: `E${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`, valD: `D${i}`});
-        docsF.push({val: `F${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`, valD: `D${i}`, valE: `E${i}`});
-        docsG.push({val: `G${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`, valD: `D${i}`, valE: `E${i}`, valF: `F${i}`});
+        docsB.push({val: `B${i}`,
+valA: `A${i}`});
+        docsC.push({val: `C${i}`,
+valA: `A${i}`,
+valB: `B${i}`});
+        docsD.push({val: `D${i}`,
+valA: `A${i}`,
+valB: `B${i}`,
+valC: `C${i}`});
+        docsE.push({val: `E${i}`,
+valA: `A${i}`,
+valB: `B${i}`,
+valC: `C${i}`,
+valD: `D${i}`});
+        docsF.push({val: `F${i}`,
+valA: `A${i}`,
+valB: `B${i}`,
+valC: `C${i}`,
+valD: `D${i}`,
+valE: `E${i}`});
+        docsG.push({val: `G${i}`,
+valA: `A${i}`,
+valB: `B${i}`,
+valC: `C${i}`,
+valD: `D${i}`,
+valE: `E${i}`,
+valF: `F${i}`});
       }
 
       db[c1].save(docsA);
-      db[c2].ensureIndex({ type: "persistent", fields: ["valA"] });
+      db[c2].ensureIndex({ type: "persistent",
+fields: ["valA"] });
       db[c2].save(docsB);
-      db[c3].ensureIndex({ type: "persistent", fields: ["valA", "valB"] });
+      db[c3].ensureIndex({ type: "persistent",
+fields: ["valA", "valB"] });
       db[c3].save(docsC);
-      db[c4].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC"] });
+      db[c4].ensureIndex({ type: "persistent",
+fields: ["valA", "valB", "valC"] });
       db[c4].save(docsD);
-      db[c5].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valD"] });
+      db[c5].ensureIndex({ type: "persistent",
+fields: ["valA", "valB", "valC", "valD"] });
       db[c5].save(docsE);
-      db[c6].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valD", "valE"] });
+      db[c6].ensureIndex({ type: "persistent",
+fields: ["valA", "valB", "valC", "valD", "valE"] });
       db[c6].save(docsF);
-      db[c7].ensureIndex({ type: "persistent", fields: ["valA", "valB", "valC", "valF"] });
+      db[c7].ensureIndex({ type: "persistent",
+fields: ["valA", "valB", "valC", "valF"] });
       db[c7].save(docsG);
- 
+
       let q = `
         FOR a IN ${c1}
           LET s1 = (
@@ -369,7 +400,7 @@ function clusterSubqueriesTestSuite () {
       }
     }
   };
-};
+}
 
 jsunity.run(clusterSubqueriesTestSuite);
 

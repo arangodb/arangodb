@@ -39,7 +39,7 @@ const tu = require('@arangodb/testutils/test-utils');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const testPaths = {
   'gtest': [],
-  'catch': [],
+  'catch': []
 };
 
 const RED = require('internal').COLORS.COLOR_RED;
@@ -61,13 +61,13 @@ function locateGTest (name) {
   return file;
 }
 
-function readGreylist() {
+function readGreylist () {
   let greylist = [];
   const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
   let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
   let greylistMatches = raw_greylist.match(gtestGreylistRX);
     if (greylistMatches != null) {
-    greylistMatches.forEach(function(match) {
+    greylistMatches.forEach(function (match) {
       let partMatch = /- gtest:(.*)/.exec(match);
       if (partMatch.length !== 2) {
         throw new Error("failed to match the test to greylist in: " + match);
@@ -81,20 +81,20 @@ function readGreylist() {
   return greylist;
 }
 
-function getGTestResults(fileName, defaultResults) {
+function getGTestResults (fileName, defaultResults) {
   let results = defaultResults;
-  if (! fs.exists(fileName)) {
+  if (!fs.exists(fileName)) {
     defaultResults.failed += 1;
-    print(RED + "No testresult file found at: " + fileName + RESET);    
+    print(RED + "No testresult file found at: " + fileName + RESET);
     return defaultResults;
   }
   let gTestResults = JSON.parse(fs.read(fileName));
   results.failed = gTestResults.failures + gTestResults.errors;
   results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
-  gTestResults.testsuites.forEach(function(testSuite) {
+  gTestResults.testsuites.forEach(function (testSuite) {
     results[testSuite.name] = {
       failed: testSuite.failures + testSuite.errors,
-      status: (testSuite.failures + testSuite.errors ) === 0,
+      status: (testSuite.failures + testSuite.errors) === 0,
       duration: testSuite.time
     };
     if (testSuite.failures !== 0) {
@@ -122,7 +122,7 @@ function gtestRunner (testname, options) {
     if (run !== '') {
       let tmpMgr = new tmpDirMmgr('gtest', options);
       let argv = [
-        '--gtest_output=json:' + testResultJsonFile,
+        '--gtest_output=json:' + testResultJsonFile
       ];
 
       let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
@@ -132,7 +132,7 @@ function gtestRunner (testname, options) {
         }
         argv.push('--' + filter[0]);
       } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
-        argv.push('--gtest_filter='+options.testCase);
+        argv.push('--gtest_filter=' + options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
       }
@@ -163,7 +163,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
 
   const tests = [ 'arangodbtests_zkd' ];
 
-  for(const test of tests) {
+  for (const test of tests) {
     testFns[test] = x => gtestRunner(test, x);
   }
   testFns['gtest'] = x => gtestRunner('arangodbtests', x);
@@ -171,6 +171,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipGtest'] = false;
   testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

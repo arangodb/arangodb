@@ -18,7 +18,7 @@ const aql = arangodb.aql;
 var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const isVst = arango.getEndpoint().match('^vst://') !== null;
 
-function loadFoxxIntoZip(path) {
+function loadFoxxIntoZip (path) {
   let zip = utils.zipDirectory(path);
   let content = fs.readFileSync(zip);
   fs.remove(zip);
@@ -28,7 +28,7 @@ function loadFoxxIntoZip(path) {
   };
 }
 
-function installFoxx(mountpoint, which, mode) {
+function installFoxx (mountpoint, which, mode) {
   let headers = {};
   let content;
   if (which.type === 'js') {
@@ -64,7 +64,7 @@ function installFoxx(mountpoint, which, mode) {
   return crudResp;
 }
 
-function deleteFoxx(mountpoint) {
+function deleteFoxx (mountpoint) {
   const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
   expect(deleteResp).to.have.property('code');
   expect(deleteResp.code).to.equal(204);
@@ -102,14 +102,27 @@ describe('FoxxApi commit', function () {
     expect(result.code).to.equal(204);
     [
       // explicitly say we want utf8-json, since the server will add it:
-      { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
-      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
+      { origin: origin,
+accept: 'application/json; charset=utf-8',
+test: 'first' },
+      { 'accept-encoding': 'deflate',
+accept: 'application/json; charset=utf-8',
+test: "second"},
       // work around clever arangosh client, specify random content-type first:
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
-      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
-      { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8',
+test: "third",
+'accept-encoding': 'identity'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8',
+test: "third",
+'accept-encoding': 'deflate'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8',
+test: "third",
+'accept-encoding': 'gzip'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8',
+test: "third"},
+      { accept: 'application/json; charset=utf-8',
+test: "fourth",
+"content-type": "image/jpg"}
     ].forEach(headers => {
       result = arango.GET_RAW('/test/header-echo', headers);
       expect(result.code).to.equal(200);
@@ -118,8 +131,8 @@ describe('FoxxApi commit', function () {
       } else {
         body = JSON.parse(result.body);
       }
-      
-      Object.keys(headers).forEach(function(key) {
+
+      Object.keys(headers).forEach(function (key) {
         let value = headers[key];
         if (key === 'origin') {
           if (arango.getEndpoint().match(/^vst:/)) {
@@ -130,7 +143,7 @@ describe('FoxxApi commit', function () {
           }
         }
         expect(body[key]).to.equal(headers[key]);
-        
+
       });
       if (!headers.hasOwnProperty('accept-encoding')) {
         expect(body['accept-encoding']).to.equal(undefined);
@@ -138,7 +151,9 @@ describe('FoxxApi commit', function () {
     });
 
     // sending content-type json actually requires to post something:
-    let headers = { accept: 'application/json; charset=utf-8', test: "first", "content-type": "application/json; charset=utf-8"};
+    let headers = { accept: 'application/json; charset=utf-8',
+test: "first",
+"content-type": "application/json; charset=utf-8"};
     result = arango.POST_RAW('/test/header-echo', '{}', headers);
     expect(result.code).to.equal(200);
     if (result.headers['content-type'] === 'application/x-velocypack') {
@@ -147,21 +162,21 @@ describe('FoxxApi commit', function () {
       body = JSON.parse(result.body);
     }
 
-    Object.keys(headers).forEach(function(key) {
+    Object.keys(headers).forEach(function (key) {
       let value = headers[key];
 
       expect(body[key]).to.equal(headers[key]);
     });
   });
 
-  it('should redirect into aardvark', function() {
+  it('should redirect into aardvark', function () {
     [ {
       cmd: "/_admin/aardvark/index.html",
       responseCode: 200
     }, {
       cmd: "/",
       responseCode: 301,
-      location:  /^\/.*\/*_admin\/aardvark\/index.html$/
+      location: /^\/.*\/*_admin\/aardvark\/index.html$/
     }, {
       cmd: "/_admin/html",
       responseCode: 301,
@@ -177,13 +192,13 @@ describe('FoxxApi commit', function () {
     }].forEach(test => {
       let result = arango.GET_RAW(test.cmd);
       expect(result.code).to.equal(test.responseCode);
-      if (test.hasOwnProperty('location') ) {
+      if (test.hasOwnProperty('location')) {
         expect(result.headers['location']).to.match(test.location);
       }
     });
   });
 
-  it('should deliver compressed files according to accept-encoding', function() {
+  it('should deliver compressed files according to accept-encoding', function () {
     // TODO: decompress body (if) and check for its content, so double-compression can be eradicted.
     let result;
 
@@ -235,7 +250,7 @@ describe('FoxxApi commit', function () {
     } else {
       expect(result).to.have.property('parsedBody');
     }
-    
+
     result = arango.GET_RAW('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
     if (!isVst) {
       // no transparent compression support in VST atm.
@@ -377,7 +392,7 @@ describe('Foxx service', () => {
     type: minimalWorkingZip.type
   };
   const minimalWorkingZipPath = utils.zipDirectory(minimalWorkingServicePath);
-  
+
   const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
   const itzpapalotlZip = loadFoxxIntoZip(itzpapalotlPath);
 
@@ -550,7 +565,8 @@ describe('Foxx service', () => {
   });
 
   it('configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const resp = arango.GET('/_api/foxx/configuration?mount=' + mount);
     expect(resp).to.have.property('test1');
     expect(resp.test1).to.not.have.property('current');
@@ -559,7 +575,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const resp = arango.GET('/_api/foxx/configuration?mount=' + mount + '&minimal=false');
     expect(resp).to.have.property('test1');
     expect(resp.test1).to.not.have.property('current');
@@ -568,13 +585,15 @@ describe('Foxx service', () => {
   });
 
   it('minimal configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const resp = arango.GET('/_api/foxx/configuration?mount=' + mount + '&minimal=true');
     expect(resp).to.eql({});
   });
 
   it('configuration should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount,
                                     { test1: 'test'});
     expect(updateResp).to.have.property('values');
@@ -589,7 +608,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount + '&minimal=false', { test1: 'test'});
     expect(updateResp).to.have.property('test1');
     expect(updateResp.test1).to.have.property('current', 'test');
@@ -605,7 +625,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal configuration should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount + '&minimal=true', {
         test1: 'test'
     });
@@ -619,7 +640,8 @@ describe('Foxx service', () => {
   });
 
   it('configuration should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount, {
         test1: 'test'
     });
@@ -636,7 +658,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount + '&minimal=false', {
       test1: 'test'
     });
@@ -654,7 +677,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal configuration should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount + '&minimal=true', {
       test1: 'test'
     });
@@ -669,7 +693,8 @@ describe('Foxx service', () => {
   });
 
   it('configuration should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount, {
         test2: 'test2'
     });
@@ -684,7 +709,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount + '&minimal=false', {
       test2: 'test2'
     });
@@ -699,7 +725,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal configuration should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const replaceResp = arango.PUT('/_api/foxx/configuration?mount=' + mount + '&minimal=true', {
       test2: 'test2'
     });
@@ -712,7 +739,8 @@ describe('Foxx service', () => {
   });
 
   it('configuration should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test2: 'test2'
     });
@@ -727,7 +755,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount + '&minimal=false', {
         test2: 'test2'
     });
@@ -742,7 +771,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal configuration should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     const updateResp = arango.PATCH('/_api/foxx/configuration?mount=' + mount + '&minimal=true', {
         test2: 'test2'
     });
@@ -755,12 +785,16 @@ describe('Foxx service', () => {
   });
 
   it('should retain obsolete config after update in development', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true});
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test1: 'test1',
       test2: 'test2'
     });
-    installFoxx(mount, {type: 'dir', buffer: confPath2, devmode: true}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath2,
+devmode: true}, "upgrade");
     const resp1 = db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
@@ -779,12 +813,14 @@ describe('Foxx service', () => {
   });
 
   it('should discard obsolete config after update in production', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
     arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
       test1: 'test1',
       test2: 'test2'
     });
-    installFoxx(mount, {type: 'dir', buffer: confPath2}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath2}, "upgrade");
     const resp1 = db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
@@ -805,25 +841,29 @@ describe('Foxx service', () => {
   const depPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-dependencies');
 
   it('empty configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
+    installFoxx(mount, {type: 'dir',
+buffer: minimalWorkingServicePath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount);
     expect(resp).to.eql({});
   });
 
   it('empty non-minimal configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
+    installFoxx(mount, {type: 'dir',
+buffer: minimalWorkingServicePath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount + '&minimal=false');
     expect(resp).to.eql({});
   });
 
   it('empty minimal configuration should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
+    installFoxx(mount, {type: 'dir',
+buffer: minimalWorkingServicePath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount + '&minimal=true');
     expect(resp).to.eql({});
   });
 
   it('dependencies should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount);
     expect(resp).to.have.property('test1');
     expect(resp.test1).to.not.have.property('current');
@@ -832,7 +872,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal dependencies should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount + '&minimal=false');
     expect(resp).to.have.property('test1');
     expect(resp.test1).to.not.have.property('current');
@@ -841,13 +882,15 @@ describe('Foxx service', () => {
   });
 
   it('minimal dependencies should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const resp = arango.GET('/_api/foxx/dependencies?mount=' + mount + '&minimal=true');
     expect(resp).to.eql({});
   });
 
   it('dependencies should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount, {
         test1: '/test'
     });
@@ -863,7 +906,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal dependencies should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount + '&minimal=false', {
         test1: '/test'
     });
@@ -881,7 +925,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal dependencies should be available after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount + '&minimal=true', {
         test1: '/test'
     });
@@ -895,7 +940,8 @@ describe('Foxx service', () => {
   });
 
   it('dependencies should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount, {
         test1: '/test'
     });
@@ -912,7 +958,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal dependencies should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount + '&minimal=false', {
         test1: '/test'
     });
@@ -930,7 +977,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal dependencies should be available after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount + '&minimal=true', {
         test1: '/test'
     });
@@ -945,7 +993,8 @@ describe('Foxx service', () => {
   });
 
   it('dependencies should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount, {
         test2: '/test2'
     });
@@ -968,7 +1017,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal dependencies should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount + '&minimal=false', {
         test2: '/test2'
     });
@@ -993,7 +1043,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal dependencies should be merged after update', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const replaceResp = arango.PUT('/_api/foxx/dependencies?mount=' + mount + '&minimal=true', {
         test2: '/test2'
     });
@@ -1014,7 +1065,8 @@ describe('Foxx service', () => {
   });
 
   it('dependencies should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount, {
         test2: '/test2'
     });
@@ -1038,7 +1090,8 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal dependencies should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount + '&minimal=false', {
         test2: '/test2'
     });
@@ -1064,7 +1117,8 @@ describe('Foxx service', () => {
   });
 
   it('minimal dependencies should be overwritten after replace', () => {
-    installFoxx(mount, {type: 'dir', buffer: depPath});
+    installFoxx(mount, {type: 'dir',
+buffer: depPath});
     const updateResp = arango.PATCH('/_api/foxx/dependencies?mount=' + mount + '&minimal=true', {
         test2: '/test2'
     });
@@ -1086,7 +1140,8 @@ describe('Foxx service', () => {
   });
 
   it('should be downloadable', () => {
-    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
+    installFoxx(mount, {type: 'dir',
+buffer: minimalWorkingServicePath});
     const resp = arango.POST('/_api/foxx/download?mount=' + mount, '');
     // expect(resp.headers['content-type']).to.equal('application/zip');
     expect(util.isZipBuffer(resp)).to.equal(true);
@@ -1095,7 +1150,8 @@ describe('Foxx service', () => {
   const readmePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-readme');
 
   it('should deliver the readme', () => {
-    installFoxx(mount, {type: 'dir', buffer: readmePath});
+    installFoxx(mount, {type: 'dir',
+buffer: readmePath});
     const resp = arango.GET('/_api/foxx/readme?mount=' + mount);
     // expect(resp.headers['content-type']).to.equal('text/plain; charset=utf-8');
     expect(resp).to.equal('Please read this.');
@@ -1166,14 +1222,16 @@ describe('Foxx service', () => {
   const scriptPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-setup-teardown');
 
   it('list of scripts should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: scriptPath});
+    installFoxx(mount, {type: 'dir',
+buffer: scriptPath});
     const resp = arango.GET('/_api/foxx/scripts?mount=' + mount);
     expect(resp).to.have.property('setup', 'Setup');
     expect(resp).to.have.property('teardown', 'Teardown');
   });
 
   it('script should be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: scriptPath});
+    installFoxx(mount, {type: 'dir',
+buffer: scriptPath});
     const col = `${mount}_setup_teardown`.replace(/\//, '').replace(/-/g, '_');
     expect(db._collection(col)).to.be.an('object');
     const resp = arango.POST('/_api/foxx/scripts/teardown?mount=' + mount, '');
@@ -1182,21 +1240,24 @@ describe('Foxx service', () => {
   });
 
   it('non-existing script should not be available', () => {
-    installFoxx(mount, {type: 'dir', buffer: scriptPath});
+    installFoxx(mount, {type: 'dir',
+buffer: scriptPath});
     const resp = arango.POST('/_api/foxx/scripts/no?mount=' + mount, '');
   });
 
   const echoPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'echo-script');
 
   it('should pass argv to script and return exports', () => {
-    installFoxx(mount, {type: 'dir', buffer: echoPath});
+    installFoxx(mount, {type: 'dir',
+buffer: echoPath});
     const argv = {hello: 'world'};
     const resp = arango.POST('/_api/foxx/scripts/echo?mount=' + mount, argv);
     expect(resp).to.eql([argv]);
   });
 
   it('should treat array script argv like any other script argv', () => {
-    installFoxx(mount, {type: 'dir', buffer: echoPath});
+    installFoxx(mount, {type: 'dir',
+buffer: echoPath});
     const argv = ['yes', 'please'];
     const resp = arango.POST('/_api/foxx/scripts/echo?mount=' + mount, argv);
     expect(resp).to.eql([argv]);
@@ -1223,50 +1284,76 @@ describe('Foxx service', () => {
   });
 
   it('upgrade should retain production mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath}, "upgrade");
     expect(resp.development).to.eql(false);
   });
 
   it('upgrade should retain development mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath}, "upgrade");
     expect(resp.development).to.eql(true);
   });
 
   it('upgrade should affect production mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: false});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true}, "upgrade");
     expect(resp.development).to.eql(true);
   });
 
   it('upgrade should affect development mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "upgrade");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: false}, "upgrade");
     expect(resp.development).to.eql(false);
   });
 
   it('replace should retain production mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath}, "replace");
     expect(resp.development).to.eql(false);
   });
 
   it('replace should revert development mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath}, "replace");
     expect(resp.development).to.eql(false);
   });
 
   it('replace should affect production mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "replace");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: false});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true}, "replace");
     expect(resp.development).to.eql(true);
   });
 
   it('replace should affect development mode', () => {
-    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
-    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "replace");
+    installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: true});
+    const resp = installFoxx(mount, {type: 'dir',
+buffer: confPath,
+devmode: false}, "replace");
     expect(resp.development).to.eql(false);
   });
 

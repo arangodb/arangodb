@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global arango, getOptions, runSetup, assertTrue, assertFalse, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
 const jsunity = require('jsunity');
@@ -46,7 +46,7 @@ const runWithRetryFailCb = () => {
   require("internal").sleep(2);
 };
 
-function AutoRefillIndexCachesEdge() {
+function AutoRefillIndexCachesEdge () {
   'use strict';
 
   let runCheck = (expectHits) => {
@@ -81,7 +81,7 @@ function AutoRefillIndexCachesEdge() {
       assertEqual(0, stats.cacheHits, stats);
     }
   };
-  
+
   let runRemoveCheck = (expectHits) => {
     // need to wait here for all pending index cache refill ops to finish.
     // if we wouldn't wait here, there would be a race between the refill background
@@ -108,99 +108,107 @@ function AutoRefillIndexCachesEdge() {
       assertEqual(0, stats.cacheHits, stats);
     }
   };
-  
+
   let insertInitialEdges = () => {
     db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), _from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       db._createEdgeCollection(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
-    
-    testInsertEdgeAqlDisabled: function() {
+
+    testInsertEdgeAqlDisabled: function () {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testInsertEdgeAqlEnabled: function() {
+
+    testInsertEdgeAqlEnabled: function () {
       runWithRetry(() => {
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR i IN 0..${n - 1} INSERT {_from: CONCAT('v/test', i), _to: CONCAT('v/test', (i % 25))} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
-    
-    testInsertEdgeBatchDisabled: function() {
+
+    testInsertEdgeBatchDisabled: function () {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let docs = [];
       for (let i = 0; i < n; ++i) {
-        docs.push({_from: 'v/test' + i, _to: 'v/test' + (i % 25)});
+        docs.push({_from: 'v/test' + i,
+_to: 'v/test' + (i % 25)});
       }
       db[cn].insert(docs, { refillIndexCaches: false });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testInsertEdgeBatchEnabled: function() {
+
+    testInsertEdgeBatchEnabled: function () {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let docs = [];
       for (let i = 0; i < n; ++i) {
-        docs.push({_from: 'v/test' + i, _to: 'v/test' + (i % 25)});
+        docs.push({_from: 'v/test' + i,
+_to: 'v/test' + (i % 25)});
       }
       db[cn].insert(docs, { refillIndexCaches: true });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
       runCheck(true);
     },
-    
-    testUpdateEdgeAqlDisabled: function() {
+
+    testUpdateEdgeAqlDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testUpdateEdgeAqlEnabled: function() {
+
+    testUpdateEdgeAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialEdges();
-      
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
-    
-    testUpdateEdgeBatchDisabled: function() {
+
+    testUpdateEdgeBatchDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
@@ -213,13 +221,14 @@ function AutoRefillIndexCachesEdge() {
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testUpdateEdgeBatchEnabled: function() {
+
+    testUpdateEdgeBatchEnabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
@@ -230,118 +239,130 @@ function AutoRefillIndexCachesEdge() {
       db[cn].update(keys, docs, { refillIndexCaches: true });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
       runCheck(true);
     },
-    
-    testReplaceEdgeAqlDisabled: function() {
+
+    testReplaceEdgeAqlDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testReplaceEdgeAqlEnabled: function() {
+
+    testReplaceEdgeAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialEdges();
-      
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR doc IN ${cn} REPLACE doc WITH {_from: doc._from, _to: doc._to, value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
         runCheck(true);
       }, runWithRetryFailCb);
     },
-    
-    testReplaceEdgeBatchDisabled: function() {
+
+    testReplaceEdgeBatchDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
       for (let i = 0; i < n; ++i) {
         keys.push({_key: 'test' + i});
-        docs.push({_from: 'v/test' + i, _to: 'v/test' + (i % 25), value: i + 1 });
+        docs.push({_from: 'v/test' + i,
+_to: 'v/test' + (i % 25),
+value: i + 1 });
       }
       db[cn].replace(keys, docs, { refillIndexCaches: false });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(false);
     },
-    
-    testReplaceEdgeBatchEnabled: function() {
+
+    testReplaceEdgeBatchEnabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
       for (let i = 0; i < n; ++i) {
         keys.push({_key: 'test' + i});
-        docs.push({_from: 'v/test' + i, _to: 'v/test' + (i % 25), value: i + 1 });
+        docs.push({_from: 'v/test' + i,
+_to: 'v/test' + (i % 25),
+value: i + 1 });
       }
       db[cn].replace(keys, docs, { refillIndexCaches: true });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= 2 * n, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= 2 * n, { oldValue,
+newValue });
       runCheck(true);
     },
-    
-    testRemoveEdgeAqlDisabled: function() {
+
+    testRemoveEdgeAqlDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runRemoveCheck(false);
     },
-    
-    testRemoveEdgeAqlEnabled: function() {
+
+    testRemoveEdgeAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialEdges();
-      
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= n / 2, { oldValue,
+newValue });
         runRemoveCheck(true);
       }, runWithRetryFailCb);
     },
-    
-    testRemoveEdgeBatchDisabled: function() {
+
+    testRemoveEdgeBatchDisabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       for (let i = 0; i < n / 2; ++i) {
         keys.push({_key: 'test' + i});
       }
-      db[cn].remove(keys,{ refillIndexCaches: false });
+      db[cn].remove(keys, { refillIndexCaches: false });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runRemoveCheck(false);
     },
-    
-    testRemoveEdgeBatchEnabled: function() {
+
+    testRemoveEdgeBatchEnabled: function () {
       insertInitialEdges();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       for (let i = 0; i < n / 2; ++i) {
@@ -350,15 +371,16 @@ function AutoRefillIndexCachesEdge() {
       db[cn].remove(keys, { refillIndexCaches: true });
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-      assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+      assertTrue(newValue - oldValue >= n / 2, { oldValue,
+newValue });
       runRemoveCheck(true);
-    },
+    }
   };
 }
 
-function AutoRefillIndexCachesVPack() {
+function AutoRefillIndexCachesVPack () {
   'use strict';
-     
+
   let runCheck = (offset, expectHits) => {
     waitForPendingRefills();
 
@@ -375,7 +397,7 @@ function AutoRefillIndexCachesVPack() {
       assertEqual(0, stats.cacheHits, stats);
     }
   };
-  
+
   let runRemoveCheck = (expectHits) => {
     waitForPendingRefills();
 
@@ -389,44 +411,48 @@ function AutoRefillIndexCachesVPack() {
       assertEqual(0, stats.cacheHits, stats);
     }
   };
-  
+
   let insertInitialDocuments = () => {
     db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i), value: i} INTO ${cn}`);
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], cacheEnabled: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+cacheEnabled: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
-    
-    testInsertVPackAqlDisabled: function() {
+
+    testInsertVPackAqlDisabled: function () {
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(0, false);
     },
-    
-    testInsertVPackAqlEnabled: function() {
+
+    testInsertVPackAqlEnabled: function () {
       runWithRetry(() => {
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR i IN 0..${n - 1} INSERT {value: i} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= n, { oldValue,
+newValue });
         runCheck(0, true);
       }, runWithRetryFailCb);
     },
-    
-    testUpdateVPackAqlDisabled: function() {
+
+    testUpdateVPackAqlDisabled: function () {
       insertInitialDocuments();
 
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
@@ -435,26 +461,28 @@ function AutoRefillIndexCachesVPack() {
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(1, false);
     },
-    
-    testUpdateVPackAqlEnabled: function() {
+
+    testUpdateVPackAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
-      
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR doc IN ${cn} UPDATE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= n, { oldValue,
+newValue });
         runCheck(1, true);
       }, runWithRetryFailCb);
     },
-    
-    testUpdateVPackBatchDisabled: function() {
+
+    testUpdateVPackBatchDisabled: function () {
       insertInitialDocuments();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
@@ -467,14 +495,15 @@ function AutoRefillIndexCachesVPack() {
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(1, false);
     },
-    
-    testUpdateVPackBatchEnabled: function() {
+
+    testUpdateVPackBatchEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
-      
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         let keys = [];
         let docs = [];
@@ -484,41 +513,44 @@ function AutoRefillIndexCachesVPack() {
         }
         db[cn].update(keys, docs, { refillIndexCaches: true });
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-        
-        assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+
+        assertTrue(newValue - oldValue >= n, { oldValue,
+newValue });
         runCheck(1, true);
       }, runWithRetryFailCb);
     },
-    
-    testReplaceVPackAqlDisabled: function() {
+
+    testReplaceVPackAqlDisabled: function () {
       insertInitialDocuments();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      
+
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(1, false);
     },
-    
-    testReplaceVPackAqlEnabled: function() {
+
+    testReplaceVPackAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
 
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR doc IN ${cn} REPLACE doc WITH {value: doc.value + 1} INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-        
-        assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+
+        assertTrue(newValue - oldValue >= n, { oldValue,
+newValue });
         runCheck(1, true);
       }, runWithRetryFailCb);
     },
-    
-    testReplaceVPackBatchDisabled: function() {
+
+    testReplaceVPackBatchDisabled: function () {
       insertInitialDocuments();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       let docs = [];
@@ -531,14 +563,15 @@ function AutoRefillIndexCachesVPack() {
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runCheck(1, false);
     },
-    
-    testReplaceVPackBatchEnabled: function() {
+
+    testReplaceVPackBatchEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
-        
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         let keys = [];
         let docs = [];
@@ -549,40 +582,43 @@ function AutoRefillIndexCachesVPack() {
         db[cn].replace(keys, docs, { refillIndexCaches: true });
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= n, { oldValue,
+newValue });
         runCheck(1, true);
       }, runWithRetryFailCb);
     },
 
-    testRemoveVPackAqlDisabled: function() {
+    testRemoveVPackAqlDisabled: function () {
       insertInitialDocuments();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: false }`);
       const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-      
+
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runRemoveCheck(false);
     },
-    
-    testRemoveVPackAqlEnabled: function() {
+
+    testRemoveVPackAqlEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
-        
+
         const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
         db._query(`FOR i IN 0..${n / 2 - 1} REMOVE CONCAT('test', i) INTO ${cn} OPTIONS { refillIndexCaches: true }`);
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
-        
-        assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+
+        assertTrue(newValue - oldValue >= n / 2, { oldValue,
+newValue });
         runRemoveCheck(true);
       }, runWithRetryFailCb);
     },
-    
-    testRemoveVPackBatchDisabled: function() {
+
+    testRemoveVPackBatchDisabled: function () {
       insertInitialDocuments();
-      
+
       const oldValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
       let keys = [];
       for (let i = 0; i < n / 2; ++i) {
@@ -593,11 +629,12 @@ function AutoRefillIndexCachesVPack() {
 
       // 10 here because there may be background operations running that
       // could affect the metrics
-      assertTrue(newValue - oldValue <= 10, { oldValue, newValue });
+      assertTrue(newValue - oldValue <= 10, { oldValue,
+newValue });
       runRemoveCheck(false);
     },
-    
-    testRemoveVPackBatchEnabled: function() {
+
+    testRemoveVPackBatchEnabled: function () {
       runWithRetry(() => {
         insertInitialDocuments();
 
@@ -609,10 +646,11 @@ function AutoRefillIndexCachesVPack() {
         db[cn].remove(keys, { refillIndexCaches: true });
         const newValue = getMetric("rocksdb_cache_auto_refill_loaded_total");
 
-        assertTrue(newValue - oldValue >= n / 2, { oldValue, newValue });
+        assertTrue(newValue - oldValue >= n / 2, { oldValue,
+newValue });
         runRemoveCheck(true);
       }, runWithRetryFailCb);
-    },
+    }
   };
 }
 

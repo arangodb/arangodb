@@ -22,7 +22,7 @@
 // / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-function cmpAccumulator(cmp) {
+function cmpAccumulator (cmp) {
     return function () {
         return {
             updateProgram: ["if",
@@ -44,7 +44,9 @@ function cmpAccumulator(cmp) {
                 ],
                 [true, "cold"]
             ],
-            clearProgram: ["this-set!", {"isSet": false, "value": 0, sender: null}],
+            clearProgram: ["this-set!", {"isSet": false,
+"value": 0,
+sender: null}],
             getProgram: ["if",
                 [
                     ["attrib-get", ["current-value"], "isSet"],
@@ -85,12 +87,12 @@ function cmpAccumulator(cmp) {
                         "hot"]
                 ],
                 [true, "cold"]
-            ],
+            ]
         };
     };
 }
 
-function sumAccumulator() {
+function sumAccumulator () {
     return {
         updateProgram: ["if",
             [["eq?", ["input-value"], 0],
@@ -106,21 +108,21 @@ function sumAccumulator() {
         aggregateStateProgram: ["seq",
             ["this-set!", ["+", ["current-value"], ["input-state"]]],
             "hot"
-        ],
+        ]
     };
 }
 
-function storeAccumulator(clearValue = null) {
+function storeAccumulator (clearValue = null) {
     return {
         updateProgram: ["this-set!", ["input-value"]],
         clearProgram: ["this-set!", clearValue],
         getProgram: ["current-value"],
         setProgram: ["this-set!", ["input-value"]],
-        finalizeProgram: ["current-value"],
+        finalizeProgram: ["current-value"]
     };
 }
 
-function foldAccumulator(operator, initValue) {
+function foldAccumulator (operator, initValue) {
     return function () {
         return {
             updateProgram: ["let", [
@@ -147,12 +149,12 @@ function foldAccumulator(operator, initValue) {
             aggregateStateProgram: ["seq",
                 ["this-set!", [operator, ["current-value"], ["input-state"]]],
                 "hot"
-            ],
+            ]
         };
     };
 }
 
-function listAccumulator() {
+function listAccumulator () {
     return {
         updateProgram: ["seq",
             ["this-set!",
@@ -167,7 +169,7 @@ function listAccumulator() {
         aggregateStateProgram: ["seq",
             ["this-set!", ["list-cat", ["current-value"], ["input-state"]]],
             "hot"
-        ],
+        ]
     };
 }
 

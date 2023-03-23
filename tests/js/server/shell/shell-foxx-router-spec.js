@@ -100,31 +100,31 @@ describe('Tree', function () {
       const tree = new Tree({}, router).root;
       expect(tree.size).to.equal(3);
       expect(tree.get($_TERMINAL).size).to.equal(1);
-      expect(tree.get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_SLASH]);
+      expect(tree.get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_SLASH]);
 
       expect(tree.get('hello').size).to.equal(4);
       expect(tree.get('hello').get($_TERMINAL).size).to.equal(1);
-      expect(tree.get('hello').get($_TERMINAL).get($_ROUTES))
-        .to.eql([POST_HELLO]);
+      expect(tree.get('hello').get($_TERMINAL).get($_ROUTES)).
+        to.eql([POST_HELLO]);
 
       expect(tree.get('hello').get('world').size).to.equal(2);
       expect(tree.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
-      expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_HELLO_WORLD]);
+      expect(tree.get('hello').get('world').get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_HELLO_WORLD]);
 
       expect(tree.get('hello').get('world').get($_WILDCARD).size).to.equal(1);
-      expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE))
-        .to.eql([USE_HELLO_WORLD]);
+      expect(tree.get('hello').get('world').get($_WILDCARD).get($_MIDDLEWARE)).
+        to.eql([USE_HELLO_WORLD]);
 
       expect(tree.get('hello').get($_PARAM).size).to.equal(2);
       expect(tree.get('hello').get($_PARAM).get($_TERMINAL).size).to.equal(1);
-      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_HELLO_PARAM]);
+      expect(tree.get('hello').get($_PARAM).get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_HELLO_PARAM]);
 
       expect(tree.get('hello').get($_PARAM).get($_WILDCARD).size).to.equal(1);
-      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE))
-        .to.eql([USE_HELLO_PARAM]);
+      expect(tree.get('hello').get($_PARAM).get($_WILDCARD).get($_MIDDLEWARE)).
+        to.eql([USE_HELLO_PARAM]);
 
       expect(tree.get('hello').get($_WILDCARD).size).to.equal(1);
       expect(tree.get('hello').get($_WILDCARD).get($_ROUTES).length).to.equal(1);
@@ -133,34 +133,34 @@ describe('Tree', function () {
       expect(child1.size).to.equal(1);
       expect(child1.get('world').size).to.equal(1);
       expect(child1.get('world').get($_TERMINAL).size).to.equal(1);
-      expect(child1.get('world').get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_WORLD]);
+      expect(child1.get('world').get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_WORLD]);
 
       expect(tree.get($_WILDCARD).size).to.equal(2);
-      expect(tree.get($_WILDCARD).get($_MIDDLEWARE))
-        .to.eql([USE_SLASH]);
+      expect(tree.get($_WILDCARD).get($_MIDDLEWARE)).
+        to.eql([USE_SLASH]);
 
       const child2 = tree.get($_WILDCARD).get($_ROUTES)[0].tree.root;
       expect(child2.size).to.equal(4);
       expect(child2.get($_TERMINAL).size).to.equal(1);
-      expect(child2.get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_SLASH2]);
+      expect(child2.get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_SLASH2]);
 
       expect(child2.get('hello').size).to.equal(1);
       expect(child2.get('hello').get('world').size).to.equal(1);
       expect(child2.get('hello').get('world').get($_TERMINAL).size).to.equal(1);
-      expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_HELLO_WORLD2]);
+      expect(child2.get('hello').get('world').get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_HELLO_WORLD2]);
 
       expect(child2.get('potato').size).to.equal(1);
       expect(child2.get('potato').get('salad').size).to.equal(1);
       expect(child2.get('potato').get('salad').get($_TERMINAL).size).to.equal(1);
-      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES))
-        .to.eql([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
+      expect(child2.get('potato').get('salad').get($_TERMINAL).get($_ROUTES)).
+        to.eql([GET_POTATO_SALAD1, GET_POTATO_SALAD2]);
 
       expect(child2.get($_WILDCARD).size).to.equal(1);
-      expect(child2.get($_WILDCARD).get($_ROUTES))
-        .to.eql([GET_ALL]);
+      expect(child2.get($_WILDCARD).get($_ROUTES)).
+        to.eql([GET_ALL]);
     });
   });
 
@@ -183,9 +183,15 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: []},
-          {middleware: USE_SLASH, path: [], suffix: []},
-          {endpoint: GET_SLASH, path: [], suffix: []}
+          {router: router,
+path: [],
+suffix: []},
+          {middleware: USE_SLASH,
+path: [],
+suffix: []},
+          {endpoint: GET_SLASH,
+path: [],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -195,10 +201,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: []},
-          {middleware: USE_SLASH, path: [], suffix: []},
-          {router: CHILD2, path: [], suffix: []},
-          {endpoint: GET_SLASH2, path: [], suffix: []}
+          {router: router,
+path: [],
+suffix: []},
+          {middleware: USE_SLASH,
+path: [],
+suffix: []},
+          {router: CHILD2,
+path: [],
+suffix: []},
+          {endpoint: GET_SLASH2,
+path: [],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -208,10 +222,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: []},
-          {middleware: USE_SLASH, path: [], suffix: []},
-          {router: CHILD2, path: [], suffix: []},
-          {endpoint: GET_ALL, path: [], suffix: []}
+          {router: router,
+path: [],
+suffix: []},
+          {middleware: USE_SLASH,
+path: [],
+suffix: []},
+          {router: CHILD2,
+path: [],
+suffix: []},
+          {endpoint: GET_ALL,
+path: [],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -229,9 +251,15 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello']},
-          {endpoint: POST_HELLO, path: ['hello'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello']},
+          {endpoint: POST_HELLO,
+path: ['hello'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -241,10 +269,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello']},
-          {router: CHILD2, path: [], suffix: ['hello']},
-          {endpoint: GET_ALL, path: [], suffix: ['hello']}
+          {router: router,
+path: [],
+suffix: ['hello']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello']},
+          {router: CHILD2,
+path: [],
+suffix: ['hello']},
+          {endpoint: GET_ALL,
+path: [],
+suffix: ['hello']}
         ]);
         return true;
       })).to.equal(true);
@@ -262,10 +298,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_HELLO_WORLD, path: ['hello', 'world'], suffix: []},
-          {endpoint: GET_HELLO_WORLD, path: ['hello', 'world'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_HELLO_WORLD,
+path: ['hello', 'world'],
+suffix: []},
+          {endpoint: GET_HELLO_WORLD,
+path: ['hello', 'world'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -275,10 +319,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_HELLO_PARAM, path: ['hello', 'world'], suffix: []},
-          {endpoint: GET_HELLO_PARAM, path: ['hello', 'world'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_HELLO_PARAM,
+path: ['hello', 'world'],
+suffix: []},
+          {endpoint: GET_HELLO_PARAM,
+path: ['hello', 'world'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -288,10 +340,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: CHILD1, path: ['hello'], suffix: ['world']},
-          {endpoint: GET_WORLD, path: ['world'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'world']},
+          {router: CHILD1,
+path: ['hello'],
+suffix: ['world']},
+          {endpoint: GET_WORLD,
+path: ['world'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -301,10 +361,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: CHILD2, path: [], suffix: ['hello', 'world']},
-          {endpoint: GET_HELLO_WORLD2, path: ['hello', 'world'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'world']},
+          {router: CHILD2,
+path: [],
+suffix: ['hello', 'world']},
+          {endpoint: GET_HELLO_WORLD2,
+path: ['hello', 'world'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -314,10 +382,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'world']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'world']},
-          {router: CHILD2, path: [], suffix: ['hello', 'world']},
-          {endpoint: GET_ALL, path: [], suffix: ['hello', 'world']}
+          {router: router,
+path: [],
+suffix: ['hello', 'world']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'world']},
+          {router: CHILD2,
+path: [],
+suffix: ['hello', 'world']},
+          {endpoint: GET_ALL,
+path: [],
+suffix: ['hello', 'world']}
         ]);
         return true;
       })).to.equal(true);
@@ -335,10 +411,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'mlady']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'mlady']},
-          {middleware: USE_HELLO_PARAM, path: ['hello', 'mlady'], suffix: []},
-          {endpoint: GET_HELLO_PARAM, path: ['hello', 'mlady'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['hello', 'mlady']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'mlady']},
+          {middleware: USE_HELLO_PARAM,
+path: ['hello', 'mlady'],
+suffix: []},
+          {endpoint: GET_HELLO_PARAM,
+path: ['hello', 'mlady'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -348,10 +432,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['hello', 'mlady']},
-          {middleware: USE_SLASH, path: [], suffix: ['hello', 'mlady']},
-          {router: CHILD2, path: [], suffix: ['hello', 'mlady']},
-          {endpoint: GET_ALL, path: [], suffix: ['hello', 'mlady']}
+          {router: router,
+path: [],
+suffix: ['hello', 'mlady']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['hello', 'mlady']},
+          {router: CHILD2,
+path: [],
+suffix: ['hello', 'mlady']},
+          {endpoint: GET_ALL,
+path: [],
+suffix: ['hello', 'mlady']}
         ]);
         return true;
       })).to.equal(true);
@@ -369,10 +461,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['potato', 'salad']},
-          {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
-          {endpoint: GET_POTATO_SALAD1, path: ['potato', 'salad'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['potato', 'salad']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['potato', 'salad']},
+          {router: CHILD2,
+path: [],
+suffix: ['potato', 'salad']},
+          {endpoint: GET_POTATO_SALAD1,
+path: ['potato', 'salad'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -382,10 +482,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['potato', 'salad']},
-          {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
-          {endpoint: GET_POTATO_SALAD2, path: ['potato', 'salad'], suffix: []}
+          {router: router,
+path: [],
+suffix: ['potato', 'salad']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['potato', 'salad']},
+          {router: CHILD2,
+path: [],
+suffix: ['potato', 'salad']},
+          {endpoint: GET_POTATO_SALAD2,
+path: ['potato', 'salad'],
+suffix: []}
         ]);
         return true;
       })).to.equal(true);
@@ -395,10 +503,18 @@ describe('Tree', function () {
           return false;
         }
         expect(match).to.eql([
-          {router: router, path: [], suffix: ['potato', 'salad']},
-          {middleware: USE_SLASH, path: [], suffix: ['potato', 'salad']},
-          {router: CHILD2, path: [], suffix: ['potato', 'salad']},
-          {endpoint: GET_ALL, path: [], suffix: ['potato', 'salad']}
+          {router: router,
+path: [],
+suffix: ['potato', 'salad']},
+          {middleware: USE_SLASH,
+path: [],
+suffix: ['potato', 'salad']},
+          {router: CHILD2,
+path: [],
+suffix: ['potato', 'salad']},
+          {endpoint: GET_ALL,
+path: [],
+suffix: ['potato', 'salad']}
         ]);
         return true;
       })).to.equal(true);

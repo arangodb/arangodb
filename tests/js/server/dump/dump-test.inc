@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
+/* jshint globalstrict:false, strict:false, maxlen:4000 */
+/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for dump/reload
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for dump/reload
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Wilfried Goesgens
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
   const _ = require('lodash');
@@ -41,9 +41,9 @@
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief test suite
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief test suite
+  // //////////////////////////////////////////////////////////////////////////////
 
   return function (args = {
     // testEmpty
@@ -69,7 +69,7 @@
     // testKeygenPadded
     paddedDocCount: 1001,
     // testKeygenUuid
-    uuidDocCount: 1001,
+    uuidDocCount: 1001
   }) {
     // 'use strict';
     var db = internal.db;
@@ -94,7 +94,7 @@
 
     console.info("Test suite arguments: " + JSON.stringify(args));
 
-    function assertCommonSmartGraphProperties(graph) {
+    function assertCommonSmartGraphProperties (graph) {
       assertTrue(graph.isSmart);
       assertFalse(graph.isSatellite);
       assertEqual(graph.replicationFactor, 2);
@@ -102,7 +102,7 @@
       assertEqual(graph.smartGraphAttribute, 'value');
     }
 
-    function assertCommonEnterpriseGraphProperties(graph) {
+    function assertCommonEnterpriseGraphProperties (graph) {
       assertTrue(graph.isSmart);
       assertFalse(graph.isSatellite);
       assertEqual(graph.replicationFactor, 2);
@@ -110,19 +110,19 @@
       assertFalse(graph.smartGraphAttribute);
     }
 
-    function assertCommonSatelliteGraphProperties(graph) {
+    function assertCommonSatelliteGraphProperties (graph) {
       assertTrue(graph.isSatellite);
       assertFalse(graph.isSmart);
       assertEqual(graph.replicationFactor, "satellite");
       assertEqual(graph.numberOfShards, 1);
     }
 
-    function assertEmptyness(graph) {
+    function assertEmptyness (graph) {
       assertEqual(graph.edgeDefinitions.length, 0);
       assertEqual(graph.orphanCollections.length, 0);
     }
 
-    function assertSmartCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
+    function assertSmartCollectionProperties (graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
       assertEqual(graph.edgeDefinitions, [
         {
           "collection": edgeCollName,
@@ -171,7 +171,7 @@
       }
     }
 
-    function assertEnterpriseCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
+    function assertEnterpriseCollectionProperties (graph, edgeCollName, vertexCollName, orphanCollName, isDisjoint) {
       assertEqual(graph.edgeDefinitions, [
         {
           "collection": edgeCollName,
@@ -219,7 +219,7 @@
       }
     }
 
-    function assertSatelliteCollectionProperties(graph, edgeCollName, vertexCollName, orphanCollName) {
+    function assertSatelliteCollectionProperties (graph, edgeCollName, vertexCollName, orphanCollName) {
       assertEqual(graph.edgeDefinitions, [
         {
           "collection": edgeCollName,
@@ -255,9 +255,9 @@
     }
 
     return {
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test the users
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test the users
+      // //////////////////////////////////////////////////////////////////////////////
 
       testUsers: function () {
         let uName = "foobaruser";
@@ -270,9 +270,9 @@
         assertTrue(users.isValid("foobaruser", "foobarpasswd"));
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test db properties
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test db properties
+      // //////////////////////////////////////////////////////////////////////////////
 
       testDatabaseProperties: function () {
         let old = db._name();
@@ -291,9 +291,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test the empty collection
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test the empty collection
+      // //////////////////////////////////////////////////////////////////////////////
 
       testEmpty: function () {
         var c = db._collection("UnitTestsDumpEmpty");
@@ -307,9 +307,9 @@
         assertEqual(0, c.count());
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test the collection with many documents
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test the collection with many documents
+      // //////////////////////////////////////////////////////////////////////////////
 
       testMany: function () {
         var c = db._collection("UnitTestsDumpMany");
@@ -343,9 +343,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test the edges collection
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test the edges collection
+      // //////////////////////////////////////////////////////////////////////////////
 
       testEdges: function () {
         var c = db._collection("UnitTestsDumpEdges");
@@ -375,9 +375,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test the order of documents
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test the order of documents
+      // //////////////////////////////////////////////////////////////////////////////
 
       testOrder: function () {
         var c = db._collection("UnitTestsDumpOrder");
@@ -391,9 +391,9 @@
         assertEqual(3, c.count());
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test document removal & update
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test document removal & update
+      // //////////////////////////////////////////////////////////////////////////////
 
       testRemoved: function () {
         var c = db._collection("UnitTestsDumpRemoved");
@@ -420,9 +420,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test indexes
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test indexes
+      // //////////////////////////////////////////////////////////////////////////////
 
       testIndexes: function () {
         var c = db._collection("UnitTestsDumpIndexes");
@@ -480,9 +480,9 @@
         assertEqual(0, c.count());
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test truncate
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test truncate
+      // //////////////////////////////////////////////////////////////////////////////
 
       testTruncated: function () {
         var c = db._collection("UnitTestsDumpTruncated");
@@ -496,9 +496,9 @@
         assertEqual(0, c.count());
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test shards
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test shards
+      // //////////////////////////////////////////////////////////////////////////////
 
       testShards: function () {
         let c = db._collection("UnitTestsDumpShards");
@@ -521,9 +521,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test computed values
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test computed values
+      // //////////////////////////////////////////////////////////////////////////////
 
       testComputedValues: function () {
         const c = db._collection("UnitTestsComputedValues");
@@ -543,9 +543,9 @@
         });
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test autoinc keygen
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test autoinc keygen
+      // //////////////////////////////////////////////////////////////////////////////
 
       testKeygenAutoInc: function () {
         var c = db._collection("UnitTestsDumpKeygen");
@@ -587,9 +587,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test padded keygen
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test padded keygen
+      // //////////////////////////////////////////////////////////////////////////////
 
       testKeygenPadded: function () {
         var c = db._collection("UnitTestsDumpKeygenPadded");
@@ -634,9 +634,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test uuid keygen
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test uuid keygen
+      // //////////////////////////////////////////////////////////////////////////////
 
       testKeygenUuid: function () {
         var c = db._collection("UnitTestsDumpKeygenUuid");
@@ -657,7 +657,9 @@
         });
 
         let docs = [];
-        for (var i = 0; i < 1000; ++i) docs.push({"a": i});
+        for (var i = 0; i < 1000; ++i) {
+docs.push({"a": i});
+}
 
         let savedDocs = c.save(docs);
         savedDocs.forEach(doc => {
@@ -665,9 +667,9 @@
         });
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test strings
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test strings
+      // //////////////////////////////////////////////////////////////////////////////
 
       testStrings: function () {
         var c = db._collection("UnitTestsDumpStrings");
@@ -699,9 +701,9 @@
 
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test committed trx
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test committed trx
+      // //////////////////////////////////////////////////////////////////////////////
 
       testTransactionCommit: function () {
         var c = db._collection("UnitTestsDumpTransactionCommit");
@@ -717,9 +719,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test committed trx
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test committed trx
+      // //////////////////////////////////////////////////////////////////////////////
 
       testTransactionUpdate: function () {
         var c = db._collection("UnitTestsDumpTransactionUpdate");
@@ -739,9 +741,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test aborted trx
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test aborted trx
+      // //////////////////////////////////////////////////////////////////////////////
 
       testTransactionAbort: function () {
         var c = db._collection("UnitTestsDumpTransactionAbort");
@@ -751,9 +753,9 @@
         assertTrue(c.exists("foo"));
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test persistent
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test persistent
+      // //////////////////////////////////////////////////////////////////////////////
 
       testPersistent: function () {
         var c = db._collection("UnitTestsDumpPersistent");
@@ -777,9 +779,9 @@
         assertEqual(0, res.length);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test view restoring
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test view restoring
+      // //////////////////////////////////////////////////////////////////////////////
 
       testView: function () {
         try {
@@ -829,9 +831,9 @@
         assertEqual(1, res.length);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test search-alias restoring
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test search-alias restoring
+      // //////////////////////////////////////////////////////////////////////////////
 
       testSearch: function () {
         let collection = db._collection("searchCollection");
@@ -846,7 +848,8 @@
         assertNotEqual(null, search);
         assertEqual("searchSearch", search.name());
         let props = search.properties();
-        assertEqual(props.indexes, [{ collection: "searchCollection", index: "searchIndex" }]);
+        assertEqual(props.indexes, [{ collection: "searchCollection",
+index: "searchIndex" }]);
 
         // After a restore, the Inverted index needs to be rebuilt, therefore
         // we cannot expect that the data is immediately visible. We can only
@@ -872,9 +875,9 @@
         let figures;
         for (let i = 0; i < 100; ++i) {
           require("internal").sleep(0.5);
-          figures = collection.getIndexes(true, true)
-            .find(e => e.name === "searchIndex")
-            .figures;
+          figures = collection.getIndexes(true, true).
+            find(e => e.name === "searchIndex").
+            figures;
           if (figures.numDocs > 5000) {
             break;
           }
@@ -896,9 +899,9 @@
         assertEqual(1, res.length);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test inverted index restoring
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test inverted index restoring
+      // //////////////////////////////////////////////////////////////////////////////
 
       testInvertedIndex: function () {
         let collection = db._collection("collection_documents_0");
@@ -910,12 +913,13 @@
         assertNotEqual(null, search);
         assertEqual("v_collection_documents_0_all", search.name());
         let props = search.properties();
-        assertEqual(props.indexes, [ { 'collection': 'collection_documents_0', 'index': 'collection_documents_0_all' }]);
+        assertEqual(props.indexes, [ { 'collection': 'collection_documents_0',
+'index': 'collection_documents_0_all' }]);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test custom analyzers restoring
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test custom analyzers restoring
+      // //////////////////////////////////////////////////////////////////////////////
       testAnalyzers: function () {
         /*
          * createAnalyzers() creates -> "customInCreateAnalyzers" (CE && EE)
@@ -952,9 +956,9 @@
         };
 
         assertNotEqual(null, db._collection("_analyzers"));
-        assertEqual((isEnterprise) ?
-            7 : // plus 1 for a SmartGraph in Enterprise
-            6,  // only 1 stored custom analyzers
+        assertEqual((isEnterprise)
+            ? 7 // plus 1 for a SmartGraph in Enterprise
+            : 6, // only 1 stored custom analyzers
           db._analyzers.count());
 
         _.each(createdAnalyzersInSrc, (analyzerObject) => {
@@ -964,9 +968,9 @@
         assertNull(analyzers.analyzer("custom_dst"));
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test link on analyzers collection
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test link on analyzers collection
+      // //////////////////////////////////////////////////////////////////////////////
       testIndexAnalyzerCollection: function () {
         let res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
         assertEqual(res.length, db._analyzers.count());
@@ -1020,13 +1024,13 @@
             {
               collection: satelliteEdgeCollection1Name,
               from: [satelliteVertexCollection1Name],
-              to: [satelliteVertexCollection2Name],
+              to: [satelliteVertexCollection2Name]
             },
             {
               collection: satelliteEdgeCollection2Name,
               from: [satelliteVertexCollection2Name],
-              to: [satelliteVertexCollection1Name],
-            },
+              to: [satelliteVertexCollection1Name]
+            }
           ].sort();
           assertEqual(expectedEdgeDefinitions, graphInfo.graph.edgeDefinitions);
         }
@@ -1244,7 +1248,7 @@
         let c = db._collection(edges);
         let p = c.properties();
         assertEqual(3, c.type()); // Edges
-        //assertEqual(5, p.numberOfShards);
+        // assertEqual(5, p.numberOfShards);
         assertTrue(p.isSmart);
         assertEqual(300, c.count());
       },
@@ -1332,7 +1336,7 @@
          * 10 -> 11 -> 12
          */
 
-        //Validate that everything is wired to a SmartGraph correctly
+        // Validate that everything is wired to a SmartGraph correctly
         const res = db._query(q).toArray();
         assertEqual(4, res.length);
         assertEqual("8", res[0].value);
@@ -1370,7 +1374,7 @@
          * 10 <- 11 <- 12
          */
 
-        //Validate that everything is wired to a SmartGraph correctly
+        // Validate that everything is wired to a SmartGraph correctly
         const res = db._query(q).toArray();
         assertEqual('8 8 8 8 9 9 11 11 12 12 12 12'.split(' '), res);
       },
@@ -1455,9 +1459,9 @@
         assertEqual(props.consolidationPolicy.type, "bytes_accum");
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test whether the test collection has been restored
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test whether the test collection has been restored
+      // //////////////////////////////////////////////////////////////////////////////
       testSmartGraphAttribute: function () {
         assertEqual(db.UnitTestRestoreSmartGraphRegressionVertices.toArray().length, 1);
         let doc = db.UnitTestRestoreSmartGraphRegressionVertices.toArray()[0];
@@ -1465,9 +1469,9 @@
         assertTrue(doc._key.startsWith("cheese:"));
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test whether hotbackup restore restores the uniqid
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test whether hotbackup restore restores the uniqid
+      // //////////////////////////////////////////////////////////////////////////////
       testLatestId: function () {
         if (arango.getRole() === "COORDINATOR") {
           // Only executed in the cluster
@@ -1480,9 +1484,9 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test smart graph restores
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test smart graph restores
+      // //////////////////////////////////////////////////////////////////////////////
       testEmptySmartGraph: function () {
         if (!isEnterprise) {
           return;
@@ -1730,12 +1734,14 @@
         const thirdVertex = vColl.save({value: "B"});
         assertEqual(vColl.count(), 103);
 
-        const firstEdge = eColl.save({_from: firstVertex._id, _to: secondVertex._id});
+        const firstEdge = eColl.save({_from: firstVertex._id,
+_to: secondVertex._id});
         assertEqual(eColl.count(), 101);
 
         try {
           // MUST fail
-          eColl.save({_from: firstVertex._id, _to: thirdVertex._id});
+          eColl.save({_from: firstVertex._id,
+_to: thirdVertex._id});
           fail();
         } catch (err) {
           assertEqual(arangodb.ERROR_INVALID_DISJOINT_SMART_EDGE, err.errorNum);

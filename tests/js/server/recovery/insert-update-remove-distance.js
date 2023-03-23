@@ -48,7 +48,9 @@ function runSetup () {
 
       var i, c = db._collection('UnitTestsRecovery');
       for (i = 0; i < 50000; ++i) {
-        c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+        c.save({ _key: 'test' + i,
+value1: 'test' + i,
+value2: i });
       }
 
       for (i = 0; i < 50000; ++i) {
@@ -56,7 +58,8 @@ function runSetup () {
       }
 
       for (i = 0; i < 50000; ++i) {
-        c.update('test' + i, { value3: 'additional value', value4: i });
+        c.update('test' + i, { value3: 'additional value',
+value4: i });
       }
 
       for (i = 0; i < 50000; ++i) {

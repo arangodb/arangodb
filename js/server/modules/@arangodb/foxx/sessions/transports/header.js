@@ -30,10 +30,10 @@ module.exports = function headerTransport (cfg) {
   }
   const name = cfg.name || 'X-Session-Id';
   return {
-    get(req) {
+    get (req) {
       return req.headers[name.toLowerCase()];
     },
-    set(res, value) {
+    set (res, value) {
       res.set(name, value);
     }
   };

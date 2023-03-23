@@ -38,24 +38,26 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   c = db._create('UnitTestsRecovery1', { keyOptions: { type: 'autoincrement',
-    offset: 0, increment: 1 } } );
+    offset: 0,
+increment: 1 } });
   c.save({ name: 'a' });
   c.save({ name: 'b' });
   c.save({ name: 'c' });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', { keyOptions: { type: 'autoincrement',
-    offset: 10, increment: 5 } } );
+    offset: 10,
+increment: 5 } });
   c.save({ name: 'a' });
   c.save({ name: 'b' });
   c.save({ name: 'c' });
-  
+
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3', { keyOptions: { type: 'uuid' } });
   c.save({ name: 'a' });
   c.save({ name: 'b' });
   c.save({ name: 'c' });
-  
+
   db._drop('UnitTestsRecovery4');
   c = db._create('UnitTestsRecovery4', { keyOptions: { type: 'padded' } });
   c.save({ name: 'a' });
@@ -86,25 +88,29 @@ function recoverySuite () {
 
       c = db._collection('UnitTestsRecovery1');
       assertEqual("autoincrement", c.properties()["keyOptions"]["type"]);
-      assertEqual(["1", "2", "3"], c.toArray().map(function(doc) { return doc._key; }).sort());
+      assertEqual(["1", "2", "3"], c.toArray().map(function (doc) {
+ return doc._key;
+}).sort());
       d = c.save({ name: "d"});
       assertEqual("4", d._key);
 
       c = db._collection('UnitTestsRecovery2');
       assertEqual("autoincrement", c.properties()["keyOptions"]["type"]);
-      assertEqual(["10", "15", "20"], c.toArray().map(function(doc) { return doc._key; }).sort());
+      assertEqual(["10", "15", "20"], c.toArray().map(function (doc) {
+ return doc._key;
+}).sort());
       d = c.save({ name: "d"});
       assertEqual("25", d._key);
-      
+
       c = db._collection('UnitTestsRecovery3');
       assertEqual("uuid", c.properties()["keyOptions"]["type"]);
-      c.toArray().forEach(function(doc) { 
+      c.toArray().forEach(function (doc) {
         assertMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/, doc._key);
       });
-      
+
       c = db._collection('UnitTestsRecovery4');
       assertEqual("padded", c.properties()["keyOptions"]["type"]);
-      c.toArray().forEach(function(doc) { 
+      c.toArray().forEach(function (doc) {
         assertMatch(/^[0-9a-f]{16}$/, doc._key);
       });
     }

@@ -1,27 +1,27 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Yuriy Popov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Yuriy Popov
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -29,21 +29,21 @@ var analyzers = require("@arangodb/analyzers");
 const expect = require('chai').expect;
 const wait = require('internal').wait;
 var internal = require('internal');
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function repairAnalyzersRevisionTestSuite () {
 
-  function waitForRevision(dbName, revisionNumber, buildingRevision) {
+  function waitForRevision (dbName, revisionNumber, buildingRevision) {
     let tries = 0;
-    while(true) {
+    while (true) {
       global.ArangoClusterInfo.flush();
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
-      if ((revision.revision === revisionNumber && 
-             revision.buildingRevision === buildingRevision) || 
+      if ((revision.revision === revisionNumber &&
+             revision.buildingRevision === buildingRevision) ||
           tries >= 2) {
         assertEqual(revisionNumber, revision.revision);
         assertEqual(buildingRevision, revision.buildingRevision);
@@ -54,16 +54,16 @@ function repairAnalyzersRevisionTestSuite () {
     }
     return undefined;
   }
-  
-  function waitForCompletedRevision(dbName, revisionNumber) {
+
+  function waitForCompletedRevision (dbName, revisionNumber) {
     return waitForRevision(dbName, revisionNumber, revisionNumber);
   }
 
-  function waitForAllAgencyJobs() {
+  function waitForAllAgencyJobs () {
     const prefix = global.ArangoAgency.prefix();
     const paths = [
       "Target/ToDo/",
-      "Target/Pending/",
+      "Target/Pending/"
     ].map(p => `${prefix}/${p}`);
 
     const waitInterval = 1.0;
@@ -73,7 +73,7 @@ function repairAnalyzersRevisionTestSuite () {
     let timeout = false;
     const start = Date.now();
 
-    while (unfinishedJobs > 0 && ! timeout) {
+    while (unfinishedJobs > 0 && !timeout) {
       const duration = (Date.now() - start) / 1000;
       const result = global.ArangoAgency.read([paths]);
       const target = result[0][prefix]["Target"];
@@ -87,24 +87,24 @@ function repairAnalyzersRevisionTestSuite () {
 
     if (timeout) {
       const duration = (Date.now() - start) / 1000;
-      console.error(`Timeout after waiting for ${duration}s on all agency jobs. `
-        + `${unfinishedJobs} jobs aren't finished.`);
+      console.error(`Timeout after waiting for ${duration}s on all agency jobs. ` +
+        `${unfinishedJobs} jobs aren't finished.`);
     }
 
     return unfinishedJobs === 0;
-  };
+  }
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief RepairAnalyzersRevision tests
-////////////////////////////////////////////////////////////////////////////////
-    testRepairPlan: function() {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief RepairAnalyzersRevision tests
+// //////////////////////////////////////////////////////////////////////////////
+    testRepairPlan: function () {
       const n = 2;
       const dbName = "testDbName";
       let revisionNumber = 0;
@@ -113,7 +113,9 @@ function repairAnalyzersRevisionTestSuite () {
       // Create databases
       for (let i = 0; i < n; i++) {
         db._useDatabase("_system");
-        try { db._dropDatabase(dbName + i); } catch (e) {}
+        try {
+ db._dropDatabase(dbName + i);
+} catch (e) {}
 
         db._createDatabase(dbName + i);
         db._useDatabase(dbName + i);
@@ -149,13 +151,13 @@ function repairAnalyzersRevisionTestSuite () {
       for (let i = 0; i < n; i++) {
         waitForCompletedRevision(dbName + i, revisionNumber);
         db._useDatabase(dbName + i);
-        assertFalse(null === analyzers.analyzer("valid"));
+        assertFalse(analyzers.analyzer("valid") === null);
         analyzers.remove("valid", true);
         waitForCompletedRevision(dbName + i, revisionNumber + 1);
       }
 
       // Break but in other direction
-      revisionNumber = revisionNumber + 2; 
+      revisionNumber = revisionNumber + 2;
       for (let i = 0; i < n; i++) {
         db._useDatabase(dbName + i);
         analyzers.save("valid", "identity");
@@ -180,9 +182,11 @@ function repairAnalyzersRevisionTestSuite () {
         waitForCompletedRevision(dbName + i, revisionNumber - 1);
         db._useDatabase(dbName + i);
         // revision is rollbacked. This analyzer is no more present
-        assertTrue(null === analyzers.analyzer("valid"));
+        assertTrue(analyzers.analyzer("valid") === null);
         // and we could create new one with same name
-        analyzers.save("valid", "ngram", {min:2, max:3, preserveOriginal:true});
+        analyzers.save("valid", "ngram", {min: 2,
+max: 3,
+preserveOriginal: true});
         analyzers.toArray();
         let ngram = analyzers.analyzer("valid");
         assertEqual("ngram", ngram.type());
@@ -196,9 +200,9 @@ function repairAnalyzersRevisionTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(repairAnalyzersRevisionTestSuite);
 

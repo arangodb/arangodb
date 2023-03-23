@@ -45,9 +45,10 @@ function runSetup () {
 
   db._drop(colName1);
   let c = db._create(colName1);
-  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
 
-  let docs =  [];
+  let docs = [];
   for (let i = 0; i < 1000; ++i) {
     docs.push({ _key: "test_" + i });
   }
@@ -100,7 +101,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testRevisionTreeCounts: function() {
+    testRevisionTreeCounts: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1000);
@@ -112,7 +113,7 @@ function recoverySuite () {
       const c3 = db._collection(colName3);
       assertEqual(c3._revisionTreeSummary().count, c3.count());
       assertEqual(c3._revisionTreeSummary().count, 0);
-    },
+    }
 
   };
 }

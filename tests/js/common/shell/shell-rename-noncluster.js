@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertMatch */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the random document selector 
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the random document selector
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -39,21 +39,21 @@ function RenameSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn2);
       db._drop(cn1);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check AQL query after renaming collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check AQL query after renaming collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAqlAfterRename : function () {
+    testAqlAfterRename: function () {
       let c = db._create(cn1);
       let docs = [];
       for (let i = 0; i < 10000; ++i) {
@@ -62,7 +62,7 @@ function RenameSuite () {
           db.UnitTestsRename1.insert(docs);
           docs = [];
         }
-      } 
+      }
       c.rename(cn2);
 
       // recreate collection with old name

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertNotEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the deadlock detection
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Christoph Uhde
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the deadlock detection
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Christoph Uhde
+// / @author Copyright 2018, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -36,9 +36,9 @@ var tasks = require("@arangodb/tasks");
 
 var ERRORS = arangodb.errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ExclusiveSuite () {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
@@ -47,43 +47,46 @@ function ExclusiveSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._create(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflict : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+    testExclusiveExpectConflict: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-              
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
+
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
 
           db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
+            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ],
+exclusive: [ ] },
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 100000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner1" });
               }
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
             }
@@ -91,18 +94,20 @@ function ExclusiveSuite () {
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
 
       try {
         db._executeTransaction({
-          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
+          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ],
+exclusive: [ ] },
           action: function () {
             let db = require("internal").db;
             for (let i = 0; i < 100000; ++i) {
-              db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+              db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner2" });
             }
             db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
           }
@@ -123,17 +128,21 @@ function ExclusiveSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) {
+ return l._key < r._key;
+});
       assertNotEqual(docs[0].value, docs[1].value);
     },
 
-    testExclusiveExpectNoConflict : function () {
+    testExclusiveExpectNoConflict: function () {
       assertEqual(0, c2.count());
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
@@ -143,7 +152,7 @@ function ExclusiveSuite () {
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 100000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
+                db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner1" });
               }
               db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
             }
@@ -151,7 +160,8 @@ function ExclusiveSuite () {
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
@@ -161,7 +171,7 @@ function ExclusiveSuite () {
         action: function () {
           let db = require("internal").db;
           for (let i = 0; i < 100000; ++i) {
-            db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
+            db.UnitTestsExclusiveCollection1.update("XXX", { name: "runner2" });
           }
           db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
         }
@@ -176,20 +186,24 @@ function ExclusiveSuite () {
           break;
         }
       }
-      
+
       // both transactions should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) {
+ return l._key < r._key;
+});
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     },
 
-    testExclusiveExpectConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+    testExclusiveExpectConflictAQL: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
@@ -201,7 +215,8 @@ function ExclusiveSuite () {
       });
 
       try {
-        db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+        db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
         while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
           require("internal").sleep(0.02);
         }
@@ -225,16 +240,20 @@ function ExclusiveSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) {
+ return l._key < r._key;
+});
       assertNotEqual(docs[0].value, docs[1].value);
     },
-    
-    testExclusiveExpectNoConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
+
+    testExclusiveExpectNoConflictAQL: function () {
+      c1.insert({ "_key": "XXX",
+"name": "initial" });
       let task = tasks.register({
-        command: function() {
+        command: function () {
           let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
+          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1",
+value: false });
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
@@ -245,7 +264,8 @@ function ExclusiveSuite () {
         }
       });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
+      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2",
+value: false });
       while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
         require("internal").sleep(0.02);
       }
@@ -266,17 +286,19 @@ function ExclusiveSuite () {
 
       // both transactions should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
+      let docs = c2.toArray().sort(function (l, r) {
+ return l._key < r._key;
+});
       assertTrue(docs[0].value);
       assertTrue(docs[1].value);
     }
-  
+
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ExclusiveSuite);
 

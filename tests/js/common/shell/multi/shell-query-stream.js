@@ -1,42 +1,42 @@
-/*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertUndefined, fail */
+/* jshint globalstrict:false, strict:false, maxlen:1000*/
+/* global assertEqual, assertTrue, assertUndefined, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the statement class
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the statement class
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("internal").db;
 const aqlfunctions = require("@arangodb/aql/functions");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: stream cursors
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: stream cursors
+// //////////////////////////////////////////////////////////////////////////////
 
-function StreamCursorSuite() {
+function StreamCursorSuite () {
   'use strict';
 
   const cn = "StreamCursorCollection";
@@ -53,18 +53,22 @@ function StreamCursorSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: 'skiplist', fields: ["value1"] });
-      c.ensureIndex({ type: 'skiplist', fields: ["value2"] });
+      c.ensureIndex({ type: 'skiplist',
+fields: ["value1"] });
+      c.ensureIndex({ type: 'skiplist',
+fields: ["value2"] });
 
       let docs = [];
       for (let i = 0; i < 5000; i++) {
-        docs.push({ value1: i % 10, value2: i % 25, value3: i % 25 });
+        docs.push({ value1: i % 10,
+value2: i % 25,
+value3: i % 25 });
       }
       c.insert(docs);
 
@@ -72,12 +76,14 @@ function StreamCursorSuite() {
         aqlfunctions.unregister("my::test");
       } catch (err) { }
 
-      aqlfunctions.register("my::test", function () { return 42; });
+      aqlfunctions.register("my::test", function () {
+ return 42;
+});
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       try {
@@ -87,9 +93,9 @@ function StreamCursorSuite() {
       c.drop();
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test cursor
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test cursor
+    // //////////////////////////////////////////////////////////////////////////////
 
     testQueries: function () {
       queries.forEach(q => {
@@ -136,7 +142,8 @@ function StreamCursorSuite() {
     // Regression test, could fail in cluster (in 3.6)
     testDisposeCursorWithCollection: function () {
       let cursor = db._query("FOR doc IN @@cn RETURN doc", { "@cn": cn },
-        { stream: true, batchSize: 1000 });
+        { stream: true,
+batchSize: 1000 });
 
       assertUndefined(cursor.count());
       let i = 10;
@@ -172,7 +179,10 @@ function StreamCursorSuite() {
 
     // Regression test, this led to an issue on shutdown
     testNotCleaningUp: function () {
-      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2, count: true, stream: true, ttl: 3 });
+      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2,
+count: true,
+stream: true,
+ttl: 3 });
       assertEqual(cursor.hasNext(), true);
       if (cursor._hasMore) { // only exists in shell
         assertEqual(cursor._hasMore, true);

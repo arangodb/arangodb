@@ -166,7 +166,7 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
-  
+
   if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
     whichFilter.filter = 'non-windows';
     return false;
@@ -266,9 +266,9 @@ function splitBuckets (options, cases) {
 function doOnePathInner (path) {
   return _.filter(fs.list(makePathUnix(path)),
                   function (p) {
-                    return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
-                  })
-    .map(function (x) {
+                    return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');
+                  }).
+    map(function (x) {
       return fs.join(makePathUnix(path), x);
     }).sort();
 }
@@ -276,14 +276,14 @@ function doOnePathInner (path) {
 function scanTestPaths (paths, options) {
   // add Enterprise Edition tests
   if (isEnterprise()) {
-    paths = paths.concat(paths.map(function(p) {
+    paths = paths.concat(paths.map(function (p) {
       return 'enterprise/' + p;
     }));
   }
 
   let allTestCases = [];
 
-  paths.forEach(function(p) {
+  paths.forEach(function (p) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
 
@@ -306,7 +306,7 @@ function scanTestPaths (paths, options) {
 }
 
 
-function getTestCode(file, options, instanceManager) {
+function getTestCode (file, options, instanceManager) {
   let filter;
   if (options.testCase) {
     filter = JSON.stringify(options.testCase);
@@ -334,12 +334,12 @@ function getTestCode(file, options, instanceManager) {
 // / @brief runs a remote unittest file using /_admin/execute
 // //////////////////////////////////////////////////////////////////////////////
 
-class runOnArangodRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
+class runOnArangodRunner extends testRunnerBase {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "onRemoteArangod";
   }
-  runOneTest(file) {
+  runOneTest (file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
       let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
@@ -363,9 +363,9 @@ class runOnArangodRunner extends testRunnerBase{
         if ((reply.code === 500) &&
             reply.hasOwnProperty('message') &&
             (
-              (reply.message.search('Request timeout reached') >= 0 ) ||
-                (reply.message.search('timeout during read') >= 0 ) ||
-                (reply.message.search('Connection closed by remote') >= 0 )
+              (reply.message.search('Request timeout reached') >= 0) ||
+                (reply.message.search('timeout during read') >= 0) ||
+                (reply.message.search('Connection closed by remote') >= 0)
             )) {
           print(RED + Date() + " request timeout reached (" + reply.message +
                 "), aborting test execution" + RESET);
@@ -396,7 +396,7 @@ class runOnArangodRunner extends testRunnerBase{
   }
 }
 
-function readTestResult(path, rc, testCase) {
+function readTestResult (path, rc, testCase) {
   const jsonFN = fs.join(path, 'testresult.json');
   let buf;
   try {
@@ -448,7 +448,7 @@ function readTestResult(path, rc, testCase) {
   }
 }
 
-function writeTestResult(path, data) {
+function writeTestResult (path, data) {
   const jsonFN = fs.join(path, 'testresult.json');
   fs.write(jsonFN, JSON.stringify(data));
 }
@@ -458,15 +458,15 @@ function writeTestResult(path, data) {
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-class runInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
+class runInArangoshRunner extends testRunnerBase {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "forkedArangosh";
   }
-  getEndpoint() {
+  getEndpoint () {
     return this.instanceManager.findEndpoint();
   }
-  runOneTest(file) {
+  runOneTest (file) {
     require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = pu.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
@@ -497,12 +497,12 @@ class runInArangoshRunner extends testRunnerBase{
 // / @brief runs a local unittest file in the current arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-class runLocalInArangoshRunner extends testRunnerBase{
-  constructor(options, testname, ...optionalArgs) {
+class runLocalInArangoshRunner extends testRunnerBase {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "localArangosh";
   }
-  runOneTest(file) {
+  runOneTest (file) {
     let endpoint = arango.getEndpoint();
     if (this.options.vst || this.options.http2) {
       let newEndpoint = this.instanceManager.findEndpoint();
@@ -537,7 +537,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
+          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`
         };
       }
       if (result === undefined) {
@@ -550,7 +550,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
       return result;
     } catch (ex) {
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
-      print(RED + 'test has thrown: ' + (timeout? "because of timeout in execution":""));
+      print(RED + 'test has thrown: ' + (timeout ? "because of timeout in execution" : ""));
       print(ex, ex.stack);
       print(RESET);
       return {

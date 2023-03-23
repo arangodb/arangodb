@@ -37,23 +37,23 @@ var fs = require('fs');
 // / @brief errors
 // //////////////////////////////////////////////////////////////////////////////
 
-Object.keys(internal.errors).forEach(function(key) {
+Object.keys(internal.errors).forEach(function (key) {
   exports[key] = internal.errors[key].code;
 });
 
-function isAqlQuery(query) {
+function isAqlQuery (query) {
   return Boolean(query && typeof query.query === "string" && query.bindVars);
 }
 
-function isGeneratedAqlQuery(query) {
+function isGeneratedAqlQuery (query) {
   return isAqlQuery(query) && typeof query._source === "function";
 }
 
-function isAqlLiteral(literal) {
+function isAqlLiteral (literal) {
   return Boolean(literal && typeof literal.toAQL === "function");
 }
 
-exports.aql = function aql(templateStrings, ...args) {
+exports.aql = function aql (templateStrings, ...args) {
   const strings = [...templateStrings];
   const bindVars = {};
   const bindVals = [];
@@ -105,7 +105,8 @@ exports.aql = function aql(templateStrings, ...args) {
   return {
     query,
     bindVars,
-    _source: () => ({ strings, args })
+    _source: () => ({ strings,
+args })
   };
 };
 
@@ -114,7 +115,7 @@ exports.aql.literal = function (value) {
     return value;
   }
   return {
-    toAQL() {
+    toAQL () {
       if (value === undefined) {
         return "";
       }
@@ -137,7 +138,9 @@ exports.aql.join = function (values, sep = " ") {
 };
 
 exports.isValidDocumentKey = function (documentKey) {
-  if (!documentKey) return false;
+  if (!documentKey) {
+return false;
+}
   // see VocBase/KeyGenerator.cpp keyCharLookupTable
   return /^[-_!$%'()*+,.:;=@0-9a-z]+$/i.test(documentKey);
 };
@@ -156,7 +159,7 @@ exports.ArangoError = internal.ArangoError;
 // / @brief defines a module
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.defineModule = function(path, file) {
+exports.defineModule = function (path, file) {
   let content = fs.read(file);
   let mc = internal.db._collection('_modules');
 
@@ -164,9 +167,11 @@ exports.defineModule = function(path, file) {
   let m = mc.firstExample({path: path});
 
   if (m === null) {
-    mc.save({path: path, content: content});
+    mc.save({path: path,
+content: content});
   } else {
-    mc.replace(m, {path: path, content: content});
+    mc.replace(m, {path: path,
+content: content});
   }
 };
 
@@ -181,7 +186,7 @@ exports.defineModule = function(path, file) {
 // / If @FA{path} is empty, the url `./` will be returned.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.normalizeURL = function(path) {
+exports.normalizeURL = function (path) {
   var i;
   var n;
   var p;
@@ -252,7 +257,7 @@ exports.inspect = internal.inspect;
 // / function here.
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.output = function() {
+exports.output = function () {
   internal.output.apply(internal.output, arguments);
 };
 
@@ -284,7 +289,7 @@ exports.printObject = internal.printObject;
 // / @brief 2D ASCII table printing
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.printTable = function(list, columns, options) {
+exports.printTable = function (list, columns, options) {
   options = options || {};
   if (options.totalString === undefined) {
     options.totalString = '%s document(s)\n';
@@ -298,7 +303,7 @@ exports.printTable = function(list, columns, options) {
   } else if (Array.isArray(columns)) {
     what = {};
 
-    columns.forEach(function(col) {
+    columns.forEach(function (col) {
       what[col] = null;
     });
   } else {
@@ -330,7 +335,7 @@ exports.printTable = function(list, columns, options) {
       descriptions.push({
         id: col,
         fixedLength: fixedLength,
-        length: fixedLength || name.length,
+        length: fixedLength || name.length
       });
 
       matrix[0][j++] = name;
@@ -338,9 +343,9 @@ exports.printTable = function(list, columns, options) {
   }
 
   // determine values & max widths
-  list.forEach(function(row, i) {
+  list.forEach(function (row, i) {
     matrix[i + 1] = [];
-    descriptions.forEach(function(col) {
+    descriptions.forEach(function (col) {
       if (row.hasOwnProperty(col.id)) {
         var value;
         if (options.prettyStrings && typeof row[col.id] === 'string') {
@@ -361,9 +366,9 @@ exports.printTable = function(list, columns, options) {
     });
   });
 
-  var divider = function() {
+  var divider = function () {
     var parts = [];
-    descriptions.forEach(function(desc) {
+    descriptions.forEach(function (desc) {
       parts.push(exports.stringPadding('', desc.length, '-', 'r'));
     });
 
@@ -374,16 +379,16 @@ exports.printTable = function(list, columns, options) {
     return parts.join('   ') + '\n';
   };
 
-  var compose = function() {
+  var compose = function () {
     var result = '';
 
     if (options.framed) {
       result += divider();
     }
-    matrix.forEach(function(row, i) {
+    matrix.forEach(function (row, i) {
       var parts = [];
 
-      row.forEach(function(col, j) {
+      row.forEach(function (col, j) {
         var len = descriptions[j].length,
           value = row[j];
         if (value.length > len) {
@@ -427,9 +432,9 @@ exports.printTable = function(list, columns, options) {
 // / @brief stringPadding
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.stringPadding = function(str, len, pad, dir) {
+exports.stringPadding = function (str, len, pad, dir) {
   // yes, this is more code than new Array(length).join(chr), but it makes jslint happy
-  function fill(length, chr) {
+  function fill (length, chr) {
     var result = '',
       i;
     for (i = 0; i < length; ++i) {
@@ -473,11 +478,11 @@ exports.stringPadding = function(str, len, pad, dir) {
 // / @brief throws an error in case of missing file
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.throwFileNotFound = function(msg) {
+exports.throwFileNotFound = function (msg) {
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_FILE_NOT_FOUND.code,
     errorMessage:
-      exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg),
+      exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
   });
 };
 
@@ -485,11 +490,11 @@ exports.throwFileNotFound = function(msg) {
 // / @brief throws an error in case of a bad parameter
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.throwBadParameter = function(msg) {
+exports.throwBadParameter = function (msg) {
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_BAD_PARAMETER.code,
     errorMessage:
-      exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg),
+      exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
   });
 };
 
@@ -497,7 +502,7 @@ exports.throwBadParameter = function(msg) {
 // / @brief checks parameter, throws an error if missing
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkParameter = function(usage, descs, vars) {
+exports.checkParameter = function (usage, descs, vars) {
   var i;
 
   for (i = 0; i < descs.length; ++i) {
@@ -525,7 +530,7 @@ exports.checkParameter = function(usage, descs, vars) {
 // / @brief checks server's license status
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.enterpriseLicenseVisibility = function() {
+exports.enterpriseLicenseVisibility = function () {
 
   // This is only a best effort to inform the customer of any upcoming / existing
   // enterprise license issues. If the counterpart does not expose the license
@@ -572,7 +577,7 @@ exports.enterpriseLicenseVisibility = function() {
 // / @brief generate info message for newer version(s) available
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkAvailableVersions = function() {
+exports.checkAvailableVersions = function () {
   var version = internal.version;
   var isServer = require('@arangodb').isServer;
   var console = require('console');
@@ -584,7 +589,7 @@ exports.checkAvailableVersions = function() {
     log = internal.print;
   }
 
-  if(internal.isEnterprise()) {
+  if (internal.isEnterprise()) {
     exports.enterpriseLicenseVisibility();
   }
 
@@ -654,13 +659,13 @@ exports.checkAvailableVersions = function() {
     }
 
     var u =
-      'https://www.arangodb.com/versions.php?'
-        + 'version=' + encodeURIComponent(version)
-        + '&platform=' + encodeURIComponent(platform)
-        + '&engine=' + encodeURIComponent(engine)
-        + '&license=' + encodeURIComponent(license)
-        + '&source=' + (isServer ? "arangod" : "arangosh")
-        + '&hash=' + encodeURIComponent(hash);
+      'https://www.arangodb.com/versions.php?' +
+        'version=' + encodeURIComponent(version) +
+        '&platform=' + encodeURIComponent(platform) +
+        '&engine=' + encodeURIComponent(engine) +
+        '&license=' + encodeURIComponent(license) +
+        '&source=' + (isServer ? "arangod" : "arangosh") +
+        '&hash=' + encodeURIComponent(hash);
     var d2 = internal.download(u, '', {timeout: 3});
     var v = JSON.parse(d2.body);
 
@@ -700,7 +705,7 @@ exports.query = function query (strings, ...args) {
   if (!Array.isArray(strings)) {
     const options = strings;
     const extra = args;
-    return function queryWithOptions(strings, ...args) {
+    return function queryWithOptions (strings, ...args) {
       return internal.db._query(exports.aql(strings, ...args), options, ...extra);
     };
   }

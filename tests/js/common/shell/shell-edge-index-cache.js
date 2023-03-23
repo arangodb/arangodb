@@ -52,11 +52,13 @@ function EdgeIndexCacheSuite () {
       db._drop(vn);
       db._drop(en);
     },
-    
+
     testEdgeCacheRemoveNonEmpty: function () {
       vertex.insert({ _key: "test1" });
       vertex.insert({ _key: "test2" });
-      edge.insert({ _from: vn + "/test1", _to: vn + "/test2", _key: "test" });
+      edge.insert({ _from: vn + "/test1",
+_to: vn + "/test2",
+_key: "test" });
 
       assertEqual(2, vertex.count());
       assertEqual(1, edge.count());
@@ -71,16 +73,17 @@ function EdgeIndexCacheSuite () {
       edge.remove("test");
       assertEqual(2, vertex.count());
       assertEqual(0, edge.count());
-      
+
       // execute to fill cache
       assertEqual(0, db._query(q).toArray().length);
       // execute once more so result is going to be served from cache
       assertEqual(0, db._query(q).toArray().length);
     },
-    
+
 
     testEdgeCacheTruncateEmpty: function () {
-      edge.insert({ _from: vn + "/test1", _to: vn + "/test2" });
+      edge.insert({ _from: vn + "/test1",
+_to: vn + "/test2" });
 
       assertEqual(0, vertex.count());
       assertEqual(1, edge.count());
@@ -99,7 +102,7 @@ function EdgeIndexCacheSuite () {
       edge.truncate({ compact: false });
       assertEqual(0, vertex.count());
       assertEqual(0, edge.count());
-      
+
       // execute to fill cache
       result = db._query(q).toArray();
       assertEqual(0, result.length);
@@ -109,11 +112,12 @@ function EdgeIndexCacheSuite () {
       assertEqual(0, result.length);
       assertEqual([ ], result);
     },
-    
+
     testEdgeCacheTruncateNonEmpty: function () {
       vertex.insert({ _key: "test1" });
       vertex.insert({ _key: "test2" });
-      edge.insert({ _from: vn + "/test1", _to: vn + "/test2" });
+      edge.insert({ _from: vn + "/test1",
+_to: vn + "/test2" });
 
       assertEqual(2, vertex.count());
       assertEqual(1, edge.count());
@@ -128,19 +132,21 @@ function EdgeIndexCacheSuite () {
       edge.truncate({ compact: false });
       assertEqual(2, vertex.count());
       assertEqual(0, edge.count());
-      
+
       // execute to fill cache
       assertEqual(0, db._query(q).toArray().length);
       // execute once more so result is going to be served from cache
       assertEqual(0, db._query(q).toArray().length);
     },
-    
+
     testEdgeCacheTruncateMultiple: function () {
       vertex.insert({ _key: "test1" });
       vertex.insert({ _key: "test2" });
       vertex.insert({ _key: "test3" });
-      edge.insert({ _from: vn + "/test1", _to: vn + "/test2" });
-      edge.insert({ _from: vn + "/test1", _to: vn + "/test3" });
+      edge.insert({ _from: vn + "/test1",
+_to: vn + "/test2" });
+      edge.insert({ _from: vn + "/test1",
+_to: vn + "/test3" });
 
       assertEqual(3, vertex.count());
       assertEqual(2, edge.count());
@@ -155,7 +161,7 @@ function EdgeIndexCacheSuite () {
       edge.truncate({ compact: false });
       assertEqual(3, vertex.count());
       assertEqual(0, edge.count());
-      
+
       // execute to fill cache
       assertEqual(0, db._query(q).toArray().length);
       // execute once more so result is going to be served from cache
@@ -168,7 +174,8 @@ function EdgeIndexCacheSuite () {
         vertex.insert({ _key: "test" + i });
       }
       for (i = 0; i < 100; ++i) {
-        edge.insert({ _from: vn + "/test" + i, _to: vn + "/test" + (i + 1) });
+        edge.insert({ _from: vn + "/test" + i,
+_to: vn + "/test" + (i + 1) });
       }
 
       assertEqual(100, vertex.count());
@@ -185,7 +192,7 @@ function EdgeIndexCacheSuite () {
       edge.truncate({ compact: false });
       assertEqual(100, vertex.count());
       assertEqual(0, edge.count());
-      
+
       // execute to fill cache
       assertEqual(0, db._query(q).toArray().length);
       // execute once more so result is going to be served from cache

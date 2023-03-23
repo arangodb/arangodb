@@ -59,13 +59,13 @@ const validatorJson = {
   }
 };
 
-function checkDumpJsonFile(dbName, path, id) {
+function checkDumpJsonFile (dbName, path, id) {
   let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
   assertEqual(dbName, data.properties.name);
   assertEqual(id, data.properties.id);
 }
 
-function dumpIntegrationSuite() {
+function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
   const arangodump = pu.ARANGODUMP_BIN;
@@ -285,7 +285,8 @@ function dumpIntegrationSuite() {
         c.insert(docs);
 
         db._drop(cn + "Padded");
-        c = db._create(cn + "Padded", {keyOptions: {type: "padded"}, numberOfShards: 3});
+        c = db._create(cn + "Padded", {keyOptions: {type: "padded"},
+numberOfShards: 3});
         docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({});
@@ -294,7 +295,8 @@ function dumpIntegrationSuite() {
 
         db._drop(cn + "AutoIncrement");
         let numShards = 1;
-        c = db._create(cn + "AutoIncrement", {keyOptions: {type: "autoincrement"}, numberOfShards: numShards});
+        c = db._create(cn + "AutoIncrement", {keyOptions: {type: "autoincrement"},
+numberOfShards: numShards});
         docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({});
@@ -313,13 +315,17 @@ function dumpIntegrationSuite() {
         });
         docs = [];
         for (let i = 0; i < 1000; ++i) {
-          docs.push({value1: "test" + i, value2: "abc", value4: false});
+          docs.push({value1: "test" + i,
+value2: "abc",
+value4: false});
         }
         c.insert(docs);
-        c = db._create(cn + "WithSchema", {schema: validatorJson, numberOfShards: numShards});
+        c = db._create(cn + "WithSchema", {schema: validatorJson,
+numberOfShards: numShards});
         docs = [];
         for (let i = 0; i < 1000; ++i) {
-          docs.push({value1: i, value2: "abc"});
+          docs.push({value1: i,
+value2: "abc"});
         }
         c.insert(docs);
       });
@@ -630,7 +636,7 @@ function dumpIntegrationSuite() {
 
       // second dump, without overwrite
       // this is expected to have an exit code of 1
-      runDump(path, args, 1 /*exit code*/);
+      runDump(path, args, 1 /* exit code*/);
       fs.removeDirectoryRecursive(path, true);
     },
 
@@ -712,7 +718,7 @@ function dumpIntegrationSuite() {
       // second dump, which overwrites
       // this is expected to have an exit code of 1
       args = ['--compress-output', 'false', '--encryption.keyfile', keyfile, '--overwrite', 'true', '--collection', cn];
-      runDump(path, args, 1 /*exit code*/);
+      runDump(path, args, 1 /* exit code*/);
       fs.removeDirectoryRecursive(path, true);
     },
 
@@ -759,7 +765,7 @@ function dumpIntegrationSuite() {
       checkStructureFile(tree, path, true, cn);
       checkDataFile(tree, path, true, false, true, cn);
       fs.removeDirectoryRecursive(path, true);
-    },
+    }
   };
 }
 

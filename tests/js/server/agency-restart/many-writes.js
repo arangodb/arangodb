@@ -35,22 +35,22 @@ let jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  
+
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
 
   // write 50k log entries, and then crash
   for (let i = 0; i < 50000; ++i) {
     let request = {
-      ["arango/test" + i] : {
+      ["arango/test" + i]: {
         "op": "set",
         "new": "testmann" + i
       }
     };
-        
+
     ArangoAgent.write([[ request, {}, "testi"]]);
   }
-  
+
   // wait until no more compactions occur
   while (true) {
     let numCompactions = db.compact.count();
@@ -67,10 +67,10 @@ function runSetup () {
       break;
     }
   }
-  
+
   // make sure everything is synced to disk before we crash
-  c.insert({ _key: "sync" }, true); // wait for sync 
-  
+  c.insert({ _key: "sync" }, true); // wait for sync
+
   internal.debugTerminate('crashing server');
 }
 
@@ -92,9 +92,9 @@ function recoverySuite () {
           assertEqual(1, keys.length);
           assertTrue(keys[0].startsWith("arango/test"));
           let request = {
-            [keys[0]] : {
+            [keys[0]]: {
               "op": "set",
-              "new": "testmann" + keys[0].substr(- (keys[0].length - "arango/test".length))
+              "new": "testmann" + keys[0].substr(-(keys[0].length - "arango/test".length))
             }
           };
           assertEqual(request, entry.query);
@@ -105,10 +105,10 @@ function recoverySuite () {
         assertEqual(index, entry.index);
         ++index;
       }
-      
+
       for (let i = 0; i < 50000; ++i) {
         let r = ArangoAgent.read([["/arango/test" + i]]);
-        assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
+        assertEqual([ { "arango": { ["test" + i]: "testmann" + i } } ], r);
       }
     }
 

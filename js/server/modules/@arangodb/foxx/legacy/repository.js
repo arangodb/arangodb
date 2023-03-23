@@ -61,7 +61,7 @@ function Repository (collection, opts) {
   Object.defineProperty(this, 'modelSchema', {
     configurable: false,
     enumerable: true,
-    get() {
+    get () {
       return this.model.prototype.schema;
     }
   });
@@ -102,7 +102,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_save
   // //////////////////////////////////////////////////////////////////////////////
-  save(model) {
+  save (model) {
     if (!model.forDB) {
       model = new this.model(model);
     }
@@ -131,7 +131,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_byId
   // //////////////////////////////////////////////////////////////////////////////
-  byId(id) {
+  byId (id) {
     var data = this.collection.document(id);
     return new this.model(data);
   },
@@ -139,7 +139,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_byExample
   // //////////////////////////////////////////////////////////////////////////////
-  byExample(example) {
+  byExample (example) {
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
       return new this.model(rawDocument);
@@ -149,7 +149,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_firstExample
   // //////////////////////////////////////////////////////////////////////////////
-  firstExample(example) {
+  firstExample (example) {
     var rawDocument = this.collection.firstExample(example);
     return rawDocument ? new this.model(rawDocument) : null;
   },
@@ -157,7 +157,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_all
   // //////////////////////////////////////////////////////////////////////////////
-  all(options) {
+  all (options) {
     if (!options) {
       options = {};
     }
@@ -176,7 +176,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_any
   // //////////////////////////////////////////////////////////////////////////////
-  any() {
+  any () {
     var data = this.collection.any();
     if (!data) {
       return null;
@@ -191,7 +191,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_remove
   // //////////////////////////////////////////////////////////////////////////////
-  remove(model) {
+  remove (model) {
     this.emit('beforeRemove', model);
     model.emit('beforeRemove');
     var id = model.get('_id'),
@@ -204,14 +204,14 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_removeById
   // //////////////////////////////////////////////////////////////////////////////
-  removeById(id) {
+  removeById (id) {
     return this.collection.remove(id);
   },
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_removeByExample
   // //////////////////////////////////////////////////////////////////////////////
-  removeByExample(example) {
+  removeByExample (example) {
     return this.collection.removeByExample(example);
   },
 
@@ -222,7 +222,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_replace
   // //////////////////////////////////////////////////////////////////////////////
-  replace(model) {
+  replace (model) {
     var id = model.get('_id') || model.get('_key'),
       data = model.forDB(),
       id_and_rev = this.collection.replace(id, data);
@@ -233,7 +233,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_replaceById
   // //////////////////////////////////////////////////////////////////////////////
-  replaceById(id, data) {
+  replaceById (id, data) {
     if (data instanceof Model) {
       var id_and_rev = this.collection.replace(id, data.forDB());
       data.set(id_and_rev);
@@ -245,7 +245,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_replaceByExample
   // //////////////////////////////////////////////////////////////////////////////
-  replaceByExample(example, data) {
+  replaceByExample (example, data) {
     return this.collection.replaceByExample(example, data);
   },
 
@@ -256,7 +256,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_update
   // //////////////////////////////////////////////////////////////////////////////
-  update(model, data) {
+  update (model, data) {
     this.emit('beforeUpdate', model, data);
     model.emit('beforeUpdate', data);
     this.emit('beforeSave', model, data);
@@ -275,7 +275,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_updateById
   // //////////////////////////////////////////////////////////////////////////////
-  updateById(id, data) {
+  updateById (id, data) {
     if (data instanceof Model) {
       var id_and_rev = this.collection.update(id, data.forDB());
       data.set(id_and_rev);
@@ -287,14 +287,14 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_updateByExample
   // //////////////////////////////////////////////////////////////////////////////
-  updateByExample(example, data, options) {
+  updateByExample (example, data, options) {
     return this.collection.updateByExample(example, data, options);
   },
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_exists
   // //////////////////////////////////////////////////////////////////////////////
-  exists(id) {
+  exists (id) {
     return this.collection.exists(id);
   },
 
@@ -305,7 +305,7 @@ Object.assign(Repository.prototype, {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_repository_count
   // //////////////////////////////////////////////////////////////////////////////
-  count() {
+  count () {
     return this.collection.count();
   }
 });
@@ -316,7 +316,7 @@ var indexPrototypes = {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief was docuBlock JSF_foxx_repository_range
     // //////////////////////////////////////////////////////////////////////////////
-    range(attribute, left, right) {
+    range (attribute, left, right) {
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
         return new this.model(rawDocument);
@@ -328,7 +328,7 @@ var indexPrototypes = {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief was docuBlock JSF_foxx_repository_near
     // //////////////////////////////////////////////////////////////////////////////
-    near(latitude, longitude, options) {
+    near (latitude, longitude, options) {
       var collection = this.collection,
         rawDocuments;
       if (!options) {
@@ -359,7 +359,7 @@ var indexPrototypes = {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief was docuBlock JSF_foxx_repository_within
     // //////////////////////////////////////////////////////////////////////////////
-    within(latitude, longitude, radius, options) {
+    within (latitude, longitude, radius, options) {
       var collection = this.collection,
         rawDocuments;
       if (!options) {
@@ -392,7 +392,7 @@ var indexPrototypes = {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief was docuBlock JSF_foxx_repository_fulltext
     // //////////////////////////////////////////////////////////////////////////////
-    fulltext(attribute, query, options) {
+    fulltext (attribute, query, options) {
       if (!options) {
         options = {};
       }

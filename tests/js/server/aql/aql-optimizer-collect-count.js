@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, assertNull, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertTrue, assertEqual, assertNotEqual, assertNull, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for COLLECT w/ COUNT
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for COLLECT w/ COUNT
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -36,34 +36,35 @@ const helper = require("@arangodb/aql-helper");
 const assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerCountTestSuite () {
   let c;
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 4 });
 
       let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        docs.push({ group: "test" + (i % 10), value: i });
+        docs.push({ group: "test" + (i % 10),
+value: i });
       }
       c.insert(docs);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test no into, no count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test no into, no count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidSyntax : function () {
+    testInvalidSyntax: function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT COUNT RETURN 1");
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT WITH COUNT RETURN 1");
@@ -82,11 +83,11 @@ function optimizerCountTestSuite () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT class = i.group AGGREGATE doc = MIN(i.group) WITH COUNT INTO group RETURN 1");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountIsTransformedToAggregate : function () {
+    testCountIsTransformedToAggregate: function () {
       var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO cnt RETURN cnt";
 
       let output = require("@arangodb/aql/explainer").explain(query, {colors: false}, false);
@@ -115,11 +116,11 @@ function optimizerCountTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalSimple : function () {
+    testCountTotalSimple: function () {
       var query = "FOR i IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -128,17 +129,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalLimit : function () {
+    testCountTotalLimit: function () {
       var query = "FOR i IN " + c.name() + " LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -147,17 +150,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalFiltered : function () {
+    testCountTotalFiltered: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test4' COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -166,18 +171,20 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalFilteredMulti : function () {
+    testCountTotalFilteredMulti: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test2' && i.group <= 'test4' COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -186,17 +193,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalFilteredEmpty : function () {
+    testCountTotalFilteredEmpty: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -205,17 +214,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotal : function () {
+    testCountTotal: function () {
       var query = "FOR j IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -224,17 +235,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalNested : function () {
+    testCountTotalNested: function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query, null, { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
@@ -243,17 +256,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalNested2 : function () {
+    testCountTotalNested2: function () {
       var query = "FOR j IN " + c.name() + " FOR i IN 1..2 COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query, null, { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
@@ -262,17 +277,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountSimple : function () {
+    testCountSimple: function () {
       var query = "FOR i IN " + c.name() + " COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
 
       var results = AQL_EXECUTE(query);
@@ -286,17 +303,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountFiltered : function () {
+    testCountFiltered: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test1' && i.group <= 'test4' COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
 
       var results = AQL_EXECUTE(query);
@@ -310,17 +329,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountFilteredEmpty : function () {
+    testCountFilteredEmpty: function () {
       var query = "FOR i IN " + c.name() + " FILTER i.group >= 'test99' COLLECT class = i.group WITH COUNT INTO count RETURN [ class, count ]";
 
       var results = AQL_EXECUTE(query);
@@ -328,18 +349,20 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountNested : function () {
+    testCountNested: function () {
       var query = "FOR i IN 1..2 FOR j IN " + c.name() + " COLLECT class1 = i, class2 = j.group WITH COUNT INTO count RETURN [ class1, class2, count ]";
 
       var results = AQL_EXECUTE(query), x = 0;
@@ -356,17 +379,19 @@ function optimizerCountTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count shaped
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count shaped
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountShaped : function () {
+    testCountShaped: function () {
       var query = "FOR j IN " + c.name() + " COLLECT doc = j WITH COUNT INTO count RETURN doc";
 
       var results = AQL_EXECUTE(query);
@@ -384,7 +409,7 @@ function optimizerCountTestSuite () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
       const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE sum = SUM(i) RETURN {sum, start}';
       const bindParams = {};
-      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations', '-remove-unnecessary-calculations-2']}};
 
       const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
       assertEqual(
@@ -405,7 +430,7 @@ function optimizerCountTestSuite () {
       const randomDocumentID = db["UnitTestsCollection"].any()._id;
       const query = 'LET start = DOCUMENT("' + randomDocumentID + '")._key FOR i IN [] COLLECT AGGREGATE count = count(i) RETURN {count, start}';
       const bindParams = {};
-      const options = {optimizer: {rules: ['-remove-unnecessary-calculations','-remove-unnecessary-calculations-2']}};
+      const options = {optimizer: {rules: ['-remove-unnecessary-calculations', '-remove-unnecessary-calculations-2']}};
 
       const planNodes = AQL_EXPLAIN(query, {}, options).plan.nodes;
 
@@ -429,29 +454,31 @@ function optimizerCountWriteTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUp: function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 4 });
 
       let docs = [];
       for (var i = 0; i < 1000; ++i) {
-        docs.push({ group: "test" + (i % 10), value: i });
+        docs.push({ group: "test" + (i % 10),
+value: i });
       }
       c.save(docs);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop("UnitTestsCollection");
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountTotalFilteredIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
+    testCountTotalFilteredIndexed: function () {
+      c.ensureIndex({ type: "persistent",
+fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -460,14 +487,17 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-    testCountTotalFilteredSkippedIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
+    testCountTotalFilteredSkippedIndexed: function () {
+      c.ensureIndex({ type: "persistent",
+fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER i.group == 'test5' LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -476,14 +506,17 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-    testCountTotalFilteredPostFilteredIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
+    testCountTotalFilteredPostFilteredIndexed: function () {
+      c.ensureIndex({ type: "persistent",
+fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -492,14 +525,17 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-    testCountTotalFilteredPostFilteredSkippedIndexed : function () {
-      c.ensureIndex({ type: "persistent", fields: ["group"] });
+    testCountTotalFilteredPostFilteredSkippedIndexed: function () {
+      c.ensureIndex({ type: "persistent",
+fields: ["group"] });
       var query = "FOR i IN " + c.name() + " FILTER CHAR_LENGTH(i.group) == 5 LIMIT 25, 100 COLLECT WITH COUNT INTO count RETURN count";
 
       var results = AQL_EXECUTE(query);
@@ -508,22 +544,26 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
 
-    testCountFilteredBig : function () {
+    testCountFilteredBig: function () {
       var i;
       let docs = [];
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 1 });
+        docs.push({ age: 10 + (i % 80),
+type: 1 });
       }
       c.save(docs);
-      docs=[];
+      docs = [];
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 2 });
+        docs.push({ age: 10 + (i % 80),
+type: 2 });
       }
       c.save(docs);
 
@@ -540,21 +580,25 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
-      assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertNotEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
     },
-    testCountTotalFilteredBig : function () {
+    testCountTotalFilteredBig: function () {
       var i;
       let docs = [];
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 1 });
+        docs.push({ age: 10 + (i % 80),
+type: 1 });
       }
       c.save(docs);
-      docs=[];
+      docs = [];
       for (i = 0; i < 10000; ++i) {
-        docs.push({ age: 10 + (i % 80), type: 2 });
+        docs.push({ age: 10 + (i % 80),
+type: 2 });
       }
       c.save(docs);
 
@@ -566,7 +610,9 @@ function optimizerCountWriteTestSuite () {
 
       var plan = AQL_EXPLAIN(query).plan;
       // must not have a SortNode
-      assertEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      assertEqual(-1, plan.nodes.map(function (node) {
+ return node.type;
+}).indexOf("SortNode"));
       if (isCluster) {
         assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
       }
@@ -574,25 +620,35 @@ function optimizerCountWriteTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-function optimizerDoubleCollectTestSuite() {
+function optimizerDoubleCollectTestSuite () {
   const generateData = () => {
     // Static data we will use in our AQL Queries.
     // We do not need collection/document access or dynamic data.
     return [
-      {"friend": {"name": "piotr"}, id: 10},
-      {"friend": {"name": "heiko"}, id: 11},
-      {"friend": {"name": "micha"}, id: 12},
-      {"friend": {"name": "micha"}, id: 13},
-      {"friend": {"name": "micha"}, id: 14},
-      {"friend": {"name": "piotr"}, id: 10},
-      {"friend": {"name": "micha"}, id: 12},
-      {"friend": {"name": "heiko"}, id: 11},
-      {"friend": {"name": "piotr"}, id: 10},
-      {"friend": {"name": "heiko"}, id: 9}
+      {"friend": {"name": "piotr"},
+id: 10},
+      {"friend": {"name": "heiko"},
+id: 11},
+      {"friend": {"name": "micha"},
+id: 12},
+      {"friend": {"name": "micha"},
+id: 13},
+      {"friend": {"name": "micha"},
+id: 14},
+      {"friend": {"name": "piotr"},
+id: 10},
+      {"friend": {"name": "micha"},
+id: 12},
+      {"friend": {"name": "heiko"},
+id: 11},
+      {"friend": {"name": "piotr"},
+id: 10},
+      {"friend": {"name": "heiko"},
+id: 9}
     ];
   };
 
@@ -605,7 +661,8 @@ function optimizerDoubleCollectTestSuite() {
       return seen.size === seen.add(currentObject.name).size;
     });
 
-    return {duplicatesFound, checkedName};
+    return {duplicatesFound,
+checkedName};
   };
 
   return {
@@ -687,7 +744,7 @@ function optimizerDoubleCollectTestSuite() {
       const duplicatesChecker = hasDuplicates(results.json);
       assertFalse(duplicatesChecker.duplicatesFound, `Found duplicate entry for: "${duplicatesChecker.checkedName}"`);
       assertEqual(3, results.json.length);
-    },
+    }
   };
 }
 

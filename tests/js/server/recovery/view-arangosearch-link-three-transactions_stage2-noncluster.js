@@ -1,34 +1,34 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrei Lobov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrei Lobov
+// //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
 const tasks = require("@arangodb/tasks");
 
-function runSetup() {
+function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
@@ -42,7 +42,9 @@ function runSetup() {
   db._view('UnitTestsRecoveryView').properties(meta);
   let data = [];
   for (let i = 0; i < 1000; i++) {
-    data.push({a: "foo_" + i, b: "bar_" + i, c: i});
+    data.push({a: "foo_" + i,
+b: "bar_" + i,
+c: i});
   }
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
@@ -53,7 +55,9 @@ function runSetup() {
       let col = db._collection('UnitTestsRecoveryDummy');
       let data = [];
       for (let i = 1250; i < 1500; i++) {
-        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
+        data.push({a: "foo_" + i,
+b: "bar_" + i,
+c: i});
       }
       db.UnitTestsRecoveryDummy.save(data);
     }
@@ -64,7 +68,9 @@ function runSetup() {
       const db = require('@arangodb').db;
       let data = [];
       for (let i = 1000; i < 1100; i++) {
-        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
+        data.push({a: "foo_" + i,
+b: "bar_" + i,
+c: i});
       }
       db.UnitTestsRecoveryDummy.save(data);
     }
@@ -76,7 +82,9 @@ function runSetup() {
       let col = db._collection('UnitTestsRecoveryDummy');
       let data = [];
       for (let i = 1500; i < 2000; i++) {
-        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
+        data.push({a: "foo_" + i,
+b: "bar_" + i,
+c: i});
       }
       db.UnitTestsRecoveryDummy.save(data);
     }
@@ -92,11 +100,11 @@ function runSetup() {
   internal.debugTerminate('crashing server');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function recoverySuite() {
+function recoverySuite () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
@@ -106,9 +114,9 @@ function recoverySuite() {
     tearDown: function () {
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test whether we can restore the trx data
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test whether we can restore the trx data
+    // //////////////////////////////////////////////////////////////////////////////
 
     testIResearchLinkThreeTransactionsStage2: function () {
       let v = db._view('UnitTestsRecoveryView');
@@ -127,11 +135,11 @@ function recoverySuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function main(argv) {
+function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
     runSetup();

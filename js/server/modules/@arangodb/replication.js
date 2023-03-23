@@ -60,16 +60,24 @@ applier.start = function (initialTick, barrierId) {
 };
 
 // / @brief shuts down the replication applier
-applier.stop = function () { return REPLICATION_APPLIER_STOP(); };
+applier.stop = function () {
+ return REPLICATION_APPLIER_STOP();
+};
 
 // / @brief return the replication applier state
-applier.state = function () { return REPLICATION_APPLIER_STATE(); };
+applier.state = function () {
+ return REPLICATION_APPLIER_STATE();
+};
 
 // / @brief return the replication applier state of all dbs
-applier.stateAll = function () { return REPLICATION_APPLIER_STATE_ALL(); };
+applier.stateAll = function () {
+ return REPLICATION_APPLIER_STATE_ALL();
+};
 
 // / @brief stop the applier and "forget" all configuration
-applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
+applier.forget = function () {
+ return REPLICATION_APPLIER_FORGET();
+};
 
 // / @brief returns the configuration of the replication applier
 applier.properties = function (config) {
@@ -90,13 +98,19 @@ globalApplier.start = function (initialTick, barrierId) {
 };
 
 // / @brief shuts down the global replication applier
-globalApplier.stop = function () { return GLOBAL_REPLICATION_APPLIER_STOP(); };
+globalApplier.stop = function () {
+ return GLOBAL_REPLICATION_APPLIER_STOP();
+};
 
 // / @brief return the global replication applier state
-globalApplier.state = function () { return GLOBAL_REPLICATION_APPLIER_STATE(); };
+globalApplier.state = function () {
+ return GLOBAL_REPLICATION_APPLIER_STATE();
+};
 
 // / @brief stop the global applier and "forget" all configuration
-globalApplier.forget = function () { return GLOBAL_REPLICATION_APPLIER_FORGET(); };
+globalApplier.forget = function () {
+ return GLOBAL_REPLICATION_APPLIER_FORGET();
+};
 
 // / @brief returns the configuration of the global replication applier
 globalApplier.properties = function (config) {
@@ -112,10 +126,14 @@ globalApplier.failoverEnabled = function () {
 };
 
 // / @brief performs a one-time synchronization with a remote endpoint
-function sync (config) { return REPLICATION_SYNCHRONIZE(config); }
+function sync (config) {
+ return REPLICATION_SYNCHRONIZE(config);
+}
 
 // / @brief performs a one-time synchronization with a remote endpoint
-function syncGlobal (config) { return GLOBAL_REPLICATION_SYNCHRONIZE(config); }
+function syncGlobal (config) {
+ return GLOBAL_REPLICATION_SYNCHRONIZE(config);
+}
 
 // / @brief performs a one-time synchronization with a remote endpoint
 function syncCollection (collection, config) {

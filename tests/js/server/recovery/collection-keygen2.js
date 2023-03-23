@@ -31,7 +31,7 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup() {
+function runSetup () {
   'use strict';
   internal.debugClearFailAt();
   var c, i;
@@ -41,13 +41,15 @@ function runSetup() {
   c = db._create('UnitTestsRecovery1', {
     keyOptions: {
       type: 'autoincrement',
-      offset: 0, increment: 10
-    }, numberOfShards: 1
+      offset: 0,
+increment: 10
+    },
+numberOfShards: 1
   });
   for (i = 0; i < 1000; i++) {
     c.save({value: i});
   }
-  var wals = db._currentWalFiles().map(function(f) {
+  var wals = db._currentWalFiles().map(function (f) {
     // strip off leading `/` or `/archive/` if it exists
     var p = f.split('/');
     return p[p.length - 1];
@@ -62,11 +64,12 @@ function runSetup() {
     var padding = 'aaa';
     for (i = 0; i < 10000; i++) {
       padding = padding.concat('aaa');
-      c.save({value: i, text: padding});
+      c.save({value: i,
+text: padding});
     }
 
     keepWriting = false;
-    var walsLeft = db._currentWalFiles().map(function(f) {
+    var walsLeft = db._currentWalFiles().map(function (f) {
       // strip off leading `/` or `/archive/` if it exists
       var p = f.split('/');
       return p[p.length - 1];
@@ -86,21 +89,21 @@ function runSetup() {
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function recoverySuite() {
+function recoverySuite () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function() {
+    setUp: function () {
     },
-    tearDown: function() {
+    tearDown: function () {
     },
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we still pick up the right autoincrement value
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionKeyGenRocksDB: function() {
+    testCollectionKeyGenRocksDB: function () {
       var c, d;
 
       c = db._collection('UnitTestsRecovery1');
@@ -116,7 +119,7 @@ function recoverySuite() {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main(argv) {
+function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
     runSetup();

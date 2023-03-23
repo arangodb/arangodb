@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global ArangoClusterInfo, require, exports, module */
+/* jshint strict: false */
+/* global ArangoClusterInfo, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -56,7 +56,8 @@ function buildExampleQuery (collection, example, limit) {
     query += ' LIMIT ' + parseInt(limit, 10);
   }
 
-  return { query: query, bindVars: bindVars };
+  return { query: query,
+bindVars: bindVars };
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -145,7 +146,7 @@ ArangoCollection.prototype.index = function (id) {
     id = this.name() + '/' + id;
   }
 
-  for (i = 0;  i < indexes.length;  ++i) {
+  for (i = 0; i < indexes.length; ++i) {
     var index = indexes[i];
 
     if (index.id === id || index.name === id || this.name() + '/' + index.name === id) {
@@ -223,7 +224,7 @@ ArangoCollection.prototype.firstExample = function (example) {
   else {
     e = {};
 
-    for (i = 0;  i < arguments.length;  i += 2) {
+    for (i = 0; i < arguments.length; i += 2) {
       e[arguments[i]] = arguments[i + 1];
     }
   }
@@ -371,7 +372,9 @@ ArangoCollection.prototype.updateByExample = function (example,
   }
 
   var query = buildExampleQuery(this, example, limit);
-  var opts = { waitForSync, keepNull, mergeObjects };
+  var opts = { waitForSync,
+keepNull,
+mergeObjects };
   query.query += ' UPDATE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
   query.bindVars.newValue = newValue;
 
@@ -439,7 +442,7 @@ ArangoCollection.prototype.lookupSkiplist = function () {
 ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
   'use strict';
 
-  if (! Array.isArray(field)) {
+  if (!Array.isArray(field)) {
     field = [ field ];
   }
 

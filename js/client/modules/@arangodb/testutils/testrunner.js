@@ -85,11 +85,11 @@ let usersTests = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief checks that no new collections were left on the SUT. 
+// / @brief checks that no new collections were left on the SUT.
 // //////////////////////////////////////////////////////////////////////////////
 let collectionsTest = {
   name: 'collections',
-  setUp: function(obj, te) {
+  setUp: function (obj, te) {
     try {
       db._collections().forEach(collection => {
         obj.collectionsBefore.push(collection._name);
@@ -104,7 +104,7 @@ let collectionsTest = {
     }
     return true;
   },
-  runCheck: function(obj, te) {
+  runCheck: function (obj, te) {
     let collectionsAfter = [];
     try {
       db._collections().forEach(collection => {
@@ -117,9 +117,9 @@ let collectionsTest = {
       };
       return false;
     }
-    let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
-      return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                || (name === "log")); // exclude system/agency collections from the comparison
+    let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function (name) {
+      return !((name[0] === '_') || (name === "compact") || (name === "election") ||
+                (name === "log")); // exclude system/agency collections from the comparison
       return (name[0] !== '_'); // exclude system collections from the comparison
     });
     if (delta.length !== 0) {
@@ -134,11 +134,11 @@ let collectionsTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief checks that no new views were left on the SUT. 
+// / @brief checks that no new views were left on the SUT.
 // //////////////////////////////////////////////////////////////////////////////
 let viewsTest = {
   name: 'views',
-  setUp: function(obj, te) {
+  setUp: function (obj, te) {
     try {
       db._views().forEach(view => {
         obj.viewsBefore.push(view._name);
@@ -153,7 +153,7 @@ let viewsTest = {
     }
     return true;
   },
-  runCheck: function(obj, te) {
+  runCheck: function (obj, te) {
     let viewsAfter = [];
     try {
       db._views().forEach(view => {
@@ -166,9 +166,9 @@ let viewsTest = {
       };
       return false;
     }
-    let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
-      return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                || (name === "log")); // exclude system/agency collections from the comparison
+    let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function (name) {
+      return !((name[0] === '_') || (name === "compact") || (name === "election") ||
+                (name === "log")); // exclude system/agency collections from the comparison
     });
     if (delta.length !== 0) {
       obj.results[obj.translateResult(te)] = {
@@ -182,15 +182,15 @@ let viewsTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief checks that no new graphs were left on the SUT. 
+// / @brief checks that no new graphs were left on the SUT.
 // //////////////////////////////////////////////////////////////////////////////
 let graphsTest = {
   name: 'graphs',
-  setUp: function(obj, te) {
+  setUp: function (obj, te) {
     obj.graphCount = db._collection('_graphs').count();
     return true;
   },
-  runCheck: function(obj, te) {
+  runCheck: function (obj, te) {
     let graphs;
     try {
       graphs = db._collection('_graphs');
@@ -217,13 +217,15 @@ let graphsTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief checks that no new databases were left on the SUT. 
+// / @brief checks that no new databases were left on the SUT.
 // //////////////////////////////////////////////////////////////////////////////
 let databasesTest = {
   name: 'databases',
-  setUp: function(obj, te){ return true;},
-  runCheck: function(obj, te) {
-    // TODO: we are currently filtering out the UnitTestDB here because it is 
+  setUp: function (obj, te) {
+ return true;
+},
+  runCheck: function (obj, te) {
+    // TODO: we are currently filtering out the UnitTestDB here because it is
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
     try {
@@ -248,12 +250,14 @@ let databasesTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief checks that no failure points were left engaged on the SUT. 
+// / @brief checks that no failure points were left engaged on the SUT.
 // //////////////////////////////////////////////////////////////////////////////
 let failurePointsCheck = {
   name: 'failurepoints',
-  setUp: function(obj, te) { return true; },
-  runCheck: function(obj, te) {
+  setUp: function (obj, te) {
+ return true;
+},
+  runCheck: function (obj, te) {
     let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
       obj.results[obj.translateResult(te)] = {
@@ -268,7 +272,7 @@ let failurePointsCheck = {
   }
 };
 
-function isBucketized(testBuckets) {
+function isBucketized (testBuckets) {
   if (testBuckets === undefined || testBuckets === null) {
     return false;
   }
@@ -283,7 +287,7 @@ function isBucketized(testBuckets) {
 }
 
 class testRunner {
-  constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
+  constructor (options, testname, serverOptions = {}, checkUsers = true, checkCollections = true) {
     if (isBucketized(options.testBuckets) && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
@@ -332,19 +336,37 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief Hooks that you can overload to be invoked in different phases:
   // //////////////////////////////////////////////////////////////////////////////
-  preStart() { return {state: true}; } // before launching the SUT
-  startFailed() { return {state: true}; } // if launching the SUT failed..
-  postStart() { return {state: true}; } // after successfull launch of the SUT
-  preRun() { return {state: true}; } // before each test
-  postRun() { return {state: true}; } // after each test
-  preStop() { return {state: true}; } // before shutting down the SUT
-  postStop() { return {state: true}; } // after shutting down the SUT
-  alive() { return true; } // after each testrun, check whether the SUT is alaive and well
-  translateResult(testName) { return testName; } // if you want to manipulate test file names...
+  preStart () {
+ return {state: true};
+} // before launching the SUT
+  startFailed () {
+ return {state: true};
+} // if launching the SUT failed..
+  postStart () {
+ return {state: true};
+} // after successfull launch of the SUT
+  preRun () {
+ return {state: true};
+} // before each test
+  postRun () {
+ return {state: true};
+} // after each test
+  preStop () {
+ return {state: true};
+} // before shutting down the SUT
+  postStop () {
+ return {state: true};
+} // after shutting down the SUT
+  alive () {
+ return true;
+} // after each testrun, check whether the SUT is alaive and well
+  translateResult (testName) {
+ return testName;
+} // if you want to manipulate test file names...
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
-  healthCheck() {
+  healthCheck () {
     if (this.instanceManager.checkInstanceAlive() &&
         this.alive()) {
       return true;
@@ -357,7 +379,7 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief something is wrong. cook a summary for the spectator.
   // //////////////////////////////////////////////////////////////////////////////
-  abortTestOnError(te) {
+  abortTestOnError (te) {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
       let originalMessage;
@@ -386,7 +408,7 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks for cluster wellbeing.
   // //////////////////////////////////////////////////////////////////////////////
-  loadClusterTestStabilityInfo(){
+  loadClusterTestStabilityInfo () {
     try {
       if (this.instanceManager.hasOwnProperty('clusterHealthMonitorFile')) {
         let status = true;
@@ -414,8 +436,7 @@ class testRunner {
           print('everything fast!');
         }
       }
-    }
-    catch(x) {
+    } catch (x) {
       print(x);
     }
   }
@@ -426,23 +447,23 @@ class testRunner {
   //   - tu.runInArangoshRunner - spawn an arangosh to launch the test in
   //   - tu.runLocalInArangoshRunner - eval the test into the current arangosh
   // //////////////////////////////////////////////////////////////////////////////
-  runOneTest(testCase) {
+  runOneTest (testCase) {
     throw new Error("must overload the runOneTest function!");
   }
 
-  filter(te, filtered) {
+  filter (te, filtered) {
     return tu.filterTestcaseByOptions(te, this.options, filtered);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
+  // //////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
-  run(testList) {
+  run (testList) {
     this.continueTesting = true;
     this.testList = testList;
     if (this.testList.length === 0) {
       print('Testsuite is empty!');
       return {
-        "ALLTESTS" : {
+        "ALLTESTS": {
           status: ((this.options.skipGrey ||
                     this.options.skipTimecritial ||
                     this.options.skipNondeterministic) &&
@@ -452,7 +473,7 @@ class testRunner {
         }
       };
     }
-    
+
     let beforeStart = time();
 
     this.instanceManager = new im.instanceManager(this.options.protocol,
@@ -513,7 +534,7 @@ class testRunner {
         let first = true;
         let loopCount = 0;
         count += 1;
-        
+
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
@@ -532,7 +553,7 @@ class testRunner {
 
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
-          
+
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
@@ -550,7 +571,7 @@ class testRunner {
             }
 
             if (this.results[this.translateResult(te)].status === false) {
-              this.results.failed ++;
+              this.results.failed++;
               this.options.cleanup = false;
             }
 
@@ -583,7 +604,7 @@ class testRunner {
                 continue;
               }
             }
-            
+
           } else {
             this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
             continue;
@@ -670,4 +691,6 @@ class testRunner {
 }
 
 exports.testRunner = testRunner;
-exports.setDidSplitBuckets = function (val) { didSplitBuckets = val; };
+exports.setDidSplitBuckets = function (val) {
+ didSplitBuckets = val;
+};

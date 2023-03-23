@@ -1,34 +1,34 @@
-/*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
+/* jshint globalstrict:false, strict:false, maxlen: 5000 */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the binary document interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the binary document interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
@@ -46,12 +46,12 @@ function CollectionBinaryDocumentSuite () {
   let collection = null;
 
   return {
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       collection = db._create(cn);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       if (collection) {
         collection.unload();
         collection.drop();
@@ -60,7 +60,7 @@ function CollectionBinaryDocumentSuite () {
       wait(0.0);
     },
 
-    testBinaryDocument : function () {
+    testBinaryDocument: function () {
       let filename1 = path.resolve('js/apps/system/_admin/aardvark/APP/default-thumbnail.png'.split('/').join(path.sep));
       if (!fs.exists(filename1)) {
         // look for version-specific file
@@ -68,7 +68,8 @@ function CollectionBinaryDocumentSuite () {
       }
       const content = fs.readFileSync(filename1);
 
-      const d1 = collection._binaryInsert({_key: "test", meta: "hallo"}, filename1);
+      const d1 = collection._binaryInsert({_key: "test",
+meta: "hallo"}, filename1);
 
       assertTypeOf("string", d1._id);
       assertTypeOf("string", d1._key);

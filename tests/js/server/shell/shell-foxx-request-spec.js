@@ -318,7 +318,8 @@ describe('SyntheticRequest', function () {
       const headers = {authorization: `Basic ${btoa(`${username}:`)}`};
       const rawReq = createNativeRequest({ headers });
       const req = new SyntheticRequest(rawReq, {});
-      expect(req.auth).to.eql({basic: {username, password: ""}});
+      expect(req.auth).to.eql({basic: {username,
+password: ""}});
     });
     it('recognizes basic with password', function () {
       const username = "hello";
@@ -326,7 +327,8 @@ describe('SyntheticRequest', function () {
       const headers = {authorization: `Basic ${btoa(`${username}:${password}`)}`};
       const rawReq = createNativeRequest({ headers });
       const req = new SyntheticRequest(rawReq, {});
-      expect(req.auth).to.eql({basic: {username, password}});
+      expect(req.auth).to.eql({basic: {username,
+password}});
     });
     it('recognizes basic with colons in password', function () {
       const username = "hello";
@@ -334,7 +336,8 @@ describe('SyntheticRequest', function () {
       const headers = {authorization: `Basic ${btoa(`${username}:${password}`)}`};
       const rawReq = createNativeRequest({ headers });
       const req = new SyntheticRequest(rawReq, {});
-      expect(req.auth).to.eql({basic: {username, password}});
+      expect(req.auth).to.eql({basic: {username,
+password}});
     });
   });
 
@@ -525,7 +528,8 @@ describe('SyntheticRequest', function () {
         protocol: 'https'
       });
       const req = new SyntheticRequest(rawReq, {mount: '/foxx'});
-      expect(req.makeAbsolute('/another/place', {x: 'y', z: 'w'})).to.equal(
+      expect(req.makeAbsolute('/another/place', {x: 'y',
+z: 'w'})).to.equal(
         'https://www.example.com:9999/_db/bananas/foxx/another/place?x=y&z=w'
       );
     });
@@ -780,7 +784,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(Infinity);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 0, end: 499});
+      expect(range[0]).to.eql({start: 0,
+end: 499});
     });
     it('parses multiple ranges', function () {
       const rawReq = createNativeRequest({
@@ -790,8 +795,10 @@ describe('SyntheticRequest', function () {
       const range = req.range(Infinity);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 2);
-      expect(range[0]).to.eql({start: 0, end: 499});
-      expect(range[1]).to.eql({start: 500, end: 749});
+      expect(range[0]).to.eql({start: 0,
+end: 499});
+      expect(range[1]).to.eql({start: 500,
+end: 749});
     });
     it('caps end at size', function () {
       const rawReq = createNativeRequest({
@@ -801,7 +808,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(100);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 0, end: 99});
+      expect(range[0]).to.eql({start: 0,
+end: 99});
     });
     it('parses "-X"', function () {
       const rawReq = createNativeRequest({
@@ -811,7 +819,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(1000);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 600, end: 999});
+      expect(range[0]).to.eql({start: 600,
+end: 999});
     });
     it('parses "X-"', function () {
       const rawReq = createNativeRequest({
@@ -821,7 +830,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(1000);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 400, end: 999});
+      expect(range[0]).to.eql({start: 400,
+end: 999});
     });
     it('parses "0-"', function () {
       const rawReq = createNativeRequest({
@@ -831,7 +841,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(1000);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 0, end: 999});
+      expect(range[0]).to.eql({start: 0,
+end: 999});
     });
     it('parses "-1"', function () {
       const rawReq = createNativeRequest({
@@ -841,7 +852,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(1000);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 999, end: 999});
+      expect(range[0]).to.eql({start: 999,
+end: 999});
     });
     it('parses "0-0"', function () {
       const rawReq = createNativeRequest({
@@ -851,7 +863,8 @@ describe('SyntheticRequest', function () {
       const range = req.range(Infinity);
       expect(range).to.have.a.property('type', 'bananas');
       expect(range).to.have.a.property('length', 1);
-      expect(range[0]).to.eql({start: 0, end: 0});
+      expect(range[0]).to.eql({start: 0,
+end: 0});
     });
   });
 

@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotMatch, assertNotEqual, assertNotUndefined, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
@@ -40,7 +40,7 @@ let api = "/_api/replication";
 function dealing_with_general_function_interfaceSuite () {
   return {
 
-    test_fetches_the_server_id_1: function() {
+    test_fetches_the_server_id_1: function () {
       // fetch id;
       let cmd = api + "/server-id";
       let doc = arango.GET_RAW(cmd);
@@ -51,47 +51,47 @@ function dealing_with_general_function_interfaceSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // applier;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_applier_interfaceSuite () {
   return {
 
-    setUp: function() {
+    setUp: function () {
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // start;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_starts_the_applier_1: function() {
+    test_starts_the_applier_1: function () {
       let cmd = api + "/applier-start";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 400); // because configuration is invalid
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // stop;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_stops_the_applier_1: function() {
+    test_stops_the_applier_1: function () {
       let cmd = api + "/applier-stop";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 200);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_applier_config_1: function() {
+    test_fetches_the_applier_config_1: function () {
       let cmd = api + "/applier-config";
       let doc = arango.GET_RAW(cmd);
 
@@ -116,13 +116,29 @@ function dealing_with_the_applier_interfaceSuite () {
       assertEqual(typeof all["idleMaxWaitTime"], 'number');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // set && fetch properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_sets_and_re_fetches_the_applier_config_1: function() {
+    test_sets_and_re_fetches_the_applier_config_1: function () {
       let cmd = api + "/applier-config";
-      let body = { "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 };
+      let body = { "endpoint": "tcp://127.0.0.1:9999",
+"database": "foo",
+"ignoreErrors": 5,
+"requestTimeout": 32.2,
+"connectTimeout": 51.1,
+"maxConnectRetries": 12345,
+"chunkSize": 143423232,
+"autoStart": true,
+"adaptivePolling": false,
+"autoResync": true,
+"includeSystem": true,
+"requireFromPresent": true,
+"verbose": true,
+"connectionRetryWaitTime": 22.12,
+"initialSyncMaxWaitTime": 12.21,
+"idleMinWaitTime": 1.4,
+"idleMaxWaitTime": 7.3 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -171,7 +187,23 @@ function dealing_with_the_applier_interfaceSuite () {
       assertEqual(all["idleMaxWaitTime"], 7.3);
 
 
-      body = { "endpoint" : "ssl://127.0.0.1:12345", "database" : "bar", "ignoreErrors" : 2, "requestTimeout" : 12.5, "connectTimeout" : 26.3, "maxConnectRetries" : 12, "chunkSize" : 1234567, "autoStart" : false, "adaptivePolling" : true, "autoResync" : false, "includeSystem" : false, "requireFromPresent" : false, "verbose" : false, "connectionRetryWaitTime" : 2.5, "initialSyncMaxWaitTime" : 4.3, "idleMinWaitTime" : 0.22, "idleMaxWaitTime" : 3.5 };
+      body = { "endpoint": "ssl://127.0.0.1:12345",
+"database": "bar",
+"ignoreErrors": 2,
+"requestTimeout": 12.5,
+"connectTimeout": 26.3,
+"maxConnectRetries": 12,
+"chunkSize": 1234567,
+"autoStart": false,
+"adaptivePolling": true,
+"autoResync": false,
+"includeSystem": false,
+"requireFromPresent": false,
+"verbose": false,
+"connectionRetryWaitTime": 2.5,
+"initialSyncMaxWaitTime": 4.3,
+"idleMinWaitTime": 0.22,
+"idleMaxWaitTime": 3.5 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -220,11 +252,11 @@ function dealing_with_the_applier_interfaceSuite () {
       assertEqual(all["idleMaxWaitTime"], 3.5);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_applier_state_1: function() {
+    test_checks_the_applier_state_1: function () {
       // fetch state;
       let cmd = api + "/applier-state";
       let doc = arango.GET_RAW(cmd);
@@ -261,24 +293,24 @@ function dealing_with_the_applier_interfaceSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // logger;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_loggerSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop("UnitTestsReplication");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop("UnitTestsReplication");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_logger_state: function() {
+    test_checks_the_logger_state: function () {
       // fetch state;
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -301,11 +333,11 @@ function dealing_with_the_loggerSuite () {
       assertTrue(server.hasOwnProperty('version'));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // firstTick;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_first_available_tick: function() {
+    test_fetches_the_first_available_tick: function () {
       // fetch state;
       let cmd = api + "/logger-first-tick";
       let doc = arango.GET_RAW(cmd);
@@ -318,11 +350,11 @@ function dealing_with_the_loggerSuite () {
       assertMatch(/^[0-9]+$/, result['firstTick']);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // tickRanges;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_available_tick_ranges: function() {
+    test_fetches_the_available_tick_ranges: function () {
       // fetch state;
       let cmd = api + "/logger-tick-ranges";
       let doc = arango.GET_RAW(cmd);
@@ -342,11 +374,11 @@ function dealing_with_the_loggerSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // follow;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_empty_follow_log_1: function() {
+    test_fetches_the_empty_follow_log_1: function () {
       while (true) {
         let cmd = api + "/logger-state";
         let doc = arango.GET_RAW(cmd);
@@ -364,7 +396,7 @@ function dealing_with_the_loggerSuite () {
           sleep(1);
         } else {
           assertEqual(doc.code, 204);
-          //assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
+          // assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
           assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
           assertEqual(doc.headers["x-arango-replication-lastincluded"], "0");
           assertEqual(doc.headers["content-type"], "application/x-arango-dump");
@@ -376,7 +408,7 @@ function dealing_with_the_loggerSuite () {
       }
     },
 
-    test_fetches_a_create_collection_action_from_the_follow_log_1: function() {
+    test_fetches_a_create_collection_action_from_the_follow_log_1: function () {
       db._drop("UnitTestsReplication");
 
       sleep(5);
@@ -398,7 +430,7 @@ function dealing_with_the_loggerSuite () {
       assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
       assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-      
+
       let body = doc.body.toString();
 
       while (body.length > 1) {
@@ -439,7 +471,7 @@ function dealing_with_the_loggerSuite () {
 
     },
 
-    test_fetches_some_collection_operations_from_the_follow_log_1: function() {
+    test_fetches_some_collection_operations_from_the_follow_log_1: function () {
       db._drop("UnitTestsReplication");
 
       sleep(5);
@@ -455,7 +487,8 @@ function dealing_with_the_loggerSuite () {
 
       // create document;
       cmd = "/_api/document?collection=UnitTestsReplication";
-      let body = { "_key" : "test", "test" : false };
+      let body = { "_key": "test",
+"test": false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201);
       let rev = doc.parsedBody["_rev"];
@@ -519,7 +552,7 @@ function dealing_with_the_loggerSuite () {
             assertTrue(c["waitForSync"]);
           }
           i = i + 1;
-        } else if ( i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
+        } else if (i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
           // create document;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -536,7 +569,7 @@ function dealing_with_the_loggerSuite () {
           assertFalse(document["data"]["test"]);
 
           i = i + 1;
-        } else if ( i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
+        } else if (i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
           // delete document;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -550,7 +583,7 @@ function dealing_with_the_loggerSuite () {
           assertEqual(document["data"]["_key"], "test");
 
           i = i + 1;
-        } else if ( i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
+        } else if (i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
           // drop collection;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -571,17 +604,17 @@ function dealing_with_the_loggerSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // batches && logger state requests;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_batches_and_logger_stateSuite () {
-  let batchId=0;
+  let batchId = 0;
   return {
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
     },
 
-    test_creates_a_batch__without_state_request: function() {
+    test_creates_a_batch__without_state_request: function () {
       let doc = arango.POST_RAW(api + "/batch", "{}");
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
@@ -597,7 +630,7 @@ function dealing_with_batches_and_logger_stateSuite () {
       assertFalse(all.hasOwnProperty('state'));
     },
 
-    test_creates_a_batch__with_state_request: function() {
+    test_creates_a_batch__with_state_request: function () {
       let doc = arango.POST_RAW(api + "/batch?state=true", "{}");
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
@@ -638,13 +671,13 @@ function dealing_with_batches_and_logger_stateSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // inventory / dump;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_initial_dump_interfaceSuite () {
   let batchId;
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop("UnitTestsReplication");
       db._drop("UnitTestsReplication2");
       let doc = arango.POST_RAW(api + "/batch", {});
@@ -653,17 +686,17 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
       db._drop("UnitTestsReplication");
       db._drop("UnitTestsReplication2");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // inventory;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_initial_inventory_1: function() {
+    test_checks_the_initial_inventory_1: function () {
       let cmd = api + `/inventory?includeSystem=false&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -674,8 +707,8 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       let collections = all["collections"];
       let filtered = [ ];
-      collections.forEach( collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+      collections.forEach(collection => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -688,7 +721,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+-[0-9]+-[0-9]+T[0-9]+:[0-9]+:[0-9]+Z$/, state['time']);
     },
 
-    test_checks_the_initial_inventory_for_non_system_collections_1: function() {
+    test_checks_the_initial_inventory_for_non_system_collections_1: function () {
       let cmd = api + `/inventory?includeSystem=false&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -703,7 +736,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       });
     },
 
-    test_checks_the_initial_inventory_for_system_collections: function() {
+    test_checks_the_initial_inventory_for_system_collections: function () {
       let cmd = api + `/inventory?includeSystem=true&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -714,7 +747,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       let collections = all["collections"];
       let systemCollections = 0;
-      collections.forEach (collection => {
+      collections.forEach(collection => {
         if (collection["parameters"]["name"].match(/^_/)) {
           systemCollections = systemCollections + 1;
         }
@@ -722,7 +755,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertNotEqual(systemCollections, 0);
     },
 
-    test_checks_the_inventory_after_creating_collections_1: function() {
+    test_checks_the_inventory_after_creating_collections_1: function () {
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2", {waitForSync: true });
 
@@ -741,8 +774,8 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       let collections = all['collections'];
       let filtered = [ ];
-      collections.forEach (collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+      collections.forEach(collection => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -787,20 +820,26 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(c['indexes'], [ ]);
     },
 
-    test_checks_the_inventory_with_indexes_1: function() {
+    test_checks_the_inventory_with_indexes_1: function () {
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._create("UnitTestsReplication2");
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type": "skiplist",
+"unique": false,
+"fields": [ "c" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type": "skiplist",
+"unique": true,
+"fields": [ "d" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication2", body);
       assertEqual(doc.code, 201);
 
@@ -819,8 +858,8 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       let collections = all['collections'];
       let filtered = [ ];
-      collections.forEach (collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+      collections.forEach(collection => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -886,11 +925,11 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // dump;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_dump_for_an_empty_collection_1: function() {
+    test_checks_the_dump_for_an_empty_collection_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       let doc = arango.PUT_RAW("/_admin/wal/flush?waitForSync=true&waitForCollector=true", "");
@@ -906,14 +945,15 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(doc.body, undefined);
     },
 
-    test_checks_the_dump_for_a_non_empty_collection_1: function() {
+    test_checks_the_dump_for_a_non_empty_collection_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
-      };
+      }
 
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
       let doc0 = arango.POST_RAW(api + "/batch", "{}");
@@ -957,11 +997,12 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(i, 100);
     },
 
-    test_checks_the_dump_for_a_non_empty_collection__no_envelopes: function() {
+    test_checks_the_dump_for_a_non_empty_collection__no_envelopes: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -1007,14 +1048,15 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(i, 100);
     },
 
-    test_checks_the_dump_for_a_non_empty_collection__small_chunkSize_1: function() {
+    test_checks_the_dump_for_a_non_empty_collection__small_chunkSize_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
-      };
+      }
 
       let doc = arango.PUT_RAW("/_admin/wal/flush?waitForSync=true&waitForCollector=true", "");
       assertEqual(doc.code, 200);
@@ -1054,16 +1096,22 @@ function dealing_with_the_initial_dump_interfaceSuite () {
         body = body.slice(position + 1, body.length);
         i = i + 1;
       }
-      assertTrue(i< 100);
+      assertTrue(i < 100);
     },
 
 
-    test_checks_the_dump_for_an_edge_collection_1: function() {
+    test_checks_the_dump_for_an_edge_collection_1: function () {
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2");
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
+        let body = { "_key": `test${i}`,
+"_from": "UnitTestsReplication/foo",
+"_to": "UnitTestsReplication/bar",
+"test1": `${i}`,
+"test2": false,
+"test3": [ ],
+"test4": { } };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
@@ -1114,12 +1162,18 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(i, 100);
     },
 
-    test_checks_the_dump_for_an_edge_collection__small_chunkSize_1: function() {
+    test_checks_the_dump_for_an_edge_collection__small_chunkSize_1: function () {
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2");
 
-      for (let i = 0; i < 100; i ++) {
-        let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : i, "test2" : false, "test3" : [ ], "test4" : { } };
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"_from": "UnitTestsReplication/foo",
+"_to": "UnitTestsReplication/bar",
+"test1": i,
+"test2": false,
+"test3": [ ],
+"test4": { } };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
@@ -1170,14 +1224,15 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertTrue(i < 100);
     },
 
-    test_checks_the_dump_for_a_collection_with_deleted_documents_1: function() {
+    test_checks_the_dump_for_a_collection_with_deleted_documents_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       let doc = arango.PUT_RAW("/_admin/wal/flush?waitForSync=true&waitForCollector=true", "");
       assertEqual(doc.code, 200);
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}`};
+        let body = { "_key": `test${i}`,
+"test": `${i}`};
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
 
@@ -1202,11 +1257,12 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
     },
 
-    test_checks_the_dump_for_a_truncated_collection_1: function() {
+    test_checks_the_dump_for_a_truncated_collection_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 10; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -1233,11 +1289,12 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
     },
 
-    test_checks_the_dump_for_a_non_empty_collection__3_0_mode_1: function() {
+    test_checks_the_dump_for_a_non_empty_collection__3_0_mode_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -1276,11 +1333,12 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(i, 100);
     },
 
-    test_fetches_incremental_parts_of_a_collection_dump_1: function() {
+    test_fetches_incremental_parts_of_a_collection_dump_1: function () {
       let cid = db._create("UnitTestsReplication");
 
       for (let i = 0; i < 10; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -1326,16 +1384,16 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 function dealing_with_general_functionSuite () {
   let api = "/_db/UnitTestDB/_api/replication";
   return {
-    setUp: function() {
-      let res = db._createDatabase("UnitTestDB");;
+    setUp: function () {
+      let res = db._createDatabase("UnitTestDB");
       assertTrue(res);
     },
 
-    tearDown: function() {
-      let res = db._dropDatabase("UnitTestDB");;
+    tearDown: function () {
+      let res = db._dropDatabase("UnitTestDB");
       assertTrue(res);
     },
-    test_fetches_the_server_id_2: function() {
+    test_fetches_the_server_id_2: function () {
       // fetch id;
       let cmd = api + "/server-id";
       let doc = arango.GET_RAW(cmd);
@@ -1345,51 +1403,51 @@ function dealing_with_general_functionSuite () {
     }
   };
 }
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // applier;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_applierSuite () {
   let api = "/_db/UnitTestDB/_api/replication";
   return {
-    setUp: function() {
-      let res = db._createDatabase("UnitTestDB");;
+    setUp: function () {
+      let res = db._createDatabase("UnitTestDB");
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    tearDown: function() {
-      let res = db._dropDatabase("UnitTestDB");;
+    tearDown: function () {
+      let res = db._dropDatabase("UnitTestDB");
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // start;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_starts_the_applier_2: function() {
+    test_starts_the_applier_2: function () {
       let cmd = api + "/applier-start";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 400);// because configuration is invalid
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // stop;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_stops_the_applier_2: function() {
+    test_stops_the_applier_2: function () {
       let cmd = api + "/applier-stop";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 200);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_applier_config_2: function() {
+    test_fetches_the_applier_config_2: function () {
       let cmd = api + "/applier-config";
       let doc = arango.GET_RAW(cmd);
 
@@ -1414,13 +1472,29 @@ function dealing_with_the_applierSuite () {
       assertEqual(typeof all["idleMaxWaitTime"], 'number');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // set && fetch properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_sets_and_re_fetches_the_applier_config_2: function() {
+    test_sets_and_re_fetches_the_applier_config_2: function () {
       let cmd = api + "/applier-config";
-      let body = { "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 };
+      let body = { "endpoint": "tcp://127.0.0.1:9999",
+"database": "foo",
+"ignoreErrors": 5,
+"requestTimeout": 32.2,
+"connectTimeout": 51.1,
+"maxConnectRetries": 12345,
+"chunkSize": 143423232,
+"autoStart": true,
+"adaptivePolling": false,
+"autoResync": true,
+"includeSystem": true,
+"requireFromPresent": true,
+"verbose": true,
+"connectionRetryWaitTime": 22.12,
+"initialSyncMaxWaitTime": 12.21,
+"idleMinWaitTime": 1.4,
+"idleMaxWaitTime": 7.3 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -1469,7 +1543,23 @@ function dealing_with_the_applierSuite () {
       assertEqual(all["idleMaxWaitTime"], 7.3);
 
 
-      body = { "endpoint" : "ssl://127.0.0.1:12345", "database" : "bar", "ignoreErrors" : 2, "requestTimeout" : 12.5, "connectTimeout" : 26.3, "maxConnectRetries" : 12, "chunkSize" : 1234567, "autoStart" : false, "adaptivePolling" : true, "autoResync" : false, "includeSystem" : false, "requireFromPresent" : false, "verbose" : false, "connectionRetryWaitTime" : 2.5, "initialSyncMaxWaitTime" : 4.3, "idleMinWaitTime" : 0.22, "idleMaxWaitTime" : 3.5 };
+      body = { "endpoint": "ssl://127.0.0.1:12345",
+"database": "bar",
+"ignoreErrors": 2,
+"requestTimeout": 12.5,
+"connectTimeout": 26.3,
+"maxConnectRetries": 12,
+"chunkSize": 1234567,
+"autoStart": false,
+"adaptivePolling": true,
+"autoResync": false,
+"includeSystem": false,
+"requireFromPresent": false,
+"verbose": false,
+"connectionRetryWaitTime": 2.5,
+"initialSyncMaxWaitTime": 4.3,
+"idleMinWaitTime": 0.22,
+"idleMaxWaitTime": 3.5 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -1518,11 +1608,11 @@ function dealing_with_the_applierSuite () {
       assertEqual(all["idleMaxWaitTime"], 3.5);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_applier_state_again_2: function() {
+    test_checks_the_applier_state_again_2: function () {
       // fetch state;
       let cmd = api + "/applier-state";
       let doc = arango.GET_RAW(cmd);
@@ -1555,36 +1645,36 @@ function dealing_with_the_applierSuite () {
       assertTrue(lastError.hasOwnProperty("errorNum"));
       assertTrue(state.hasOwnProperty("time"));
       assertMatch(/^[0-9]+-[0-9]+-[0-9]+T[0-9]+:[0-9]+:[0-9]+Z$/, state['time']);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // logger;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_logger_Suite () {
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop("UnitTestsReplication");
-      let res = db._createDatabase("UnitTestDB");;
+      let res = db._createDatabase("UnitTestDB");
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
     },
 
-    tearDown: function() {
-      let res = db._dropDatabase("UnitTestDB");;
+    tearDown: function () {
+      let res = db._dropDatabase("UnitTestDB");
       assertTrue(res);
       arango.PUT_RAW(api + "/applier-stop", "");
       arango.DELETE_RAW(api + "/applier-state", "");
       db._drop("UnitTestsReplication");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_state: function() {
+    test_checks_the_state: function () {
       // fetch state;
       let cmd = api + "/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -1606,11 +1696,11 @@ function dealing_with_the_logger_Suite () {
       assertTrue(server.hasOwnProperty('version'));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // follow;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_empty_follow_log_2: function() {
+    test_fetches_the_empty_follow_log_2: function () {
       while (true) {
         let cmd = api + "/logger-state";
         let doc = arango.GET_RAW(cmd);
@@ -1629,7 +1719,7 @@ function dealing_with_the_logger_Suite () {
         } else {
           assertEqual(doc.code, 204);
 
-          //assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
+          // assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
           assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
           assertEqual(doc.headers["x-arango-replication-lastincluded"], "0");
           assertEqual(doc.headers["content-type"], "application/x-arango-dump");
@@ -1641,7 +1731,7 @@ function dealing_with_the_logger_Suite () {
       }
     },
 
-    test_fetches_a_create_collection_action_from_the_follow_log_2: function() {
+    test_fetches_a_create_collection_action_from_the_follow_log_2: function () {
       db._useDatabase("UnitTestDB");
       db._drop("UnitTestsReplication");
 
@@ -1653,7 +1743,7 @@ function dealing_with_the_logger_Suite () {
       assertTrue(doc.parsedBody["state"]["running"]);
       let fromTick = doc.parsedBody["state"]["lastLogTick"];
 
-      
+
       let cid = db._create("UnitTestsReplication", { waitForSync: true });
       db._useDatabase("_system");
 
@@ -1708,7 +1798,7 @@ function dealing_with_the_logger_Suite () {
 
     },
 
-    test_fetches_some_collection_operations_from_the_follow_log_2: function() {
+    test_fetches_some_collection_operations_from_the_follow_log_2: function () {
       db._drop("UnitTestsReplication", "UnitTestDB");
 
       sleep(5);
@@ -1726,7 +1816,8 @@ function dealing_with_the_logger_Suite () {
 
       // create document;
       cmd = "/_db/UnitTestDB/_api/document?collection=UnitTestsReplication";
-      let body = { "_key" : "test", "test" : false };
+      let body = { "_key": "test",
+"test": false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201);
       let rev = doc.parsedBody["_rev"];
@@ -1790,7 +1881,7 @@ function dealing_with_the_logger_Suite () {
 
             i = i + 1;
           }
-        } else if ( i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
+        } else if (i === 1 && document["type"] === 2300 && document["cid"] === cid._id) {
           // create document;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -1807,7 +1898,7 @@ function dealing_with_the_logger_Suite () {
           assertFalse(document["data"]["test"]);
 
           i = i + 1;
-        } else if ( i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
+        } else if (i === 2 && document["type"] === 2302 && document["cid"] === cid._id) {
           // delete document;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -1821,7 +1912,7 @@ function dealing_with_the_logger_Suite () {
           assertEqual(document["data"]["_key"], "test");
 
           i = i + 1;
-        } else if ( i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
+        } else if (i === 3 && document["type"] === 2001 && document["cid"] === cid._id) {
           // drop collection;
           assertTrue(document.hasOwnProperty("tick"));
           assertTrue(document.hasOwnProperty("type"));
@@ -1842,13 +1933,13 @@ function dealing_with_the_logger_Suite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // inventory / dump;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_initial_dumSuite () {
   let batchId;
   return {
-    setUp: function() {
+    setUp: function () {
       db._createDatabase("UnitTestDB");
       let doc = arango.POST_RAW(api + "/batch", "{}");
       assertEqual(doc.code, 200);
@@ -1856,7 +1947,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
       db._drop("UnitTestsReplication", "UnitTestDB");
       db._drop("UnitTestsReplication2", "UnitTestDB");
@@ -1864,11 +1955,11 @@ function dealing_with_the_initial_dumSuite () {
       db._dropDatabase("UnitTestDB");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // inventory;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_initial_inventory_2: function() {
+    test_checks_the_initial_inventory_2: function () {
       let cmd = api + `/inventory?includeSystem=false&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -1880,7 +1971,7 @@ function dealing_with_the_initial_dumSuite () {
       let collections = all["collections"];
       let filtered = [ ];
       collections.forEach(collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -1893,7 +1984,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+-[0-9]+-[0-9]+T[0-9]+:[0-9]+:[0-9]+Z$/, state['time']);
     },
 
-    test_checks_the_initial_inventory_for_non_system_collections_2: function() {
+    test_checks_the_initial_inventory_for_non_system_collections_2: function () {
       let cmd = api + `/inventory?includeSystem=false&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -1908,7 +1999,7 @@ function dealing_with_the_initial_dumSuite () {
       });
     },
 
-    test_checks_the_initial_inventory_for_system_collections_2: function() {
+    test_checks_the_initial_inventory_for_system_collections_2: function () {
       let cmd = api + `/inventory?includeSystem=true&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
 
@@ -1920,14 +2011,15 @@ function dealing_with_the_initial_dumSuite () {
       let collections = all["collections"];
       let systemCollections = 0;
       collections.forEach(collection => {
-        if (collection["parameters"]["name"].match(/^_/))
-          systemCollections = systemCollections + 1;
+        if (collection["parameters"]["name"].match(/^_/)) {
+systemCollections = systemCollections + 1;
+}
       });
 
       assertNotEqual(systemCollections, 0);
     },
 
-    test_checks_the_inventory_after_creating_collections_2: function() {
+    test_checks_the_inventory_after_creating_collections_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2", {waitForSync: true });
@@ -1948,7 +2040,7 @@ function dealing_with_the_initial_dumSuite () {
       let collections = all['collections'];
       let filtered = [ ];
       collections.forEach(collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -1993,31 +2085,41 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(c['indexes'], [ ]);
     },
 
-    test_checks_the_inventory_with_indexes_2: function() {
+    test_checks_the_inventory_with_indexes_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._create("UnitTestsReplication2");
 
       let idxUrl = "/_db/UnitTestDB/_api/index";
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type": "skiplist",
+"unique": false,
+"fields": [ "c" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication`, body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
-      body = { "type" : "geo", "unique" : false, "fields" : [ "a", "b" ] };
+      body = { "type": "geo",
+"unique": false,
+"fields": [ "a", "b" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type": "skiplist",
+"unique": true,
+"fields": [ "d" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "fulltext", "minLength" : 8, "fields" : [ "ff" ] };
+      body = { "type": "fulltext",
+"minLength": 8,
+"fields": [ "ff" ] };
       doc = arango.POST_RAW(`${idxUrl}?collection=UnitTestsReplication2`, body);
       assertEqual(doc.code, 201);
 
@@ -2037,7 +2139,7 @@ function dealing_with_the_initial_dumSuite () {
       let collections = all['collections'];
       let filtered = [ ];
       collections.forEach(collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find( name => {
+        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].find(name => {
           return name === collection["parameters"]["name"];
         }) !== undefined) {
           filtered.push(collection);
@@ -2115,11 +2217,11 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(idx["fields"], [ "ff" ]);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // dump;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_dump_for_an_empty_collection_2: function() {
+    test_checks_the_dump_for_an_empty_collection_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
@@ -2137,12 +2239,13 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(doc.body, undefined);
     },
 
-    test_checks_the_dump_for_a_non_empty_collection_2: function() {
+    test_checks_the_dump_for_a_non_empty_collection_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
-      for (let i = 0; i < 100; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}`};
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}`};
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202, doc);
       }
@@ -2185,12 +2288,13 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(i, 100);
     },
 
-    test_checks_the_dump_for_a_non_empty_collection__small_chunkSize_2: function() {
+    test_checks_the_dump_for_a_non_empty_collection__small_chunkSize_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
-      for (let i = 0; i < 100; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -2237,13 +2341,19 @@ function dealing_with_the_initial_dumSuite () {
     },
 
 
-    test_checks_the_dump_for_an_edge_collection_2: function() {
+    test_checks_the_dump_for_an_edge_collection_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2");
 
-      for (let i = 0; i < 100; i++ ) {
-        let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"_from": "UnitTestsReplication/foo",
+"_to": "UnitTestsReplication/bar",
+"test1": `${i}`,
+"test2": false,
+"test3": [ ],
+"test4": { } };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
         assertEqual(doc.code, 202, doc);
       }
@@ -2294,13 +2404,19 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(i, 100);
     },
 
-    test_checks_the_dump_for_an_edge_collection__small_chunkSize_2: function() {
+    test_checks_the_dump_for_an_edge_collection__small_chunkSize_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
       let cid2 = db._createEdgeCollection("UnitTestsReplication2");
 
-      for (let i = 0; i < 100; i++ ) {
-        let body = { "_key" : `test${i}`, "_from" : "UnitTestsReplication/foo", "_to" : "UnitTestsReplication/bar", "test1" : `${i}`, "test2" : false, "test3" : [ ], "test4" : { } };
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"_from": "UnitTestsReplication/foo",
+"_to": "UnitTestsReplication/bar",
+"test1": `${i}`,
+"test2": false,
+"test3": [ ],
+"test4": { } };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication2", body);
         assertEqual(doc.code, 202);
       }
@@ -2348,21 +2464,22 @@ function dealing_with_the_initial_dumSuite () {
         body = body.slice(position + 1, body.length);
         i = i + 1;
       }
-      assertTrue(i< 100);
+      assertTrue(i < 100);
     },
 
-    test_checks_the_dump_for_a_collection_with_deleted_documents_2: function() {
+    test_checks_the_dump_for_a_collection_with_deleted_documents_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
       let doc = arango.PUT_RAW("/_admin/wal/flush?waitForSync=true&waitForCollector=true", "");
       assertEqual(doc.code, 200);
 
-      for (let i = 0; i < 10; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+      for (let i = 0; i < 10; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
-        
+
         doc = arango.DELETE_RAW(`/_db/UnitTestDB/_api/document/UnitTestsReplication/test${i}`, body);
         assertEqual(doc.code, 202);
       }
@@ -2384,12 +2501,13 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
     },
 
-    test_checks_the_dump_for_a_truncated_collection_2: function() {
+    test_checks_the_dump_for_a_truncated_collection_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
-      for (let i = 0; i < 10; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+      for (let i = 0; i < 10; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -2416,12 +2534,13 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
     },
 
-    test_checks_the_dump_for_a_non_empty_collection__3_0_mode_2: function() {
+    test_checks_the_dump_for_a_non_empty_collection__3_0_mode_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
-      for (let i = 0; i < 100; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+      for (let i = 0; i < 100; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
       }
@@ -2461,15 +2580,16 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(i, 100);
     },
 
-    test_fetches_incremental_parts_of_a_collection_dump_2: function() {
+    test_fetches_incremental_parts_of_a_collection_dump_2: function () {
       db._useDatabase("UnitTestDB");
       let cid = db._create("UnitTestsReplication");
 
-      for (let i = 0; i < 10; i++ ) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
+      for (let i = 0; i < 10; i++) {
+        let body = { "_key": `test${i}`,
+"test": `${i}` };
         let doc = arango.POST_RAW("/_db/UnitTestDB/_api/document?collection=UnitTestsReplication", body);
         assertEqual(doc.code, 202);
-      };
+      }
 
       let doc = arango.PUT_RAW("/_admin/wal/flush?waitForSync=true&waitForCollector=true", "");
       assertEqual(doc.code, 200);
@@ -2481,7 +2601,7 @@ function dealing_with_the_initial_dumSuite () {
       batchId = doc0.parsedBody["id"];
       assertMatch(/^[0-9]+$/, batchId);
 
-      for (let i = 0; i < 10; i++ ) {
+      for (let i = 0; i < 10; i++) {
         let cmd = api + `/dump?collection=UnitTestsReplication&from=${fromTick}&chunkSize=1&batchId=${batchId}`;
         let doc = arango.GET_RAW(cmd);
         assertEqual(doc.code, 200, doc);
@@ -2505,7 +2625,7 @@ function dealing_with_the_initial_dumSuite () {
         assertMatch(/^test[0-9]+$/, document['data']['_key']);
         assertMatch(/^[a-zA-Z0-9_\-]+$/, document['data']['_rev']);
         assertTrue(document['data'].hasOwnProperty('test'));
-      };
+      }
     }
   };
 }

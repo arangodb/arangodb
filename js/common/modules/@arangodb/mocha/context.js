@@ -4,7 +4,7 @@
 // https://js.foundation
 
  class Context {
-  runnable(runnable) {
+  runnable (runnable) {
     if (!arguments.length) {
       return this._runnable;
     }
@@ -12,7 +12,7 @@
     return this;
   }
 
-  timeout(ms) {
+  timeout (ms) {
     if (!arguments.length) {
       return this.runnable().timeout();
     }
@@ -20,7 +20,7 @@
     return this;
   }
 
-  enableTimeouts(enabled) {
+  enableTimeouts (enabled) {
     if (!arguments.length) {
       return this.runnable().enableTimeouts();
     }
@@ -28,7 +28,7 @@
     return this;
   }
 
-  slow(ms) {
+  slow (ms) {
     if (!arguments.length) {
       return this.runnable().slow();
     }
@@ -36,11 +36,11 @@
     return this;
   }
 
-  skip() {
+  skip () {
     this.runnable().skip();
   }
 
-  retries(n) {
+  retries (n) {
     if (!arguments.length) {
       return this.runnable().retries();
     }

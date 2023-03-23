@@ -38,7 +38,7 @@ let { getEndpointById,
       debugClearFailAt
     } = require('@arangodb/test-helper');
 
-function createDatabaseFailureSuite() {
+function createDatabaseFailureSuite () {
   'use strict';
   const cn = 'UnitTestsCreateDatabase';
 
@@ -55,7 +55,7 @@ function createDatabaseFailureSuite() {
     tearDown: function () {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
     },
-    
+
     // make follower execute intermediate commits (before the leader), but let the
     // transaction succeed
     testCreateDatabaseWithFailure: function () {
@@ -71,8 +71,8 @@ function createDatabaseFailureSuite() {
       } catch (err) {
         assertEqual(err.errorNum, errors.ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE.code);
       }
-    },
-    
+    }
+
   };
 }
 

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, arango */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the common database interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the common database interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -35,19 +35,19 @@ const ERRORS = arangodb.errors;
 const db = internal.db;
 const userManager = require("@arangodb/users");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: database methods
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: database methods
+// //////////////////////////////////////////////////////////////////////////////
 
 function DatabaseSuite () {
   'use strict';
   return {
 
-    setUp : function () {
+    setUp: function () {
       internal.db._useDatabase("_system");
     },
 
-    tearDown : function () {
+    tearDown: function () {
       // always go back to system database
       internal.db._useDatabase("_system");
 
@@ -65,11 +65,11 @@ function DatabaseSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabase : function () {
+    testCreateDatabase: function () {
       // run this early in the test setup for maximal stress.
       assertEqual("_system", internal.db._name());
 
@@ -90,21 +90,21 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase1"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create with too long names function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create with too long names function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testLongName : function () {
+    testLongName: function () {
       const prefix = "UnitTestsDatabase";
       let name = prefix + Array(64 + 1 - prefix.length).join("x");
       assertEqual(64, name.length);
-          
+
       assertTrue(internal.db._createDatabase(name));
       assertTrue(internal.db._dropDatabase(name));
 
       name += name; // 128 chars
       assertEqual(128, name.length);
-      
+
       assertTrue(internal.db._createDatabase(name));
       assertTrue(internal.db._dropDatabase(name));
 
@@ -119,28 +119,28 @@ function DatabaseSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _name function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _name function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testName : function () {
+    testName: function () {
       assertEqual("_system", internal.db._name());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _isSystem function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _isSystem function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsSystem : function () {
+    testIsSystem: function () {
       assertTrue(typeof internal.db._isSystem() === "boolean");
       assertTrue(internal.db._isSystem());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryMemoryLimit : function () {
+    testQueryMemoryLimit: function () {
       try {
         internal.db._query("FOR i IN 1..100000 SORT i RETURN i", {}, { memoryLimit: 100000 });
         fail();
@@ -149,104 +149,107 @@ function DatabaseSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryMemoryLimitSufficient : function () {
+    testQueryMemoryLimitSufficient: function () {
       assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 + 4096 }).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryMemoryLimitUnbounded : function () {
+    testQueryMemoryLimitUnbounded: function () {
       assertEqual(10000, internal.db._query("FOR i IN 1..10000 SORT i RETURN i", {}, { memoryLimit: 0 }).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQuery : function () {
+    testQuery: function () {
       assertEqual([ 1 ], internal.db._query("return 1").toArray());
       assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query("return [ 1, 2, 9, \"foo\" ]").toArray());
-      assertEqual([ [ 1, 454 ] ], internal.db._query("return [ @low, @high ]", { low : 1, high : 454 }).toArray());
+      assertEqual([ [ 1, 454 ] ], internal.db._query("return [ @low, @high ]", { low: 1,
+high: 454 }).toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryObject : function () {
+    testQueryObject: function () {
       assertEqual([ 1 ], internal.db._query({ query: "return 1" }).toArray());
       assertEqual([ [ 1, 2, 9, "foo" ] ], internal.db._query({ query: "return [ 1, 2, 9, \"foo\" ]" }).toArray());
-      var obj = { query: "return [ @low, @high ]", bindVars: { low : 1, high : 454 } };
+      var obj = { query: "return [ @low, @high ]",
+bindVars: { low: 1,
+high: 454 } };
       assertEqual([ [ 1, 454 ] ], internal.db._query(obj).toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function with AQB object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function with AQB object
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryAQB : function () {
+    testQueryAQB: function () {
       var qb = require("aqb");
       assertEqual([ 1 ], internal.db._query(qb.return(1)).toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _query function with AQB
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _query function with AQB
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryAQBBindParameter : function () {
+    testQueryAQBBindParameter: function () {
       var qb = require("aqb");
       assertEqual([ 1 ], internal.db._query(qb.return("@x"), { x: 1 }).toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test query helper
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test query helper
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryHelper : function () {
+    testQueryHelper: function () {
       var query = require("@arangodb").query;
       assertEqual([ 1 ], query`RETURN 1`.toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test query helper as function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test query helper as function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryHelperAsFunction : function () {
+    testQueryHelperAsFunction: function () {
       var query = require("@arangodb").query;
       assertEqual([ 1 ], query()`RETURN 1`.toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test query helper with options
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test query helper with options
+// //////////////////////////////////////////////////////////////////////////////
 
-    testQueryHelperWithOptions : function () {
+    testQueryHelperWithOptions: function () {
       var query = require("@arangodb").query;
       var result = query({fullCount: true})`RETURN 1`;
       assertEqual([ 1 ], result.toArray());
       assertEqual(1, result.getExtra().stats.fullCount);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test AQL literal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test AQL literal
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAQLWithLiteral : function () {
+    testAQLWithLiteral: function () {
       var aql = require("@arangodb").aql;
       assertEqual([ 1 ], internal.db._query(aql`${aql.literal('RETURN 1')}`).toArray());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test AQL literal and options
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test AQL literal and options
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAQLWithLiteralAndOptions : function () {
+    testAQLWithLiteralAndOptions: function () {
       var aql = require("@arangodb").aql;
       var result = internal.db._query(
         aql`${aql.literal('RETURN 1')}`,
@@ -256,11 +259,11 @@ function DatabaseSuite () {
       assertEqual(1, result.getExtra().stats.fullCount);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _executeTransaction
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExecuteTransaction1 : function () {
+    testExecuteTransaction1: function () {
       var result = internal.db._executeTransaction({
         collections: { },
         action: function (params) {
@@ -275,27 +278,27 @@ function DatabaseSuite () {
       assertEqual(3, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _executeTransaction
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _executeTransaction
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExecuteTransaction2 : function () {
+    testExecuteTransaction2: function () {
       var result = internal.db._executeTransaction({
         collections: { },
         action: "function () { return params.v1[0] - params.v1[1]; }",
         params: {
-          "v1": [ 10, 4 ],
+          "v1": [ 10, 4 ]
         }
       });
 
       assertEqual(6, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _databases function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _databases function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testListDatabases : function () {
+    testListDatabases: function () {
       var actual, n;
 
       assertEqual("_system", internal.db._name());
@@ -304,14 +307,14 @@ function DatabaseSuite () {
       assertTrue(Array.isArray(actual));
       n = actual.length;
       assertTrue(n > 0);
-      assertTrue( ( function () {
+      assertTrue((function () {
         for (var i = 0; i < actual.length; ++i) {
           if (actual[i] === "_system") {
             return true;
           }
         }
         return false;
-      }() ) );
+      }()));
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -323,23 +326,23 @@ function DatabaseSuite () {
       actual = internal.db._databases();
       assertTrue(Array.isArray(actual));
       assertEqual(n + 1, actual.length);
-      assertTrue( ( function () {
+      assertTrue((function () {
         for (var i = 0; i < actual.length; ++i) {
           if (actual[i] === "UnitTestsDatabase0") {
             return true;
           }
         }
         return false;
-      }() ) );
+      }()));
 
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseWithUsers1 : function () {
+    testCreateDatabaseWithUsers1: function () {
       assertEqual("_system", internal.db._name());
 
       try {
@@ -353,11 +356,11 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseWithUsers2 : function () {
+    testCreateDatabaseWithUsers2: function () {
       assertEqual("_system", internal.db._name());
 
       try {
@@ -366,8 +369,12 @@ function DatabaseSuite () {
       }
 
       var users = [
-        { username: "admin", passwd: "secret", extra: { gender: "m" } },
-        { username: "foo", active: false, extra: { gender: "f" } }
+        { username: "admin",
+passwd: "secret",
+extra: { gender: "m" } },
+        { username: "foo",
+active: false,
+extra: { gender: "f" } }
       ];
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
@@ -389,11 +396,11 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseWithUsers3 : function () {
+    testCreateDatabaseWithUsers3: function () {
       assertEqual("_system", internal.db._name());
 
       try {
@@ -402,8 +409,14 @@ function DatabaseSuite () {
       }
 
       var users = [
-        { username: "admin", passwd: "secret", active: true, extra: { gender: "m" } },
-        { username: "admin", passwd: "", active: false, extra: { gender: "m" } },
+        { username: "admin",
+passwd: "secret",
+active: true,
+extra: { gender: "m" } },
+        { username: "admin",
+passwd: "",
+active: false,
+extra: { gender: "m" } }
       ];
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0", { }, users));
 
@@ -411,20 +424,20 @@ function DatabaseSuite () {
       assertEqual("admin", user.user);
       assertTrue(user.active);
       assertEqual("m", user.extra.gender);
-      
+
       assertEqual("rw", userManager.permission("admin")["UnitTestsDatabase0"]);
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseInvalidName : function () {
+    testCreateDatabaseInvalidName: function () {
       assertEqual("_system", internal.db._name());
 
-      [ "", " ", "/", "0", "99999", ":::", "fox::", "test/abc" ].forEach (function (d) {
+      [ "", " ", "/", "0", "99999", ":::", "fox::", "test/abc" ].forEach(function (d) {
         try {
           internal.db._createDatabase(d);
           fail();
@@ -434,11 +447,11 @@ function DatabaseSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseNonSystem : function () {
+    testCreateDatabaseNonSystem: function () {
       assertEqual("_system", internal.db._name());
       assertTrue(internal.db._isSystem());
 
@@ -473,11 +486,11 @@ function DatabaseSuite () {
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseDuplicate : function () {
+    testCreateDatabaseDuplicate: function () {
       assertEqual("_system", internal.db._name());
 
       try {
@@ -497,11 +510,11 @@ function DatabaseSuite () {
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _createDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _createDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDatabaseCaseSensitivity : function () {
+    testCreateDatabaseCaseSensitivity: function () {
       assertEqual("_system", internal.db._name());
 
       var getCollections = function () {
@@ -573,11 +586,11 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UNITTESTSDATABASE0"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _useDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _useDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUseDatabase : function () {
+    testUseDatabase: function () {
       assertEqual("_system", internal.db._name());
       assertTrue(internal.db._isSystem());
 
@@ -620,11 +633,11 @@ function DatabaseSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test _dropDatabase function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test _dropDatabase function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropDatabase : function () {
+    testDropDatabase: function () {
       assertEqual("_system", internal.db._name());
 
       try {
@@ -651,11 +664,11 @@ function DatabaseSuite () {
       assertTrue(isContained("_system"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection cache in the face of collection deletion
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test collection cache in the face of collection deletion
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionsCache1 : function () {
+    testCollectionsCache1: function () {
       var db = internal.db;
       var name = "UnitTestsCollectionCache";
 
@@ -663,7 +676,8 @@ function DatabaseSuite () {
 
       db._create(name);
 
-      db[name].save({ _key: "test", value: 1 });
+      db[name].save({ _key: "test",
+value: 1 });
       var cid = db[name]._id;
       assertEqual(name, db[name].name());
       assertEqual(1, db[name].count());
@@ -673,8 +687,10 @@ function DatabaseSuite () {
       db._drop(name);
 
       db._create(name);
-      db[name].save({ _key: "foo", value: 1 });
-      db[name].save({ _key: "test", value: 2 });
+      db[name].save({ _key: "foo",
+value: 1 });
+      db[name].save({ _key: "test",
+value: 2 });
 
       assertNotEqual(cid, db[name]._id);
       assertEqual(name, db[name].name());
@@ -685,7 +701,8 @@ function DatabaseSuite () {
       db._drop(name);
 
       try {
-        db[name].save({ _key: "foo", value: 1 });
+        db[name].save({ _key: "foo",
+value: 1 });
         fail();
       } catch (err) {
         // cannot call method ... of undefined
@@ -693,11 +710,11 @@ function DatabaseSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection cache in the face of database changes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test collection cache in the face of database changes
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionsCache2 : function () {
+    testCollectionsCache2: function () {
       var db = internal.db;
       var name = "UnitTestsCollectionCache";
 
@@ -706,7 +723,8 @@ function DatabaseSuite () {
       db._drop(name);
       db._create(name);
 
-      db[name].save({ _key: "foo", value: 1 });
+      db[name].save({ _key: "foo",
+value: 1 });
       var cid = db[name]._id;
       assertEqual(name, db[name].name());
       assertEqual(1, db[name].count());
@@ -717,7 +735,8 @@ function DatabaseSuite () {
 
       // collection should not yet exist in other database
       try {
-        db[name].save({ _key: "foo", value: 1 });
+        db[name].save({ _key: "foo",
+value: 1 });
         fail();
       } catch (err) {
         // cannot call method ... of undefined
@@ -729,8 +748,10 @@ function DatabaseSuite () {
       assertEqual(name, db[name].name());
       assertEqual(0, db[name].count());
 
-      db[name].save({ _key: "foo", value: 1 });
-      db[name].save({ _key: "bar", value: 1 });
+      db[name].save({ _key: "foo",
+value: 1 });
+      db[name].save({ _key: "bar",
+value: 1 });
       assertEqual(2, db[name].count());
 
       db._useDatabase("_system");
@@ -749,7 +770,7 @@ function DatabaseWriteConcernSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       try {
         internal.db._dropDatabase(cn);
       } catch (err) {
@@ -757,7 +778,7 @@ function DatabaseWriteConcernSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDown: function () {
       try {
         internal.db._dropDatabase(cn);
       } catch (err) {
@@ -765,41 +786,44 @@ function DatabaseWriteConcernSuite () {
       }
     },
 
-    testCreateDatabaseReplicationFactorGreaterWriteConcern : function () {
+    testCreateDatabaseReplicationFactorGreaterWriteConcern: function () {
       [
         [1, 2],
         [1, 3],
-        [2, 3],
+        [2, 3]
       ].forEach((data) => {
         let [replicationFactor, writeConcern] = data;
         try {
-          internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+          internal.db._createDatabase(cn, { replicationFactor,
+writeConcern });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
       });
     },
-    
-    testCreateDatabaseReplicationFactorGreaterDBServers : function () {
+
+    testCreateDatabaseReplicationFactorGreaterDBServers: function () {
       try {
-        internal.db._createDatabase(cn, { replicationFactor: 10, writeConcern: 10 });
+        internal.db._createDatabase(cn, { replicationFactor: 10,
+writeConcern: 10 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
     },
 
-    testCreateDatabaseReplicationFactorWriteConcernPairs : function () {
+    testCreateDatabaseReplicationFactorWriteConcernPairs: function () {
       [
         [1, 1],
         [2, 1],
         [2, 2],
         [3, 1],
-        [3, 2],
+        [3, 2]
       ].forEach((data) => {
         let [replicationFactor, writeConcern] = data;
-        internal.db._createDatabase(cn, { replicationFactor, writeConcern });
+        internal.db._createDatabase(cn, { replicationFactor,
+writeConcern });
         try {
           internal.db._useDatabase(cn);
           assertEqual(replicationFactor, internal.db._properties().replicationFactor);
@@ -809,7 +833,7 @@ function DatabaseWriteConcernSuite () {
         }
         internal.db._dropDatabase(cn);
       });
-    },
+    }
 
   };
 }

@@ -35,25 +35,25 @@ let jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  
+
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
 
   // write 10 log entries, and then crash
   for (let i = 0; i < 10; ++i) {
     let request = {
-      ["arango/test" + i] : {
+      ["arango/test" + i]: {
         "op": "set",
         "new": "testmann" + i
       }
     };
-        
+
     ArangoAgent.write([[ request, {}, "testi"]]);
   }
-  
+
   // make sure everything is synced to disk before we crash
-  c.insert({ _key: "sync" }, true); // wait for sync 
-  
+  c.insert({ _key: "sync" }, true); // wait for sync
+
   internal.debugTerminate('crashing server');
 }
 
@@ -80,7 +80,7 @@ function recoverySuite () {
         let entry = state.log[start + i];
         assertEqual("testi", entry.clientId);
         let request = {
-          ["arango/test" + i] : {
+          ["arango/test" + i]: {
             "op": "set",
             "new": "testmann" + i
           }
@@ -92,10 +92,10 @@ function recoverySuite () {
         assertEqual(index, entry.index);
         ++index;
       }
-      
+
       for (let i = 0; i < 10; ++i) {
         let r = ArangoAgent.read([["/arango/test" + i]]);
-        assertEqual([ { "arango": { ["test" + i] : "testmann" +i } } ], r); 
+        assertEqual([ { "arango": { ["test" + i]: "testmann" + i } } ], r);
       }
     }
 

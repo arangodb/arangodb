@@ -59,7 +59,7 @@ function runSetup () {
   // garbage-collect once
   require("internal").wait(0.5, true);
 
-  // we need to wait long enough for the DatabaseManagerThread to 
+  // we need to wait long enough for the DatabaseManagerThread to
   // physically carry out the deletion
   let path = fs.join(appPath, 'UnitTestsRecovery2');
   let gone = false;

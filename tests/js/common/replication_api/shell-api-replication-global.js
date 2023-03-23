@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -31,52 +31,52 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json; charset=utf-8" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json; charset=utf-8" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // applier;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_applierSuite () {
   let api = "/_api/replication";
 
   return {
-    setUp: function() {
+    setUp: function () {
       arango.PUT_RAW(api + "/applier-stop?global=true", "");
       arango.DELETE_RAW(api + "/applier-state?global=true", "");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.PUT_RAW(api + "/applier-stop?global=true", "");
       arango.DELETE_RAW(api + "/applier-state?global=true", "");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // start;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_starts_the_applier: function() {
+    test_starts_the_applier: function () {
       let cmd = api + "/applier-start?global=true";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 400); //  because configuration is invalid
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // stop;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_stops_the_applier: function() {
+    test_stops_the_applier: function () {
       let cmd = api + "/applier-stop?global=true";
       let doc = arango.PUT_RAW(cmd, "");
       assertEqual(doc.code, 200);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_applier_config: function() {
+    test_fetches_the_applier_config: function () {
       let cmd = api + "/applier-config?global=true";
       let doc = arango.GET_RAW(cmd, "");
 
@@ -94,20 +94,36 @@ function dealing_with_the_applierSuite () {
       assertTrue(all.hasOwnProperty("includeSystem"));
       assertTrue(all.hasOwnProperty("requireFromPresent"));
       assertTrue(all.hasOwnProperty("verbose"));
-      assertEqual(typeof all["restrictType"],'string');
+      assertEqual(typeof all["restrictType"], 'string');
       assertEqual(typeof all["connectionRetryWaitTime"], 'number');
       assertEqual(typeof all["initialSyncMaxWaitTime"], 'number');
       assertEqual(typeof all["idleMinWaitTime"], 'number');
       assertEqual(typeof all["idleMaxWaitTime"], 'number');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // set and fetch properties;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_sets_and_re_fetches_the_applier_config: function() {
+    test_sets_and_re_fetches_the_applier_config: function () {
       let cmd = api + "/applier-config?global=true";
-      let body = { "endpoint" : "tcp://127.0.0.1:9999", "database" : "foo", "ignoreErrors" : 5, "requestTimeout" : 32.2, "connectTimeout" : 51.1, "maxConnectRetries" : 12345, "chunkSize" : 143423232, "autoStart" : true, "adaptivePolling" : false, "autoResync" : true, "includeSystem" : true, "requireFromPresent" : true, "verbose" : true, "connectionRetryWaitTime" : 22.12, "initialSyncMaxWaitTime" : 12.21, "idleMinWaitTime" : 1.4, "idleMaxWaitTime" : 7.3 };
+      let body = { "endpoint": "tcp://127.0.0.1:9999",
+"database": "foo",
+"ignoreErrors": 5,
+"requestTimeout": 32.2,
+"connectTimeout": 51.1,
+"maxConnectRetries": 12345,
+"chunkSize": 143423232,
+"autoStart": true,
+"adaptivePolling": false,
+"autoResync": true,
+"includeSystem": true,
+"requireFromPresent": true,
+"verbose": true,
+"connectionRetryWaitTime": 22.12,
+"initialSyncMaxWaitTime": 12.21,
+"idleMinWaitTime": 1.4,
+"idleMaxWaitTime": 7.3 };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -156,7 +172,23 @@ function dealing_with_the_applierSuite () {
       assertEqual(all["idleMaxWaitTime"], 7.3);
 
 
-      body = { "endpoint" : "ssl://127.0.0.1:12345", "database" : "bar", "ignoreErrors" : 2, "requestTimeout" : 12.5, "connectTimeout" : 26.3, "maxConnectRetries" : 12, "chunkSize" : 1234567, "autoStart" : false, "adaptivePolling" : true, "autoResync" : false, "includeSystem" : false, "requireFromPresent" : false, "verbose" : false, "connectionRetryWaitTime" : 2.5, "initialSyncMaxWaitTime" : 4.3, "idleMinWaitTime" : 0.22, "idleMaxWaitTime" : 3.5 };
+      body = { "endpoint": "ssl://127.0.0.1:12345",
+"database": "bar",
+"ignoreErrors": 2,
+"requestTimeout": 12.5,
+"connectTimeout": 26.3,
+"maxConnectRetries": 12,
+"chunkSize": 1234567,
+"autoStart": false,
+"adaptivePolling": true,
+"autoResync": false,
+"includeSystem": false,
+"requireFromPresent": false,
+"verbose": false,
+"connectionRetryWaitTime": 2.5,
+"initialSyncMaxWaitTime": 4.3,
+"idleMinWaitTime": 0.22,
+"idleMaxWaitTime": 3.5 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -205,11 +237,11 @@ function dealing_with_the_applierSuite () {
       assertEqual(all["idleMaxWaitTime"], 3.5);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_the_state: function() {
+    test_checks_the_state: function () {
       // fetch state;
       let cmd = api + "/applier-state?global=true";
       let doc = arango.GET_RAW(cmd);
@@ -246,26 +278,26 @@ function dealing_with_the_applierSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // wal access;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_wal_access_apiSuite () {
   let api = "/_api/wal";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._drop("UnitTestsReplication");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop("UnitTestsReplication");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // state;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_check_the_state: function() {
+    test_check_the_state: function () {
       // fetch state;
       let cmd = "/_api/replication/logger-state";
       let doc = arango.GET_RAW(cmd);
@@ -288,11 +320,11 @@ function dealing_with_wal_access_apiSuite () {
     },
 
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // tickRanges;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_available_tick_range_1: function() {
+    test_fetches_the_available_tick_range_1: function () {
       // fetch state;
       let cmd = api + "/range";
       let doc = arango.GET_RAW(cmd);
@@ -311,11 +343,11 @@ function dealing_with_wal_access_apiSuite () {
       assertMatch(/^[0-9]+$/, result['server']['serverId']);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // lastTick;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_available_tick_range_2: function() {
+    test_fetches_the_available_tick_range_2: function () {
       // fetch state;
       let cmd = api + "/lastTick";
       let doc = arango.GET_RAW(cmd);
@@ -332,11 +364,11 @@ function dealing_with_wal_access_apiSuite () {
       assertMatch(/^[0-9]+$/, result['server']['serverId']);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // follow;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_fetches_the_empty_follow_log: function() {
+    test_fetches_the_empty_follow_log: function () {
       while (true) {
         let cmd = api + "/lastTick";
         let doc = arango.GET_RAW(cmd);
@@ -366,7 +398,7 @@ function dealing_with_wal_access_apiSuite () {
       }
     },
 
-    test_tails_the_WAL_with_a_tick_far_in_the_future: function() {
+    test_tails_the_WAL_with_a_tick_far_in_the_future: function () {
       let cmd = api + "/lastTick";
       let doc = arango.GET_RAW(cmd);
       assertEqual(doc.code, 200);
@@ -379,7 +411,7 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(doc.headers["x-arango-replication-lastincluded"], "0");
     },
 
-    test_fetches_a_create_collection_action_from_the_follow_log: function() {
+    test_fetches_a_create_collection_action_from_the_follow_log: function () {
       let cid = 0;
       let cuid = 0;
       let doc = {};
@@ -395,7 +427,7 @@ function dealing_with_wal_access_apiSuite () {
         assertEqual(doc.code, 200);
         fromTick = doc.parsedBody["tick"];
 
-        cid = db._create("UnitTestsReplication", { waitForSync: true } );
+        cid = db._create("UnitTestsReplication", { waitForSync: true });
         cuid = cid.properties()["globallyUniqueId"];
 
         sleep(1);
@@ -438,7 +470,7 @@ function dealing_with_wal_access_apiSuite () {
           assertTrue(c.hasOwnProperty("version"));
           assertEqual(c["type"], 2);
           assertEqual(c["cid"], cid._id);
-          assertEqual(typeof c["cid"],'string');
+          assertEqual(typeof c["cid"], 'string');
           assertEqual(c["globallyUniqueId"], cuid);
           assertFalse(c["deleted"]);
           assertEqual(c["name"], "UnitTestsReplication");
@@ -449,7 +481,7 @@ function dealing_with_wal_access_apiSuite () {
       }
     },
 
-    test_fetches_some_collection_operations_from_the_follow_log: function() {
+    test_fetches_some_collection_operations_from_the_follow_log: function () {
       let doc;
       let body;
       let cid;
@@ -470,17 +502,18 @@ function dealing_with_wal_access_apiSuite () {
         // create collection;
         cid = db._create("UnitTestsReplication", {waitForSync: true});
         cuid = cid.properties()["globallyUniqueId"];
-        
+
         // create document;
         cmd = "/_api/document?collection=UnitTestsReplication";
-        body = { "_key" : "test", "test" : false };
+        body = { "_key": "test",
+"test": false };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201, doc);
         rev = doc.parsedBody["_rev"];
 
         // update document;
         cmd = "/_api/document/UnitTestsReplication/test";
-        body = { "updated" : true };
+        body = { "updated": true };
         doc = arango.PATCH_RAW(cmd, body);
         assertEqual(doc.code, 201);
         rev2 = doc.parsedBody["_rev"];
@@ -535,7 +568,7 @@ function dealing_with_wal_access_apiSuite () {
             assertTrue(c.hasOwnProperty("version"));
             assertEqual(c["type"], 2);
             assertEqual(c["cid"], cid._id);
-            assertEqual(typeof c["cid"],'string');
+            assertEqual(typeof c["cid"], 'string');
             assertEqual(c["globallyUniqueId"], cuid);
             assertFalse(c["deleted"]);
             assertEqual(c["name"], "UnitTestsReplication");
@@ -651,7 +684,7 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(i, 5);
     },
 
-    test_fetches_some_more_single_document_operations_from_the_log: function() {
+    test_fetches_some_more_single_document_operations_from_the_log: function () {
       db._drop("UnitTestsReplication");
 
       sleep(5);
@@ -667,14 +700,15 @@ function dealing_with_wal_access_apiSuite () {
 
       // create document;
       cmd = "/_api/document?collection=UnitTestsReplication";
-      let body = { "_key" : "test", "test" : false };
+      let body = { "_key": "test",
+"test": false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201, doc);
       let rev = doc.parsedBody["_rev"];
 
       // update document;
       cmd = "/_api/document/UnitTestsReplication/test";
-      body = { "updated" : true };
+      body = { "updated": true };
       doc = arango.PATCH_RAW(cmd, body);
       assertEqual(doc.code, 201);
       let rev2 = doc.parsedBody["_rev"];
@@ -694,7 +728,10 @@ function dealing_with_wal_access_apiSuite () {
       assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
 
-      let tickTypes = { 2000: 0, 2001: 0, 2300: 0, 2302: 0 };
+      let tickTypes = { 2000: 0,
+2001: 0,
+2300: 0,
+2302: 0 };
 
       body = doc.body.toString();
 
@@ -739,7 +776,7 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(doc.code, 200);
     },
 
-    test_validates_chunkSize_restrictions: function() {
+    test_validates_chunkSize_restrictions: function () {
       db._drop("UnitTestsReplication");
 
       sleep(1);
@@ -756,40 +793,44 @@ function dealing_with_wal_access_apiSuite () {
       let cuid = cid.properties()["globallyUniqueId"];
 
       // create documents;
-      for (let value = 0; value < 250; value ++) {
+      for (let value = 0; value < 250; value++) {
         cmd = "/_api/document?collection=UnitTestsReplication";
-        let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
+        let body = { "value": "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
       }
 
       // create one big transaction;
       let docsBody = [];
-      for (let value=0; value < 749; value++) {
-        docsBody.push({ "value" : value });
+      for (let value = 0; value < 749; value++) {
+        docsBody.push({ "value": value });
       }
-      docsBody.push({ "value" : "500" });
+      docsBody.push({ "value": "500" });
       cmd = "/_api/document?collection=UnitTestsReplication";
       doc = arango.POST_RAW(cmd, docsBody);
       assertEqual(doc.code, 201);
 
       // create more documents;
-      for(let value = 0; value < 500; value ++) {
+      for (let value = 0; value < 500; value++) {
         cmd = "/_api/document?collection=UnitTestsReplication";
-        let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
+        let body = { "value": "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
       }
 
       sleep(1);
 
-      let tickTypes = { 2000: 0, 2001: 0, 2200: 0, 2201: 0, 2300: 0 };
+      let tickTypes = { 2000: 0,
+2001: 0,
+2200: 0,
+2201: 0,
+2300: 0 };
 
       while (true) {
         cmd = api + "/tail?global=true&from=" + fromTick + "&lastScanned=" + lastScanned + "&chunkSize=16384";
         doc = arango.GET_RAW(cmd);
         assertTrue(doc.code === 200 || doc.code === 204);
-        //print(doc)
+        // print(doc)
         if (doc.code === 204) {
           break;
         }
@@ -803,7 +844,7 @@ function dealing_with_wal_access_apiSuite () {
         }
         assertEqual(doc.headers["content-type"], "application/x-arango-dump");
         // we need to allow for some overhead here, as the chunkSize restriction is not honored precisely;
-        assertTrue(Number(doc.headers["content-length"]) <  (16 + 9) * 1024);
+        assertTrue(Number(doc.headers["content-length"]) < (16 + 9) * 1024);
 
         // update lastScanned for next request;
         lastScanned = doc.headers["x-arango-replication-lastscanned"];
@@ -860,7 +901,11 @@ function dealing_with_wal_access_apiSuite () {
 
 
       // now try again with a single chunk  ;
-      tickTypes = { 2000: 0, 2001: 0, 2200: 0, 2201: 0, 2300: 0 };
+      tickTypes = { 2000: 0,
+2001: 0,
+2200: 0,
+2201: 0,
+2300: 0 };
       // big chunk: 1024x1024
       cmd = api + "/tail?global=true&from=" + originalTick + "&lastScanned=" + originalTick + "&chunkSize=1048576";
       doc = arango.GET_RAW(cmd);
@@ -871,7 +916,7 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
 
       // we need to allow for some overhead here, as the chunkSize restriction is not honored precisely;
-      assertTrue(Number(doc.headers["content-length"]) <  (1024 + 8) * 1024);
+      assertTrue(Number(doc.headers["content-length"]) < (1024 + 8) * 1024);
 
       let body = doc.body.toString();
 
@@ -915,11 +960,11 @@ function dealing_with_wal_access_apiSuite () {
         body = body.slice(position + 1, body.length);
       }
 
-      assertEqual(tickTypes[2000], 1); //collection create
-      assertEqual(tickTypes[2001], 0); //collection drop
+      assertEqual(tickTypes[2000], 1); // collection create
+      assertEqual(tickTypes[2001], 0); // collection drop
       assertTrue(tickTypes[2200] >= 1); // begin transaction
       assertTrue(tickTypes[2201] >= 1); // commit transaction
-      assertEqual(tickTypes[2300], 1500); //document inserts
+      assertEqual(tickTypes[2300], 1500); // document inserts
 
       // drop collection;
       cmd = "/_api/collection/UnitTestsReplication";
@@ -929,14 +974,14 @@ function dealing_with_wal_access_apiSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // inventory / dump;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_initial_dumpSuite () {
   let api = "/_api/replication";
   let batchId;
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop("UnitTestsReplication");
       db._drop("UnitTestsReplication2");
       let doc = arango.POST_RAW(api + "/batch", "{}");
@@ -945,17 +990,17 @@ function dealing_with_the_initial_dumpSuite () {
       assertMatch(/^[0-9]+$/, batchId);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
       db._drop("UnitTestsReplication");
       db._drop("UnitTestsReplication2");
     },
 
-  ////////////////////////////////////////////////////////////////////////////////;
+  // //////////////////////////////////////////////////////////////////////////////;
   // inventory;
-  ////////////////////////////////////////////////////////////////////////////////;
+  // //////////////////////////////////////////////////////////////////////////////;
 
-  test_checks_the_initial_inventory: function() {
+  test_checks_the_initial_inventory: function () {
     let cmd = api + `/inventory?includeSystem=true&global=true&batchId=${batchId}`;
     let doc = arango.GET_RAW(cmd);
 
@@ -974,7 +1019,7 @@ function dealing_with_the_initial_dumpSuite () {
 
       let collections = database["collections"];
       let filtered = [ ];
-      
+
       collections.forEach(collection => {
         if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
           filtered.push(collection);
@@ -985,7 +1030,7 @@ function dealing_with_the_initial_dumpSuite () {
     }
   },
 
-    test_checks_the_inventory_after_creating_collections: function() {
+    test_checks_the_inventory_after_creating_collections: function () {
       let cid = db._create("UnitTestsReplication");
       let cuid = cid.properties()["globallyUniqueId"];
       let cid2 = db._createEdgeCollection("UnitTestsReplication2", { waitForSync: true });
@@ -1031,7 +1076,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(typeof parameters["type"], 'number');
       assertEqual(parameters["type"], 2);
       assertEqual(parameters["cid"], cid._id);
-      assertEqual(typeof parameters["cid"],'string');
+      assertEqual(typeof parameters["cid"], 'string');
       assertFalse(parameters["deleted"]);
       assertEqual(parameters["name"], "UnitTestsReplication");
       assertFalse(parameters["waitForSync"]);
@@ -1051,7 +1096,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(typeof parameters["type"], 'number');
       assertEqual(parameters["type"], 3);
       assertEqual(parameters["cid"], cid2._id);
-      assertEqual(typeof parameters["cid"],'string');
+      assertEqual(typeof parameters["cid"], 'string');
       assertFalse(parameters["deleted"]);
       assertEqual(parameters["name"], "UnitTestsReplication2");
       assertTrue(parameters["waitForSync"]);
@@ -1061,22 +1106,28 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(c['indexes'], [ ]);
     },
 
-    test_checks_the_inventory_with_indexes: function() {
+    test_checks_the_inventory_with_indexes: function () {
       let cid = db._create("UnitTestsReplication");
       let cuid = cid.properties()["globallyUniqueId"];
       let cid2 = db._create("UnitTestsReplication2");
       let cuid2 = cid2.properties()["globallyUniqueId"];
 
-      let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
+      let body = { "type": "hash",
+"unique": false,
+"fields": [ "a", "b" ] };
       let doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
-      body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
+      body = { "type": "skiplist",
+"unique": false,
+"fields": [ "c" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
-      body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
+      body = { "type": "skiplist",
+"unique": true,
+"fields": [ "d" ] };
       doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication2", body);
       assertEqual(doc.code, 201);
 
@@ -1118,7 +1169,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(typeof parameters["type"], 'number');
       assertEqual(parameters["type"], 2);
       assertEqual(parameters["cid"], cid._id);
-      assertEqual(typeof parameters["cid"],'string');
+      assertEqual(typeof parameters["cid"], 'string');
       assertFalse(parameters["deleted"]);
       assertEqual(parameters["name"], "UnitTestsReplication");
       assertFalse(parameters["waitForSync"]);
@@ -1151,7 +1202,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(typeof parameters["type"], 'number');
       assertEqual(parameters["type"], 2);
       assertEqual(parameters["cid"], cid2._id);
-      assertEqual(typeof parameters["cid"],'string');
+      assertEqual(typeof parameters["cid"], 'string');
       assertFalse(parameters["deleted"]);
       assertEqual(parameters["name"], "UnitTestsReplication2");
       assertFalse(parameters["waitForSync"]);

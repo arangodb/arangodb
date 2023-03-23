@@ -6,8 +6,8 @@
 const Reporter = require('@arangodb/mocha/reporter');
 const { clean } = require('@arangodb/mocha/utils');
 
-class SuiteReporter extends Reporter  {
-  constructor(runner) {
+class SuiteReporter extends Reporter {
+  constructor (runner) {
     super(runner);
     var self = this;
     var suites = [];

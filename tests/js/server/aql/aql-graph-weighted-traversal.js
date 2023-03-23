@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/* jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -15,7 +15,7 @@ const internal = require('internal');
       4 - 2 -> 6
 
  */
-function WeightedTraveralsTestSuite() {
+function WeightedTraveralsTestSuite () {
 
   const graphName = "UnitTestGraph";
   const vName = "UnitTestVertices";
@@ -25,21 +25,39 @@ function WeightedTraveralsTestSuite() {
     gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
 
     const vertexes = [
-      { _key: "1", value: 1 },
-      { _key: "2", value: 1 },
-      { _key: "3", value: 1 },
-      { _key: "4", value: 1 },
-      { _key: "5", value: 1 },
-      { _key: "6", value: 0 },
+      { _key: "1",
+value: 1 },
+      { _key: "2",
+value: 1 },
+      { _key: "3",
+value: 1 },
+      { _key: "4",
+value: 1 },
+      { _key: "5",
+value: 1 },
+      { _key: "6",
+value: 0 }
     ];
 
     const edges = [
-      { _from: `${vName}/1`, _to: `${vName}/2`, weight: 1 },
-      { _from: `${vName}/2`, _to: `${vName}/3`, weight: 10 },
-      { _from: `${vName}/1`, _to: `${vName}/4`, weight: 1.5 },
-      { _from: `${vName}/4`, _to: `${vName}/6`, weight: 2 },
-      { _from: `${vName}/6`, _to: `${vName}/3`, weight: 0.5 },
-      { _from: `${vName}/3`, _to: `${vName}/5`, weight: 1 },
+      { _from: `${vName}/1`,
+_to: `${vName}/2`,
+weight: 1 },
+      { _from: `${vName}/2`,
+_to: `${vName}/3`,
+weight: 10 },
+      { _from: `${vName}/1`,
+_to: `${vName}/4`,
+weight: 1.5 },
+      { _from: `${vName}/4`,
+_to: `${vName}/6`,
+weight: 2 },
+      { _from: `${vName}/6`,
+_to: `${vName}/3`,
+weight: 0.5 },
+      { _from: `${vName}/3`,
+_to: `${vName}/5`,
+weight: 1 }
     ];
 
     db[vName].insert(vertexes);
@@ -48,15 +66,15 @@ function WeightedTraveralsTestSuite() {
 
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       createGraph();
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       gm._drop(graphName, true);
     },
 
-    testSimpleTraversal : function () {
+    testSimpleTraversal: function () {
       const query = `
         FOR v, e, p IN 1..10 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           OPTIONS {order: "weighted", weightAttribute: "weight"}
@@ -65,16 +83,19 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "2" ], "weight" : 1 },
-        { "path" : [ "1", "4" ], "weight" : 1.5 },
-        { "path" : [ "1", "4", "6" ], "weight" : 3.5 }
+        { "path": [ "1", "2" ],
+"weight": 1 },
+        { "path": [ "1", "4" ],
+"weight": 1.5 },
+        { "path": [ "1", "4", "6" ],
+"weight": 3.5 }
       ];
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
     },
 
-    testSimpleTraversalSingleEdge : function () {
+    testSimpleTraversalSingleEdge: function () {
       const query = `
         FOR v, e, p IN 1..1 OUTBOUND "${vName}/1" GRAPH "${graphName}"
           OPTIONS {order: "weighted", weightAttribute: "weight"}
@@ -83,15 +104,17 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "2" ], "weight" : 1 },
-        { "path" : [ "1", "4" ], "weight" : 1.5 },
+        { "path": [ "1", "2" ],
+"weight": 1 },
+        { "path": [ "1", "4" ],
+"weight": 1.5 }
       ];
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
     },
 
-    testShortestPath : function () {
+    testShortestPath: function () {
       const target = `${vName}/5`;
 
       const query = `
@@ -104,14 +127,15 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "4", "6", "3", "5" ], "weight" : 5 }
+        { "path": [ "1", "4", "6", "3", "5" ],
+"weight": 5 }
       ];
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
     },
 
-    testShortestPathWithVertexCondition : function () {
+    testShortestPathWithVertexCondition: function () {
       const target = `${vName}/5`;
 
       const query = `
@@ -125,14 +149,15 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "2", "3", "5" ], "weight" : 12 }
+        { "path": [ "1", "2", "3", "5" ],
+"weight": 12 }
       ];
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
     },
 
-    testShortestPathWithEdgeCondition : function () {
+    testShortestPathWithEdgeCondition: function () {
       const target = `${vName}/5`;
 
       const query = `
@@ -146,14 +171,15 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "2", "3", "5" ], "weight" : 12 }
+        { "path": [ "1", "2", "3", "5" ],
+"weight": 12 }
       ];
 
       const result = db._query(query).toArray();
       assertEqual(expectedResult, result);
     },
 
-    testKShortestPaths : function () {  // slow version :D
+    testKShortestPaths: function () { // slow version :D
       const target = `${vName}/5`;
 
       const query = `
@@ -166,8 +192,10 @@ function WeightedTraveralsTestSuite() {
       `;
 
       const expectedResult = [
-        { "path" : [ "1", "4", "6", "3", "5" ], "weight" : 5 },
-        { "path" : [ "1", "2", "3", "5" ], "weight" : 12 }
+        { "path": [ "1", "4", "6", "3", "5" ],
+"weight": 5 },
+        { "path": [ "1", "2", "3", "5" ],
+"weight": 12 }
       ];
 
       const result = db._query(query).toArray();
@@ -177,7 +205,7 @@ function WeightedTraveralsTestSuite() {
 }
 
 
-function WeightedTraveralsErrorTestSuite() {
+function WeightedTraveralsErrorTestSuite () {
 
   const graphName = "UnitTestGraph";
   const vName = "UnitTestVertices";
@@ -187,12 +215,16 @@ function WeightedTraveralsErrorTestSuite() {
     gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
 
     const vertexes = [
-      { _key: "1", value: 1 },
-      { _key: "2", value: 1 },
+      { _key: "1",
+value: 1 },
+      { _key: "2",
+value: 1 }
     ];
 
     const edges = [
-      { _from: `${vName}/1`, _to: `${vName}/2`, weight: -1 },
+      { _from: `${vName}/1`,
+_to: `${vName}/2`,
+weight: -1 }
     ];
 
     db[vName].insert(vertexes);
@@ -218,7 +250,8 @@ function WeightedTraveralsErrorTestSuite() {
       `;
 
       try {
-        db._query({query, bindVars: {weight: -1}});
+        db._query({query,
+bindVars: {weight: -1}});
         fail();
       } catch (err) {
         assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
@@ -239,7 +272,7 @@ function WeightedTraveralsErrorTestSuite() {
       } catch (err) {
         assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
-    },
+    }
   };
 }
 

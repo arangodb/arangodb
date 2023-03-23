@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'php_driver': 'php client driver test',
+  'php_driver': 'php client driver test'
 };
 const optionsDocumentation = [
   '   - `phpsource`: directory of the php driver',
@@ -67,11 +67,11 @@ const host_re = new RegExp('([a-z]*)://([0-9.:]*):(\d*)');
 
 function phpDriver (options) {
   class runInPhpTest extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runInPhpTest";
     }
-    runOneTest(file) {
+    runOneTest (file) {
       let topology;
       let results = {
         'message': ''
@@ -165,6 +165,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['phpkeepalive'] = true;
   Object.assign(allTestPaths, testPaths);
   testFns['php_driver'] = phpDriver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

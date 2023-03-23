@@ -29,7 +29,7 @@ if (getOptions === true) {
   return {
     'server.enable-telemetrics-api': 'true',
     'server.authentication': 'true',
-    'server.jwt-secret': jwtSecret,
+    'server.jwt-secret': jwtSecret
   };
 }
 
@@ -56,17 +56,17 @@ const vn2 = "testVertex2";
 
 let db = arangodb.db;
 
-function createUser() {
+function createUser () {
   users.save(userName, '123', true);
   users.grantDatabase(userName, "_system", 'ro');
   users.reload();
 }
 
-function removeUser() {
+function removeUser () {
   users.remove(userName);
 }
 
-function getTelemetricsResult() {
+function getTelemetricsResult () {
   let res;
   let numSecs = 0.5;
   while (true) {
@@ -81,7 +81,7 @@ function getTelemetricsResult() {
   return res;
 }
 
-function getTelemetricsSentToEndpoint() {
+function getTelemetricsSentToEndpoint () {
   let res;
   let numSecs = 0.5;
   while (true) {
@@ -96,7 +96,7 @@ function getTelemetricsSentToEndpoint() {
   return res;
 }
 
-function parseIndexes(idxs) {
+function parseIndexes (idxs) {
   idxs.forEach(idx => {
     assertTrue(idx.hasOwnProperty("mem"));
     assertTrue(idx.hasOwnProperty("type"));
@@ -105,10 +105,10 @@ function parseIndexes(idxs) {
   });
 }
 
-//n_smart_colls, for now, doesn't give precise smart graph values, as it relies on the collection's
+// n_smart_colls, for now, doesn't give precise smart graph values, as it relies on the collection's
 // isSmart() function and collections with no shards, such as the edge collection from the smart graph
 // are not seen from the db server's methods, so should be in the coordinator and run a query on the database
-function parseCollections(colls) {
+function parseCollections (colls) {
   colls.forEach(coll => {
     assertTrue(coll.hasOwnProperty("n_shards"));
     assertTrue(coll.hasOwnProperty("rep_factor"));
@@ -132,7 +132,7 @@ function parseCollections(colls) {
   });
 }
 
-function parseDatabases(databases) {
+function parseDatabases (databases) {
   databases.forEach(database => {
     assertTrue(database.hasOwnProperty("colls"));
     const colls = database["colls"];
@@ -147,7 +147,7 @@ function parseDatabases(databases) {
 
 }
 
-function parseServers(servers) {
+function parseServers (servers) {
   servers.forEach(host => {
     assertTrue(host.hasOwnProperty("role"));
     assertTrue(host.hasOwnProperty("maintenance"));
@@ -185,7 +185,7 @@ function parseServers(servers) {
 
 }
 
-function assertForTelemetricsResponse(telemetrics) {
+function assertForTelemetricsResponse (telemetrics) {
   assertTrue(telemetrics.hasOwnProperty("deployment"));
   const deployment = telemetrics["deployment"];
   assertTrue(deployment.hasOwnProperty("type"));
@@ -215,7 +215,7 @@ function assertForTelemetricsResponse(telemetrics) {
 }
 
 
-function telemetricsShellReconnectSmartGraphTestsuite() {
+function telemetricsShellReconnectSmartGraphTestsuite () {
 
   return {
 
@@ -258,15 +258,25 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
         if (isCluster) {
           numShards = 2;
         }
-        db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        db._create(cn, {numberOfShards: numShards,
+replicationFactor: 1});
         let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          docs.push({value: i + 1, name: "abc"});
+          docs.push({value: i + 1,
+name: "abc"});
         }
         db[cn].insert(docs);
-        db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        db[cn].ensureIndex({type: "persistent",
+fields: ["value"],
+name: "persistentIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"],
+name: "geoIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["otherGeo"],
+name: "geoIdx2"});
 
         db._createView('testView1', 'arangosearch', {});
         db._useDatabase("_system");
@@ -299,7 +309,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections have replication factor 2
+                // system collections have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
                 }
@@ -310,7 +320,7 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
             });
             assertEqual(totalNumDocs, 2000);
           } else {
-            //includes the collections created for the smart graph
+            // includes the collections created for the smart graph
             assertEqual(database["n_doc_colls"], 15);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
@@ -349,18 +359,19 @@ function telemetricsShellReconnectSmartGraphTestsuite() {
           removeUser();
         }
       }
-    },
+    }
   };
 }
 
-function telemetricsShellReconnectGraphTestsuite() {
+function telemetricsShellReconnectGraphTestsuite () {
 
   return {
 
     setUpAll: function () {
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
-      coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
+      coll.insert({_from: vn1 + "/test1",
+_to: vn2 + "/test2"});
     },
 
     tearDownAll: function () {
@@ -385,15 +396,25 @@ function telemetricsShellReconnectGraphTestsuite() {
         if (isCluster) {
           numShards = 2;
         }
-        db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        db._create(cn, {numberOfShards: numShards,
+replicationFactor: 1});
         let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          docs.push({value: i + 1, name: "abc"});
+          docs.push({value: i + 1,
+name: "abc"});
         }
         db[cn].insert(docs);
-        db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        db[cn].ensureIndex({type: "persistent",
+fields: ["value"],
+name: "persistentIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"],
+name: "geoIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["otherGeo"],
+name: "geoIdx2"});
 
         db._createView('testView1', 'arangosearch', {});
 
@@ -427,7 +448,7 @@ function telemetricsShellReconnectGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections have replication factor 2
+                // system collections have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
                 }
@@ -459,12 +480,12 @@ function telemetricsShellReconnectGraphTestsuite() {
 
         }
       }
-    },
+    }
   };
 }
 
 
-function telemetricsApiReconnectSmartGraphTestsuite() {
+function telemetricsApiReconnectSmartGraphTestsuite () {
 
   return {
 
@@ -478,7 +499,8 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       const vn = "verticesCollection";
       const en = "edgesCollection";
       const graphRelation = [smartGraph._relation(en, vn, vn)];
-      smartGraph._create(cn2, graphRelation, null, {smartGraphAttribute: "value1", replicationFactor: 1});
+      smartGraph._create(cn2, graphRelation, null, {smartGraphAttribute: "value1",
+replicationFactor: 1});
       smartGraph._graph(cn2);
     },
 
@@ -507,15 +529,25 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
         if (isCluster) {
           numShards = 2;
         }
-        db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        db._create(cn, {numberOfShards: numShards,
+replicationFactor: 1});
         let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          docs.push({value: i + 1, name: "abc"});
+          docs.push({value: i + 1,
+name: "abc"});
         }
         db[cn].insert(docs);
-        db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        db[cn].ensureIndex({type: "persistent",
+fields: ["value"],
+name: "persistentIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"],
+name: "geoIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["otherGeo"],
+name: "geoIdx2"});
 
         db._createView('testView1', 'arangosearch', {});
         db._useDatabase("_system");
@@ -546,7 +578,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections would have replication factor 2
+                // system collections would have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
                 }
@@ -557,7 +589,7 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
             });
             assertEqual(totalNumDocs, 2000);
           } else {
-            //includes the collections created for the smart graph
+            // includes the collections created for the smart graph
             assertEqual(database["n_doc_colls"], 15);
             database["colls"].forEach(coll => {
               assertEqual(coll["n_primary"], 1);
@@ -610,19 +642,20 @@ function telemetricsApiReconnectSmartGraphTestsuite() {
       assertTrue(doc.hasOwnProperty("_rev"));
       assertForTelemetricsResponse(db[cn].document(doc["_id"]));
 
-    },
+    }
 
   };
 }
 
-function telemetricsApiReconnectGraphTestsuite() {
+function telemetricsApiReconnectGraphTestsuite () {
 
   return {
 
     setUpAll: function () {
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
-      coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
+      coll.insert({_from: vn1 + "/test1",
+_to: vn2 + "/test2"});
     },
 
     tearDownAll: function () {
@@ -647,15 +680,25 @@ function telemetricsApiReconnectGraphTestsuite() {
         if (isCluster) {
           numShards = 2;
         }
-        db._create(cn, {numberOfShards: numShards, replicationFactor: 1});
+        db._create(cn, {numberOfShards: numShards,
+replicationFactor: 1});
         let docs = [];
         for (let i = 0; i < 2000; ++i) {
-          docs.push({value: i + 1, name: "abc"});
+          docs.push({value: i + 1,
+name: "abc"});
         }
         db[cn].insert(docs);
-        db[cn].ensureIndex({type: "persistent", fields: ["value"], name: "persistentIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: "geoIdx1"});
-        db[cn].ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: "geoIdx2"});
+        db[cn].ensureIndex({type: "persistent",
+fields: ["value"],
+name: "persistentIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"],
+name: "geoIdx1"});
+        db[cn].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["otherGeo"],
+name: "geoIdx2"});
 
         db._createView('testView1', 'arangosearch', {});
         db._useDatabase("_system");
@@ -686,7 +729,7 @@ function telemetricsApiReconnectGraphTestsuite() {
                 assertEqual(coll.idxs.length, 4);
               } else {
                 assertEqual(nDocs, 0);
-                //system collections would have replication factor 2
+                // system collections would have replication factor 2
                 if (!isCluster) {
                   assertEqual(coll["rep_factor"], 1);
                 }
@@ -717,12 +760,12 @@ function telemetricsApiReconnectGraphTestsuite() {
 
         }
       }
-    },
+    }
   };
 }
 
 
-function telemetricsSendToEndpointRedirectTestsuite() {
+function telemetricsSendToEndpointRedirectTestsuite () {
 
   const mount = '/test-redirect';
 
@@ -739,7 +782,8 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       }
       db._create(cn);
       let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
-      coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
+      coll.insert({_from: vn1 + "/test1",
+_to: vn2 + "/test2"});
     },
 
     tearDownAll: function () {
@@ -757,7 +801,7 @@ function telemetricsSendToEndpointRedirectTestsuite() {
       getTelemetricsResult();
       const telemetrics = getTelemetricsSentToEndpoint();
       assertForTelemetricsResponse(telemetrics);
-    },
+    }
 
   };
 }

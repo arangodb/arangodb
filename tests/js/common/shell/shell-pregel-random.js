@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertNotEqual, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,13 +41,13 @@ let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
-function randomTestSuite() {
+function randomTestSuite () {
   'use strict';
 
   const n = 20000; // vertices
   const m = 300000; // edges
-  
-  let checkCancel = function(pid) {
+
+  let checkCancel = function (pid) {
     pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     pregel.cancel(pid);
     let i = 10000;
@@ -70,13 +70,13 @@ function randomTestSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
 
-      console.log("Beginning to insert test data with " + n + 
+      console.log("Beginning to insert test data with " + n +
                   " vertices, " + m + " edges");
 
       var exists = graph_module._list().indexOf("random") !== -1;
@@ -120,8 +120,12 @@ function randomTestSuite() {
           let toID = Math.floor(Math.random() * n);
           let from = vColl + '/' + fromID;
           let to = vColl + '/' + toID;
-          edges.push({ _from: from, _to: to, vertex: String(fromID) });
-          edges.push({ _from: to, _to: from, vertex: String(toID) });
+          edges.push({ _from: from,
+_to: to,
+vertex: String(fromID) });
+          edges.push({ _from: to,
+_to: from,
+vertex: String(toID) });
           x++;
         }
         db[eColl].insert(edges);
@@ -133,16 +137,18 @@ function randomTestSuite() {
       assertEqual(db[eColl].count(), m * 2);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       graph_module._drop(graphName, true);
     },
 
     testPageRankRandom: function () {
-      var pid = pregel.start("pagerank", graphName, { threshold: 0.0000001, resultField: "result", store: true });
+      var pid = pregel.start("pagerank", graphName, { threshold: 0.0000001,
+resultField: "result",
+store: true });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
       assertEqual(stats.vertexCount, n, stats);
@@ -151,8 +157,10 @@ function randomTestSuite() {
 
     testPageRankRandomMMap: function () {
       const opts = {
-        threshold: 0.0000001, resultField: "result",
-        store: true, useMemoryMaps: true
+        threshold: 0.0000001,
+resultField: "result",
+        store: true,
+useMemoryMaps: true
       };
       var pid = pregel.start("pagerank", graphName, opts);
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
@@ -163,7 +171,8 @@ function randomTestSuite() {
 
     testHITS: function () {
       const opts = {
-        threshold: 0.0000001, resultField: "score",
+        threshold: 0.0000001,
+resultField: "score",
         store: true
       };
       var pid = pregel.start("hits", graphName, opts);
@@ -174,33 +183,44 @@ function randomTestSuite() {
     },
 
     testStatusWithNumericId: function () {
-      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001,
+resultField: "score",
+store: true });
       assertTrue(typeof pid === "string");
       pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     },
-    
+
     testStatusWithStringId: function () {
-      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: true });
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001,
+resultField: "score",
+store: true });
       assertTrue(typeof pid === "string");
       pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
     },
-    
+
     testCancelWithNumericId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001,
+resultField: "score",
+store: false });
       assertTrue(typeof key === "string");
       checkCancel(Number(key));
     },
-    
+
     testCancelWithStringId: function () {
-      let key = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false });
+      let key = pregel.start("hits", graphName, { threshold: 0.0000001,
+resultField: "score",
+store: false });
       assertTrue(typeof key === "string");
       checkCancel(key);
     },
-    
+
     test_garbage_collects_job: function () {
-      let pid = pregel.start("hits", graphName, { threshold: 0.0000001, resultField: "score", store: false, ttl: 15 });
+      let pid = pregel.start("hits", graphName, { threshold: 0.0000001,
+resultField: "score",
+store: false,
+ttl: 15 });
       assertTrue(typeof pid === "string");
-          
+
       let stats = pregel.status(pid);
       assertTrue(stats.hasOwnProperty('id'));
       assertEqual(stats.id, pid);

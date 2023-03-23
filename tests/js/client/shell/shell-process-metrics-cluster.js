@@ -28,7 +28,7 @@ let internal = require('internal');
 const request = require('@arangodb/request');
 const getMetric = require('@arangodb/test-helper').getMetric;
 
-function getEndpointsByType(type) {
+function getEndpointsByType (type) {
   const isType = (d) => (d.instanceRole === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
@@ -43,24 +43,24 @@ function getEndpointsByType(type) {
   };
 
   const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceManager.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+  return instanceManager.arangods.filter(isType).
+                              map(toEndpoint).
+                              map(endpointToURL);
 }
 
-function processMetricsSuite() {
+function processMetricsSuite () {
   'use strict';
-      
+
   const metrics = [
     "arangodb_process_statistics_user_time",
     "arangodb_process_statistics_system_time",
     "arangodb_process_statistics_number_of_threads",
     "arangodb_process_statistics_resident_set_size",
-    "arangodb_process_statistics_virtual_memory_size",
+    "arangodb_process_statistics_virtual_memory_size"
   ];
 
   return {
-    
+
     testMetricsOnAgent: function () {
       let endpoints = getEndpointsByType('agent');
       assertTrue(endpoints.length > 0);
@@ -84,7 +84,7 @@ function processMetricsSuite() {
         });
       });
     },
-    
+
     testMetricsOnDBServer: function () {
       let endpoints = getEndpointsByType('dbserver');
       assertTrue(endpoints.length > 0);
@@ -95,7 +95,7 @@ function processMetricsSuite() {
           assertEqual("number", typeof value);
         });
       });
-    },
+    }
 
   };
 }

@@ -53,8 +53,8 @@ const manifestSchema = {
   keywords: joi.array().optional(),
   license: joi.string().optional(),
   repository: (
-  joi.object().optional()
-    .keys({
+  joi.object().optional().
+    keys({
       type: joi.string().required(),
       url: joi.string().required()
     })
@@ -68,9 +68,9 @@ const manifestSchema = {
 
   // Compatibility
   engines: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
+  joi.object().optional().
+    pattern(RE_EMPTY, joi.forbidden()).
+    pattern(RE_NOT_EMPTY, joi.string().required())
   ),
 
   // Index redirect
@@ -84,15 +84,15 @@ const manifestSchema = {
 
   // Config
   configuration: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, (
-      joi.object().required()
-        .keys({
+  joi.object().optional().
+    pattern(RE_EMPTY, joi.forbidden()).
+    pattern(RE_NOT_EMPTY, (
+      joi.object().required().
+        keys({
           default: joi.any().optional(),
           type: (
-          joi.only(Object.keys(configTypes))
-            .default('string')
+          joi.only(Object.keys(configTypes)).
+            default('string')
           ),
           description: joi.string().optional(),
           required: joi.boolean().default(true)
@@ -102,12 +102,12 @@ const manifestSchema = {
 
   // Dependencies supported
   dependencies: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
+  joi.object().optional().
+    pattern(RE_EMPTY, joi.forbidden()).
+    pattern(RE_NOT_EMPTY, joi.alternatives().try(
       joi.string().required(),
-      joi.object().required()
-        .keys({
+      joi.object().required().
+        keys({
           name: joi.string().default('*'),
           version: joi.string().default('*'),
           description: joi.string().optional(),
@@ -121,22 +121,22 @@ const manifestSchema = {
   provides: (
   joi.alternatives().try(
     joi.string().optional(),
-    joi.array().optional()
-      .items(joi.string().required()),
-    joi.object().optional()
-      .pattern(RE_EMPTY, joi.forbidden())
-      .pattern(RE_NOT_EMPTY, joi.string().required())
+    joi.array().optional().
+      items(joi.string().required()),
+    joi.object().optional().
+      pattern(RE_EMPTY, joi.forbidden()).
+      pattern(RE_NOT_EMPTY, joi.string().required())
   )
   ),
 
   // Bundled assets
   files: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.alternatives().try(
+  joi.object().optional().
+    pattern(RE_EMPTY, joi.forbidden()).
+    pattern(RE_NOT_EMPTY, joi.alternatives().try(
       joi.string().required(),
-      joi.object().required()
-        .keys({
+      joi.object().required().
+        keys({
           path: joi.string().required(),
           gzip: joi.boolean().optional(),
           type: joi.string().optional()
@@ -146,21 +146,21 @@ const manifestSchema = {
 
   // Scripts/queue jobs
   scripts: (
-  joi.object().optional()
-    .pattern(RE_EMPTY, joi.forbidden())
-    .pattern(RE_NOT_EMPTY, joi.string().required())
-    .default(Object, 'empty scripts object')
+  joi.object().optional().
+    pattern(RE_EMPTY, joi.forbidden()).
+    pattern(RE_NOT_EMPTY, joi.string().required()).
+    default(Object, 'empty scripts object')
   ),
 
   // Foxx tests path
   tests: (
-  joi.alternatives()
-    .try(
+  joi.alternatives().
+    try(
       joi.string().required(),
       (
-      joi.array().optional()
-        .items(joi.string().required())
-        .default(Array, 'empty test files array')
+      joi.array().optional().
+        items(joi.string().required()).
+        default(Array, 'empty test files array')
       )
   )
   )

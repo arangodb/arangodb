@@ -1,82 +1,85 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertMatch, AQL_EXPLAIN, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, assertMatch, AQL_EXPLAIN, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author 
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2014 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const db = require("@arangodb").db;
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function optimizerRuleTestSuite () {
   const ruleName = "distribute-in-cluster";
-  // various choices to control the optimizer: 
-  const rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  const rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
-  const thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  // various choices to control the optimizer:
+  const rulesNone = { optimizer: { rules: [ "-all" ] } };
+  const rulesAll = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
+  const thisRuleEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   const thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
-  const maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
+  const maxPlans = { optimizer: { rules: [ "-all" ] },
+maxNumberOfPlans: 1 };
 
   const cn1 = "UnitTestsAqlOptimizerRuleUndist1";
   const cn2 = "UnitTestsAqlOptimizerRuleUndist2";
   let c1, c2;
-  
+
   const explain = function (result) {
-    return helper.getCompactPlan(result).map(function(node) 
-        { return node.type; });
+    return helper.getCompactPlan(result).map(function (node) {
+ return node.type;
+});
   };
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1, {numberOfShards:9});
-      c2 = db._create(cn2, {numberOfShards:9, shardKeys:["a","b"]});
-      for (let i = 0; i < 10; ++i) { 
-        c1.insert({Hallo1:i});
-        c2.insert({Hallo2:i});
+      c1 = db._create(cn1, {numberOfShards: 9});
+      c2 = db._create(cn2, {numberOfShards: 9,
+shardKeys: ["a", "b"]});
+      for (let i = 0; i < 10; ++i) {
+        c1.insert({Hallo1: i});
+        c2.insert({Hallo2: i});
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn1);
       db._drop(cn2);
     },
-    
-    testKeyGenerationOnInsertDefaultShardKey : function () {
+
+    testKeyGenerationOnInsertDefaultShardKey: function () {
       const temp = "UnitTestsTarget";
 
       let queries = [
@@ -87,19 +90,19 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN 1..10 INSERT { _key: CONCAT('test', d) } IN " + temp, true ],
         [ "FOR d IN 1..10 LET doc = { _key: CONCAT('test', d) } INSERT NOOPT(doc) IN " + temp, true ],
         [ "FOR d IN " + cn1 + " INSERT UNSET(d, ['_key']) IN " + temp, true ],
-        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ]
       ];
 
       for (let i = 1; i <= 3; ++i) {
         let c = db._create(temp, { numberOfShards: i });
         try {
-          queries.forEach(function(query) {
+          queries.forEach(function (query) {
             let result = AQL_EXPLAIN(query[0], {}, thisRuleEnabled);
             assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
             if (query[1]) {
               assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
             }
-            
+
             c.truncate();
 
             // the execute command must not fail
@@ -110,8 +113,8 @@ function optimizerRuleTestSuite () {
         }
       }
     },
-    
-    testKeyGenerationOnInsertCustomShardKey : function () {
+
+    testKeyGenerationOnInsertCustomShardKey: function () {
       const temp = "UnitTestsTarget";
 
       let queries = [
@@ -123,13 +126,14 @@ function optimizerRuleTestSuite () {
         [ "FOR d IN 1..10 LET doc = { _key: CONCAT('test', d) } INSERT NOOPT(doc) IN " + temp, false ],
 
         [ "FOR d IN " + cn1 + " INSERT UNSET(d, ['_key']) IN " + temp, true ],
-        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ],
+        [ "FOR d IN " + cn1 + " INSERT { fuchs: d._key } IN " + temp, true ]
       ];
 
       for (let i = 1; i <= 3; ++i) {
-        let c = db._create(temp, { numberOfShards: i, shardKeys: ["testi"] });
+        let c = db._create(temp, { numberOfShards: i,
+shardKeys: ["testi"] });
         try {
-          queries.forEach(function(query) {
+          queries.forEach(function (query) {
             let result = AQL_EXPLAIN(query[0], {}, thisRuleEnabled);
             assertNotEqual(-1, explain(result).indexOf("DistributeNode"));
             assertMatch(/MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/, JSON.stringify(result.plan.nodes));
@@ -150,13 +154,13 @@ function optimizerRuleTestSuite () {
         }
       }
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that the rules fire even if the max number of plans is reached
-    ////////////////////////////////////////////////////////////////////////////////
 
-    testThisRuleEnabledMaxNumberOfPlans : function () {
-      var queries = [ 
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that the rules fire even if the max number of plans is reached
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testThisRuleEnabledMaxNumberOfPlans: function () {
+      var queries = [
         "FOR d IN " + cn1 + " REMOVE d in " + cn1,
         "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
         "FOR d IN " + cn1 + " INSERT d in " + cn2,
@@ -164,114 +168,99 @@ function optimizerRuleTestSuite () {
       ];
 
       var expectedRules = [
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                            ], 
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ]
                           ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, maxPlans);
         assertEqual(expectedRules[i], result.plan.rules, query);
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that the rule fires when it is enabled
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that the rule fires when it is enabled
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testThisRuleEnabled : function () {
-      var queries = [ 
+    testThisRuleEnabled: function () {
+      var queries = [
         "FOR d IN " + cn1 + " REMOVE d in " + cn1,
         "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
         "FOR d IN " + cn1 + " INSERT d in " + cn2,
         "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
-        "FOR d IN " + cn1 + " REPLACE d IN " + cn1, 
+        "FOR d IN " + cn1 + " REPLACE d IN " + cn1,
         "FOR d IN " + cn1 + " REPLACE d._key WITH d IN " + cn1,
-        "FOR d IN " + cn1 + " REPLACE d IN " + cn2, 
+        "FOR d IN " + cn1 + " REPLACE d IN " + cn2,
         "FOR d IN " + cn1 + " REPLACE d._key WITH d IN " + cn2,
-        "FOR d IN " + cn1 + " UPDATE d IN " + cn1, 
+        "FOR d IN " + cn1 + " UPDATE d IN " + cn1,
         "FOR d IN " + cn1 + " UPDATE d._key WITH d IN " + cn1
       ];
 
       var expectedRules = [
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                            ], 
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
                             [
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster" 
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ]
                           ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
+                              "ScatterNode",
                               "RemoteNode",
-                              "RemoveNode",
-                              "RemoteNode",
-                              "GatherNode"
-                            ],
-                            [
-                              "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
                               "EnumerateCollectionNode",
-                              "RemoteNode", 
+                              "RemoteNode",
                               "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
@@ -280,10 +269,25 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
+                              "CalculationNode",
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
                               "CalculationNode",
                               "DistributeNode",
@@ -294,13 +298,13 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
+                              "CalculationNode",
+                              "CalculationNode",
                               "DistributeNode",
                               "RemoteNode",
                               "InsertNode",
@@ -309,10 +313,10 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
                               "DistributeNode",
                               "RemoteNode",
@@ -322,13 +326,13 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
+                              "CalculationNode",
+                              "CalculationNode",
                               "DistributeNode",
                               "RemoteNode",
                               "ReplaceNode",
@@ -337,10 +341,10 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
                               "DistributeNode",
                               "RemoteNode",
@@ -350,13 +354,13 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
+                              "CalculationNode",
+                              "CalculationNode",
                               "DistributeNode",
                               "RemoteNode",
                               "ReplaceNode",
@@ -365,10 +369,10 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
                               "DistributeNode",
                               "RemoteNode",
@@ -378,13 +382,13 @@ function optimizerRuleTestSuite () {
                             ],
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
                               "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
+                              "CalculationNode",
+                              "CalculationNode",
                               "DistributeNode",
                               "RemoteNode",
                               "UpdateNode",
@@ -393,100 +397,100 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, thisRuleEnabled);
         assertEqual(expectedRules[i], result.plan.rules, query);
         assertEqual(expectedNodes[i], explain(result), query);
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule fires when it is disabled (i.e. it can't be disabled)
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule fires when it is disabled (i.e. it can't be disabled)
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testThisRuleDisabled : function () {
-      var queries = [ 
+    testThisRuleDisabled: function () {
+      var queries = [
         "FOR d IN " + cn1 + " REMOVE d in " + cn1,
         "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
         "FOR d IN " + cn1 + " INSERT d in " + cn2,
-        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2
       ];
 
       var expectedRules = [
-                            [ 
-                              "distribute-in-cluster", 
+                            [
+                              "distribute-in-cluster",
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
-                              "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
-                            ], 
-                            [ 
-                              "distribute-in-cluster", 
-                              "distribute-filtercalc-to-cluster", 
-                              "remove-data-modification-out-variables",
-                              "remove-unnecessary-remote-scatter",
-                              "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "scatter-in-cluster",
+                              "undistribute-remove-after-enum-coll"
                             ],
-                            [ 
-                              "distribute-in-cluster", 
+                            [
+                              "distribute-in-cluster",
+                              "distribute-filtercalc-to-cluster",
                               "remove-data-modification-out-variables",
-                              "remove-unnecessary-remote-scatter", 
+                              "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster",
+                              "undistribute-remove-after-enum-coll"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster"
-                            ], 
-                            [ 
-                              "distribute-filtercalc-to-cluster", 
-                              "distribute-in-cluster", 
+                            ],
+                            [
+                              "distribute-filtercalc-to-cluster",
+                              "distribute-in-cluster",
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster"
                             ]
                           ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
                             [
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoveNode", 
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
+                              "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
                             ],
                             [
                               "SingletonNode",
-                              "EnumerateCollectionNode", 
-                              "CalculationNode", 
+                              "EnumerateCollectionNode",
+                              "CalculationNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
+                            [
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
                               "CalculationNode",
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
-                              "CalculationNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
-                              "CalculationNode", 
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                            [
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
+                              "CalculationNode",
+                              "RemoteNode",
+                              "GatherNode",
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ]
                           ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesAll);
 
@@ -496,93 +500,93 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule does not fire when it is not enabled 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule does not fire when it is not enabled
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRulesAll : function () {
-      var queries = [ 
+    testRulesAll: function () {
+      var queries = [
         "FOR d IN " + cn1 + " REMOVE d in " + cn1,
         "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
         "FOR d IN " + cn1 + " INSERT d in " + cn2,
-        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2
       ];
 
       var expectedRules = [
-                            [ 
-                              "distribute-in-cluster", 
+                            [
+                              "distribute-in-cluster",
                               "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
-                              "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
-                            ], 
-                            [ 
-                              "distribute-filtercalc-to-cluster", 
-                              "distribute-in-cluster", 
-                              "remove-data-modification-out-variables",
-                              "remove-unnecessary-remote-scatter",
-                              "scatter-in-cluster", 
-                              "undistribute-remove-after-enum-coll" 
+                              "scatter-in-cluster",
+                              "undistribute-remove-after-enum-coll"
                             ],
-                            [ 
-                              "distribute-in-cluster", 
+                            [
+                              "distribute-filtercalc-to-cluster",
+                              "distribute-in-cluster",
                               "remove-data-modification-out-variables",
-                              "remove-unnecessary-remote-scatter", 
+                              "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster",
+                              "undistribute-remove-after-enum-coll"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster"
-                            ], 
-                            [ 
-                              "distribute-filtercalc-to-cluster", 
-                              "distribute-in-cluster", 
+                            ],
+                            [
+                              "distribute-filtercalc-to-cluster",
+                              "distribute-in-cluster",
                               "remove-data-modification-out-variables",
-                              "remove-unnecessary-remote-scatter", 
+                              "remove-unnecessary-remote-scatter",
                               "scatter-in-cluster"
                             ]
                           ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
                             [
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
                             ],
                             [
                               "SingletonNode",
-                              "EnumerateCollectionNode", 
-                              "CalculationNode", 
+                              "EnumerateCollectionNode",
+                              "CalculationNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
+                            [
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
                               "CalculationNode",
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "EnumerateCollectionNode", 
-                              "CalculationNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
-                              "CalculationNode", 
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                            [
+                              "SingletonNode",
+                              "EnumerateCollectionNode",
+                              "CalculationNode",
+                              "RemoteNode",
+                              "GatherNode",
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ]
                           ];
-      
-      queries.forEach(function(query, i) {
+
+      queries.forEach(function (query, i) {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesAll);
         assertEqual(expectedRules[i].sort(), result.plan.rules.sort(), query);
@@ -590,98 +594,98 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule does not fire when it is not enabled 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule does not fire when it is not enabled
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRulesNone : function () {
-      var queries = [ 
+    testRulesNone: function () {
+      var queries = [
         "FOR d IN " + cn1 + " REMOVE d in " + cn1,
         "FOR d IN " + cn1 + " REMOVE d._key in " + cn1,
         "FOR d IN " + cn1 + " INSERT d in " + cn2,
-        "FOR d IN " + cn1 + " INSERT d._key in " + cn2,
+        "FOR d IN " + cn1 + " INSERT d._key in " + cn2
       ];
 
       var expectedRules = [
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                            ], 
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ],
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                            ], 
-                            [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
+                            ],
+                            [
+                              "distribute-in-cluster",
+                              "scatter-in-cluster"
                             ]
                           ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
                             [
                               "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "DistributeNode",
+                              "ScatterNode",
                               "RemoteNode",
-                              "RemoveNode",
+                              "EnumerateCollectionNode",
                               "RemoteNode",
                               "GatherNode",
-                            ],
-                            [
-                              "SingletonNode",
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode",
-                              "CalculationNode", 
-                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
                               "RemoteNode",
                               "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
+                            [
+                              "SingletonNode",
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
                               "CalculationNode",
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "RemoveNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ],
-                            [ 
-                              "SingletonNode", 
-                              "ScatterNode", 
-                              "RemoteNode", 
-                              "EnumerateCollectionNode", 
-                              "RemoteNode", 
-                              "GatherNode", 
-                              "CalculationNode", 
-                              "CalculationNode", 
-                              "DistributeNode", 
-                              "RemoteNode", 
-                              "InsertNode", 
-                              "RemoteNode", 
-                              "GatherNode" 
+                            [
+                              "SingletonNode",
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
+                            ],
+                            [
+                              "SingletonNode",
+                              "ScatterNode",
+                              "RemoteNode",
+                              "EnumerateCollectionNode",
+                              "RemoteNode",
+                              "GatherNode",
+                              "CalculationNode",
+                              "CalculationNode",
+                              "DistributeNode",
+                              "RemoteNode",
+                              "InsertNode",
+                              "RemoteNode",
+                              "GatherNode"
                             ]
                           ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesNone);
         assertEqual(expectedRules[i], result.plan.rules, query);
@@ -689,20 +693,20 @@ function optimizerRuleTestSuite () {
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has no effect
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test that rule has no effect
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRuleNoEffect : function () {
-       var queries = [ 
-         "FOR d IN " + cn1 +  " RETURN d",
+    testRuleNoEffect: function () {
+       var queries = [
+         "FOR d IN " + cn1 + " RETURN d",
          "FOR d IN " + cn1 + " UPDATE d IN " + cn2,
-         "FOR d IN " + cn1 + " UPDATE d._key WITH d IN " + cn2 ,
+         "FOR d IN " + cn1 + " UPDATE d._key WITH d IN " + cn2,
          "FOR d IN " + cn2 + " REMOVE d IN " + cn2,
-         "FOR i IN 1..10 RETURN i" 
+         "FOR i IN 1..10 RETURN i"
        ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var result1 = AQL_EXPLAIN(query, { }, thisRuleEnabled);
         var result2 = AQL_EXPLAIN(query, { }, rulesAll);
 
@@ -710,40 +714,43 @@ function optimizerRuleTestSuite () {
         assertTrue(result2.plan.rules.indexOf(ruleName) === -1, query);
       });
     },
-    
-    
-    testInsertsDistributeInputCalculationForModification : function () {
-      var queries = [ 
+
+
+    testInsertsDistributeInputCalculationForModification: function () {
+      var queries = [
         ["FOR k IN  ['1','2','3'] REMOVE k IN  " + cn1, "REMOVE"],
         ["FOR k IN  ['1','2','3'] UPDATE k WITH { } IN  " + cn1, "UPDATE"],
-        ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "REPLACE"],
+        ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "REPLACE"]
       ];
 
       const explainer = require("@arangodb/aql/explainer");
-      queries.forEach(function(query, i) {
-        const output = explainer.explain(query[0], {...thisRuleEnabled, colors: false}, false);
+      queries.forEach(function (query, i) {
+        const output = explainer.explain(query[0], {...thisRuleEnabled,
+colors: false}, false);
         const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT\(k, { "allowKeyConversionToObject" : true, "ignoreErrors" : false, "canUseCustomKey" : true }\)/);
         assertTrue(variable);
         assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
         assertTrue(output.includes(`${query[1]} #${variable[1]}`));
       });
     },
-    
-    testInsertsDistributeInputCalculationForInsert : function () {
+
+    testInsertsDistributeInputCalculationForInsert: function () {
       const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
       const explainer = require("@arangodb/aql/explainer");
-      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
+      const output = explainer.explain(query, {...thisRuleEnabled,
+colors: false}, false);
       const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
       assertTrue(variable);
       assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION(k, null, { "allowSpecifiedKeys" : false, "ignoreErrors" : false, "collection" : "${cn1}" })`));
       assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
       assertTrue(output.includes(`INSERT #${variable[1]}`));
     },
-    
-    testInsertsDistributeInputCalculationForUpsert : function () {
+
+    testInsertsDistributeInputCalculationForUpsert: function () {
       const query = "FOR k IN  ['1','2','3'] UPSERT {_key: k} INSERT { miau: 42 } UPDATE { } IN  " + cn1;
       const explainer = require("@arangodb/aql/explainer");
-      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
+      const output = explainer.explain(query, {...thisRuleEnabled,
+colors: false}, false);
       const distributeVar = output.match(/LET #([0-9]+) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
       const inputVar = output.match(/LET #([0-9]+) = \{ \"miau\" : 42 \}/);
       assertTrue(distributeVar);
@@ -751,23 +758,23 @@ function optimizerRuleTestSuite () {
       assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION($OLD, #${inputVar[1]}, { "allowSpecifiedKeys" : true, "ignoreErrors" : false, "collection" : "${cn1}" })`));
       assertTrue(output.includes(`DISTRIBUTE #${distributeVar[1]}`));
       assertTrue(output.includes(`UPSERT $OLD INSERT #${distributeVar[1]} UPDATE`));
-    },
+    }
   };
 }
 
 function interactionOtherRulesTestSuite () {
-  var distribute = "distribute-in-cluster";           // Rule 1
-  var scatter = "scatter-in-cluster";                 // Rule 2
+  var distribute = "distribute-in-cluster"; // Rule 1
+  var scatter = "scatter-in-cluster"; // Rule 2
   var undist = "undistribute-remove-after-enum-coll"; // Rule 3
 
-  // various choices to control the optimizer: 
-  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
-  var allRulesNoInter  = 
+  // various choices to control the optimizer:
+  var allRules = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
+  var allRulesNoInter =
     { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
-  var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist, "-move-filters-into-enumerate" ] } };
-  var ruleDisabledNoInter  = 
-    { optimizer: { rules: [ "+all", 
-                            "-interchange-adjacent-enumerations", 
+  var ruleDisabled = { optimizer: { rules: [ "+all", "-" + undist, "-move-filters-into-enumerate" ] } };
+  var ruleDisabledNoInter =
+    { optimizer: { rules: [ "+all",
+                            "-interchange-adjacent-enumerations",
                             "-reduce-extraction-to-projection",
                             "-move-filters-into-enumerate",
                             "-" + undist ] } };
@@ -776,38 +783,40 @@ function interactionOtherRulesTestSuite () {
   var cn2 = "UnitTestsAql2";
   var cn3 = "UnitTestsAql3";
   var c1, c2, c3;
-  
+
   var explain = function (result) {
-    return helper.getCompactPlan(result).map(function(node) 
-        { return node.type; });
+    return helper.getCompactPlan(result).map(function (node) {
+ return node.type;
+});
   };
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
-      c1 = db._create(cn1, {numberOfShards:3});
-      c2 = db._create(cn2, {numberOfShards:3});
-      c3 = db._create(cn3, {numberOfShards:3, shardKeys:["a","b"]});
-      for (i = 0; i < 10; i++) { 
-        c1.insert({age:i});
-        c2.insert({age:i});
-        c3.insert({age:i});
+      c1 = db._create(cn1, {numberOfShards: 3});
+      c2 = db._create(cn2, {numberOfShards: 3});
+      c3 = db._create(cn3, {numberOfShards: 3,
+shardKeys: ["a", "b"]});
+      for (i = 0; i < 10; i++) {
+        c1.insert({age: i});
+        c2.insert({age: i});
+        c3.insert({age: i});
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -816,14 +825,14 @@ function interactionOtherRulesTestSuite () {
       c3 = null;
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // uses "distribute-in-cluster" and "undistribute-remove-after-enum-coll"
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    testRule1AndRule2 : function () {
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRule1AndRule2: function () {
       const projectionNode = "IndexNode";
-      
-      var queries = [ 
+
+      var queries = [
         // collection sharded by _key
         "FOR d IN " + cn1 + " FILTER d.age > 4 REMOVE d._key IN " + cn1,
         // collection sharded by _key
@@ -832,193 +841,193 @@ function interactionOtherRulesTestSuite () {
         "FOR x IN " + cn1 + " FOR y IN " + cn2 + " REMOVE y IN " + cn2
       ];
 
-      var expectedNodesEnabled = [ 
+      var expectedNodesEnabled = [
                                    [
-                                     "SingletonNode", 
-                                     "EnumerateCollectionNode", 
-                                     "CalculationNode", 
-                                     "FilterNode", 
-                                     "CalculationNode", 
-                                     "RemoveNode", 
-                                     "RemoteNode", 
+                                     "SingletonNode",
+                                     "EnumerateCollectionNode",
+                                     "CalculationNode",
+                                     "FilterNode",
+                                     "CalculationNode",
+                                     "RemoveNode",
+                                     "RemoteNode",
                                      "GatherNode"
                                    ],
                                    [
-                                     "SingletonNode", 
-                                     "EnumerateCollectionNode", 
-                                     "CalculationNode", 
-                                     "FilterNode", 
-                                     "RemoveNode", 
-                                     "RemoteNode", 
+                                     "SingletonNode",
+                                     "EnumerateCollectionNode",
+                                     "CalculationNode",
+                                     "FilterNode",
+                                     "RemoveNode",
+                                     "RemoteNode",
                                      "GatherNode"
                                    ],
                                    [
-                                     "SingletonNode", 
-                                     "EnumerateCollectionNode", 
-                                     "RemoteNode", 
-                                     "GatherNode", 
-                                     "ScatterNode", 
-                                     "RemoteNode", 
-                                     "EnumerateCollectionNode", 
-                                     "RemoveNode", 
-                                     "RemoteNode", 
+                                     "SingletonNode",
+                                     "EnumerateCollectionNode",
+                                     "RemoteNode",
+                                     "GatherNode",
+                                     "ScatterNode",
+                                     "RemoteNode",
+                                     "EnumerateCollectionNode",
+                                     "RemoveNode",
+                                     "RemoteNode",
                                      "GatherNode"
                                    ]
                                 ];
 
-      var expectedNodesDisabled = [ 
+      var expectedNodesDisabled = [
                                     [
-                                      "SingletonNode", 
-                                      "EnumerateCollectionNode", 
-                                      "CalculationNode", 
-                                      "FilterNode", 
-                                      "CalculationNode", 
-                                      "RemoteNode", 
-                                      "GatherNode", 
-                                      "CalculationNode", 
-                                      "DistributeNode", 
-                                      "RemoteNode", 
-                                      "RemoveNode", 
-                                      "RemoteNode", 
-                                      "GatherNode", 
-                                    ],
-                                    [
-                                      "SingletonNode", 
-                                      "EnumerateCollectionNode", 
-                                      "CalculationNode", 
-                                      "FilterNode", 
-                                      "RemoteNode", 
-                                      "GatherNode", 
-                                      "DistributeNode", 
-                                      "RemoteNode", 
-                                      "RemoveNode", 
-                                      "RemoteNode", 
-                                      "GatherNode" 
-                                    ],
-                                    [
-                                      "SingletonNode", 
-                                      projectionNode, 
-                                      "RemoteNode", 
-                                      "GatherNode", 
-                                      "ScatterNode", 
-                                      "RemoteNode", 
-                                      "EnumerateCollectionNode", 
-                                      "RemoteNode", 
-                                      "GatherNode", 
-                                      "DistributeNode", 
-                                      "RemoteNode", 
-                                      "RemoveNode", 
-                                      "RemoteNode", 
+                                      "SingletonNode",
+                                      "EnumerateCollectionNode",
+                                      "CalculationNode",
+                                      "FilterNode",
+                                      "CalculationNode",
+                                      "RemoteNode",
+                                      "GatherNode",
+                                      "CalculationNode",
+                                      "DistributeNode",
+                                      "RemoteNode",
+                                      "RemoveNode",
+                                      "RemoteNode",
                                       "GatherNode"
                                     ],
+                                    [
+                                      "SingletonNode",
+                                      "EnumerateCollectionNode",
+                                      "CalculationNode",
+                                      "FilterNode",
+                                      "RemoteNode",
+                                      "GatherNode",
+                                      "DistributeNode",
+                                      "RemoteNode",
+                                      "RemoveNode",
+                                      "RemoteNode",
+                                      "GatherNode"
+                                    ],
+                                    [
+                                      "SingletonNode",
+                                      projectionNode,
+                                      "RemoteNode",
+                                      "GatherNode",
+                                      "ScatterNode",
+                                      "RemoteNode",
+                                      "EnumerateCollectionNode",
+                                      "RemoteNode",
+                                      "GatherNode",
+                                      "DistributeNode",
+                                      "RemoteNode",
+                                      "RemoveNode",
+                                      "RemoteNode",
+                                      "GatherNode"
+                                    ]
                                   ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, allRules);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) !== -1, query);
         assertEqual(expectedNodesEnabled[i], explain(result), query);
-        
+
         result = AQL_EXPLAIN(query, { }, ruleDisabled);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertEqual(expectedNodesDisabled[i], explain(result), query);
-        
+
         AQL_EXECUTE(query, { }, allRules);
         if (i === 0) {
-            assertEqual(5,  c1.count());
+            assertEqual(5, c1.count());
             assertEqual(10, c2.count());
             assertEqual(10, c3.count());
         }
         if (i === 1) {
-            assertEqual(1,  c1.count());
+            assertEqual(1, c1.count());
             assertEqual(10, c2.count());
             assertEqual(10, c3.count());
         }
         if (i === 2) {
-            assertEqual(1,  c1.count());
+            assertEqual(1, c1.count());
             assertEqual(0, c2.count());
             assertEqual(10, c3.count());
         }
       });
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
+
+    // //////////////////////////////////////////////////////////////////////////////
     // uses "scatter-in-cluster" and "undistribute-remove-after-enum-coll"
-    ////////////////////////////////////////////////////////////////////////////////
-    
-    testRule2AndRule3 : function () {
-      var queries = [ 
-       // collection not sharded by _key  
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testRule2AndRule3: function () {
+      var queries = [
+       // collection not sharded by _key
         "FOR d IN " + cn3 + " FILTER d.age > 4 REMOVE d IN " + cn3
       ];
 
-      var expectedNodesEnabled = [ 
+      var expectedNodesEnabled = [
         [
-        "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-        ] 
+        "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
+        ]
       ];
       var expectedNodesDisabled = [
         [
-        "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-        ] 
+        "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
+        ]
       ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, allRules);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) !== -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertEqual(expectedNodesEnabled[i], explain(result), query);
-        
+
         result = AQL_EXPLAIN(query, { }, ruleDisabled);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertEqual(expectedNodesDisabled[i], explain(result), query);
-        
+
         AQL_EXECUTE(query, { }, allRules);
         assertEqual(10, c1.count());
-        assertEqual(10,  c2.count());
+        assertEqual(10, c2.count());
         assertEqual(5, c3.count());
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // uses "distribute-in-cluster" but not "undistribute-remove-after-enum-coll"
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRule1NotRule3 : function () {
-      var queries = [ 
-        // different collections 
+    testRule1NotRule3: function () {
+      var queries = [
+        // different collections
         "FOR d IN  " + cn1 + " FILTER d.age > 100 REMOVE d IN  " + cn2,
 
-        // different collections 
+        // different collections
         "FOR d IN  " + cn1 + " FILTER d.age > 100 REMOVE d._key IN  " + cn2,
 
-        // different variables in FOR and REMOVE 
+        // different variables in FOR and REMOVE
         "LET x = {_key: 'blah'} FOR y IN  " + cn1 + " REMOVE x IN  " + cn1,
 
-        // different variables in FOR and REMOVE 
+        // different variables in FOR and REMOVE
         "LET x = {_key: 'blah'} FOR y IN  " + cn1 + " REMOVE x._key IN  " + cn1,
 
-        // not removing x or x._key 
+        // not removing x or x._key
         "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn2,
 
         // different collections  (the outer scatters, the inner distributes)
@@ -1028,134 +1037,134 @@ function interactionOtherRulesTestSuite () {
         "FOR x IN  " + cn1 + " FOR y IN  " + cn2 + " REMOVE x IN  " + cn1
       ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
         [
-          "SingletonNode", 
-          "EnumerateCollectionNode", 
-          "CalculationNode", 
-          "FilterNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "EnumerateCollectionNode",
+          "CalculationNode",
+          "FilterNode",
+          "RemoteNode",
+          "GatherNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "EnumerateCollectionNode", 
-          "CalculationNode", 
-          "FilterNode", 
-          "CalculationNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "CalculationNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "EnumerateCollectionNode",
+          "CalculationNode",
+          "FilterNode",
+          "CalculationNode",
+          "RemoteNode",
+          "GatherNode",
+          "CalculationNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "CalculationNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "CalculationNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "CalculationNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "CalculationNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "CalculationNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "CalculationNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "CalculationNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "CalculationNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "EnumerateCollectionNode", 
-          "CalculationNode", 
-          "FilterNode", 
-          "CalculationNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "CalculationNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "EnumerateCollectionNode",
+          "CalculationNode",
+          "FilterNode",
+          "CalculationNode",
+          "RemoteNode",
+          "GatherNode",
+          "CalculationNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "ScatterNode", 
-          "RemoteNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "ScatterNode",
+          "RemoteNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ],
         [
-          "SingletonNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "ScatterNode", 
-          "RemoteNode", 
-          "EnumerateCollectionNode", 
-          "RemoteNode", 
-          "GatherNode", 
-          "DistributeNode", 
-          "RemoteNode", 
-          "RemoveNode", 
-          "RemoteNode", 
-          "GatherNode" 
+          "SingletonNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "ScatterNode",
+          "RemoteNode",
+          "EnumerateCollectionNode",
+          "RemoteNode",
+          "GatherNode",
+          "DistributeNode",
+          "RemoteNode",
+          "RemoveNode",
+          "RemoteNode",
+          "GatherNode"
         ]
       ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, allRulesNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
-        
+
         result = AQL_EXPLAIN(query, { }, ruleDisabledNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
-        
+
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
     // uses "scatter-in-cluster" but not "undistribute-remove-after-enum-coll"
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRule2NotRule3 : function () {
-      var queries = [ 
+    testRule2NotRule3: function () {
+      var queries = [
         // shard key of  " + cn3 + "  is not _key - OK
         "FOR d IN  " + cn1 + " FILTER d.age > 100 REMOVE d IN  " + cn3,
 
-        // shard key of  " + cn3 + "  is not _key - OK 
+        // shard key of  " + cn3 + "  is not _key - OK
         // [undistribute-remove-after-enum-coll was applied previously]
         "FOR d IN  " + cn3 + "  FILTER d.age > 100 REMOVE d._key IN  " + cn3,
 
@@ -1176,111 +1185,111 @@ function interactionOtherRulesTestSuite () {
         "FOR x IN  " + cn3 + "  FOR y IN  " + cn2 + "  REMOVE x IN  " + cn3
       ];
 
-      var expectedNodes = [ 
+      var expectedNodes = [
         [
-        "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+        "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "CalculationNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "CalculationNode",
+        "EnumerateCollectionNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "CalculationNode",
+        "EnumerateCollectionNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "CalculationNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "EnumerateCollectionNode",
+        "CalculationNode",
+        "FilterNode",
+        "CalculationNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ],
         [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
+          "SingletonNode",
+        "EnumerateCollectionNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "EnumerateCollectionNode",
+        "RemoteNode",
+        "GatherNode",
+        "ScatterNode",
+        "RemoteNode",
+        "RemoveNode",
+        "RemoteNode",
+        "GatherNode"
           ]
           ];
 
-      queries.forEach(function(query, i) {
+      queries.forEach(function (query, i) {
         var result = AQL_EXPLAIN(query, { }, allRulesNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);
         assertTrue(result.plan.rules.indexOf(scatter) !== -1, query);
         assertEqual(expectedNodes[i], explain(result), query);
-        
+
         result = AQL_EXPLAIN(query, { }, ruleDisabledNoInter);
         assertTrue(result.plan.rules.indexOf(undist) === -1, query);
         assertTrue(result.plan.rules.indexOf(distribute) === -1, query);

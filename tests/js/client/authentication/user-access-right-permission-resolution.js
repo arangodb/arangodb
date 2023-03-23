@@ -41,10 +41,16 @@ const cols = ['*', colName];
 const userSet = new Set();
 const internal = require('internal');
 
-let conv = function(x) {
-  if (x === 'rw') return 2;
-  if (x === 'ro') return 1;
-  if (x === 'none') return 0;
+let conv = function (x) {
+  if (x === 'rw') {
+return 2;
+}
+  if (x === 'ro') {
+return 1;
+}
+  if (x === 'none') {
+return 0;
+}
   return -1;
 };
 
@@ -67,7 +73,7 @@ const createUsers = () => {
             col: {
               name: col,
               permission: (conv(dbLevel) > conv(colLevel) ? dbLevel : colLevel)
-              //permission: colLevel
+              // permission: colLevel
             }
           });
         }
@@ -89,14 +95,14 @@ const removeUser = (user) => {
 
 function PermissionResolutionSuite () {
   'use strict';
-  
+
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(colName);
       db._useDatabase('_system');
       db._create(colName);
@@ -104,19 +110,19 @@ function PermissionResolutionSuite () {
       createUsers();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(colName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creating a new user
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test creating a new user
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAcessLevelFallbacks : function () {
+    testAcessLevelFallbacks: function () {
       for (const user of userSet) {
         createUser(user);
 
@@ -135,7 +141,7 @@ function PermissionResolutionSuite () {
 
         let actual = fullPermission["_system"].collections[colName];
         assertEqual(actual, "undefined");
-        
+
         if (user.db.name !== "*") {
           // This should mirror our current fallbacks
           if (user.col.name === "*") {
@@ -159,41 +165,41 @@ function PermissionResolutionSuite () {
       }
   },
 
-  testUndefinedAuthLevels: function() {
-    
+  testUndefinedAuthLevels: function () {
+
       users.save("haxxman", '', true);
-  
+
       ["rw", "none", "ro"].forEach((lvl) => {
         users.grantCollection("haxxman", "_system", colName, lvl);
         assertEqual(users.permission("haxxman", "_system", colName), lvl);
       });
       assertEqual(users.permission("haxxman", "_system"), "none");
-  
+
       let result = users.permissionFull("haxxman");
       assertEqual(result['_system'].permission, "undefined");
-  
+
       ["rw", "none", "ro"].forEach((lvl) => {
         users.grantDatabase("haxxman", "_system", lvl);
         assertEqual(users.permission("haxxman", "_system"), lvl);
         result = users.permissionFull("haxxman");
         assertEqual(result['_system'].permission, lvl);
       });
-  
+
       users.revokeDatabase("haxxman", "_system");
       result = users.permissionFull("haxxman");
       assertEqual(result['_system'].permission, "undefined");
-  
+
       users.revokeCollection("haxxman", "_system", colName);
       result = users.permissionFull("haxxman");
       assertEqual(result['_system'].collections[colName], "undefined");
     }
   };
-};
+}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(PermissionResolutionSuite);
 return jsunity.done();

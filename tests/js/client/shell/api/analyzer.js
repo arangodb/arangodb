@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
 
 
@@ -7,25 +7,25 @@ const internal = require('internal');
 const error = internal.errors;
 const isEnterprise = require("internal").isEnterprise();
 
-function testSuite() {
+function testSuite () {
   const endpoint = arango.getEndpoint();
   const db = require("@arangodb").db;
   const name = "vimoji";
 
   return {
-    setUp: function() {},
-    tearDown: function() {
+    setUp: function () {},
+    tearDown: function () {
       arango.DELETE("/_api/analyzer/" + name + "?force=true");
     },
 
-    testAnalyzerGet : function() {
+    testAnalyzerGet: function () {
       let result = arango.GET("/_api/analyzer");
       assertEqual(result.error, false);
       assertEqual(result.code, 200);
       assertEqual(result.result.length, 13);
     },
 
-    testAnalyzerGetInvalid : function() {
+    testAnalyzerGetInvalid: function () {
       let result = arango.GET("/_api/analyzer/invalid");
       assertTrue(result.error);
       assertEqual(result.code, 404);
@@ -33,10 +33,10 @@ function testSuite() {
     },
 
 
-    testAnalyzerCreateIdentity : function() {
+    testAnalyzerCreateIdentity: function () {
       let body = JSON.stringify({
-        type : "identity",
-        name : name,
+        type: "identity",
+        name: name
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -45,10 +45,10 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-    testAnalyzerCreateRemoveIdentiy : function() {
+    testAnalyzerCreateRemoveIdentiy: function () {
       let body = JSON.stringify({
-        type : "identity",
-        name : name,
+        type: "identity",
+        name: name
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -62,10 +62,10 @@ function testSuite() {
       assertEqual(result.code, 404); // already deleted
     },
 
-    testAnalyzerCreateDoubleIdentity : function() {
+    testAnalyzerCreateDoubleIdentity: function () {
       let body = JSON.stringify({
-        type : "identity",
-        name : name,
+        type: "identity",
+        name: name
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -75,11 +75,12 @@ function testSuite() {
     },
 
 
-    testAnalyzerCreateText : function() {
+    testAnalyzerCreateText: function () {
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { locale: "en.UTF-8",
+stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -87,12 +88,13 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-    testAnalyzerReplaceInplaceText : function() {
+    testAnalyzerReplaceInplaceText: function () {
       // try to replace inplace which is forbidden
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { locale: "en.UTF-8",
+stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -100,9 +102,10 @@ function testSuite() {
       assertEqual(result.code, 201);
 
       body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "de.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { locale: "de.UTF-8",
+stopwords: [ ] }
       });
 
       result = arango.POST_RAW("/_api/analyzer", body);
@@ -110,10 +113,11 @@ function testSuite() {
       assertEqual(result.code, 400);
     },
 
-    testAnalyzerCreateTextMissingName : function() {
+    testAnalyzerCreateTextMissingName: function () {
       let body = JSON.stringify({
-        type : "text",
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        properties: { locale: "en.UTF-8",
+stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -122,11 +126,11 @@ function testSuite() {
       assertEqual(result.errorNum, error.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    testAnalyzerCreateTextMissingProperties1 : function() {
+    testAnalyzerCreateTextMissingProperties1: function () {
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        //properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name
+        // properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -135,11 +139,11 @@ function testSuite() {
       assertEqual(result.errorNum, error.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    testAnalyzerCreateTextMissingProperties2 : function() {
+    testAnalyzerCreateTextMissingProperties2: function () {
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : {  stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -148,11 +152,12 @@ function testSuite() {
       assertEqual(result.errorNum, error.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    testAnalyzerCreateTextInvalidProperties1 : function() {
+    testAnalyzerCreateTextInvalidProperties1: function () {
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8" , stopwords: { invalid : "property" } },
+        type: "text",
+        name: name,
+        properties: { locale: "en.UTF-8",
+stopwords: { invalid: "property" } }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -161,11 +166,11 @@ function testSuite() {
       assertEqual(result.errorNum, error.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    testAnalyzerCreateDelimited : function() {
+    testAnalyzerCreateDelimited: function () {
       let body = JSON.stringify({
-        type : "delimiter",
-        name : name,
-        properties : { delimiter : "❤" } , // .hsv - heart separated value list :)
+        type: "delimiter",
+        name: name,
+        properties: { delimiter: "❤" } // .hsv - heart separated value list :)
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -173,11 +178,13 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-    testAnalyzerCreateNgram : function() {
+    testAnalyzerCreateNgram: function () {
       let body = JSON.stringify({
-        type : "ngram",
-        name : name,
-        properties : { min : 3, max : 4, preserveOriginal : true } ,
+        type: "ngram",
+        name: name,
+        properties: { min: 3,
+max: 4,
+preserveOriginal: true }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -189,7 +196,9 @@ function testSuite() {
       let body = JSON.stringify({
         type: "norm",
         name: name,
-        properties: { locale: "en.UTF-8", accent:true, stemming: false },
+        properties: { locale: "en.UTF-8",
+accent: true,
+stemming: false }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -201,7 +210,7 @@ function testSuite() {
       let body = JSON.stringify({
         type: "stem",
         name: name,
-        properties: { locale: "en.UTF-8" },
+        properties: { locale: "en.UTF-8" }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -209,11 +218,11 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-    testAnalyzerDifferentDB : function() {
+    testAnalyzerDifferentDB: function () {
       let rv = db._createDatabase("ulf");
       let body = JSON.stringify({
-        type : "identity",
-        name : name,
+        type: "identity",
+        name: name
       });
 
       let result = arango.POST_RAW("/_db/ulf/_api/analyzer", body);
@@ -222,14 +231,15 @@ function testSuite() {
       db._dropDatabase("ulf");
     },
 
-    testAnalyzerCreateMany : function() {
+    testAnalyzerCreateMany: function () {
       // should be last test as we do no clean-up
       const num = 10;
       for (var i = 0; i < num; i++) {
         let body = JSON.stringify({
-          type : "text",
-          name : name + i,
-          properties : { locale: "en.UTF-8", stopwords: [ ] },
+          type: "text",
+          name: name + i,
+          properties: { locale: "en.UTF-8",
+stopwords: [ ] }
         });
 
         let result = arango.POST_RAW("/_api/analyzer", body);
@@ -244,13 +254,14 @@ function testSuite() {
         arango.DELETE("/_api/analyzer/" + name + j);
       }
     },
-    
-    testAnalyzerLinks : function() {
+
+    testAnalyzerLinks: function () {
       try {
         let body = JSON.stringify({
-          name : name,
-          type : "text",
-          properties : { locale: "en.UTF-8", stopwords: [ ] },
+          name: name,
+          type: "text",
+          properties: { locale: "en.UTF-8",
+stopwords: [ ] }
         });
 
         let result = arango.POST_RAW("/_api/analyzer", body);
@@ -261,24 +272,26 @@ function testSuite() {
         let meta = {};
         if (isEnterprise) {
           meta = {
-            links : {
-              [col.name()] : {
-                includeAllFields : true,
-                storeValues : "id",
-                fields : {
-                  text : { analyzers : [name], "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
+            links: {
+              [col.name()]: {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [name],
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} }
                 }
               }
             }
           };
         } else {
           meta = {
-            links : {
-              [col.name()] : {
-                includeAllFields : true,
-                storeValues : "id",
-                fields : {
-                  text : { analyzers : [name], "fields": { "value": {}} }
+            links: {
+              [col.name()]: {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [name],
+"fields": { "value": {}} }
                 }
               }
             }

@@ -35,29 +35,29 @@ let jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
- 
+
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
 
   // write 50k log entries, and then crash
   for (let i = 0; i < 50000; ++i) {
     let request = {
-      ["arango/test" + i] : {
+      ["arango/test" + i]: {
         "op": "set",
         "new": "testmann" + i
       }
     };
-        
+
     ArangoAgent.write([[ request, {}, "testi"]]);
   }
 
   // intentionally drop "compact" collection so it is
   // not there at restart
   db._drop("compact");
-  
+
   // make sure everything is synced to disk before we crash
-  c.insert({ _key: "sync" }, true); // wait for sync 
-  
+  c.insert({ _key: "sync" }, true); // wait for sync
+
   internal.debugTerminate('crashing server');
 }
 
@@ -87,7 +87,7 @@ function recoverySuite () {
         ++index;
       }
       assertEqual(0, found);
-      
+
       for (let i = 0; i < 50000; ++i) {
         let r = ArangoAgent.read([["/arango/test" + i]]);
         assertEqual([{}], r);

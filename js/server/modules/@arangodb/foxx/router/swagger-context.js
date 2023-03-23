@@ -32,9 +32,12 @@ const tokenize = require('@arangodb/foxx/router/tokenize');
 const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
-const MATCH_ALL_MODEL = check.validateModel({schema:true, optional: true}).value;
-const MATCH_REQ_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: false}).value;
-const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: true}).value;
+const MATCH_ALL_MODEL = check.validateModel({schema: true,
+optional: true}).value;
+const MATCH_REQ_STRINGS_MODEL = check.validateModel({schema: {type: 'string'},
+optional: false}).value;
+const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'},
+optional: true}).value;
 const DEFAULT_ERROR_MODEL = check.validateSchema({
   type: 'object',
   properties: {
@@ -60,9 +63,9 @@ const repeat = (times, value) => {
   return arr;
 };
 
-function isNullSchema(schema) {
+function isNullSchema (schema) {
   if (schema.isJoi) {
-    return schema._flags.presence  === 'forbidden';
+    return schema._flags.presence === 'forbidden';
   }
   if (typeof schema === 'boolean') {
     return !schema;
@@ -117,7 +120,8 @@ module.exports = exports =
         [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._headers.set(name.toLowerCase(), {...model, description});
+      this._headers.set(name.toLowerCase(), {...model,
+description});
       return this;
     }
 
@@ -134,11 +138,12 @@ module.exports = exports =
         [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._pathParams.set(name, {...model, description});
+      this._pathParams.set(name, {...model,
+description});
       return this;
     }
 
-    queryParam  (...args) {
+    queryParam (...args) {
       const {
         name,
         model = MATCH_OPT_STRINGS_MODEL,
@@ -151,11 +156,12 @@ module.exports = exports =
         [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      this._queryParams.set(name, {...model, description});
+      this._queryParams.set(name, {...model,
+description});
       return this;
     }
 
-    body  (...args) {
+    body (...args) {
       const {
         model = MATCH_ALL_MODEL,
         mimes = [],
@@ -173,7 +179,9 @@ module.exports = exports =
       );
 
       if (isNullSchema(model.schema)) {
-        this._bodyParam = {model, contentTypes: null, description};
+        this._bodyParam = {model,
+contentTypes: null,
+description};
         return this;
       }
 
@@ -181,7 +189,9 @@ module.exports = exports =
         mimes.push(PARSED_JSON_MIME);
       }
 
-      this._bodyParam = {model, contentTypes: mimes, description};
+      this._bodyParam = {model,
+contentTypes: mimes,
+description};
       return this;
     }
 
@@ -213,7 +223,9 @@ module.exports = exports =
       if (isNullSchema(model.schema)) {
         this._responses.set(
           status || 204,
-          {model, contentTypes: null, description}
+          {model,
+contentTypes: null,
+description}
         );
         return this;
       }
@@ -224,7 +236,9 @@ module.exports = exports =
 
       this._responses.set(
         status || 200,
-        {model, contentTypes: mimes, description}
+        {model,
+contentTypes: mimes,
+description}
       );
       return this;
     }
@@ -279,7 +293,7 @@ module.exports = exports =
       return this;
     }
 
-    securityScheme(...args) {
+    securityScheme (...args) {
       const {
         type,
         options,
@@ -304,8 +318,11 @@ module.exports = exports =
           ['type', 'string']
         ]
       );
-      const securityScheme = {...options, type};
-      if (description) securityScheme.description = description;
+      const securityScheme = {...options,
+type};
+      if (description) {
+securityScheme.description = description;
+}
       const id = securityScheme.id || uuidv4();
       delete securityScheme.id;
       this._securitySchemes.set(id, securityScheme);
@@ -313,7 +330,7 @@ module.exports = exports =
       return this;
     }
 
-    securityScope(...args) {
+    securityScope (...args) {
       const [id, ...scopes] = check(
         'endpoint.securityScope',
         args,
@@ -333,7 +350,7 @@ module.exports = exports =
       return this;
     }
 
-    security(...args) {
+    security (...args) {
       const [id, enabled = true] = check(
         'endpoint.security',
         args,
@@ -557,7 +574,7 @@ module.exports = exports =
 
       if (this._securitySchemes.size) {
         meta.securitySchemes = this._securitySchemes;
-      };
+      }
       operation.security = [];
       for (const [id, scopes] of this._security.entries()) {
         if (scopes !== false) {
@@ -565,7 +582,8 @@ module.exports = exports =
         }
       }
 
-      return {operation, meta};
+      return {operation,
+meta};
     }
 };
 
@@ -606,7 +624,8 @@ function swaggerifyParam (schema, optional) {
     return {required: typeof optional === "boolean" ? !optional : false};
   }
   if (!schema.isJoi) {
-    return {...schema, required: !optional};
+    return {...schema,
+required: !optional};
   }
   const param = {
     required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
@@ -644,7 +663,8 @@ function swaggerifyBody (schema, optional) {
     return {required: typeof optional === "boolean" ? !optional : false};
   }
   if (!schema.isJoi) {
-    return {schema, required: !optional};
+    return {schema,
+required: !optional};
   }
   return {
     required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',

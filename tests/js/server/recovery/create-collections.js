@@ -38,9 +38,10 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery1');
   var c = db._create('UnitTestsRecovery1', {
-    waitForSync: true,
+    waitForSync: true
   });
-  c.save({ value1: 1, value2: [ 'the',
+  c.save({ value1: 1,
+value2: [ 'the',
       'quick',
       'brown',
       'foxx',
@@ -50,31 +51,38 @@ function runSetup () {
       'lazy',
       'dog',
     'xxxxxxxxxxx' ] });
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', {
-    waitForSync: false,
+    waitForSync: false
   });
   c.save({ value1: { 'some': 'rubbish' } });
-  c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value1"] });
 
   db._drop('UnitTestsRecovery3');
   c = db._createEdgeCollection('UnitTestsRecovery3', {
-    waitForSync: false,
+    waitForSync: false
   });
 
   c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
-  c.ensureIndex({ type: "skiplist", fields: ["value1"], unique: true });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value1"],
+unique: true });
 
   db._drop('_UnitTestsRecovery4');
   c = db._create('_UnitTestsRecovery4', { isSystem: true });
 
   c.save({ value42: 42 });
-  c.ensureIndex({ type: "hash", fields: ["value42"], unique: true });
+  c.ensureIndex({ type: "hash",
+fields: ["value42"],
+unique: true });
   c.save({ _key: 'crashme' }, true);
-  
+
   internal.debugTerminate('crashing server');
 }
 

@@ -2,28 +2,28 @@
 /* global */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Manuel Pöter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Manuel Pöter
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'chaos': 'chaos tests'
@@ -34,13 +34,13 @@ const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
-  'chaos': [ tu.pathForTesting('client/chaos') ],
+  'chaos': [ tu.pathForTesting('client/chaos') ]
 };
 
 function chaos (options) {
   let testCasesWithConfigs = {};
   let testCases = tu.scanTestPaths(testPaths.chaos, options);
-  
+
   // The chaos test suite is parameterized and each configuration runs 5min.
   // For the nightly tests we want to run a large number of possible parameter
   // combinations, but each file has a runtime limit of 15min and ATM the test
@@ -57,7 +57,7 @@ function chaos (options) {
   // "test-module-" in its filename is not executed directly, but instead must
   // export a "run" function that is called. Such a module can optionally define
   // a function "getConfigs" which must return an array of configurations.
-  
+
   testCases = _.flatMap(testCases, testCase => {
     if (testCase.includes("test-module-")) {
       const configProvider = require(testCase).getConfigs;
@@ -72,11 +72,11 @@ function chaos (options) {
     }
     return testCase;
   });
-  
+
   testCases = tu.splitBuckets(options, testCases);
-  
+
   class chaosRunner extends tu.runLocalInArangoshRunner {
-    preRun(test) {
+    preRun (test) {
       global.currentTestConfig = undefined;
       const configs = testCasesWithConfigs[test];
       if (Array.isArray(configs)) {
@@ -86,10 +86,10 @@ function chaos (options) {
         global.currentTestConfig = configs.shift();
       }
     }
-    translateResult(testName) {
+    translateResult (testName) {
       return `${testName}_${global.currentTestConfig.suffix}`;
     }
-  };
+  }
 
   return new chaosRunner(options, 'chaos', {}).run(testCases);
 }
@@ -97,6 +97,10 @@ function chaos (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['chaos'] = chaos;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

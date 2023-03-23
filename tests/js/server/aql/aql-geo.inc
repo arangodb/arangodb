@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, print */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse, print */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, geo queries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, geo queries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 (function () {
   const disableViewTests = false;
@@ -53,11 +53,11 @@
     let testAnalyzers = {};
     let defaultAnalyzer = null;
 
-    function createDefaultAnalyzer() {
+    function createDefaultAnalyzer () {
       defaultAnalyzer = analyzers.save("geo_json", analyzerType, analyzerDefinition, ["frequency", "norm", "position"]);
     }
 
-    function makePolyInside(lon, lat) {
+    function makePolyInside (lon, lat) {
       // lon and lat are longitude and latitude ranges
       return {
         type: "Polygon",
@@ -66,7 +66,7 @@
       };
     }
 
-    function makePolyOutside(lon, lat) {
+    function makePolyOutside (lon, lat) {
       // lon and lat are longitude and latitude ranges
       return {
         type: "Polygon",
@@ -78,45 +78,59 @@
 
     let keyCounter = 0;
 
-    function waitForArangoSearch(viewName) {
+    function waitForArangoSearch (viewName) {
       let res = getQueryResults(
         `FOR d IN ${viewName} OPTIONS { waitForSync:true } LIMIT 1 RETURN 1`);
     }
-    function chooseCollectionSet(basename) {
+    function chooseCollectionSet (basename) {
       collWithoutIndex = noIndex[basename].name();
       collWithIndex = withIndex[basename].name();
       collWithView = withIndex[basename].name();
       viewName = plainView[basename].name();
       analyzerName = testAnalyzers[basename].name();
     }
-    function createCollectionSet(basename, theanalyzer) {
+    function createCollectionSet (basename, theanalyzer) {
       let collWithoutIndex = "UnitTestsGeoWithoutIndex";
       let collWithIndex = "UnitTestsGeoWithIndex";
       let collWithView = "UnitTestsGeoWithView";
       let viewName = "UnitTestsGeoView";
       noIndex[basename] = db._create(basename + '_' + collWithoutIndex);
       withIndex[basename] = db._create(basename + '_' + collWithIndex);
-      withIndex[basename].ensureIndex({type: "geo", geoJson: true, fields: ["geo"]});
+      withIndex[basename].ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"]});
       withView[basename] = db._create(basename + '_' + collWithView);
       testAnalyzers[basename] = theanalyzer;
 
-      withIndex[basename].save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-      withView[basename].save({ name_1: "name", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      withIndex[basename].save({ name_1: "name",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+      withView[basename].save({ name_1: "name",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
 
       // ensure inverted indexes for each collections
 
       let commonInvertedIndexMeta = {};
       if (isEnterprise) {
-        commonInvertedIndexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-          {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+        commonInvertedIndexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+          {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
           "name_1",
-          {"name": "geo", "analyzer": testAnalyzers[basename].name()}
+          {"name": "geo",
+"analyzer": testAnalyzers[basename].name()}
         ]};
       } else {
-        commonInvertedIndexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+        commonInvertedIndexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
           {"name": "value[*]"},
           "name_1",
-          {"name": "geo", "analyzer": testAnalyzers[basename].name()}
+          {"name": "geo",
+"analyzer": testAnalyzers[basename].name()}
         ]};
       }
       withView[basename].ensureIndex(commonInvertedIndexMeta);
@@ -125,19 +139,26 @@
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", fields: [
-            {name: "geo", analyzer: testAnalyzers[basename].name()},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]
+          indexMeta = {type: "inverted",
+fields: [
+            {name: "geo",
+analyzer: testAnalyzers[basename].name()},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}]
                       };
         } else {
-          indexMeta = {type: "inverted", fields: [
-            {name: "geo", analyzer: testAnalyzers[basename].name()},
+          indexMeta = {type: "inverted",
+fields: [
+            {name: "geo",
+analyzer: testAnalyzers[basename].name()},
             {"name": "value[*]"}]
                       };
         }
         let i = withView[basename].ensureIndex(indexMeta);
         plainView[basename] = db._createView(basename + '_' + viewName, "search-alias", {
-          indexes: [{collection: withView[basename].name(), index: i.name}]
+          indexes: [{collection: withView[basename].name(),
+index: i.name}]
         });
       } else {
         let meta = {
@@ -147,7 +168,8 @@
 
         if (isEnterprise) {
           meta['links'][withView[basename].name()] = {
-            fields: {geo: {analyzers: [testAnalyzers[basename].name()]}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
+            fields: {geo: {analyzers: [testAnalyzers[basename].name()]},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}
           };
         } else {
           meta['links'][withView[basename].name()] = {
@@ -157,7 +179,7 @@
         plainView[basename] = db._createView(basename + '_' + viewName, "arangosearch", meta);
       }
     }
-    function insertAll(name, theAnalyzer, x) {
+    function insertAll (name, theAnalyzer, x) {
       if (!noIndex.hasOwnProperty(name)) {
         createCollectionSet(name, theAnalyzer);
       }
@@ -170,7 +192,7 @@
       withView[name].insert(x);
     }
 
-    function compareKeyLists(namea, a, nameb, b) {
+    function compareKeyLists (namea, a, nameb, b) {
       let good = true;
       let msg = "";
       if (a.length !== b.length) {
@@ -184,44 +206,48 @@
       while (i < a.length && j < b.length) {
         if (a[i] < b[j]) {
           good = false;
-          msg += "Found key " + a[i] + " in '" + namea + "' but not in '"
-            + nameb + "'\n";
+          msg += "Found key " + a[i] + " in '" + namea + "' but not in '" +
+            nameb + "'\n";
           ++i;
         } else if (a[i] > b[j]) {
           good = false;
-          msg += "Found key " + b[j] + " in '" + nameb + "' but not in '"
-            + namea + "'\n";
+          msg += "Found key " + b[j] + " in '" + nameb + "' but not in '" +
+            namea + "'\n";
           ++j;
         } else {
           ++i;
           ++j;
         }
         if (++count >= 10) {
-          return {good, msg};
+          return {good,
+msg};
         }
       }
       while (i < a.length) {
         good = false;
-        msg += "Found key " + a[i] + " in '" + namea + "' but not in '"
-          + nameb + "'\n";
+        msg += "Found key " + a[i] + " in '" + namea + "' but not in '" +
+          nameb + "'\n";
         ++i;
         if (++count >= 10) {
-          return {good, msg};
+          return {good,
+msg};
         }
       }
       while (j < b.length) {
         good = false;
-        msg += "Found key " + b[j] + " in '" + nameb + "' but not in '"
-          + namea + "'\n";
+        msg += "Found key " + b[j] + " in '" + nameb + "' but not in '" +
+          namea + "'\n";
         ++j;
         if (++count >= 10) {
-          return {good, msg};
+          return {good,
+msg};
         }
       }
-      return {good, msg};
+      return {good,
+msg};
     }
 
-    function compare(query, queryView) {
+    function compare (query, queryView) {
       let fullScanQuery = `FOR d IN @@coll ${query} RETURN d._key`;
       let viewQuery = `FOR d IN ${viewName} ${queryView} RETURN d._key`;
       let invertedIndexQuery = `FOR d IN ${collWithIndex} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true } ${query} RETURN d._key`;
@@ -256,36 +282,39 @@
       }
 
       if (disableViewTests) {
-        cmpResView.good = true;   // fake goodness
-        cmpResInvertedIndex.good = true;   // fake goodness
+        cmpResView.good = true; // fake goodness
+        cmpResInvertedIndex.good = true; // fake goodness
       }
-      return {cmpResFullScanWithIndexes, cmpResView, cmpResInvertedIndex};
+      return {cmpResFullScanWithIndexes,
+cmpResView,
+cmpResInvertedIndex};
     }
 
-    function createOnePolygon() {
-      insertAll('createOnePolygon', defaultAnalyzer, [{geo: { type: "Point", coordinates: [50, 50] } }]);
+    function createOnePolygon () {
+      insertAll('createOnePolygon', defaultAnalyzer, [{geo: { type: "Point",
+coordinates: [50, 50] } }]);
     }
-    function createTwoPolygons() {
+    function createTwoPolygons () {
       // Centroid will be at approx. [7,10]
       insertAll('createTwoPolygons', defaultAnalyzer, [
-        {geo:{type:"Polygon",
-              coordinates:[[[0,0],[10,10],[0,20],[9,10],[0,0]]]}},
-        {geo:{type:"Polygon",
-              coordinates:[[[0,0],[10,10],[0,20],[0,19],[9,10],[0,1],[0,0]]]}}
+        {geo: {type: "Polygon",
+              coordinates: [[[0, 0], [10, 10], [0, 20], [9, 10], [0, 0]]]}},
+        {geo: {type: "Polygon",
+              coordinates: [[[0, 0], [10, 10], [0, 20], [0, 19], [9, 10], [0, 1], [0, 0]]]}}
       ]);
     }
-    function createThreePolygons() {
+    function createThreePolygons () {
       insertAll('createThreePolygons', defaultAnalyzer, [
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,10]]]}},
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[30,20],[10,20],[10,10]]]}},
-        {geo:{type:"Polygon",
-              coordinates:[[[10,10],[20,10],[20,20],[10,20],[10,11.1],
-                            [11,11.1],[11,19],[19,19],[19,11],[10,11],[10,10]]]}}
+        {geo: {type: "Polygon",
+              coordinates: [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 10]]]}},
+        {geo: {type: "Polygon",
+              coordinates: [[[10, 10], [20, 10], [30, 20], [10, 20], [10, 10]]]}},
+        {geo: {type: "Polygon",
+              coordinates: [[[10, 10], [20, 10], [20, 20], [10, 20], [10, 11.1],
+                            [11, 11.1], [11, 19], [19, 19], [19, 11], [10, 11], [10, 10]]]}}
       ]);
     }
-    function createSomePolygons() {
+    function createSomePolygons () {
       let name = 'createSomePolygons';
       let lat = 6.537;
       let long = 50.332;
@@ -293,33 +322,38 @@
         let points = [];
         for (let y = 0; y < 100; ++y) {
           points.push({ geo: { type: "Point",
-                               coordinates: [lat + x/1000, long + y/1000] } });
+                               coordinates: [lat + x / 1000, long + y / 1000] } });
         }
         insertAll(name, defaultAnalyzer, points);
       }
-      insertAll(name, defaultAnalyzer, [{ geo: { "type": "Polygon", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "Polygon",
+"coordinates": [
         [[ 37.614323, 55.705898 ],
          [ 37.615825, 55.705898 ],
-         [ 37.615825, 55.70652  ],
-         [ 37.614323, 55.70652  ],
+         [ 37.615825, 55.70652 ],
+         [ 37.614323, 55.70652 ],
          [ 37.614323, 55.705898 ]]
       ]}}]);
-      insertAll(name, defaultAnalyzer, [{ geo: {"type": "LineString", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: {"type": "LineString",
+"coordinates": [
         [ 6.537, 50.332 ], [ 6.537, 50.376 ]]
                         }}]);
-      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiLineString", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiLineString",
+"coordinates": [
         [[ 6.537, 50.332 ], [ 6.537, 50.376 ]],
         [[ 6.621, 50.332 ], [ 6.621, 50.376 ]]
       ]}}]);
-      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPoint", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPoint",
+"coordinates": [
         [ 6.537, 50.332 ], [ 6.537, 50.376 ],
         [ 6.621, 50.332 ], [ 6.621, 50.376 ]
       ]}}]);
-      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPolygon", "coordinates": [
+      insertAll(name, defaultAnalyzer, [{ geo: { "type": "MultiPolygon",
+"coordinates": [
         [[[ 37.614323, 55.705898 ],
           [ 37.615825, 55.705898 ],
-          [ 37.615825, 55.70652  ],
-          [ 37.614323, 55.70652  ],
+          [ 37.615825, 55.70652 ],
+          [ 37.614323, 55.70652 ],
           [ 37.614323, 55.705898 ]]],
         [[[ 37.614, 55.7050 ],
           [ 37.615, 55.7050 ],
@@ -328,12 +362,13 @@
           [ 37.614, 55.7050 ]]]
       ]}}]);
     }
-    function createNearGrid() {
+    function createNearGrid () {
       const name = 'createNearGrid';
       let l = [];
       for (let lat = 9; lat <= 21; lat += 0.1) {
         for (let lon = 9; lon <= 21; lon += 0.1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
@@ -344,7 +379,7 @@
         insertAll(name, defaultAnalyzer, l);
       }
     }
-    function createNarrowGrid() {
+    function createNarrowGrid () {
       const name = 'createNarrowGrid';
       let l = [];
       for (let size = 0.0001; size <= 10; size *= 10) {
@@ -356,7 +391,8 @@
                              [lon + size, 10 + size], [lon - size, 10 + size],
                              [lon - size, 10 - size]]]
             },
-            centroid: {type: "Point", coordinates: [lon, 10]}
+            centroid: {type: "Point",
+coordinates: [lon, 10]}
           });
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
@@ -368,7 +404,7 @@
         insertAll(name, defaultAnalyzer, l);
       }
     }
-    function createNearSlidingObject() {
+    function createNearSlidingObject () {
       const name = 'createNearSlidingObject';
       let l = [];
       for (let size = 1; size <= 11; size += 1) {
@@ -380,7 +416,8 @@
                              [lon + size, 10 + size], [lon - size, 10 + size],
                              [lon - size, 10 - size]]]
             },
-            centroid: {type: "Point", coordinates: [lon, 10]}
+            centroid: {type: "Point",
+coordinates: [lon, 10]}
           });
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
@@ -392,12 +429,13 @@
         insertAll(name, defaultAnalyzer, l);
       }
     }
-    function createLargeGrid() {
+    function createLargeGrid () {
       const name = 'createLargeGrid';
       let l = [];
       for (let lat = 45; lat <= 55; lat += 1) {
         for (let lon = 90; lon <= 100; lon += 1) {
-          l.push({geo: {type: "Point", coordinates: [lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
@@ -408,19 +446,21 @@
         insertAll(name, defaultAnalyzer, l);
       }
     }
-    function createSuperLargeGrid() {
+    function createSuperLargeGrid () {
       const name = 'createSuperLargeGrid';
       let l = [];
       for (let lat = 45; lat <= 55; lat += 1) {
         for (let lon = 175; lon < 180; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
         for (let lon = -179; lon <= -170; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
@@ -431,19 +471,21 @@
         insertAll(name, defaultAnalyzer, l);
       }
     }
-    function createBiggestGrid() {
+    function createBiggestGrid () {
       const name = 'createBiggestGrid';
       let l = [];
       for (let lat = 85; lat < 90; lat += 1) {
         for (let lon = 175; lon < 180; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
           }
         }
         for (let lon = -179; lon <= -170; lon += 1) {
-          l.push({geo:{type:"Point", coordinates:[lon, lat]}});
+          l.push({geo: {type: "Point",
+coordinates: [lon, lat]}});
           if (l.length % 1000 === 0) {
             insertAll(name, defaultAnalyzer, l);
             l = [];
@@ -456,15 +498,15 @@
     }
     return {
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief set up all
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief set up all
+      // //////////////////////////////////////////////////////////////////////////////
 
       setUpAll: function () {
-        //db._dropView(viewName);
-        //db._drop(collWithoutIndex);
-        //db._drop(collWithIndex);
-        //db._drop(collWithView);
+        // db._dropView(viewName);
+        // db._drop(collWithoutIndex);
+        // db._drop(collWithIndex);
+        // db._drop(collWithView);
         createDefaultAnalyzer();
         createOnePolygon();
         createTwoPolygons();
@@ -476,30 +518,41 @@
         createLargeGrid();
         createSuperLargeGrid();
         createBiggestGrid();
-        Object.keys(plainView).forEach(key => { waitForArangoSearch(plainView[key].name()); });
+        Object.keys(plainView).forEach(key => {
+ waitForArangoSearch(plainView[key].name());
+});
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief tear down all
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief tear down all
+      // //////////////////////////////////////////////////////////////////////////////
 
       tearDownAll: function () {
-        Object.keys(plainView).forEach(key => { plainView[key].drop(); });
-        Object.keys(withView).forEach(key => { withView[key].drop(); });
-        Object.keys(noIndex).forEach(key => { noIndex[key].drop(); });
-        Object.keys(withIndex).forEach(key => { withIndex[key].drop(); });
+        Object.keys(plainView).forEach(key => {
+ plainView[key].drop();
+});
+        Object.keys(withView).forEach(key => {
+ withView[key].drop();
+});
+        Object.keys(noIndex).forEach(key => {
+ noIndex[key].drop();
+});
+        Object.keys(withIndex).forEach(key => {
+ withIndex[key].drop();
+});
         Object.keys(testAnalyzers).forEach(key => {
           if (testAnalyzers[key].name() !== defaultAnalyzer.name()) {
             analyzers.remove(testAnalyzers[key].name(), true);
-          }});
+          }
+});
         analyzers.remove(defaultAnalyzer.name(), true);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test single point
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test single point
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testSetup : function () {
+      testSetup: function () {
         chooseCollectionSet('createOnePolygon');
         let c = compare(
           `FILTER GEO_DISTANCE([50, 50], d.geo) < 5000`,
@@ -508,11 +561,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test point near centroid of polygon
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test point near centroid of polygon
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testPointNearCentroidOfPolygon : function () {
+      testPointNearCentroidOfPolygon: function () {
         chooseCollectionSet('createThreePolygons');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 5000`,
@@ -521,11 +574,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, upper bound
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, upper bound
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGrid : function () {
+      testNearGrid: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666`,
@@ -534,11 +587,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, upper and lower bound
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, upper and lower bound
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGridRingArea : function () {
+      testNearGridRingArea: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
@@ -549,11 +602,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, only lower bound
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, only lower bound
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGridOuterArea : function () {
+      testNearGridOuterArea: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
@@ -562,11 +615,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, upper bound, descending
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, upper bound, descending
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGridDescending : function () {
+      testNearGridDescending: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666
@@ -577,11 +630,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, upper and lower bound, desc
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, upper and lower bound, desc
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGridRingAreaDescending : function () {
+      testNearGridRingAreaDescending: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) <= 666666 &&
@@ -594,11 +647,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with grid of points, only lower bound, descending
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with grid of points, only lower bound, descending
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearGridOuterAreaDescending : function () {
+      testNearGridOuterAreaDescending: function () {
         chooseCollectionSet('createNearGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([15, 15], d.geo) >= 300000`,
@@ -607,11 +660,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with objects of different sizes
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with objects of different sizes
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearObjectsSizes : function () {
+      testNearObjectsSizes: function () {
         chooseCollectionSet('createNarrowGrid');
         let c = compare(
           `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
@@ -620,11 +673,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with large objects different distance
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with large objects different distance
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearSlidingLargeObject : function () {
+      testNearSlidingLargeObject: function () {
         chooseCollectionSet('createNearSlidingObject');
         let c = compare(
           `FILTER GEO_DISTANCE([10, 10], d.geo) <= 555974`,
@@ -633,15 +686,15 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test near query with large non-convex object whose centroid
-      /// is not contained in the object.
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test near query with large non-convex object whose centroid
+      // / is not contained in the object.
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testNearNonConvexObject : function () {
+      testNearNonConvexObject: function () {
         chooseCollectionSet('createTwoPolygons');
         for (let dist = 1000; dist <= 100000; dist += 100) {
-          //print("Distance", dist);
+          // print("Distance", dist);
           let c = compare(
             `FILTER GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}`,
             `SEARCH ANALYZER(GEO_DISTANCE([4.7874, 10.0735], d.geo) <= ${dist}, "${analyzerName}")`
@@ -650,18 +703,19 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test contains query with a polygon, move polygon over grip
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test contains query with a polygon, move polygon over grip
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testContainsWithSmallPoly : function () {
+      testContainsWithSmallPoly: function () {
         chooseCollectionSet('createNearGrid');
         let d = 0.001;
         for (let lat = 9; lat <= 11; lat += 0.4) {
           for (let lon = 9; lon <= 11; lon += 0.4) {
-            let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
-                                                   [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
-            //print("Polygon:", JSON.stringify(p));
+            let p = {type: "Polygon",
+coordinates: [[[lon - d, lat - d],
+                                                   [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d]]]};
+            // print("Polygon:", JSON.stringify(p));
             let c = compare(
               `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
               `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -671,18 +725,19 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test contains query with a large polygon and a point grid
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test contains query with a large polygon and a point grid
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testContainsGrid : function () {
+      testContainsGrid: function () {
         chooseCollectionSet('createNearGrid');
         for (let d = 1; d <= 5; d += 1) {
           let p = {
-            type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
+            type: "Polygon",
+coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
                                             [15, 15 + d], [15 - d, 15]]]
           };
-          //print("d=", d, JSON.stringify(p));
+          // print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -693,19 +748,20 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test contains query with a complement of a large polygon and a 
-      /// point grid
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test contains query with a complement of a large polygon and a
+      // / point grid
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testContainsGridComplement : function () {
+      testContainsGridComplement: function () {
         chooseCollectionSet('createNearGrid');
         for (let d = 1; d <= 5; d += 1) {
           let p = {
-            type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
+            type: "Polygon",
+coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
                                             [15, 15 - d], [15 - d, 15]]]
           };
-          //print("d=", d, JSON.stringify(p));
+          // print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_CONTAINS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_CONTAINS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -716,18 +772,19 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test intersects query with a polygon, move polygon over grip
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test intersects query with a polygon, move polygon over grip
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testIntersectsWithSmallPoly : function () {
+      testIntersectsWithSmallPoly: function () {
         chooseCollectionSet('createNearGrid');
         let d = 0.001;
         for (let lat = 9; lat <= 11; lat += 0.4) {
           for (let lon = 9; lon <= 11; lon += 0.4) {
-            let p = {type:"Polygon", coordinates:[[[lon-d, lat-d],
-                                                   [lon+d, lat-d], [lon+d, lat+d], [lon-d, lat+d], [lon-d, lat-d]]]};
-            //print("Polygon:", JSON.stringify(p));
+            let p = {type: "Polygon",
+coordinates: [[[lon - d, lat - d],
+                                                   [lon + d, lat - d], [lon + d, lat + d], [lon - d, lat + d], [lon - d, lat - d]]]};
+            // print("Polygon:", JSON.stringify(p));
             let c = compare(
               `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
               `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -737,18 +794,19 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test intersects query with a large polygon and a point grid
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test intersects query with a large polygon and a point grid
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testIntersectsGrid : function () {
+      testIntersectsGrid: function () {
         chooseCollectionSet('createNearGrid');
         for (let d = 1; d <= 5; d += 1) {
           let p = {
-            type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
+            type: "Polygon",
+coordinates: [[[15 - d, 15], [15, 15 - d], [15 + d, 15],
                                             [15, 15 + d], [15 - d, 15]]]
           };
-          //print("d=", d, JSON.stringify(p));
+          // print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -759,19 +817,20 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test intersects query with a complement of a large polygon and a 
-      /// point grid
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test intersects query with a complement of a large polygon and a
+      // / point grid
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testIntersectsGridComplement : function () {
+      testIntersectsGridComplement: function () {
         chooseCollectionSet('createNearGrid');
         for (let d = 1; d <= 5; d += 1) {
           let p = {
-            type: "Polygon", coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
+            type: "Polygon",
+coordinates: [[[15 - d, 15], [15, 15 + d], [15 + d, 15],
                                             [15, 15 - d], [15 - d, 15]]]
           };
-          //print("d=", d, JSON.stringify(p));
+          // print("d=", d, JSON.stringify(p));
           let c = compare(
             `FILTER GEO_INTERSECTS(${JSON.stringify(p)}, d.geo)`,
             `SEARCH ANALYZER(GEO_INTERSECTS(${JSON.stringify(p)}, d.geo), "${analyzerName}")`
@@ -782,15 +841,15 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test intersects query with large non-convex object whose centroid
-      /// is not contained in the object.
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test intersects query with large non-convex object whose centroid
+      // / is not contained in the object.
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testIntersectsNonConvexObject : function () {
+      testIntersectsNonConvexObject: function () {
         chooseCollectionSet('createTwoPolygons');
-        let smallPoly = {type:"Polygon",
-                         coordinates:[[[4.7873, 10.0734], [4.7875, 10.0734], [4.7875, 10.0736],
+        let smallPoly = {type: "Polygon",
+                         coordinates: [[[4.7873, 10.0734], [4.7875, 10.0734], [4.7875, 10.0736],
                                        [4.7873, 10.0736], [4.7873, 10.0734]]]};
         let c = compare(
           `FILTER GEO_INTERSECTS(${JSON.stringify(smallPoly)}, d.geo)`,
@@ -799,9 +858,9 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test some areas which are more than half of the earth
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test some areas which are more than half of the earth
+      // //////////////////////////////////////////////////////////////////////////////
 
       testMoreThanHalf1Grid: function () {
         chooseCollectionSet('createLargeGrid');
@@ -819,7 +878,7 @@
           makePolyInside([170, -10], [-80, 60]),
           makePolyOutside([170, -10], [-80, 60]),
           makePolyInside([170, -10], [-80, 50]),
-          makePolyOutside([170, -10], [-80, 50]),
+          makePolyOutside([170, -10], [-80, 50])
         ];
         for (let p of polys) {
           let c = compare(
@@ -832,12 +891,12 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test some areas which are more than half of the earth, around
-      /// date wrap
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test some areas which are more than half of the earth, around
+      // / date wrap
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testMoreThanHalf2 : function () {
+      testMoreThanHalf2: function () {
         chooseCollectionSet('createSuperLargeGrid');
         let polys = [
           makePolyInside([-85, 95], [-80, 50]),
@@ -853,7 +912,7 @@
           makePolyInside([170, -10], [-80, 60]),
           makePolyOutside([170, -10], [-80, 60]),
           makePolyInside([170, -10], [-80, 50]),
-          makePolyOutside([170, -10], [-80, 50]),
+          makePolyOutside([170, -10], [-80, 50])
         ];
         for (let p of polys) {
           let c = compare(
@@ -864,12 +923,12 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief test some areas which are more than half of the earth, around
-      /// north pole
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief test some areas which are more than half of the earth, around
+      // / north pole
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testMoreThanHalf3 : function () {
+      testMoreThanHalf3: function () {
         chooseCollectionSet('createBiggestGrid');
         let polys = [
           makePolyInside([-85, 95], [-80, 87]),
@@ -885,7 +944,7 @@
           makePolyInside([170, -10], [-80, 89]),
           makePolyOutside([170, -10], [-80, 89]),
           makePolyInside([170, -10], [-80, 87]),
-          makePolyOutside([170, -10], [-80, 87]),
+          makePolyOutside([170, -10], [-80, 87])
         ];
         for (let p of polys) {
           let c = compare(
@@ -896,11 +955,11 @@
         }
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief further non-convex cases
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief further non-convex cases
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testMoreNonConvex : function () {
+      testMoreNonConvex: function () {
         chooseCollectionSet('createSomePolygons');
         let multiLineString = {
           "type": "MultiLineString",
@@ -941,11 +1000,11 @@
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
       },
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief further non-convex cases, GEO_IN_RANGE
-      ////////////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////////////
+      // / @brief further non-convex cases, GEO_IN_RANGE
+      // //////////////////////////////////////////////////////////////////////////////
 
-      testMoreNonConvexGeoInRange : function () {
+      testMoreNonConvexGeoInRange: function () {
         chooseCollectionSet('createSomePolygons');
         let multiLineString = {
           "type": "MultiLineString",
@@ -988,7 +1047,7 @@
           `SEARCH ANALYZER(GEO_IN_RANGE(${JSON.stringify(multiPoint)}, d.geo, 0, 100), "${analyzerName}")`
         );
         assertTrue(c.cmpResFullScanWithIndexes.good && c.cmpResView.good && c.cmpResInvertedIndex.good, c.cmpResFullScanWithIndexes.msg + c.cmpResView.msg + c.cmpResInvertedIndex.msg);
-      },
+      }
     };
   };
 }());

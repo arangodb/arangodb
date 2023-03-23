@@ -178,7 +178,7 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   convert: false,
-  datatype: "value=boolean",
+  datatype: "value=boolean"
 }, {
   id: 'csvtypesnumber',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
@@ -187,7 +187,7 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   convert: false,
-  datatype: "value=number",
+  datatype: "value=number"
 }, {
   id: 'csvtypesstring',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
@@ -196,7 +196,7 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   convert: false,
-  datatype: "value=string",
+  datatype: "value=string"
 }, {
   id: 'csvtypesprecedence',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
@@ -205,7 +205,7 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   convert: true,
-  datatype: "value=string",
+  datatype: "value=string"
 }, {
   id: 'csvmergeattributes',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
@@ -215,7 +215,7 @@ const impTodos = [{
   separator: ',',
   convert: true,
   datatype: "value=string",
-  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"]
 }, {
   id: 'csvheadersmergeattributes',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
@@ -226,28 +226,28 @@ const impTodos = [{
   create: 'true',
   separator: ',',
   convert: true,
-  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"]
 }, {
   id: 'csvmergeattributesInvalid',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid',
   type: 'csv',
   mergeAttributes: ["Id=[]"],
-  expectFailure: true,
+  expectFailure: true
 }, {
   id: 'csvmergeattributesInvalid2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid2',
   type: 'csv',
   mergeAttributes: ["idAndValue=[id[value]"],
-  expectFailure: true,
+  expectFailure: true
 }, {
   id: 'csvmergeattributesInvalid3',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid3',
   type: 'csv',
   mergeAttributes: ["idAndValue=[idAndValue]"],
-  expectFailure: true,
+  expectFailure: true
 }, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
@@ -262,14 +262,14 @@ const impTodos = [{
   headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
   coll: 'UnitTestsImportCsvHeaders',
   type: 'csv',
-  create: 'true',
+  create: 'true'
 }, {
   id: 'csvbrokenheaders',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
   headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-broken-headers.csv')),
   coll: 'UnitTestsImportCsvBrokenHeaders',
   type: 'csv',
-  create: 'true',
+  create: 'true'
 }, {
   id: 'tsv1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.tsv')),
@@ -351,7 +351,7 @@ const impTodos = [{
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-large.json')),
   coll: 'UnitTestsImportJsonLarge',
   type: 'json',
-  create: true,
+  create: true
 }, {
   id: 'removeAttributeJSONLarge',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-large.json')),
@@ -373,14 +373,14 @@ const impTodos = [{
   coll: 'UnitTestsImportJson1',
   type: 'json',
   create: 'true',
-  database: 'maçã',
+  database: 'maçã'
 }, {
   id: 'importUnicode2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
   coll: 'UnitTestsImportJson1',
   type: 'json',
   create: 'true',
-  database: '😀',
+  database: '😀'
 }, {
   id: 'createUnicode1',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
@@ -403,7 +403,7 @@ const impTodos = [{
   coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile',
   type: 'csv',
   create: 'true',
-  batchSize: 10,
+  batchSize: 10
 }, {
   id: 'importDataBatchSizeWithoutHeaderFile2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
@@ -418,7 +418,7 @@ const impTodos = [{
   coll: 'UnitTestsImportDataBatchSizeWithHeaderFile',
   type: 'csv',
   create: 'true',
-  batchSize: 10,
+  batchSize: 10
 }, {
   id: 'importDataBatchSizeWithHeaderFile2',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
@@ -430,12 +430,12 @@ const impTodos = [{
 }];
 
 class importRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
+  constructor (options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";
   }
-  
-  run() {
+
+  run () {
         this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'importing');
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
@@ -455,7 +455,7 @@ class importRunner extends tu.runInArangoshRunner {
     let result = { failed: 0 };
 
     try {
-      result.setup = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
+      result.setup = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import-setup.js')));
 
       result.setup.failed = 0;
       if (result.setup.status !== true) {
@@ -515,6 +515,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

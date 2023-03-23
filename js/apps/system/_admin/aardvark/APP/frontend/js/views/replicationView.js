@@ -402,8 +402,10 @@
       };
 
       _.each(datasets, function (data) {
-        graphDataTime.leader.values.push({x: Date.parse(data.state.time), y: 0});
-        graphDataTick.leader.values.push({x: Date.parse(data.state.time), y: 0});
+        graphDataTime.leader.values.push({x: Date.parse(data.state.time),
+y: 0});
+        graphDataTick.leader.values.push({x: Date.parse(data.state.time),
+y: 0});
 
         var colorCount = 0;
         _.each(data.clients, function (client) {
@@ -447,26 +449,26 @@
 
       // time chart
       nv.addGraph(function () {
-        self.charts.replicationTimeChart = nv.models.lineChart()
-          .options({
+        self.charts.replicationTimeChart = nv.models.lineChart().
+          options({
             duration: 300,
             useInteractiveGuideline: true,
             forceY: [2, -10]
           })
         ;
-        self.charts.replicationTimeChart.xAxis
-          .axisLabel('')
-          .tickFormat(function (d) {
+        self.charts.replicationTimeChart.xAxis.
+          axisLabel('').
+          tickFormat(function (d) {
             var x = new Date(d);
             return (x.getHours() < 10 ? '0' : '') + x.getHours() + ':' +
               (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ':' +
               (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
-          })
-          .staggerLabels(false);
+          }).
+          staggerLabels(false);
 
-        self.charts.replicationTimeChart.yAxis
-          .axisLabel('Last call ago (in s)')
-          .tickFormat(function (d) {
+        self.charts.replicationTimeChart.yAxis.
+          axisLabel('Last call ago (in s)').
+          tickFormat(function (d) {
             if (d === null) {
               return 'N/A';
             }
@@ -474,35 +476,35 @@
           })
         ;
         var data = self.parseLoggerData().graphDataTime;
-        d3.select('#replicationTimeChart svg')
-          .datum(data)
-          .call(self.charts.replicationTimeChart);
+        d3.select('#replicationTimeChart svg').
+          datum(data).
+          call(self.charts.replicationTimeChart);
         nv.utils.windowResize(self.charts.replicationTimeChart.update);
         return self.charts.replicationTimeChart;
       });
 
       // tick chart
       nv.addGraph(function () {
-        self.charts.replicationTickChart = nv.models.lineChart()
-          .options({
+        self.charts.replicationTickChart = nv.models.lineChart().
+          options({
             duration: 300,
             useInteractiveGuideline: true,
             forceY: [2, undefined]
           })
         ;
-        self.charts.replicationTickChart.xAxis
-          .axisLabel('')
-          .tickFormat(function (d) {
+        self.charts.replicationTickChart.xAxis.
+          axisLabel('').
+          tickFormat(function (d) {
             var x = new Date(d);
             return (x.getHours() < 10 ? '0' : '') + x.getHours() + ':' +
               (x.getMinutes() < 10 ? '0' : '') + x.getMinutes() + ':' +
               (x.getSeconds() < 10 ? '0' : '') + x.getSeconds();
-          })
-          .staggerLabels(false);
+          }).
+          staggerLabels(false);
 
-        self.charts.replicationTickChart.yAxis
-          .axisLabel('Ticks behind')
-          .tickFormat(function (d) {
+        self.charts.replicationTickChart.yAxis.
+          axisLabel('Ticks behind').
+          tickFormat(function (d) {
             if (d === null) {
               return 'N/A';
             }
@@ -510,9 +512,9 @@
           })
         ;
         var data = self.parseLoggerData().graphDataTick;
-        d3.select('#replicationTickChart svg')
-          .datum(data)
-          .call(self.charts.replicationTickChart);
+        d3.select('#replicationTickChart svg').
+          datum(data).
+          call(self.charts.replicationTickChart);
         nv.utils.windowResize(self.charts.replicationTickChart.update);
         return self.charts.replicationTickChart;
       });
@@ -523,16 +525,16 @@
     rerenderLoggerGraphs: function () {
       var self = this;
       // time chart
-      d3.select('#replicationTimeChart svg')
-        .datum(self.parseLoggerData().graphDataTime)
-        .transition().duration(500)
-        .call(this.charts.replicationTimeChart);
+      d3.select('#replicationTimeChart svg').
+        datum(self.parseLoggerData().graphDataTime).
+        transition().duration(500).
+        call(this.charts.replicationTimeChart);
 
       // tick chart
-      d3.select('#replicationTickChart svg')
-        .datum(self.parseLoggerData().graphDataTick)
-        .transition().duration(500)
-        .call(this.charts.replicationTickChart);
+      d3.select('#replicationTickChart svg').
+        datum(self.parseLoggerData().graphDataTick).
+        transition().duration(500).
+        call(this.charts.replicationTickChart);
 
       _.each(this.charts, function (chart) {
         nv.utils.windowResize(chart.update);

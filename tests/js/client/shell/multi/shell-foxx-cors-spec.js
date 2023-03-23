@@ -12,7 +12,7 @@ const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:
 
 const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'content-length', 'keep-alive', 'server', 'allow',
   'x-arango-queue-time-seconds', 'content-security-policy', 'cache-control', 'pragma', 'expires', 'strict-transport-security'];
-function filterIrrelevant(header) {
+function filterIrrelevant (header) {
   return !header.startsWith('x-content-type-options') &&
     !header.startsWith('access-control-') &&
     !irrelevantHeaders.includes(header);
@@ -48,7 +48,7 @@ describe('HTTP headers in Foxx services', function () {
       });
     }
     it("exposes response headers automatically", function () {
-      var result = arango.POST_RAW( "/unittest/headers/header-automatic", "", { origin });
+      var result = arango.POST_RAW("/unittest/headers/header-automatic", "", { origin });
       expect(result.code).to.equal(204);
       expect(result.headers['x-foobar']).to.equal('baz');
       expect(result.headers['x-nofoobar']).to.equal('baz');
@@ -79,7 +79,8 @@ describe('HTTP headers in Foxx services', function () {
     if (!isVst) {
       // VST doesn't implement options requests.
       it("allows requested headers", function () {
-        var opts = { origin, "access-control-request-headers" : "foo, bar" };
+        var opts = { origin,
+"access-control-request-headers": "foo, bar" };
         var result = arango.OPTIONS_RAW("/unittest/headers/header-echo", "", opts);
         expect(result.code).to.equal(200);
         if (!isVst) {

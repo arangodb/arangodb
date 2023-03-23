@@ -181,7 +181,7 @@ var lessons = [
   },
   {
     title: 'Removing Databases',
-    text:  "To get rid of a database and all of its collections, use '_dropDatabase'.\n" +
+    text: "To get rid of a database and all of its collections, use '_dropDatabase'.\n" +
       "It needs to be called from within the '_system' database:\n\n" +
       '  db._useDatabase("_system");\n' +
       '  db._dropDatabase("mydb");'

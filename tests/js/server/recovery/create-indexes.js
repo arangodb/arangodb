@@ -41,12 +41,18 @@ function runSetup () {
 
     let docs = [];
     for (let j = 0; j < 100; ++j) {
-      docs.push({ _key: 'test' + j, value1: 'foo' + j, value2: 'bar' + j });
+      docs.push({ _key: 'test' + j,
+value1: 'foo' + j,
+value2: 'bar' + j });
     }
     c.insert(docs);
 
-    c.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
-    c.ensureIndex({ type: "skiplist", fields: ["value2"], unique: true });
+    c.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
+    c.ensureIndex({ type: "skiplist",
+fields: ["value2"],
+unique: true });
   }
 
   db._drop('test');

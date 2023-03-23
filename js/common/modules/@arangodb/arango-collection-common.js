@@ -1,4 +1,4 @@
-/*jshint strict: false, unused: false, maxlen: 200 */
+/* jshint strict: false, unused: false, maxlen: 200 */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection
@@ -64,9 +64,9 @@ ArangoCollection.STATUS_LOADED = 3;
 
 ArangoCollection.STATUS_DELETED = 5;
 
-/// note: the following collection statuses are not used by arangod anymore.
-/// they are only here for backwards-compatibility, but they will be rmeoved
-/// in a future version
+// / note: the following collection statuses are not used by arangod anymore.
+// / they are only here for backwards-compatibility, but they will be rmeoved
+// / in a future version
 ArangoCollection.STATUS_NEW_BORN = 1;
 ArangoCollection.STATUS_UNLOADED = 2;
 ArangoCollection.STATUS_UNLOADING = 4;
@@ -120,13 +120,21 @@ ArangoCollection.prototype._PRINT = function (context) {
   var useColor = context.useColor;
 
   context.output += '[ArangoCollection ';
-  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  if (useColor) {
+ context.output += colors.COLOR_NUMBER;
+}
   context.output += this._id;
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += ', "';
-  if (useColor) { context.output += colors.COLOR_STRING; }
+  if (useColor) {
+ context.output += colors.COLOR_STRING;
+}
   context.output += name || 'unknown';
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += '" (type ' + type + ', status ' + status + ')]';
 };
 
@@ -181,7 +189,7 @@ ArangoCollection.prototype.byExample = function (example) {
     e = {};
 
     // create a REAL array, otherwise JSON.stringify will fail
-    for (i = 0;  i < arguments.length;  i += 2) {
+    for (i = 0; i < arguments.length; i += 2) {
       e[arguments[i]] = arguments[i + 1];
     }
   }
@@ -216,7 +224,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     var inds = collection.getIndexes();
     var i;
 
-    for (i = 0;  i < inds.length;  ++i) {
+    for (i = 0; i < inds.length; ++i) {
       var index = inds[i];
 
       if (index.type === 'geo1' || (index.type === 'geo' && index.fields.length === 1)) {
@@ -233,7 +241,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
     var inds = collection.getIndexes();
     var i;
 
-    for (i = 0;  i < inds.length;  ++i) {
+    for (i = 0; i < inds.length; ++i) {
       var index = inds[i];
 
       if (index.type === 'geo2' || (index.type === 'geo' && index.fields.length === 2)) {
@@ -249,13 +257,12 @@ ArangoCollection.prototype.geo = function (loc, order) {
   if (order === undefined) {
     if (typeof loc === 'object') {
       idx = this.index(loc);
-    }else {
+    } else {
       idx = locateGeoIndex1(this, loc, false);
     }
-  }
-  else if (typeof order === 'boolean') {
+  } else if (typeof order === 'boolean') {
     idx = locateGeoIndex1(this, loc, order);
-  }else {
+  } else {
     idx = locateGeoIndex2(this, loc, order);
   }
 
@@ -320,7 +327,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
   if (limit === null) {
     if (probability >= 1.0) {
       cursor = this.all();
-    }else {
+    } else {
       stmt = sprintf('FOR d IN %s FILTER rand() <= @prob RETURN d', this.name());
       stmt = arangodb.db._createStatement({ query: stmt });
 
@@ -330,7 +337,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 
       cursor = stmt.execute();
     }
-  }else {
+  } else {
     if (typeof limit !== 'number') {
       var error = new ArangoError();
       error.errorNum = arangodb.errors.ERROR_ILLEGAL_NUMBER.code;
@@ -341,7 +348,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 
     if (probability >= 1.0) {
       cursor = this.all().limit(limit);
-    }else {
+    } else {
       stmt = sprintf('FOR d IN %s FILTER rand() <= @prob LIMIT %d RETURN d',
         this.name(), limit);
       stmt = arangodb.db._createStatement({ query: stmt });
@@ -402,7 +409,7 @@ function addIndexOptions (body, parameters) {
   body.fields = [];
 
   var setOption = function (k) {
-    if (! body.hasOwnProperty(k)) {
+    if (!body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
   };
@@ -412,9 +419,8 @@ function addIndexOptions (body, parameters) {
     if (typeof parameters[i] === 'string') {
       // set fields
       body.fields.push(parameters[i]);
-    }
-    else if (typeof parameters[i] === 'object' &&
-      ! Array.isArray(parameters[i]) &&
+    } else if (typeof parameters[i] === 'object' &&
+      !Array.isArray(parameters[i]) &&
       parameters[i] !== null) {
       // set arbitrary options
       Object.keys(parameters[i]).forEach(setOption);
@@ -433,7 +439,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
   'use strict';
 
   return this.ensureIndex(addIndexOptions({
-    type: 'hash',
+    type: 'hash'
   }, arguments));
 };
 
@@ -483,7 +489,7 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
   'use strict';
 
-  if (! Array.isArray(field)) {
+  if (!Array.isArray(field)) {
     field = [ field ];
   }
 

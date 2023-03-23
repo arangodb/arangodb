@@ -1,52 +1,52 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global fail, assertEqual, assertTrue, assertFalse, AQL_EXPLAIN */
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let errors = require("internal").errors;
 let db = require("@arangodb").db;
 
-/// @brief test suite
+// / @brief test suite
 function explainSuite () {
   const cn = "UnitTestsAhuacatlExplain";
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn);
       db._create(cn);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testExplainStats : function () {
+    testExplainStats: function () {
       let query = "FOR doc IN " + cn + " FILTER doc.value > 33 RETURN doc";
       let actual = AQL_EXPLAIN(query).stats;
       assertEqual(1, actual.plansCreated);
@@ -55,8 +55,8 @@ function explainSuite () {
       assertTrue(actual.hasOwnProperty("rulesSkipped"));
       assertFalse(actual.hasOwnProperty("rules"));
     },
-    
-    testExplainStatsRules : function () {
+
+    testExplainStatsRules: function () {
       let query = "FOR doc IN " + cn + " FILTER doc.value > 33 RETURN doc";
       let actual = AQL_EXPLAIN(query, null, { profile: 2 }).stats;
       assertEqual(1, actual.plansCreated);
@@ -69,13 +69,13 @@ function explainSuite () {
       assertTrue(runRules.hasOwnProperty("remove-filter-covered-by-index"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExplainBindMissing : function () {
+    testExplainBindMissing: function () {
       const query = "RETURN @foo";
-      
+
       try {
         AQL_EXPLAIN(query);
         fail();
@@ -84,13 +84,13 @@ function explainSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test bind parameters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test bind parameters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExplainBindPresent : function () {
+    testExplainBindPresent: function () {
       const query = "RETURN @foo";
-      
+
       let actual = AQL_EXPLAIN(query, { foo: "bar" });
       assertEqual(3, actual.plan.nodes.length);
       assertEqual("SingletonNode", actual.plan.nodes[0].type);
@@ -98,13 +98,13 @@ function explainSuite () {
       assertEqual("ReturnNode", actual.plan.nodes[2].type);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test verbosity w/ single plan
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test verbosity w/ single plan
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExplainVerbosity : function () {
+    testExplainVerbosity: function () {
       const query = "FOR i IN " + cn + " FOR j IN " + cn + " RETURN i";
-      
+
       // single plan, no options
       let actual = AQL_EXPLAIN(query);
       assertTrue(actual.hasOwnProperty("plan"));
@@ -114,8 +114,8 @@ function explainSuite () {
       assertTrue(actual.plan.hasOwnProperty("rules"));
       assertTrue(Array.isArray(actual.plan.rules));
       assertTrue(actual.plan.hasOwnProperty("estimatedCost"));
-      
-      actual.plan.nodes.forEach(function(node) {
+
+      actual.plan.nodes.forEach(function (node) {
         assertTrue(node.hasOwnProperty("type"));
         assertFalse(node.hasOwnProperty("typeID")); // deactivated if not verbose
         assertTrue(node.hasOwnProperty("dependencies"));
@@ -134,7 +134,7 @@ function explainSuite () {
       assertTrue(actual.plan.hasOwnProperty("rules"));
       assertTrue(Array.isArray(actual.plan.rules));
 
-      actual.plan.nodes.forEach(function(node) {
+      actual.plan.nodes.forEach(function (node) {
         assertTrue(node.hasOwnProperty("type"));
         assertTrue(node.hasOwnProperty("typeID"));
         assertTrue(node.hasOwnProperty("dependencies"));
@@ -146,13 +146,13 @@ function explainSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain w/ a single plan vs. all plans
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test explain w/ a single plan vs. all plans
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExplainAllPlansVsSingle : function () {
+    testExplainAllPlansVsSingle: function () {
       const query = "FOR i IN " + cn + " FOR j IN " + cn + " RETURN i";
-      
+
       // single plan
       let actual = AQL_EXPLAIN(query, { }, { verbosePlans: true });
       assertTrue(actual.hasOwnProperty("plan"));
@@ -162,21 +162,22 @@ function explainSuite () {
       assertTrue(actual.plan.hasOwnProperty("nodes"));
       assertTrue(Array.isArray(actual.plan.nodes));
 
-      actual.plan.nodes.forEach(function(node) {
+      actual.plan.nodes.forEach(function (node) {
         assertTrue(node.hasOwnProperty("type"));
-        assertTrue(node.hasOwnProperty("typeID")); 
+        assertTrue(node.hasOwnProperty("typeID"));
         assertTrue(node.hasOwnProperty("dependencies"));
         assertTrue(Array.isArray(node.dependencies));
         assertTrue(node.hasOwnProperty("parents"));
         assertTrue(node.hasOwnProperty("id"));
         assertTrue(node.hasOwnProperty("estimatedCost"));
       });
-      
+
       assertTrue(actual.plan.hasOwnProperty("rules"));
       assertTrue(Array.isArray(actual.plan.rules));
 
       // multiple plans
-      actual = AQL_EXPLAIN(query, { }, { allPlans: true, verbosePlans: true });
+      actual = AQL_EXPLAIN(query, { }, { allPlans: true,
+verbosePlans: true });
       assertFalse(actual.hasOwnProperty("plan"));
       assertTrue(actual.hasOwnProperty("plans"));
       assertTrue(Array.isArray(actual.plans));
@@ -184,10 +185,10 @@ function explainSuite () {
       actual.plans.forEach(function (plan) {
         assertTrue(plan.hasOwnProperty("nodes"));
         assertTrue(Array.isArray(plan.nodes));
-      
-        plan.nodes.forEach(function(node) {
+
+        plan.nodes.forEach(function (node) {
           assertTrue(node.hasOwnProperty("type"));
-          assertTrue(node.hasOwnProperty("typeID")); 
+          assertTrue(node.hasOwnProperty("typeID"));
           assertTrue(node.hasOwnProperty("dependencies"));
           assertTrue(Array.isArray(node.dependencies));
           assertTrue(node.hasOwnProperty("parents"));
@@ -199,23 +200,25 @@ function explainSuite () {
         assertTrue(Array.isArray(plan.rules));
       });
     },
-  
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test callstack split
-////////////////////////////////////////////////////////////////////////////////
 
-    testExplainCallstackSplit : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test callstack split
+// //////////////////////////////////////////////////////////////////////////////
+
+    testExplainCallstackSplit: function () {
       const query = "FOR i IN " + cn + " FOR j IN " + cn + " FILTER i.x == j.x RETURN [i,j]";
 
-      let nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 1, verbosePlans: true }).plan.nodes;
+      let nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 1,
+verbosePlans: true }).plan.nodes;
       assertTrue(Array.isArray(nodes));
 
-      nodes.forEach(function(node) {
+      nodes.forEach(function (node) {
         assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
         assertTrue(node.isCallstackSplitEnabled ^ (node.type === "RemoteNode"));
       });
-      
-      nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 2, verbosePlans: true }).plan.nodes;
+
+      nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 2,
+verbosePlans: true }).plan.nodes;
       let shouldHaveCallstackSplitEnabled = false;
       for (let i = nodes.length; i < 0; --i) {
         const node = nodes[i - 1];
@@ -226,7 +229,7 @@ function explainSuite () {
         assertEqual(shouldHaveCallstackSplitEnabled, node.isCallstackSplitEnabled);
         shouldHaveCallstackSplitEnabled = !shouldHaveCallstackSplitEnabled;
       }
-    },
+    }
 
   };
 }

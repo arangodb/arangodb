@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,11 +31,11 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
-function wait_for_get(cmd, code, maxWait) {
+function wait_for_get (cmd, code, maxWait) {
   while (true) {
     let doc = arango.GET_RAW(cmd);
     if (doc.code === code) {
@@ -49,7 +49,7 @@ function wait_for_get(cmd, code, maxWait) {
   }
 }
 
-function wait_for_put(cmd, code, maxWait) {
+function wait_for_put (cmd, code, maxWait) {
   while (true) {
     let doc = arango.PUT_RAW(cmd, "");
     if (doc.code === code) {
@@ -65,7 +65,7 @@ function wait_for_put(cmd, code, maxWait) {
 
 function dealing_with_async_requestsSuite () {
   return {
-    tearDownAll: function() {
+    tearDownAll: function () {
       // cancel all pending jobs this test may have created
       // (and probably also others, but other tests should
       // have cleaned up their own data)
@@ -85,11 +85,11 @@ function dealing_with_async_requestsSuite () {
       arango.DELETE('/_api/query/slow');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // checking methods;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_checks_whether_asyncEQfalse_returns_status_202: function() {
+    test_checks_whether_asyncEQfalse_returns_status_202: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "false" });
 
@@ -98,7 +98,7 @@ function dealing_with_async_requestsSuite () {
       assertTrue(doc.parsedBody !== "");
     },
 
-    test_checks_whether_asyncEQtrue_returns_status_202: function() {
+    test_checks_whether_asyncEQtrue_returns_status_202: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "true" });
 
@@ -107,7 +107,7 @@ function dealing_with_async_requestsSuite () {
       assertTrue(doc.parsedBody !== "");
     },
 
-    test_checks_whether_asyncEQ1_returns_status_200: function() {
+    test_checks_whether_asyncEQ1_returns_status_200: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "1" });
 
@@ -116,7 +116,7 @@ function dealing_with_async_requestsSuite () {
       assertTrue(doc.parsedBody !== "");
     },
 
-    test_checks_whether_HEAD_returns_status_202: function() {
+    test_checks_whether_HEAD_returns_status_202: function () {
       let cmd = "/_api/version";
       let doc = arango.HEAD_RAW(cmd, { "X-Arango-Async": "true" });
 
@@ -125,7 +125,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_POST_returns_status_202: function() {
+    test_checks_whether_POST_returns_status_202: function () {
       let cmd = "/_api/version";
       let doc = arango.POST_RAW(cmd, "", { "X-Arango-Async": "true" });
 
@@ -134,7 +134,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_an_invalid_location_returns_status_202: function() {
+    test_checks_whether_an_invalid_location_returns_status_202: function () {
       let cmd = "/_api/not-existing";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "true" });
 
@@ -143,7 +143,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_a_failing_action_returns_status_202: function() {
+    test_checks_whether_a_failing_action_returns_status_202: function () {
       let cmd = "/_admin/execute";
       let body = "fail();";
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "true" });
@@ -153,7 +153,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_the_responses_when_the_queue_fills_up: function() {
+    test_checks_the_responses_when_the_queue_fills_up: function () {
       let cmd = "/_api/version";
 
       for (let i = 1; i < 500; i++) {
@@ -164,7 +164,7 @@ function dealing_with_async_requestsSuite () {
       }
     },
 
-    test_checks_whether_setting_x_arango_async_to_store_returns_a_job_id: function() {
+    test_checks_whether_setting_x_arango_async_to_store_returns_a_job_id: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "store" });
 
@@ -174,7 +174,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_job_api_returns_200_for_ready_job: function() {
+    test_checks_whether_job_api_returns_200_for_ready_job: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "store" });
 
@@ -204,8 +204,8 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.code, 404);
     },
 
-    test_checks_whether_job_api_returns_204_for_non_ready_job: function() {
-      let cmd = "/_api/cursor";;
+    test_checks_whether_job_api_returns_204_for_non_ready_job: function () {
+      let cmd = "/_api/cursor";
       let body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
 
@@ -221,7 +221,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.parsedBody, undefined);
     },
 
-    test_checks_whether_job_api_returns_404_for_non_existing_job: function() {
+    test_checks_whether_job_api_returns_404_for_non_existing_job: function () {
       let cmd = "/_api/version";
       let doc = arango.GET_RAW(cmd, { "X-Arango-Async": "store" });
 
@@ -236,8 +236,8 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.code, 404);
     },
 
-    test_checks_whether_job_api_returns_done_job_in_pending_and_done_list: function() {
-      let cmd = "/_api/cursor";;
+    test_checks_whether_job_api_returns_done_job_in_pending_and_done_list: function () {
+      let cmd = "/_api/cursor";
       let body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
 
@@ -258,8 +258,8 @@ function dealing_with_async_requestsSuite () {
       assertFalse(doc.parsedBody.hasOwnProperty('id'));
     },
 
-    test_checks_whether_job_api_returns_non_ready_job_in_pending_and_done_lists: function() {
-      let cmd = "/_api/cursor";;
+    test_checks_whether_job_api_returns_non_ready_job_in_pending_and_done_lists: function () {
+      let cmd = "/_api/cursor";
       let body = '{"query": "FOR i IN 1..10 LET x = sleep(10.0) FILTER i == 5 RETURN 42"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
 
@@ -280,7 +280,7 @@ function dealing_with_async_requestsSuite () {
       assertFalse(doc.parsedBody.hasOwnProperty('id'));
     },
 
-    test_checks_whether_we_can_cancel_an_AQL_query_1: function() {
+    test_checks_whether_we_can_cancel_an_AQL_query_1: function () {
       let cmd = "/_api/cursor";
       let body = '{"query": "for x in 1..1000 let a = sleep(0.5) filter x == 1 return x"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
@@ -304,7 +304,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.code, 410);
     },
 
-    test_checks_whether_we_can_cancel_an_AQL_query_2: function() {
+    test_checks_whether_we_can_cancel_an_AQL_query_2: function () {
       let cmd = "/_api/cursor";
       let body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
@@ -328,7 +328,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.code, 410);
     },
 
-    test_checks_whether_we_can_cancel_an_AQL_query_3: function() {
+    test_checks_whether_we_can_cancel_an_AQL_query_3: function () {
       let cmd = "/_api/cursor";
       let body = '{"query": "for x in 1..10000 for y in 1..10000 let a = sleep(0.01) filter x == 1 && y == 1 return x"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
@@ -352,7 +352,7 @@ function dealing_with_async_requestsSuite () {
       assertEqual(doc.code, 410);
     },
 
-    test_checks_whether_we_can_cancel_a_transaction: function() {
+    test_checks_whether_we_can_cancel_a_transaction: function () {
       let cmd = "/_api/transaction";
       let body = '{"collections": {"write": "_graphs"}, "action": "function() {var i = 0; while (i < 90000000000) {i++; require(\\"internal\\").wait(0.1); } return i;}"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "store" });
@@ -374,7 +374,7 @@ function dealing_with_async_requestsSuite () {
       cmd = "/_api/job/" + id;
       doc = wait_for_put(cmd, 410, 20);
       assertEqual(doc.code, 410);
-    },
+    }
   };
 }
 

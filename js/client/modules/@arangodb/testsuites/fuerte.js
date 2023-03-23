@@ -48,7 +48,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // / @brief TEST: GTest
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateGTest(name) {
+function locateGTest (name) {
   var file = fs.join(pu.UNITTESTS_DIR, name + pu.executableExt);
 
   if (!fs.exists(file)) {
@@ -60,7 +60,7 @@ function locateGTest(name) {
   return file;
 }
 
-function getGTestResults(fileName, defaultResults) {
+function getGTestResults (fileName, defaultResults) {
   let results = defaultResults;
   if (!fs.exists(fileName)) {
     defaultResults.failed += 1;
@@ -91,7 +91,7 @@ function getGTestResults(fileName, defaultResults) {
   return results;
 }
 
-function gtestRunner(options) {
+function gtestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'fuertetest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
@@ -114,7 +114,7 @@ function gtestRunner(options) {
   // start server
   print('Starting server...');
 
-  let instanceManager = new im.instanceManager('tcp', options, {"http.keep-alive-timeout" : "10"}, 'fuerte');
+  let instanceManager = new im.instanceManager('tcp', options, {"http.keep-alive-timeout": "10"}, 'fuerte');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
   if (!instanceManager.launchInstance()) {
@@ -164,6 +164,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
 
   opts['skipFuerte'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
+/* jshint globalstrict:false, strict:false, maxlen: 5000 */
+/* global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the document interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
@@ -37,9 +37,9 @@ var wait = internal.wait;
 var testHelper = require("@arangodb/test-helper").helper;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: error handling
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: error handling
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuiteErrorHandling () {
   'use strict';
@@ -48,20 +48,20 @@ function CollectionDocumentSuiteErrorHandling () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn, { waitForSync: false });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       if (collection) {
         collection.unload();
         collection.drop();
@@ -70,123 +70,115 @@ function CollectionDocumentSuiteErrorHandling () {
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleDatabase : function () {
+    testErrorHandlingBadHandleDatabase: function () {
       try {
         db._document("123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleCollection : function () {
+    testErrorHandlingBadHandleCollection: function () {
       try {
         collection.document("");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleReplace : function () {
+    testErrorHandlingBadHandleReplace: function () {
       try {
         db._replace("123456  ", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle delete
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle delete
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingBadHandleDelete : function () {
+    testErrorHandlingBadHandleDelete: function () {
       try {
         collection.remove("123/45/6");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unknown document identifier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unknown document identifier
+// //////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingUnknownDocument: function () {
       try {
         collection.document(collection.name() + "/123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cross collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cross collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingCrossCollection : function () {
+    testErrorHandlingCrossCollection: function () {
       try {
         collection.document("test123456/123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cross collection replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cross collection replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingCrossCollectionReplace : function () {
+    testErrorHandlingCrossCollectionReplace: function () {
       try {
         collection.replace("test123456/123456", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cross collection delete
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cross collection delete
+// //////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingCrossCollectionDelete : function () {
+    testErrorHandlingCrossCollectionDelete: function () {
       try {
         collection.remove("test123456/123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err.errorNum);
       }
     }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: normal operations
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: normal operations
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuite () {
   'use strict';
@@ -197,100 +189,96 @@ function CollectionDocumentSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       collection = db._create(cn, { waitForSync: false });
 
       collection.load();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       collection.drop();
       collection = null;
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ invalid type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ invalid type
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveInvalidDocumentType : function () {
+    testSaveInvalidDocumentType: function () {
       [ 1, 2, 3, false, true, null ].forEach(function (doc) {
         try {
           collection.save(doc);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
         }
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document w/ invalid type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document w/ invalid type
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalidDocumentType : function () {
+    testUpdateInvalidDocumentType: function () {
       var d = collection.save({ _key: "test" });
 
       [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
         try {
           collection.update(d, doc);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
         }
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document w/ invalid type
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a document w/ invalid type
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceInvalidDocumentType : function () {
+    testReplaceInvalidDocumentType: function () {
       var d = collection.save({ _key: "test" });
 
       [ 1, 2, 3, false, true, null, [ ] ].forEach(function (doc) {
         try {
           collection.replace(d, doc);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
         }
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ invalid primary key data types
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ invalid primary key data types
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveInvalidDocumentKeyType : function () {
+    testSaveInvalidDocumentKeyType: function () {
       [ 1, 2, 3, false, true, null, [ ], { } ].forEach(function (key) {
         try {
           collection.save({ _key: key });
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_KEY_BAD.code, err.errorNum);
         }
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ invalid primary key values
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ invalid primary key values
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveInvalidDocumentKeyValue : function () {
+    testSaveInvalidDocumentKeyValue: function () {
       [ "", " ", "  ", " a", "a ", "/", "|", "#", "a/a", "\0", "\r", "\n", "\t", "\"", "[", "]", "{", "}", "\\" ].forEach(function (key) {
         try {
           collection.save({ _key: key });
@@ -301,7 +289,7 @@ function CollectionDocumentSuite () {
       });
     },
 
-    testSaveInvalidDocumentKeyValueWithOverwriteMode : function () {
+    testSaveInvalidDocumentKeyValueWithOverwriteMode: function () {
       [ "", " ", "  ", " a", "a ", "/", "|", "#", "a/a", "\0", "\r", "\n", "\t", "\"", "[", "]", "{", "}", "\\" ].forEach(function (key) {
         try {
           collection.save({ _key: key }, { overwriteMode: "update" });
@@ -312,11 +300,11 @@ function CollectionDocumentSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ special characters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ special characters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveSpecialCharsDocumentKey : function () {
+    testSaveSpecialCharsDocumentKey: function () {
       [ ":", "-", "_", "@", ".", "..", "...", "a@b", "a@b.c", "a-b-c", "_a", "@a", "@a-b", ":80", ":_", "@:_",
         "0", "1", "123456", "0123456", "true", "false", "a", "A", "a1", "A1", "01ab01", "01AB01",
         "abcd-efgh", "abcd_efgh", "Abcd_Efgh", "@@", "abc@foo.bar", "@..abc-@-foo__bar",
@@ -326,7 +314,8 @@ function CollectionDocumentSuite () {
         "%-%-%-%", ":-)", "!", "!!!!", "'", "''''", "this-key's-valid.", "=",
         "==================================================", "-=-=-=___xoxox-",
         "*", "(*)", "****", "--", "__" ].forEach(function (key) {
-        var doc1 = collection.save({ _key: key, value: key });
+        var doc1 = collection.save({ _key: key,
+value: key });
         assertEqual(key, doc1._key);
         assertEqual(cn + "/" + key, doc1._id);
 
@@ -355,19 +344,20 @@ function CollectionDocumentSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ primary key violation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ primary key violation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicate : function () {
+    testSaveDocumentDuplicate: function () {
       var d1, d2, doc;
 
       try {
-        d1 = collection.save({ _key: "test", value: 1 });
-        d2 = collection.save({ _key: "test", value: 2 });
+        d1 = collection.save({ _key: "test",
+value: 1 });
+        d2 = collection.save({ _key: "test",
+value: 2 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
@@ -385,21 +375,26 @@ function CollectionDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ secondary key violation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ secondary key violation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicateSecondary : function () {
+    testSaveDocumentDuplicateSecondary: function () {
       var d1, d2, doc;
 
-      collection.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+      collection.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
 
       try {
-        d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });
-        d2 = collection.save({ _key: "test2", value1: 1, value2: 2 });
+        d1 = collection.save({ _key: "test1",
+value1: 1,
+value2: 1 });
+        d2 = collection.save({ _key: "test2",
+value1: 1,
+value2: 2 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
@@ -418,19 +413,20 @@ function CollectionDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ primary key violation, then unload/reload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ primary key violation, then unload/reload
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicateUnloadReload : function () {
+    testSaveDocumentDuplicateUnloadReload: function () {
       var d1, d2, doc;
 
       try {
-        d1 = collection.save({ _key: "test", value: 1 });
-        d2 = collection.save({ _key: "test", value: 2 });
+        d1 = collection.save({ _key: "test",
+value: 1 });
+        d2 = collection.save({ _key: "test",
+value: 2 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
@@ -449,21 +445,26 @@ function CollectionDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document w/ secondary key violation, then unload/reload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document w/ secondary key violation, then unload/reload
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicateSecondaryUnloadReload : function () {
+    testSaveDocumentDuplicateSecondaryUnloadReload: function () {
       var d1, d2, doc;
 
-      collection.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+      collection.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
 
       try {
-        d1 = collection.save({ _key: "test1", value1: 1, value2: 1 });
-        d2 = collection.save({ _key: "test1", value1: 1, value2: 2 });
+        d1 = collection.save({ _key: "test1",
+value1: 1,
+value2: 1 });
+        d2 = collection.save({ _key: "test1",
+value1: 1,
+value2: 2 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
@@ -483,15 +484,16 @@ function CollectionDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document insert/delete w/ reload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document insert/delete w/ reload
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicates : function () {
+    testSaveDocumentDuplicates: function () {
       var d, i;
 
       for (i = 0; i < 10; ++i) {
-        d = collection.save({ _key: "test", value: i });
+        d = collection.save({ _key: "test",
+value: i });
         collection.remove(d);
       }
       d = null;
@@ -504,7 +506,8 @@ function CollectionDocumentSuite () {
 
       assertEqual(0, collection.count());
 
-      d = collection.save({ _key: "test", value: 200 });
+      d = collection.save({ _key: "test",
+value: 200 });
       assertTypeOf("string", d._id);
       assertTypeOf("string", d._key);
       assertTypeOf("string", d._rev);
@@ -519,18 +522,20 @@ function CollectionDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document insert/delete w/ reload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document insert/delete w/ reload
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicatesSurvive : function () {
+    testSaveDocumentDuplicatesSurvive: function () {
       var i;
 
       for (i = 0; i < 10; ++i) {
-        var d = collection.save({ _key: "test", value: i });
+        var d = collection.save({ _key: "test",
+value: i });
         collection.remove(d);
       }
-      collection.save({ _key: "test", value: 99 });
+      collection.save({ _key: "test",
+value: 99 });
 
       assertEqual(1, collection.count());
 
@@ -546,25 +551,24 @@ function CollectionDocumentSuite () {
       assertEqual(99, doc.value);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document insert/delete w/ reload
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document insert/delete w/ reload
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentDuplicatesViolationSurvive : function () {
+    testSaveDocumentDuplicatesViolationSurvive: function () {
       var i;
 
       try {
         collection.remove("test");
         fail("whoops");
-      }
-      catch (e1) {
+      } catch (e1) {
       }
 
       for (i = 0; i < 10; ++i) {
         try {
-          collection.save({ _key: "test", value: i });
-        }
-        catch (e2) {
+          collection.save({ _key: "test",
+value: i });
+        } catch (e2) {
         }
       }
 
@@ -587,45 +591,45 @@ function CollectionDocumentSuite () {
       assertEqual(0, doc.value);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocument : function () {
-      var doc = collection.save({ "Hello" : "World" });
-
-      assertTypeOf("string", doc._id);
-      assertTypeOf("string", doc._rev);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document, waitForSync=false
-////////////////////////////////////////////////////////////////////////////////
-
-    testSaveDocumentSyncFalse : function () {
-      var doc = collection.save({ "Hello" : "World" }, false);
+    testSaveDocument: function () {
+      var doc = collection.save({ "Hello": "World" });
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document, waitForSync=true
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document, waitForSync=false
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSaveDocumentSyncTrue : function () {
-      var doc = collection.save({ "Hello" : "World" }, true);
+    testSaveDocumentSyncFalse: function () {
+      var doc = collection.save({ "Hello": "World" }, false);
 
       assertTypeOf("string", doc._id);
       assertTypeOf("string", doc._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document, waitForSync=true
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadDocument : function () {
-      var d = collection.save({ "Hello" : "World" });
+    testSaveDocumentSyncTrue: function () {
+      var doc = collection.save({ "Hello": "World" }, true);
+
+      assertTypeOf("string", doc._id);
+      assertTypeOf("string", doc._rev);
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read a document
+// //////////////////////////////////////////////////////////////////////////////
+
+    testReadDocument: function () {
+      var d = collection.save({ "Hello": "World" });
 
       var doc = collection.document(d._id);
 
@@ -638,19 +642,19 @@ function CollectionDocumentSuite () {
       assertEqual(d._rev, doc._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document with conflict
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read a document with conflict
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadDocumentConflict : function () {
-      var d = collection.save({ "Hello" : "World" });
+    testReadDocumentConflict: function () {
+      var d = collection.save({ "Hello": "World" });
 
       var doc = collection.document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
-      var r = collection.replace(d, { "Hello" : "You" });
+      var r = collection.replace(d, { "Hello": "You" });
 
       doc = collection.document(r);
 
@@ -660,18 +664,17 @@ function CollectionDocumentSuite () {
       try {
         collection.document(d);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exists
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExistsDocument : function () {
-      var d1 = collection.save({ _key : "baz" });
+    testExistsDocument: function () {
+      var d1 = collection.save({ _key: "baz" });
 
       // string keys
       assertFalse(collection.exists("foo"));
@@ -697,7 +700,7 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", r._key);
       assertTypeOf("string", r._rev);
 
-      var d2 = collection.save({ _key : "2" });
+      var d2 = collection.save({ _key: "2" });
       // string keys
       assertFalse(collection.exists("1"));
       r = collection.exists("2");
@@ -726,8 +729,7 @@ function CollectionDocumentSuite () {
       try {
         collection.exists(d2);
         fail();
-      }
-      catch (err0) {
+      } catch (err0) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
       }
 
@@ -742,8 +744,7 @@ function CollectionDocumentSuite () {
       try {
         collection.exists("UnitTestsNonExistingCollection/1");
         fail();
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(ERRORS.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code, err1.errorNum);
       }
 
@@ -751,32 +752,30 @@ function CollectionDocumentSuite () {
       try {
         collection.exists("foo bar");
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err2.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 });
+      var a2 = collection.replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        collection.replace(a1, { a : 3 });
+        collection.replace(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -786,7 +785,7 @@ function CollectionDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = collection.replace(a1, { a : 4 }, true);
+      var a4 = collection.replace(a1, { a: 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -799,26 +798,25 @@ function CollectionDocumentSuite () {
       assertEqual(4, doc4.a);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests the replace function with the new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests the replace function with the new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceWithNewSignatureDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceWithNewSignatureDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
       // important test, the server has to compute the overwrite policy in correct wise
-      var a2 = collection.replace(a1, { a : 2 });
+      var a2 = collection.replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        collection.replace(a1, { a : 3 });
+        collection.replace(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -828,7 +826,7 @@ function CollectionDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
       // new signature
-      var a4 = collection.replace(a1, { a : 4 }, {"overwrite" : true});
+      var a4 = collection.replace(a1, { a: 4 }, {"overwrite": true});
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -841,89 +839,90 @@ function CollectionDocumentSuite () {
       assertEqual(4, doc4.a);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document, waitForSync=false
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a document, waitForSync=false
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 }, true, false);
+      var a2 = collection.replace(a1, { a: 2 }, true, false);
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests the replace function with new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests the replace function with new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceWithNewSignatureDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
-
-      assertTypeOf("string", a1._id);
-      assertTypeOf("string", a1._rev);
-
-      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": false});
-
-      assertEqual(a1._id, a2._id);
-      assertNotEqual(a1._rev, a2._rev);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document, waitForSync=true
-////////////////////////////////////////////////////////////////////////////////
-
-    testReplaceDocumentSyncTrue : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceWithNewSignatureDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 }, true, true);
+      var a2 = collection.replace(a1, { a: 2 }, {"overwrite": true,
+"waitForSync": false});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests the replace function with new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a document, waitForSync=true
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceDocumentSyncTrue2 : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceDocumentSyncTrue: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 }, {"overwrite": true, "waitForSync": true});
+      var a2 = collection.replace(a1, { a: 2 }, true, true);
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests the replace function with new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testReplaceDocumentSyncTrue2: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.update(a1, { a : 2 });
+      var a2 = collection.replace(a1, { a: 2 }, {"overwrite": true,
+"waitForSync": true});
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document
+// //////////////////////////////////////////////////////////////////////////////
+
+    testUpdateDocument: function () {
+      var a1 = collection.save({ a: 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.update(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        collection.update(a1, { a : 3 });
+        collection.update(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -933,7 +932,7 @@ function CollectionDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = collection.update(a1, { a : 4 }, true);
+      var a4 = collection.update(a1, { a: 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -945,7 +944,10 @@ function CollectionDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
 
-      var a5 = collection.update(a4, { b : 1, c : 2, d : "foo", e : null });
+      var a5 = collection.update(a4, { b: 1,
+c: 2,
+d: "foo",
+e: null });
       assertEqual(a1._id, a5._id);
       assertNotEqual(a4._rev, a5._rev);
 
@@ -958,7 +960,11 @@ function CollectionDocumentSuite () {
       assertEqual("foo", doc5.d);
       assertEqual(null, doc5.e);
 
-      var a6 = collection.update(a5, { f : null, b : null, a : null, g : 2, c : 4 });
+      var a6 = collection.update(a5, { f: null,
+b: null,
+a: null,
+g: 2,
+c: 4 });
       assertEqual(a1._id, a6._id);
       assertNotEqual(a5._rev, a6._rev);
 
@@ -973,7 +979,10 @@ function CollectionDocumentSuite () {
       assertEqual(null, doc6.f);
       assertEqual(2, doc6.g);
 
-      var a7 = collection.update(a6, { a : null, b : null, c : null, g : null }, true, false);
+      var a7 = collection.update(a6, { a: null,
+b: null,
+c: null,
+g: null }, true, false);
       assertEqual(a1._id, a7._id);
       assertNotEqual(a6._rev, a7._rev);
 
@@ -988,60 +997,83 @@ function CollectionDocumentSuite () {
       assertEqual(null, doc7.f);
       assertEqual(undefined, doc7.g);
 
-      var a8 = collection.update(a7, { d : { "one" : 1, "two" : 2, "three" : 3 }, e : { }, f : { "one" : 1 }} );
+      var a8 = collection.update(a7, { d: { "one": 1,
+"two": 2,
+"three": 3 },
+e: { },
+f: { "one": 1 }});
       assertEqual(a1._id, a8._id);
       assertNotEqual(a7._rev, a8._rev);
 
       var doc8 = collection.document(a1._id);
       assertEqual(a1._id, doc8._id);
       assertEqual(a8._rev, doc8._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3}, doc8.d);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3}, doc8.d);
       assertEqual({}, doc8.e);
       assertEqual({"one": 1}, doc8.f);
 
-      var a9 = collection.update(a8, { d : { "four" : 4 }, "e" : { "e1" : [ 1, 2 ], "e2" : 2 }, "f" : { "three" : 3 }} );
+      var a9 = collection.update(a8, { d: { "four": 4 },
+"e": { "e1": [ 1, 2 ],
+"e2": 2 },
+"f": { "three": 3 }});
       assertEqual(a1._id, a9._id);
       assertNotEqual(a8._rev, a9._rev);
 
       var doc9 = collection.document(a1._id);
       assertEqual(a1._id, doc9._id);
       assertEqual(a9._rev, doc9._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3, "four": 4}, doc9.d);
-      assertEqual({"e2": 2, "e1": [ 1, 2 ]}, doc9.e);
-      assertEqual({"one": 1, "three": 3}, doc9.f);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3,
+"four": 4}, doc9.d);
+      assertEqual({"e2": 2,
+"e1": [ 1, 2 ]}, doc9.e);
+      assertEqual({"one": 1,
+"three": 3}, doc9.f);
 
-      var a10 = collection.update(a9, { d : { "one" : -1, "two": null, "four" : null, "five" : 5 }, "e" : { "e1" : 1, "e2" : null, "e3" : 3 }}, true, false);
+      var a10 = collection.update(a9, { d: { "one": -1,
+"two": null,
+"four": null,
+"five": 5 },
+"e": { "e1": 1,
+"e2": null,
+"e3": 3 }}, true, false);
       assertEqual(a1._id, a10._id);
       assertNotEqual(a9._rev, a10._rev);
 
       var doc10 = collection.document(a1._id);
       assertEqual(a1._id, doc10._id);
       assertEqual(a10._rev, doc10._rev);
-      assertEqual({"one": -1, "three": 3, "five": 5}, doc10.d);
-      assertEqual({"e1": 1, "e3": 3}, doc10.e);
-      assertEqual({"one": 1, "three": 3}, doc10.f);
+      assertEqual({"one": -1,
+"three": 3,
+"five": 5}, doc10.d);
+      assertEqual({"e1": 1,
+"e3": 3}, doc10.e);
+      assertEqual({"one": 1,
+"three": 3}, doc10.f);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNewSignatureUpdateDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testNewSignatureUpdateDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.update(a1, { a : 2 });
+      var a2 = collection.update(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        collection.update(a1, { a : 3 });
+        collection.update(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1051,7 +1083,7 @@ function CollectionDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = collection.update(a1, { a : 4 }, {"overwrite": true});
+      var a4 = collection.update(a1, { a: 4 }, {"overwrite": true});
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -1063,7 +1095,10 @@ function CollectionDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
 
-      var a5 = collection.update(a4, { b : 1, c : 2, d : "foo", e : null });
+      var a5 = collection.update(a4, { b: 1,
+c: 2,
+d: "foo",
+e: null });
       assertEqual(a1._id, a5._id);
       assertNotEqual(a4._rev, a5._rev);
 
@@ -1076,7 +1111,11 @@ function CollectionDocumentSuite () {
       assertEqual("foo", doc5.d);
       assertEqual(null, doc5.e);
 
-      var a6 = collection.update(a5, { f : null, b : null, a : null, g : 2, c : 4 });
+      var a6 = collection.update(a5, { f: null,
+b: null,
+a: null,
+g: 2,
+c: 4 });
       assertEqual(a1._id, a6._id);
       assertNotEqual(a5._rev, a6._rev);
 
@@ -1091,7 +1130,11 @@ function CollectionDocumentSuite () {
       assertEqual(null, doc6.f);
       assertEqual(2, doc6.g);
 
-      var a7 = collection.update(a6, { a : null, b : null, c : null, g : null }, {"overwrite": true, "keepNull": false});
+      var a7 = collection.update(a6, { a: null,
+b: null,
+c: null,
+g: null }, {"overwrite": true,
+"keepNull": false});
       assertEqual(a1._id, a7._id);
       assertNotEqual(a6._rev, a7._rev);
 
@@ -1106,82 +1149,128 @@ function CollectionDocumentSuite () {
       assertEqual(null, doc7.f);
       assertEqual(undefined, doc7.g);
 
-      var a8 = collection.update(a7, { d : { "one" : 1, "two" : 2, "three" : 3 }, e : { }, f : { "one" : 1 }} );
+      var a8 = collection.update(a7, { d: { "one": 1,
+"two": 2,
+"three": 3 },
+e: { },
+f: { "one": 1 }});
       assertEqual(a1._id, a8._id);
       assertNotEqual(a7._rev, a8._rev);
 
       var doc8 = collection.document(a1._id);
       assertEqual(a1._id, doc8._id);
       assertEqual(a8._rev, doc8._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3}, doc8.d);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3}, doc8.d);
       assertEqual({}, doc8.e);
       assertEqual({"one": 1}, doc8.f);
 
-      var a9 = collection.update(a8, { d : { "four" : 4 }, "e" : { "e1" : [ 1, 2 ], "e2" : 2 }, "f" : { "three" : 3 }} );
+      var a9 = collection.update(a8, { d: { "four": 4 },
+"e": { "e1": [ 1, 2 ],
+"e2": 2 },
+"f": { "three": 3 }});
       assertEqual(a1._id, a9._id);
       assertNotEqual(a8._rev, a9._rev);
 
       var doc9 = collection.document(a1._id);
       assertEqual(a1._id, doc9._id);
       assertEqual(a9._rev, doc9._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3, "four": 4}, doc9.d);
-      assertEqual({"e2": 2, "e1": [ 1, 2 ]}, doc9.e);
-      assertEqual({"one": 1, "three": 3}, doc9.f);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3,
+"four": 4}, doc9.d);
+      assertEqual({"e2": 2,
+"e1": [ 1, 2 ]}, doc9.e);
+      assertEqual({"one": 1,
+"three": 3}, doc9.f);
 
-      var a10 = collection.update(a9, { d : { "one" : -1, "two": null, "four" : null, "five" : 5 }, "e" : { "e1" : 1, "e2" : null, "e3" : 3 }}, {"overwrite": true, "keepNull": false});
+      var a10 = collection.update(a9, { d: { "one": -1,
+"two": null,
+"four": null,
+"five": 5 },
+"e": { "e1": 1,
+"e2": null,
+"e3": 3 }}, {"overwrite": true,
+"keepNull": false});
       assertEqual(a1._id, a10._id);
       assertNotEqual(a9._rev, a10._rev);
 
       var doc10 = collection.document(a1._id);
       assertEqual(a1._id, doc10._id);
       assertEqual(a10._rev, doc10._rev);
-      assertEqual({"one": -1, "three": 3, "five": 5}, doc10.d);
-      assertEqual({"e1": 1, "e3": 3}, doc10.e);
-      assertEqual({"one": 1, "three": 3}, doc10.f);
+      assertEqual({"one": -1,
+"three": 3,
+"five": 5}, doc10.d);
+      assertEqual({"e1": 1,
+"e3": 3}, doc10.e);
+      assertEqual({"one": 1,
+"three": 3}, doc10.f);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test mergeObjects
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test mergeObjects
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateMergeObjects : function () {
-      var doc1 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
+    testUpdateMergeObjects: function () {
+      var doc1 = collection.save({ name: { first: "foo",
+last: "bar" },
+owns: { evilCellPhone: [ 1 ] } });
 
       // do not specify mergeObjects. its default value is true
-      collection.update(doc1, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { });
+      collection.update(doc1, { name: { middle: "baz" },
+owns: { schabernack: true,
+pileOfBones: null } }, { });
 
       var doc = collection.document(doc1._key);
-      assertEqual({ first: "foo", last: "bar", middle: "baz" }, doc.name);
-      assertEqual({ evilCellPhone: [ 1 ], schabernack: true, pileOfBones: null }, doc.owns);
+      assertEqual({ first: "foo",
+last: "bar",
+middle: "baz" }, doc.name);
+      assertEqual({ evilCellPhone: [ 1 ],
+schabernack: true,
+pileOfBones: null }, doc.owns);
 
       // explicitly specifiy mergeObjects
-      var doc2 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
-      collection.update(doc2, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { mergeObjects: true });
+      var doc2 = collection.save({ name: { first: "foo",
+last: "bar" },
+owns: { evilCellPhone: [ 1 ] } });
+      collection.update(doc2, { name: { middle: "baz" },
+owns: { schabernack: true,
+pileOfBones: null } }, { mergeObjects: true });
 
       doc = collection.document(doc2._key);
-      assertEqual({ first: "foo", last: "bar", middle: "baz" }, doc.name);
-      assertEqual({ evilCellPhone: [ 1 ], schabernack: true, pileOfBones: null }, doc.owns);
+      assertEqual({ first: "foo",
+last: "bar",
+middle: "baz" }, doc.name);
+      assertEqual({ evilCellPhone: [ 1 ],
+schabernack: true,
+pileOfBones: null }, doc.owns);
 
       // disable mergeObjects
-      var doc3 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
-      collection.update(doc3, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { mergeObjects: false });
+      var doc3 = collection.save({ name: { first: "foo",
+last: "bar" },
+owns: { evilCellPhone: [ 1 ] } });
+      collection.update(doc3, { name: { middle: "baz" },
+owns: { schabernack: true,
+pileOfBones: null } }, { mergeObjects: false });
 
       doc = collection.document(doc3._key);
       assertEqual({ middle: "baz" }, doc.name);
-      assertEqual({ schabernack: true, pileOfBones: null }, doc.owns);
+      assertEqual({ schabernack: true,
+pileOfBones: null }, doc.owns);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 });
+      var a2 = collection.replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1189,8 +1278,7 @@ function CollectionDocumentSuite () {
       try {
         collection.remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1204,23 +1292,22 @@ function CollectionDocumentSuite () {
       try {
         collection.remove(a1, true);
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document using new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document using new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteWithNewSignatureDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteWithNewSignatureDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.replace(a1, { a : 2 });
+      var a2 = collection.replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -1228,8 +1315,7 @@ function CollectionDocumentSuite () {
       try {
         collection.remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1242,82 +1328,83 @@ function CollectionDocumentSuite () {
       try {
         collection.remove(a1, {"overwrite": true});
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
       }
 
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document, waitForSync=false
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document, waitForSync=false
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
+    testUpdateDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
-                               //document, data, overwrite, keepNull, waitForSync
-      var a2 = collection.update(a1, { a : 2 }, true, true, false);
+                               // document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a: 2 }, true, true, false);
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document, waitForSync=false; using new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document, waitForSync=false; using new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateWithNewSignatureDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
-
-      assertTypeOf("string", a1._id);
-      assertTypeOf("string", a1._rev);
-
-      var a2 = collection.update(a1, { a : 2 }, {"overwrite": true, "waitForSync" : false});
-
-      assertEqual(a1._id, a2._id);
-      assertNotEqual(a1._rev, a2._rev);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document, waitForSync=true
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpdateDocumentSyncTrue : function () {
-      var a1 = collection.save({ a : 1});
+    testUpdateWithNewSignatureDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-                               //document, data, overwrite, keepNull, waitForSync
-      var a2 = collection.update(a1, { a : 2 }, true, true, true);
-
-      assertEqual(a1._id, a2._id);
-      assertNotEqual(a1._rev, a2._rev);
-    },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document, waitForSync=true,new signature
-////////////////////////////////////////////////////////////////////////////////
-
-    testUpdateWithNewSignatureDocumentSyncTrue : function () {
-      var a1 = collection.save({ a : 1});
-
-      assertTypeOf("string", a1._id);
-      assertTypeOf("string", a1._rev);
-
-      var a2 = collection.update(a1, { a : 2 }, {"overwrite": true, "waitForSync" : true});
+      var a2 = collection.update(a1, { a: 2 }, {"overwrite": true,
+"waitForSync": false});
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document, waitForSync=false
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document, waitForSync=true
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
+    testUpdateDocumentSyncTrue: function () {
+      var a1 = collection.save({ a: 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+                               // document, data, overwrite, keepNull, waitForSync
+      var a2 = collection.update(a1, { a: 2 }, true, true, true);
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document, waitForSync=true,new signature
+// //////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWithNewSignatureDocumentSyncTrue: function () {
+      var a1 = collection.save({ a: 1});
+
+      assertTypeOf("string", a1._id);
+      assertTypeOf("string", a1._rev);
+
+      var a2 = collection.update(a1, { a: 2 }, {"overwrite": true,
+"waitForSync": true});
+
+      assertEqual(a1._id, a2._id);
+      assertNotEqual(a1._rev, a2._rev);
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document, waitForSync=false
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDeleteDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
@@ -1329,29 +1416,30 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a2._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document, waitForSync=false , using new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document, waitForSync=false , using new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteWithNewSignatureDocumentSyncFalse : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteWithNewSignatureDocumentSyncFalse: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": false});
+      var a2 = collection.remove(a1, {"overwrite": true,
+"waitForSync": false});
       assertTypeOf("object", a2);
       assertTypeOf("string", a2._id);
       assertTypeOf("string", a2._rev);
       assertTypeOf("string", a2._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document, waitForSync=true
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document, waitForSync=true
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteDocumentSyncTrue : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteDocumentSyncTrue: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
@@ -1363,29 +1451,30 @@ function CollectionDocumentSuite () {
       assertTypeOf("string", a2._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document, waitForSync=true , using new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document, waitForSync=true , using new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteWithNewSignatureDocumentSyncTrue : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteWithNewSignatureDocumentSyncTrue: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = collection.remove(a1, {"overwrite": true, "waitForSync": true});
+      var a2 = collection.remove(a1, {"overwrite": true,
+"waitForSync": true});
       assertTypeOf("object", a2);
       assertTypeOf("string", a2._id);
       assertTypeOf("string", a2._rev);
       assertTypeOf("string", a2._key);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a deleted document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a deleted document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDeleteDeletedDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDeleteDeletedDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
@@ -1395,21 +1484,20 @@ function CollectionDocumentSuite () {
       try {
         collection.remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test saving and searching for special characters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test saving and searching for special characters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSpecialChars : function () {
+    testSpecialChars: function () {
       [ "the quick\nbrown fox jumped over\r\nthe lazy dog",
         "'the \"\\quick\\\n \"brown\\\rfox' jumped",
-        '"the fox"" jumped \\over the \newline \roof"' ].forEach(function(value) {
+        '"the fox"" jumped \\over the \newline \roof"' ].forEach(function (value) {
         collection.save({ text: value });
 
         var result = collection.byExample({ text: value }).toArray();
@@ -1422,9 +1510,9 @@ function CollectionDocumentSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: error handling
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: error handling
+// //////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuiteErrorHandling () {
   'use strict';
@@ -1433,60 +1521,56 @@ function DatabaseDocumentSuiteErrorHandling () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandle : function () {
+    testDBErrorHandlingBadHandle: function () {
       try {
         db._document("  123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandleReplace : function () {
+    testDBErrorHandlingBadHandleReplace: function () {
       try {
         db._replace("123456  ", {});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bad handle delete
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bad handle delete
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingBadHandleDelete : function () {
+    testDBErrorHandlingBadHandleDelete: function () {
       try {
         db._remove("123/45/6");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unknown document identifier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief unknown document identifier
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBErrorHandlingUnknownDocument : function () {
-      var collection = db._create(cn, { waitForSync : false });
+    testDBErrorHandlingUnknownDocument: function () {
+      var collection = db._create(cn, { waitForSync: false });
 
       try {
         db._document(collection.name() + "/123456");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
 
@@ -1495,9 +1579,9 @@ function DatabaseDocumentSuiteErrorHandling () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: normal operations
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: normal operations
+// //////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuite () {
   'use strict';
@@ -1507,32 +1591,32 @@ function DatabaseDocumentSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn, { waitForSync: false });
 
       collection.load();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       collection.drop();
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBReadDocument : function () {
-      var d = collection.save({ "Hello" : "World" });
+    testDBReadDocument: function () {
+      var d = collection.save({ "Hello": "World" });
 
       var doc = db._document(d._id);
 
@@ -1545,19 +1629,19 @@ function DatabaseDocumentSuite () {
       assertEqual(d._rev, doc._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read a document with conflict
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read a document with conflict
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBReadDocumentConflict : function () {
-      var d = collection.save({ "Hello" : "World" });
+    testDBReadDocumentConflict: function () {
+      var d = collection.save({ "Hello": "World" });
 
       var doc = db._document(d._id);
 
       assertEqual(d._id, doc._id);
       assertEqual(d._rev, doc._rev);
 
-      var r = collection.replace(d, { "Hello" : "You" });
+      var r = collection.replace(d, { "Hello": "You" });
 
       doc = db._document(r);
 
@@ -1567,19 +1651,18 @@ function DatabaseDocumentSuite () {
       try {
         db._document(d);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exists
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBExistsDocument : function () {
-      var d1 = collection.save({ _key : "baz" });
+    testDBExistsDocument: function () {
+      var d1 = collection.save({ _key: "baz" });
 
       // string keys
       assertFalse(db._exists(cn + "/foo"));
@@ -1588,7 +1671,7 @@ function DatabaseDocumentSuite () {
       // object key
       assertTrue(db._exists(d1));
 
-      var d2 = collection.save({ _key : "2" });
+      var d2 = collection.save({ _key: "2" });
       // string keys
       assertFalse(db._exists(cn + "/1"));
       assertTrue(db._exists(cn + "/2"));
@@ -1600,8 +1683,7 @@ function DatabaseDocumentSuite () {
       // d2 is gone now...
       try {
         db._exists(d2);
-      }
-      catch (err0) {
+      } catch (err0) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err0.errorNum);
       }
 
@@ -1612,8 +1694,7 @@ function DatabaseDocumentSuite () {
       // non existing collection
       try {
         db._exists("UnitTestsNonExistingCollection/1");
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err1.errorNum);
       }
 
@@ -1621,32 +1702,30 @@ function DatabaseDocumentSuite () {
       try {
         db._exists(cn + "/foo bar");
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBReplaceDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBReplaceDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = db._replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._replace(a1, { a : 3 });
+        db._replace(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1656,7 +1735,7 @@ function DatabaseDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._replace(a1, { a : 4 }, true);
+      var a4 = db._replace(a1, { a: 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -1669,26 +1748,25 @@ function DatabaseDocumentSuite () {
       assertEqual(4, doc4.a);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests the _replace function with new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests the _replace function with new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBReplaceWithNewSignatureDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBReplaceWithNewSignatureDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = db._replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._replace(a1, { a : 3 });
+        db._replace(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1698,7 +1776,7 @@ function DatabaseDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._replace(a1, { a : 4 }, {"overwrite": true});
+      var a4 = db._replace(a1, { a: 4 }, {"overwrite": true});
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -1711,26 +1789,25 @@ function DatabaseDocumentSuite () {
       assertEqual(4, doc4.a);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBUpdateDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBUpdateDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._update(a1, { a : 2 });
+      var a2 = db._update(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._update(a1, { a : 3 });
+        db._update(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1740,7 +1817,7 @@ function DatabaseDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._update(a1, { a : 4 }, true);
+      var a4 = db._update(a1, { a: 4 }, true);
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -1752,7 +1829,10 @@ function DatabaseDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
 
-      var a5 = db._update(a4, { b : 1, c : 2, d : "foo", e : null });
+      var a5 = db._update(a4, { b: 1,
+c: 2,
+d: "foo",
+e: null });
       assertEqual(a1._id, a5._id);
       assertNotEqual(a4._rev, a5._rev);
 
@@ -1765,7 +1845,11 @@ function DatabaseDocumentSuite () {
       assertEqual("foo", doc5.d);
       assertEqual(null, doc5.e);
 
-      var a6 = db._update(a5, { f : null, b : null, a : null, g : 2, c : 4 });
+      var a6 = db._update(a5, { f: null,
+b: null,
+a: null,
+g: 2,
+c: 4 });
       assertEqual(a1._id, a6._id);
       assertNotEqual(a5._rev, a6._rev);
 
@@ -1780,7 +1864,10 @@ function DatabaseDocumentSuite () {
       assertEqual(null, doc6.f);
       assertEqual(2, doc6.g);
 
-      var a7 = db._update(a6, { a : null, b : null, c : null, g : null }, true, false);
+      var a7 = db._update(a6, { a: null,
+b: null,
+c: null,
+g: null }, true, false);
       assertEqual(a1._id, a7._id);
       assertNotEqual(a6._rev, a7._rev);
 
@@ -1795,59 +1882,82 @@ function DatabaseDocumentSuite () {
       assertEqual(null, doc7.f);
       assertEqual(undefined, doc7.g);
 
-      var a8 = db._update(a7, { d : { "one" : 1, "two" : 2, "three" : 3 }, e : { }, f : { "one" : 1 }} );
+      var a8 = db._update(a7, { d: { "one": 1,
+"two": 2,
+"three": 3 },
+e: { },
+f: { "one": 1 }});
       assertEqual(a1._id, a8._id);
       assertNotEqual(a7._rev, a8._rev);
 
       var doc8 = db._document(a1._id);
       assertEqual(a1._id, doc8._id);
       assertEqual(a8._rev, doc8._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3}, doc8.d);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3}, doc8.d);
       assertEqual({}, doc8.e);
       assertEqual({"one": 1}, doc8.f);
 
-      var a9 = db._update(a8, { d : { "four" : 4 }, "e" : { "e1" : [ 1, 2 ], "e2" : 2 }, "f" : { "three" : 3 }} );
+      var a9 = db._update(a8, { d: { "four": 4 },
+"e": { "e1": [ 1, 2 ],
+"e2": 2 },
+"f": { "three": 3 }});
       assertEqual(a1._id, a9._id);
       assertNotEqual(a8._rev, a9._rev);
 
       var doc9 = db._document(a1._id);
       assertEqual(a1._id, doc9._id);
       assertEqual(a9._rev, doc9._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3, "four": 4}, doc9.d);
-      assertEqual({"e2": 2, "e1": [ 1, 2 ]}, doc9.e);
-      assertEqual({"one": 1, "three": 3}, doc9.f);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3,
+"four": 4}, doc9.d);
+      assertEqual({"e2": 2,
+"e1": [ 1, 2 ]}, doc9.e);
+      assertEqual({"one": 1,
+"three": 3}, doc9.f);
 
-      var a10 = db._update(a9, { d : { "one" : -1, "two": null, "four" : null, "five" : 5 }, "e" : { "e1" : 1, "e2" : null, "e3" : 3 }}, true, false);
+      var a10 = db._update(a9, { d: { "one": -1,
+"two": null,
+"four": null,
+"five": 5 },
+"e": { "e1": 1,
+"e2": null,
+"e3": 3 }}, true, false);
       assertEqual(a1._id, a10._id);
       assertNotEqual(a9._rev, a10._rev);
 
       var doc10 = db._document(a1._id);
       assertEqual(a1._id, doc10._id);
       assertEqual(a10._rev, doc10._rev);
-      assertEqual({"one": -1, "three": 3, "five": 5}, doc10.d);
-      assertEqual({"e1": 1, "e3": 3}, doc10.e);
-      assertEqual({"one": 1, "three": 3}, doc10.f);
+      assertEqual({"one": -1,
+"three": 3,
+"five": 5}, doc10.d);
+      assertEqual({"e1": 1,
+"e3": 3}, doc10.e);
+      assertEqual({"one": 1,
+"three": 3}, doc10.f);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests update function with new signature
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests update function with new signature
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBNewsignatureOf_UpdateDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBNewsignatureOf_UpdateDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._update(a1, { a : 2 });
+      var a2 = db._update(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
 
       try {
-        db._update(a1, { a : 3 });
+        db._update(a1, { a: 3 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
@@ -1857,7 +1967,7 @@ function DatabaseDocumentSuite () {
       assertEqual(a2._rev, doc2._rev);
       assertEqual(2, doc2.a);
 
-      var a4 = db._update(a1, { a : 4 }, {"overwrite": true});
+      var a4 = db._update(a1, { a: 4 }, {"overwrite": true});
 
       assertEqual(a1._id, a4._id);
       assertNotEqual(a1._rev, a4._rev);
@@ -1869,7 +1979,10 @@ function DatabaseDocumentSuite () {
       assertEqual(a4._rev, doc4._rev);
       assertEqual(4, doc4.a);
 
-      var a5 = db._update(a4, { b : 1, c : 2, d : "foo", e : null });
+      var a5 = db._update(a4, { b: 1,
+c: 2,
+d: "foo",
+e: null });
       assertEqual(a1._id, a5._id);
       assertNotEqual(a4._rev, a5._rev);
 
@@ -1882,7 +1995,11 @@ function DatabaseDocumentSuite () {
       assertEqual("foo", doc5.d);
       assertEqual(null, doc5.e);
 
-      var a6 = db._update(a5, { f : null, b : null, a : null, g : 2, c : 4 });
+      var a6 = db._update(a5, { f: null,
+b: null,
+a: null,
+g: 2,
+c: 4 });
       assertEqual(a1._id, a6._id);
       assertNotEqual(a5._rev, a6._rev);
 
@@ -1897,7 +2014,11 @@ function DatabaseDocumentSuite () {
       assertEqual(null, doc6.f);
       assertEqual(2, doc6.g);
 
-      var a7 = db._update(a6, { a : null, b : null, c : null, g : null }, {"overwrite": true, "keepNull": false});
+      var a7 = db._update(a6, { a: null,
+b: null,
+c: null,
+g: null }, {"overwrite": true,
+"keepNull": false});
       assertEqual(a1._id, a7._id);
       assertNotEqual(a6._rev, a7._rev);
 
@@ -1912,51 +2033,76 @@ function DatabaseDocumentSuite () {
       assertEqual(null, doc7.f);
       assertEqual(undefined, doc7.g);
 
-      var a8 = db._update(a7, { d : { "one" : 1, "two" : 2, "three" : 3 }, e : { }, f : { "one" : 1 }} );
+      var a8 = db._update(a7, { d: { "one": 1,
+"two": 2,
+"three": 3 },
+e: { },
+f: { "one": 1 }});
       assertEqual(a1._id, a8._id);
       assertNotEqual(a7._rev, a8._rev);
 
       var doc8 = db._document(a1._id);
       assertEqual(a1._id, doc8._id);
       assertEqual(a8._rev, doc8._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3}, doc8.d);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3}, doc8.d);
       assertEqual({}, doc8.e);
       assertEqual({"one": 1}, doc8.f);
 
-      var a9 = db._update(a8, { d : { "four" : 4 }, "e" : { "e1" : [ 1, 2 ], "e2" : 2 }, "f" : { "three" : 3 }} );
+      var a9 = db._update(a8, { d: { "four": 4 },
+"e": { "e1": [ 1, 2 ],
+"e2": 2 },
+"f": { "three": 3 }});
       assertEqual(a1._id, a9._id);
       assertNotEqual(a8._rev, a9._rev);
 
       var doc9 = db._document(a1._id);
       assertEqual(a1._id, doc9._id);
       assertEqual(a9._rev, doc9._rev);
-      assertEqual({"one": 1, "two": 2, "three": 3, "four": 4}, doc9.d);
-      assertEqual({"e2": 2, "e1": [ 1, 2 ]}, doc9.e);
-      assertEqual({"one": 1, "three": 3}, doc9.f);
+      assertEqual({"one": 1,
+"two": 2,
+"three": 3,
+"four": 4}, doc9.d);
+      assertEqual({"e2": 2,
+"e1": [ 1, 2 ]}, doc9.e);
+      assertEqual({"one": 1,
+"three": 3}, doc9.f);
 
-      var a10 = db._update(a9, { d : { "one" : -1, "two": null, "four" : null, "five" : 5 }, "e" : { "e1" : 1, "e2" : null, "e3" : 3 }}, {"overwrite": true, "keepNull": false});
+      var a10 = db._update(a9, { d: { "one": -1,
+"two": null,
+"four": null,
+"five": 5 },
+"e": { "e1": 1,
+"e2": null,
+"e3": 3 }}, {"overwrite": true,
+"keepNull": false});
       assertEqual(a1._id, a10._id);
       assertNotEqual(a9._rev, a10._rev);
 
       var doc10 = db._document(a1._id);
       assertEqual(a1._id, doc10._id);
       assertEqual(a10._rev, doc10._rev);
-      assertEqual({"one": -1, "three": 3, "five": 5}, doc10.d);
-      assertEqual({"e1": 1, "e3": 3}, doc10.e);
-      assertEqual({"one": 1, "three": 3}, doc10.f);
+      assertEqual({"one": -1,
+"three": 3,
+"five": 5}, doc10.d);
+      assertEqual({"e1": 1,
+"e3": 3}, doc10.e);
+      assertEqual({"one": 1,
+"three": 3}, doc10.f);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBDeleteDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = db._replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertEqual(a1._key, a2._key);
@@ -1965,38 +2111,36 @@ function DatabaseDocumentSuite () {
       try {
         db._remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = db._remove(a1, {"overwrite" : true});
+      var a3 = db._remove(a1, {"overwrite": true});
       assertTypeOf("object", a3);
       assertTypeOf("string", a3._id);
       assertTypeOf("string", a3._rev);
       assertTypeOf("string", a3._key);
 
       try {
-        db._remove(a1, {"overwrite" : true});
+        db._remove(a1, {"overwrite": true});
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a document using new signature of the remove function
-///       of the remove function
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a document using new signature of the remove function
+// /       of the remove function
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteWithNewSignatureDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBDeleteWithNewSignatureDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
 
-      var a2 = db._replace(a1, { a : 2 });
+      var a2 = db._replace(a1, { a: 2 });
 
       assertEqual(a1._id, a2._id);
       assertNotEqual(a1._rev, a2._rev);
@@ -2004,12 +2148,11 @@ function DatabaseDocumentSuite () {
       try {
         db._remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
       }
 
-      var a3 = db._remove(a1, {"overwrite" : true});
+      var a3 = db._remove(a1, {"overwrite": true});
 
       assertTypeOf("object", a3);
       assertTypeOf("string", a3._id);
@@ -2017,20 +2160,19 @@ function DatabaseDocumentSuite () {
       assertTypeOf("string", a3._key);
 
       try {
-        db._remove(a1, {"overwrite" : true});
+        db._remove(a1, {"overwrite": true});
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief delete a deleted document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief delete a deleted document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBDeleteDeletedDocument : function () {
-      var a1 = collection.save({ a : 1});
+    testDBDeleteDeletedDocument: function () {
+      var a1 = collection.save({ a: 1});
 
       assertTypeOf("string", a1._id);
       assertTypeOf("string", a1._rev);
@@ -2040,17 +2182,16 @@ function DatabaseDocumentSuite () {
       try {
         db._remove(a1);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a very big document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a very big document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBDocumentVeryLarge : function () {
+    testDBDocumentVeryLarge: function () {
       // create a very big and silly document, just to blow up the datafiles
       var doc = { };
       for (var i = 0; i < 60000; ++i) {
@@ -2063,13 +2204,13 @@ function DatabaseDocumentSuite () {
       assertEqual(1, collection.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a document bigger than shape file size
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create a document bigger than shape file size
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDBBigShape : function () {
+    testDBBigShape: function () {
       // create a very big and silly document, just to blow up the datafiles
-      var doc = { _key : "mydoc" };
+      var doc = { _key: "mydoc" };
       for (var i = 0; i < 50000; ++i) {
         doc["thequickbrownfox" + i] = 1;
       }
@@ -2083,9 +2224,9 @@ function DatabaseDocumentSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: returnNew and returnOld options
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: returnNew and returnOld options
+// //////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuiteReturnStuff () {
   'use strict';
@@ -2094,32 +2235,32 @@ function DatabaseDocumentSuiteReturnStuff () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn, { waitForSync: false });
 
       collection.load();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       collection.drop();
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with and without returnNew
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create with and without returnNew
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateReturnNew : function () {
-      var res = collection.insert({"Hallo":12});
+    testCreateReturnNew: function () {
+      var res = collection.insert({"Hallo": 12});
       assertTypeOf("object", res);
       assertEqual(3, Object.keys(res).length);
       assertTypeOf("string", res._id);
@@ -2127,7 +2268,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res._rev);
 
       // Now with returnNew: true
-      res = collection.insert({"Hallo":12}, {returnNew: true});
+      res = collection.insert({"Hallo": 12}, {returnNew: true});
       assertTypeOf("object", res);
       assertEqual(4, Object.keys(res).length);
       assertTypeOf("string", res._id);
@@ -2138,7 +2279,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res["new"]).length);
 
       // Now with returnNew: false
-      res = collection.insert({"Hallo":12}, {returnNew: false});
+      res = collection.insert({"Hallo": 12}, {returnNew: false});
       assertTypeOf("object", res);
       assertEqual(3, Object.keys(res).length);
       assertTypeOf("string", res._id);
@@ -2146,12 +2287,12 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove with and without returnOld
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove with and without returnOld
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveReturnOld : function () {
-      var res = collection.insert({"Hallo":12});
+    testRemoveReturnOld: function () {
+      var res = collection.insert({"Hallo": 12});
       var res2 = collection.remove(res._key);
 
       assertTypeOf("object", res2);
@@ -2161,7 +2302,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnOld: true
-      res = collection.insert({"Hallo":12});
+      res = collection.insert({"Hallo": 12});
       res2 = collection.remove(res._key, {returnOld: true});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
@@ -2173,7 +2314,7 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2.old).length);
 
       // Now with returnOld: false
-      res = collection.insert({"Hallo":12});
+      res = collection.insert({"Hallo": 12});
       res2 = collection.remove(res._key, {returnOld: false});
       assertTypeOf("object", res2);
       assertEqual(3, Object.keys(res2).length);
@@ -2182,13 +2323,13 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace with and without returnOld and returnNew
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace with and without returnOld and returnNew
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceReturnOldNew : function () {
-      var res = collection.insert({"Hallo":12});
-      var res2 = collection.replace(res._key,{"Hallo":13});
+    testReplaceReturnOldNew: function () {
+      var res = collection.insert({"Hallo": 12});
+      var res2 = collection.replace(res._key, {"Hallo": 13});
 
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
@@ -2197,8 +2338,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnOld: true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":13}, {returnOld: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 13}, {returnOld: true});
       assertTypeOf("object", res2);
       assertEqual(5, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2209,8 +2350,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2.old).length);
 
       // Now with returnOld: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":14}, {returnOld: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 14}, {returnOld: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2218,8 +2359,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnNew: true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":14}, {returnNew: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 14}, {returnNew: true});
       assertTypeOf("object", res2);
       assertEqual(5, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2230,8 +2371,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2["new"]).length);
 
       // Now with returnOld: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":15}, {returnNew: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 15}, {returnNew: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2239,9 +2380,10 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnNew: true and returnOld:true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":16},
-                                {returnNew: true, returnOld: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 16},
+                                {returnNew: true,
+returnOld: true});
       assertTypeOf("object", res2);
       assertEqual(6, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2255,9 +2397,10 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2.old).length);
 
       // Now with returnOld: false and returnNew: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.replace(res._key, {"Hallo":15},
-                                {returnNew: false, returnOld: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.replace(res._key, {"Hallo": 15},
+                                {returnNew: false,
+returnOld: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2265,13 +2408,13 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update with and without returnOld and returnNew
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update with and without returnOld and returnNew
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateReturnOldNew : function () {
-      var res = collection.insert({"Hallo":12});
-      var res2 = collection.update(res._key,{"Hallo":13});
+    testUpdateReturnOldNew: function () {
+      var res = collection.insert({"Hallo": 12});
+      var res2 = collection.update(res._key, {"Hallo": 13});
 
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
@@ -2280,8 +2423,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnOld: true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":13}, {returnOld: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 13}, {returnOld: true});
       assertTypeOf("object", res2);
       assertEqual(5, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2292,8 +2435,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2.old).length);
 
       // Now with returnOld: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":14}, {returnOld: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 14}, {returnOld: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2301,8 +2444,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnNew: true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":14}, {returnNew: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 14}, {returnNew: true});
       assertTypeOf("object", res2);
       assertEqual(5, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2313,8 +2456,8 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2["new"]).length);
 
       // Now with returnOld: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":15}, {returnNew: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 15}, {returnNew: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2322,9 +2465,10 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertTypeOf("string", res2._rev);
 
       // Now with returnNew: true and returnOld:true
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":16},
-                                {returnNew: true, returnOld: true});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 16},
+                                {returnNew: true,
+returnOld: true});
       assertTypeOf("object", res2);
       assertEqual(6, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2338,9 +2482,10 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(4, Object.keys(res2.old).length);
 
       // Now with returnOld: false and returnNew: false
-      res = collection.insert({"Hallo":12});
-      res2 = collection.update(res._key, {"Hallo":15},
-                                {returnNew: false, returnOld: false});
+      res = collection.insert({"Hallo": 12});
+      res2 = collection.update(res._key, {"Hallo": 15},
+                                {returnNew: false,
+returnOld: false});
       assertTypeOf("object", res2);
       assertEqual(4, Object.keys(res2).length);
       assertTypeOf("string", res2._id);
@@ -2349,25 +2494,28 @@ function DatabaseDocumentSuiteReturnStuff () {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief use overwrite option
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief use overwrite option
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertOverwrite : function () {
-      var docHandle = collection.insert({ a : 1});
+    testInsertOverwrite: function () {
+      var docHandle = collection.insert({ a: 1});
       var key = docHandle._key;
 
       // normal insert with same key must fail!
-      try{
-        var res = collection.insert({a : 2, _key : key});
+      try {
+        var res = collection.insert({a: 2,
+_key: key});
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
       }
 
       // overwrite with same key must work
-      var rv = collection.insert({c : 3, _key: key},{overwrite: true, returnOld: true, returnNew: true});
+      var rv = collection.insert({c: 3,
+_key: key}, {overwrite: true,
+returnOld: true,
+returnNew: true});
       var arr = collection.toArray();
       assertEqual(arr.length, 1);
       assertEqual(rv.new.c, 3);
@@ -2375,79 +2523,103 @@ function DatabaseDocumentSuiteReturnStuff () {
       assertEqual(rv.old.a, 1);
 
       // overwrite (babies) with same key must work
-      collection.insert({b : 2, _key: key},{overwrite:true});
+      collection.insert({b: 2,
+_key: key}, {overwrite: true});
       arr = collection.toArray();
       assertEqual(arr.length, 1);
       assertEqual(arr[0].b, 2);
 
       // overwrite (babies) with same key must work
-      collection.insert([{a : 3, _key: key}, {a : 4, _key: key}, {a : 5, _key: key}], {overwrite: true});
+      collection.insert([{a: 3,
+_key: key}, {a: 4,
+_key: key}, {a: 5,
+_key: key}], {overwrite: true});
       arr = collection.toArray();
       assertEqual(arr.length, 1);
       assertEqual(arr[0].a, 5);
 
-      rv = collection.insert({x : 3},{overwriteMode: "replace", returnNew: true});
+      rv = collection.insert({x: 3}, {overwriteMode: "replace",
+returnNew: true});
       assertEqual(rv.new.x, 3);
       assertTypeOf("string", rv._id);
       assertTypeOf("string", rv._key);
 
     },
 
-    testInsertOverwriteMode : function () {
-      let doc = { _key : "Harry",
-                  type : "hunk",
+    testInsertOverwriteMode: function () {
+      let doc = { _key: "Harry",
+                  type: "hunk",
                   color: "black",
-                  hobbies : { "1" : "sleeping" }
+                  hobbies: { "1": "sleeping" }
                 };
 
-      let update = { _key : "Harry",
+      let update = { _key: "Harry",
                      color: "grey",
                      age: 11
                    };
 
-      let merged = {...doc, ...update};
+      let merged = {...doc,
+...update};
 
       collection.insert(doc);
-      var rv = collection.insert(update,{overwrite: true, overwriteMode: "update", returnOld: true, returnNew: true});
+      var rv = collection.insert(update, {overwrite: true,
+overwriteMode: "update",
+returnOld: true,
+returnNew: true});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
 
       update.age = null;
       merged.age = null;
-      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld: true, returnNew: true, keepNull: true});
+      rv = collection.insert(update, {overwrite: true,
+overwriteMode: "update",
+returnOld: true,
+returnNew: true,
+keepNull: true});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
 
       update.age = null;
       delete merged.age;
-      rv = collection.insert(update,{overwrite:true, overwriteMode: "update", returnOld: true, returnNew: true, keepNull: false});
+      rv = collection.insert(update, {overwrite: true,
+overwriteMode: "update",
+returnOld: true,
+returnNew: true,
+keepNull: false});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
 
-      update.hobbies = { "2" : "eating" };
-      merged.hobbies = {...update.hobbies, ...merged.hobbies };
-      rv = collection.insert(update,{overwriteMode: "update", returnOld: true, returnNew: true, keepNull: false});
+      update.hobbies = { "2": "eating" };
+      merged.hobbies = {...update.hobbies,
+...merged.hobbies };
+      rv = collection.insert(update, {overwriteMode: "update",
+returnOld: true,
+returnNew: true,
+keepNull: false});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
 
-      update.hobbies = { "2" : "eating" };
+      update.hobbies = { "2": "eating" };
       merged.hobbies = update.hobbies;
-      rv = collection.insert(update,{overwriteMode: "update", returnOld: true, returnNew: true, mergeObjects: false});
+      rv = collection.insert(update, {overwriteMode: "update",
+returnOld: true,
+returnNew: true,
+mergeObjects: false});
       Object.keys(merged).forEach((key) => {
         assertEqual(merged[key], rv.new[key]);
       });
-    }, // testInsertOverwriteModeUpdate
+    } // testInsertOverwriteModeUpdate
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: document keys
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: document keys
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuiteIdFromKey () {
   'use strict';
@@ -2456,20 +2628,20 @@ function CollectionDocumentSuiteIdFromKey () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn, { waitForSync: false });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       if (collection) {
         collection.unload();
         collection.drop();
@@ -2478,9 +2650,9 @@ function CollectionDocumentSuiteIdFromKey () {
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document key qualification
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document key qualification
+// //////////////////////////////////////////////////////////////////////////////
 
     testDocumentIdThrowsIfInvalid () {
       let error;
@@ -2495,9 +2667,9 @@ function CollectionDocumentSuiteIdFromKey () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test document key qualification
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test document key qualification
+// //////////////////////////////////////////////////////////////////////////////
 
     testDocumentId () {
       for (const key of ["yolo", "__special__", "my-key", "-_!$%'()*+,.:;=@"]) {
@@ -2508,9 +2680,9 @@ function CollectionDocumentSuiteIdFromKey () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionDocumentSuiteErrorHandling);
 jsunity.run(CollectionDocumentSuite);

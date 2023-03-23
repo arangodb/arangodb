@@ -38,9 +38,11 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "skiplist", fields: ["value1"] });
-  c.ensureIndex({ type: "hash", fields: ["value2"] });
-  
+  c.ensureIndex({ type: "skiplist",
+fields: ["value1"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value2"] });
+
   internal.wal.flush(true, true);
 
   internal.debugTerminate('crashing server');
@@ -74,7 +76,7 @@ function recoverySuite () {
       assertFalse(idx.sparse);
       assertEqual([ 'value1' ], idx.fields);
       assertEqual('skiplist', idx.type);
-      
+
       idx = c.getIndexes()[2];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);

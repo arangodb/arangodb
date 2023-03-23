@@ -100,7 +100,7 @@ if (typeof internal.arango !== 'undefined') {
     let db = new exports.ArangoDatabase(internal.arango);
     // proxy the db object, so we can track access to non-existing collections
     exports.db = new Proxy(db, {
-      get(target, name) {
+      get (target, name) {
         if (!target.hasOwnProperty(name) && target[name] === undefined && typeof name === 'string') {
           // unknown collection, try re-populating the cache
           try {
@@ -108,7 +108,7 @@ if (typeof internal.arango !== 'undefined') {
           } catch (err) {}
         }
         return target[name];
-      },
+      }
     });
     internal.db = exports.db; // TODO remove
   } catch (err) {

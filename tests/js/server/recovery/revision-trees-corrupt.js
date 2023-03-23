@@ -36,9 +36,9 @@ const colName2 = 'UnitTestsRecovery2';
 function runSetup () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
-  
+
   internal.debugSetFailAt("MerkleTree::serializeUncompressed");
-  
+
   let c = db._create(colName1);
 
   for (let i = 0; i < 1000; ++i) {
@@ -75,7 +75,7 @@ function runSetup () {
 
   assertEqual(23, db[colName1]._revisionTreeSummary().count);
   assertEqual(42, db[colName2]._revisionTreeSummary().count);
-  
+
   internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
   internal.debugSetFailAt("applyUpdates::forceHibernation1");
   internal.debugSetFailAt("applyUpdates::forceHibernation2");
@@ -83,7 +83,7 @@ function runSetup () {
   // and force a write
   db[colName1].insert({});
   db[colName2].insert({});
-  
+
   while (true) {
     haveUpdates = false;
     [colName1, colName2].forEach((cn) => {
@@ -102,7 +102,7 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-  
+
   assertEqual(24, db[colName1]._revisionTreeSummary().count);
   assertEqual(43, db[colName2]._revisionTreeSummary().count);
 
@@ -120,7 +120,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeCorruption: function() {
+    testRevisionTreeCorruption: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1001);
@@ -128,7 +128,7 @@ function recoverySuite () {
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 3);
-    },
+    }
 
   };
 }

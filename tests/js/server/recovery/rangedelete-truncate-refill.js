@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  
+
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
   let docs = [];
@@ -44,12 +44,13 @@ function runSetup () {
       docs = [];
     }
   }
- 
+
   // should trigger range deletion
   c.truncate();
 
   for (let i = 0; i < 5000; i++) {
-    docs.push({ _key: "test" + i, value: i });
+    docs.push({ _key: "test" + i,
+value: i });
   }
   c.insert(docs, { waitForSync: true });
 

@@ -46,7 +46,8 @@ function runSetup () {
   c.insert(docs);
 
   internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
-  c.ensureIndex({ type: "skiplist", fields: ["value"] });
+  c.ensureIndex({ type: "skiplist",
+fields: ["value"] });
   return 0;
 }
 

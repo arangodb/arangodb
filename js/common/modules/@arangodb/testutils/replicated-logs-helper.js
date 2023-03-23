@@ -1,26 +1,26 @@
-/*jshint strict: true */
+/* jshint strict: true */
 'use strict';
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const {wait} = internal;
@@ -36,7 +36,7 @@ const serverHelper = require('@arangodb/test-helper');
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
-  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length-1, count)];
+  const getWaitTime = (count) => waitTimes[Math.min(waitTimes.length - 1, count)];
   let count = 0;
   let result = null;
   while (count < maxTries) {
@@ -79,7 +79,9 @@ const getServerRebootId = function (serverId) {
 
 const getParticipantsObjectForServers = function (servers) {
   return _.reduce(servers, (a, v) => {
-    a[v] = {allowedInQuorum: true, allowedAsLeader: true, forced: false};
+    a[v] = {allowedInQuorum: true,
+allowedAsLeader: true,
+forced: false};
     return a;
   }, {});
 };
@@ -88,7 +90,7 @@ const createParticipantsConfig = function (generation, config, servers) {
   return {
     generation,
     config,
-    participants: getParticipantsObjectForServers(servers),
+    participants: getParticipantsObjectForServers(servers)
   };
 };
 
@@ -98,7 +100,8 @@ const createTermSpecification = function (term, servers, leader) {
     if (!_.includes(servers, leader)) {
       throw Error("leader is not part of the participants");
     }
-    spec.leader = {serverId: leader, rebootId: getServerRebootId(leader)};
+    spec.leader = {serverId: leader,
+rebootId: getServerRebootId(leader)};
   }
   return spec;
 };
@@ -169,7 +172,9 @@ const readReplicatedLogAgency = function (database, logId) {
   let target = readAgencyValueAt(`Target/ReplicatedLogs/${database}/${logId}`);
   let plan = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}`);
   let current = readAgencyValueAt(`Current/ReplicatedLogs/${database}/${logId}`);
-  return {target, plan, current};
+  return {target,
+plan,
+current};
 };
 
 const replicatedLogSetPlanParticipantsConfig = function (database, logId, participantsConfig) {
@@ -184,7 +189,8 @@ const replicatedLogSetTargetParticipantsConfig = function (database, logId, part
 
 const replicatedLogUpdatePlanParticipantsConfigParticipants = function (database, logId, participants) {
   const oldValue = readAgencyValueAt(`Plan/ReplicatedLogs/${database}/${logId}/participantsConfig`);
-  const newValue = oldValue || {generation: 0, participants: {}};
+  const newValue = oldValue || {generation: 0,
+participants: {}};
   for (const [p, v] of Object.entries(participants)) {
     if (v === null) {
       delete newValue.participants[p];
@@ -312,7 +318,7 @@ const registerAgencyTestEnd = function (testName) {
 
 const getServerUrl = helper.getUrlById;
 
-const checkRequestResult = function (requestResult, expectingError=false) {
+const checkRequestResult = function (requestResult, expectingError = false) {
   if (requestResult === undefined) {
     throw new ArangoError({
       'error': true,
@@ -383,7 +389,8 @@ const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   }
   const leader = plan.currentTerm.leader.serverId;
   const term = plan.currentTerm.term;
-  return {leader, term};
+  return {leader,
+term};
 };
 
 const getReplicatedLogLeaderTarget = function (database, logId) {
@@ -401,14 +408,20 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
     id: logId,
     currentTerm: createTermSpecification(term, servers, leader),
     participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
-    properties: {implementation: {type: "black-hole", parameters: {}}}
+    properties: {implementation: {type: "black-hole",
+parameters: {}}}
   });
 
   // wait for all servers to have reported in current
   waitFor(lpreds.replicatedLogIsReady(database, logId, term, servers, leader));
   const followers = _.difference(servers, [leader]);
   const remaining = _.difference(dbservers, servers);
-  return {logId, servers, leader, term, followers, remaining};
+  return {logId,
+servers,
+leader,
+term,
+followers,
+remaining};
 };
 
 const createReplicatedLog = function (database, targetConfig, replicationFactor) {
@@ -422,14 +435,19 @@ const createReplicatedLog = function (database, targetConfig, replicationFactor)
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
-    properties: {implementation: {type: "black-hole", parameters: {}}}
+    properties: {implementation: {type: "black-hole",
+parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
   const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
   const followers = _.difference(servers, [leader]);
-  return {logId, servers, leader, term, followers};
+  return {logId,
+servers,
+leader,
+term,
+followers};
 };
 
 const createReplicatedLogWithState = function (database, targetConfig, stateType, replicationFactor) {
@@ -443,14 +461,19 @@ const createReplicatedLogWithState = function (database, targetConfig, stateType
     config: targetConfig,
     participants: getParticipantsObjectForServers(servers),
     supervision: {maxActionsTraceLength: 20},
-    properties: {implementation: {type: stateType, parameters: {}}}
+    properties: {implementation: {type: stateType,
+parameters: {}}}
   });
 
   waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
   const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
   const followers = _.difference(servers, [leader]);
-  return {logId, servers, leader, term, followers};
+  return {logId,
+servers,
+leader,
+term,
+followers};
 };
 
 
@@ -575,7 +598,7 @@ const countActionsByType = function (actions) {
   }, {});
 };
 
-const updateReplicatedLogTarget = function(database, id, callback) {
+const updateReplicatedLogTarget = function (database, id, callback) {
   const {target: oldTarget} = readReplicatedLogAgency(database, id);
   let result = callback(oldTarget);
   if (result === undefined) {
@@ -596,7 +619,7 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const dumpShardLog = function (shardId, limit=1000) {
+const dumpShardLog = function (shardId, limit = 1000) {
   let log = db._replicatedLog(shardIdToLogId(shardId));
   return log.head(limit);
 };
@@ -625,7 +648,7 @@ const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
   const stateMachineIds = shards.map(s => s.replace(/^s/, ''));
 
   const terms = Object.fromEntries(
-    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term]),
+    stateMachineIds.map(stateId => [stateId, readReplicatedLogAgency(dbn, stateId).plan.currentTerm.term])
   );
 
   const increaseTerm = ([stateId, term]) => replicatedLogSetPlanTerm(dbn, stateId, term + 1);

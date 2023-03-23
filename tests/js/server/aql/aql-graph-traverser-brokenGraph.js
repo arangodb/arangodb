@@ -41,10 +41,9 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 
-function brokenGraphSuite() {
+function brokenGraphSuite () {
   var paramDisabled = {optimizer: {rules: ['-all']}};
   var vc;
   var ec;

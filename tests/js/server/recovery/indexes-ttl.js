@@ -32,10 +32,15 @@ function runSetup () {
   internal.debugClearFailAt();
 
   let c = db._create('UnitTestsRecovery1');
-  c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 60 });
-  
+  c.ensureIndex({ type: "ttl",
+fields: ["value"],
+expireAfter: 60 });
+
   c = db._create('UnitTestsRecovery2');
-  c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 600, estimates: true });
+  c.ensureIndex({ type: "ttl",
+fields: ["value"],
+expireAfter: 600,
+estimates: true });
 
   c.save({ _key: 'crashme' }, true);
 
@@ -59,7 +64,7 @@ function recoverySuite () {
       assertEqual(["value"], idx.fields);
       assertEqual(60, idx.expireAfter);
       assertFalse(idx.estimates);
-      
+
       c = db._collection('UnitTestsRecovery2');
       idx = c.getIndexes()[1];
 

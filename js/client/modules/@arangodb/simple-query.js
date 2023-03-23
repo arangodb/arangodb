@@ -79,7 +79,7 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
 
     arangosh.checkRequestResult(requestResult);
 
-    this._execution = new ArangoQueryCursor(this._collection._database, 
+    this._execution = new ArangoQueryCursor(this._collection._database,
                                             requestResult, true);
 
     if (requestResult.hasOwnProperty('count')) {

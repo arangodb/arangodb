@@ -1,39 +1,39 @@
-/*jshint globalstrict:false, strict:false, maxlen: 50000 */
-/*global assertTrue, assertFalse, assertEqual, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 50000 */
+/* global assertTrue, assertFalse, assertEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for fulltext indexes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for fulltext indexes
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function fulltextCreateSuite () {
   'use strict';
@@ -42,91 +42,100 @@ function fulltextCreateSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       internal.db._drop(cn);
       c = internal.db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief insert doc if index attribute is not present in it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief insert doc if index attribute is not present in it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertDocumentWithoutAttribute : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
-      c.insert({ _key: "test", value1: 1 });
+    testInsertDocumentWithoutAttribute: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["foo"] });
+      c.insert({ _key: "test",
+value1: 1 });
       var doc = c.document("test");
       assertEqual(1, doc.value1);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief update doc if index attribute is not present in it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief update doc if index attribute is not present in it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateDocumentWithoutAttribute : function () {
-      c.insert({ _key: "test", value1: 1 });
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+    testUpdateDocumentWithoutAttribute: function () {
+      c.insert({ _key: "test",
+value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["foo"] });
       c.update("test", { value2: "test" });
       var doc = c.document("test");
       assertEqual("test", doc.value2);
       assertEqual(1, doc.value1);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replace doc if index attribute is not present in it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief replace doc if index attribute is not present in it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceDocumentWithoutAttribute : function () {
-      c.insert({ _key: "test", value1: 1 });
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+    testReplaceDocumentWithoutAttribute: function () {
+      c.insert({ _key: "test",
+value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["foo"] });
       c.replace("test", { value2: "test" });
       var doc = c.document("test");
       assertEqual("test", doc.value2);
       assertFalse(doc.hasOwnProperty("value1"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove doc if index attribute is not present in it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove doc if index attribute is not present in it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveDocumentWithoutAttribute : function () {
-      c.insert({ _key: "test", value1: 1 });
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+    testRemoveDocumentWithoutAttribute: function () {
+      c.insert({ _key: "test",
+value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["foo"] });
       c.remove("test");
       assertFalse(c.exists("test"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with multiple fields
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create with multiple fields
+// //////////////////////////////////////////////////////////////////////////////
 
     testCreateMultipleFields: function () {
       try {
-        c.ensureIndex({ type: "fulltext", fields: ["a", "b"] });
+        c.ensureIndex({ type: "fulltext",
+fields: ["a", "b"] });
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexSimple : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["text"] });
+    testCreateIndexSimple: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["text"] });
 
       // don't inspect the result of the following query but make sure it does not fail
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'text', 'foo')").toArray()[0];
@@ -148,12 +157,13 @@ function fulltextCreateSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexExisting : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["textattr"] });
+    testCreateIndexExisting: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["textattr"] });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -161,25 +171,27 @@ function fulltextCreateSuite () {
         if (index.type !== "fulltext") {
           continue;
         }
-      
+
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "textattr" ], index.fields);
-       
-        assertEqual(idx.id, c.ensureIndex({ type: "fulltext", fields: ["textattr"] }).id);
+
+        assertEqual(idx.id, c.ensureIndex({ type: "fulltext",
+fields: ["textattr"] }).id);
         return;
       }
 
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexSubstrings : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["iam-an-indexed-ATTRIBUTE"] });
-      
+    testCreateIndexSubstrings: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["iam-an-indexed-ATTRIBUTE"] });
+
       // don't inspect the result of the following query but make sure it does not fail
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'iam-an-indexed-ATTRIBUTE', 'foo')").toArray()[0];
       assertEqual(0, result.length);
@@ -200,12 +212,13 @@ function fulltextCreateSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexSubstringsExisting : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["iam-an-indexed-ATTRIBUTE"] });
+    testCreateIndexSubstringsExisting: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["iam-an-indexed-ATTRIBUTE"] });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -217,21 +230,23 @@ function fulltextCreateSuite () {
         assertEqual(idx.id, index.id);
         assertEqual("fulltext", index.type);
         assertEqual([ "iam-an-indexed-ATTRIBUTE" ], index.fields);
-      
-        assertEqual(idx.id, c.ensureIndex({ type: "fulltext", fields: ["iam-an-indexed-ATTRIBUTE"] }).id);
+
+        assertEqual(idx.id, c.ensureIndex({ type: "fulltext",
+fields: ["iam-an-indexed-ATTRIBUTE"] }).id);
         return;
       }
 
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexSubattribute : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["a.b.c"] });
-      
+    testCreateIndexSubattribute: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["a.b.c"] });
+
       // don't inspect the result of the following query but make sure it does not fail
       var result = internal.db._query("RETURN FULLTEXT(" + c.name() + ", 'a.b.c', 'foo')").toArray()[0];
       assertEqual(0, result.length);
@@ -252,14 +267,17 @@ function fulltextCreateSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateMultipleIndexes : function () {
-      var idx1 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
+    testCreateMultipleIndexes: function () {
+      var idx1 = c.ensureIndex({ type: "fulltext",
+fields: ["attr1"] });
+      var idx2 = c.ensureIndex({ type: "fulltext",
+fields: ["attr1"] });
+      var idx3 = c.ensureIndex({ type: "fulltext",
+fields: ["attr2"] });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -271,27 +289,26 @@ function fulltextCreateSuite () {
         if (index.id === idx1.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
-        }
-        else if (index.id === idx2.id) {
+        } else if (index.id === idx2.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
-        }
-        else if (index.id === idx3.id) {
+        } else if (index.id === idx3.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr2" ], index.fields);
-        }
-        else {
+        } else {
           fail();
         }
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexMinLength1 : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["test"], minLength: 5 });
+    testCreateIndexMinLength1: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["test"],
+minLength: 5 });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -310,12 +327,14 @@ function fulltextCreateSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks the index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks the index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIndexMinLength2 : function () {
-      var idx = c.ensureIndex({ type: "fulltext", fields: ["test"], minLength: 1 });
+    testCreateIndexMinLength2: function () {
+      var idx = c.ensureIndex({ type: "fulltext",
+fields: ["test"],
+minLength: 1 });
 
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
@@ -334,14 +353,17 @@ function fulltextCreateSuite () {
       fail();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks dropping indexes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks dropping indexes
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropIndexes : function () {
-      var idx1 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx2 = c.ensureIndex({ type: "fulltext", fields: ["attr1"] });
-      var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
+    testDropIndexes: function () {
+      var idx1 = c.ensureIndex({ type: "fulltext",
+fields: ["attr1"] });
+      var idx2 = c.ensureIndex({ type: "fulltext",
+fields: ["attr1"] });
+      var idx3 = c.ensureIndex({ type: "fulltext",
+fields: ["attr2"] });
 
       assertTrue(c.dropIndex(idx1));
       assertFalse(c.dropIndex(idx2)); // already deleted
@@ -352,9 +374,9 @@ function fulltextCreateSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fulltext queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief fulltext queries
+// //////////////////////////////////////////////////////////////////////////////
 
 function fulltextQuerySuite () {
   'use strict';
@@ -364,28 +386,29 @@ function fulltextQuerySuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      idx = collection.ensureIndex({ type: "fulltext", fields: ["text"] }).id;
+      idx = collection.ensureIndex({ type: "fulltext",
+fields: ["text"] }).id;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-    
-    tearDown : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
+
+    tearDown: function () {
       internal.db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief empty queries
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief empty queries
+// //////////////////////////////////////////////////////////////////////////////
 
     testEmptyQueries: function () {
       collection.save({ text: "hello world"});
@@ -404,16 +427,15 @@ function fulltextQuerySuite () {
         try {
           assertEqual(0, collection.fulltext("text", queries[i], idx).toArray().length);
           fail();
-        }
-        catch (e) {
+        } catch (e) {
           assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
         }
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whitespace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief whitespace
+// //////////////////////////////////////////////////////////////////////////////
 
     testWhitespace: function () {
       var texts = [
@@ -421,7 +443,7 @@ function fulltextQuerySuite () {
         "More rubbish test data. The index should be able to handle all this.",
         "even MORE rubbish. Nevertheless this should be handled well, too."
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -438,11 +460,11 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "\rdata\r\nfuxxbau", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "  fuxxbau", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "never theless", idx).toArray().length);
-    }, 
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief simple queries
-////////////////////////////////////////////////////////////////////////////////
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief simple queries
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimple: function () {
       var texts = [
@@ -450,7 +472,7 @@ function fulltextQuerySuite () {
         "More rubbish test data. The index should be able to handle all this.",
         "even MORE rubbish. Nevertheless this should be handled well, too."
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -475,7 +497,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "handled", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "well", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "too", idx).toArray().length);
-      
+
       assertEqual(0, collection.fulltext("text", "not", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "foobar", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "it", idx).toArray().length);
@@ -487,26 +509,33 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "Neverthelessy", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "dindex", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "grubbish", idx).toArray().length);
-    }, 
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief object attributes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief object attributes
+// //////////////////////////////////////////////////////////////////////////////
 
     testObjectAttributes: function () {
       var texts = [
-        { de: "das ist müll", en: "this is rubbish" },
-        { de: "das ist abfall", en: "this is trash" },
-        { whatever: "this is a sentence, with whatever meaning", foobar: "readers should ignore this text" },
-        { one: "value1", two: "value2" },
-        { a: "duplicate", b: "duplicate", c: "duplicate" },
+        { de: "das ist müll",
+en: "this is rubbish" },
+        { de: "das ist abfall",
+en: "this is trash" },
+        { whatever: "this is a sentence, with whatever meaning",
+foobar: "readers should ignore this text" },
+        { one: "value1",
+two: "value2" },
+        { a: "duplicate",
+b: "duplicate",
+c: "duplicate" },
         { value: [ "this is ignored" ] },
-        { value: { en: "rubbish", de: "müll" } },
+        { value: { en: "rubbish",
+de: "müll" } },
         "foobarbaz",
         "müllmann",
         "rubbish bin"
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -521,11 +550,11 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "sentence", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "ignored", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "pardauz", idx).toArray().length);
-    }, 
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief array attributes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief array attributes
+// //////////////////////////////////////////////////////////////////////////////
 
     testArrayAttributes: function () {
       var texts = [
@@ -536,12 +565,13 @@ function fulltextQuerySuite () {
         [ "value1", "value2" ],
         [ "duplicate", "duplicate", "duplicate" ],
         [ { value: [ "this is ignored" ] } ],
-        [ { value: { en: "rubbish", de: "müll" } } ],
+        [ { value: { en: "rubbish",
+de: "müll" } } ],
         [ "foobarbaz" ],
         [ "müllmann" ],
         [ "rubbish bin" ]
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -556,11 +586,11 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "sentence", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "ignored", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "pardauz", idx).toArray().length);
-    }, 
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief logical operators
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief logical operators
+// //////////////////////////////////////////////////////////////////////////////
 
     testLogicalOperators: function () {
       for (var i = 0; i < 100; ++i) {
@@ -584,9 +614,9 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "prefix:prefix1,|prefix:prefix2,-prefix:prefix", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test updates
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test updates
+// //////////////////////////////////////////////////////////////////////////////
 
     testUpdates: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
@@ -606,7 +636,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "people", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "but", idx).toArray().length);
-      
+
       collection.update(d2, { text: "seems that some where still left!" });
       assertEqual(1, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "delicious", idx).toArray().length);
@@ -617,9 +647,9 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test updates
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test updates
+// //////////////////////////////////////////////////////////////////////////////
 
     testUpdates2: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
@@ -639,7 +669,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "people", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "but", idx).toArray().length);
-      
+
       var d4 = collection.update(d2, { text: "seems that some where still left!" });
       assertEqual(1, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "delicious", idx).toArray().length);
@@ -648,22 +678,22 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "seems,left", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "oranges", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
-      
+
       collection.remove(d3);
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "delicious", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "seems,left", idx).toArray().length);
-      
+
       collection.remove(d4);
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "delicious", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "seems,left", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test deletes
-////////////////////////////////////////////////////////////////////////////////
- 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test deletes
+// //////////////////////////////////////////////////////////////////////////////
+
     testDeletes: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
       var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
@@ -683,7 +713,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "people", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
-      
+
       collection.remove(d3);
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "like", idx).toArray().length);
@@ -693,7 +723,7 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "unrelated", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "text", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
-      
+
       collection.remove(d2);
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "like", idx).toArray().length);
@@ -705,10 +735,10 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test deletes
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test deletes
+// //////////////////////////////////////////////////////////////////////////////
+
     testDeletesWithCompact: function () {
       var d1 = collection.save({ text: "Some people like bananas, but others like tomatoes" });
       var d2 = collection.save({ text: "Several people hate oranges, but many like them" });
@@ -731,22 +761,22 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
 
       collection.remove(d2);
-      
+
       assertEqual(0, collection.fulltext("text", "several", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "index", idx).toArray().length);
-      
+
       collection.remove(d3);
-      
+
       assertEqual(0, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief case sensivity
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief case sensivity
+// //////////////////////////////////////////////////////////////////////////////
 
     testCaseSensitivity: function () {
       var texts = [
@@ -754,7 +784,7 @@ function fulltextQuerySuite () {
         "MoRe rubbish test Data. The indeX should be able to handle alL this.",
         "eveN MORE RUBbish. neverThELeSs ThIs should be hanDLEd well, ToO."
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -779,11 +809,11 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "HandleD", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "welL", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "ToO", idx).toArray().length);
-    }, 
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief long words
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief long words
+// //////////////////////////////////////////////////////////////////////////////
 
     testLongWords: function () {
       var texts = [
@@ -793,7 +823,7 @@ function fulltextQuerySuite () {
         "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
         "Reliefpfeiler feilen reihenweise Pfeilreifen"
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -804,7 +834,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "feilen", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "reihenweise", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "pfeilreifen", idx).toArray().length);
-      
+
       assertEqual(0, collection.fulltext("text", "pfeil", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "feile", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "feiler", idx).toArray().length);
@@ -816,13 +846,13 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "auto", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "it", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "not", idx).toArray().length);
-      
-      assertEqual(0, collection.fulltext("text", "somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee", idx).toArray().length);
-    }, 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief search for multiple words
-////////////////////////////////////////////////////////////////////////////////
+      assertEqual(0, collection.fulltext("text", "somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee", idx).toArray().length);
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief search for multiple words
+// //////////////////////////////////////////////////////////////////////////////
 
     testMultipleWords: function () {
       var texts = [
@@ -830,7 +860,7 @@ function fulltextQuerySuite () {
         "MoRe rubbish test Data. The indeX should be able to handle alL this.",
         "eveN MORE RUBbish. neverThELeSs ThIs should be hanDLEd well, ToO."
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -865,28 +895,28 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "apple", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesHorizontal: function () {
       collection.save({ text: "the the the the the the the their theirs them them themselves" });
       collection.save({ text: "apple banana tomato peach" });
-     
+
       assertEqual(1, collection.fulltext("text", "the", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "them", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "themselves", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "the,their,theirs,them,themselves", idx).toArray().length);
-      
+
       assertEqual(0, collection.fulltext("text", "she", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "thus", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "these,those", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesHorizontalMany: function () {
       var text = "";
       for (var i = 0; i < 1000; ++i) {
@@ -895,20 +925,20 @@ function fulltextQuerySuite () {
 
       collection.save({ text: text });
       collection.save({ text: text });
-     
+
       assertEqual(2, collection.fulltext("text", "text,random", idx).toArray().length);
       assertEqual(2, collection.fulltext("text", "prefix:rando", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesQuery: function () {
       collection.save({ text: "the quick brown dog jumped over the lazy fox" });
       collection.save({ text: "apple banana tomato peach" });
-      
+
       assertEqual(1, collection.fulltext("text", "the,the,the,the,the,the,the,the", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "apple,apple,apple,apple,apple,apple,apple,apple,APPLE,aPpLE", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "apple,apple,apple,apple,apple,apple,apple,apple,APPLE,aPpLE,peach", idx).toArray().length);
@@ -916,17 +946,17 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "apple,apple,apple,apple,apple,apple,apple,apple,APPLE,aPpLE,peach,fox", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesVertical: function () {
       var rubbish = "the quick brown fox jumped over the lazy dog";
-      
+
       for (var i = 0; i < 100; ++i) {
         collection.save({ text: rubbish });
       }
-      
+
       assertEqual(100, collection.fulltext("text", "the", idx).toArray().length);
       assertEqual(100, collection.fulltext("text", "the,dog", idx).toArray().length);
       assertEqual(100, collection.fulltext("text", "quick,brown,dog", idx).toArray().length);
@@ -939,10 +969,10 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesMatrix: function () {
       var text = "";
       for (var i = 0; i < 1000; ++i) {
@@ -952,20 +982,20 @@ function fulltextQuerySuite () {
       for (i = 0; i < 1000; ++i) {
         collection.save({ text: text });
       }
-     
+
       assertEqual(1000, collection.fulltext("text", "text,random", idx).toArray().length);
       assertEqual(1000, collection.fulltext("text", "prefix:rando", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesDocuments: function () {
       var text1 = "this is a short document text";
       var text2 = "Some longer document text is put in here just to validate whats going on";
-      
+
       for (var i = 0; i < 2500; ++i) {
         collection.save({ text: text1 });
         collection.save({ text: text2 });
@@ -978,16 +1008,16 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test duplicate entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test duplicate entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDuplicatesDocuments2: function () {
       var text1 = "this is a short document text";
       var text2 = "Some longer document text is put in here just to validate whats going on";
 
       var docs = [ ];
-      
+
       for (var i = 0; i < 500; ++i) {
         docs[i] = collection.save({ text: text1 });
         collection.save({ text: text2 });
@@ -1010,10 +1040,10 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test all different entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test all different entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testDifferentDocuments: function () {
       var prefix = "prefix";
 
@@ -1021,7 +1051,7 @@ function fulltextQuerySuite () {
         var word = prefix + i;
         collection.save({ text: word });
       }
-     
+
       assertEqual(1, collection.fulltext("text", "prefix0", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix1", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix10", idx).toArray().length);
@@ -1034,10 +1064,10 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "prefix2501", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test lengths
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test lengths
+// //////////////////////////////////////////////////////////////////////////////
+
     testLengths: function () {
       collection.save({ text: "somerandomstringaaaaaaaaaaaaaaaaaaaaaab"});
       collection.save({ text: "somerandomstringaaaaaaaaaaaaaaaaaaaaaabd"});
@@ -1046,7 +1076,7 @@ function fulltextQuerySuite () {
       collection.save({ text: "somerandomstringaaaaaaaaaaaaaaaaaaaaaabc"});
       collection.save({ text: "somerandomstringaaaaaaaaaaaaaaaaaaaaaabcd"});
       collection.save({ text: "somerandomstringaaaaaaaaaaaaaaaaaaaaaabcde"});
-    
+
       assertEqual(1, collection.fulltext("text", "somerandomstringaaaaaaaaaaaaaaaaaaaaaab", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "somerandomstringaaaaaaaaaaaaaaaaaaaaaabd", idx).toArray().length);
       assertEqual(2, collection.fulltext("text", "somerandomstringaaaaaaaaaaaaaaaaaaaaaabf", idx).toArray().length);
@@ -1056,17 +1086,17 @@ function fulltextQuerySuite () {
       assertEqual(3, collection.fulltext("text", "somerandomstringaaaaaaaaaaaaaaaaaaaaaabcde", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test similar entries
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test similar entries
+// //////////////////////////////////////////////////////////////////////////////
+
     testSimilar: function () {
       var suffix = "a";
       for (var i = 0; i < 100; ++i) {
         collection.save({ text: "somerandomstring" + suffix });
         suffix += "a";
       }
-    
+
       assertEqual(1, collection.fulltext("text", "somerandomstringa", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "somerandomstringaa", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "somerandomstringaaa", idx).toArray().length);
@@ -1088,19 +1118,19 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "somerandomstringaaaaa0", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test German Umlauts
-////////////////////////////////////////////////////////////////////////////////
-    
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test German Umlauts
+// //////////////////////////////////////////////////////////////////////////////
+
     testUmlauts: function () {
       var texts = [
         "DER MÜLLER GING IN DEN WALD UND aß den HÜHNERBÖREKBÄRENmensch",
         "der peter mag den bÖRGER",
         "der müller ging in den wald un aß den hahn",
         "der hans mag den pilz",
-        "DER MÜLLER GING IN DEN WAL UND aß den HÜHNERBÖREKBÄRENmensch" 
+        "DER MÜLLER GING IN DEN WAL UND aß den HÜHNERBÖREKBÄRENmensch"
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -1125,18 +1155,18 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "bÖRGER", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test multiple languages
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test multiple languages
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnicode: function () {
       var texts = [
         "big. Really big. He moment. Magrathea! - insisted Arthur, - I do you can sense no further because it doesn't fit properly. In my the denies faith, and the atmosphere beneath You are not cheap He was was his satchel. He throughout Magrathea. - He pushed a tore the ecstatic crowd. Trillian sat down the time, the existence is it? And he said, - What they don't want this airtight hatchway. - it's we you shooting people would represent their Poet Master Grunthos is in his mind.",
         "מהן יטע המקצועות חצר הַלֶּחֶם תחת זכר שבר יַד לַאֲשֶׁר בְּדָבָר ירה והנשגבים חשבונותי. קר רה עת זז. נראו מאוד לשבת מודד מעול. קם הרמות נח לא לי מעליו מספוא בז זז כר שב. . ההן ביצים מעט מלב קצת לשכרה שנסכה קלונו מנוחה רכב ונס. עבודתנו בעבודתו נִבְרֹא. שבר פרי רסן הַשְּׁטוּת וּגְבוּרָה שְׁאֵלַנִי בְּאוֹתָהּ לִי קַלִּילִים יִכָּנְסוּ מעש. חי הַ פה עם =יחידת עד אם כי",
-        "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.", 
+        "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.",
         "Νέο βάθος όλα δομές της χάσει. Μέτωπο εγώ συνάμα τρόπος και ότι όσο εφόδιο κόσμου. Προτίμηση όλη διάφορους του όλο εύθραυστη συγγραφής. Στα άρα ένα μία οποία άλλων νόημα. Ένα αποβαίνει ρεαλισμού μελετητές θεόσταλτο την. Ποντιακών και rites κοριτσάκι παπούτσια παραμύθια πει κυρ.",
         "Mody laty mnie ludu pole rury Białopiotrowiczowi. Domy puer szczypię jemy pragnął zacność czytając ojca lasy Nowa wewnątrz klasztoru. Chce nóg mego wami. Zamku stał nogą imion ludzi ustaw Białopiotrowiczem. Kwiat Niesiołowskiemu nierostrzygniony Staje brał Nauka dachu dumę Zamku Kościuszkowskie zagon. Jakowaś zapytać dwie mój sama polu uszakach obyczaje Mój. Niesiołowski książkowéj zimny mały dotychczasowa Stryj przestraszone Stolnikównie wdał śmiertelnego. Stanisława charty kapeluszach mięty bratem każda brząknął rydwan.",
-        "Мелких против летают хижину тмится. Чудесам возьмет звездна Взжигай. . Податель сельские мучитель сверкает очищаясь пламенем. Увы имя меч Мое сия. Устранюсь воздушных Им от До мысленные потушатся Ко Ея терпеньем.", 
+        "Мелких против летают хижину тмится. Чудесам возьмет звездна Взжигай. . Податель сельские мучитель сверкает очищаясь пламенем. Увы имя меч Мое сия. Устранюсь воздушных Им от До мысленные потушатся Ко Ея терпеньем.",
         "dotyku. Výdech spalin bude položen záplavový detekční kabely 1x UPS Newave Conceptpower DPA 5x 40kVA bude ukončen v samostatné strojovně. Samotné servery mají pouze lokalita Ústí nad zdvojenou podlahou budou zakončené GateWayí HiroLink - Monitoring rozvaděče RTN na jednotlivých záplavových zón na soustrojí resp. technologie jsou označeny SA-MKx.y. Jejich výstupem je zajištěn přestupem dat z jejich provoz. Na dveřích vylepené výstražné tabulky. Kabeláž z okruhů zálohovaných obvodů v R.MON-I. Monitoring EZS, EPS, ... možno zajistit funkčností FireWallů na strukturovanou kabeláží vedenou v měrných jímkách zapuštěných v každém racku budou zakončeny v R.MON-NrNN. Monitoring motorgenerátorů: řídící systém bude zakončena v modulu",
         "ramien mu zrejme vôbec niekto je už presne čo mám tendenciu prispôsobiť dych jej páčil, čo chce. Hmm... Včera sa mi pozdava, len dočkali, ale keďže som na uz boli u jej nezavrela. Hlava jej to ve městě nepotká, hodně mi to tí vedci pri hre, keď je tu pre Designiu. Pokiaľ viete o odbornejšie texty. Prvým z tmavých uličiek, každý to niekedy, zrovnávať krok s obrovským batohom na okraj vane a temné úmysly, tak rozmýšľam, aký som si hromady mailov, čo chcem a neraz sa pokúšal o filmovém klubu v budúcnosti rozhodne uniesť mladú maliarku (Linda Rybová), ktorú so",
         " 復讐者」. 復讐者」. 伯母さん 復讐者」. 復讐者」. 復讐者」. 復讐者」. 第九章 第五章 第六章 第七章 第八章. 復讐者」 伯母さん. 復讐者」 伯母さん. 第十一章 第十九章 第十四章 第十八章 第十三章 第十五章. 復讐者」 . 第十四章 第十一章 第十二章 第十五章 第十七章 手配書. 第十四章 手配書 第十八章 第十七章 第十六章 第十三章. 第十一章 第十三章 第十八章 第十四章 手配書. 復讐者」."
@@ -1155,9 +1185,9 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "uniesť,mladú", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test French text
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test French text
+// //////////////////////////////////////////////////////////////////////////////
 
     testFrench: function () {
       var texts = [
@@ -1176,7 +1206,7 @@ function fulltextQuerySuite () {
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
-     
+
       assertEqual(1, collection.fulltext("text", "complément", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "expédiés", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "résilié", idx).toArray().length);
@@ -1201,9 +1231,9 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "dépêché,Détournée,Proxénétisme,perpétuelle", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test Spanish text
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test Spanish text
+// //////////////////////////////////////////////////////////////////////////////
 
     testSpanish: function () {
       var texts = [
@@ -1216,7 +1246,7 @@ function fulltextQuerySuite () {
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
-     
+
       assertEqual(1, collection.fulltext("text", "disminución", idx).toArray().length);
       assertEqual(2, collection.fulltext("text", "Él", idx).toArray().length);
       assertEqual(2, collection.fulltext("text", "Invitación", idx).toArray().length);
@@ -1239,9 +1269,9 @@ function fulltextQuerySuite () {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prefixes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prefixes
+// //////////////////////////////////////////////////////////////////////////////
 
     testPrefixes1: function () {
       var texts = [
@@ -1254,7 +1284,7 @@ function fulltextQuerySuite () {
         "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
         "Aurelius pater est. Est mercator."
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -1292,16 +1322,16 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "prefix:MERC", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:MER", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:ME", idx).toArray().length);
-      
+
       assertEqual(0, collection.fulltext("text", "prefix:pansen", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "prefix:banana", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "prefix:banan", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "prefix:bana", idx).toArray().length);
-    }, 
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prefixes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief prefixes
+// //////////////////////////////////////////////////////////////////////////////
 
     testPrefixes2: function () {
       var texts = [
@@ -1314,7 +1344,7 @@ function fulltextQuerySuite () {
         "Loewenschuetzer moechten maechtige Mueller koedern",
         "Moechten boese wichte wenig mueller melken?"
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -1335,7 +1365,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "prefix:groß", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:große", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:GROßE", idx).toArray().length);
-     
+
       // multiple search words
       assertEqual(2, collection.fulltext("text", "moechten,mueller", idx).toArray().length);
       assertEqual(2, collection.fulltext("text", "prefix:moechten,mueller", idx).toArray().length);
@@ -1361,7 +1391,7 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "prefix:flöte,prefix:nörgel", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:flöte,böse,wörter,prefix:nörgel", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:flöte,prefix:tröt,prefix:bös", idx).toArray().length);
-      
+
       // prefix and non-existing words
       assertEqual(0, collection.fulltext("text", "prefix:flöte,wichtig", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "prefix:flöte,wichte", idx).toArray().length);
@@ -1371,9 +1401,9 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "quasi,prefix:quer,präfix:differenz,prefix:müller", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief long prefixes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief long prefixes
+// //////////////////////////////////////////////////////////////////////////////
 
     testLongPrefixes: function () {
       var texts = [
@@ -1383,7 +1413,7 @@ function fulltextQuerySuite () {
         "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiter",
         "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant"
       ];
-      
+
       for (var i = 0; i < texts.length; ++i) {
         collection.save({ text: texts[i] });
       }
@@ -1398,13 +1428,13 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "prefix:autotuerendellenentfernungsfirmenmitarbeiter", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:autotuer", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:auto", idx).toArray().length);
-      
+
       assertEqual(0, collection.fulltext("text", "prefix:somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lipsum
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief lipsum
+// //////////////////////////////////////////////////////////////////////////////
 
     testLipsum: function () {
       collection.save({ text: "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet." });
@@ -1424,25 +1454,26 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "prefix:accus,takeshi", idx).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substrings
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief substrings
+// //////////////////////////////////////////////////////////////////////////////
 
     testSubstrings: function () {
       try {
         assertEqual(0, collection.fulltext("text", "substring:fi", idx).toArray().length);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 4 byte sequences
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief 4 byte sequences
+// //////////////////////////////////////////////////////////////////////////////
 
     testUnicodeSearches: function () {
-      idx = collection.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 1 }).id;
+      idx = collection.ensureIndex({ type: "fulltext",
+fields: ["text"],
+minLength: 1 }).id;
 
       var texts = [
         "\u30e3\u30f3\u30da\u30fc\u30f3\u304a\u3088\u3073\u8ffd\u52a0\u60c5\u5831 \u3010\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u3011\uff1a\u304a\u597d\u304d\u306aCD\u30fbDVD\u3068\u540c\u6642\u8cfc\u5165\u3067\u304a\u5f97\u306a\u30ad\u30e3\u30f3\u30da\u30fc\u30f3 \u3001 \u7279\u5178\u4ed8\u30a8\u30ec\u30ad\u30ae\u30bf\u30fc \u307b\u304b\u3001\u4eca\u5e74\u6700\u5f8c\u306e\u304a\u8cb7\u3044\u5f97\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\uff0112\/16\u307e\u3067\u3002\u306a\u304a\u3001CD\u30fbDVD\u540c\u6642\u8cfc\u5165\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u306fAmazon\u30de\u30fc\u30b1\u30c3\u30c8\u30d7\u30ec\u30a4\u30b9\u306e\u5546\u54c1\u306f\u30ad\u30e3\u30f3\u30da\u30fc\u30f3\u5bfe\u8c61\u5916\u3067\u3059\u3002 \u300c\u697d\u5668\u6b73\u672b\u30bb\u30fc\u30eb\u300d\u3078 \u2605\u2606\u3010\u304a\u3059\u3059\u3081\u60c5\u5831\u3011\u30a6\u30a3\u30f3\u30bf\u30fc\u30bb\u30fc\u30eb\u30002013\/1\/4\u307e\u3067\u958b\u50ac\u4e2d\u2606\u2605\u2606 \u30bb\u30fc\u30eb\u5bfe\u8c61\u5546\u54c1\u306f\u5404\u30da\u30fc\u30b8\u304b\u3089\u30c1\u30a7\u30c3\u30af\uff1a \u6700\u592770\uff05OFF\uff01\u56fd\u5185\u76e4\u30d0\u30fc\u30b2\u30f3\uff5c \u3010ALL1,000\u5186\u3011\u4eba\u6c17\u8f38\u5165\u76e4\u30ed\u30c3\u30af\u30fb\u30dd\u30c3\u30d7\u30b9\uff5c \u3010\u8f38\u5165\u76e4\u671f\u9593\u9650\u5b9a1,000\u5186\u3011\u30af\u30ea\u30b9\u30de\u30b9CD\u30bb\u30fc\u30eb\uff5c \u3010\u4eba\u6c17\u306e\u8f38\u5165\u76e41,200\u5186\u3011\u7652\u3057\u306e\u97f3\u697d\uff5c \u3010ALL991\u5186\u3011\u58f2\u308c\u7b4b\u8f38\u5165\u76e4\uff5c",
@@ -1490,7 +1521,8 @@ function fulltextQuerySuite () {
 
     testQueryingAfterDeletion: function () {
       for (let i = 0; i < 4000; ++i) {
-        collection.save({ _key: "test" + i, text: "test" + i });
+        collection.save({ _key: "test" + i,
+text: "test" + i });
       }
 
       for (let i = 2436; i < 3473; ++i) {
@@ -1500,13 +1532,13 @@ function fulltextQuerySuite () {
       for (let i = 0; i < 4000; ++i) {
         assertEqual((i >= 2436 && i < 3473) ? 0 : 1, collection.fulltext("text", "test" + i, idx).toArray().length);
       }
-    } 
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(fulltextCreateSuite);
 jsunity.run(fulltextQuerySuite);

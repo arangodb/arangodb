@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 5000 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
+/* jshint globalstrict:false, strict:false, maxlen: 5000 */
+/* global assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filesystem functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test filesystem functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -34,9 +34,9 @@ var fs = require("fs");
 var internal = require("internal");
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test attributes
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test attributes
+// //////////////////////////////////////////////////////////////////////////////
 
 function FileSystemSuite () {
   'use strict';
@@ -49,11 +49,11 @@ function FileSystemSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       // create a name for a temporary directory we will run all tests in
       // as we are creating a new name, this shouldn't collide with any existing
       // directories, and we can also remove our directory when the tests are
@@ -63,16 +63,15 @@ function FileSystemSuite () {
       try {
         // create this directory before any tests
         fs.makeDirectoryRecursive(tempDir);
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       // some security check as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
@@ -81,11 +80,11 @@ function FileSystemSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief exists() - test if a file / directory exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief exists() - test if a file / directory exists
+// //////////////////////////////////////////////////////////////////////////////
 
-    testExists : function () {
+    testExists: function () {
       var tempName;
 
       // create the name for a new directory
@@ -93,8 +92,7 @@ function FileSystemSuite () {
       try {
         // remove it if it exists
         fs.removeDirectory(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // create the directory with all paths to it
@@ -119,11 +117,11 @@ function FileSystemSuite () {
       fs.remove(tempName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getTempFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief getTempFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTempFile : function () {
+    testGetTempFile: function () {
       var tempName;
 
       // creating a new empty file with a temporary name
@@ -159,11 +157,11 @@ function FileSystemSuite () {
       fs.removeDirectory(fs.join(fs.getTempPath(), 'tests'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getTempPath() - test the system's temp path
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief getTempPath() - test the system's temp path
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGetTempPath : function () {
+    testGetTempPath: function () {
       var tempName;
 
       tempName = fs.getTempPath();
@@ -173,11 +171,11 @@ function FileSystemSuite () {
       assertTrue(fs.isDirectory(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief isDirectory() - test if a directory exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief isDirectory() - test if a directory exists
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsDirectory : function () {
+    testIsDirectory: function () {
       var tempName;
 
       // create a new directory name
@@ -185,8 +183,7 @@ function FileSystemSuite () {
       try {
         // remove any existing directory first
         fs.removeDirectory(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // create the directory with the full path to it
@@ -217,11 +214,11 @@ function FileSystemSuite () {
       fs.remove(tempName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief isFile() - test if a file exists
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief isFile() - test if a file exists
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIsFile : function () {
+    testIsFile: function () {
       var tempName;
 
       // create a new directory name
@@ -229,15 +226,13 @@ function FileSystemSuite () {
       try {
         // remove any existing directory if it exists
         fs.removeDirectory(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       try {
         // remove any existing file if it exists
         fs.remove(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // now create the whole directory with all paths to it
@@ -268,18 +263,18 @@ function FileSystemSuite () {
       fs.remove(tempName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief listTree()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief listTree()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testListTree : function () {
+    testListTree: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makeDirectory() - create a directory
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief makeDirectory() - create a directory
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMakeDirectory : function () {
+    testMakeDirectory: function () {
       var tempName;
 
       // create the name for a subdirectory
@@ -287,8 +282,7 @@ function FileSystemSuite () {
       try {
         // remove an existing directory if it already exists
         fs.removeDirectoryRecursive(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // the directory shouldn't exist. we just deleted it if it was there
@@ -308,8 +302,7 @@ function FileSystemSuite () {
       try {
         // remove it if it does exist
         fs.removeDirectoryRecursive(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // the directory shouldn't be there...
@@ -325,8 +318,7 @@ function FileSystemSuite () {
         // try to create the same directory again. this should fail
         fs.makeDirectory(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_EXISTS.code, err.errorNum);
       }
 
@@ -347,8 +339,7 @@ function FileSystemSuite () {
         // create a directory with the name of an already existing file. this should fail.
         fs.makeDirectory(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_EXISTS.code, err.errorNum);
       }
 
@@ -356,11 +347,11 @@ function FileSystemSuite () {
       fs.removeDirectoryRecursive(fs.join(tempDir, 'baz'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief makeDirectoryRecursive() - create a directory will all paths to it
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief makeDirectoryRecursive() - create a directory will all paths to it
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMakeDirectoryRecursive : function () {
+    testMakeDirectoryRecursive: function () {
       var tempName;
 
       // create the name for a new subdirectory
@@ -368,8 +359,7 @@ function FileSystemSuite () {
       try {
         // make sure it does not yet exist
         fs.removeDirectoryRecursive(tempName);
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       // create the subdirectory
@@ -388,11 +378,11 @@ function FileSystemSuite () {
       assertTrue(fs.isDirectory(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief move()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMove : function () {
+    testMove: function () {
       var tempName, tempName2;
 
       // create a new file with a specific content
@@ -406,11 +396,11 @@ function FileSystemSuite () {
       assertEqual("this is a test file", fs.read(tempName2));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief move()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMoveDirectory : function () {
+    testMoveDirectory: function () {
       var tempName, tempName2;
 
       // create a new file with a specific content
@@ -428,11 +418,11 @@ function FileSystemSuite () {
       assertEqual("this is a test file", fs.read(fs.join(tempName2, "test")));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief move()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMoveDirectoryExists : function () {
+    testMoveDirectoryExists: function () {
       var tempName, tempName2;
 
       // create a new file with a specific content
@@ -447,8 +437,7 @@ function FileSystemSuite () {
       try {
         fs.move(tempName, tempName2);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
 
@@ -459,11 +448,11 @@ function FileSystemSuite () {
       assertTrue(fs.isDirectory(tempName2));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mtime()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief mtime()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMTime : function () {
+    testMTime: function () {
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, "this is a test file");
 
@@ -479,17 +468,16 @@ function FileSystemSuite () {
         // we just work around it here.
         var deltaModulo = Math.abs(mtime - now);
         assertTrue(deltaModulo <= 60 || (deltaModulo > 3540));
-      }
-      else {
+      } else {
         assertTrue(Math.abs(mtime - now) <= 60);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mtime()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief mtime()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMTimeUpdate : function () {
+    testMTimeUpdate: function () {
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, "this is a test file");
 
@@ -500,38 +488,37 @@ function FileSystemSuite () {
       assertNotEqual(fs.mtime(tempName), mtime);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mtime()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief mtime()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMTimeNonExisting : function () {
+    testMTimeNonExisting: function () {
       var tempName = fs.join(tempDir, 'test');
 
       try {
         fs.mtime(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRead : function () {
+    testRead: function () {
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, "this is a test file");
 
       assertEqual("this is a test file", fs.read(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadMultiline : function () {
+    testReadMultiline: function () {
       var text = "this is a test file\r\nit contains multiple lines\r\nand\ttabs.";
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, text);
@@ -539,11 +526,11 @@ function FileSystemSuite () {
       assertEqual(text, fs.read(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadUnicode : function () {
+    testReadUnicode: function () {
       var text = "der Möter ging mit viel Geklöter hündert Meter wäiter" +
                  "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기" +
                  "中华网以中国的市场为核心，致力为当地用户提供流动增值服务、网上娱乐及互联网服务。本公司亦推出网上游戏，及透过其门户网站提供包罗万有的网上产品及服务。" +
@@ -555,22 +542,22 @@ function FileSystemSuite () {
       assertEqual(text, fs.read(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadEmpty : function () {
+    testReadEmpty: function () {
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, "");
 
       assertEqual("", fs.read(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readBuffer()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief readBuffer()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadBuffer : function () {
+    testReadBuffer: function () {
       var tempName = fs.join(tempDir, 'test');
       var data = new Buffer(binary, 'base64');
 
@@ -580,11 +567,11 @@ function FileSystemSuite () {
       assertEqual(binary, fs.readBuffer(tempName).toString('base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief readFileSync()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadFileSyncBase64 : function () {
+    testReadFileSyncBase64: function () {
       var tempName = fs.join(tempDir, 'test');
       var data = new Buffer(binary, 'base64');
 
@@ -594,11 +581,11 @@ function FileSystemSuite () {
       assertEqual(binary, fs.readFileSync(tempName, 'base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief readFileSync()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadFileSyncHex : function () {
+    testReadFileSyncHex: function () {
       var tempName = fs.join(tempDir, 'test');
 
       // write binary data
@@ -610,22 +597,22 @@ function FileSystemSuite () {
       assertEqual(binary, data2.toString('base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief readFileSync()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadFileSyncUtf8 : function () {
+    testReadFileSyncUtf8: function () {
       var tempName = fs.join(tempDir, 'test');
       fs.write(tempName, "der mötör ging mit großem Geklöter tröten");
 
       assertEqual("der mötör ging mit großem Geklöter tröten", fs.readFileSync(tempName, 'utf-8'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief readFileSync()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief readFileSync()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReadFileSyncUtf16 : function () {
+    testReadFileSyncUtf16: function () {
       var tempName = fs.join(tempDir, 'test');
       var text = "der mötör ging tröten mit Geklöter im größen Gärten";
       var data = new Buffer(text, 'utf16le');
@@ -636,11 +623,11 @@ function FileSystemSuite () {
       assertEqual(text, data2.toString('utf16le'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read64()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read64()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRead64 : function () {
+    testRead64: function () {
       var tempName = fs.join(tempDir, 'test');
       var data = new Buffer(binary, 'base64');
 
@@ -651,11 +638,11 @@ function FileSystemSuite () {
       assertEqual(binary, fs.read64(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read64()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read64()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRead64Empty : function () {
+    testRead64Empty: function () {
       var tempName = fs.join(tempDir, 'test');
 
       fs.write(tempName, "");
@@ -664,11 +651,11 @@ function FileSystemSuite () {
       assertEqual("", fs.read64(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read64()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief read64()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRead64Short : function () {
+    testRead64Short: function () {
       var tempName = fs.join(tempDir, 'test');
 
       fs.write(tempName, "XXX");
@@ -677,11 +664,11 @@ function FileSystemSuite () {
       assertEqual("WFhY", fs.read64(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemove : function () {
+    testRemove: function () {
       var tempName = fs.join(tempDir, 'test');
 
       fs.write(tempName, "abc");
@@ -691,18 +678,17 @@ function FileSystemSuite () {
       assertFalse(fs.isFile(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief remove()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveNonExisting : function () {
+    testRemoveNonExisting: function () {
       var tempName = fs.join(tempDir, 'test');
 
       try {
         fs.remove(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -712,18 +698,17 @@ function FileSystemSuite () {
       try {
         fs.remove(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === ERRORS.ERROR_SYS_ERROR.code ||
                    err.errorNum === ERRORS.ERROR_FORBIDDEN.code);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test size() - the filesize of a file
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test size() - the filesize of a file
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSize : function () {
+    testSize: function () {
       // create a new file with a specific content
       var tempName = fs.join(tempDir, 'foo');
       fs.write(tempName, "this is a test file");
@@ -732,11 +717,11 @@ function FileSystemSuite () {
       assertEqual(19, fs.size(tempName));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test size() - the filesize of a file
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test size() - the filesize of a file
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSizeNonExisting : function () {
+    testSizeNonExisting: function () {
       var tempName = fs.join(tempDir, 'foo');
 
       // now the file does not exist
@@ -744,8 +729,7 @@ function FileSystemSuite () {
         // try to read filesize. this should fail
         fs.size(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -755,8 +739,7 @@ function FileSystemSuite () {
         // try to read the filesize of a directory. this should fail
         fs.size(tempName);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_FILE_NOT_FOUND.code, err.errorNum);
       }
 
@@ -764,11 +747,11 @@ function FileSystemSuite () {
       fs.removeDirectory(tempName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWrite : function () {
+    testWrite: function () {
       var text = "this is a test";
       var filename = fs.join(tempDir, "test");
       assertEqual(true, fs.write(filename, text));
@@ -778,11 +761,11 @@ function FileSystemSuite () {
       assertEqual(text, content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteEmpty : function () {
+    testWriteEmpty: function () {
       var filename = fs.join(tempDir, "test");
       assertEqual(true, fs.write(filename, ""));
       assertTrue(fs.isFile(filename));
@@ -792,11 +775,11 @@ function FileSystemSuite () {
       assertEqual("", content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteJson : function () {
+    testWriteJson: function () {
       var filename = fs.join(tempDir, "test");
       assertEqual(true, fs.write(filename, JSON.stringify({
         values: [ 1, 2, 3 ],
@@ -808,11 +791,11 @@ function FileSystemSuite () {
       assertEqual("{\"values\":[1,2,3],\"foo\":\"bar\",\"test\":true}", content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteMultiline : function () {
+    testWriteMultiline: function () {
       var text = "the\nquick\r\nbrown\nfoxx\tjumped over\r\n\r\nthe lazy dog.";
       var filename = fs.join(tempDir, "test");
       assertEqual(true, fs.write(filename, text));
@@ -822,11 +805,11 @@ function FileSystemSuite () {
       assertEqual(text, content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteOverwrite : function () {
+    testWriteOverwrite: function () {
       var filename = fs.join(tempDir, "test");
       assertEqual(true, fs.write(filename, "this is a test"));
 
@@ -836,11 +819,11 @@ function FileSystemSuite () {
       assertEqual("this is another test", content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteBuffer : function () {
+    testWriteBuffer: function () {
       var filename = fs.join(tempDir, "test");
       var data = new Buffer(binary, "base64");
 
@@ -850,11 +833,11 @@ function FileSystemSuite () {
       assertEqual(binary, fs.readBuffer(filename).toString('base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test write()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteBufferHex : function () {
+    testWriteBufferHex: function () {
       var filename = fs.join(tempDir, "test");
       var data = new Buffer(binary, "base64");
 
@@ -866,11 +849,11 @@ function FileSystemSuite () {
       assertEqual(binary, data2.toString('base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test writeFileSync()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test writeFileSync()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testWriteFileSync : function () {
+    testWriteFileSync: function () {
       var filename = fs.join(tempDir, "test");
       var data = new Buffer(binary, "base64");
 
@@ -880,17 +863,16 @@ function FileSystemSuite () {
       assertEqual(binary, fs.readBuffer(filename).toString('base64'));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test zipFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test zipFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testZipFile : function () {
+    testZipFile: function () {
       var tempName = fs.join(tempDir, "out.zip");
       try {
         // outfile must not exist
         fs.remove(tempName);
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       fs.write(fs.join(tempDir, "one"), "some input for\r\nfile one");
@@ -913,11 +895,11 @@ function FileSystemSuite () {
       assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test zipFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test zipFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testZipFileOverwrite : function () {
+    testZipFileOverwrite: function () {
       var tempName = fs.join(tempDir, "out.zip");
       fs.write(tempName, "something");
 
@@ -926,23 +908,21 @@ function FileSystemSuite () {
       try {
         fs.zipFile(tempName, tempDir, [ "one" ]);
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_CANNOT_OVERWRITE_FILE.code, err.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test zipFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test zipFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testZipFilePasswordWrong : function () {
+    testZipFilePasswordWrong: function () {
       var tempName = fs.join(tempDir, "out.zip");
       try {
         // outfile must not exist
         fs.remove(tempName);
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       fs.write(fs.join(tempDir, "one"), "some input for\r\nfile one");
@@ -960,40 +940,34 @@ function FileSystemSuite () {
         // wrong password
         fs.unzipFile(tempName, tempDir, false, false, "wrong!");
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_CANNOT_WRITE_FILE.code, err2.errorNum);
       }
 
       try {
         fs.remove(fs.join(tempDir, "one"));
-      }
-      catch (e1) {
+      } catch (e1) {
       }
       try {
         fs.remove(fs.join(tempDir, "two"));
-      }
-      catch (e2) {
+      } catch (e2) {
       }
 
       try {
         // no password
         fs.unzipFile(tempName, tempDir, false, false);
         fail();
-      }
-      catch (err3) {
+      } catch (err3) {
         assertEqual(ERRORS.ERROR_CANNOT_WRITE_FILE.code, err3.errorNum);
       }
 
       try {
         fs.remove(fs.join(tempDir, "one"));
-      }
-      catch (e3) {
+      } catch (e3) {
       }
       try {
         fs.remove(fs.join(tempDir, "two"));
-      }
-      catch (e4) {
+      } catch (e4) {
       }
 
       // correct password
@@ -1006,17 +980,16 @@ function FileSystemSuite () {
       assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test zipFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test zipFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testZipFileSubDirectory : function () {
+    testZipFileSubDirectory: function () {
       var tempName = fs.join(tempDir, "out.zip");
       try {
         // outfile must not exist
         fs.remove(tempName);
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       var subDir = fs.join(tempDir, "files");
@@ -1041,17 +1014,16 @@ function FileSystemSuite () {
       assertEqual(fs.read(fs.join(subDir, "two")), "some input for\r\nfile two");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test zipFile()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test zipFile()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testZipFileSubDirectorySkipPaths : function () {
+    testZipFileSubDirectorySkipPaths: function () {
       var tempName = fs.join(tempDir, "out.zip");
       try {
         // outfile must not exist
         fs.remove(tempName);
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       var subDir = fs.join(tempDir, "files");
@@ -1075,11 +1047,11 @@ function FileSystemSuite () {
       assertEqual(fs.read(fs.join(tempDir, "two")), "some input for\r\nfile two");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test alder32()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test alder32()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAdler32EmptyFile : function() {
+    testAdler32EmptyFile: function () {
       const file = fs.join(tempDir, 'empty.txt');
       try {
         fs.remove(file);
@@ -1090,22 +1062,22 @@ function FileSystemSuite () {
       assertEqual(checksum, '1');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test alder32()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test alder32()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAdler32File : function() {
+    testAdler32File: function () {
       const internal = require('internal');
-      const file = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx','toomanysecrets.txt'));
+      const file = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx', 'toomanysecrets.txt'));
       const checksum = fs.adler32(file);
       assertEqual(checksum, '583533794');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test alder32()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test alder32()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAdler32NotExistingFile : function() {
+    testAdler32NotExistingFile: function () {
       const file = fs.join(tempDir, 'ne.txt');
       try {
         fs.remove(file);
@@ -1119,11 +1091,11 @@ function FileSystemSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test alder32()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test alder32()
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAdler32Folder : function() {
+    testAdler32Folder: function () {
       const internal = require('internal');
       const folder = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'foxx'));
       try {
@@ -1138,9 +1110,9 @@ function FileSystemSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(FileSystemSuite);
 

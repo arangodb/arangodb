@@ -38,10 +38,14 @@ function runSetup () {
   for (let i = 0; i < 5; ++i) {
     db._drop('UnitTestsRecovery' + i);
     let c = db._create('UnitTestsRecovery' + i);
-    c.save({ _key: 'foo', value1: 'foo', value2: 'bar' });
+    c.save({ _key: 'foo',
+value1: 'foo',
+value2: 'bar' });
 
-    c.ensureIndex({ type: "hash", fields: ["value1"] });
-    c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+    c.ensureIndex({ type: "hash",
+fields: ["value1"] });
+    c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
   }
 
   // drop all indexes but primary

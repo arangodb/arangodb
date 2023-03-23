@@ -1,31 +1,31 @@
 /* jshint strict: false */
 /* global: arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 let arangosh = require('@arangodb/arangosh');
 
-function ArangoReplicatedLog(database, id) {
+function ArangoReplicatedLog (database, id) {
   this._database = database;
   this._id = id;
   this._dbPrefix = '/_db/' + encodeURIComponent(database._name());
@@ -58,12 +58,12 @@ ArangoReplicatedLog.prototype._baseurl = function (suffix) {
   return this._prefixurl(url);
 };
 
-ArangoReplicatedLog.prototype.drop = function() {
+ArangoReplicatedLog.prototype.drop = function () {
   let requestResult = this._database._connection.DELETE(this._baseurl());
   arangosh.checkRequestResult(requestResult);
 };
 
-ArangoReplicatedLog.prototype.status = function() {
+ArangoReplicatedLog.prototype.status = function () {
   let requestResult = this._database._connection.GET(this._baseurl());
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
@@ -76,7 +76,7 @@ ArangoReplicatedLog.prototype.globalStatus = function ({useLocalCache = false} =
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.head = function(limit) {
+ArangoReplicatedLog.prototype.head = function (limit) {
   let query = '/head';
   if (limit !== undefined) {
     query += `?limit=${limit}`;
@@ -86,7 +86,7 @@ ArangoReplicatedLog.prototype.head = function(limit) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.tail = function(limit) {
+ArangoReplicatedLog.prototype.tail = function (limit) {
   let query = '/tail';
   if (limit !== undefined) {
     query += `?limit=${limit}`;
@@ -96,7 +96,7 @@ ArangoReplicatedLog.prototype.tail = function(limit) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.slice = function(start, stop) {
+ArangoReplicatedLog.prototype.slice = function (start, stop) {
   let query = '/slice?';
   if (start !== undefined) {
     query += `start=${start}`;
@@ -112,7 +112,7 @@ ArangoReplicatedLog.prototype.slice = function(start, stop) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.poll = function(first, limit) {
+ArangoReplicatedLog.prototype.poll = function (first, limit) {
   let query = '/poll?';
   if (first !== undefined) {
     query += `first=${first}`;
@@ -128,18 +128,18 @@ ArangoReplicatedLog.prototype.poll = function(first, limit) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.at = function(index) {
+ArangoReplicatedLog.prototype.at = function (index) {
   let requestResult = this._database._connection.GET(this._baseurl() + `/entry/${index}`);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.release = function(index) {
+ArangoReplicatedLog.prototype.release = function (index) {
   let requestResult = this._database._connection.POST(this._baseurl() + `/release?index=${index}`, {});
   arangosh.checkRequestResult(requestResult);
 };
 
-ArangoReplicatedLog.prototype.compact = function() {
+ArangoReplicatedLog.prototype.compact = function () {
   let requestResult = this._database._connection.POST(this._baseurl() + `/compact`, {});
   arangosh.checkRequestResult(requestResult);
 };
@@ -158,7 +158,7 @@ ArangoReplicatedLog.prototype.ping = function (message) {
   return requestResult.result;
 };
 
-ArangoReplicatedLog.prototype.multiInsert = function(payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
+ArangoReplicatedLog.prototype.multiInsert = function (payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/multi-insert?waitForSync=${waitForSync}&dontWaitForCommit=${dontWaitForCommit}`, str);
   arangosh.checkRequestResult(requestResult);

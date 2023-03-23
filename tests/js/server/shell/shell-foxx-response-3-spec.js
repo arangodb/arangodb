@@ -116,7 +116,8 @@ describe('SyntheticResponse', function () {
     });
     it('has no effect when called without a name', function () {
       require("console").log('has no effect when called without a name');
-      const rawRes = {headers: {}, contentType: 'application/x-wat'};
+      const rawRes = {headers: {},
+contentType: 'application/x-wat'};
       const res = new SyntheticResponse(rawRes, {});
       Object.freeze(rawRes.headers);
       Object.freeze(rawRes);
@@ -128,8 +129,11 @@ describe('SyntheticResponse', function () {
       require("console").log('accepts a headers object');
       const rawRes = {headers: {a: '1'}};
       const res = new SyntheticResponse(rawRes, {});
-      res.set({b: '2', c: '3'});
-      expect(rawRes.headers).to.eql({a: '1', b: '2', c: '3'});
+      res.set({b: '2',
+c: '3'});
+      expect(rawRes.headers).to.eql({a: '1',
+b: '2',
+c: '3'});
     });
   });
   describe('status', function () {

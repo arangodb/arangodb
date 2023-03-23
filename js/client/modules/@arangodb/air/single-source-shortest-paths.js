@@ -32,7 +32,7 @@ const accumulators = require("@arangodb/air/accumulators");
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.single_source_shortest_paths_program = single_source_shortest_paths_program;
 exports.single_source_shortest_paths = single_source_shortest_paths;
@@ -47,7 +47,7 @@ exports.test = test;
   as an object containing the attribute `distance`
 
 */
-function single_source_shortest_paths_program(
+function single_source_shortest_paths_program (
   resultField,
   startVertexId
 ) {
@@ -58,8 +58,8 @@ function single_source_shortest_paths_program(
       distance: {
         accumulatorType: "custom",
         valueType: "any",
-        customType: "my_min",
-      },
+        customType: "my_min"
+      }
     },
     customAccumulators: {
       "my_min": accumulators.minAccumulator()
@@ -75,12 +75,12 @@ function single_source_shortest_paths_program(
               ["eq?", ["this-vertex-id"], startVertexId],
               ["seq",
                 ["accum-set!", "distance", 0],
-                true],
+                true]
             ],
             [true, ["seq",
               ["accum-clear!", "distance"],
-              false]],
-          ],
+              false]]
+          ]
         ],
         updateProgram: [
           "seq",
@@ -91,19 +91,19 @@ function single_source_shortest_paths_program(
               ["attrib-ref", ["var-ref", "edge"], "to-pregel-id"],
               ["+",
                 ["accum-ref", "distance"],
-                1,//["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
+                1// ["attrib-ref", ["quote", "document", weightAttribute], ["var-ref", "edge"]],
               ]]],
-          false,
-        ],
-      },
-    ],
+          false
+        ]
+      }
+    ]
   };
 }
 
 /* `single_source_shortest_path` executes the program
    returned by `single_source_shortest_path_program`
    on the graph identified by `graphName`. */
-function single_source_shortest_paths(
+function single_source_shortest_paths (
   graphName,
   resultField,
   startVertexId
@@ -118,7 +118,7 @@ function single_source_shortest_paths(
   );
 }
 
-function reconstruct_path(graphSpec, from, to) {
+function reconstruct_path (graphSpec, from, to) {
 
   let path = [to];
 
@@ -134,12 +134,12 @@ function reconstruct_path(graphSpec, from, to) {
   return [path];
 }
 
-function exec_test_shortest_path_impl(graphSpec) {
+function exec_test_shortest_path_impl (graphSpec) {
   // Find the ID of a vertex to start at.
-  const [from_vertex, ...to_vertexes] = db
-    ._query(`FOR d IN @@V SORT RAND() LIMIT 10 RETURN d._id`,
-      {"@V": graphSpec.vname})
-    .toArray();
+  const [from_vertex, ...to_vertexes] = db.
+    _query(`FOR d IN @@V SORT RAND() LIMIT 10 RETURN d._id`,
+      {"@V": graphSpec.vname}).
+    toArray();
 
   internal.print(" -- computing sssp " + from_vertex + " -> ", to_vertexes.join(", "));
 
@@ -148,7 +148,7 @@ function exec_test_shortest_path_impl(graphSpec) {
     single_source_shortest_paths(
       graphSpec.name,
       "sssp",
-      from_vertex,
+      from_vertex
     ));
 
   for (let to_vertex of to_vertexes) {
@@ -158,11 +158,13 @@ function exec_test_shortest_path_impl(graphSpec) {
             FOR p IN OUTBOUND K_SHORTEST_PATHS @from TO @to
             GRAPH @graph
             LIMIT 1
-            RETURN p`, {"from": from_vertex, "to": to_vertex, "graph": graphSpec.name})
-      .toArray();
+            RETURN p`, {"from": from_vertex,
+"to": to_vertex,
+"graph": graphSpec.name}).
+      toArray();
 
     internal.print(" -- collecting Pregel SSSP Path to ", to_vertex);
-    /*const found_path_result = db._query(`
+    /* const found_path_result = db._query(`
             FOR v, e, p in 0..10000 INBOUND @to GRAPH @graph
                 PRUNE v._id == @from || (e != null && e._from != p.vertices[-2].SSSP.distance.sender)
                 OPTIONS {uniqueVertices: "path"}
@@ -193,7 +195,7 @@ function exec_test_shortest_path_impl(graphSpec) {
   return true;
 }
 
-function exec_test_shortest_path() {
+function exec_test_shortest_path () {
   let results = [];
 
   results.push(exec_test_shortest_path_impl(examplegraphs.create_line_graph("LineGraph10", 10, 1)));
@@ -271,6 +273,6 @@ function exec_test_shortest_path() {
   return !results.includes(false);
 }
 
-function test() {
+function test () {
   return exec_test_shortest_path();
 }

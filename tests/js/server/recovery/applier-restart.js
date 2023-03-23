@@ -38,7 +38,8 @@ function runSetup () {
 
   var replication = require("@arangodb/replication");
   replication.applier.stop(); // should not be running anyway
-  replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999", autoStart: true });
+  replication.applier.properties({ endpoint: "tcp://ignoreme.arangodb.com:9999",
+autoStart: true });
 
   internal.debugTerminate('crashing server');
   return 0;
@@ -61,7 +62,7 @@ function recoverySuite () {
       var state = replication.applier.state().state;
 
       // must be either still running or have some failed connections errors
-      assertTrue(state.running || state.totalFailedConnects > 0); 
+      assertTrue(state.running || state.totalFailedConnects > 0);
     }
 
   };

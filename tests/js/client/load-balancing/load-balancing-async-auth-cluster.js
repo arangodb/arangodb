@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Dan Larkin-York
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Dan Larkin-York
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -48,13 +48,15 @@ function AsyncAuthSuite () {
   let cs = [];
   let coordinators = [];
   const users = [
-    { username: 'alice', password: 'pass1' },
-    { username: 'bob', password: 'pass2' },
+    { username: 'alice',
+password: 'pass1' },
+    { username: 'bob',
+password: 'pass2' }
   ];
   const baseCursorUrl = `/_api/cursor`;
   const baseJobUrl = `/_api/job`;
 
-  function sendRequest(auth, method, endpoint, headers, body, usePrimary) {
+  function sendRequest (auth, method, endpoint, headers, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
 
@@ -72,7 +74,7 @@ function AsyncAuthSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -88,7 +90,7 @@ function AsyncAuthSuite () {
   }
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -121,7 +123,7 @@ function AsyncAuthSuite () {
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       const url = `${baseJobUrl}/all`;
       const result = sendRequest(users[0], 'DELETE', url, {}, {}, true);
       assertFalse(result === undefined || result === {});
@@ -135,7 +137,7 @@ function AsyncAuthSuite () {
       coordinators = [];
     },
 
-    testAsyncForwardingSameUserBasic: function() {
+    testAsyncForwardingSameUserBasic: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -181,7 +183,7 @@ function AsyncAuthSuite () {
       assertFalse(result.body.hasMore);
     },
 
-    testAsyncForwardingSameUserDelete: function() {
+    testAsyncForwardingSameUserDelete: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -215,7 +217,7 @@ function AsyncAuthSuite () {
       assertEqual(result.status, 200);
     },
 
-    testAsyncForwardingSameUserCancel: function() {
+    testAsyncForwardingSameUserCancel: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -243,7 +245,7 @@ function AsyncAuthSuite () {
       assertEqual(result.status, 200);
     },
 
-    testAsyncForwardingDifferentUserBasic: function() {
+    testAsyncForwardingDifferentUserBasic: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -276,7 +278,7 @@ function AsyncAuthSuite () {
       assertEqual(result.status, 404);
     },
 
-    testAsyncForwardingDifferentUserDelete: function() {
+    testAsyncForwardingDifferentUserDelete: function () {
       let url = baseCursorUrl;
       const headers = {
         "X-Arango-Async": "store"
@@ -305,7 +307,7 @@ function AsyncAuthSuite () {
 
       assertFalse(result === undefined || result === {});
       assertEqual(result.status, 404);
-    },
+    }
 
   };
 }

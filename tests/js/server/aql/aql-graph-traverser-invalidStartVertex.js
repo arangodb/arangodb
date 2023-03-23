@@ -41,17 +41,10 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 
 
-
-
-
-
-
-
-function invalidStartVertexSuite() {
+function invalidStartVertexSuite () {
   const gn = 'UnitTestGraph';
 
   return {
@@ -69,7 +62,8 @@ function invalidStartVertexSuite() {
       c.insert({_key: "test"});
 
       c = db._createEdgeCollection(gn + 'e', {numberOfShards: 1});
-      c.insert({_from: gn + "v2/test", _to: gn + "v1/test"});
+      c.insert({_from: gn + "v2/test",
+_to: gn + "v1/test"});
     },
 
     tearDownAll: function () {

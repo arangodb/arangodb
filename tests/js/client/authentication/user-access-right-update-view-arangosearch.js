@@ -70,7 +70,9 @@ for (let l of rightLevels) {
 
 // helper functions ///////////////////////////////////////////////////////////
 
-const assertFail = (text) => { assertTrue(false, text); };
+const assertFail = (text) => {
+ assertTrue(false, text);
+};
 
 function rootTestCollection (colName, switchBack = true) {
   helper.switchUser('root', dbName);
@@ -79,13 +81,15 @@ function rootTestCollection (colName, switchBack = true) {
       helper.switchUser(name, dbName);
   }
   return col !== null;
-};
+}
 
 function rootCreateCollection (colName) {
   if (!rootTestCollection(colName, false)) {
     let c = db._create(colName);
     if (colName === testCol1Name) {
-      c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+      c.ensureIndex({ type: "inverted",
+name: indexName,
+fields: [ { name: "value" } ] });
     }
 
     if (colLevel['none'].has(name)) {
@@ -109,14 +113,16 @@ function rootCreateCollection (colName) {
     }
   }
   helper.switchUser(name, dbName);
-};
+}
 
 function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
   if (rootTestCollection(colName, false)) {
     db._collection(colName).truncate({ compact: false });
     let docs = [];
     for (let i = 0; i < numDocs; ++i) {
-      let doc = {prop1: colName + "_1", propI: i, plink: "lnk" + i};
+      let doc = {prop1: colName + "_1",
+propI: i,
+plink: "lnk" + i};
       if (!defKey) {
         doc._key = colName + i;
       }
@@ -125,7 +131,7 @@ function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
     db._collection(colName).insert(docs);
   }
   helper.switchUser(name, dbName);
-};
+}
 
 function rootGrantCollection (colName, user, explicitRight = '') {
   if (rootTestCollection(colName, false)) {
@@ -138,7 +144,7 @@ function rootGrantCollection (colName, user, explicitRight = '') {
     }
   }
   helper.switchUser(user, dbName);
-};
+}
 
 function rootDropCollection (colName) {
   helper.switchUser('root', dbName);
@@ -146,7 +152,7 @@ function rootDropCollection (colName) {
     db._collection(colName).drop();
   } catch (ignored) { }
   helper.switchUser(name, dbName);
-};
+}
 
 function rootTestView (viewName, switchBack = true) {
   helper.switchUser('root', dbName);
@@ -155,7 +161,7 @@ function rootTestView (viewName, switchBack = true) {
     helper.switchUser(name, dbName);
   }
   return view !== null;
-};
+}
 
 function rootGetViewProps (viewName, switchBack = true) {
   helper.switchUser('root', dbName);
@@ -164,7 +170,7 @@ function rootGetViewProps (viewName, switchBack = true) {
     helper.switchUser(name, dbName);
   }
   return properties;
-};
+}
 
 function rootCreateView (viewName, viewType, properties = null) {
   if (rootTestView(viewName, false)) {
@@ -172,12 +178,12 @@ function rootCreateView (viewName, viewType, properties = null) {
       db._dropView(viewName);
     } catch (ignored) {}
   }
-  let view =  db._createView(viewName, viewType, {});
+  let view = db._createView(viewName, viewType, {});
   if (properties != null) {
     view.properties(properties, false);
   }
   helper.switchUser(name, dbName);
-};
+}
 
 function rootGetDefaultViewProps (viewType) {
   helper.switchUser('root', dbName);
@@ -189,7 +195,7 @@ function rootGetDefaultViewProps (viewType) {
   } catch (ignored) { }
   helper.switchUser(name, dbName);
   return properties;
-};
+}
 
 function rootDropView (viewName) {
   if (rootTestView(viewName, false)) {
@@ -198,28 +204,28 @@ function rootDropView (viewName) {
     } catch (ignored) {}
   }
   helper.switchUser(name, dbName);
-};
+}
 
 function checkError (e) {
   assertEqual(e.code, 403,
               "Expected to get forbidden REST error code, but got another one");
   assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code,
               "Expected to get forbidden error number, but got another one");
-};
+}
 
 // start of tests /////////////////////////////////////////////////////////////
 
-function UserRightsManagement(name) {
+function UserRightsManagement (name) {
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
       rootCreateCollection(testCol1Name);
       rootCreateCollection(testCol2Name);
       rootPrepareCollection(testCol1Name);
       rootPrepareCollection(testCol2Name);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       rootDropView(testViewRename);
       rootDropView(testViewName);
     },
@@ -229,7 +235,7 @@ function UserRightsManagement(name) {
       rootDropCollection(testCol2Name);
     },
 
-    testCheckAllUsersAreCreated: function() {
+    testCheckAllUsersAreCreated: function () {
       helper.switchUser('root', '_system');
 
       assertTrue(userSet.size > 0);
@@ -240,14 +246,14 @@ function UserRightsManagement(name) {
       }
     }
   };
-};
+}
 
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
 helper.generateAllUsers();
 
 // derive and run UserRightsManagement
-jsunity.run(function(){
+jsunity.run(function () {
   let suite = {};
   deriveTestSuite(UserRightsManagement(name), suite, "_-_" + name);
   return suite;
@@ -260,11 +266,11 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
     } catch (e) {
       continue;
     }
-  
+
     const key = `${testViewType}_${name}`;
 
     let suite = {
-      testUpdateViewByName: function() {
+      testUpdateViewByName: function () {
         // require('internal').sleep(2);
 
         assertTrue(rootTestView(testViewName),
@@ -274,7 +280,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
           try {
             db._view(testViewName).rename(testViewRename);
           } catch (e) {
-            //FIXME: remove try/catch block after renaming will work in cluster
+            // FIXME: remove try/catch block after renaming will work in cluster
             if (e.code === 501 && e.errorNum === 1470) {
               return;
             } else if (e.code === 403) {
@@ -288,7 +294,8 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
             'View renaming reported success, but updated view was not found afterwards');
 
           analyzers.save("more_text_de", "text",
-            { locale: "de.UTF-8", stopwords: [ ] },
+            { locale: "de.UTF-8",
+stopwords: [ ] },
             [ "frequency", "norm", "position" ]);
 
         } else {
@@ -305,7 +312,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
         }
       },
 
-      testViewByPropertiesRemoveFull: function() {
+      testViewByPropertiesRemoveFull: function () {
         assertTrue(rootTestView(testViewName),
           'Precondition failed, view was not found');
 
@@ -321,35 +328,37 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
             checkError(e);
           }
         }
-      },
+      }
 
     };
 
     if (testViewType === 'arangosearch') {
       // specific handling for views of type "arangosearch"
 
-      suite.setUp = function() {
-        rootCreateView(testViewName, testViewType, { links: { [testCol1Name] : {includeAllFields: true } } });
+      suite.setUp = function () {
+        rootCreateView(testViewName, testViewType, { links: { [testCol1Name]: {includeAllFields: true } } });
         db._useDatabase(dbName);
         helper.switchUser('root', dbName);
       };
 
-      suite.testAnalyzerPermisssions = function() {
+      suite.testAnalyzerPermisssions = function () {
         assertTrue(rootTestView(testViewName),
           'Precondition failed, view was not found');
 
         if (systemLevel['rw'].has(name) && dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
           // create additional analyzer
           let res = analyzers.save("more_text_de", "text",
-            { locale: "de.UTF-8", stopwords: [ ] },
+            { locale: "de.UTF-8",
+stopwords: [ ] },
             [ "frequency", "norm", "position" ]);
 
-        } else if( (systemLevel['ro'].has(name)) &&
-          (dbLevel['ro'].has(name))     &&
+        } else if ((systemLevel['ro'].has(name)) &&
+          (dbLevel['ro'].has(name)) &&
           (colLevel['ro'].has(name))) {
           try {
             let res = analyzers.save("more_text_de", "text",
-              { locale: "de.UTF-8", stopwords: [ ] },
+              { locale: "de.UTF-8",
+stopwords: [ ] },
               [ "frequency", "norm", "position" ]);
 
             assertFalse(true, `${name} was able to change analyzer although we had insufficent rights`);
@@ -358,13 +367,13 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
               "Expected to get forbidden error number, but got another one");
             checkError(e);
           }
-        } else if( systemLevel['ro'].has(name) && dbLevel['ro'].has(name) && colLevel['ro'].has(name)) {
-          let res = arango.DELETE("/_db/" + db._name()+ "/_api/analyzer/text_de");
+        } else if (systemLevel['ro'].has(name) && dbLevel['ro'].has(name) && colLevel['ro'].has(name)) {
+          let res = arango.DELETE("/_db/" + db._name() + "/_api/analyzer/text_de");
           assertEqual(403, res.code, `${name} was able to delete analyzer although we had insufficient rights`);
         }
       };
-      
-      suite.testUpdateViewByPropertyExceptPartialLinks = function() {
+
+      suite.testUpdateViewByPropertyExceptPartialLinks = function () {
         assertTrue(rootTestView(testViewName),
           'Precondition failed, view was not found');
 
@@ -382,7 +391,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
         }
       };
 
-      suite.testViewByPropertyExceptLinksFull = function() {
+      suite.testViewByPropertyExceptLinksFull = function () {
         assertTrue(rootTestView(testViewName),
           'Precondition failed, view was not found');
 
@@ -400,14 +409,14 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
         }
       };
 
-      suite.testViewByExistingLinkUpdatePartial = function() {
+      suite.testViewByExistingLinkUpdatePartial = function () {
         assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
         if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
           db._view(testViewName).properties({
             links: {
               [testCol1Name]: {
                 includeAllFields: true,
-                analyzers: ["text_de","text_en"]
+                analyzers: ["text_de", "text_en"]
               }
             }
           }, true);
@@ -419,9 +428,9 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
           try {
             db._view(testViewName).properties({
               links: {
-                [testCol1Name] : {
+                [testCol1Name]: {
                   includeAllFields: true,
-                  analyzers: ["text_de","text_en"] 
+                  analyzers: ["text_de", "text_en"]
                 }
               }
             }, true);
@@ -433,7 +442,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
         }
       };
 
-      suite.testViewByExistingLinkUpdateFull = function() {
+      suite.testViewByExistingLinkUpdateFull = function () {
         assertTrue(rootTestView(testViewName),
           'Precondition failed, view was not found');
 
@@ -442,7 +451,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
             links: {
               [testCol1Name]: {
                 includeAllFields: true,
-                analyzers: ["text_de","text_en"]
+                analyzers: ["text_de", "text_en"]
               }
             }
           }, false);
@@ -456,7 +465,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
               links: {
                 [testCol1Name]: {
                   includeAllFields: true,
-                  analyzers: ["text_de","text_en"]
+                  analyzers: ["text_de", "text_en"]
                 }
               }
             }, false);
@@ -467,7 +476,7 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
         }
       };
 
-      suite.testViewByNewLinkToRWCollectionPartial = function() {
+      suite.testViewByNewLinkToRWCollectionPartial = function () {
         if (colLevel['ro'].has(name) && colLevel['none'].has(name)) {
           assertTrue(rootTestView(testViewName), 'Precondition failed, view was not found');
           rootGrantCollection(testCol2Name, name, 'rw');
@@ -507,14 +516,15 @@ for (let testViewType of ["arangosearch", "search-alias"]) {
 
     } else {
       // specific handling for views of type "search-alias"
-      suite.setUp = function() {
-        rootCreateView(testViewName, testViewType, { indexes: [ { collection: testCol1Name, index: indexName } ] });
+      suite.setUp = function () {
+        rootCreateView(testViewName, testViewType, { indexes: [ { collection: testCol1Name,
+index: indexName } ] });
         db._useDatabase(dbName);
         helper.switchUser('root', dbName);
       };
     }
 
-    jsunity.run(function() {
+    jsunity.run(function () {
       return deriveTestSuiteWithnamespace(
         UserRightsManagement(name),
         suite,

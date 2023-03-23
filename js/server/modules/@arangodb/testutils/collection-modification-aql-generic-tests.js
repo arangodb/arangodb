@@ -1,34 +1,34 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
-/*global arango */
+/* jshint globalstrict:true, strict:true, esnext: true */
+/* global arango */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const {CollectionWrapper} = require("@arangodb/testutils/collection-wrapper-util");
-const {assertEqual, assertTrue, assertNotEqual}
-  = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertNotEqual} =
+  jsunity.jsUnity.assertions;
 const {db} = require("@arangodb");
 
 // The post fix is used to make testName unique accross suites in the same file
@@ -92,7 +92,8 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         assertNotEqual(doc[key], value);
       }
 
-      result = db._query(updateAql, {key, patch}).toArray();
+      result = db._query(updateAql, {key,
+patch}).toArray();
       assertEqual(1, result.length, `Patching document with key ${key}`);
       // Patch needs to update the revision
       assertNotEqual(result[0]._rev, rev);
@@ -114,7 +115,8 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         rev = result[0]._rev;
       }
       // Locally apply the patch from before
-      let updatedDoc = {...doc, ...patch};
+      let updatedDoc = {...doc,
+...patch};
 
       if (isEnterpriseGraphEdge) {
         // As in EnterpriseGraphs, the _key cannot be given during creation,
@@ -129,9 +131,11 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         assertNotEqual(updatedDoc[key], value);
       }
       // Locally apply the replace
-      updatedDoc = {...updatedDoc, ...replace};
+      updatedDoc = {...updatedDoc,
+...replace};
 
-      result = db._query(replaceAql, {key, updatedDoc}).toArray();
+      result = db._query(replaceAql, {key,
+updatedDoc}).toArray();
       assertEqual(1, result.length, `Replacing document with key ${key}`);
       // Replace needs to update the revision
       assertNotEqual(result[0]._rev, rev);
@@ -185,7 +189,7 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
     [`testSpecialKeysInUrls${testNamePostfix}`]: function () {
       // This is supposed to test special characters in URLs
       runAllSingleDocumentOperationsOnDocuments(collectionWrapper.documentGeneratorWithKeys(collectionWrapper.specialKeyGenerator()));
-    },
+    }
   };
 };
 

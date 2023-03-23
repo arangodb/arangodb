@@ -1,36 +1,36 @@
-/*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined */
+/* jshint globalstrict:false, strict:false */
+/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test indexes
-///
-/// DISCLAIMER
-///
-/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author 2018 Simon Grätzer, Dan Larkin-York
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test indexes
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author 2018 Simon Grätzer, Dan Larkin-York
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
 
-function backgroundIndexSuite() {
+function backgroundIndexSuite () {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
   const tasks = require("@arangodb/tasks");
@@ -53,7 +53,7 @@ function backgroundIndexSuite() {
       if (newTasksCompleted === 0) {
         break;
       }
-      if (time() - start > deadline) { 
+      if (time() - start > deadline) {
         fail(`Timeout after ${deadline / 60} minutes`);
       }
       internal.wait(0.5, false);
@@ -79,33 +79,32 @@ function backgroundIndexSuite() {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       db._create(cn);
     },
 
-    tearDown : function () {
-      tasks.get().forEach(function(task) {
+    tearDown: function () {
+      tasks.get().forEach(function (task) {
         if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
           try {
             tasks.unregister(task);
-          }
-          catch (err) {
+          } catch (err) {
           }
         }
       });
       db._drop(cn);
     },
-    
+
     testInsertParallelNonUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
-      let x = 10; 
+      let x = 10;
       while (x-- > 0) {
-        let docs = []; 
+        let docs = [];
         for (let i = 0; i < 1000; i++) {
-          docs.push({value:i});
-        } 
+          docs.push({value: i});
+        }
         c.save(docs);
       }
 
@@ -121,19 +120,24 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexInsert" + i,
+command: command });
       }
 
       // create the index on the main thread
-      c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});
+      c.ensureIndex({type: 'persistent',
+fields: ['value'],
+unique: false,
+inBackground: true});
 
       // wait for insertion tasks to complete
       waitForTasks();
-      
+
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
-        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                               {'@coll': cn, 'val': i}, {count:true});
+        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1",
+                               {'@coll': cn,
+'val': i}, {count: true});
         assertEqual(cursor.count(), 100);
       }
 
@@ -155,12 +159,12 @@ function backgroundIndexSuite() {
     testInsertParallelNonUnique2: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
-      let x = 10; 
+      let x = 10;
       while (x-- > 0) {
-        let docs = []; 
+        let docs = [];
         for (let i = 0; i < 1000; i++) {
-          docs.push({value:i});
-        } 
+          docs.push({value: i});
+        }
         c.save(docs);
       }
 
@@ -170,7 +174,8 @@ function backgroundIndexSuite() {
         if (i === 6) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i,
+command: command });
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = 10;
@@ -181,17 +186,19 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexInsert" + i,
+command: command });
       }
 
       // wait for tasks to complete
       waitForTasks();
-      
+
       // basic checks
       assertEqual(c.count(), 100000);
       for (let i = 0; i < 1000; i++) { // 100 entries of each value [0,999]
-        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                               {'@coll': cn, 'val': i}, {count:true});
+        let cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1",
+                               {'@coll': cn,
+'val': i}, {count: true});
         assertEqual(cursor.count(), 100);
       }
 
@@ -215,21 +222,25 @@ function backgroundIndexSuite() {
       // first lets add some initial documents
       let x = 0;
       while (x < 5000) {
-        let docs = []; 
+        let docs = [];
         for (let i = 0; i < 1000; i++) {
           docs.push({value: x++});
-        } 
+        }
         c.save(docs);
       }
 
-      const idxDef = {type: 'persistent', fields: ['value'], unique: true, inBackground: true};
+      const idxDef = {type: 'persistent',
+fields: ['value'],
+unique: true,
+inBackground: true};
       // lets insert the rest via tasks
       for (let i = 1; i < 5; ++i) {
         if (i === 2) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           let idx = c.ensureIndex(${JSON.stringify(idxDef)});
           c.save({_key: 'myindex', index: idx});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i,
+command: command });
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        let x = ${i} * 5000; 
@@ -240,12 +251,13 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexInsert" + i,
+command: command });
       }
 
       // wait for insertion tasks to complete
       waitForTasks();
-      
+
       // basic checks
       assertEqual(c.count(), 25001);
 
@@ -257,8 +269,9 @@ function backgroundIndexSuite() {
       assertEqual(cmp.id, idx.id);
 
       for (let i = 0; i < 25000; i++) {
-        const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
-                               {'@coll': cn, 'val': i}, {count:true});
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1",
+                               {'@coll': cn,
+'val': i}, {count: true});
         assertEqual(cursor.count(), 1);
       }
 
@@ -281,10 +294,10 @@ function backgroundIndexSuite() {
       // first lets add some initial documents
       let x = 0;
       while (x < 10000) {
-        let docs = []; 
-        for(let i = 0; i < 1000; i++) {
+        let docs = [];
+        for (let i = 0; i < 1000; i++) {
           docs.push({value: x++});
-        } 
+        }
         c.save(docs);
       }
 
@@ -299,7 +312,8 @@ function backgroundIndexSuite() {
                          } 
                          c.save(docs);
                        }`;
-        tasks.register({ name: "UnitTestsIndexInsert" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexInsert" + i,
+command: command });
       }
 
       // now insert a document that will cause a conflict while indexing
@@ -307,29 +321,33 @@ function backgroundIndexSuite() {
 
       try {
         // create the index on the main thread
-        c.ensureIndex({type: 'persistent', fields: ['value'], unique: true, inBackground: true});
+        c.ensureIndex({type: 'persistent',
+fields: ['value'],
+unique: true,
+inBackground: true});
         fail();
-      } catch(err) {
+      } catch (err) {
         assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum, err);
       }
 
       // wait for insertion tasks to complete
       waitForTasks();
-      
+
       // basic checks
       assertEqual(c.count(), 50001);
     },
-    
+
     testRemoveParallel: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 0;
       while (x < 100000) {
-        let docs = []; 
-        for(let i = 0; i < 1000; i++) {
-          docs.push({_key: "test_" + x, value: x});
+        let docs = [];
+        for (let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x,
+value: x});
           ++x;
-        } 
+        }
         c.save(docs);
       }
 
@@ -340,7 +358,8 @@ function backgroundIndexSuite() {
         if (i === 3) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i,
+command: command });
         }
 
         let command = `const c = require("internal").db._collection("${cn}"); 
@@ -359,12 +378,13 @@ function backgroundIndexSuite() {
                            removed = (res.filter(r => !r.error).length === 0);
                          }
                        }`;
-        tasks.register({ name: "UnitTestsIndexRemove" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexRemove" + i,
+command: command });
       }
 
       // wait for insertion tasks to complete
       waitForTasks();
-      
+
       // basic checks
       assertEqual(c.count(), 50000);
       for (let i = 0; i < 10; i++) { // check for remaining docs via index
@@ -372,8 +392,9 @@ function backgroundIndexSuite() {
         for (let x = i * 10000 + 5000; x < (i + 1) * 10000; x++) {
           invalues.push(x);
         }
-        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1", 
-                                   {'@coll': cn, 'val': invalues }, {count:true});
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1",
+                                   {'@coll': cn,
+'val': invalues }, {count: true});
         assertEqual(cursor.count(), 5000);
       }
 
@@ -382,8 +403,9 @@ function backgroundIndexSuite() {
         for (let x = i * 10000; x < i * 10000 + 5000; x++) {
           invalues.push(x);
         }
-        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1", 
-                                 {'@coll': cn, 'val': invalues }, {count:true});
+        const cursor = db._query("FOR doc IN @@coll FILTER doc.value in @val RETURN 1",
+                                 {'@coll': cn,
+'val': invalues }, {count: true});
         assertEqual(cursor.count(), 0, [i, invalues]);
       }
 
@@ -407,14 +429,15 @@ function backgroundIndexSuite() {
       // first lets add some initial documents
       let x = 0;
       while (x < 100000) {
-        let docs = []; 
-        for(let i = 0; i < 1000; i++) {
-          docs.push({_key: "test_" + x, value: x});
+        let docs = [];
+        for (let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x,
+value: x});
           ++x;
-        } 
+        }
         c.save(docs);
       }
-      
+
       assertEqual(c.count(), 100000);
 
       // lets update all via tasks
@@ -422,7 +445,8 @@ function backgroundIndexSuite() {
         if (i === 5) { // create the index in a task
           let command = `const c = require("internal").db._collection("${cn}"); 
           c.ensureIndex({type: 'persistent', fields: ['value'], unique: false, inBackground: true});`;
-          tasks.register({ name: "UnitTestsIndexCreateIDX" + i, command: command });
+          tasks.register({ name: "UnitTestsIndexCreateIDX" + i,
+command: command });
         }
         let command = `const c = require("internal").db._collection("${cn}"); 
                        if (!c) {
@@ -441,22 +465,25 @@ function backgroundIndexSuite() {
                            } catch (err) {}
                          }
                        }`;
-        tasks.register({ name: "UnitTestsIndexUpdate" + i, command: command });
+        tasks.register({ name: "UnitTestsIndexUpdate" + i,
+command: command });
       }
 
       // wait for insertion tasks to complete
       waitForTasks();
-      
+
       // basic checks
       assertEqual(c.count(), 100000);
       // check for new entries via index
-      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
-                                  {'@coll': cn, 'val': 100000}, {count:true});
+      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1",
+                                  {'@coll': cn,
+'val': 100000}, {count: true});
       assertEqual(newCursor.count(), 100000);
 
       // check for old entries via index
-      const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1", 
-                                  {'@coll': cn, 'val': 100000}, {count:true});
+      const oldCursor = db._query("FOR doc IN @@coll FILTER doc.value < @val RETURN 1",
+                                  {'@coll': cn,
+'val': 100000}, {count: true});
       assertEqual(oldCursor.count(), 0);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -479,17 +506,21 @@ function backgroundIndexSuite() {
       // first lets add some initial documents
       let x = 0;
       while (x < 25000) {
-        let docs = []; 
-        for(let i = 0; i < 1000; i++) {
-          docs.push({_key: "test_" + x, value: x});
+        let docs = [];
+        for (let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x,
+value: x});
           ++x;
-        } 
+        }
         c.save(docs);
       }
-      
+
       assertEqual(c.count(), 25000);
 
-      const idxDef = {type: 'persistent', fields: ['value'], unique: false, inBackground: true};
+      const idxDef = {type: 'persistent',
+fields: ['value'],
+unique: false,
+inBackground: true};
       let idx = c.ensureIndex(idxDef);
 
       assertEqual(c.getIndexes().length, 2);
@@ -503,8 +534,9 @@ function backgroundIndexSuite() {
       assertEqual(c.getIndexes().length, 2);
 
       // check for entries via index
-      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
-                                  {'@coll': cn, 'val': 12500}, {count:true});
+      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1",
+                                  {'@coll': cn,
+'val': 12500}, {count: true});
       assertEqual(newCursor.count(), 12500);
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
@@ -520,10 +552,10 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    },
+    }
 
   };
-  
+
 }
 
 jsunity.run(backgroundIndexSuite);

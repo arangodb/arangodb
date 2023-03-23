@@ -1,28 +1,28 @@
-/*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual, assertNotEqual */
+/* jshint strict: false, sub: true */
+/* global print, assertTrue, assertEqual, assertNotEqual */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Simon Grätzer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Simon Grätzer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const internal = require('internal');
@@ -57,7 +57,7 @@ const jwtRoot = crypto.jwtEncode(jwtSecret, {
 
 const cname = "UnitTestActiveFailover";
 
-/*try {
+/* try {
   let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
   Object.keys(globals).forEach(g => {
     global[g] = globals[g];
@@ -65,26 +65,26 @@ const cname = "UnitTestActiveFailover";
 } catch (e) {
 }*/
 
-function getUrl(endpoint) {
+function getUrl (endpoint) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 }
 
-function baseUrl() {
+function baseUrl () {
   return getUrl(arango.getEndpoint());
 }
 
-function connectToServer(leader) {
+function connectToServer (leader) {
   arango.reconnect(leader, "_system", "root", "");
   db._flushCache();
 }
 
 // getEndponts works with any server
-function getClusterEndpoints() {
-  //let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+function getClusterEndpoints () {
+  // let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
   var res = request.get({
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
-      bearer: jwtRoot,
+      bearer: jwtRoot
     },
     timeout: 300
   });
@@ -98,11 +98,11 @@ function getClusterEndpoints() {
   return res.json.endpoints.map(e => e.endpoint);
 }
 
-function getLoggerState(endpoint) {
+function getLoggerState (endpoint) {
   var res = request.get({
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
-      bearer: jwtRoot,
+      bearer: jwtRoot
     },
     timeout: 300
   });
@@ -113,11 +113,11 @@ function getLoggerState(endpoint) {
   return arangosh.checkRequestResult(res.json);
 }
 
-function getApplierState(endpoint) {
+function getApplierState (endpoint) {
   var res = request.get({
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
-      bearer: jwtRoot,
+      bearer: jwtRoot
     },
     timeout: 300
   });
@@ -129,7 +129,7 @@ function getApplierState(endpoint) {
 }
 
 // check the servers are in sync with the leader
-function checkInSync(leader, servers, ignore) {
+function checkInSync (leader, servers, ignore) {
   print("Checking in-sync state with lead: ", leader);
 
   const leaderTick = getLoggerState(leader).state.lastLogTick;
@@ -159,18 +159,20 @@ function checkInSync(leader, servers, ignore) {
   return false;
 }
 
-function checkData(server, allowDirty = false) {
+function checkData (server, allowDirty = false) {
   print("Checking data of ", server);
   // Async agency cache should have received it's data
-  let trickleDown = request.get({ 
-    url: getUrl(server) + "/_api/cluster/agency-cache", auth: { bearer: jwtRoot },
-    headers: { "X-Arango-Allow-Dirty-Read": allowDirty }, timeout: 3 
+  let trickleDown = request.get({
+    url: getUrl(server) + "/_api/cluster/agency-cache",
+auth: { bearer: jwtRoot },
+    headers: { "X-Arango-Allow-Dirty-Read": allowDirty },
+timeout: 3
   });
   require('internal').wait(2.0);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
-      bearer: jwtRoot,
+      bearer: jwtRoot
     },
     headers: {
       "X-Arango-Allow-Dirty-Read": allowDirty
@@ -184,14 +186,14 @@ function checkData(server, allowDirty = false) {
   return res.json.count;
 }
 
-function readAgencyValue(path) {
+function readAgencyValue (path) {
   let agents = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
   print("Querying agency... (", path, ")");
   var res = request.post({
     url: agents[0].url + "/_api/agency/read",
     auth: {
-      bearer: jwtSuperuser,
+      bearer: jwtSuperuser
     },
     body: JSON.stringify([[path]]),
     timeout: 300
@@ -200,12 +202,12 @@ function readAgencyValue(path) {
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
   assertTrue(res.hasOwnProperty('json'));
-  //print("Agency response ", res.json);
+  // print("Agency response ", res.json);
   return arangosh.checkRequestResult(res.json);
 }
 
 // resolve leader from agency
-function leaderInAgency() {
+function leaderInAgency () {
   let i = 10;
   do {
     let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
@@ -219,7 +221,7 @@ function leaderInAgency() {
   throw "Unable to resole leader from agency";
 }
 
-function checkForFailover(leader) {
+function checkForFailover (leader) {
   print("Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
@@ -255,7 +257,7 @@ function checkForFailover(leader) {
   throw "No failover occured";
 }
 
-function waitUntilHealthStatusIs(isHealthy, isFailed) {
+function waitUntilHealthStatusIs (isHealthy, isFailed) {
   print("Waiting for health status to be healthy: ", JSON.stringify(isHealthy), " failed: ", JSON.stringify(isFailed));
   // Wait 25 seconds, sleep 5 each run
   for (const start = Date.now(); (Date.now() - start) / 1000 < 25; internal.wait(5.0)) {
@@ -289,7 +291,7 @@ function waitUntilHealthStatusIs(isHealthy, isFailed) {
   return false;
 }
 
-function loadFoxxIntoZip(path) {
+function loadFoxxIntoZip (path) {
   let zip = utils.zipDirectory(path);
   let content = fs.readFileSync(zip);
   fs.remove(zip);
@@ -298,7 +300,7 @@ function loadFoxxIntoZip(path) {
     buffer: content
   };
 }
-function checkFoxxService(readOnly) {
+function checkFoxxService (readOnly) {
   const onlyJson = {
     'accept': 'application/json',
     'accept-content-type': 'application/json'
@@ -311,7 +313,7 @@ function checkFoxxService(readOnly) {
     '/_db/_system/itz/index',
     '/_db/_system/crud/xxx'
   ].forEach(route => {
-    for (let i=0; i < 200; i++) {
+    for (let i = 0; i < 200; i++) {
       try {
         reply = arango.GET_RAW(route, onlyJson);
         if (reply.code === 200) {
@@ -380,7 +382,7 @@ function checkFoxxService(readOnly) {
   }
 }
 
-function installFoxx(mountpoint, which, mode) {
+function installFoxx (mountpoint, which, mode) {
   let headers = {};
   let content;
   if (which.type === 'js') {
@@ -419,7 +421,7 @@ function installFoxx(mountpoint, which, mode) {
 // Testsuite that quickly checks some of the basic premises of
 // the active failover functionality. It is designed as a quicker
 // variant of the node resilience tests (for active failover).
-function ActiveFailoverSuite() {
+function ActiveFailoverSuite () {
   let servers;
   let firstLeader;
   let suspended = [];
@@ -444,8 +446,8 @@ function ActiveFailoverSuite() {
     },
 
     tearDown: function () {
-      //db._collection(cname).drop();
-      //serverTeardown();
+      // db._collection(cname).drop();
+      // serverTeardown();
 
       suspended.forEach(arangod => {
         print(`${Date()} Teardown: Resuming: ${arangod.name} ${arangod.pid}`);
@@ -463,11 +465,11 @@ function ActiveFailoverSuite() {
         let endpoints = getClusterEndpoints();
         if (endpoints.length === servers.length && endpoints[0] === currentLead) {
           db._collection(cname).truncate({ compact: false });
-          return ;
+          return;
         }
         print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
         internal.wait(1); // settle down
-      } while(i --> 0);
+      } while (i-- > 0);
 
       let endpoints = getClusterEndpoints();
       print("endpoints: ", endpoints, " servers: ", servers);
@@ -581,7 +583,7 @@ function ActiveFailoverSuite() {
 
       print("Starting data creation task on ", currentLead, " (expect it to fail later)");
       connectToServer(currentLead);
-      /// this task should stop once the server becomes a slave
+      // / this task should stop once the server becomes a slave
       var task = tasks.register({
         name: "UnitTestsFailover",
         command: `
@@ -609,7 +611,7 @@ function ActiveFailoverSuite() {
 
       // check our leader stays intact, while remaining followers fail
       let i = 20;
-      //let expected = servers.length - suspended.length; // should be 2
+      // let expected = servers.length - suspended.length; // should be 2
       do {
         endpoints = getClusterEndpoints();
         assertEqual(endpoints[0], currentLead, "Unwanted leadership failover");
@@ -623,7 +625,7 @@ function ActiveFailoverSuite() {
       let atLeast = 0;
       while (atLeast < upper) {
         internal.wait(1.0);
-        //update atLeast
+        // update atLeast
         atLeast = checkData(nextLead, true);
       }
 
@@ -639,7 +641,7 @@ function ActiveFailoverSuite() {
       // Wait until all servers report healthy again
       assertTrue(waitUntilHealthStatusIs(healthyList, []));
 
-      print("Leader inserted ", upper, " documents so far desired follower has " , atLeast);
+      print("Leader inserted ", upper, " documents so far desired follower has ", atLeast);
       print("Suspending leader ", currentLead);
       global.instanceManager.arangods.forEach(arangod => {
         if (arangod.endpoint === currentLead) {
@@ -673,14 +675,14 @@ function ActiveFailoverSuite() {
     },
 
     // try to failback to the original leader
-    testFailback: function() {
+    testFailback: function () {
       if (currentLead === firstLeader) {
         return; // nevermind then
       }
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      /*if (checkData(currentLead) != 10000) {
+      /* if (checkData(currentLead) != 10000) {
         print("ERROR! DODEBUG")
         while(1){}
       }*/
@@ -710,7 +712,7 @@ function ActiveFailoverSuite() {
     },
 
     // Try to cleanup everything that was created
-    /*testCleanup: function () {
+    /* testCleanup: function () {
 
       let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
       assertNotEqual(res, null);
@@ -731,7 +733,7 @@ function ActiveFailoverSuite() {
       const res = request.get({
         url: getUrl(currentLead) + "/_admin/cluster/health",
         auth: {
-          bearer: jwtRoot,
+          bearer: jwtRoot
         },
         timeout: 30
       });
@@ -740,16 +742,17 @@ function ActiveFailoverSuite() {
       expect(res).to.be.an.instanceof(request.Response);
       // expect(res).to.be.have.property('statusCode', 200);
       expect(res).to.have.property('json');
-      expect(res.json).to.include({error: false, code: 200});
+      expect(res.json).to.include({error: false,
+code: 200});
       expect(res.json).to.have.property('Health');
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ActiveFailoverSuite);
 

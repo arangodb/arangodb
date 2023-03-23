@@ -49,7 +49,7 @@ const gh = require('@arangodb/graph/helpers');
  *     ↙ ↲ ↘  // Edge from A to the edge connecting "A->B"
  *   B       C
  */
-function edgeConnectedFromVertexToEdge() {
+function edgeConnectedFromVertexToEdge () {
   const gn = 'UnitTestGraph';
   const gn2 = 'UnitTestGraph2';
   const en2 = 'UnitTestEdgeCollection2';
@@ -118,9 +118,9 @@ function edgeConnectedFromVertexToEdge() {
         start: vertex.A
       };
 
-      let checkFoundVertices = function(result) {
+      let checkFoundVertices = function (result) {
         // sort returned array
-        result = _.orderBy(result, ['_key'],['asc']);
+        result = _.orderBy(result, ['_key'], ['asc']);
         assertEqual(result[0]._key, 'AB');
         assertEqual(result[1]._key, 'B');
         assertEqual(result[2]._key, 'C');

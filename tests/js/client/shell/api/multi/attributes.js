@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/document";
@@ -40,21 +40,22 @@ function dealing_with_attribute_nameSuite () {
   let cn = "UnitTestsCollectionAttributes";
   return {
 
-    setUp: function() {
+    setUp: function () {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // creates a document with an empty attribute ;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_creates_a_document_with_an_empty_attribute_name: function() {
+    test_creates_a_document_with_an_empty_attribute_name: function () {
       let cmd = api + "?collection=" + cn;
-      let body = { "" : "a", "foo" : "b" };
+      let body = { "": "a",
+"foo": "b" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -68,19 +69,20 @@ function dealing_with_attribute_nameSuite () {
       assertTrue(doc.parsedBody.hasOwnProperty(('foo')));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // queries a document with an empty attribute ;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_queries_a_document_with_an_empty_attribute_name: function() {
+    test_queries_a_document_with_an_empty_attribute_name: function () {
       let cmd = api + "?collection=" + cn;
-      let body = { "" : "a", "foo" : "b" };
+      let body = { "": "a",
+"foo": "b" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
 
       cmd = "/_api/simple/all";
-      body = { "collection" : cn };
+      body = { "collection": cn };
       doc = arango.PUT_RAW(cmd, body);
 
       let documents = doc.parsedBody['result'];
@@ -90,13 +92,19 @@ function dealing_with_attribute_nameSuite () {
       assertTrue(documents[0].hasOwnProperty(('foo')));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // creates a document with reserved attribute names;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_creates_a_document_with_reserved_attribute_names: function() {
+    test_creates_a_document_with_reserved_attribute_names: function () {
       let cmd = api + "?collection=" + cn;
-      let body = { "_rev" : "99", "foo" : "002", "_id" : "meow", "_from" : "a", "_to" : "b", "_test" : "c", "meow" : "d" };
+      let body = { "_rev": "99",
+"foo": "002",
+"_id": "meow",
+"_from": "a",
+"_to": "b",
+"_test": "c",
+"meow": "d" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -118,13 +126,20 @@ function dealing_with_attribute_nameSuite () {
       assertEqual(doc.parsedBody['foo'], '002');
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // nested attribute names;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_creates_a_document_with_nested_attribute_names: function() {
+    test_creates_a_document_with_nested_attribute_names: function () {
       let cmd = api + "?collection=" + cn;
-      let body = { "a" : "1", "b" : { "b" : "2" , "a" : "3", "": "4", "_key": "moetoer", "_from": "5", "_lol" : false, "c" : 6 } };
+      let body = { "a": "1",
+"b": { "b": "2",
+"a": "3",
+"": "4",
+"_key": "moetoer",
+"_from": "5",
+"_lol": false,
+"c": 6 } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -145,14 +160,20 @@ function dealing_with_attribute_nameSuite () {
       assertTrue(doc.parsedBody['b'].hasOwnProperty(('b')));
       assertTrue(doc.parsedBody['b'].hasOwnProperty(('a')));
       assertTrue(doc.parsedBody['b'].hasOwnProperty(('c')));
-      assertEqual(doc.parsedBody['b'], { "": "4", "b" : "2", "a" : "3", "_key" : "moetoer", "_from" : "5", "_lol" : false, "c" : 6 });
+      assertEqual(doc.parsedBody['b'], { "": "4",
+"b": "2",
+"a": "3",
+"_key": "moetoer",
+"_from": "5",
+"_lol": false,
+"c": 6 });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // duplicate attribute names;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_creates_a_document_with_duplicate_attribute_names: function() {
+    test_creates_a_document_with_duplicate_attribute_names: function () {
       let cmd = api + "?collection=" + cn;
       let body = '{ "a" : "1", "b" : "2", "a" : "3" }';
       let doc = arango.POST_RAW(cmd, body);
@@ -165,11 +186,11 @@ function dealing_with_attribute_nameSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_CORRUPTED_JSON.code);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // nested duplicate attribute names;
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
 
-    test_creates_a_document_with_nested_duplicate_attribute_names: function() {
+    test_creates_a_document_with_nested_duplicate_attribute_names: function () {
       let cmd = api + "?collection=" + cn;
       let body = '{ "a" : "1", "b" : { "b" : "2" , "c" : "3", "b": "4" } }';
       let doc = arango.POST_RAW(cmd, body);

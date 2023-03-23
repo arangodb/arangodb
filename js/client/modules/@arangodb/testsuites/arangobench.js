@@ -118,7 +118,7 @@ const benchTodos = [
   'threads': '2',
   'test-case': 'persistent-index',
   'complexity': '1'
-},{
+}, {
   'histogram.generate': true,
   'requests': '1',
   'threads': '1',
@@ -126,7 +126,7 @@ const benchTodos = [
   'keep-alive': 'true',
   'server.database': 'arangobench_testdb',
   'create-database': true
-},{
+}, {
   'histogram.generate': true,
   'requests': '100',
   'threads': '1',
@@ -136,7 +136,7 @@ const benchTodos = [
   // test with Unicode database name
   'server.database': 'c\\1234 @!§$ имя базы данных юникода!\'',
   'create-database': true
-},{
+}, {
   'histogram.generate': true,
   'requests': '100',
   'threads': '1',
@@ -155,8 +155,8 @@ const benchTodos = [
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true,
   'collection': 'testCollection',
-  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
-  //the double @s will be removed when this feature is deprecated
+  // these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  // the double @s will be removed when this feature is deprecated
   'custom-query': 'FOR doc IN @@lower..@upper RETURN doc',
   'custom-query-bindvars': '{"lower": 1, "upper": 10}'
 }, {
@@ -169,8 +169,8 @@ const benchTodos = [
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true,
   'collection': 'testCollection',
-  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
-  //the double @s will be removed when this feature is deprecated
+  // these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  // the double @s will be removed when this feature is deprecated
   'custom-query': 'FOR doc IN @@@@collectionName FILTER doc.name == @@name RETURN doc',
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "value": "test"}',
   'expected-failure': true
@@ -184,8 +184,8 @@ const benchTodos = [
   'server.database': '이것은 테스트입니까 ! @abc " mötör',
   'create-database': true,
   'collection': 'testCollection',
-  //these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
-  //the double @s will be removed when this feature is deprecated
+  // these flags have double @s because of the feature that trims the @ for escaping it in configuration files in /etc
+  // the double @s will be removed when this feature is deprecated
   'custom-query': 'FOR doc IN @@@@testCollection FILTER doc.name == @@name RETURN doc',
   'custom-query-bindvars': '{"@@collectionName": "testCollection", "name": "test"}',
   'expected-failure': true
@@ -258,7 +258,7 @@ function arangobench (options) {
       const expectFailure = (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']);
 
       continueTesting = instanceManager.checkInstanceAlive();
-        
+
       if (benchTodo.hasOwnProperty('create-database') && benchTodo['create-database']) {
         if (internal.db._databases().find(
           dbName => dbName === benchTodo['server.database']) !== undefined) {
@@ -321,6 +321,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipArangoBench'] = false;
   opts['skipArangoBenchNonConnKeepAlive'] = true;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

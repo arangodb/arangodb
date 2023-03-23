@@ -64,12 +64,18 @@ var createBaseGraph = function () {
   edgeCollection = db[edgeName];
 
   // populate graph
-  vertices.A = vertexCollection.save({_key: 'A', theTruth: true})._id;
-  vertices.B = vertexCollection.save({_key: 'B', theTruth: true})._id;
-  vertices.C = vertexCollection.save({_key: 'C', theTruth: true})._id;
-  vertices.D = vertexCollection.save({_key: 'D', theTruth: false})._id;
-  vertices.E = vertexCollection.save({_key: 'E', theTruth: false})._id;
-  vertices.F = vertexCollection.save({_key: 'F', theTruth: false})._id;
+  vertices.A = vertexCollection.save({_key: 'A',
+theTruth: true})._id;
+  vertices.B = vertexCollection.save({_key: 'B',
+theTruth: true})._id;
+  vertices.C = vertexCollection.save({_key: 'C',
+theTruth: true})._id;
+  vertices.D = vertexCollection.save({_key: 'D',
+theTruth: false})._id;
+  vertices.E = vertexCollection.save({_key: 'E',
+theTruth: false})._id;
+  vertices.F = vertexCollection.save({_key: 'F',
+theTruth: false})._id;
 
   edges.AB = edgeCollection.save(vertices.A, vertices.B, {theTruth: true})._id;
   edges.BC = edgeCollection.save(vertices.B, vertices.C, {theTruth: true})._id;
@@ -83,7 +89,7 @@ var createBaseGraph = function () {
  * are adjusted. Means, as soon as we've also implemented the ClusterProvider in our GraphRefactor for BFS, DFS
  * and WEIGHTED traversals.
  */
-function dfsSingleServerDevelopmentEdgeNameSuite() {
+function dfsSingleServerDevelopmentEdgeNameSuite () {
   const refactorDisabled = `OPTIONS {"refactor": false}`;
   const refactorEnabled = `OPTIONS {"refactor": true} `;
   return {

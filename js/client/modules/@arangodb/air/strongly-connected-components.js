@@ -32,13 +32,13 @@ const db = internal.db;
 
 // ee/ce check + gm selection
 const isEnterprise = require("internal").isEnterprise();
-const graphModule = isEnterprise? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
+const graphModule = isEnterprise ? require("@arangodb/smart-graph") : require("@arangodb/general-graph");
 
 exports.strongly_connected_components_program = strongly_connected_components_program;
 exports.strongly_connected_components = strongly_connected_components;
 exports.test = test;
 
-function strongly_connected_components_program(resultField) {
+function strongly_connected_components_program (resultField) {
   return {
     resultField: resultField,
     // TODO: Karpott.
@@ -51,7 +51,7 @@ function strongly_connected_components_program(resultField) {
         accumulatorType: "custom",
         valueType: "any",
         customType: "or"
-      },
+      }
     },
     vertexAccumulators: {
       forwardMin: {
@@ -78,13 +78,13 @@ function strongly_connected_components_program(resultField) {
         accumulatorType: "custom",
         valueType: "any",
         customType: "list"
-      },
+      }
     },
     customAccumulators: {
       or: orAccumulator(),
       list: listAccumulator(),
       store: storeAccumulator(false),
-      min: minAccumulator(),
+      min: minAccumulator()
     },
     phases: [
       {
@@ -92,7 +92,7 @@ function strongly_connected_components_program(resultField) {
         initProgram: ["seq",
           ["accum-set!", "isDisabled", false],
           "vote-halt"],
-        updateProgram: "vote-halt",
+        updateProgram: "vote-halt"
       },
       {
         // Active vertices broadcast their pregel id to all their neighbours
@@ -103,9 +103,9 @@ function strongly_connected_components_program(resultField) {
             [
               ["not", ["accum-ref", "isDisabled"]],
               ["send-to-all-neighbours", "activeInbound", ["this-pregel-id"]]
-            ],
+            ]
           ], // else
-          "vote-halt",
+          "vote-halt"
         ],
         updateProgram: "vote-halt",
         onHalt: ["seq",
@@ -120,8 +120,8 @@ function strongly_connected_components_program(resultField) {
             [true, // else
               ["seq",
                 ["accum-set!", "forwardMin", ["this-unique-id"]],
-                "vote-active"],
-            ],
+                "vote-active"]
+            ]
           ]],
         updateProgram: [
           "if",
@@ -130,8 +130,8 @@ function strongly_connected_components_program(resultField) {
             ["seq",
               ["send-to-all-neighbours", "forwardMin", ["accum-ref", "forwardMin"]],
               "vote-halt"
-            ]],
-        ],
+            ]]
+        ]
       },
       {
         name: "backward",
@@ -146,8 +146,8 @@ function strongly_connected_components_program(resultField) {
               ["seq",
                 ["finish"]]],
             [true, ["seq",
-              ["goto-phase", "broadcast"]]],
-          ],
+              ["goto-phase", "broadcast"]]]
+          ]
         ],
         initProgram: ["seq",
           ["if",
@@ -156,7 +156,7 @@ function strongly_connected_components_program(resultField) {
               ["seq",
                 ["accum-set!", "backwardMin", ["accum-ref", "forwardMin"]],
                 "vote-active"]],
-            [true, ["seq", "vote-halt"]],
+            [true, ["seq", "vote-halt"]]
           ]],
         updateProgram: [
           "if",
@@ -172,18 +172,18 @@ function strongly_connected_components_program(resultField) {
                   ["var-ref", "vertex"],
                   ["accum-ref", "backwardMin"]]],
               ["send-to-global-accum", "converged", true],
-              "vote-halt",
-            ],
+              "vote-halt"
+            ]
           ],
           [true, ["seq",
-            "vote-halt"]],
-        ],
-      },
-    ],
+            "vote-halt"]]
+        ]
+      }
+    ]
   };
 }
 
-function strongly_connected_components(graphName, resultField) {
+function strongly_connected_components (graphName, resultField) {
   return pregel.start(
     "ppa",
     graphName,
@@ -191,7 +191,7 @@ function strongly_connected_components(graphName, resultField) {
   );
 }
 
-function exec_test_scc_on_graph(graphSpec, components = []) {
+function exec_test_scc_on_graph (graphSpec, components = []) {
   let status = testhelpers.wait_for_pregel(
     "Air Strongly Connected Components",
     strongly_connected_components(graphSpec.name, "scc")
@@ -219,7 +219,7 @@ function exec_test_scc_on_graph(graphSpec, components = []) {
   }
 }
 
-function exec_test_scc() {
+function exec_test_scc () {
   let results = [];
   results.push(exec_test_scc_on_graph(examplegraphs.create_complete_graph("testComplete_5shard", 5), [100]));
   try {
@@ -249,6 +249,6 @@ function exec_test_scc() {
   return !results.includes(false);
 }
 
-function test() {
+function test () {
   return exec_test_scc();
 }

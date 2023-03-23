@@ -39,18 +39,23 @@ function runSetup () {
   let c = db._createEdgeCollection('UnitTestsRecovery1');
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ _from: "test/1", _to: "test/" + i, value: i });
+    docs.push({ _from: "test/1",
+_to: "test/" + i,
+value: i });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
- 
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value", "_to"],
+unique: true });
+
   // should trigger range deletion
-  db._drop('UnitTestsRecovery1'); 
+  db._drop('UnitTestsRecovery1');
 
   c = db._create('UnitTestsRecovery2');
   c.save({ }, { waitForSync: true });

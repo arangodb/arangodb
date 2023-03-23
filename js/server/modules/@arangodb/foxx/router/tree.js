@@ -79,13 +79,15 @@ module.exports =
       }
     }
 
-    * findRoutes (suffix) {
-      const result = [{router: this.router, path: [], suffix: suffix}];
-      yield * findRoutes(this.root, result, suffix, []);
+    *findRoutes (suffix) {
+      const result = [{router: this.router,
+path: [],
+suffix: suffix}];
+      yield* findRoutes(this.root, result, suffix, []);
     }
 
-    * flatten () {
-      yield * flatten(this.root, [this.router]);
+    *flatten () {
+      yield* flatten(this.root, [this.router]);
     }
 
     resolve (rawReq) {
@@ -180,9 +182,9 @@ module.exports =
             const op = swagger._methods.length > 1 ? {...operation} : operation;
             pathItem[method] = op;
             if (names.length) {
-              op.operationId = names
-              .map((name, i) => (i ? ucFirst(name) : name.toLowerCase()))
-              .join('');
+              op.operationId = names.
+              map((name, i) => (i ? ucFirst(name) : name.toLowerCase())).
+              join('');
             } else {
               op.operationId = `${METHOD}_${parts.join("_").replace(/[^_a-z]+/gi, "")}`;
             }
@@ -205,7 +207,8 @@ module.exports =
           }
         }
       }
-      return {paths, securitySchemes};
+      return {paths,
+securitySchemes};
     }
 
     reverse (route, routeName, params, suffix) {
@@ -442,13 +445,15 @@ function dispatch (route, req, res, tree) {
   }
 }
 
-function * findRoutes (node, result, suffix, path) {
+function *findRoutes (node, result, suffix, path) {
   const wildcardNode = node.get(tokenize.WILDCARD);
 
   if (wildcardNode && wildcardNode.has($_MIDDLEWARE)) {
     const nodeMiddleware = wildcardNode.get($_MIDDLEWARE);
     result = result.concat(nodeMiddleware.map(
-      (mw) => ({middleware: mw, path: path, suffix: suffix})
+      (mw) => ({middleware: mw,
+path: path,
+suffix: suffix})
     ));
   }
 
@@ -457,7 +462,9 @@ function * findRoutes (node, result, suffix, path) {
     const terminalRoutes = terminalNode && terminalNode.get($_ROUTES) || [];
     for (const endpoint of terminalRoutes) {
       yield result.concat(
-        {endpoint: endpoint, path: path, suffix: suffix}
+        {endpoint: endpoint,
+path: path,
+suffix: suffix}
       );
     }
   } else {
@@ -466,7 +473,7 @@ function * findRoutes (node, result, suffix, path) {
     const suffix2 = suffix.slice(1);
     for (const childNode of [node.get(part), node.get(tokenize.PARAM)]) {
       if (childNode) {
-        yield * findRoutes(childNode, result, suffix2, path2);
+        yield* findRoutes(childNode, result, suffix2, path2);
       }
     }
   }
@@ -476,19 +483,23 @@ function * findRoutes (node, result, suffix, path) {
     if (endpoint.router) {
       const childNode = endpoint.tree.root;
       const result2 = result.concat(
-        {router: endpoint, path: path, suffix: suffix}
+        {router: endpoint,
+path: path,
+suffix: suffix}
       );
       const path2 = [];
-      yield * findRoutes(childNode, result2, suffix, path2);
+      yield* findRoutes(childNode, result2, suffix, path2);
     } else {
       yield result.concat(
-        {endpoint: endpoint, path: path, suffix: suffix}
+        {endpoint: endpoint,
+path: path,
+suffix: suffix}
       );
     }
   }
 }
 
-function * flatten (node, result) {
+function *flatten (node, result) {
   for (let entry of node.entries()) {
     const token = entry[0];
     const child = entry[1];
@@ -498,13 +509,13 @@ function * flatten (node, result) {
       }
       for (const endpoint of child.get($_ROUTES) || []) {
         if (endpoint.router) {
-          yield * flatten(endpoint.tree.root, result.concat(endpoint, endpoint.router));
+          yield* flatten(endpoint.tree.root, result.concat(endpoint, endpoint.router));
         } else {
           yield result.concat(endpoint);
         }
       }
     } else {
-      yield * flatten(child, result);
+      yield* flatten(child, result);
     }
   }
 }

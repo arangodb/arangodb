@@ -29,12 +29,12 @@
 const jsunity = require('jsunity');
 const internal = require("internal");
 
-const dbservers = (function() {
+const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
   return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
-function clusterRebalanceSuite() {
+function clusterRebalanceSuite () {
   return {
     testAddRemoveServerToMaintenance: function () {
       const server = dbservers[0];
@@ -59,7 +59,8 @@ function clusterRebalanceSuite() {
 
     testAddTimeoutServerToMaintenance: function () {
       const server = dbservers[0];
-      let result = arango.PUT(`/_admin/cluster/maintenance/${server}`, {mode: "maintenance", timeout: 5});
+      let result = arango.PUT(`/_admin/cluster/maintenance/${server}`, {mode: "maintenance",
+timeout: 5});
       assertTrue(!result.error);
       assertEqual(result.code, 200);
       internal.sleep(4); // TODO
@@ -73,7 +74,7 @@ function clusterRebalanceSuite() {
         internal.sleep(1);
       }
       assertNotEqual(i, 10);
-    },
+    }
   };
 }
 

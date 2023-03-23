@@ -40,11 +40,11 @@ let { getEndpointById,
       reconnectRetry
     } = require('@arangodb/test-helper');
 
-function quickKeysSuite() {
+function quickKeysSuite () {
   'use strict';
   const cn = 'UnitTestsQuickKeys';
 
-  let createCollection = function(n) {
+  let createCollection = function (n) {
     let c = db._create(cn);
     let docs = [];
     for (let i = 0; i < n; ++i) {
@@ -53,10 +53,10 @@ function quickKeysSuite() {
     c.insert(docs);
   };
 
-  let runTestForCount = function(n, quick, adjustQuickLimit) {
+  let runTestForCount = function (n, quick, adjustQuickLimit) {
     debugSetFailAt(primaryEndpoint, "disableRevisionsAsDocumentIds");
     createCollection(n);
-    
+
     let quickLimit = 1000000;
     if (adjustQuickLimit) {
       debugSetFailAt(primaryEndpoint, "RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
@@ -69,7 +69,7 @@ function quickKeysSuite() {
       if (quick) {
         url += '&quick=true';
       }
-      let keys = arango.POST(url, {}); 
+      let keys = arango.POST(url, {});
       if (n >= quickLimit && quick) {
         assertFalse(keys.hasOwnProperty('id'));
       } else {
@@ -93,54 +93,54 @@ function quickKeysSuite() {
       debugClearFailAt(primaryEndpoint);
       db._drop(cn);
     },
-    
+
     testKeys0: function () {
       runTestForCount(0, false, false);
     },
-    
+
     testKeys1000: function () {
       runTestForCount(1000, false, false);
     },
-    
+
     testKeys5000: function () {
       runTestForCount(5000, false, false);
     },
-    
+
     testKeys0WithLowQuickLimit: function () {
       runTestForCount(0, false, true);
     },
-    
+
     testKeys1000WithLowQuickLimit: function () {
       runTestForCount(1000, false, true);
     },
-    
+
     testKeys5000WithLowQuickLimit: function () {
       runTestForCount(5000, false, true);
     },
-    
+
     testKeys0WithQuick: function () {
       runTestForCount(0, true, false);
     },
-    
+
     testKeys1000WithQuick: function () {
       runTestForCount(1000, true, false);
     },
-    
+
     testKeys5000WithQuick: function () {
       runTestForCount(5000, true, false);
     },
-    
+
     testKeys0WithQuickWithLowQuickLimit: function () {
       runTestForCount(0, true, true);
     },
-    
+
     testKeys1000WithQuickWithLowQuickLimit: function () {
       runTestForCount(1000, true, true);
     },
-    
+
     testKeys5000WithQuickWithLowQuickLimit: function () {
       runTestForCount(5000, true, true);
-    },
+    }
   };
 }
 

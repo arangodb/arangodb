@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global fail, assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, skiplist index queries
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for Ahuacatl, skiplist index queries
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = internal.db;
@@ -36,10 +36,10 @@ const analyzers = require("@arangodb/analyzers");
 
 function indexHintSuite () {
   const getIndexNames = function (query) {
-    return AQL_EXPLAIN(query)
-      .plan.nodes.filter(node => (node.type === 'IndexNode' ||
-        node.type === 'SingleRemoteOperationNode'))
-      .map(node => node.indexes.map(index => index.name));
+    return AQL_EXPLAIN(query).
+      plan.nodes.filter(node => (node.type === 'IndexNode' ||
+        node.type === 'SingleRemoteOperationNode')).
+      map(node => node.indexes.map(index => index.name));
   };
 
   const cn = 'UnitTestsIndexHints';
@@ -58,20 +58,32 @@ function indexHintSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
-      collection.ensureIndex({type: 'hash', name: 'hash_a', fields: ['a']});
-      collection.ensureIndex({type: 'hash', name: 'hash_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'hash', name: 'hash_b_a', fields: ['b', 'a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a', fields: ['a']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_a_b', fields: ['a', 'b']});
-      collection.ensureIndex({type: 'skiplist', name: 'skip_b_a', fields: ['b', 'a']});
+      collection.ensureIndex({type: 'hash',
+name: 'hash_a',
+fields: ['a']});
+      collection.ensureIndex({type: 'hash',
+name: 'hash_a_b',
+fields: ['a', 'b']});
+      collection.ensureIndex({type: 'hash',
+name: 'hash_b_a',
+fields: ['b', 'a']});
+      collection.ensureIndex({type: 'skiplist',
+name: 'skip_a',
+fields: ['a']});
+      collection.ensureIndex({type: 'skiplist',
+name: 'skip_a_b',
+fields: ['a', 'b']});
+      collection.ensureIndex({type: 'skiplist',
+name: 'skip_b_a',
+fields: ['b', 'a']});
 
       defaultEqualityIndex = 'hash_a';
       alternateEqualityIndex = 'skip_a';
@@ -80,33 +92,55 @@ function indexHintSuite () {
 
       internal.db._drop(cn2);
       collection = internal.db._create(cn2);
-      collection.ensureIndex({type: "persistent", fields: ["value1"], name: persistentIdxName});
-      collection.ensureIndex({type: "persistent", fields: ["value2"], name: persistentIdxName2});
-      collection.ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: geoIdxName});
-      collection.ensureIndex({type: "geo", geoJson: true, fields: ["otherGeo"], name: geoIdxName2});
+      collection.ensureIndex({type: "persistent",
+fields: ["value1"],
+name: persistentIdxName});
+      collection.ensureIndex({type: "persistent",
+fields: ["value2"],
+name: persistentIdxName2});
+      collection.ensureIndex({type: "geo",
+geoJson: true,
+fields: ["geo"],
+name: geoIdxName});
+      collection.ensureIndex({type: "geo",
+geoJson: true,
+fields: ["otherGeo"],
+name: geoIdxName2});
       analyzers.save("geo_json", "geojson", {type: "point"}, ["frequency", "norm", "position"]);
       let commonInvertedIndexMeta = {
-        type: "inverted", name: invertedIdxName, includeAllFields: true, fields: [
-          {"name": "geo", "analyzer": "geo_json"}
+        type: "inverted",
+name: invertedIdxName,
+includeAllFields: true,
+fields: [
+          {"name": "geo",
+"analyzer": "geo_json"}
         ]
       };
       collection.ensureIndex(commonInvertedIndexMeta);
       commonInvertedIndexMeta = {
-        type: "inverted", name: invertedIdxName2, includeAllFields: true, fields: [
-          {"name": "otherGeo", "analyzer": "geo_json"}
+        type: "inverted",
+name: invertedIdxName2,
+includeAllFields: true,
+fields: [
+          {"name": "otherGeo",
+"analyzer": "geo_json"}
         ]
       };
       collection.ensureIndex(commonInvertedIndexMeta);
 
       collection.insert({
-        geo: {type: "Point", coordinates: [50, 51]},
-        otherGeo: {type: "Point", coordinates: [100, 101]},
+        geo: {type: "Point",
+coordinates: [50, 51]},
+        otherGeo: {type: "Point",
+coordinates: [100, 101]},
         value1: 1,
         value2: "abc"
       });
       collection.insert({
-        geo: {type: "Point", coordinates: [52, 53]},
-        otherGeo: {type: "Point", coordinates: [150, 151]},
+        geo: {type: "Point",
+coordinates: [52, 53]},
+        otherGeo: {type: "Point",
+coordinates: [150, 151]},
         value1: 2,
         value2: "123"
       });
@@ -137,7 +171,7 @@ function indexHintSuite () {
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' && doc.testi == 99 RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' && doc.testi == 99 RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.testi == 99 && doc._key == 'test' RETURN doc`,
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 && doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.testi == 99 && doc._key == 'test' RETURN doc`
       ].forEach((query) => {
         const usedIndexes = getIndexNames(query);
         assertEqual(usedIndexes.length, 1, query);
@@ -151,7 +185,7 @@ function indexHintSuite () {
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.a == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`,
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'testi' || doc._key == 'test' RETURN doc`
       ].forEach((query) => {
         const usedIndexes = getIndexNames(query);
         assertEqual(usedIndexes.length, 1, query);
@@ -165,7 +199,7 @@ function indexHintSuite () {
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 'test' || doc.b == 'testi' RETURN doc`,
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: false} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`,
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.b == 'testi' || doc.a == 'test' RETURN doc`
       ].forEach((query) => {
         const usedIndexes = getIndexNames(query);
         assertEqual(usedIndexes.length, 1, query);
@@ -177,7 +211,7 @@ function indexHintSuite () {
     testMultipleOrConditionsSomeOfThemOnNonIndexedAttributes: function () {
       [
         `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc._key == 'test' || doc.a == 99 RETURN doc`,
-        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 99 || doc._key == 'test' RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS {indexHint: 'primary', forceIndexHint: true} FILTER doc.a == 99 || doc._key == 'test' RETURN doc`
       ].forEach((query) => {
         // 2 indexes used here
         const usedIndexes = getIndexNames(query);
@@ -470,23 +504,32 @@ function indexHintSuite () {
       const indexHints = [
         [{}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
         [{indexHint: 'foo'}, ["hash_a", "hash_a_b", "skip_a", "skip_a_b"]],
-        [{indexHint: ['hash_a'], forceIndexHint: true}, ['hash_a']],
+        [{indexHint: ['hash_a'],
+forceIndexHint: true}, ['hash_a']],
         [{indexHint: ['hash_a']}, ['hash_a']],
-        [{indexHint: ['hash_a_b'], forceIndexHint: true}, ['hash_a_b']],
+        [{indexHint: ['hash_a_b'],
+forceIndexHint: true}, ['hash_a_b']],
         [{indexHint: ['hash_a_b']}, ['hash_a_b']],
-        [{indexHint: ['skip_a'], forceIndexHint: true}, ['skip_a']],
+        [{indexHint: ['skip_a'],
+forceIndexHint: true}, ['skip_a']],
         [{indexHint: ['skip_a']}, ['skip_a']],
-        [{indexHint: ['skip_a_b'], forceIndexHint: true}, ['skip_a_b']],
+        [{indexHint: ['skip_a_b'],
+forceIndexHint: true}, ['skip_a_b']],
         [{indexHint: ['skip_a_b']}, ['skip_a_b']],
-        [{indexHint: ['foo', 'bar', 'hash_a'], forceIndexHint: true}, ['hash_a']],
-        [{indexHint: 'hash_a', forceIndexHint: true}, ['hash_a']],
+        [{indexHint: ['foo', 'bar', 'hash_a'],
+forceIndexHint: true}, ['hash_a']],
+        [{indexHint: 'hash_a',
+forceIndexHint: true}, ['hash_a']],
         [{indexHint: 'hash_a'}, ['hash_a']],
-        [{indexHint: 'hash_a_b', forceIndexHint: true}, ['hash_a_b']],
+        [{indexHint: 'hash_a_b',
+forceIndexHint: true}, ['hash_a_b']],
         [{indexHint: 'hash_a_b'}, ['hash_a_b']],
-        [{indexHint: 'skip_a', forceIndexHint: true}, ['skip_a']],
+        [{indexHint: 'skip_a',
+forceIndexHint: true}, ['skip_a']],
         [{indexHint: 'skip_a'}, ['skip_a']],
-        [{indexHint: 'skip_a_b', forceIndexHint: true}, ['skip_a_b']],
-        [{indexHint: 'skip_a_b'}, ['skip_a_b']],
+        [{indexHint: 'skip_a_b',
+forceIndexHint: true}, ['skip_a_b']],
+        [{indexHint: 'skip_a_b'}, ['skip_a_b']]
       ];
       indexHints.forEach((indexHint, index) => {
         let queryExplain = AQL_EXPLAIN(prefix + JSON.stringify(indexHint[0])).plan.nodes;
@@ -941,7 +984,7 @@ function indexHintSuite () {
       assertEqual(result.otherGeo.coordinates[1], 101);
       assertEqual(result.value1, 1);
       assertEqual(result.value2, "abc");
-    },
+    }
   };
 }
 
@@ -953,7 +996,9 @@ function indexHintDisableIndexSuite () {
     setUpAll: function () {
       internal.db._drop(cn);
       let c = internal.db._create(cn);
-      c.ensureIndex({type: 'persistent', name: 'value1', fields: ['value1']});
+      c.ensureIndex({type: 'persistent',
+name: 'value1',
+fields: ['value1']});
     },
 
     tearDownAll: function () {
@@ -975,7 +1020,7 @@ function indexHintDisableIndexSuite () {
           [`FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN doc._key`, 'primary', ['_key'], true],
           [`FOR doc IN ${cn} ${option} SORT doc._key DESC RETURN 1`, 'primary', [], false],
           [`FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value1`, 'value1', ['value1'], true],
-          [`FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false],
+          [`FOR doc IN ${cn} ${option} SORT doc.value1 RETURN doc.value2`, 'value1', ['value2'], false]
         ];
 
         queries.forEach((query) => {
@@ -1020,7 +1065,7 @@ function indexHintDisableIndexSuite () {
         [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN doc._key`, ['_key']],
         [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc._key DESC RETURN 1`, ['_key']],
         [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value1`, ['value1']],
-        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2']],
+        [`FOR doc IN ${cn} OPTIONS { disableIndex: true } SORT doc.value1 RETURN doc.value2`, ['value1', 'value2']]
       ];
 
       queries.forEach((query) => {
@@ -1033,7 +1078,7 @@ function indexHintDisableIndexSuite () {
         let node = ns[0];
         assertEqual(query[1], node.projections.sort(), query);
       });
-    },
+    }
 
   };
 }

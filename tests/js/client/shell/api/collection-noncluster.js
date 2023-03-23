@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,7 +31,7 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/collection";
@@ -40,15 +40,15 @@ function dealing_with_collectionsSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_calculating_the_checksum_for_a_collection: function() {
+    test_calculating_the_checksum_for_a_collection: function () {
       let cmd = api + "/" + cn + "/checksum";
       let doc = arango.GET_RAW(cmd);
 
@@ -68,7 +68,7 @@ function dealing_with_collectionsSuite () {
       assertEqual(c1, "0");
 
       // create a new document;
-      let body = { "test" : 1 };
+      let body = { "test": 1 };
       doc = arango.POST_RAW("/_api/document/?collection=" + cn, body);
 
       // fetch checksum again;
@@ -141,31 +141,37 @@ function dealing_with_collectionsSuite () {
       let c5 = doc.parsedBody['checksum'];
       assertEqual(typeof c5, 'string');
       assertEqual(c5, "0");
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // properties of a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function propertiesSuite () {
   let cn = "UnitTestsCollectionKeygen";
-  
+
   return {
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
-    test_create_collection_with_explicit_keyOptions_property__autoinc_keygen: function() {
+    test_create_collection_with_explicit_keyOptions_property__autoinc_keygen: function () {
       let cmd = "/_api/collection";
-      let body = { "name" : cn, "waitForSync" : false, "type" : 2, "keyOptions" : {"type": "autoincrement", "offset": 7, "increment": 99, "allowUserKeys": false } };
-      
+      let body = { "name": cn,
+"waitForSync": false,
+"type": 2,
+"keyOptions": {"type": "autoincrement",
+"offset": 7,
+"increment": 99,
+"allowUserKeys": false } };
+
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
       let cid = doc.parsedBody['id'];
 
       cmd = api + "/" + cn + "/properties";
-      body = { "waitForSync" : true };
+      body = { "waitForSync": true };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -185,33 +191,33 @@ function propertiesSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // renames a collection;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function renamingSuite () {
   const cn = "UnitTestsCollectionBasics";
   const cn2 = "UnitTestsCollectionBasics2";
   let cid;
   return {
-    setUp: function() {
+    setUp: function () {
       cid = db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
       db._drop(cn2);
     },
-    test_rename_a_collection_by_identifier: function() {
+    test_rename_a_collection_by_identifier: function () {
       let docs = [];
       for (let i = 0; i < 10; i++) {
-        docs.push({ "Hallo" : "World" });
+        docs.push({ "Hallo": "World" });
       }
       cid.save(docs);
 
       assertEqual(db[cn].count(), 10);
       assertEqual(cid.count(), 10);
 
-      let body = { "name" : cn2 };
+      let body = { "name": cn2 };
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -241,10 +247,10 @@ function renamingSuite () {
       assertEqual(doc.parsedBody['status'], 3);
     },
 
-    test_rename_a_collection_by_identifier_with_conflict: function() {
+    test_rename_a_collection_by_identifier_with_conflict: function () {
       let docs = [];
       for (let i = 0; i < 10; i++) {
-        docs.push({ "Hallo" : "World" });
+        docs.push({ "Hallo": "World" });
       }
       cid.save(docs);
 
@@ -254,13 +260,13 @@ function renamingSuite () {
       let cid2 = db._create(cn2);
       docs = [];
       for (let i = 0; i < 20; i++) {
-        docs.push({ "Hallo" : "World" });
+        docs.push({ "Hallo": "World" });
       }
       cid2.save(docs);
       assertEqual(db[cn2].count(), 20);
       assertEqual(cid2.count(), 20);
 
-      let body = { "name" : cn2};
+      let body = { "name": cn2};
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -276,8 +282,8 @@ function renamingSuite () {
       assertEqual(cid2.count(), 20);
     },
 
-    test_rename_a_new_born_collection_by_identifier: function() {
-      let body = { "name" : cn2 };
+    test_rename_a_new_born_collection_by_identifier: function () {
+      let body = { "name": cn2 };
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 
@@ -305,9 +311,9 @@ function renamingSuite () {
       assertEqual(doc.parsedBody['status'], 3);
     },
 
-    test_rename_a_new_born_collection_by_identifier_with_conflict: function() {
+    test_rename_a_new_born_collection_by_identifier_with_conflict: function () {
       db._create(cn2);
-      let body = { "name" : cn2 };
+      let body = { "name": cn2 };
       let cmd = api + "/" + cn + "/rename";
       let doc = arango.PUT_RAW(cmd, body);
 

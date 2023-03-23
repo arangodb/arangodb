@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, fail, NORMALIZE_STRING */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertNotEqual, assertTrue, fail, NORMALIZE_STRING */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -30,17 +30,17 @@ const internal = require("internal");
 const console = require("console");
 const db = arangodb.db;
 
-function DatabaseNamesSuite() {
+function DatabaseNamesSuite () {
   return {
-    setUp : function () {
+    setUp: function () {
       db._useDatabase("_system");
     },
-    
-    tearDown : function () {
+
+    tearDown: function () {
       db._useDatabase("_system");
     },
-    
-    testInvalidPunctuationDatabaseNames : function () {
+
+    testInvalidPunctuationDatabaseNames: function () {
       const names = [
         "",
         " ",
@@ -72,7 +72,7 @@ function DatabaseNamesSuite() {
         "001000",
         "999999999",
         "9999/3933",
-        "9aaaa",
+        "9aaaa"
       ];
 
       names.forEach((name) => {
@@ -85,8 +85,8 @@ function DatabaseNamesSuite() {
         }
       });
     },
-    
-    testValidPunctuationDatabaseNames : function () {
+
+    testValidPunctuationDatabaseNames: function () {
       const names = [
         "a b c",
         "A B C",
@@ -106,9 +106,9 @@ function DatabaseNamesSuite() {
         "[]{}<>|",
         "?",
         "´`",
-        "+-*#",
+        "+-*#"
       ];
-      
+
       names.forEach((name) => {
         console.warn("creating database '" + name + "'");
         db._useDatabase("_system");
@@ -120,7 +120,7 @@ function DatabaseNamesSuite() {
 
           db._useDatabase(name);
           assertEqual(db._name(), name);
-        
+
           db._useDatabase("_system");
           db._dropDatabase(name);
           assertEqual(-1, db._databases().indexOf(name), name);
@@ -135,7 +135,7 @@ function DatabaseNamesSuite() {
       });
     },
 
-    testCheckUnicodeDatabaseNames : function () {
+    testCheckUnicodeDatabaseNames: function () {
       // some of these test strings are taken from https://www.w3.org/2001/06/utf-8-test/UTF-8-demo.html
       // note: some of these only work because the `_createDatabase()` methods on client and server
       // NFC-normalize their inputs. But without NFC-normalization, some of these names actually would
@@ -173,9 +173,9 @@ function DatabaseNamesSuite() {
         "😶 *no_mouth* 😐 *neutral_face*",
         "😑 *expressionless* 😒 *unamused* 🙄 *rolling_eyes* 🤔 *thinking*",
         "😳 *flushed* 😞 *disappointed* 😟 *worried* 😠 *angry*",
-        "😡 *rage* 😔 *pensive* 😕 *confused*", 
+        "😡 *rage* 😔 *pensive* 😕 *confused*",
         "\u00c5", // Angstrom
-        "\u1e69", // s with two combining marks
+        "\u1e69" // s with two combining marks
       ];
 
       names.forEach((name) => {
@@ -189,7 +189,7 @@ function DatabaseNamesSuite() {
 
           db._useDatabase(name);
           assertEqual(NORMALIZE_STRING(db._name()), NORMALIZE_STRING(name));
-          
+
           db._useDatabase("_system");
           db._dropDatabase(name);
           assertEqual(-1, db._databases().indexOf(name), NORMALIZE_STRING(name));
@@ -204,18 +204,18 @@ function DatabaseNamesSuite() {
       });
     },
 
-    testNonNormalizedUnicodeDatabaseNames : function () {
+    testNonNormalizedUnicodeDatabaseNames: function () {
       const names = [
         "\u212b", // Angstrom, not normalized
         "\u0041\u030a", // Angstrom, NFD-normalized
         "\u0073\u0323\u0307", // s with two combining marks, NFD-normalized
-        "\u006e\u0303\u00f1", // non-normalized sequence
+        "\u006e\u0303\u00f1" // non-normalized sequence
       ];
 
       // even though the names are not properly NFC-normalized, this works.
       // this is because the arangosh (shell_client) will normalize all inputs
       // when creating a database from a client-provided value. The server-side
-      // JS APIs will do the same. 
+      // JS APIs will do the same.
       // however, sending such values via the HTTP API will fail.
       names.forEach((name) => {
         db._useDatabase("_system");
@@ -226,7 +226,7 @@ function DatabaseNamesSuite() {
           db._dropDatabase(name);
         }
       });
-    },
+    }
 
   };
 }

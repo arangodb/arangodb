@@ -100,13 +100,13 @@ const executeJS = (code) => {
 helper.switchUser('root', '_system');
 helper.removeAllUsers();
 helper.generateAllUsers();
-    
+
 const testViewType = "arangosearch";
 
 describe('User Rights Management', () => {
   it('should check if all users are created', () => {
     helper.switchUser('root', '_system');
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -149,7 +149,9 @@ describe('User Rights Management', () => {
               if (!rootTestCollection(colName, false)) {
                 let c = db._create(colName);
                 if (colName === testColName) {
-                  c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
+                  c.ensureIndex({ type: "inverted",
+name: indexName,
+fields: [ { name: "value" } ] });
                 }
                 if (colLevel['none'].has(name)) {
                   if (helper.isLdapEnabledExternal()) {
@@ -194,9 +196,9 @@ describe('User Rights Management', () => {
               helper.switchUser('root', dbName);
               let view = db._view(viewName);
               if (view !== null) {
-                links.every(function(link) {
+                links.every(function (link) {
                   const links = view.properties().links;
-                  if (links !== null && links.hasOwnProperty([link])){
+                  if (links !== null && links.hasOwnProperty([link])) {
                     return true;
                   } else {
                     view = null;
@@ -459,8 +461,8 @@ describe('User Rights Management', () => {
 
 
               let itName = 'view with links to multiple collections with RO access level to one of them';
-              !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName) :
-                it(itName, () => {
+              !(colLevel['rw'].has(name) || colLevel['none'].has(name)) ? it.skip(itName)
+                : it(itName, () => {
                   rootDropView(testViewName);
                   rootDropCollection(testColName);
                   rootDropCollection(testColNameAnother);
@@ -522,8 +524,8 @@ describe('User Rights Management', () => {
                 });
 
               itName = 'view with links to multiple collections with NONE access level to one of them';
-              !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName) :
-                it(itName, () => {
+              !(colLevel['rw'].has(name) || colLevel['ro'].has(name)) ? it.skip(itName)
+                : it(itName, () => {
                   rootDropView(testViewName);
                   rootDropCollection(testColName);
                   rootDropCollection(testColNameAnother);

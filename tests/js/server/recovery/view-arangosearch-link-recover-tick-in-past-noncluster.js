@@ -40,24 +40,26 @@ function runSetup () {
   let c = db._create(cn);
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({ value1: i, value2: "test" + i });
+    docs.push({ value1: i,
+value2: "test" + i });
   }
   c.insert(docs);
 
   let v = db._createView(vn, 'arangosearch', {});
-  
+
   internal.debugSetFailAt("StatisticsWorker::bypass");
 
   internal.waitForEstimatorSync();
   let lastTickBeforeLink = replication.logger.state().state.lastLogTick;
-  
+
   // prevent background thread from running and noting view's progress
   internal.debugSetFailAt("RocksDBBackgroundThread::run");
 
   let meta = { links: { [cn]: { includeAllFields: true } } };
   v.properties(meta);
 
-  c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
+  c.insert({ _key: "lastLogTick",
+tick: lastTickBeforeLink }, true);
 
   internal.debugTerminate('crashing server');
 }
@@ -75,7 +77,8 @@ function recoverySuite () {
       let storedTick = db._collection(cn).document("lastLogTick").tick;
 
       let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
-      assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick, storedTick });
+      assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick,
+storedTick });
 
       let v = db._view(vn);
       assertEqual(v.name(), vn);

@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo */
+/* jshint globalstrict:false, strict:false */
+/* global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test moving shards in the cluster
-///
-/// DISCLAIMER
-///
-/// Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test moving shards in the cluster
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2016-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -49,7 +49,7 @@ const dbservers = (function () {
   return getServersByType('dbserver').map((x) => x.id);
 }());
 
-function delaySupervisionFailoverActions(value) {
+function delaySupervisionFailoverActions (value) {
   let agents = global.instanceManager.arangods.filter(
     arangod => arangod.role === "agent").map(
     arangod => arangod.url);
@@ -57,16 +57,17 @@ function delaySupervisionFailoverActions(value) {
     const res = request({url: a + "/_api/agency/config",
                    method: "PUT",
                    body: JSON.stringify(
-                     {delayAddFollower: value, delayFailedFollower: value})});
+                     {delayAddFollower: value,
+delayFailedFollower: value})});
     assertEqual(200, res.statusCode);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-exports.MovingShardsSuite = function({useData, replVersion}) {
+exports.MovingShardsSuite = function ({useData, replVersion}) {
   if (typeof useData !== 'boolean') {
     throw new Error('MovingShardsSuite expects its parameter `useData` to be set and a boolean!');
   }
@@ -75,11 +76,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   var count = 0;
   var c = [];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for a collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find out servers for a collection
+// //////////////////////////////////////////////////////////////////////////////
 
-  function findCollectionServers(database, collection) {
+  function findCollectionServers (database, collection) {
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
 
@@ -102,11 +103,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for synchronous replication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief wait for synchronous replication
+// //////////////////////////////////////////////////////////////////////////////
 
-  function waitForSynchronousReplication(database) {
+  function waitForSynchronousReplication (database) {
     console.info("Waiting for synchronous replication to settle...");
     global.ArangoClusterInfo.flush();
     for (var i = 0; i < c.length; ++i) {
@@ -138,12 +139,12 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return true;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for an incomplete moveShard to have happened, this is a
-/// very special test for "testMoveShardFromFollowerRepl3_failoverCands".
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief wait for an incomplete moveShard to have happened, this is a
+// / very special test for "testMoveShardFromFollowerRepl3_failoverCands".
+// //////////////////////////////////////////////////////////////////////////////
 
-  function waitForIncompleteMoveShard(database, collection, replFactor) {
+  function waitForIncompleteMoveShard (database, collection, replFactor) {
     console.info("Waiting for incomplete move shard to settle...");
     global.ArangoClusterInfo.flush();
     var cinfo = global.ArangoClusterInfo.getCollectionInfo(database, collection);
@@ -171,11 +172,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return true;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get cleaned out servers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get cleaned out servers
+// //////////////////////////////////////////////////////////////////////////////
 
-  function getCleanedOutServers() {
+  function getCleanedOutServers () {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
 
@@ -186,7 +187,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var res;
     try {
       var envelope =
-          {method: "GET", url: url + "/_admin/cluster/numberOfServers"};
+          {method: "GET",
+url: url + "/_admin/cluster/numberOfServers"};
       res = request(envelope);
     } catch (err) {
       console.error(
@@ -210,11 +212,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return body;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief display agency information in case of a bad outcome
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief display agency information in case of a bad outcome
+// //////////////////////////////////////////////////////////////////////////////
 
-  function displayAgencyInformation() {
+  function displayAgencyInformation () {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -223,7 +225,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     var res;
     try {
-      var envelope = {method: "GET", url: url + "/_api/cluster/agency-dump"};
+      var envelope = {method: "GET",
+url: url + "/_api/cluster/agency-dump"};
       res = request(envelope);
     } catch (err) {
       console.error(
@@ -237,7 +240,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     console.error("Agency state after disaster:", body);
   }
 
-  function testServerNoLeader(id, fromCollNr, toCollNr) {
+  function testServerNoLeader (id, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -273,9 +276,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return true;
   }
 
-  function findLeaderShardsForServer(id) {
+  function findLeaderShardsForServer (id) {
     let result = [];
-    for (var i = 0; i <  c.length ; ++i) {
+    for (var i = 0; i < c.length; ++i) {
       global.ArangoClusterInfo.flush();
       var servers = findCollectionServers(dbn, c[i].name());
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
@@ -285,7 +288,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return result;
   }
 
-  function waitForShardLeader(id, expectedShards) {
+  function waitForShardLeader (id, expectedShards) {
     helper.waitFor(function () {
       const shards = findLeaderShardsForServer(id);
       if (!_.isEqual(shards, expectedShards)) {
@@ -296,11 +299,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return true;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether or not a server is clean
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test whether or not a server is clean
+// //////////////////////////////////////////////////////////////////////////////
 
-  function testServerEmpty(id, checkList, fromCollNr, toCollNr) {
+  function testServerEmpty (id, checkList, fromCollNr, toCollNr) {
     if (fromCollNr === undefined) {
       fromCollNr = 0;
     }
@@ -329,8 +332,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
       if (!ok) {
         console.info(
-            "Failed: Server " + id + " was not cleaned out. List of cleaned servers: ["
-            + obj.cleanedServers + "]");
+            "Failed: Server " + id + " was not cleaned out. List of cleaned servers: [" +
+            obj.cleanedServers + "]");
         displayAgencyInformation();
       }
 
@@ -344,7 +347,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           var servers = findCollectionServers(dbn, c[i].name());
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
-            /*var collInfo =
+            /* var collInfo =
                 global.ArangoClusterInfo.getCollectionInfo(dbn, c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
@@ -376,11 +379,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return ok;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief order the cluster to clean out a server:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief order the cluster to clean out a server:
+// //////////////////////////////////////////////////////////////////////////////
 
-  function cleanOutServer(id, dontwait = false) {
+  function cleanOutServer (id, dontwait = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -405,7 +408,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       return result;
     }
     // Now wait until the job we triggered is finished:
-    var count = 1200;   // seconds
+    var count = 1200; // seconds
     while (true) {
       var job = queryAgencyJob(result.json.id);
       console.info("Status of cleanOutServer job:", job.status);
@@ -414,25 +417,26 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       if (count-- < 0) {
         console.error(
-            "Timeout in waiting for cleanOutServer to complete: "
-            + JSON.stringify(body));
+            "Timeout in waiting for cleanOutServer to complete: " +
+            JSON.stringify(body));
         return false;
       }
       wait(1.0);
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief request a dbserver to resign:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief request a dbserver to resign:
+// //////////////////////////////////////////////////////////////////////////////
 
-  function resignLeadership(id, undoMoves = false) {
+  function resignLeadership (id, undoMoves = false) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var body = {"server": id, undoMoves};
+    var body = {"server": id,
+undoMoves};
     var result;
     try {
       result = request({
@@ -448,7 +452,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     console.info("resignLeadership job:", JSON.stringify(body));
     console.info("result of request:", JSON.stringify(result.json));
     // Now wait until the job we triggered is finished:
-    var count = 1200;   // seconds
+    var count = 1200; // seconds
     while (true) {
       var job = queryAgencyJob(result.json.id);
       console.info("Status of resignLeadership job:", job.status);
@@ -457,19 +461,19 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       if (count-- < 0) {
         console.error(
-            "Timeout in waiting for resignLeadership to complete: "
-            + JSON.stringify(body));
+            "Timeout in waiting for resignLeadership to complete: " +
+            JSON.stringify(body));
         return false;
       }
       wait(1.0);
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief order the cluster to reduce number of db servers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief order the cluster to reduce number of db servers
+// //////////////////////////////////////////////////////////////////////////////
 
-  function shrinkCluster(toNum) {
+  function shrinkCluster (toNum) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
@@ -491,18 +495,19 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return res.hasOwnProperty("statusCode") && res.statusCode === 200;
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief order the cluster to clean out a server:
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief order the cluster to clean out a server:
+// //////////////////////////////////////////////////////////////////////////////
 
-  function resetCleanedOutServers() {
+  function resetCleanedOutServers () {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var numberOfDBServers = dbservers.length;
-    var body = {"cleanedServers": [], "numberOfDBServers": numberOfDBServers};
+    var body = {"cleanedServers": [],
+"numberOfDBServers": numberOfDBServers};
     try {
       var res = request({
         method: "PUT",
@@ -538,17 +543,21 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief move a single shard
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief move a single shard
+// //////////////////////////////////////////////////////////////////////////////
 
-  function moveShard(database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
+  function moveShard (database, collection, shard, fromServer, toServer, dontwait, expectedResult) {
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    var body = {database, collection, shard, fromServer, toServer};
+    var body = {database,
+collection,
+shard,
+fromServer,
+toServer};
     var result;
     try {
       result = request({
@@ -567,7 +576,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       return result;
     }
     // Now wait until the job we triggered is finished:
-    var count = 600;   // seconds
+    var count = 600; // seconds
     while (true) {
       var job = queryAgencyJob(result.json.id);
       console.info("Status of moveShard job:", job.status);
@@ -576,8 +585,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       if (count-- < 0) {
         console.error(
-            "Timeout in waiting for moveShard to complete: "
-            + JSON.stringify(body));
+            "Timeout in waiting for moveShard to complete: " +
+            JSON.stringify(body));
         return false;
       }
       wait(1.0);
@@ -585,11 +594,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Set supervision mode
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Set supervision mode
+// //////////////////////////////////////////////////////////////////////////////
 
-  function maintenanceMode(mode) {
+  function maintenanceMode (mode) {
     console.log("Switching supervision maintenance " + mode);
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
@@ -613,11 +622,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Abort job
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Abort job
+// //////////////////////////////////////////////////////////////////////////////
 
-  function cancelAgencyJob(id) {
+  function cancelAgencyJob (id) {
     console.log("Killing job " + id);
     var coordEndpoint =
         global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
@@ -655,11 +664,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create some collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create some collections
+// //////////////////////////////////////////////////////////////////////////////
 
-  function createSomeCollections(n, nrShards, replFactor, useData, otherNumDocuments = 0) {
+  function createSomeCollections (n, nrShards, replFactor, useData, otherNumDocuments = 0) {
     assertEqual('boolean', typeof useData);
     var systemCollServers = findCollectionServers(dbn, "_graphs");
     console.info("System collections use servers:", systemCollServers);
@@ -677,7 +686,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         if (useData) {
           // insert some documents
           let nd = (otherNumDocuments === 0) ? numDocuments : otherNumDocuments;
-          coll.insert(_.range(0, nd).map(v => ({value: v, x: "someString" + v})));
+          coll.insert(_.range(0, nd).map(v => ({value: v,
+x: "someString" + v})));
         }
 
         var servers = findCollectionServers(dbn, name);
@@ -695,7 +705,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
   }
 
-  function checkCollectionContents(otherNumDocuments = 0) {
+  function checkCollectionContents (otherNumDocuments = 0) {
     if (replVersion === "2") {
       return; // TODO
     }
@@ -712,11 +722,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find server not on a list
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief find server not on a list
+// //////////////////////////////////////////////////////////////////////////////
 
-  function findServerNotOnList(list) {
+  function findServerNotOnList (list) {
     var count = 0;
     while (list.indexOf(dbservers[count]) >= 0) {
       count += 1;
@@ -724,11 +734,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return dbservers[count];
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for Supervision to finish jobs
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief wait for Supervision to finish jobs
+// //////////////////////////////////////////////////////////////////////////////
 
-  function waitForSupervision() {
+  function waitForSupervision () {
     var count = 300;
     while (--count > 0) {
       var state = supervisionState();
@@ -750,14 +760,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return false;
   }
 
-  function getServerRebootId(server) {
+  function getServerRebootId (server) {
     return helper.readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
   }
 
-  function waitForRebootIdChanged(server, oldRebootId) {
+  function waitForRebootIdChanged (server, oldRebootId) {
 
     var count = 300;
-    while(--count > 0) {
+    while (--count > 0) {
       if (getServerRebootId(server) !== oldRebootId) {
         return;
       }
@@ -766,9 +776,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     assertTrue(count > 0);
   }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the actual tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief the actual tests
+// //////////////////////////////////////////////////////////////////////////////
 
   return {
 
@@ -782,17 +792,17 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       db._dropDatabase(dbn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       createSomeCollections(1, 1, 2, useData);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       for (var i = 0; i < c.length; ++i) {
@@ -802,9 +812,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       resetCleanedOutServers();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check if a synchronously replicated collection gets online
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check if a synchronously replicated collection gets online
+// //////////////////////////////////////////////////////////////////////////////
 
     testSetup: function () {
       for (var count = 0; count < 120; ++count) {
@@ -820,9 +830,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out collection with one shard without replication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out collection with one shard without replication
+// //////////////////////////////////////////////////////////////////////////////
 
     testShrinkNoReplication: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -840,9 +850,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a follower
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollower: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -858,9 +868,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a leader
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a leader
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeader: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -876,9 +886,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a leader without replication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a leader without replication
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeaderNoReplication: function () {
       createSomeCollections(1, 1, 1, useData);
@@ -895,9 +905,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a follower with 3 replicas #1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a follower with 3 replicas #1
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollowerRepl3_1: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -914,9 +924,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a follower with 3 replicas #2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a follower with 3 replicas #2
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromRepl3_2: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -933,9 +943,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a leader with 3 replicas
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a leader with 3 replicas
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeaderRepl: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -952,9 +962,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moving away a shard from a leader to a follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief moving away a shard from a leader to a follower
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromLeaderToFollower: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -972,9 +982,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resign leadership for a dbserver
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief resign leadership for a dbserver
+// //////////////////////////////////////////////////////////////////////////////
 
     testResignLeadership: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -987,9 +997,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief resign leadership for a dbserver and wait for restore
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief resign leadership for a dbserver and wait for restore
+// //////////////////////////////////////////////////////////////////////////////
 
     testResignLeadershipWithUndo: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -1027,9 +1037,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out a follower
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out a follower
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOutFollower: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -1041,9 +1051,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out a leader
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out a leader
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOutLeader: function () {
       assertTrue(waitForSynchronousReplication(dbn));
@@ -1055,9 +1065,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out with multiple collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out with multiple collections
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOutMultipleCollections: function () {
       createSomeCollections(10, 1, 2, useData);
@@ -1070,9 +1080,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out with a collection with 3 replicas
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out with a collection with 3 replicas
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOut3Replicas: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -1085,9 +1095,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out collection with multiple shards
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out collection with multiple shards
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOutMultipleShards: function () {
       createSomeCollections(1, 10, 2, useData);
@@ -1100,9 +1110,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleaning out collection with one shard without replication
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief cleaning out collection with one shard without replication
+// //////////////////////////////////////////////////////////////////////////////
 
     testCleanOutNoReplication: function () {
       createSomeCollections(1, 1, 1, useData);
@@ -1115,9 +1125,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pausing supervision for a couple of seconds
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pausing supervision for a couple of seconds
+// //////////////////////////////////////////////////////////////////////////////
 
     testMaintenanceMode: function () {
       createSomeCollections(1, 1, 3, useData);
@@ -1148,9 +1158,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief pausing supervision for a couple of seconds
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pausing supervision for a couple of seconds
+// //////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollowerRepl3_failoverCands: function () {
       if (!internal.debugCanUseFailAt()) {
@@ -1180,7 +1190,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var shard = Object.keys(cinfo.shards)[0];
         assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
-        wait(5);   // After 5 seconds the situation should be unchanged!
+        wait(5); // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
@@ -1198,9 +1208,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kill todo moveShard job
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief kill todo moveShard job
+// //////////////////////////////////////////////////////////////////////////////
 
     testCancelToDoMoveShard: function () {
       if (replVersion === "2") {
@@ -1228,9 +1238,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kill pending moveShard job
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief kill pending moveShard job
+// //////////////////////////////////////////////////////////////////////////////
 
     testCancelPendingMoveShard: function () {
       if (replVersion === "2") {
@@ -1269,9 +1279,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kill todo cleanOutServer job
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief kill todo cleanOutServer job
+// //////////////////////////////////////////////////////////////////////////////
 
     testCancelToDoCleanOutServer: function () {
       if (replVersion === "2") {
@@ -1298,9 +1308,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       checkCollectionContents();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief kill pending moveShard job
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief kill pending moveShard job
+// //////////////////////////////////////////////////////////////////////////////
 
     testCancelPendingCleanOutServer: function () {
       if (replVersion === "2") {
@@ -1336,7 +1346,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertTrue(waitForSupervision());
         checkCollectionContents(otherNumDocuments);
       }
-    },
+    }
 
   };
 };

@@ -114,7 +114,7 @@
 
     downloadEntries: function () {
       // sort entries (primary by date, then by lid)
-      this.fetchedEntries.sort(function compare(a, b) {
+      this.fetchedEntries.sort(function compare (a, b) {
         let dateA = new Date(a.date);
         let dateB = new Date(b.date);
         return dateB - dateA || b.lid - a.lid;

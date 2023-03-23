@@ -95,11 +95,11 @@ const expectedRules = [
       disabledByDefault: false,
       enterpriseOnly: false
     }
-  },
+  }
 ];
 
 
-function optimizerRulesSuite() {
+function optimizerRulesSuite () {
   'use strict';
   return {
 

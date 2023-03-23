@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  function fmtNumber(n, nk) {
+  function fmtNumber (n, nk) {
     if (n === undefined || n === null) {
       n = 0;
     }
@@ -876,37 +876,37 @@
           margin.bottom = 1;
         }
         nv.addGraph(function () {
-          self.residentChart = nv.models.multiBarHorizontalChart()
-            .x(function (d) {
+          self.residentChart = nv.models.multiBarHorizontalChart().
+            x(function (d) {
               return d.label;
-            })
-            .y(function (d) {
+            }).
+            y(function (d) {
               return d.value;
-            })
-            .width(dimensions.width)
-            .height(dimensions.height)
-            .margin(margin)
-            .showValues(false)
-            .showYAxis(false)
-            .showXAxis(false)
-            .showLegend(false)
-            .showControls(false)
-            .stacked(true);
+            }).
+            width(dimensions.width).
+            height(dimensions.height).
+            margin(margin).
+            showValues(false).
+            showYAxis(false).
+            showXAxis(false).
+            showLegend(false).
+            showControls(false).
+            stacked(true);
 
-          self.residentChart.yAxis
-            .tickFormat(function (d) {
+          self.residentChart.yAxis.
+            tickFormat(function (d) {
               return d + '%';
-            })
-            .showMaxMin(false);
-          self.residentChart.xAxis
-            .tickFormat(function () {
+            }).
+            showMaxMin(false);
+          self.residentChart.xAxis.
+            tickFormat(function () {
               return "";
-            })
-            .showMaxMin(false);
+            }).
+            showMaxMin(false);
 
-          d3.select('#residentSizeChart svg')
-            .datum(self.history[self.server].residentSizeChart)
-            .call(self.residentChart);
+          d3.select('#residentSizeChart svg').
+            datum(self.history[self.server].residentSizeChart).
+            call(self.residentChart);
 
           d3.select('#residentSizeChart svg').select('.nv-zeroLine').remove();
 
@@ -915,11 +915,11 @@
             d3.select('#residentSizeChart svg').select('#percentage').remove();
           }
 
-          d3.select('.dashboard-bar-chart-title .percentage')
-            .html(currentA + ' (' + currentP + ' %)');
+          d3.select('.dashboard-bar-chart-title .percentage').
+            html(currentA + ' (' + currentP + ' %)');
 
-          d3.select('.dashboard-bar-chart-title .absolut')
-            .html(data[0]);
+          d3.select('.dashboard-bar-chart-title .absolut').
+            html(data[0]);
 
           nv.utils.windowResize(self.residentChart.update);
 
@@ -942,15 +942,15 @@
             self.residentChart.height(dimensions.height);
 
             // update labels
-            d3.select('.dashboard-bar-chart-title .percentage')
-              .html(currentA + ' (' + currentP + ' %)');
-            d3.select('.dashboard-bar-chart-title .absolut')
-              .html(data[0]);
+            d3.select('.dashboard-bar-chart-title .percentage').
+              html(currentA + ' (' + currentP + ' %)');
+            d3.select('.dashboard-bar-chart-title .absolut').
+              html(data[0]);
 
             // update data
-            d3.select('#residentSizeChart svg')
-              .datum(self.history[self.server].residentSizeChart)
-              .call(self.residentChart);
+            d3.select('#residentSizeChart svg').
+              datum(self.history[self.server].residentSizeChart).
+              call(self.residentChart);
 
             // trigger resize
             nv.utils.windowResize(self.residentChart.update);
@@ -1021,51 +1021,51 @@
               marginLeft = 105;
             }
 
-            self.distributionCharts[k] = nv.models.multiBarHorizontalChart()
-              .x(function (d) {
+            self.distributionCharts[k] = nv.models.multiBarHorizontalChart().
+              x(function (d) {
                 return d.label;
-              })
-              .y(function (d) {
+              }).
+              y(function (d) {
                 return d.value;
-              })
-              .width(dimensions.width)
-              .height(dimensions.height)
-              .margin({
+              }).
+              width(dimensions.width).
+              height(dimensions.height).
+              margin({
                 top: 5,
                 right: 20,
                 bottom: marginBottom,
                 left: marginLeft
-              })
-              .showValues(false)
-              .showYAxis(true)
-              .showXAxis(true)
+              }).
+              showValues(false).
+              showYAxis(true).
+              showXAxis(true).
               // .transitionDuration(100)
               // .tooltips(false)
-              .showLegend(false)
-              .showControls(false)
-              .forceY([0, 1]);
+              showLegend(false).
+              showControls(false).
+              forceY([0, 1]);
 
-            self.distributionCharts[k].yAxis
-              .showMaxMin(false);
+            self.distributionCharts[k].yAxis.
+              showMaxMin(false);
 
-            d3.select('.nv-y.nv-axis')
-              .selectAll('text')
-              .attr('transform', 'translate (0, ' + bottomSpacer + ')');
+            d3.select('.nv-y.nv-axis').
+              selectAll('text').
+              attr('transform', 'translate (0, ' + bottomSpacer + ')');
 
-            self.distributionCharts[k].yAxis
-              .tickValues(tickMarks)
-              .tickFormat(function (d) {
+            self.distributionCharts[k].yAxis.
+              tickValues(tickMarks).
+              tickFormat(function (d) {
                 return fmtNumber(((d * 100 * 100) / 100), 0) + '%';
               });
 
             if (self.history[self.server][k]) {
-              d3.select(selector)
-                .datum(self.history[self.server][k])
-                .call(self.distributionCharts[k]);
+              d3.select(selector).
+                datum(self.history[self.server][k]).
+                call(self.distributionCharts[k]);
             } else {
-              d3.select(selector)
-                .datum([])
-                .call(self.distributionCharts[k]);
+              d3.select(selector).
+                datum([]).
+                call(self.distributionCharts[k]);
             }
 
             nv.utils.windowResize(self.distributionCharts[k].update);
@@ -1089,13 +1089,13 @@
 
               // update data
               if (self.history[self.server][k]) {
-                d3.select(selector)
-                  .datum(self.history[self.server][k])
-                  .call(self.distributionCharts[k]);
+                d3.select(selector).
+                  datum(self.history[self.server][k]).
+                  call(self.distributionCharts[k]);
               } else {
-                d3.select(selector)
-                  .datum([])
-                  .call(self.distributionCharts[k]);
+                d3.select(selector).
+                  datum([]).
+                  call(self.distributionCharts[k]);
               }
 
               // trigger resize

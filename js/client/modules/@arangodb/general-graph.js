@@ -31,8 +31,8 @@ const internal = require('internal');
 const arangosh = require('@arangodb/arangosh');
 const ggc = require('@arangodb/general-graph-common');
 const db = internal.db;
-const {GeneralGraph, SmartGraph, EnterpriseGraph, SatelliteGraph} = internal.isEnterprise() ?
-  require('@arangodb/ee-graph-classes') : require('@arangodb/graph-classes');
+const {GeneralGraph, SmartGraph, EnterpriseGraph, SatelliteGraph} = internal.isEnterprise()
+  ? require('@arangodb/ee-graph-classes') : require('@arangodb/graph-classes');
 
 
 const GRAPH_PREFIX = '/_api/gharial/';

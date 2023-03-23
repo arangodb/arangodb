@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertNotEqual, assertTrue, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for configurable behaviour of failed write concern
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for configurable behaviour of failed write concern
+// /
+// / DISCLAIMER
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2023, ArangoDB Inc, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -38,18 +38,20 @@ let reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 let { getEndpointById
     } = require('@arangodb/test-helper');
 
-function testSuite() {
+function testSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       db._drop(cn);
-      db._create(cn, { numberOfShards: 1, replicationFactor: 2, writeConcern: 2 });
+      db._create(cn, { numberOfShards: 1,
+replicationFactor: 2,
+writeConcern: 2 });
     },
-    
-    tearDown: function() {
+
+    tearDown: function () {
       db._drop(cn);
     },
-    
-    testFailedBehaviour : function() {
+
+    testFailedBehaviour: function () {
       let coordinator = arango.getEndpoint();
 
       let c = db._collection(cn);
@@ -61,19 +63,19 @@ function testSuite() {
 
       try {
         // Insert two documents:
-        let d1 = c.insert({Hallo:1});
-        let d2 = c.insert({Hallo:2});
+        let d1 = c.insert({Hallo: 1});
+        let d2 = c.insert({Hallo: 2});
 
         reconnectRetry(follower1, "_system", "root", "");
         arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
         arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
         reconnectRetry(coordinator, "_system", "root", "");
 
-        let d = c.insert({Hallo:1});  // This drops the followers, but works
+        let d = c.insert({Hallo: 1}); // This drops the followers, but works
 
         // INSERT test, single document:
         let startTime = new Date();
-        let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo:2});
+        let res = arango.POST_RAW(`/_api/document/${cn}`, {Hallo: 2});
         assertEqual(503, res.code);
         let timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry
@@ -84,7 +86,7 @@ function testSuite() {
 
         // INSERT test, batch:
         startTime = new Date();
-        res = arango.POST_RAW(`/_api/document/${cn}`, [{Hallo:2},{Hallo:3}]);
+        res = arango.POST_RAW(`/_api/document/${cn}`, [{Hallo: 2}, {Hallo: 3}]);
         assertEqual(503, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -95,7 +97,7 @@ function testSuite() {
 
         // REPLACE test, single document:
         startTime = new Date();
-        res = arango.PUT_RAW(`/_api/document/${cn}/d._key`, {Hallo:2});
+        res = arango.PUT_RAW(`/_api/document/${cn}/d._key`, {Hallo: 2});
         assertEqual(503, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -107,7 +109,9 @@ function testSuite() {
         // REPLACE test, batch:
         startTime = new Date();
         res = arango.PUT_RAW(`/_api/document/${cn}`,
-             [{_key:d1._key, Hallo:2},{_key:d2._key, Hallo:3}]);
+             [{_key: d1._key,
+Hallo: 2}, {_key: d2._key,
+Hallo: 3}]);
         assertEqual(503, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -118,7 +122,7 @@ function testSuite() {
 
         // UPDATE test, single document:
         startTime = new Date();
-        res = arango.PATCH_RAW(`/_api/document/${cn}/d._key`, {Hallo:2});
+        res = arango.PATCH_RAW(`/_api/document/${cn}/d._key`, {Hallo: 2});
         assertEqual(503, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -130,7 +134,9 @@ function testSuite() {
         // UPDATE test, batch:
         startTime = new Date();
         res = arango.PATCH_RAW(`/_api/document/${cn}`,
-             [{_key:d1._key, Hallo:2},{_key:d2._key, Hallo:3}]);
+             [{_key: d1._key,
+Hallo: 2}, {_key: d2._key,
+Hallo: 3}]);
         assertEqual(503, res.code);
         timeSpentMs = new Date() - startTime;
         // With this error code the coordinator does not do a retry. Therefore,
@@ -168,8 +174,8 @@ function testSuite() {
         arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
         reconnectRetry(coordinator, "_system", "root", "");
       }
-    },
-    
+    }
+
   };
 }
 

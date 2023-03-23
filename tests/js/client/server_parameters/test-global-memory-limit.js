@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertTrue, assertMatch, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for memory limit
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for memory limit
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -38,19 +38,21 @@ const cn = "UnitTestsCollection";
 const db = require('internal').db;
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
-function testSuite() {
+function testSuite () {
   return {
-    testQueryBelowGlobalLimit: function() {
+    testQueryBelowGlobalLimit: function () {
       let result = db._query("FOR i IN 1..1000 RETURN i").toArray();
       assertEqual(1000, result.length);
     },
-    
-    testQueryAboveGlobalLimit: function() {
+
+    testQueryAboveGlobalLimit: function () {
       let tasks = require("@arangodb/tasks");
       // start a background query that will allocate some memory and then goes to sleep
-      let id = tasks.register({ 
+      let id = tasks.register({
         id: "background-query",
-        command: function() { require("@arangodb").db._query("LET testi = (FOR i IN 1..100000 RETURN CONCAT('testmann-der-fuxx', i)) LET s = SLEEP(9000) RETURN { s, testi }"); }
+        command: function () {
+ require("@arangodb").db._query("LET testi = (FOR i IN 1..100000 RETURN CONCAT('testmann-der-fuxx', i)) LET s = SLEEP(9000) RETURN { s, testi }");
+}
       });
       // wait until this query has started
       let queries = require("@arangodb/aql/queries");
@@ -81,11 +83,11 @@ function testSuite() {
         // kill the other long-running query
         queries.kill(current[0].id);
       }
-      
+
       const currentValue = getMetric("arangodb_aql_global_query_memory_limit_reached_total");
       assertTrue(currentValue > previousValue);
-    },
-    
+    }
+
   };
 }
 

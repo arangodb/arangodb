@@ -37,8 +37,8 @@ let { getEndpointsByType,
       waitForShardsInSync
     } = require('@arangodb/test-helper');
 
-    
-function getEndpointMap() {
+
+function getEndpointMap () {
   const health = arango.GET("/_admin/cluster/health").Health;
   const endpointMap = {};
   for (let sid in health) {
@@ -47,8 +47,9 @@ function getEndpointMap() {
   return endpointMap;
 }
 
-function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
-  db._create(cn, {numberOfShards:2, replicationFactor:2});
+function createCollectionWithTwoShardsSameLeaderAndFollower (cn) {
+  db._create(cn, {numberOfShards: 2,
+replicationFactor: 2});
   // Get dbserver names first:
   const endpointMap = getEndpointMap();
   let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
@@ -119,28 +120,33 @@ function createCollectionWithTwoShardsSameLeaderAndFollower(cn) {
       internal.wait(1);
     }
   }
-  return { endpointMap, coordinator, leader, follower, shards };
+  return { endpointMap,
+coordinator,
+leader,
+follower,
+shards };
 }
 
-function switchConnectionToCoordinator(collInfo) {
+function switchConnectionToCoordinator (collInfo) {
   arango.reconnect(collInfo.endpointMap[collInfo.coordinator], "_system", "root", "");
 }
 
-function switchConnectionToLeader(collInfo) {
+function switchConnectionToLeader (collInfo) {
   arango.reconnect(collInfo.endpointMap[collInfo.leader], "_system", "root", "");
 }
 
-function switchConnectionToFollower(collInfo) {
+function switchConnectionToFollower (collInfo) {
   arango.reconnect(collInfo.endpointMap[collInfo.follower], "_system", "root", "");
 }
 
-function dropFollowersElCheapoSuite() {
+function dropFollowersElCheapoSuite () {
   'use strict';
   const cn = 'UnitTestsElCheapoDroppedFollowers';
   let collInfo = {};
 
   const endpointMap = getEndpointMap();
-  const info = { endpointMap, coordinator: "Coordinator0001" };
+  const info = { endpointMap,
+coordinator: "Coordinator0001" };
 
   return {
     setUp: function () {
@@ -155,19 +161,19 @@ function dropFollowersElCheapoSuite() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
     },
-    
-    testDropFollowerDuringTransactionMultipleShards: function() {
+
+    testDropFollowerDuringTransactionMultipleShards: function () {
       // We have two shards whose leader is the same and whose follower is
       // the same.
-      
+
       // Let's insert some documents:
 
       // Run one transaction touching multiple documents:
-      let trx = arango.POST("/_api/transaction/begin", {collections:{write:[cn]}});
+      let trx = arango.POST("/_api/transaction/begin", {collections: {write: [cn]}});
       let trxid = trx.result.id;
       for (let i = 0; i < 20; ++i) {
-        arango.POST("/_api/document/" + cn, {_key:"A"+i},
-                    {"x-arango-trx-id":trxid});
+        arango.POST("/_api/document/" + cn, {_key: "A" + i},
+                    {"x-arango-trx-id": trxid});
       }
 
       // Now the follower is in the knownServers list and each shard has
@@ -175,11 +181,11 @@ function dropFollowersElCheapoSuite() {
       // Now activate a failure point on the leader to make it drop a follower
       // with the next request:
       switchConnectionToLeader(collInfo);
-      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
+      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower", {});
       switchConnectionToCoordinator(collInfo);
 
-      arango.POST("/_api/document/" + cn, {_key:"F"},
-                  {"x-arango-trx-id":trxid});
+      arango.POST("/_api/document/" + cn, {_key: "F"},
+                  {"x-arango-trx-id": trxid});
 
       switchConnectionToLeader(collInfo);
       arango.DELETE("/_admin/debug/failat/replicateOperationsDropFollower");
@@ -228,19 +234,19 @@ function dropFollowersElCheapoSuite() {
 
       switchConnectionToCoordinator(collInfo);
     },
-    
-    testDropFollowerThenFailCommit : function() {
+
+    testDropFollowerThenFailCommit: function () {
       // We have two shards whose leader is the same and whose follower is
       // the same.
-      
+
       // Let's insert some documents:
 
       // Run one transaction touching multiple documents:
-      let trx = arango.POST("/_api/transaction/begin", {collections:{write:[cn]}});
+      let trx = arango.POST("/_api/transaction/begin", {collections: {write: [cn]}});
       let trxid = trx.result.id;
       for (let i = 0; i < 20; ++i) {
-        arango.POST("/_api/document/" + cn, {_key:"A"+i},
-                    {"x-arango-trx-id":trxid});
+        arango.POST("/_api/document/" + cn, {_key: "A" + i},
+                    {"x-arango-trx-id": trxid});
       }
 
       // Now the follower is in the knownServers list and each shard has
@@ -248,13 +254,13 @@ function dropFollowersElCheapoSuite() {
       // Now activate a failure point on the leader to make it drop a follower
       // with the next request:
       switchConnectionToLeader(collInfo);
-      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower",{});
+      arango.PUT("/_admin/debug/failat/replicateOperationsDropFollower", {});
       switchConnectionToCoordinator(collInfo);
 
       // And another 20, then both shards should be dropped:
       for (let i = 0; i < 20; ++i) {
-        arango.POST("/_api/document/" + cn, {_key:"B"+i},
-                    {"x-arango-trx-id":trxid});
+        arango.POST("/_api/document/" + cn, {_key: "B" + i},
+                    {"x-arango-trx-id": trxid});
       }
 
       switchConnectionToLeader(collInfo);
@@ -263,7 +269,7 @@ function dropFollowersElCheapoSuite() {
 
       // Now fail the commit on the follower:
       switchConnectionToFollower(collInfo);
-      arango.PUT("/_admin/debug/failat/TransactionCommitFail",{});
+      arango.PUT("/_admin/debug/failat/TransactionCommitFail", {});
       switchConnectionToCoordinator(collInfo);
 
       let commitRes = arango.PUT(`/_api/transaction/${trxid}`, {});
@@ -303,8 +309,8 @@ function dropFollowersElCheapoSuite() {
       assertEqual(40, count);
 
       switchConnectionToCoordinator(collInfo);
-    },
-    
+    }
+
   };
 }
 

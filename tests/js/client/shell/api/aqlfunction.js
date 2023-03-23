@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -31,18 +31,18 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/aqlfunction";
 
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling ;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlinSuite () {
   return {
-    test_add_function__without_name: function() {
+    test_add_function__without_name: function () {
       let body = "{ \"code\" : \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -53,7 +53,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code);
     },
 
-    test_add_function__invalid_name_1: function() {
+    test_add_function__invalid_name_1: function () {
       let body = "{ \"name\" : \"\", \"code\" : \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -64,7 +64,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code);
     },
 
-    test_add_function__invalid_name_2: function() {
+    test_add_function__invalid_name_2: function () {
       let body = "{ \"name\" : \"_aql::foobar\", \"code\" : \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -75,7 +75,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code);
     },
 
-    test_add_function__invalid_name_3: function() {
+    test_add_function__invalid_name_3: function () {
       let body = "{ \"name\" : \"foobar\", \"code\" : \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -86,7 +86,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code);
     },
 
-    test_add_function__no_code: function() {
+    test_add_function__no_code: function () {
       let body = "{ \"name\" : \"myfunc::mytest\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -97,7 +97,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code);
     },
 
-    test_add_function__invalid_code: function() {
+    test_add_function__invalid_code: function () {
       let body = "{ \"name\" : \"myfunc::mytest\", \"code\" : \"function ()\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -108,7 +108,7 @@ function error_handlinSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code);
     },
 
-    test_deleting_non_existing_function: function() {
+    test_deleting_non_existing_function: function () {
       let doc = arango.DELETE_RAW(api + "/mytest%3A%3Amynonfunc");
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -120,20 +120,20 @@ function error_handlinSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // adding and deleting functions;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function adding_and_deleting_functionSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       arango.DELETE("/_api/aqlfunction/UnitTests%3A%3Amytest");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE("/_api/aqlfunction/UnitTests%3A%3Amytest");
     },
 
-    test_add_function__valid_code: function() {
+    test_add_function__valid_code: function () {
       let body = "{ \"name\" : \"UnitTests::mytest\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -144,7 +144,7 @@ function adding_and_deleting_functionSuite () {
       assertTrue(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_add_function__update: function() {
+    test_add_function__update: function () {
       let body = "{ \"name\" : \"UnitTests::mytest\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -162,7 +162,7 @@ function adding_and_deleting_functionSuite () {
       assertFalse(doc.parsedBody['isNewlyCreated']);
     },
 
-    test_add_function__delete: function() {
+    test_add_function__delete: function () {
       let body = "{ \"name\" : \"UnitTests::mytest\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
 
@@ -186,7 +186,7 @@ function adding_and_deleting_functionSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code);
     },
 
-    test_add_function__delete_multiple: function() {
+    test_add_function__delete_multiple: function () {
       let body = "{ \"name\" : \"UnitTests::mytest::one\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
       assertEqual(doc.code, 201);
@@ -218,20 +218,20 @@ function adding_and_deleting_functionSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // retrieving the list of functions;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function retrieving_functionSuite () {
   return {
-    setUp: function() {
+    setUp: function () {
       arango.DELETE("/_api/aqlfunction/UnitTests?group=true");
     },
 
-    tearDown: function() {
+    tearDown: function () {
       arango.DELETE("/_api/aqlfunction/UnitTests?group=true");
     },
 
-    test_add_function_and_retrieve_the_list: function() {
+    test_add_function_and_retrieve_the_list: function () {
       let body = "{ \"name\" : \"UnitTests::mytest\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
       assertTrue(doc.parsedBody['isNewlyCreated']);
@@ -249,7 +249,7 @@ function retrieving_functionSuite () {
       assertEqual(doc.parsedBody['result'][0]['code'], "function () { return 1; }");
     },
 
-    test_add_functions_and_retrieve_the_list: function() {
+    test_add_functions_and_retrieve_the_list: function () {
       let body = "{ \"name\" : \"UnitTests::mytest1\", \"code\": \"function () { return 1; }\" }";
       let doc = arango.POST_RAW(api, body);
       assertEqual(doc.code, 201);

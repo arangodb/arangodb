@@ -147,13 +147,15 @@ extend(ConsoleLogs.prototype, {
     return this._query({opts: opts});
   },
   searchByMessage: function (message, opts) {
-    return this._query({message: message, opts: opts});
+    return this._query({message: message,
+opts: opts});
   },
   searchByFileName: function (fileName, opts) {
     if (!this._console._tracing) {
       throw new Error('Tracing must be enabled in order to search by filename.');
     }
-    return this._query({fileName: fileName, opts: opts});
+    return this._query({fileName: fileName,
+opts: opts});
   }
 });
 
@@ -228,9 +230,12 @@ extend(Console.prototype, {
 
     if (!db._foxxlog) {
       db._create('_foxxlog', {isSystem: true});
-      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount']});
-      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount', 'created']});
-      db._foxxlog.ensureIndex({type: 'skiplist', fields: ['mount', 'created', 'levelNum']});
+      db._foxxlog.ensureIndex({type: 'skiplist',
+fields: ['mount']});
+      db._foxxlog.ensureIndex({type: 'skiplist',
+fields: ['mount', 'created']});
+      db._foxxlog.ensureIndex({type: 'skiplist',
+fields: ['mount', 'created', 'levelNum']});
     }
 
     db._foxxlog.save(doc);

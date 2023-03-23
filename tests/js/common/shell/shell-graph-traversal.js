@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the graph traversal class
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the graph traversal class
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -37,14 +37,14 @@ var generalGraph = require("@arangodb/general-graph");
 var db = arangodb.db;
 var Traverser = traversal.Traverser;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create in-memory data-source
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create in-memory data-source
+// //////////////////////////////////////////////////////////////////////////////
 
 function memoryDatasource (nodes, connections) {
   'use strict';
   var vertices = { };
-  var inEdges  = { };
+  var inEdges = { };
   var outEdges = { };
 
   // create vertices
@@ -61,11 +61,11 @@ function memoryDatasource (nodes, connections) {
     var key = from + "x" + to;
 
     var edge = {
-      _id : "edges/" + key,
-      _key : key,
-      _from : "vertices/" + from,
-      _to : "vertices/" + to,
-      what : from + "->" + to
+      _id: "edges/" + key,
+      _key: key,
+      _from: "vertices/" + from,
+      _to: "vertices/" + to,
+      what: from + "->" + to
     };
 
     if (typeof label !== "undefined") {
@@ -141,9 +141,9 @@ function memoryDatasource (nodes, connections) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: in-memory graph traversal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: in-memory graph traversal
+// //////////////////////////////////////////////////////////////////////////////
 
 function MemoryTraversalSuite () {
   'use strict';
@@ -192,7 +192,7 @@ function MemoryTraversalSuite () {
       ["Bob", "Alice", "likes"],
       ["Alice", "Diana", "hates"],
       ["Alice", "Eric", "hates"],
-      ["Eric", "Alice","hates"],
+      ["Eric", "Alice", "hates"],
       ["Bob", "Charly", "likes"],
       ["Charly", "Diana", "hates"],
       ["Diana", "Charly", "hates"],
@@ -229,7 +229,8 @@ function MemoryTraversalSuite () {
 
     if (edgesList !== undefined) {
       for (i = 0; i < edgesList.length; ++i) {
-        r.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+        r.push({ edge: edgesList[i],
+vertex: config.datasource.vertices[edgesList[i]._to] });
       }
     }
     return r;
@@ -277,7 +278,7 @@ function MemoryTraversalSuite () {
       datasource: datasourceWorld,
 
       noVisit: {
-        "vertices/Antarctica" : true,
+        "vertices/Antarctica": true,
         "vertices/IE": true
       },
 
@@ -289,27 +290,27 @@ function MemoryTraversalSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       setUpSourceWorld();
       setUpSourcePeople();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test depth-first pre-order forward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test depth-first pre-order forward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDepthFirstPreOrderForward : function () {
+    testDepthFirstPreOrderForward: function () {
       var config = getConfig();
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.PRE_ORDER;
@@ -363,11 +364,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test depth-first pre-order backward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test depth-first pre-order backward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDepthFirstPreOrderBackward : function () {
+    testDepthFirstPreOrderBackward: function () {
       var config = getConfig();
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.PRE_ORDER;
@@ -420,11 +421,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test depth-first post-order forward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test depth-first post-order forward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDepthFirstPostOrderForward : function () {
+    testDepthFirstPostOrderForward: function () {
       var config = getConfig();
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.POST_ORDER;
@@ -477,11 +478,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test depth-first post-order backward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test depth-first post-order backward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDepthFirstPostOrderBackward : function () {
+    testDepthFirstPostOrderBackward: function () {
       var config = getConfig();
       config.strategy = Traverser.DEPTH_FIRST;
       config.order = Traverser.POST_ORDER;
@@ -534,11 +535,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test breadth-first pre-order forward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test breadth-first pre-order forward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBreadthFirstPreOrderForward : function () {
+    testBreadthFirstPreOrderForward: function () {
       var config = getConfig();
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.PRE_ORDER;
@@ -591,11 +592,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test breadth-first pre-order backward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test breadth-first pre-order backward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBreadthFirstPreOrderBackward : function () {
+    testBreadthFirstPreOrderBackward: function () {
       var config = getConfig();
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.PRE_ORDER;
@@ -648,11 +649,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test breadth-first post-order forward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test breadth-first post-order forward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBreadthFirstPostOrderForward : function () {
+    testBreadthFirstPostOrderForward: function () {
       var config = getConfig();
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.POST_ORDER;
@@ -705,11 +706,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test breadth-first post-order backward visitation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test breadth-first post-order backward visitation
+// //////////////////////////////////////////////////////////////////////////////
 
-    testBreadthFirstPostOrderBackward : function () {
+    testBreadthFirstPostOrderBackward: function () {
       var config = getConfig();
       config.strategy = Traverser.BREADTH_FIRST;
       config.order = Traverser.POST_ORDER;
@@ -762,11 +763,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test minimal depth filter with depth 0
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test minimal depth filter with depth 0
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinDepthFilterWithDepth0 : function () {
+    testMinDepthFilterWithDepth0: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -825,11 +826,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test minimal depth filter with depth 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test minimal depth filter with depth 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinDepthFilterWithDepth1 : function () {
+    testMinDepthFilterWithDepth1: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -886,11 +887,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test minimal depth filter with depth 2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test minimal depth filter with depth 2
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMinDepthFilterWithDepth2 : function () {
+    testMinDepthFilterWithDepth2: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -935,11 +936,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test maximal depth filter with depth 0
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test maximal depth filter with depth 0
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxDepthFilterWithDepth0 : function () {
+    testMaxDepthFilterWithDepth0: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -964,11 +965,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test maximal depth filter with depth 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test maximal depth filter with depth 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxDepthFilterWithDepth1 : function () {
+    testMaxDepthFilterWithDepth1: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -1005,11 +1006,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test maximal depth filter with depth 2
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test maximal depth filter with depth 2
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMaxDepthFilterWithDepth2 : function () {
+    testMaxDepthFilterWithDepth2: function () {
       var config = {
         datasource: datasourceWorld,
         expander: expander,
@@ -1068,11 +1069,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filter by given key value pairs
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test filter by given key value pairs
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIncludeMatchingAttributesFilter : function () {
+    testIncludeMatchingAttributesFilter: function () {
       // Can be removed as soon as all expanders use datasource
       var anyExp = function (config, vertex) {
         var result = [ ];
@@ -1082,7 +1083,8 @@ function MemoryTraversalSuite () {
           var i;
 
           for (i = 0; i < edgesList.length; ++i) {
-            result.push({ edge: edgesList[i], vertex: config.datasource.vertices[edgesList[i]._to] });
+            result.push({ edge: edgesList[i],
+vertex: config.datasource.vertices[edgesList[i]._to] });
           }
         }
         return result;
@@ -1095,7 +1097,8 @@ function MemoryTraversalSuite () {
         },
         matchingAttributes: [{"name": "Alice"},
                              {"name": "Frank"},
-                             {"name": "Diana", "key": "FAIL"},
+                             {"name": "Diana",
+"key": "FAIL"},
                              {"_id": "vertices/Bob"}],
         visitor: visitor,
         expander: anyExp,
@@ -1117,29 +1120,39 @@ function MemoryTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test combination of filters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test combination of filters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCombineFilters : function () {
-      var excluder1 = function(config, vertex) {
-        if (vertex.name && vertex.name === config.exclude1) { return "exclude"; }
+    testCombineFilters: function () {
+      var excluder1 = function (config, vertex) {
+        if (vertex.name && vertex.name === config.exclude1) {
+ return "exclude";
+}
       };
 
-      var excluder2 = function(config, vertex) {
-        if (vertex.name && vertex.name === config.exclude2) { return "exclude"; }
+      var excluder2 = function (config, vertex) {
+        if (vertex.name && vertex.name === config.exclude2) {
+ return "exclude";
+}
       };
 
-      var excluder3 = function(config, vertex) {
-        if (vertex.name && vertex.name === config.exclude3) { return "exclude"; }
+      var excluder3 = function (config, vertex) {
+        if (vertex.name && vertex.name === config.exclude3) {
+ return "exclude";
+}
       };
 
-      var pruner1 = function(config, vertex) {
-        if (vertex.name && vertex.name === config.prune1) { return "prune"; }
+      var pruner1 = function (config, vertex) {
+        if (vertex.name && vertex.name === config.prune1) {
+ return "prune";
+}
       };
 
-      var pruner2 = function(config, vertex) {
-        if (vertex.name && vertex.name === config.prune2) { return "prune"; }
+      var pruner2 = function (config, vertex) {
+        if (vertex.name && vertex.name === config.prune2) {
+ return "prune";
+}
       };
 
       var config = {
@@ -1190,13 +1203,15 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if exclude or prune can be overridden in combined filters
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if exclude or prune can be overridden in combined filters
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOverrideExcludeAndPruneOfCombinedFilters : function () {
-      var excludeAndPrune = function(config, vertex) {
-        if (vertex.name && vertex.name === config.excludeAndPrune) { return ["prune", "exclude"]; }
+    testOverrideExcludeAndPruneOfCombinedFilters: function () {
+      var excludeAndPrune = function (config, vertex) {
+        if (vertex.name && vertex.name === config.excludeAndPrune) {
+ return ["prune", "exclude"];
+}
       };
 
       var config = {
@@ -1222,11 +1237,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if all edges with one label are followed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if all edges with one label are followed
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFollowEdgesWithLabels : function () {
+    testFollowEdgesWithLabels: function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
@@ -1266,11 +1281,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if all and only inbound edges with one label are followed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if all and only inbound edges with one label are followed
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFollowInEdgesWithLabels : function () {
+    testFollowInEdgesWithLabels: function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
@@ -1306,11 +1321,11 @@ function MemoryTraversalSuite () {
       assertEqual(expectedPaths, getVisitedPaths(result.visited.paths));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test if all and only outbound edges with one label are followed
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test if all and only outbound edges with one label are followed
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFollowOutEdgesWithLabels : function () {
+    testFollowOutEdgesWithLabels: function () {
       var config = {
         uniqueness: {
           vertices: Traverser.UNIQUE_GLOBAL,
@@ -1347,9 +1362,9 @@ function MemoryTraversalSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: collection-based graph traversal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: collection-based graph traversal
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionTraversalSuite () {
   'use strict';
@@ -1378,11 +1393,11 @@ function CollectionTraversalSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(vn);
       db._drop(en);
 
@@ -1390,7 +1405,8 @@ function CollectionTraversalSuite () {
       edgeCollection = db._createEdgeCollection(en);
 
       [ "A", "B", "C", "D", "E", "F", "G", "H", "I" ].forEach(function (item) {
-        vertexCollection.save({ _key: item, name: item });
+        vertexCollection.save({ _key: item,
+name: item });
       });
 
       [ [ "A", "B" ],
@@ -1405,26 +1421,29 @@ function CollectionTraversalSuite () {
         [ "I", "H"] ].forEach(function (item) {
         var l = item[0];
         var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r,
+what: l + "->" + r });
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(vn);
       db._drop(en);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test outbound expander
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test outbound expander
+// //////////////////////////////////////////////////////////////////////////////
 
-    testOutboundExpander : function () {
+    testOutboundExpander: function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+},
         datasource: traversal.collectionDatasourceFactory(edgeCollection)
       };
 
@@ -1432,34 +1451,36 @@ function CollectionTraversalSuite () {
       var connected;
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/A")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "B", "D" ], connected);
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/D")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "E", "F" ], connected);
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/H")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ ], connected);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test inbound expander
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test inbound expander
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInboundExpander : function () {
+    testInboundExpander: function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+},
         datasource: traversal.collectionDatasourceFactory(edgeCollection)
       };
 
@@ -1467,32 +1488,32 @@ function CollectionTraversalSuite () {
       var connected;
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/D")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/D")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "A", "C" ], connected);
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/H")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/H")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "G", "I" ], connected);
 
       connected = [ ];
-      expander(config, vertexCollection.document(vn + "/A")).forEach(function(item) {
+      expander(config, vertexCollection.document(vn + "/A")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ ], connected);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIterateFullOutbound : function () {
+    testIterateFullOutbound: function () {
       var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
@@ -1501,7 +1522,9 @@ function CollectionTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var traverser = new Traverser(config);
@@ -1527,11 +1550,11 @@ function CollectionTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIterateInbound : function () {
+    testIterateInbound: function () {
       var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
@@ -1540,7 +1563,9 @@ function CollectionTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.inboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1559,11 +1584,11 @@ function CollectionTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIterateUniqueGlobalVertices : function () {
+    testIterateUniqueGlobalVertices: function () {
       var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
@@ -1576,7 +1601,9 @@ function CollectionTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1598,11 +1625,11 @@ function CollectionTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIterateUniquePathVertices : function () {
+    testIterateUniquePathVertices: function () {
       var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
@@ -1615,7 +1642,9 @@ function CollectionTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1641,11 +1670,11 @@ function CollectionTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testIterateUniqueEdges : function () {
+    testIterateUniqueEdges: function () {
       var config = {
         datasource: traversal.collectionDatasourceFactory(db._collection(en)),
         strategy: Traverser.DEPTH_FIRST,
@@ -1658,7 +1687,9 @@ function CollectionTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1685,10 +1716,9 @@ function CollectionTraversalSuite () {
 }
 
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: general-graph-based graph traversal
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: general-graph-based graph traversal
+// //////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphTraversalSuite () {
   'use strict';
@@ -1719,16 +1749,18 @@ function GeneralGraphTraversalSuite () {
     });
     return r;
   };
-  var saveVertex = function(colName, key) {
-    g[colName].save({ _key: key, name: key });
+  var saveVertex = function (colName, key) {
+    g[colName].save({ _key: key,
+name: key });
   };
-  var saveEdge = function(edgeCol, fromCol, toCol, nodePair) {
+  var saveEdge = function (edgeCol, fromCol, toCol, nodePair) {
     var l = nodePair[0];
     var r = nodePair[1];
-    g[edgeCol].save(fromCol + "/" + l, toCol + "/" + r, {_key: l + r, what: l + "->" + r });
+    g[edgeCol].save(fromCol + "/" + l, toCol + "/" + r, {_key: l + r,
+what: l + "->" + r });
   };
 
-  var cleanUp = function() {
+  var cleanUp = function () {
     db._drop(vnA);
     db._drop(vnBDH);
     db._drop(vnCEFGI);
@@ -1741,11 +1773,11 @@ function GeneralGraphTraversalSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       cleanUp();
 
       var edgeDef = [];
@@ -1772,21 +1804,23 @@ function GeneralGraphTraversalSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       cleanUp();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test outbound expander
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test outbound expander
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGOutboundExpander : function () {
+    testGGOutboundExpander: function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+},
         datasource: traversal.generalGraphDatasourceFactory(gn)
       };
 
@@ -1794,34 +1828,36 @@ function GeneralGraphTraversalSuite () {
       var connected;
 
       connected = [ ];
-      expander(config, g[vnA].document("A")).forEach(function(item) {
+      expander(config, g[vnA].document("A")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "B", "D" ], connected);
 
       connected = [ ];
-      expander(config, g[vnBDH].document("D")).forEach(function(item) {
+      expander(config, g[vnBDH].document("D")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "E", "F" ], connected);
 
       connected = [ ];
-      expander(config, g[vnBDH].document("H")).forEach(function(item) {
+      expander(config, g[vnBDH].document("H")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ ], connected);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test inbound expander
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test inbound expander
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGInboundExpander : function () {
+    testGGInboundExpander: function () {
       var config = {
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; },
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+},
         datasource: traversal.generalGraphDatasourceFactory(gn)
       };
 
@@ -1829,32 +1865,32 @@ function GeneralGraphTraversalSuite () {
       var connected;
 
       connected = [ ];
-      expander(config, g[vnBDH].document("D")).forEach(function(item) {
+      expander(config, g[vnBDH].document("D")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "A", "C" ], connected);
 
       connected = [ ];
-      expander(config, g[vnBDH].document("H")).forEach(function(item) {
+      expander(config, g[vnBDH].document("H")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ "G", "I" ], connected);
 
       connected = [ ];
-      expander(config, g[vnA].document("A")).forEach(function(item) {
+      expander(config, g[vnA].document("A")).forEach(function (item) {
         connected.push(item.vertex._key);
       });
 
       assertEqual([ ], connected);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateFullOutbound : function () {
+    testGGIterateFullOutbound: function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1863,7 +1899,9 @@ function GeneralGraphTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var traverser = new Traverser(config);
@@ -1889,11 +1927,11 @@ function GeneralGraphTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateInbound : function () {
+    testGGIterateInbound: function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1902,7 +1940,9 @@ function GeneralGraphTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.inboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1921,11 +1961,11 @@ function GeneralGraphTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniqueGlobalVertices : function () {
+    testGGIterateUniqueGlobalVertices: function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1938,7 +1978,9 @@ function GeneralGraphTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -1960,11 +2002,11 @@ function GeneralGraphTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniquePathVertices : function () {
+    testGGIterateUniquePathVertices: function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -1977,7 +2019,9 @@ function GeneralGraphTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -2003,11 +2047,11 @@ function GeneralGraphTraversalSuite () {
       assertEqual(expectedVisits, getIds(result.visited.vertices));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test iteration
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test iteration
+// //////////////////////////////////////////////////////////////////////////////
 
-    testGGIterateUniqueEdges : function () {
+    testGGIterateUniqueEdges: function () {
       var config = {
         datasource: traversal.generalGraphDatasourceFactory(gn),
         strategy: Traverser.DEPTH_FIRST,
@@ -2020,7 +2064,9 @@ function GeneralGraphTraversalSuite () {
         filter: traversal.visitAllFilter,
         expander: traversal.outboundExpander,
 
-        sort: function (l, r) { return l._key < r._key ? -1 : 1; }
+        sort: function (l, r) {
+ return l._key < r._key ? -1 : 1;
+}
       };
 
       var result = getResult();
@@ -2047,9 +2093,9 @@ function GeneralGraphTraversalSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(MemoryTraversalSuite);
 jsunity.run(CollectionTraversalSuite);

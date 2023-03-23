@@ -49,7 +49,9 @@ function runSetup () {
 
         var i, c = db._collection('UnitTestsRecovery');
         for (i = 0; i < 100; ++i) {
-          c.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, { waitForSync: true });
+          c.save({ _key: 'test' + i,
+value1: 'test' + i,
+value2: i }, { waitForSync: true });
         }
 
         internal.debugSetFailAt('TransactionWriteCommitMarkerSegfault');

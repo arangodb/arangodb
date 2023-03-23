@@ -58,7 +58,7 @@ function runSetup () {
   // unfortunately there is no proper way to control that it was
   // was already run with our data above
   internal.wait(6.0);
-  
+
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -73,7 +73,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeInsertFails: function() {
+    testRevisionTreeInsertFails: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 1000);
@@ -81,7 +81,7 @@ function recoverySuite () {
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 100001);
-    },
+    }
 
   };
 }

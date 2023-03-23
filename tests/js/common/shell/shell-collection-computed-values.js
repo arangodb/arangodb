@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertNotNull, assertUndefined, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse, assertMatch, assertNull, assertNotNull, assertUndefined, fail */
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -9,23 +9,23 @@ const errors = internal.errors;
 const aqlfunctions = require("@arangodb/aql/functions");
 const cn = "UnitTestsCollection";
 
-function ComputedValuesAfterCreateCollectionTestSuite() {
+function ComputedValuesAfterCreateCollectionTestSuite () {
   'use strict';
 
   let collection = null;
   return {
 
-    setUp: function() {
+    setUp: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       internal.db._drop(cn);
       collection = null;
     },
 
-    testWithoutReturnKeywordOnExpression: function() {
+    testWithoutReturnKeywordOnExpression: function () {
       try {
         collection.properties({
           computedValues: [
@@ -41,15 +41,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
     },
-    
-    testKeepNullTrue: function() {
+
+    testKeepNullTrue: function () {
       collection.properties({
         computedValues: [
           {
             name: "newValue",
             expression: "RETURN @doc.foxx",
             overwrite: true,
-            keepNull: true,
+            keepNull: true
           }
         ]
       });
@@ -73,7 +73,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertNull(collection.toArray()[0].newValue);
     },
 
-    testKeepNullTrue2: function() {
+    testKeepNullTrue2: function () {
       collection.properties({
         computedValues:
           [{
@@ -99,10 +99,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertTrue(colProperties.computedValues[0].keepNull);
 
       for (let i = 0; i < 50; ++i) {
-        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+        collection.insert({name: {first: `a${i}`,
+last: `b${i}`}});
       }
       for (let i = 0; i < 50; ++i) {
-        collection.insert({name: {first: i, last: i}});
+        collection.insert({name: {first: i,
+last: i}});
       }
       let amountNullValues = 0;
       const docs = collection.toArray();
@@ -115,15 +117,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(100, collection.count());
       assertEqual(amountNullValues, 50);
     },
-    
-    testKeepNullFalse: function() {
+
+    testKeepNullFalse: function () {
       collection.properties({
         computedValues: [
           {
             name: "newValue",
             expression: "RETURN @doc.foxx",
             overwrite: true,
-            keepNull: false,
+            keepNull: false
           }
         ]
       });
@@ -147,7 +149,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertUndefined(collection.toArray()[0].newValue);
     },
 
-    testKeepNullFalse2: function() {
+    testKeepNullFalse2: function () {
       collection.properties({
         computedValues:
           [{
@@ -173,10 +175,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertFalse(colProperties.computedValues[0].keepNull);
 
       for (let i = 0; i < 50; ++i) {
-        collection.insert({name: {first: `a${i}`, last: `b${i}`}});
+        collection.insert({name: {first: `a${i}`,
+last: `b${i}`}});
       }
       for (let i = 0; i < 50; ++i) {
-        collection.insert({name: {first: i, last: i}});
+        collection.insert({name: {first: i,
+last: i}});
       }
       const docs = collection.toArray();
       let amountValues = 0;
@@ -190,15 +194,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(100, collection.count());
       assertEqual(amountValues, 50);
     },
-    
-    testExpressionWithAssert: function() {
+
+    testExpressionWithAssert: function () {
       // expression must not be executed immediately
       collection.properties({
         computedValues: [
           {
             name: "value",
             expression: "RETURN ASSERT(false, 'piff!')",
-            overwrite: false,
+            overwrite: false
           }
         ]
       });
@@ -226,15 +230,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertMatch(/piff!/, err.errorMessage);
       }
     },
-    
-    testExpressionWithWarning: function() {
+
+    testExpressionWithWarning: function () {
       collection.properties({
         computedValues: [
           {
             name: "newValue",
             expression: "RETURN 42 / @doc.value",
             overwrite: false,
-            failOnWarning: false,
+            failOnWarning: false
           }
         ]
       });
@@ -256,15 +260,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       // computed value must be null
       assertNull(collection.toArray()[0].newValue);
     },
-    
-    testExpressionWithWarningAndFailOnWarning: function() {
+
+    testExpressionWithWarningAndFailOnWarning: function () {
       collection.properties({
         computedValues: [
           {
             name: "newValue",
             expression: "RETURN 42 / @doc.value",
             overwrite: false,
-            failOnWarning: true,
+            failOnWarning: true
           }
         ]
       });
@@ -292,14 +296,14 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertMatch(/division by zero/, err.errorMessage);
       }
     },
-    
-    testDefaultValueForComputeOn: function() {
+
+    testDefaultValueForComputeOn: function () {
       collection.properties({
         computedValues: [
           {
             name: "value",
             expression: "RETURN 'foo'",
-            overwrite: false,
+            overwrite: false
             // computeOn not set
           }
         ]
@@ -319,7 +323,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(colProperties.computedValues[0].computeOn, ["insert", "update", "replace"]);
     },
 
-    testSetStringValueForComputeOn: function() {
+    testSetStringValueForComputeOn: function () {
       try {
         collection.properties({
           computedValues: [
@@ -327,7 +331,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
               name: "value",
               expression: "RETURN 'foo'",
               overwrite: false,
-              computeOn: "insert",
+              computeOn: "insert"
             }
           ]
         });
@@ -336,15 +340,15 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
     },
-    
-    testSetArrayValueForComputeOn: function() {
+
+    testSetArrayValueForComputeOn: function () {
       collection.properties({
         computedValues: [
           {
             name: "value",
             expression: "RETURN 'foo'",
             overwrite: false,
-            computeOn: ["insert", "replace"],
+            computeOn: ["insert", "replace"]
           }
         ]
       });
@@ -363,7 +367,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(colProperties.computedValues[0].computeOn, ["insert", "replace"]);
     },
 
-    testCreateOnEmptyChangeAfterInsert: function() {
+    testCreateOnEmptyChangeAfterInsert: function () {
       collection.properties({
         computedValues: [
           {
@@ -399,7 +403,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -411,7 +416,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    testComputedValuesOnlyOnInsert: function() {
+    testComputedValuesOnlyOnInsert: function () {
       collection.properties({
         computedValues: [
           {
@@ -438,7 +443,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: false});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: false});
       }
       collection.insert(docs);
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -459,7 +466,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertFalse(docAttributes.hasOwnProperty("concatValues"));
     },
 
-    testComputedValuesOnlyOnUpdate: function() {
+    testComputedValuesOnlyOnUpdate: function () {
       collection.properties({
         computedValues: [
           {
@@ -486,7 +493,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: false});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: false});
       }
       collection.insert(docs);
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -507,7 +516,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertFalse(docAttributes.hasOwnProperty("concatValues"));
     },
 
-    testComputedValuesOnlyOnReplace: function() {
+    testComputedValuesOnlyOnReplace: function () {
       collection.properties({
         computedValues: [
           {
@@ -534,7 +543,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: false});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: false});
       }
       collection.insert(docs);
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -553,7 +564,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(docAttributes.concatValues, "abc+");
     },
 
-    testCreateAccessNonTopLevel: function() {
+    testCreateAccessNonTopLevel: function () {
       collection.properties({
         computedValues: [
           {
@@ -579,7 +590,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: {animal: "dog"}});
+        docs.push({value1: "test" + i,
+value2: {animal: "dog"}});
       }
       collection.insert(docs);
 
@@ -589,10 +601,11 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testCreateAfterInsertedDocumentsInsertAgain: function() {
+    testCreateAfterInsertedDocumentsInsertAgain: function () {
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "test" + i % 2});
+        docs.push({value1: "test" + i,
+value2: "test" + i % 2});
       }
       collection.insert(docs);
 
@@ -625,7 +638,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: 0});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: 0});
       }
       collection.insert(docs);
 
@@ -638,7 +653,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(res.length, 0);
     },
 
-    testAccessRevOnCreate: function() {
+    testAccessRevOnCreate: function () {
       try {
         collection.properties({
           computedValues: [
@@ -655,7 +670,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testAccessKeyOnCreate: function() {
+    testAccessKeyOnCreate: function () {
       try {
         collection.properties({
           computedValues: [
@@ -672,7 +687,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testAccessIdOnCreate: function() {
+    testAccessIdOnCreate: function () {
       try {
         collection.properties({
           computedValues: [
@@ -689,7 +704,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testComputeValuesSubquery: function() {
+    testComputeValuesSubquery: function () {
       try {
         collection.properties({
           computedValues: [
@@ -706,7 +721,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testNotAllowedFor: function() {
+    testNotAllowedFor: function () {
       try {
         collection.properties({
           computedValues: [
@@ -723,7 +738,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testNotAllowedLet: function() {
+    testNotAllowedLet: function () {
       try {
         collection.properties({
           computedValues: [
@@ -739,21 +754,21 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
     },
-    
-    testInteractionBetweenSchemaAndComputedValues: function() {
+
+    testInteractionBetweenSchemaAndComputedValues: function () {
       const schema = {
         rule: {
           type: "object",
           properties: {
             value1: {
-              type: "boolean",
-            },
+              type: "boolean"
+            }
           },
-          required: ["value1"],
+          required: ["value1"]
         },
         level: "moderate",
         message: "Schema validation failed",
-        type: "json",
+        type: "json"
       };
 
       const computedValues = [
@@ -763,11 +778,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
           computeOn: ["insert", "update", "replace"],
           overwrite: true,
           failOnWarning: false,
-          keepNull: true,
+          keepNull: true
         }
       ];
 
-      collection.properties({ schema, computedValues });
+      collection.properties({ schema,
+computedValues });
 
       if (isCluster) {
         // unfortunately there is no way to test when the new properties
@@ -799,21 +815,22 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(computedValues, colProperties.computedValues);
     },
 
-    testSchemaValidationWithComputedValuesOverwrite: function() {
+    testSchemaValidationWithComputedValuesOverwrite: function () {
       collection.properties({
         schema: {
           "rule": {
             "type": "object",
             "properties": {
               "value1": {
-                "type": "boolean",
-              },
+                "type": "boolean"
+              }
             },
-            "required": ["value1"],
+            "required": ["value1"]
           },
           "level": "moderate",
           "message": "Schema validation failed"
-        }, computedValues: [
+        },
+computedValues: [
           {
             name: "value1",
             expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
@@ -837,8 +854,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        const newValue = i % 2 ? true : false;
-        docs.push({value1: newValue, value2: newValue});
+        const newValue = !!(i % 2);
+        docs.push({value1: newValue,
+value2: newValue});
       }
       let res = collection.insert(docs);
       res.forEach(el => {
@@ -850,17 +868,17 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       assertEqual(res.length, 0);
     },
 
-    testSchemaValidationWithComputedValuesNoOverwrite: function() {
+    testSchemaValidationWithComputedValuesNoOverwrite: function () {
       collection.properties({
         schema: {
           "rule": {
             "type": "object",
             "properties": {
               "value1": {
-                "type": "string",
-              },
+                "type": "string"
+              }
             },
-            "required": ["value1"],
+            "required": ["value1"]
           },
           "level": "moderate",
           "message": "Schema validation failed"
@@ -890,8 +908,9 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        const newValue = i % 2 ? true : false;
-        docs.push({value1: newValue, value2: newValue});
+        const newValue = !!(i % 2);
+        docs.push({value1: newValue,
+value2: newValue});
       }
       let res = collection.insert(docs);
 
@@ -905,7 +924,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
     },
 
 
-    testRedefineComputedValueUpdateOverwrite: function() {
+    testRedefineComputedValueUpdateOverwrite: function () {
       collection.properties({
         computedValues: [
           {
@@ -936,7 +955,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -980,7 +1000,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testRedefineComputedValueUpdateNoOverwrite: function() {
+    testRedefineComputedValueUpdateNoOverwrite: function () {
       collection.properties({
         computedValues: [
           {
@@ -1011,7 +1031,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -1055,7 +1076,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testCompoundComputedValues: function() {
+    testCompoundComputedValues: function () {
       collection.properties({
         computedValues: [
           {
@@ -1086,7 +1107,8 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -1098,37 +1120,39 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testSpecialFunctionsNotAllowedInExpression: function() {
-      collection.ensureIndex({type: "geo", fields: ["latitude, longitude"], geoJson: true});
+    testSpecialFunctionsNotAllowedInExpression: function () {
+      collection.ensureIndex({type: "geo",
+fields: ["latitude, longitude"],
+geoJson: true});
       const schemaTest = {
         "rule": {
           "type": "object",
           "properties": {
             "value1": {
-              "type": "boolean",
-            },
+              "type": "boolean"
+            }
           },
-          "required": ["value1"],
+          "required": ["value1"]
         },
         "level": "moderate",
         "message": "Schema validation failed"
       };
       const specialFunctions = [
-        "COLLECTIONS", 
-        "CURRENT_DATABASE", 
-        "CURRENT_USER", 
-        "VERSION", 
-        `CALL("SUBSTRING", @doc.value1, 0, 2)`, 
-        `APPLY("SUBSTRING", [@doc.value1, 0, 2])`, 
-        `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`, 
-        `SCHEMA_GET(${cn}`, 
-        `SCHEMA_VALIDATE(@doc, ${schemaTest}`, 
-        `COLLECTION_COUNT(${cn}`, 
-        `NEAR(${cn}, @doc.latitude, @doc.longitude)`, 
+        "COLLECTIONS",
+        "CURRENT_DATABASE",
+        "CURRENT_USER",
+        "VERSION",
+        `CALL("SUBSTRING", @doc.value1, 0, 2)`,
+        `APPLY("SUBSTRING", [@doc.value1, 0, 2])`,
+        `DOCUMENT(${cn}, "test")`, `V8(1 + 1)`,
+        `SCHEMA_GET(${cn}`,
+        `SCHEMA_VALIDATE(@doc, ${schemaTest}`,
+        `COLLECTION_COUNT(${cn}`,
+        `NEAR(${cn}, @doc.latitude, @doc.longitude)`,
         `TOKENS(@doc, 'text_en')`,
         `TOKENS("foo bar", 'text_en')`,
-        `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, 
-        `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, 
+        `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`,
+        `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`,
         `PREGEL_RESULT("abc", true)`
       ];
       specialFunctions.forEach((el) => {
@@ -1150,8 +1174,10 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testUserDefinedFunctions: function() {
-      aqlfunctions.register("UnitTests::cv", function(what) { return what * 2; }, true);
+    testUserDefinedFunctions: function () {
+      aqlfunctions.register("UnitTests::cv", function (what) {
+ return what * 2;
+}, true);
       assertEqual("function(what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
 
       try {
@@ -1173,7 +1199,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       }
     },
 
-    testArrayOperator: function() {
+    testArrayOperator: function () {
       collection.properties({
         computedValues: [
           {
@@ -1211,7 +1237,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testArrayOperatorWithInline: function() {
+    testArrayOperatorWithInline: function () {
       collection.properties({
         computedValues: [
           {
@@ -1249,7 +1275,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testArrayOperatorWithInlineAndLargeValues: function() {
+    testArrayOperatorWithInlineAndLargeValues: function () {
       collection.properties({
         computedValues: [
           {
@@ -1292,7 +1318,7 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
       });
     },
 
-    testRandValues: function() {
+    testRandValues: function () {
       // the result of RAND() must be recomputed every time we
       // invoke the computed values expression.
       collection.properties({
@@ -1326,12 +1352,12 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         valuesFound[el.newValue] = 1;
       });
 
-      // assume we got at least 10 different RAND() values for 100 
+      // assume we got at least 10 different RAND() values for 100
       // documents.
       assertTrue(Object.keys(valuesFound).length >= 10, valuesFound);
     },
-    
-    testDateValues: function() {
+
+    testDateValues: function () {
       // the result of DATE_NOW() must be recomputed every time we
       // invoke the computed values expression.
       collection.properties({
@@ -1358,20 +1384,20 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         valuesCreated[doc.new.newValue] = 1;
       }
 
-      // assume we got at least 10 different DATE_NOW() values for 100 
+      // assume we got at least 10 different DATE_NOW() values for 100
       // documents.
       assertTrue(Object.keys(valuesCreated).length >= 10, valuesCreated);
-    },
+    }
 
   };
 }
 
-function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
+function ComputedValuesOnCollectionCreationoverwriteTestSuite () {
   'use strict';
 
   let collection = null;
   return {
-    setUp: function() {
+    setUp: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, {
         computedValues: [
@@ -1385,12 +1411,12 @@ function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
       });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       internal.db._drop(cn);
       collection = null;
     },
 
-    testCreateOnEmptyChangeAfterInsert2: function() {
+    testCreateOnEmptyChangeAfterInsert2: function () {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1409,7 +1435,8 @@ function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
 
       docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -1420,7 +1447,7 @@ function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
       });
     },
 
-    testoverwriteOnAllOperations: function() {
+    testoverwriteOnAllOperations: function () {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1429,7 +1456,10 @@ function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: false, concatValues: "test" + i});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: false,
+concatValues: "test" + i});
       }
       collection.insert(docs);
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -1447,16 +1477,16 @@ function ComputedValuesOnCollectionCreationoverwriteTestSuite() {
       res = collection.replace(docAttributes["_key"], {value1: "abc"});
       docAttributes = collection.document(res["_key"]);
       assertEqual(docAttributes.concatValues, "abc+");
-    },
+    }
   };
 }
 
-function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
+function ComputedValuesOnCollectionCreationNooverwriteTestSuite () {
   'use strict';
 
   let collection = null;
   return {
-    setUp: function() {
+    setUp: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn, {
         computedValues: [
@@ -1470,12 +1500,12 @@ function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
       });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       internal.db._drop(cn);
       collection = null;
     },
 
-    testCreateOnEmptyChangeAfterInsert3: function() {
+    testCreateOnEmptyChangeAfterInsert3: function () {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1494,7 +1524,8 @@ function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
 
       docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc"});
+        docs.push({value1: "test" + i,
+value2: "abc"});
       }
       collection.insert(docs);
 
@@ -1505,7 +1536,7 @@ function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
       });
     },
 
-    testNooverwriteOnAllOperations: function() {
+    testNooverwriteOnAllOperations: function () {
       const colProperties = collection.properties();
       assertTrue(colProperties.hasOwnProperty("computedValues"));
       assertEqual(colProperties.computedValues.length, 1);
@@ -1514,7 +1545,10 @@ function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({value1: "test" + i, value2: "abc", value3: false, concatValues: "test" + i});
+        docs.push({value1: "test" + i,
+value2: "abc",
+value3: false,
+concatValues: "test" + i});
       }
       collection.insert(docs);
       let res = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -1532,26 +1566,27 @@ function ComputedValuesOnCollectionCreationNooverwriteTestSuite() {
       res = collection.replace(docAttributes["_key"], {value1: "abc"});
       docAttributes = collection.document(res["_key"]);
       assertEqual(docAttributes.concatValues, "abc+");
-    },
+    }
   };
 }
 
-function ComputedValuesClusterShardsTestSuite() {
+function ComputedValuesClusterShardsTestSuite () {
   'use strict';
 
   let collection = null;
   return {
-    setUp: function() {
+    setUp: function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, {numberOfShards: 4, shardKeys: ["value1"]});
+      collection = internal.db._create(cn, {numberOfShards: 4,
+shardKeys: ["value1"]});
     },
 
-    tearDown: function() {
+    tearDown: function () {
       internal.db._drop(cn);
       collection = null;
     },
 
-    testAccessShardKeys: function() {
+    testAccessShardKeys: function () {
       try {
         collection.properties({
           computedValues: [
@@ -1566,7 +1601,7 @@ function ComputedValuesClusterShardsTestSuite() {
       } catch (error) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code, error.errorNum);
       }
-    },
+    }
   };
 }
 

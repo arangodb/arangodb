@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global ArangoClusterInfo, require, exports, module */
+/* jshint strict: false */
+/* global ArangoClusterInfo, require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoCollection

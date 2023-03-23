@@ -466,7 +466,7 @@
       if (advancedContent && advancedContent.content) {
         completeTableContent = completeTableContent.concat(advancedContent.content);
       } else if (Array.isArray(advancedContent)) {
-        _.each(advancedContent, function(arrEntry){
+        _.each(advancedContent, function (arrEntry) {
           if (arrEntry.content) {
             completeTableContent = completeTableContent.concat(arrEntry.content);
           }
@@ -483,7 +483,7 @@
           row.rows.forEach(row => {
             _.each(row, self.modalBindValidation, self);
 
-            _.each(row, function(innerRow) {
+            _.each(row, function (innerRow) {
               if (innerRow.type === self.tables.SELECT2) {
                 innerRow.width = "resolve";
                 self.handleSelect2Row(innerRow);
@@ -523,7 +523,7 @@
 
       if (advancedContent && Array.isArray(advancedContent)) {
         let c = 2;
-        _.each(advancedContent, function(entry) {
+        _.each(advancedContent, function (entry) {
           enableAccordion(c);
           c++;
         });
@@ -619,13 +619,13 @@
               $el.after('<p class="errorMessage">' + msg + '</p>');
             }
             if ($('#modal-dialog').is(':visible')) {
-              $('#modal-dialog .modal-footer .button-success')
-                .prop('disabled', true)
-                .addClass('disabled');
+              $('#modal-dialog .modal-footer .button-success').
+                prop('disabled', true).
+                addClass('disabled');
             } else {
-              $('.createModalDialog .modal-footer .button-success')
-                .prop('disabled', true)
-                .addClass('disabled');
+              $('.createModalDialog .modal-footer .button-success').
+                prop('disabled', true).
+                addClass('disabled');
             }
           } else {
             $el.removeClass('invalid-input');
@@ -647,23 +647,23 @@
       var invalid = _.any(tests);
       if (invalid) {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success')
-            .prop('disabled', true)
-            .addClass('disabled');
+          $('#modal-dialog .modal-footer .button-success').
+            prop('disabled', true).
+            addClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success')
-            .prop('disabled', true)
-            .addClass('disabled');
+          $('.createModalDialog .modal-footer .button-success').
+            prop('disabled', true).
+            addClass('disabled');
         }
       } else {
         if ($('#modal-dialog').is(':visible')) {
-          $('#modal-dialog .modal-footer .button-success')
-            .prop('disabled', false)
-            .removeClass('disabled');
+          $('#modal-dialog .modal-footer .button-success').
+            prop('disabled', false).
+            removeClass('disabled');
         } else {
-          $('.createModalDialog .modal-footer .button-success')
-            .prop('disabled', false)
-            .removeClass('disabled');
+          $('.createModalDialog .modal-footer .button-success').
+            prop('disabled', false).
+            removeClass('disabled');
         }
       }
       return !invalid;

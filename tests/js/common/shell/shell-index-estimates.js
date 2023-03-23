@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 
-function indexEstimatesSuite() {
+function indexEstimatesSuite () {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
 
@@ -50,7 +50,7 @@ function indexEstimatesSuite() {
       assertFalse(indexes[0].hasOwnProperty("estimates"));
       assertTrue(indexes[0].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testEdge: function () {
       let c = db._createEdgeCollection(cn);
       let indexes = c.indexes();
@@ -63,10 +63,12 @@ function indexEstimatesSuite() {
       assertFalse(indexes[1].hasOwnProperty("estimates"));
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentNonUniqueDefaults: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: false });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: false });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -78,10 +80,12 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].estimates);
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentUniqueDefaults: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -93,10 +97,13 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].estimates);
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentNonUniqueWithEstimates: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: false, estimates: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: false,
+estimates: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -107,10 +114,13 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].estimates);
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentUniqueWithEstimates: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true, estimates: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: true,
+estimates: true });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -121,10 +131,13 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].estimates);
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentNonUniqueNoEstimates: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: false, estimates: false });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: false,
+estimates: false });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -135,10 +148,13 @@ function indexEstimatesSuite() {
       assertFalse(indexes[1].estimates);
       assertFalse(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testPersistentUniqueNoEstimates: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value"], unique: true, estimates: false });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"],
+unique: true,
+estimates: false });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -149,10 +165,12 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].estimates);
       assertTrue(indexes[1].hasOwnProperty("selectivityEstimate"));
     },
-    
+
     testTtl: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "ttl", fields: ["value"], expireAfter: 1800 });
+      c.ensureIndex({ type: "ttl",
+fields: ["value"],
+expireAfter: 1800 });
       let indexes = c.indexes();
       assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
@@ -162,7 +180,7 @@ function indexEstimatesSuite() {
       assertTrue(indexes[1].hasOwnProperty("estimates"));
       assertFalse(indexes[1].estimates);
       assertFalse(indexes[1].hasOwnProperty("selectivityEstimate"));
-    },
+    }
   };
 }
 

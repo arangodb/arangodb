@@ -39,7 +39,7 @@ var ArangoError = require('@arangodb').ArangoError;
 // / @brief get a list of the hot backups on the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.get =  function () {
+exports.get = function () {
   let reply = internal.db._connection.POST('_admin/backup/list', null);
   if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('list')) {
     return reply.result.list;
@@ -68,23 +68,22 @@ exports.create = function (userString = undefined) {
 // //////////////////////////////////////////////////////////////////////////////
 
 const waitForRestart = (maxWait, originalUptime) => {
-  if (maxWait === 0.0 || maxWait === undefined || maxWait === null || 
+  if (maxWait === 0.0 || maxWait === undefined || maxWait === null ||
       isNaN(parseFloat(maxWait))) {
     return;
   }
-  
+
   let start = Date.now();
   let originalUptimeKeys = Object.keys(originalUptime);
   while (((Date.now() - start) / 1000) < maxWait) {
     let currentUptime = this.getUptime();
     let keys = Object.keys(currentUptime);
-    if (keys.length !== originalUptimeKeys ) {
+    if (keys.length !== originalUptimeKeys) {
       try {
         internal.db._connection.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
-      }
-      catch(x) {
+      } catch (x) {
         this.print(".");
-        
+
         sleep(1.0);
         continue;
       }
@@ -98,14 +97,13 @@ const waitForRestart = (maxWait, originalUptime) => {
         newer = false;
       }
     });
-    
+
     if (newer) {
       try {
         internal.db._connection.reconnect(this.instanceInfo.endpoint, '_system', 'root', '');
         this.print("reconnected");
         return this.results.restoreHotBackup.status;
-      }
-      catch(x) {
+      } catch (x) {
         sleep(1.0);
         this.print(",");
         continue;
@@ -116,7 +114,7 @@ const waitForRestart = (maxWait, originalUptime) => {
   throw ("Arangod didn't come back up in the expected timeframe!");
 };
 
-exports.restore = function(restoreBackupName, maxWait) {
+exports.restore = function (restoreBackupName, maxWait) {
   let originalUptime = this.getUptime();
   let reply = internal.db._connection.POST('_admin/backup/restore', { id: restoreBackupName });
   if (!reply.error && reply.code === 200) {
@@ -130,7 +128,7 @@ exports.restore = function(restoreBackupName, maxWait) {
 // / @brief deletes a hot backup on the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.delete = function(deleteBackupName) {
+exports.delete = function (deleteBackupName) {
   let reply = internal.db._connection.POST('_admin/backup/delete', { id: deleteBackupName });
   if (!reply.error && reply.code === 200) {
     return reply.result;
@@ -142,8 +140,8 @@ exports.delete = function(deleteBackupName) {
 // / @brief stores a hot backup on the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.upload = function(uploadBackupName, remoteRepository, config) {
-  let reply = internal.db._connection.POST('_admin/backup/upload', 
+exports.upload = function (uploadBackupName, remoteRepository, config) {
+  let reply = internal.db._connection.POST('_admin/backup/upload',
     { id: uploadBackupName,
       remoteRepository,
       config });
@@ -158,8 +156,8 @@ exports.upload = function(uploadBackupName, remoteRepository, config) {
 // / @brief track progress of an upload
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.uploadProgress = function(uploadId) {
-  let reply = internal.db._connection.POST('_admin/backup/upload', 
+exports.uploadProgress = function (uploadId) {
+  let reply = internal.db._connection.POST('_admin/backup/upload',
     { uploadId: uploadId });
   if (!reply.error && reply.code === 200) {
     return reply.result;
@@ -172,7 +170,7 @@ exports.uploadProgress = function(uploadId) {
 // / @brief retrieves a hot backup from the server
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.download = function(backupName, remoteRepository, config) {
+exports.download = function (backupName, remoteRepository, config) {
   let reply = internal.db._connection.POST('_admin/backup/download',
     { id: backupName,
       remoteRepository,
@@ -188,8 +186,8 @@ exports.download = function(backupName, remoteRepository, config) {
 // / @brief track progress of a download
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.downloadProgress = function(downloadId) {
-  let reply = internal.db._connection.POST('_admin/backup/download', 
+exports.downloadProgress = function (downloadId) {
+  let reply = internal.db._connection.POST('_admin/backup/download',
     { downloadId: downloadId });
   if (!reply.error && reply.code === 200) {
     return reply.result;

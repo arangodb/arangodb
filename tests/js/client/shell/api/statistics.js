@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,66 +31,66 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
-let  api = "/_admin/";
+let api = "/_admin/";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // check statistics-description availability;
-//////////////////////////////////////////////////////////////////////////////#;
+// ////////////////////////////////////////////////////////////////////////////#;
 function calculating_statisticsSuite () {
   return {
 
-    test_testing_statistics_description_correct_cmd: function() {
+    test_testing_statistics_description_correct_cmd: function () {
       let cmd = "/_admin/statistics-description";
-      let doc = arango.GET_RAW(cmd) ;
+      let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, 200);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // check statistics-description for wrong user interaction;
-    //////////////////////////////////////////////////////////////////////////////#;
+    // ////////////////////////////////////////////////////////////////////////////#;
 
-    test_testing_statistics_description_wrong_cmd: function() {
+    test_testing_statistics_description_wrong_cmd: function () {
       let cmd = "/_admin/statistics-description/asd123";
-      let doc = arango.GET_RAW(cmd) ;
+      let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // check statistics availability;
-    //////////////////////////////////////////////////////////////////////////////#;
+    // ////////////////////////////////////////////////////////////////////////////#;
 
-    test_testing_statistics_correct_cmd: function() {
+    test_testing_statistics_correct_cmd: function () {
       let cmd = "/_admin/statistics";
-      let doc = arango.GET_RAW(cmd) ;
+      let doc = arango.GET_RAW(cmd);
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody['server']['uptime'] > 0);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // check statistics for wrong user interaction;
-    //////////////////////////////////////////////////////////////////////////////#;
+    // ////////////////////////////////////////////////////////////////////////////#;
 
-    test_testing_statistics_wrong_cmd: function() {
+    test_testing_statistics_wrong_cmd: function () {
       let cmd = "/_admin/statistics/asd123";
-      let doc = arango.GET_RAW(cmd) ;
+      let doc = arango.GET_RAW(cmd);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////;
+    // //////////////////////////////////////////////////////////////////////////////;
     // check request statistics counting of async requests;
-    //////////////////////////////////////////////////////////////////////////////#;
+    // ////////////////////////////////////////////////////////////////////////////#;
 
-    test_testing_async_requests_: function() {
+    test_testing_async_requests_: function () {
       // get stats;
       let cmd = "/_admin/statistics";
       let doc = arango.GET_RAW(cmd);
@@ -127,7 +127,7 @@ function calculating_statisticsSuite () {
       assertEqual(doc.code, 200);
       let async_requests_3 = doc.parsedBody['http']['requestsAsync'];
       assertEqual(async_requests_2, async_requests_3);
-    },
+    }
 
   };
 }

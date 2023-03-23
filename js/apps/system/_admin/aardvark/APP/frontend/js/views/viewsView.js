@@ -531,7 +531,7 @@
           let fieldsArr = [];
 
           if (s2dataObj.length > 0) {
-            _.each(s2dataObj, function(value, key) {
+            _.each(s2dataObj, function (value, key) {
               fieldsArr.push(value.text);
             });
           }

@@ -29,15 +29,15 @@
 let jsunity = require('jsunity');
 let fs = require('fs');
 
-function dumpIntegrationSuite() {
+function dumpIntegrationSuite () {
   'use strict';
   // this file is used by multiple, hence the checked structure is only in a subdirectory:
   const dumpDir = fs.join(process.env['dump-directory'], 'UnitTestsDumpSrc');
   const cn = 'UnitTestComputedValues';
   const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
 
-  let checkValues = function(data) {
-    data.forEach(function(line) {
+  let checkValues = function (data) {
+    data.forEach(function (line) {
       line = JSON.parse(line);
       assertEqual(2300, line.type);
       assertTrue(line.data.hasOwnProperty('_key'));
@@ -52,7 +52,7 @@ function dumpIntegrationSuite() {
   };
 
   return {
-    testDumpUncompressedComputedValues: function() {
+    testDumpUncompressedComputedValues: function () {
       let tree = fs.listTree(dumpDir);
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION"));
@@ -76,7 +76,7 @@ function dumpIntegrationSuite() {
       checkValues(data);
     },
 
-    testDumpCompressedComputedValues: function() {
+    testDumpCompressedComputedValues: function () {
       let tree = fs.listTree(dumpDir);
       assertNotEqual(-1, tree.indexOf("ENCRYPTION"));
       let data = fs.readFileSync(fs.join(dumpDir, "ENCRYPTION")).toString();

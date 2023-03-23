@@ -62,6 +62,6 @@ exports.properties = function (config) {
 // / @brief kills a query
 exports.kill = function (params) {
   'use strict';
-  
+
   return AQL_QUERIES_KILL(params);
 };

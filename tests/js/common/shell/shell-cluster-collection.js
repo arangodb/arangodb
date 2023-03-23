@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test collection functionality in a cluster
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test collection functionality in a cluster
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const {fail, assertEqual, assertTrue, assertFalse, assertNull, assertTypeOf} = jsunity.jsUnity.assertions;
@@ -38,27 +38,27 @@ const console = require('console');
 const request = require('@arangodb/request');
 const ArangoError = require("@arangodb").ArangoError;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ClusterCollectionSuite () {
   'use strict';
 
-  function baseUrl(endpoint) { // arango.getEndpoint()
+  function baseUrl (endpoint) { // arango.getEndpoint()
     return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   }
 
-  /// @brief set failure point
-  function debugCanUseFailAt(endpoint) {
+  // / @brief set failure point
+  function debugCanUseFailAt (endpoint) {
     let res = request.get({
-      url: baseUrl(endpoint) + '/_admin/debug/failat',
+      url: baseUrl(endpoint) + '/_admin/debug/failat'
     });
     return res.status === 200;
   }
 
-  /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
+  // / @brief set failure point
+  function debugSetFailAt (endpoint, failAt) {
     assertTrue(typeof failAt !== 'undefined');
     let res = request.put({
       url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
@@ -69,8 +69,8 @@ function ClusterCollectionSuite () {
     }
   }
 
-  /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
+  // / @brief remove failure point
+  function debugRemoveFailAt (endpoint, failAt) {
     assertTrue(typeof failAt !== 'undefined');
     let res = request.delete({
       url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
@@ -83,19 +83,19 @@ function ClusterCollectionSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop("UnitTestsClusterCrud");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create, single shard
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create, single shard
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateSingleShard : function () {
+    testCreateSingleShard: function () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -103,11 +103,11 @@ function ClusterCollectionSuite () {
       assertTrue(typeof c.shards()[0] === 'string');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create, multiple shards
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create, multiple shards
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateMultipleShards : function () {
+    testCreateMultipleShards: function () {
       var c = db._create("UnitTestsClusterCrud", { numberOfShards: 8 });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -117,11 +117,11 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreate : function () {
+    testCreate: function () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -131,11 +131,11 @@ function ClusterCollectionSuite () {
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection fail
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection fail
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalid : function () {
+    testCreateInvalid: function () {
       let invalidNames = ["123", "_x", "_x", "!", "?", "%", "xyz&asd", "&"];
       let properties = {};
 
@@ -150,15 +150,15 @@ function ClusterCollectionSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidReplicationFactor : function () {
+    testCreateValidReplicationFactor: function () {
       let c;
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
-      for ( let i = 1; i < 3; i++) {
+      for (let i = 1; i < 3; i++) {
         c = db._create("UnitTestsClusterCrud", {
           replicationFactor: i
         });
@@ -171,16 +171,16 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && writeConcern
-/// writeConcern is equally set to replicationFactor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && writeConcern
+// / writeConcern is equally set to replicationFactor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactor : function () {
+    testCreateValidMinReplicationFactor: function () {
       let c;
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
-      for ( let i = 1; i < 3; i++) {
+      for (let i = 1; i < 3; i++) {
         c = db._create("UnitTestsClusterCrud", {
           replicationFactor: i,
           minReplicationFactor: i
@@ -197,15 +197,15 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && writeConcern
-/// writeConcern is set to replicationFactor - 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && writeConcern
+// / writeConcern is set to replicationFactor - 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorSmaller : function () {
+    testCreateValidMinReplicationFactorSmaller: function () {
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
-      for ( let i = 2; i < 3; i++) {
+      for (let i = 2; i < 3; i++) {
         let c = db._create("UnitTestsClusterCrud", {
           replicationFactor: i,
           minReplicationFactor: i - 1
@@ -221,12 +221,12 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && writeConcern
-/// set to 2. Then decrease both to 1 (update).
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && writeConcern
+// / set to 2. Then decrease both to 1 (update).
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorThenDecrease : function () {
+    testCreateValidMinReplicationFactorThenDecrease: function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
         writeConcern: 2
@@ -252,12 +252,12 @@ function ClusterCollectionSuite () {
       db._drop("UnitTestsClusterCrud");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && writeConcern
-/// set to 1. Then increase both to 2 (update).
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && writeConcern
+// / set to 1. Then increase both to 2 (update).
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateValidMinReplicationFactorThenIncrease : function () {
+    testCreateValidMinReplicationFactorThenIncrease: function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 1,
         writeConcern: 1
@@ -283,12 +283,12 @@ function ClusterCollectionSuite () {
       db._drop("UnitTestsClusterCrud");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && writeConcern
-/// set to 2. Then increase both to 3 (update).
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && writeConcern
+// / set to 2. Then increase both to 3 (update).
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidMinReplicationFactorThenIncrease : function () {
+    testCreateInvalidMinReplicationFactorThenIncrease: function () {
       let c = db._create("UnitTestsClusterCrud", {
         replicationFactor: 2,
         writeConcern: 2
@@ -318,14 +318,14 @@ function ClusterCollectionSuite () {
       db._drop("UnitTestsClusterCrud");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief with invalid input
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief with invalid input
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidInputsMinReplicationFactor : function () {
-      const invalidMinReplFactors = [null, "a", true, false, [1,2,3], {some: "object"}];
+    testCreateInvalidInputsMinReplicationFactor: function () {
+      const invalidMinReplFactors = [null, "a", true, false, [1, 2, 3], {some: "object"}];
 
-      invalidMinReplFactors.forEach(function(minFactor) {
+      invalidMinReplFactors.forEach(function (minFactor) {
         try {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
@@ -336,7 +336,7 @@ function ClusterCollectionSuite () {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
       });
-      invalidMinReplFactors.forEach(function(minFactor) {
+      invalidMinReplFactors.forEach(function (minFactor) {
         try {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
@@ -349,14 +349,14 @@ function ClusterCollectionSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with minReplicationFactor 0 (invalid)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with minReplicationFactor 0 (invalid)
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidNumbersMinReplicationFactor : function () {
+    testCreateInvalidNumbersMinReplicationFactor: function () {
       const invalidMinReplFactors = [0];
 
-      invalidMinReplFactors.forEach(function(minFactor) {
+      invalidMinReplFactors.forEach(function (minFactor) {
         try {
           db._create("UnitTestsClusterCrud", {
             replicationFactor: 2,
@@ -368,9 +368,9 @@ function ClusterCollectionSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create with id
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief create with id
+// //////////////////////////////////////////////////////////////////////////////
 
     testCreateWithId: function () {
       var cn = "example", id = "1234567890";
@@ -393,15 +393,15 @@ function ClusterCollectionSuite () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create collection with replicationFactor && minReplicationFactor
-/// minReplicationFactor is set to replicationFactor + 1
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create collection with replicationFactor && minReplicationFactor
+// / minReplicationFactor is set to replicationFactor + 1
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInvalidMinReplicationFactorBigger : function () {
+    testCreateInvalidMinReplicationFactorBigger: function () {
       try {
         let c;
-        for ( let i = 1; i < 3; i++) {
+        for (let i = 1; i < 3; i++) {
           c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
             minReplicationFactor: i + 1
@@ -413,7 +413,7 @@ function ClusterCollectionSuite () {
       }
       try {
         let c;
-        for ( let i = 1; i < 3; i++) {
+        for (let i = 1; i < 3; i++) {
           c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
             writeConcern: i + 1
@@ -425,11 +425,11 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateEdge : function () {
+    testCreateEdge: function () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
@@ -439,11 +439,11 @@ function ClusterCollectionSuite () {
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateEdgeMultipleShards : function () {
+    testCreateEdgeMultipleShards: function () {
       var c = db._createEdgeCollection("UnitTestsClusterCrud", { numberOfShards: 8 });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(3, c.type());
@@ -454,11 +454,11 @@ function ClusterCollectionSuite () {
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create / drop
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create / drop
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateDrop : function () {
+    testCreateDrop: function () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -469,11 +469,11 @@ function ClusterCollectionSuite () {
       assertNull(db._collection("UnitTestsClusterCrud"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
-    
-    testCreateEmptyShardKeysArray : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
+
+    testCreateEmptyShardKeysArray: function () {
       try {
         db._create("UnitTestsClusterCrud", {shardKeys: []});
         fail("Managed to create collection with illegal shardKey entry");
@@ -481,14 +481,14 @@ function ClusterCollectionSuite () {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
-    testCreateShardKeysOnKey : function () {
+
+    testCreateShardKeysOnKey: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_key" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_key"], props.shardKeys);
     },
-    
-    testCreateShardKeysOnId : function () {
+
+    testCreateShardKeysOnId: function () {
       try {
         db._create("UnitTestsClusterCrud", { shardKeys: [ "_id" ] });
         fail();
@@ -497,7 +497,7 @@ function ClusterCollectionSuite () {
       }
     },
 
-    testCreateShardKeysOnRev : function () {
+    testCreateShardKeysOnRev: function () {
       try {
         db._create("UnitTestsClusterCrud", { shardKeys: [ "_rev" ] });
         fail();
@@ -506,49 +506,49 @@ function ClusterCollectionSuite () {
       }
     },
 
-    testCreateIncompleteShardKeys1 : function () {
+    testCreateIncompleteShardKeys1: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "", "foo" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["foo"], props.shardKeys);
     },
-    
-    testCreateIncompleteShardKeys2 : function () {
+
+    testCreateIncompleteShardKeys2: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "bar", "" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["bar"], props.shardKeys);
     },
 
-    testCreateShardKeysOnFrom : function () {
+    testCreateShardKeysOnFrom: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_from" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_from"], props.shardKeys);
     },
-    
-    testCreateShardKeysOnTo : function () {
+
+    testCreateShardKeysOnTo: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_to" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_to"], props.shardKeys);
     },
-    
-    testCreateShardKeysOnFromTo : function () {
+
+    testCreateShardKeysOnFromTo: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "_from", "_to" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["_from", "_to"], props.shardKeys);
     },
 
-    testCreateShardKeysMixed : function () {
+    testCreateShardKeysMixed: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "_from" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["a", "_from"], props.shardKeys);
     },
-    
-    testCreateShardKeysMany : function () {
+
+    testCreateShardKeysMany: function () {
       db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "b", "c", "d", "e", "f", "g", "h" ] });
       let props = db["UnitTestsClusterCrud"].properties();
       assertEqual(["a", "b", "c", "d", "e", "f", "g", "h"], props.shardKeys);
     },
-    
-    testCreateShardKeysTooMany : function () {
+
+    testCreateShardKeysTooMany: function () {
       try {
         // only 8 shard keys are allowed
         db._create("UnitTestsClusterCrud", { shardKeys: [ "a", "b", "c", "d", "e", "f", "g", "h", "i" ] });
@@ -558,38 +558,38 @@ function ClusterCollectionSuite () {
       }
     },
 
-    testCreateInvalidNumberOfShards1 : function () {
+    testCreateInvalidNumberOfShards1: function () {
       try {
-        db._create("UnitTestsClusterCrud", { numberOfShards : 0 });
+        db._create("UnitTestsClusterCrud", { numberOfShards: 0 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
 
-    testCreateInvalidNumberOfShards2 : function () {
+    testCreateInvalidNumberOfShards2: function () {
       try {
-        db._create("UnitTestsClusterCrud", { numberOfShards : 1024 * 1024 });
+        db._create("UnitTestsClusterCrud", { numberOfShards: 1024 * 1024 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
       }
     },
 
-    testCreateAsManyShardsAsAllowed : function () {
+    testCreateAsManyShardsAsAllowed: function () {
       let max = internal.maxNumberOfShards;
       if (max > 0) {
-        db._create("UnitTestsClusterCrud", { numberOfShards : max });
+        db._create("UnitTestsClusterCrud", { numberOfShards: max });
         let properties = db["UnitTestsClusterCrud"].properties();
         assertEqual(max, properties.numberOfShards);
       }
     },
 
-    testCreateMoreShardsThanAllowed : function () {
+    testCreateMoreShardsThanAllowed: function () {
       let max = internal.maxNumberOfShards;
       if (max > 0) {
         try {
-          db._create("UnitTestsClusterCrud", { numberOfShards : max + 1 });
+          db._create("UnitTestsClusterCrud", { numberOfShards: max + 1 });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_CLUSTER_TOO_MANY_SHARDS.code, err.errorNum);
@@ -597,7 +597,7 @@ function ClusterCollectionSuite () {
       }
     },
 
-    testCreateFailureDuringIsBuilding : function () {
+    testCreateFailureDuringIsBuilding: function () {
       if (!isServer) {
         console.info('Skipping client test');
         // TODO make client tests work
@@ -641,14 +641,14 @@ function ClusterCollectionSuite () {
               'error': true,
               'errorNum': 22,
               'code': 500,
-              'errorMessage': 'intentional debug error',
+              'errorMessage': 'intentional debug error'
             };
             assertEqual(expected, e);
           }
         }
         assertTrue(threw);
-        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
-          .arango.Plan.Collections[db._name()];
+        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`).
+          arango.Plan.Collections[db._name()];
         assertEqual([], Object.values(collections).filter(col => col.name === colName),
           'Collection should have been deleted');
       } finally {
@@ -656,7 +656,7 @@ function ClusterCollectionSuite () {
       }
     },
 
-    testCreateFailureWhenRemovingIsBuilding : function () {
+    testCreateFailureWhenRemovingIsBuilding: function () {
       if (!isServer) {
         console.info('Skipping client test');
         return;
@@ -696,11 +696,11 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replicationFactor
-////////////////////////////////////////////////////////////////////////////////
-    
-    testMinReplicationFactor : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replicationFactor
+// //////////////////////////////////////////////////////////////////////////////
+
+    testMinReplicationFactor: function () {
       let min = internal.minReplicationFactor;
       if (min > 0) {
         db._create("UnitTestsClusterCrud", { replicationFactor: min });
@@ -715,15 +715,15 @@ function ClusterCollectionSuite () {
         }
       }
     },
-    
-    testMaxReplicationFactor : function () {
+
+    testMaxReplicationFactor: function () {
       let max = internal.maxReplicationFactor;
       if (max > 0) {
         try {
           db._create("UnitTestsClusterCrud", { replicationFactor: max });
           let properties = db["UnitTestsClusterCrud"].properties();
           assertEqual(max, properties.replicationFactor);
-          
+
           try {
             db["UnitTestsClusterCrud"].properties({ replicationFactor: max + 1 });
             fail();
@@ -737,12 +737,12 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountAll : function () {
-      var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
+    testCountAll: function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards: 5 });
       for (var i = 0; i < 1000; ++i) {
         c.insert({ value: i });
       }
@@ -750,28 +750,31 @@ function ClusterCollectionSuite () {
       assertEqual(1000, c.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test count
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test count
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCountDetailed : function () {
-      var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
+    testCountDetailed: function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards: 5 });
       for (var i = 0; i < 1000; ++i) {
         c.insert({ value: i });
       }
 
       var total = 0, res = c.count(true);
       assertEqual(5, Object.keys(res).length);
-      Object.keys(res).forEach(function(key) { total += res[key]; });
+      Object.keys(res).forEach(function (key) {
+ total += res[key];
+});
       assertEqual(1000, total);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateProperties1 : function () {
-      var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5, shardKeys: [ "_key" ] });
+    testCreateProperties1: function () {
+      var c = db._create("UnitTestsClusterCrud", { numberOfShards: 5,
+shardKeys: [ "_key" ] });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());
@@ -780,12 +783,13 @@ function ClusterCollectionSuite () {
       assertFalse(c.properties().waitForSync);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateProperties2 : function () {
-      var c = db._create("UnitTestsClusterCrud", { shardKeys: [ "foo", "bar" ], waitForSync : true });
+    testCreateProperties2: function () {
+      var c = db._create("UnitTestsClusterCrud", { shardKeys: [ "foo", "bar" ],
+waitForSync: true });
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());
@@ -794,11 +798,11 @@ function ClusterCollectionSuite () {
       assertTrue(c.properties().waitForSync);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateProperties3 : function () {
+    testCreateProperties3: function () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -808,11 +812,11 @@ function ClusterCollectionSuite () {
       assertFalse(c.properties().waitForSync);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test recreate
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test recreate
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRecreate : function () {
+    testRecreate: function () {
       var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
@@ -829,11 +833,11 @@ function ClusterCollectionSuite () {
       assertEqual(c.name(), db._collection("UnitTestsClusterCrud").name());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIllegalName1 : function () {
+    testCreateIllegalName1: function () {
       try {
         db._create("1234");
         fail();
@@ -844,11 +848,11 @@ function ClusterCollectionSuite () {
       assertNull(db._collection("1234"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIllegalName2 : function () {
+    testCreateIllegalName2: function () {
       try {
         db._create("");
         fail();
@@ -857,11 +861,11 @@ function ClusterCollectionSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateIllegalName3 : function () {
+    testCreateIllegalName3: function () {
       try {
         db._drop("_foo");
       } catch (e) {
@@ -877,11 +881,11 @@ function ClusterCollectionSuite () {
       assertNull(db._collection("_foo"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInsufficientDBServersDefault : function () {
+    testCreateInsufficientDBServersDefault: function () {
       try {
         db._create("bigreplication", {replicationFactor: 8});
         fail();
@@ -891,21 +895,21 @@ function ClusterCollectionSuite () {
       db._drop('bigreplication');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInsufficientDBServersIgnoreReplicationFactor : function () {
+    testCreateInsufficientDBServersIgnoreReplicationFactor: function () {
       // should not throw (just a warning)
       db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: false});
       db._drop('bigreplication');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test create
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test create
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateInsufficientDBServersEnforceReplicationFactor : function () {
+    testCreateInsufficientDBServersEnforceReplicationFactor: function () {
       try {
         db._create("bigreplication", {replicationFactor: 8}, {enforceReplicationFactor: true});
         fail();
@@ -915,20 +919,21 @@ function ClusterCollectionSuite () {
       db._drop('bigreplication');
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test creation / deleting of documents with replication set
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test creation / deleting of documents with replication set
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCreateReplicated : function () {
+    testCreateReplicated: function () {
       var cn = "UnitTestsClusterCrudRepl";
-      var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
+      var c = db._create(cn, { numberOfShards: 2,
+replicationFactor: 2});
 
       // store and delete document
       c.save({foo: 'bar'});
       db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
       assertEqual(0, c.toArray().length);
 
-      //insert
+      // insert
       var cursor = db._query(`
         let x = (FOR a IN [1]
                  INSERT {
@@ -936,31 +941,31 @@ function ClusterCollectionSuite () {
                    "super" : "dog"
                  } IN @@cn)
         return x`,
-        {'@cn' : cn});
+        {'@cn': cn});
       assertEqual(1, c.toArray().length);
 
-      //update
+      // update
       cursor = db._query(`
         let x = (UPDATE 'ulf' WITH {
                    "super" : "cat"
                  } IN @@cn RETURN NEW)
         RETURN x`,
-        {'@cn' : cn});
+        {'@cn': cn});
       assertEqual(1, c.toArray().length);
       var doc = c.any();
       assertEqual(doc.super, "cat");
-      doc = cursor.next();                // should be: cursor >>= id
-      assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
+      doc = cursor.next(); // should be: cursor >>= id
+      assertEqual(doc[0].super, "cat"); // extra [] buy subquery return
 
-      //remove
+      // remove
       cursor = db._query(`
         let x = (REMOVE 'ulf' IN @@cn)
         return x`,
-        {'@cn' : cn});
+        {'@cn': cn});
       assertEqual(0, c.toArray().length);
 
       db._drop(cn);
-    },
+    }
 
   };
 }

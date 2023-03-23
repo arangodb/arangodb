@@ -147,7 +147,8 @@
     installCallback: function (result) {
       var self = this;
       var errors = {
-        'ERROR_SERVICE_DOWNLOAD_FAILED': { 'code': 1752, 'message': 'service download failed' }
+        'ERROR_SERVICE_DOWNLOAD_FAILED': { 'code': 1752,
+'message': 'service download failed' }
       };
 
       if (result.error === false) {

@@ -1,28 +1,28 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 
 const tryRequire = (module) => {
@@ -79,13 +79,13 @@ const verifyGeneralGraphCollection = (collection, options) => {
 
 const verifyGeneralGraph = (graphName, options) => {
   const g = cgm._graph(graphName);
-  _.each(g.__vertexCollections, function(collection) {
+  _.each(g.__vertexCollections, function (collection) {
     verifyGeneralGraphCollection(collection, options);
   });
-  _.each(g.__edgeCollections, function(collection) {
+  _.each(g.__edgeCollections, function (collection) {
     verifyGeneralGraphCollection(collection, options);
   });
-  _.each(g.__orphanCollections, function(collection) {
+  _.each(g.__orphanCollections, function (collection) {
     // as unfortunately orphans are stored as strings and not objects ...
     verifyGeneralGraphCollection(db[collection], options);
   });
@@ -99,13 +99,13 @@ const verifySmartGraph = (graphName, isDisjoint) => {
   } else {
     assert.assertFalse(g.__isDisjoint);
   }
-  _.each(g.__vertexCollections, function(collection) {
+  _.each(g.__vertexCollections, function (collection) {
     verifySmartCollection(collection);
   });
-  _.each(g.__edgeCollections, function(collection) {
+  _.each(g.__edgeCollections, function (collection) {
     verifySmartCollection(collection);
   });
-  _.each(g.__orphanCollections, function(collection) {
+  _.each(g.__orphanCollections, function (collection) {
     // as unfortunately orphans are stored as strings and not objects ...
     verifySmartCollection(db[collection]);
   });
@@ -116,20 +116,20 @@ const verifySatelliteGraph = (graphName) => {
   assert.assertTrue(g.__isSatellite);
   assert.assertFalse(g.__isSmart);
   assert.assertFalse(g.__isDisjoint);
-  _.each(g.__vertexCollections, function(collection) {
+  _.each(g.__vertexCollections, function (collection) {
     verifySatelliteCollection(collection);
   });
-  _.each(g.__edgeCollections, function(collection) {
+  _.each(g.__edgeCollections, function (collection) {
     verifySatelliteCollection(collection);
   });
-  _.each(g.__orphanCollections, function(collection) {
+  _.each(g.__orphanCollections, function (collection) {
     // as unfortunately orphans are stored as strings and not objects ...
     verifySatelliteCollection(db[collection]);
   });
 };
 
 class TestGraph {
-  constructor(graphName, edges, eRel, vn, en, on, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = [], addProjectionPayload = false) {
+  constructor (graphName, edges, eRel, vn, en, on, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = [], addProjectionPayload = false) {
     this.graphName = graphName;
     this.edges = edges || [];
     this.eRel = eRel || [];
@@ -142,12 +142,12 @@ class TestGraph {
     this.unconnectedVertices = unconnectedVertices;
     this.addProjectionPayload = addProjectionPayload;
   }
-  
-  hasProjectionPayload() {
+
+  hasProjectionPayload () {
     return this.addProjectionPayload;
   }
 
-  create() {
+  create () {
     switch (this.testVariant) {
       case TestVariants.SingleServer: {
         cgm._create(this.name(), [this.eRel], [this.on], {});
@@ -221,33 +221,34 @@ class TestGraph {
     }
 
     this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
-    db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
+    db[this.en].ensureIndex({type: "persistent",
+fields: ["_from", graphIndexedAttribute]});
   }
 
-  name() {
+  name () {
     return this.graphName;
   }
 
-  edgeCollectionName() {
+  edgeCollectionName () {
     return this.en;
   }
 
-  weightAttribute() {
+  weightAttribute () {
     return graphWeightAttribute;
   }
 
-  indexedAttribute() {
+  indexedAttribute () {
     return graphIndexedAttribute;
   }
 
-  vertex(name) {
+  vertex (name) {
     return this.verticesByName[name];
   }
 
   /**
    * @brief This generates a vertex, that does not exist, but has a valid _id format
    */
-  nonExistingVertex() {
+  nonExistingVertex () {
     switch (this.testVariant) {
       case TestVariants.SingleServer:
       case TestVariants.SatelliteGraph:
@@ -261,7 +262,7 @@ class TestGraph {
     }
   }
 
-  drop() {
+  drop () {
     cgm._drop(this.name(), true);
   }
 
@@ -277,7 +278,7 @@ class TestGraph {
    *                             in order to test projections
    * @private
    */
-  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false) {
+  static _fillGraph (gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false) {
     const vertices = new Map(vertexSharding);
     for (const edge of edges) {
       if (!vertices.has(edge[0])) {
@@ -293,7 +294,7 @@ class TestGraph {
       }
     }
 
-    function* payloadGenerator() {
+    function *payloadGenerator () {
       // Just some hardcoded repeated payload.
       // We will never check the content it should just produce
       // some size on the documents
@@ -376,7 +377,7 @@ class TestGraph {
     return verticesByName;
   }
 
-  _shardAttrPerShard(col) {
+  _shardAttrPerShard (col) {
     let shards = [];
     try {
       shards = col.shards();
@@ -386,9 +387,8 @@ class TestGraph {
     // Create an array of size numberOfShards, each entry null.
     const exampleAttributeByShard = _.fromPairs(shards.map(id => [id, null]));
 
-    const done = () => !
-      _.values(exampleAttributeByShard)
-        .includes(null);
+    const done = () => !_.values(exampleAttributeByShard).
+        includes(null);
     let i = 0;
     // const key = this.enterprise ? ProtoGraph.smartAttr() : "_key";
     const key = "_key";
@@ -414,11 +414,11 @@ class TestGraph {
 }
 
 class ProtoGraph {
-  static smartAttr() {
+  static smartAttr () {
     return "smart";
   }
 
-  constructor(name, edges, generalShardings, smartShardings, unconnectedVertices, addProjectionPayload = false) {
+  constructor (name, edges, generalShardings, smartShardings, unconnectedVertices, addProjectionPayload = false) {
     this.protoGraphName = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
@@ -427,11 +427,11 @@ class ProtoGraph {
     this.addProjectionPayload = addProjectionPayload;
   }
 
-  name() {
+  name () {
     return this.protoGraphName;
   }
 
-  prepareSingleServerGraph() {
+  prepareSingleServerGraph () {
     const vn = this.protoGraphName + '_Vertex';
     const en = this.protoGraphName + '_Edge';
     const on = this.protoGraphName + '_Orphan';
@@ -441,7 +441,7 @@ class ProtoGraph {
     return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.SingleServer, null, this.unconnectedVertices, this.addProjectionPayload)];
   }
 
-  prepareGeneralGraphs() {
+  prepareGeneralGraphs () {
     return this.generalShardings.map(numberOfShards => {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.protoGraphName + '_Vertex' + suffix;
@@ -454,7 +454,7 @@ class ProtoGraph {
     });
   }
 
-  prepareSmartGraphs() {
+  prepareSmartGraphs () {
     return this.smartShardings.map((sharding, idx) => {
       const variant = TestVariants.SmartGraph;
       const {numberOfShards, vertexSharding} = sharding;
@@ -471,7 +471,7 @@ class ProtoGraph {
     });
   }
 
-  prepareDisjointSmartGraphs() {
+  prepareDisjointSmartGraphs () {
     return this.smartShardings.map((sharding, idx) => {
       const variant = TestVariants.DisjointSmartGraph;
       const {numberOfShards, vertexSharding} = sharding;
@@ -494,7 +494,7 @@ class ProtoGraph {
     });
   }
 
-  prepareEnterpriseGraphs() {
+  prepareEnterpriseGraphs () {
     return this.smartShardings.map((sharding, idx) => {
       const variant = TestVariants.EnterpriseGraph;
       const {numberOfShards, vertexSharding} = sharding;
@@ -513,7 +513,7 @@ class ProtoGraph {
     });
   }
 
-  prepareDisjointEnterpriseGraphs() {
+  prepareDisjointEnterpriseGraphs () {
     return this.smartShardings.map((sharding, idx) => {
       const variant = TestVariants.DisjointEnterpriseGraph;
       const {numberOfShards, vertexSharding} = sharding;
@@ -536,7 +536,7 @@ class ProtoGraph {
     });
   }
 
-  prepareSatelliteGraphs() {
+  prepareSatelliteGraphs () {
     // We're not able to test multiple shards in a SatelliteGraph as a SatelliteGraph has only one shard by default
     const variant = TestVariants.SatelliteGraph;
     const suffix = `_satellite_${variant}`;
@@ -551,7 +551,7 @@ class ProtoGraph {
     return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload)];
   }
 
-  static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex, variant) {
+  static _buildSmartSuffix ({numberOfShards, vertexSharding, name}, shardingIndex, variant) {
     if (name) {
       return `_${name}_${variant}`;
     }
@@ -564,7 +564,7 @@ class ProtoGraph {
       _.toPairs(
         _.groupBy(vertexSharding, ([, s]) => s)
       ).map(
-        ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
+        ([s, vs]) => 's' + s + '-' + vs.map(([v]) => v).join('')
       ).join('_');
 
     // Override long suffixes
@@ -614,7 +614,7 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
     ["B", "D", 1],
     ["C", "D", 1],
     ["D", "E", 1],
-    ["D", "F", 1],
+    ["D", "F", 1]
   ],
   [1, 2, 5],
   [
@@ -627,8 +627,8 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
           ["C", 0],
           ["D", 0],
           ["E", 0],
-          ["F", 0],
-        ],
+          ["F", 0]
+        ]
     },
     {
       numberOfShards: 2,
@@ -639,8 +639,8 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
           ["C", 0],
           ["D", 0],
           ["E", 0],
-          ["F", 0],
-        ],
+          ["F", 0]
+        ]
     },
     {
       numberOfShards: 2,
@@ -651,8 +651,8 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
           ["C", 0],
           ["D", 1],
           ["E", 0],
-          ["F", 0],
-        ],
+          ["F", 0]
+        ]
     },
     {
       numberOfShards: 2,
@@ -663,8 +663,8 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
           ["C", 0],
           ["D", 0],
           ["E", 1],
-          ["F", 1],
-        ],
+          ["F", 1]
+        ]
     },
     {
       numberOfShards: 6,
@@ -675,9 +675,9 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
           ["C", 2],
           ["D", 3],
           ["E", 4],
-          ["F", 5],
-        ],
-    },
+          ["F", 5]
+        ]
+    }
   ]
 );
 
@@ -725,7 +725,7 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
           ["C", 2],
           ["D", 3]
         ]
-    },
+    }
   ],
   [],
   true
@@ -770,7 +770,7 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
           ["B", 0],
           ["C", 0],
           ["D", 0],
-          ["E", 0],
+          ["E", 0]
         ]
     },
     {
@@ -794,7 +794,7 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
           ["D", 3],
           ["E", 4]
         ]
-    },
+    }
   ]
 );
 
@@ -881,7 +881,7 @@ protoGraphs.easyPath = new ProtoGraph("easyPath", [
           ["I", 0],
           ["J", 0]
         ]
-    },
+    }
   ]
 );
 
@@ -902,7 +902,7 @@ protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
     ["E", "H", 10],
     ["F", "G", 1],
     ["G", "H", 1],
-    ["H", "I", 1],
+    ["H", "I", 1]
   ],
   [1, 2, 5],
   [
@@ -952,7 +952,7 @@ protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
           ["I", 0],
           ["J", 1]
         ]
-    },
+    }
   ]
 );
 
@@ -974,7 +974,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
     ["E", "H"],
     ["F", "G"],
     ["G", "H"],
-    ["H", "I"],
+    ["H", "I"]
   ],
   [1, 2, 5],
   [
@@ -1024,7 +1024,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
           ["I", 0],
           ["J", 1]
         ]
-    },
+    }
   ]
 );
 
@@ -1037,10 +1037,10 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
 { // scope for largeBinTree-local variables
   const numVertices = Math.pow(2, 9) - 1;
   const parentIdx = (i) => _.floor((i - 1) / 2);
-  const vertices = _.range(0, numVertices)
-    .map(i => `v${i}`);
-  const edges = _.range(1, numVertices)
-    .map(i => [`v${parentIdx(i)}`, `v${i}`]);
+  const vertices = _.range(0, numVertices).
+    map(i => `v${i}`);
+  const edges = _.range(1, numVertices).
+    map(i => [`v${parentIdx(i)}`, `v${i}`]);
 
   assert.assertEqual(511, vertices.length);
   assert.assertEqual(510, edges.length);
@@ -1072,27 +1072,27 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
       { // one shard
         name: "oneShard",
         numberOfShards: 1,
-        vertexSharding: vertices.map(v => [v, 0]),
+        vertexSharding: vertices.map(v => [v, 0])
       },
       { // one shard per three levels
         name: "oneShardPerThreeLevels",
         numberOfShards: 3,
-        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v) / 3)]),
+        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v) / 3)])
       },
       { // one shard per level
         name: "oneShardPerLevel",
         numberOfShards: 9,
-        vertexSharding: vertices.map(v => [v, vertexLevel(v)]),
+        vertexSharding: vertices.map(v => [v, vertexLevel(v)])
       },
       { // alternating distribution of vertices
         name: "alternatingSharding",
         numberOfShards: 5,
-        vertexSharding: vertices.map(v => [v, vi(v) % 5]),
+        vertexSharding: vertices.map(v => [v, vi(v) % 5])
       },
       { // alternating sequence distribution of vertices
         name: "alternatingSequenceSharding",
         numberOfShards: 5,
-        vertexSharding: vertices.map(v => [v, Math.floor(vi(v) / 11) % 5]),
+        vertexSharding: vertices.map(v => [v, Math.floor(vi(v) / 11) % 5])
       },
       { // most vertices in 0, but for a diagonal cut through the tree:
         //                        v0
@@ -1102,18 +1102,18 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
         //  ...
         name: "diagonalCutSharding",
         numberOfShards: 2,
-        vertexSharding: vertices.map(v => [v, [2, 4, 8, 16, 32, 64, 128, 256].includes(vi(v)) ? 1 : 0]),
+        vertexSharding: vertices.map(v => [v, [2, 4, 8, 16, 32, 64, 128, 256].includes(vi(v)) ? 1 : 0])
       },
       { // perfect subtrees of depth 3, each in different shards
         name: "perfectSubtreeSharding",
         numberOfShards: 73,
-        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))]),
+        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))])
       },
       { // perfect subtrees of depth 3 as above, but divided in fewer shards
         name: "perfectSubtreeShardingWithFewShards",
         numberOfShards: 5,
-        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5]),
-      },
+        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5])
+      }
     ]
   );
 }

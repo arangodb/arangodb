@@ -1,27 +1,27 @@
-/*jshint strict: true */
+/* jshint strict: true */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
@@ -49,7 +49,7 @@ const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    waitForSync: false,
+    waitForSync: false
   };
 
   const {setUpAll, tearDownAll} = (function () {
@@ -69,12 +69,13 @@ const replicatedStateSuite = function (stateType) {
         if (!databaseExisted) {
           db._dropDatabase(database);
         }
-      },
+      }
     };
   }());
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
@@ -200,7 +201,7 @@ const replicatedStateSuite = function (stateType) {
     testReplaceParticipantReplaceNonParticipant: function () {
       const {
         logId,
-        servers: participants,
+        servers: participants
       } = lh.createReplicatedLogWithState(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
@@ -222,7 +223,7 @@ const replicatedStateSuite = function (stateType) {
     testReplaceParticipantReplaceWithExistingParticipant: function () {
       const {
         logId,
-        servers: participants,
+        servers: participants
       } = lh.createReplicatedLogWithState(database, targetConfig, stateType);
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
@@ -243,7 +244,7 @@ const replicatedStateSuite = function (stateType) {
     testSetLeader: function () {
       const {
         logId,
-        followers,
+        followers
       } = lh.createReplicatedLogWithState(database, targetConfig, stateType);
       const newLeader = _.sample(followers);
 
@@ -260,7 +261,7 @@ const replicatedStateSuite = function (stateType) {
     testUnsetLeader: function () {
       const {
         logId,
-        followers,
+        followers
       } = lh.createReplicatedLogWithState(database, targetConfig, stateType);
       { // set the leader first
         const newLeader = _.sample(followers);
@@ -295,7 +296,7 @@ const replicatedStateSuite = function (stateType) {
     testSetLeaderWithNonParticipant: function () {
       const {
         logId,
-        servers: participants,
+        servers: participants
       } = lh.createReplicatedLogWithState(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const newLeader = _.sample(nonParticipants);
@@ -321,7 +322,7 @@ const replicatedStateSuite = function (stateType) {
 
       lh.waitFor(spreds.replicatedStateIsGone(database, logId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, logId));
-    },
+    }
   };
 };
 

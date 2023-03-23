@@ -1,27 +1,27 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrei Lobov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrei Lobov
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -32,40 +32,52 @@ var isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
   return {
-    setUpAll : function () {
+    setUpAll: function () {
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
     },
-    testViewWithInterruptedInserts : function() {
+    testViewWithInterruptedInserts: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
 
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
+      internal.debugSetFailAt('HashIndexAlwaysLast');
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       let i;
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
             "indexField"
           ]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value[*]"},
             "indexField"
           ]};
@@ -74,7 +86,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         i = docsCollection.ensureIndex(indexMeta);
         docsView = db._createView(docsViewName, "search-alias", {
           indexes: [
-            {collection: docsCollection.name(), index: i.name}
+            {collection: docsCollection.name(),
+index: i.name}
           ]
         });
       } else {
@@ -91,9 +104,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
                 "storeValues": "id",
                 "trackListPositions": false
               }
-            } ,
-            consolidationIntervalMsec:0,
-            cleanupIntervalStep:0
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
           };
         } else {
           meta = {
@@ -105,9 +118,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
                 "storeValues": "id",
                 "trackListPositions": false
               }
-            } ,
-            consolidationIntervalMsec:0,
-            cleanupIntervalStep:0
+            },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
           };
         }
         docsView = db._createView(docsViewName, "arangosearch", meta);
@@ -115,7 +128,10 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
+        docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
 
@@ -123,12 +139,12 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       try {
         docsCollection.save(docs[5]);
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
       }
-      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName +
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
-      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName +
                                         " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       if (isSearchAlias) {
         assertEqual(docs.length,
@@ -139,64 +155,71 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           assertEqual(docs.length,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
                          FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         }
       }
-                 
+
       // testMultipleOparationTransaction (no index revert as PK will be violated)
       let docsNew = [];
       for (let i = 11; i < 20; i++) {
         let docId = "TestDoc" + i.toString();
-        docsNew.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
+        docsNew.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
-      docsNew.push(docs[5]); // this one will cause PK violation 
+      docsNew.push(docs[5]); // this one will cause PK violation
       docsCollection.save(docsNew);
       assertEqual(docs.length + docsNew.length - 1,
-                 db._query("FOR u IN " + docsCollectionName + 
+                 db._query("FOR u IN " + docsCollectionName +
                            " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length + docsNew.length - 1,
-                 db._query("FOR u IN " + docsViewName + 
+                 db._query("FOR u IN " + docsViewName +
                            " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       if (isSearchAlias) {
         assertEqual(docs.length + docsNew.length - 1,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                        FILTER u.indexField >= 0 
-                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         if (isEnterprise) {
           assertEqual(docs.length + docsNew.length - 1,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                          FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
-        }          
-      }          
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
+        }
+      }
 
-      // add another index (to make it fail after arangosearch insert passed) 
+      // add another index (to make it fail after arangosearch insert passed)
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
-      
+      docsCollection.ensureIndex({type: "hash",
+unique: true,
+fields: ["indexField"]});
+
       // single operation insert (will fail on unique index)
       try {
-        docsCollection.save({ _id: "docs/fail", _key: "fail", "indexField": 0 });
+        docsCollection.save({ _id: "docs/fail",
+_key: "fail",
+"indexField": 0 });
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
       }
       assertEqual(docs.length + docsNew.length - 1,
-                 db._query("FOR u IN " + docsCollectionName + 
+                 db._query("FOR u IN " + docsCollectionName +
                            " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length + docsNew.length - 1,
-                 db._query("FOR u IN " + docsViewName + 
+                 db._query("FOR u IN " + docsViewName +
                            " OPTIONS { waitForSync : true } COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       if (isSearchAlias) {
         assertEqual(docs.length + docsNew.length - 1,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
             FILTER u.indexField >= 0
-            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         if (isEnterprise) {
           assertEqual(docs.length + docsNew.length - 1,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
               FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-              COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+              COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         }
       }
 
@@ -204,57 +227,75 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docsNew2 = [];
       for (let i = 21; i < 30; i++) {
         let docId = "TestDoc" + i.toString();
-        docsNew2.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": "foo"}]}]}); 
+        docsNew2.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": "foo"}]}]});
       }
-      docsNew2.push({ _id: "docs/fail2", _key: "fail2", "indexField": 0, "value": [{ "nested_1": [{ "nested_2": true}]}] });// this one will cause hash unique violation 
+      docsNew2.push({ _id: "docs/fail2",
+_key: "fail2",
+"indexField": 0,
+"value": [{ "nested_1": [{ "nested_2": true}]}] });// this one will cause hash unique violation
       docsCollection.save(docsNew2);
       assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
-                 db._query("FOR u IN " + docsCollectionName + 
+                 db._query("FOR u IN " + docsCollectionName +
                            " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
-                 db._query("FOR u IN " + docsViewName + 
+                 db._query("FOR u IN " + docsViewName +
                            " OPTIONS { waitForSync : true } COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
 
       if (isSearchAlias) {
         assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
             FILTER u.indexField >= 0
-            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+            COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
 
         if (isEnterprise) {
           assertEqual(docs.length + docsNew.length + docsNew2.length - 2,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
               FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-              COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]); 
+              COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         }
-      }                           
+      }
 
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
       internal.debugRemoveFailAt('HashIndexAlwaysLast');
     },
 
-    testViewWithInterruptedUpdates : function() {
+    testViewWithInterruptedUpdates: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
+      internal.debugSetFailAt('HashIndexAlwaysLast');
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
             "indexField"
           ]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value[*]"},
             "indexField"
           ]};
@@ -263,7 +304,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let i = docsCollection.ensureIndex(indexMeta);
         docsView = db._createView(docsViewName, "search-alias", {
           indexes: [
-            {collection: docsCollection.name(), index: i.name}
+            {collection: docsCollection.name(),
+index: i.name}
           ]
         });
       } else {
@@ -306,31 +348,36 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
+        docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
-      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName +
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
-      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName +
                                         " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
 
       if (isSearchAlias) {
         assertEqual(docs.length,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
                        FILTER u.indexField >= 0
-                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
 
         if (isEnterprise) {
           assertEqual(docs.length,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
                          FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         }
       }
-      // add another index (to make it fail after arangosearch update passed) 
+      // add another index (to make it fail after arangosearch update passed)
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      docsCollection.ensureIndex({type: "hash",
+unique: true,
+fields: ["indexField"]});
 
       let docsUpdateIds = [];
       let docsUpdateData = [];
@@ -341,10 +388,10 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       docsCollection.update(docsUpdateIds, docsUpdateData);
 
       // documents should stay consistent
-      let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
+      let collectionDocs = db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
       let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
       assertEqual(collectionDocs.length, viewDocs.length);
-      for(let i = 0; i < viewDocs.length; i++) {
+      for (let i = 0; i < viewDocs.length; i++) {
         assertEqual(viewDocs[i]._id, collectionDocs[i]._id);
       }
       db._drop(docsCollectionName);
@@ -352,27 +399,39 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       internal.debugRemoveFailAt('HashIndexAlwaysLast');
     },
 
-    testViewWithInterruptedRemoves : function() {
+    testViewWithInterruptedRemoves: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('HashIndexAlwaysLast'); 
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
+      internal.debugSetFailAt('HashIndexAlwaysLast');
       let docsCollection = db._create(docsCollectionName);
       let docsView;
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
             "indexField"
           ]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
             {"name": "value[*]"},
             "indexField"
           ]};
@@ -381,7 +440,8 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         let i = docsCollection.ensureIndex(indexMeta);
         docsView = db._createView(docsViewName, "search-alias", {
           indexes: [
-            {collection: docsCollection.name(), index: i.name}
+            {collection: docsCollection.name(),
+index: i.name}
           ]
         });
       } else {
@@ -424,72 +484,89 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let docs = [];
       for (let i = 0; i < 10; i++) {
         let docId = "TestDoc" + i.toString();
-        docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]}); 
+        docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
       }
       docsCollection.save(docs);
       // integrity check. Should be in sync and report correct result
-      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName +
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
-      assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
+      assertEqual(docs.length, db._query("FOR u IN " + docsViewName +
                                         " OPTIONS { waitForSync : true }  COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
 
       if (isSearchAlias) {
         assertEqual(docs.length,
           db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                        FILTER u.indexField >= 0
-                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                       COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
 
         if (isEnterprise) {
           assertEqual(docs.length,
             db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                          FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                         COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
         }
-      }       
+      }
 
       // add another index (to make it fail after arangosearch remove passed)
       // index will be placed after arangosearch due to failpoint 'HashIndexAlwaysLast'
-      docsCollection.ensureIndex({type: "hash", unique: true, fields:["indexField"]});
+      docsCollection.ensureIndex({type: "hash",
+unique: true,
+fields: ["indexField"]});
       let docsRemoveIds = [];
       docsRemoveIds.push(docs[2]._id);
       docsRemoveIds.push(docs[3]._id);
-      internal.debugSetFailAt('BreakHashIndexRemove'); 
-      docsCollection.remove(docsRemoveIds); 
+      internal.debugSetFailAt('BreakHashIndexRemove');
+      docsCollection.remove(docsRemoveIds);
       internal.debugRemoveFailAt('BreakHashIndexRemove');
       // documents should stay consistent
-      let collectionDocs =  db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
+      let collectionDocs = db._query("FOR d IN " + docsCollectionName + " SORT d._id ASC RETURN d").toArray();
       let viewDocs = db._query("FOR  d IN " + docsViewName + " OPTIONS { waitForSync : true }  SORT d._id ASC RETURN d").toArray();
       assertEqual(collectionDocs.length, docs.length); // removes should not pass if failpoint worked!
       assertEqual(collectionDocs.length, viewDocs.length);
-      for(let i = 0; i < viewDocs.length; i++) {
+      for (let i = 0; i < viewDocs.length; i++) {
         assertEqual(viewDocs[i]._id, collectionDocs[i]._id);
       }
-      
+
       db._drop(docsCollectionName);
       db._dropView(docsViewName);
       internal.debugRemoveFailAt('HashIndexAlwaysLast');
     },
-    testViewLinkCreationHint : function() {
+    testViewLinkCreationHint: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
-      internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint'); 
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
+      internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
       try {
         if (isSearchAlias) {
           let indexMeta = {};
           if (isEnterprise) {
-            indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-              {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+              {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
             ]};
           } else {
-            indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+            indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
               {"name": "value[*]"}
             ]};
           }
@@ -497,11 +574,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let i = docsCollection.ensureIndex(indexMeta);
           let docsView = db._createView(docsViewName, "search-alias", {
             indexes: [
-              {collection: docsCollection.name(), index: i.name}
+              {collection: docsCollection.name(),
+index: i.name}
             ]
           });
           let properties = docsView.properties();
-          assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
+          assertEqual(properties.indexes, [{collection: docsCollection.name(),
+index: i.name}]);
         } else {
           let meta = {};
           if (isEnterprise) {
@@ -541,7 +620,10 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let docs = [];
           for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+            docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] });
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -552,13 +634,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
             assertEqual(docs.length,
               db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
                            FILTER u.indexField >= 0;
-                           COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                           COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
 
             if (isEnterprise) {
               assertEqual(docs.length,
                 db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
                              FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);  
+                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
             }
           }
         }
@@ -568,26 +650,38 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
       }
     },
-    testViewNoLinkCreationHint : function() {
+    testViewNoLinkCreationHint: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
       try {
         if (isSearchAlias) {
           let indexMeta = {};
           if (isEnterprise) {
-            indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
-              {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+            indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
+              {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
             ]};
           } else {
-            indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields:[
+            indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [
               {"name": "value[*]"}
             ]};
           }
@@ -595,11 +689,13 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let i = docsCollection.ensureIndex(indexMeta);
           let docsView = db._createView(docsViewName, "search-alias", {
             indexes: [
-              {collection: docsCollection.name(), index: i.name}
+              {collection: docsCollection.name(),
+index: i.name}
             ]
           });
           let properties = docsView.properties();
-          assertEqual(properties.indexes, [{collection: docsCollection.name(), index: i.name}]);
+          assertEqual(properties.indexes, [{collection: docsCollection.name(),
+index: i.name}]);
         } else {
           let meta = {};
           if (isEnterprise) {
@@ -639,7 +735,10 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           let docs = [];
           for (let i = 0; i < 10; i++) {
             let docId = "TestDoc" + i.toString();
-            docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+            docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] });
           }
           docsCollection.save(docs);
           let properties = docsView.properties();
@@ -650,15 +749,15 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
             assertEqual(docs.length,
               db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                            FILTER u.indexField >= 0
-                           COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);   
+                           COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
 
             if (isEnterprise) {
               assertEqual(docs.length,
                 db._query(`FOR u IN ${docsCollectionName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
                              FILTER u.value[? any filter CURRENT.nested_1[? any filter STARTS_WITH(CURRENT.nested_2, 'foo')]] 
-                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);    
-            }       
-          } 
+                             COLLECT WITH COUNT INTO length RETURN length`).toArray()[0]);
+            }
+          }
         }
 
         internal.debugSetFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
@@ -676,19 +775,23 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         internal.debugRemoveFailAt('ArangoSearch::BlockInsertsWithoutIndexCreationHint');
       }
     },
-    testRemoveIndexOnCreationFail : function() {
+    testRemoveIndexOnCreationFail: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       let docsCollectionName = "docs";
-      let docsViewName  = "docs_view";
-      try { db._drop(docsCollectionName); } catch(e) {}
-      try { db._dropView(docsViewName); } catch(e) {}
+      let docsViewName = "docs_view";
+      try {
+ db._drop(docsCollectionName);
+} catch (e) {}
+      try {
+ db._dropView(docsViewName);
+} catch (e) {}
       let docsCollection = db._create(docsCollectionName);
       docsCollection.save({"some_field": "some_value"});
 
-      let getLinksCount = function() {
+      let getLinksCount = function () {
         let linksCount = 0;
         if (!isCluster) {
           let dbPath = internal.db._path();
@@ -699,7 +802,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
           assertTrue(fs.isDirectory(dbPath));
           let directories = fs.list(dbPath);
           // check only arangosearch-XXXX
-          directories.forEach(function(candidate) {
+          directories.forEach(function (candidate) {
             if (candidate.startsWith("arangosearch")) {
               linksCount++;
             }
@@ -710,7 +813,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
 
       try {
         let beforeLinkCount = getLinksCount();
-        internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed'); 
+        internal.debugSetFailAt('ArangoSearch::MisreportCreationInsertAsFailed');
         let meta = {};
         if (isEnterprise) {
           meta = {
@@ -724,9 +827,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
                   "storeValues": "id",
                   "trackListPositions": false
                 }
-              } ,
-            consolidationIntervalMsec:0,
-            cleanupIntervalStep:0
+              },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
           };
         } else {
           meta = {
@@ -740,22 +843,25 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
                   "storeValues": "id",
                   "trackListPositions": false
                 }
-              } ,
-            consolidationIntervalMsec:0,
-            cleanupIntervalStep:0
+              },
+            consolidationIntervalMsec: 0,
+            cleanupIntervalStep: 0
           };
         }
         let docsView = db._createView(docsViewName, "arangosearch", meta);
         let docs = [];
         for (let i = 0; i < 10; i++) {
           let docId = "TestDoc" + i.toString();
-          docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i, "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] }); 
+          docs.push({ _id: "docs/" + docId,
+_key: docId,
+"indexField": i,
+"value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}] });
         }
         docsCollection.save(docs);
         let properties = docsView.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(0, Object.keys(properties.links).length);
-        // on Single server we could also check fs (on cluster we are on 
+        // on Single server we could also check fs (on cluster we are on
         // coordinator, so nothing to do)
         // no new arangosearch folders should be present
         // due to race conditions in FS (on MACs specifically)
@@ -782,11 +888,11 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function arangoSearchFeatureAqlServerSideTestSuite() {
+function arangoSearchFeatureAqlServerSideTestSuite () {
   let suite = {};
   deriveTestSuite(
     iResearchFeatureAqlServerSideTestSuite(false),
@@ -796,7 +902,7 @@ function arangoSearchFeatureAqlServerSideTestSuite() {
   return suite;
 }
 
-function searchAliasFeatureAqlServerSideTestSuite() {
+function searchAliasFeatureAqlServerSideTestSuite () {
   let suite = {};
   deriveTestSuite(
     iResearchFeatureAqlServerSideTestSuite(true),

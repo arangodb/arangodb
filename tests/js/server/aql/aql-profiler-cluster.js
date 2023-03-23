@@ -1,28 +1,28 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2019 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 // contains common code for aql-profiler* tests
 const profHelper = require("@arangodb/testutils/aql-profiler-test-helper");
@@ -34,11 +34,11 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const assert = jsunity.jsUnity.assertions;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @file test suite for AQL tracing/profiling: cluster tests
-/// Contains tests for RemoteBlock, SortingGatherBlock, UnsortingGatherBlock
-/// The main test suite (including comments) is in aql-profiler.js.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @file test suite for AQL tracing/profiling: cluster tests
+// / Contains tests for RemoteBlock, SortingGatherBlock, UnsortingGatherBlock
+// / The main test suite (including comments) is in aql-profiler.js.
+// //////////////////////////////////////////////////////////////////////////////
 
 // TODO Add tests for ScatterBlock and DistributeBlock.
 
@@ -82,8 +82,8 @@ function ahuacatlProfilerTestSuite () {
     _.sum(_.values(rowsPerShard));
   const dbServerBatches = (rowsPerClient, fuzzy = false) => {
     return _.sum(
-      _.values(rowsPerClient)
-        .map(fuzzy ? mmfilesBatches : optimalBatches)
+      _.values(rowsPerClient).
+        map(fuzzy ? mmfilesBatches : optimalBatches)
     );
   };
   const dbServerBatch = (rows, fuzzy = false) => {
@@ -91,11 +91,12 @@ function ahuacatlProfilerTestSuite () {
   };
   const dbServerOptimalBatches = (rowsPerClient) =>
     _.sum(
-      _.values(rowsPerClient)
-        .map(optimalBatches)
+      _.values(rowsPerClient).
+        map(optimalBatches)
     );
   const groupedBatches = (rowsPerClient, fuzzy) => {
-    const callInfo = {calls: 0, overhead: 0};
+    const callInfo = {calls: 0,
+overhead: 0};
 
     for (const [shard, rows] of Object.entries(rowsPerClient)) {
       const testHere = rows + callInfo.overhead;
@@ -107,25 +108,25 @@ function ahuacatlProfilerTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up all
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up all
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       col = db._create(cn, {numberOfShards});
       const maxRowsPerShard = _.max(defaultTestRowCounts);
       const shards = col.shards();
@@ -135,12 +136,13 @@ function ahuacatlProfilerTestSuite () {
       exampleDocumentsByShard = _.fromPairs(shards.map(id => [id, []]));
 
       const allShardsFull = () =>
-        _.values(exampleDocumentsByShard)
-          .map(elt => elt.length)
-          .every(n => n >= maxRowsPerShard);
+        _.values(exampleDocumentsByShard).
+          map(elt => elt.length).
+          every(n => n >= maxRowsPerShard);
       let i = 0;
       while (!allShardsFull()) {
-        const doc = {_key: i.toString(), i};
+        const doc = {_key: i.toString(),
+i};
 
         const shard = col.getResponsibleShard(doc);
         if (exampleDocumentsByShard[shard].length < maxRowsPerShard) {
@@ -152,19 +154,19 @@ function ahuacatlProfilerTestSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down all
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down all
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test RemoteBlock and UnsortingGatherBlock
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test RemoteBlock and UnsortingGatherBlock
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoteAndUnsortingGatherBlock : function () {
+    testRemoteAndUnsortingGatherBlock: function () {
       const query = `FOR doc IN ${cn} RETURN doc`;
 
       // Number of local getSome calls that do not return WAITING.
@@ -178,7 +180,7 @@ function ahuacatlProfilerTestSuite () {
         const batches = optimalNonEmptyBatches(_.sum(_.values(rowsPerShard)));
         return [
           Math.max(1, batches),
-          Math.max(1, batches+1)
+          Math.max(1, batches + 1)
         ];
       };
 
@@ -195,21 +197,40 @@ function ahuacatlProfilerTestSuite () {
       const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
 
       const genNodeList = (rowsPerShard, rowsPerServer) => [
-        { type : SingletonBlock, calls : numberOfShards, items : numberOfShards, filtered: 0 },
-        { type : EnumerateCollectionBlock, calls : groupedBatches(rowsPerShard), items : totalItems(rowsPerShard), filtered: 0 },
+        { type: SingletonBlock,
+calls: numberOfShards,
+items: numberOfShards,
+filtered: 0 },
+        { type: EnumerateCollectionBlock,
+calls: groupedBatches(rowsPerShard),
+items: totalItems(rowsPerShard),
+filtered: 0 },
         // Twice the number due to WAITING, fuzzy, because the Gather does not know
-        { type : RemoteBlock, calls : fuzzyDBServerBatches(rowsPerServer).map(i => i * 2), items : totalItems(rowsPerShard), filtered: 0 },
+        { type: RemoteBlock,
+calls: fuzzyDBServerBatches(rowsPerServer).map(i => i * 2),
+items: totalItems(rowsPerShard),
+filtered: 0 },
         // We get dbServerBatches(rowsPerShard) times WAITING, plus the non-waiting getSome calls.
-        { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 },
-        { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard), filtered: 0 }
+        { type: UnsortingGatherBlock,
+calls: coordinatorBatches(rowsPerServer),
+items: totalItems(rowsPerShard),
+filtered: 0 },
+        { type: ReturnBlock,
+calls: coordinatorBatches(rowsPerServer),
+items: totalItems(rowsPerShard),
+filtered: 0 }
       ];
       const options = {optimizer: { rules: ["-parallelize-gather"] } };
-      profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});
-    },
+      profHelper.runClusterChecks({col,
+exampleDocumentsByShard,
+query,
+genNodeList,
+options});
+    }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test RemoteBlock and SortingGatherBlock
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test RemoteBlock and SortingGatherBlock
+// //////////////////////////////////////////////////////////////////////////////
 
 /*
  * Note: disabled this test for now. Using parallel Gather this kind of get's out of hand.
@@ -248,9 +269,9 @@ function ahuacatlProfilerTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlProfilerTestSuite);
 

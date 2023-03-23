@@ -1,28 +1,28 @@
-/*jshint globalstrict:true*/
+/* jshint globalstrict:true*/
 'use strict';
-/*global assertEqual, assertTrue, fail */
+/* global assertEqual, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -47,11 +47,11 @@ const {setUpAll, tearDownAll} = (function () {
       if (!databaseExisted) {
         db._dropDatabase(database);
       }
-    },
+    }
   };
 }());
 
-function PrototypeStateTestSuite() {
+function PrototypeStateTestSuite () {
 
   const config = {
     writeConcern: 2,
@@ -60,7 +60,8 @@ function PrototypeStateTestSuite() {
   };
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+tearDownAll,
     setUp: function () {
     },
     tearDown: function () {
@@ -78,7 +79,8 @@ function PrototypeStateTestSuite() {
       const idx1 = state.write("key", "value");
       const idx2 = state.write({"key2": "value2"});
       const idx3 = state.write("key3", "value3", {waitForApplied: false});
-      const idx4 = state.write({"key5.1": "value6", "key5.2": "value7"}, {waitForApplied: false});
+      const idx4 = state.write({"key5.1": "value6",
+"key5.2": "value7"}, {waitForApplied: false});
 
       const snapshot = state.getSnapshot(idx4);
       assertEqual(snapshot, {
@@ -95,7 +97,10 @@ function PrototypeStateTestSuite() {
 
     testReadEntries: function () {
       const state = db._createPrototypeState({config});
-      state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForApplied: true});
+      state.write({"A": "1",
+"B": "2",
+"C": "3",
+"D": "4"}, {waitForApplied: true});
 
       const valueA = state.read("A");
       assertEqual(valueA, "1");
@@ -111,7 +116,10 @@ function PrototypeStateTestSuite() {
 
     testReadWaitFor: function () {
       const state = db._createPrototypeState({config});
-      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+      let idx = state.write({"A": "1",
+"B": "2",
+"C": "3",
+"D": "4"}, {waitForCommit: false});
 
       const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"], {waitForApplied: idx});
       assertEqual(valueA, "1");
@@ -121,13 +129,18 @@ function PrototypeStateTestSuite() {
 
     testReadFromServer: function () {
       const state = db._createPrototypeState({config});
-      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: true});
+      let idx = state.write({"A": "1",
+"B": "2",
+"C": "3",
+"D": "4"}, {waitForCommit: true});
 
       const status = db._replicatedLog(state.id()).status();
       const follower = _.sample(_.without(Object.keys(status.participants), status.leaderId));
 
       const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"],
-        {waitForApplied: idx, allowDirtyRead: true, readFrom: follower});
+        {waitForApplied: idx,
+allowDirtyRead: true,
+readFrom: follower});
       assertEqual(valueA, "1");
       assertEqual(valueB, "2");
       assertEqual(valueC, "3");
@@ -135,7 +148,10 @@ function PrototypeStateTestSuite() {
 
     testReadFromOtherServer: function () {
       const state = db._createPrototypeState({config});
-      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+      let idx = state.write({"A": "1",
+"B": "2",
+"C": "3",
+"D": "4"}, {waitForCommit: false});
 
       try {
         state.read(["A", "B", "C"], {
@@ -150,7 +166,10 @@ function PrototypeStateTestSuite() {
 
     testStandAloneWaitFor: function () {
       const state = db._createPrototypeState({config});
-      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+      let idx = state.write({"A": "1",
+"B": "2",
+"C": "3",
+"D": "4"}, {waitForCommit: false});
 
       state.waitForApplied(idx);
       const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"]);
@@ -164,7 +183,8 @@ function PrototypeStateTestSuite() {
       let lastIndex;
       for (let i = 0; i < 1000; i++) {
         // dump in data, wait for nothing
-        lastIndex = state.write(`key${i}`, `value${i}`, {waitForApplied: false, waitForCommit: false});
+        lastIndex = state.write(`key${i}`, `value${i}`, {waitForApplied: false,
+waitForCommit: false});
       }
 
       const snapshot = state.getSnapshot(lastIndex);

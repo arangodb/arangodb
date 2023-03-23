@@ -27,23 +27,23 @@ const jsunity = require('jsunity');
 const request = require('@arangodb/request');
 const { getMetric, getEndpointsByType } = require('@arangodb/test-helper');
 
-function loggerMetricsSuite() {
+function loggerMetricsSuite () {
   'use strict';
 
   const metrics = [
     'arangodb_logger_warnings_total',
-    'arangodb_logger_errors_total',
+    'arangodb_logger_errors_total'
   ];
-      
+
   return {
-    
+
     testMetricsOnAgent: function () {
       let endpoints = getEndpointsByType('agent');
       assertTrue(endpoints.length > 0);
 
       endpoints.forEach((ep) => {
         metrics.forEach((m) => {
-          // getMetric will throw if the metric is not present 
+          // getMetric will throw if the metric is not present
           // on the target host
           let value = getMetric(ep, m);
           assertEqual("number", typeof value);
@@ -57,27 +57,27 @@ function loggerMetricsSuite() {
 
       endpoints.forEach((ep) => {
         metrics.forEach((m) => {
-          // getMetric will throw if the metric is not present 
+          // getMetric will throw if the metric is not present
           // on the target host
           let value = getMetric(ep, m);
           assertEqual("number", typeof value);
         });
       });
     },
-    
+
     testMetricsOnDBServer: function () {
       let endpoints = getEndpointsByType('dbserver');
       assertTrue(endpoints.length > 0);
 
       endpoints.forEach((ep) => {
         metrics.forEach((m) => {
-          // getMetric will throw if the metric is not present 
+          // getMetric will throw if the metric is not present
           // on the target host
           let value = getMetric(ep, m);
           assertEqual("number", typeof value);
         });
       });
-    },
+    }
 
   };
 }

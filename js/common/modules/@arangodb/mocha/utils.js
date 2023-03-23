@@ -3,7 +3,7 @@
 // Original copyright (c) 2011-2018 JS Foundation and contributors,
 // https://js.foundation
 
-exports.clean = function clean(test) {
+exports.clean = function clean (test) {
   var err = test.err || {};
   if (err instanceof Error) {
     err = errorJSON(err);
@@ -18,10 +18,10 @@ exports.clean = function clean(test) {
   };
 };
 
-function cleanCycles(obj) {
+function cleanCycles (obj) {
   var cache = [];
   return JSON.parse(
-    JSON.stringify(obj, function(key, value) {
+    JSON.stringify(obj, function (key, value) {
       if (typeof value === 'object' && value !== null) {
         if (cache.indexOf(value) !== -1) {
           return '' + value;
@@ -34,9 +34,9 @@ function cleanCycles(obj) {
   );
 }
 
-function errorJSON(err) {
+function errorJSON (err) {
   var res = {};
-  Object.getOwnPropertyNames(err).forEach(function(key) {
+  Object.getOwnPropertyNames(err).forEach(function (key) {
     res[key] = err[key];
   }, err);
   return res;

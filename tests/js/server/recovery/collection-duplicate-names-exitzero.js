@@ -49,7 +49,7 @@ function runSetup () {
   }
   // Fail if we get here. We somehow managed to save the same collection twice without error
   return 1;
-};
+}
 
 
 function recoverySuite () {
@@ -65,7 +65,7 @@ function recoverySuite () {
       assertTrue(c !== null && c !== undefined);
     }
   };
-};
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suite

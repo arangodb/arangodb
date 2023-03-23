@@ -1,39 +1,39 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, bind parameters
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlClusterJoinKeySuite () {
   var cn1 = "UnitTestsAhuacatlSubquery1";
@@ -46,7 +46,7 @@ function ahuacatlClusterJoinKeySuite () {
     }
     return 0;
   };
-  
+
   var sorter2 = function (l, r) {
     if (l[0] !== r[0]) {
       return l[0] - r[0];
@@ -56,129 +56,141 @@ function ahuacatlClusterJoinKeySuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1, { numberOfShards: 5 });
       c2 = db._create(cn2, { numberOfShards: 4 });
 
       for (var i = 0; i < 20; ++i) {
-        c1.save({ _key: "test" + i, value: i });
-        c2.save({ _key: "test" + i, value: i });
+        c1.save({ _key: "test" + i,
+value: i });
+        c2.save({ _key: "test" + i,
+value: i });
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
       c2 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsNonKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKeyFilter : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsNonKeyFilter: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsKeyFilter : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsKeyFilter: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsSameCollection : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testNestedLoopsSameCollection: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsSameCollectionNonShardKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testNestedLoopsSameCollectionNonShardKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDifferentCollectionsKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+    testSubqueryDifferentCollectionsKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDifferentCollectionsNonKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+    testSubqueryDifferentCollectionsNonKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubquerySameCollectionKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testSubquerySameCollectionKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1._key == c2._key RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubquerySameCollectionNonKey : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testSubquerySameCollectionNonKey: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     }
@@ -186,22 +198,22 @@ function ahuacatlClusterJoinKeySuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlClusterJoinNonKeySuite () {
   var cn1 = "UnitTestsAhuacatlSubquery1";
   var cn2 = "UnitTestsAhuacatlSubquery2";
   var c1, c2;
-  
+
   var sorter = function (l, r) {
     if (l !== r) {
       return l - r;
     }
     return 0;
   };
-  
+
   var sorter2 = function (l, r) {
     if (l[0] !== r[0]) {
       return l[0] - r[0];
@@ -211,15 +223,17 @@ function ahuacatlClusterJoinNonKeySuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1, { numberOfShards: 5, shardKeys: [ "value" ] });
-      c2 = db._create(cn2, { numberOfShards: 4, shardKeys: [ "value" ] });
+      c1 = db._create(cn1, { numberOfShards: 5,
+shardKeys: [ "value" ] });
+      c2 = db._create(cn2, { numberOfShards: 4,
+shardKeys: [ "value" ] });
 
       for (var i = 0; i < 20; ++i) {
         c1.save({ value: i });
@@ -227,63 +241,68 @@ function ahuacatlClusterJoinNonKeySuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
       c2 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKeyJNKS : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsNonKeyJNKS: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsDifferentCollectionsNonKeyFilterJNKS : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn2 });
+    testNestedLoopsDifferentCollectionsNonKeyFilterJNKS: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testNestedLoopsSameCollectionNonShardKeyJNKS : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testNestedLoopsSameCollectionNonShardKeyJNKS: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter);
       assertEqual([ 1, 2, 4 ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubqueryDifferentCollectionsNonKeyJNKS : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn2 });
+    testSubqueryDifferentCollectionsNonKeyJNKS: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn2 });
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSubquerySameCollectionNonKeyJNKS : function () {
-      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1, "@cn2": cn1 }); // same collection
+    testSubquerySameCollectionNonKeyJNKS: function () {
+      var actual = AQL_EXECUTE("FOR c1 IN @@cn1 FILTER c1.value IN [ 1, 2, 4 ] LET match = (FOR c2 IN @@cn2 FILTER c1.value == c2.value RETURN c2.value) RETURN match", { "@cn1": cn1,
+"@cn2": cn1 }); // same collection
       actual.json.sort(sorter2);
       assertEqual([ [ 1 ], [ 2 ], [ 4 ] ], actual.json);
     }
@@ -291,9 +310,9 @@ function ahuacatlClusterJoinNonKeySuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlClusterJoinKeySuite);
 jsunity.run(ahuacatlClusterJoinNonKeySuite);

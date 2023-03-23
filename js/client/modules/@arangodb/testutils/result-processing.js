@@ -81,8 +81,8 @@ function makePathGeneric (path) {
 let failedRuns = {
 };
 
-function gatherFailed(result) {
-  return Object.values(result).reduce(function(prev, testCase) {
+function gatherFailed (result) {
+  return Object.values(result).reduce(function (prev, testCase) {
     if (testCase instanceof Object) {
       return prev + !testCase.status;
     } else {
@@ -92,8 +92,8 @@ function gatherFailed(result) {
   );
 }
 
-function gatherStatus(result) {
-  return Object.values(result).reduce(function(prev, testCase) {
+function gatherStatus (result) {
+  return Object.values(result).reduce(function (prev, testCase) {
     if (testCase instanceof Object) {
       return prev && testCase.status;
     } else {
@@ -103,8 +103,7 @@ function gatherStatus(result) {
   );
 }
 
-function fancyTimeFormat(time)
-{   
+function fancyTimeFormat (time) {
     // Hours, minutes and seconds
     var hrs = ~~(time / 3600);
     var mins = ~~((time % 3600) / 60);
@@ -123,7 +122,7 @@ function fancyTimeFormat(time)
 }
 
 
-function iterateTestResults(options, results, state, handlers) {
+function iterateTestResults (options, results, state, handlers) {
   let bucketName = "";
   if (options.testBuckets) {
     let n = options.testBuckets.split('/');
@@ -159,7 +158,7 @@ function iterateTestResults(options, results, state, handlers) {
             continue;
           }
           let testCase = testSuite[testName];
-          
+
           if (handlers.hasOwnProperty('testCase')) {
             handlers.testCase(options, state, testCase, testName);
           }
@@ -177,7 +176,7 @@ function iterateTestResults(options, results, state, handlers) {
   }
 }
 
-function locateFailState(options, results) {
+function locateFailState (options, results) {
   let failedStates = {
     state: true,
     failCount: 0,
@@ -188,20 +187,20 @@ function locateFailState(options, results) {
     thisFailedTests: []
   };
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
       if (!testRun.state) {
         state.state = false;
         state.thisFailedTestCount = testRun.failed;
       }
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
       if (!testCase.state) {
         state.state = false;
-        state.runFailedTestCount ++;
+        state.runFailedTestCount++;
         state.thisFailedTests.push(testCaseName);
       }
     },
-    endTestRun: function(options, state, testRun, testRunName) {
+    endTestRun: function (options, state, testRun, testRunName) {
       if (state.thisFailedTestCount !== 0) {
         if (state.thisFailedTestCount !== state.runFailedTestCount) {
           // todo error message
@@ -220,7 +219,7 @@ function locateFailState(options, results) {
 //  @brief converts results to XML representation
 // //////////////////////////////////////////////////////////////////////////////
 
-function saveToJunitXML(options, results) {
+function saveToJunitXML (options, results) {
   function xmlEscape (s) {
     return s.replace(/[<>&"]/g, function (c) {
       return '&' + {
@@ -231,7 +230,7 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-  function stripAnsiColors(s) {
+  function stripAnsiColors (s) {
     return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
   }
   function buildXml () {
@@ -248,8 +247,8 @@ function saveToJunitXML(options, results) {
 
       for (let a in attrs) {
         if (attrs.hasOwnProperty(a)) {
-          this.text(' ').text(a).text('="')
-            .text(xmlEscape(String(attrs[a]))).text('"');
+          this.text(' ').text(a).text('="').
+            text(xmlEscape(String(attrs[a]))).text('"');
         }
       }
 
@@ -268,12 +267,14 @@ function saveToJunitXML(options, results) {
     xml: undefined,
     xmlName: '',
     testRunName: '',
-    seenTestCases: false,
+    seenTestCases: false
   };
   let prefix = (options.cluster ? 'CL_' : '') + 'RX_';
   iterateTestResults(options, results, xmlState, {
-    testRun: function(options, state, testRun, testRunName) {state.testRunName = testRunName;},
-    testSuite: function(options, state, testSuite, testSuiteName) {
+    testRun: function (options, state, testRun, testRunName) {
+state.testRunName = testRunName;
+},
+    testSuite: function (options, state, testSuite, testSuiteName) {
       let total = 0;
       state.seenTestCases = false;
       state.xml = buildXml();
@@ -295,16 +296,16 @@ function saveToJunitXML(options, results) {
         // time is in seconds
         time: testSuite.duration / 1000
       });
-      
+
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
       const success = (testCase.status === true);
 
       state.xml.elem('testcase', {
         name: prefix + testCaseName,
         // time is in seconds
         time: testCase.duration / 1000
-      }, success);      
+      }, success);
 
       state.seenTestCases = true;
       if (!success) {
@@ -314,7 +315,7 @@ function saveToJunitXML(options, results) {
         state.xml.elem('/testcase');
       }
     },
-    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    endTestSuite: function (options, state, testSuite, testSuiteName) {
       if (!state.seenTestCases) {
         if (testSuite.failed === 0) {
           state.xml.elem('testcase', {
@@ -340,11 +341,11 @@ function saveToJunitXML(options, results) {
         fs.write(fn, state.xml.join(''));
       } catch (x) {
         print(`Failed to write '${fn}'! - ${x.message}`);
-        throw(x);
+        throw (x);
       }
 
     },
-    endTestRun: function(options, state, testRun, testRunName) {}
+    endTestRun: function (options, state, testRun, testRunName) {}
   });
 }
 
@@ -390,9 +391,9 @@ function unitTestPrettyPrintResults (options, results) {
   };
 
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
     },
-    testSuite: function(options, state, testSuite, testSuiteName) {
+    testSuite: function (options, state, testSuite, testSuiteName) {
       if (testSuite.status) {
         successCases[testSuiteName] = testSuite;
       } else {
@@ -406,14 +407,14 @@ function unitTestPrettyPrintResults (options, results) {
         }
       }
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
       if (!testCase.status) {
         failsOfOneSuite[testCaseName] = testCaseMessage(testCase);
-        failsOfOneSuiteCount ++;
+        failsOfOneSuiteCount++;
 
       }
     },
-    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    endTestSuite: function (options, state, testSuite, testSuiteName) {
       if (failsOfOneSuiteCount !== 0) {
         failedTestsCount += failsOfOneSuiteCount;
         failedCases[testSuiteName] = failsOfOneSuite;
@@ -421,7 +422,7 @@ function unitTestPrettyPrintResults (options, results) {
         failsOfOneSuiteCount = 0;
       }
     },
-    endTestRun: function(options, state, testRun, testRunName) {
+    endTestRun: function (options, state, testRun, testRunName) {
       if (isSuccess) {
         SuccessMessages += '* Test "' + testRunName + bucketName + '"\n';
 
@@ -498,7 +499,7 @@ function unitTestPrettyPrintResults (options, results) {
       failedCases = {};
     }
   });
-  let color,statusMessage;
+  let color, statusMessage;
   let crashedText = '';
   let crashText = '';
   let failText = '';
@@ -539,7 +540,7 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
   }
   fs.write(fs.join(options.testOutputDirectory, options.testFailureText), onlyFailedMessages);
 
-  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText !== options.testFailureText ) {
+  if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText !== options.testFailureText) {
     // write more verbose failures to the testFailureText file
     fs.write(fs.join(options.testOutputDirectory, options.crashAnalysisText), cu.GDB_OUTPUT);
   }
@@ -551,13 +552,13 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
 // / @brief pretty prints the result with tabular facts added
 // //////////////////////////////////////////////////////////////////////////////
 
-function formatNone(str) {
+function formatNone (str) {
   return str;
 }
-function formatTimeMS(ts) {
+function formatTimeMS (ts) {
   return fancyTimeFormat(ts / 1000);
 }
-function formatNetStat(val) {
+function formatNetStat (val) {
   return JSON.stringify(summarizeStats(val['processStats']));
 }
 function unitTestTabularPrintResults (options, results, otherResults) {
@@ -571,12 +572,14 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     'totalSetUp',
     'totalTearDown'
   ];
-  
+
   if (options.hasOwnProperty('tableColumns')) {
     tableColumns = options.tableColumns.split(',');
   }
   tableColumns.forEach(colName => {
-    if (timeFormatColumns.find(val => {return val === colName; })) {
+    if (timeFormatColumns.find(val => {
+return val === colName;
+})) {
       tableFormaters.push(fancyTimeFormat);
     } else if (colName === 'netstat') {
       tableFormaters.push(formatNetStat);
@@ -587,7 +590,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     tableColumnVectors.push(vec);
     tableColumnHeaders.push(vec[vec.length - 1].replace(/_/g, ' '));
   });
-  
+
   let testRunStatistics = "";
   let testRunStatisticsHeader = ['Setup', 'Run', 'tests', 'setupAll', 'suite name'];
   let sortedByDuration = [];
@@ -612,11 +615,11 @@ function unitTestTabularPrintResults (options, results, otherResults) {
   let resultTable;
 
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
       resultTable = new AsciiTable(testRunName);
       resultTable.setHeading(tableColumnHeaders);
     },
-    testSuite: function(options, state, testSuite, testSuiteName) {
+    testSuite: function (options, state, testSuite, testSuiteName) {
       let setupAllDuration = 0;
       if (testSuite.hasOwnProperty('setUpAllDuration')) {
         Object.keys(testSuite.setUpAllDuration).forEach(testName => {
@@ -632,11 +635,13 @@ function unitTestTabularPrintResults (options, results, otherResults) {
           setupTearDown: testSuite.totalSetUp + testSuite.totalTearDown,
           duration: testSuite.duration,
           hasSetupAll: hasSetupAll,
-          count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
+          count: Object.keys(testSuite).filter(testCase => !skipInternalMember(testSuite, testCase)).length,
           netstat: JSON.stringify(stats.netstat)
         });
       } else {
-        if (!durationBlacklist.find(item => { return item === currentTestrun; }) &&
+        if (!durationBlacklist.find(item => {
+ return item === currentTestrun;
+}) &&
             testSuiteName.search("-spec") === -1 &&
             !testSuite.hasOwnProperty('skipped') &&
             !testSuite.skipped) {
@@ -666,11 +671,11 @@ function unitTestTabularPrintResults (options, results, otherResults) {
       resultTable.addRow(resultLine);
 
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
     },
-    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    endTestSuite: function (options, state, testSuite, testSuiteName) {
     },
-    endTestRun: function(options, state, testRun, testRunName) {
+    endTestRun: function (options, state, testRun, testRunName) {
       testRunStatistics += resultTable.toString();
     }
   });
@@ -680,7 +685,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a chartlist of the longest running tests
 // //////////////////////////////////////////////////////////////////////////////
-function summarizeStats(deltaStats) {
+function summarizeStats (deltaStats) {
   let sumStats = {};
   for (let instance in deltaStats) {
     sumStats['netstat'] = {};
@@ -708,7 +713,7 @@ function summarizeStats(deltaStats) {
   return sumStats;
 }
 
-function locateLongRunning(options, results, otherResults) {
+function locateLongRunning (options, results, otherResults) {
   let testRunStatistics = "";
   let sortedByDuration = [];
   let pathForJson = {};
@@ -722,7 +727,7 @@ function locateLongRunning(options, results, otherResults) {
     thisFailedTests: []
   };
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
       let startup = testRun['startupTime'];
       let testDuration = testRun['testDuration'];
       let shutdown = testRun['shutdownTime'];
@@ -734,7 +739,7 @@ function locateLongRunning(options, results, otherResults) {
       testRunStatistics += `${color}${testRunName} - startup [${startup}] => run [${testDuration}] => shutdown [${shutdown}]${RESET}
 `;
     },
-    testSuite: function(options, state, testSuite, testSuiteName) {
+    testSuite: function (options, state, testSuite, testSuiteName) {
       pathForJson['testSuite'] = testSuiteName;
       if (testSuite.hasOwnProperty('duration') && testSuite.duration !== 0.0) {
         sortedByDuration.push(
@@ -748,19 +753,19 @@ function locateLongRunning(options, results, otherResults) {
         if (!testSuite.hasOwnProperty('skipped') || !testSuite.skipped) {
           print(RED + "This test doesn't have a duration: " + testSuiteName + "\n" + JSON.stringify(testSuite) + RESET);
         }
-      }        
+      }
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
     },
-    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    endTestSuite: function (options, state, testSuite, testSuiteName) {
     },
-    endTestRun: function(options, state, testRun, testRunName) {
+    endTestRun: function (options, state, testRun, testRunName) {
       pathForJson['testRunName'] = testRunName;
-      sortedByDuration.sort(function(a, b) {
+      sortedByDuration.sort(function (a, b) {
         return a.duration - b.duration;
       });
       let results = {};
-      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i --) {
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i--) {
         let key = " - " +
             fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - ^ " +
             fancyTimeFormat(sortedByDuration[i].test.totalSetUp / 1000) + " v " +
@@ -778,7 +783,7 @@ function locateLongRunning(options, results, otherResults) {
           Object.keys(d).forEach(a => {
             sortStart.push([d[a], a]);
           });
-          sortStart.sort(function(a, b) {
+          sortStart.sort(function (a, b) {
             return b[0] - a[0];
           });
           sortStart.forEach(a => {
@@ -814,12 +819,12 @@ function locateLongRunning(options, results, otherResults) {
             duration: duration
           });
         }
-        testCases.sort(function(a, b) {
+        testCases.sort(function (a, b) {
           return a.duration - b.duration;
         });
 
         let statistics = [];
-        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j --) {
+        for (let j = Object.keys(testCases).length - 1; (j >= 0) && (j > Object.keys(testCases).length - 31); j--) {
           let otherTestTime = "";
           if (otherResults) {
             otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
@@ -839,7 +844,7 @@ function locateLongRunning(options, results, otherResults) {
           results[key]['setupStatistics'] = setupStatistics;
         }
       }
-      testRunStatistics +=  yaml.safeDump(results);
+      testRunStatistics += yaml.safeDump(results);
       sortedByDuration = [];
     }
   });
@@ -851,7 +856,7 @@ function locateLongRunning(options, results, otherResults) {
 //          setup/teardown usage
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateLongSetupTeardown(options, results) {
+function locateLongSetupTeardown (options, results) {
   let testRunStatistics = "";
   let testRunStatisticsHeader = ['Setup', 'Run', 'tests', 'setupAll', 'suite name'];
   let sortedByDuration = [];
@@ -878,10 +883,10 @@ function locateLongSetupTeardown(options, results) {
   }
 
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
       currentTestrun = testRunName;
     },
-    testSuite: function(options, state, testSuite, testSuiteName) {
+    testSuite: function (options, state, testSuite, testSuiteName) {
       let setupAllDuration = 0;
       if (testSuite.hasOwnProperty('setUpAllDuration')) {
         Object.keys(testSuite.setUpAllDuration).forEach(testName => {
@@ -889,7 +894,7 @@ function locateLongSetupTeardown(options, results) {
         });
       }
       let hasSetupAll = setupAllDuration !== 0;
-      
+
       if (testSuite.hasOwnProperty('totalSetUp') &&
           testSuite.hasOwnProperty('totalTearDown')) {
         sortedByDuration.push({
@@ -897,10 +902,12 @@ function locateLongSetupTeardown(options, results) {
           setupTearDown: testSuite.totalSetUp + testSuite.totalTearDown,
           duration: testSuite.duration,
           hasSetupAll: hasSetupAll,
-          count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
+          count: Object.keys(testSuite).filter(testCase => !skipInternalMember(testSuite, testCase)).length
         });
       } else {
-        if (!durationBlacklist.find(item => { return item === currentTestrun; }) &&
+        if (!durationBlacklist.find(item => {
+ return item === currentTestrun;
+}) &&
             testSuiteName.search("-spec") === -1 &&
             !testSuite.hasOwnProperty('skipped') &&
             !testSuite.skipped) {
@@ -910,19 +917,19 @@ function locateLongSetupTeardown(options, results) {
           }
           print(RED + "This test doesn't have setup a duration: " + currentTestrun + "." + testSuiteName + details + RESET);
         }
-      }        
+      }
     },
-    testCase: function(options, state, testCase, testCaseName) {
+    testCase: function (options, state, testCase, testCaseName) {
     },
-    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    endTestSuite: function (options, state, testSuite, testSuiteName) {
     },
-    endTestRun: function(options, state, testRun, testRunName) {
-      sortedByDuration.sort(function(a, b) {
+    endTestRun: function (options, state, testRun, testRunName) {
+      sortedByDuration.sort(function (a, b) {
         return a.setupTearDown - b.setupTearDown;
       });
       let resultTable = new AsciiTable(currentTestrun);
       resultTable.setHeading(testRunStatisticsHeader);
-      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - testsToShow); i --) {
+      for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - testsToShow); i--) {
         resultTable.addRow([
           fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000),
           fancyTimeFormat(sortedByDuration[i].duration / 1000),
@@ -933,7 +940,9 @@ function locateLongSetupTeardown(options, results) {
       }
 
       if (results.length === 0) {
-        if (!durationBlacklist.find(item => { return item === currentTestrun; })) {
+        if (!durationBlacklist.find(item => {
+ return item === currentTestrun;
+})) {
           print(RED + "no results for: " + currentTestrun + RESET);
         }
       } else {
@@ -949,11 +958,11 @@ function locateLongSetupTeardown(options, results) {
 // / @brief prints the factor server startup/teardown vs. test duration
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateShortServerLife(options, results) {
+function locateShortServerLife (options, results) {
   let rc = true;
   let testRunStatistics = "";
   let sortedByDuration = [];
-  
+
   let failedStates = {
     state: true,
     failCount: 0,
@@ -964,7 +973,7 @@ function locateShortServerLife(options, results) {
     thisFailedTests: []
   };
   iterateTestResults(options, results, failedStates, {
-    testRun: function(options, state, testRun, testRunName) {
+    testRun: function (options, state, testRun, testRunName) {
       if (testRun.hasOwnProperty('startupTime') &&
           testRun.hasOwnProperty('testDuration') &&
           testRun.hasOwnProperty('shutdownTime')) {
@@ -993,7 +1002,7 @@ function locateShortServerLife(options, results) {
 //  @brief simple status representations
 // //////////////////////////////////////////////////////////////////////////////
 
-function writeDefaultReports(options, testSuites) {
+function writeDefaultReports (options, testSuites) {
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), "false", true);
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), "true", true);
   let testFailureText = 'testfailures.txt';
@@ -1006,12 +1015,12 @@ function writeDefaultReports(options, testSuites) {
 
 }
 
-function writeReports(options, results) {
+function writeReports (options, results) {
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
 }
 
-function dumpAllResults(options, results) {
+function dumpAllResults (options, results) {
   let j;
 
   try {
@@ -1029,12 +1038,12 @@ function dumpAllResults(options, results) {
     print("Failed to write ` " +
           fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json') +
           '`! - ' + x.message);
-    throw(x);
+    throw (x);
   }
 }
 
 
-function addFailRunsMessage(testcase, message) {
+function addFailRunsMessage (testcase, message) {
   if (!failedRuns.hasOwnProperty(testcase)) {
     failedRuns[testcase] = '';
   } else if (failedRuns[testcase].length > 0) {
@@ -1043,7 +1052,7 @@ function addFailRunsMessage(testcase, message) {
   failedRuns[testcase] += message;
 }
 
-function yamlDumpResults(options, results) {
+function yamlDumpResults (options, results) {
   try {
     print(yaml.safeDump(JSON.parse(JSON.stringify(results))));
   } catch (err) {
@@ -1052,7 +1061,7 @@ function yamlDumpResults(options, results) {
   }
 }
 
-function getFailedTestCases(options) {
+function getFailedTestCases (options) {
   try {
     let resultFile = fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json');
     let lastRun = JSON.parse(fs.readFileSync(resultFile));

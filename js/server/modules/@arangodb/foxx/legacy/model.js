@@ -97,7 +97,7 @@ Object.assign(Model.prototype, {
   // / @brief was docuBlock JSF_foxx_model_get
   // //////////////////////////////////////////////////////////////////////////////
 
-  get(attributeName) {
+  get (attributeName) {
     return this.attributes[attributeName];
   },
 
@@ -105,7 +105,7 @@ Object.assign(Model.prototype, {
   // / @brief was docuBlock JSF_foxx_model_set
   // //////////////////////////////////////////////////////////////////////////////
 
-  set(attributeName, value) {
+  set (attributeName, value) {
     if (is.object(attributeName)) {
       _.each(attributeName, function (value, key) {
         this.set(key, value);
@@ -143,7 +143,7 @@ Object.assign(Model.prototype, {
   // / @brief was docuBlock JSF_foxx_model_has
   // //////////////////////////////////////////////////////////////////////////////
 
-  has(attributeName) {
+  has (attributeName) {
     return !(_.isUndefined(this.attributes[attributeName]) ||
     _.isNull(this.attributes[attributeName]));
   },
@@ -152,7 +152,7 @@ Object.assign(Model.prototype, {
   // / @brief was docuBlock JSF_foxx_model_forDB
   // //////////////////////////////////////////////////////////////////////////////
 
-  forDB() {
+  forDB () {
     return this.attributes;
   },
 
@@ -160,7 +160,7 @@ Object.assign(Model.prototype, {
   // / @brief was docuBlock JSF_foxx_model_forClient
   // //////////////////////////////////////////////////////////////////////////////
 
-  forClient() {
+  forClient () {
     return excludeExtraAttributes(this.attributes, this);
   }
 });

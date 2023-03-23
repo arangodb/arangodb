@@ -29,7 +29,7 @@ function main (argv) {
     }
 
     testSuites.push(argv[0]); // append first arg to test suits
-    argv = argv.slice(1);    // and remove first arg (c++:pop_front/bash:shift)
+    argv = argv.slice(1); // and remove first arg (c++:pop_front/bash:shift)
   }
 
   if (argv.length >= 1) {

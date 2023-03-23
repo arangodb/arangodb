@@ -1,48 +1,48 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXECUTE, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, AQL_EXECUTE, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const errors = require("internal").errors;
 
 function binaryLiteralsSuite () {
   return {
-    
-    testBrokenBinaryLiterals : function () {
+
+    testBrokenBinaryLiterals: function () {
       let cases = [
-        "0b", 
-        "0B", 
-        "0b010101z111", 
-        "0b010101001001z", 
-        "0bz001010", 
-        "0ba01010b00101", 
-        "0b01010ab00101", 
-        "0b010100001011a", 
-        "0b001010.0", 
-        "0b001010.12", 
-        "0b-001010", 
+        "0b",
+        "0B",
+        "0b010101z111",
+        "0b010101001001z",
+        "0bz001010",
+        "0ba01010b00101",
+        "0b01010ab00101",
+        "0b010100001011a",
+        "0b001010.0",
+        "0b001010.12",
+        "0b-001010",
         "0b000000000000000000000000000000000",
         "0b000000000000000000000000000000001",
         "0b000000000000000000000000000000000000000000000000000000000000000",
@@ -53,7 +53,7 @@ function binaryLiteralsSuite () {
         "0b111111111111111111111111111111111",
         "0b0000011111111111111111111111111111111",
         "0B0000000000000000000011111111111111111111111111111111",
-        "-0B0000000000000000000011111111111111111111111111111111", 
+        "-0B0000000000000000000011111111111111111111111111111111"
       ];
 
       cases.forEach((c) => {
@@ -67,7 +67,7 @@ function binaryLiteralsSuite () {
       });
     },
 
-    testWorkingBinaryLiterals : function () {
+    testWorkingBinaryLiterals: function () {
       let cases = [
         ["0b0", 0],
         ["0B0", 0],
@@ -118,7 +118,7 @@ function binaryLiteralsSuite () {
         ["0b11111111111111111111111111111111", 4294967295],
         ["0B11111111111111111111111111111111", 4294967295],
         ["-0b1", -1],
-        ["-0b1111", -15],
+        ["-0b1111", -15]
       ];
 
       cases.forEach((c) => {
@@ -126,18 +126,18 @@ function binaryLiteralsSuite () {
         let result = AQL_EXECUTE(query).json[0];
         assertEqual(c[1], result, c);
       });
-    },
+    }
 
   };
 }
 
 function hexadecimalLiteralsSuite () {
   return {
-    
-    testBrokenHexadecimalLiterals : function () {
+
+    testBrokenHexadecimalLiterals: function () {
       let cases = [
-        "0x", 
-        "0X", 
+        "0x",
+        "0X",
         "0x01234z",
         "0x01234z4353",
         "0xz01234",
@@ -147,14 +147,14 @@ function hexadecimalLiteralsSuite () {
         "0x1111111111111111",
         "0x10000000000000000",
         "0x111111111111111111111111",
-        "0x0000011111111111111111111111111111111", 
-        "0x0000000000000000000011111111111111111111111111111111", 
-        "0x0000000000FFFFFFFF", 
+        "0x0000011111111111111111111111111111111",
+        "0x0000000000000000000011111111111111111111111111111111",
+        "0x0000000000FFFFFFFF",
         "0X0000000000fFfFfFfF",
         "0x000000000000000000000000000000000000000000000000000000000000000",
         "0X000000000000000000000000000000000000000000000000000000000000000",
-        "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001", 
-        "0X0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001", 
+        "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001",
+        "0X0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
       ];
 
       cases.forEach((c) => {
@@ -168,7 +168,7 @@ function hexadecimalLiteralsSuite () {
       });
     },
 
-    testWorkingHexadecimalLiterals : function () {
+    testWorkingHexadecimalLiterals: function () {
       let cases = [
         ["0x0", 0],
         ["0X0", 0],
@@ -277,7 +277,7 @@ function hexadecimalLiteralsSuite () {
         ["-0x00000000", 0],
         ["-0xffffffff", -4294967295],
         ["-0Xffffffff", -4294967295],
-        ["-0XFFFFFFFF", -4294967295],
+        ["-0XFFFFFFFF", -4294967295]
       ];
 
       cases.forEach((c) => {
@@ -285,7 +285,7 @@ function hexadecimalLiteralsSuite () {
         let result = AQL_EXECUTE(query).json[0];
         assertEqual(c[1], result, c);
       });
-    },
+    }
 
   };
 }

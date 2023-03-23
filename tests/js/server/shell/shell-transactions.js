@@ -81,16 +81,17 @@ function transactionFailuresSuite () {
       db._drop(cn);
       c = null;
     },
-    
-    testCommitEmptyTransactionFailure : function () {
-      c.insert({ _key: "foobar", value: "baz" });
+
+    testCommitEmptyTransactionFailure: function () {
+      c.insert({ _key: "foobar",
+value: "baz" });
       assertEqual(1, c.count());
 
       internal.debugSetFailAt("TransactionCommitFail");
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
           action: function () {}
         });
@@ -105,19 +106,19 @@ function transactionFailuresSuite () {
       assertEqual("baz", c.document("foobar").value);
     },
 
-    testCommitTransactionWithRemovalsFailure : function () {
+    testCommitTransactionWithRemovalsFailure: function () {
       let docs = [];
       for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i });
       }
       c.insert(docs);
       assertEqual(100, c.count());
-      
+
       internal.debugSetFailAt("TransactionCommitFail");
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
           action: function () {
             for (var i = 0; i < 100; ++i) {
@@ -135,15 +136,16 @@ function transactionFailuresSuite () {
       internal.debugClearFailAt();
       assertEqual(100, c.count());
     },
-    
-    testCommitTransactionWithFailuresInsideFailure : function () {
-      c.insert({ _key: "foobar", value: "baz" });
+
+    testCommitTransactionWithFailuresInsideFailure: function () {
+      c.insert({ _key: "foobar",
+value: "baz" });
 
       internal.debugSetFailAt("TransactionCommitFail");
       try {
-        db._executeTransaction({ 
+        db._executeTransaction({
           collections: {
-            write: cn 
+            write: cn
           },
           action: function () {
             for (var i = 0; i < 100; ++i) {
@@ -191,12 +193,14 @@ function transactionRevisionsSuite () {
     },
 
     testInsertUniqueFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
-            c.insert({ _key: 'test', value: 2 });
+            c.insert({ _key: 'test',
+value: 2 });
           }
         });
         fail();
@@ -209,9 +213,11 @@ function transactionRevisionsSuite () {
     },
 
     testInsertUniqueSingleFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
-        c.insert({ _key: 'test', value: 2 });
+        c.insert({ _key: 'test',
+value: 2 });
         fail();
       } catch (err) {
       }
@@ -222,12 +228,14 @@ function transactionRevisionsSuite () {
     },
 
     testInsertTransactionFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
-            c.insert({ _key: 'test2', value: 2 });
+            c.insert({ _key: 'test2',
+value: 2 });
             throw new Error('foo');
           }
         });
@@ -240,7 +248,8 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveTransactionFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
@@ -258,12 +267,15 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveInsertWithSameRev: function () {
-      var doc = c.insert({ _key: 'test', value: 1 });
+      var doc = c.insert({ _key: 'test',
+value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
         action: function () {
           c.remove('test');
-          c.insert({ _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
+          c.insert({ _key: 'test',
+_rev: doc._rev,
+value: 2 }, { isRestore: true });
         }
       });
 
@@ -272,19 +284,25 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateWithSameRev: function () {
-      var doc = c.insert({ _key: 'test', value: 1 });
-      c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
+      var doc = c.insert({ _key: 'test',
+value: 1 });
+      c.update('test', { _key: 'test',
+_rev: doc._rev,
+value: 2 }, { isRestore: true });
 
       assertEqual(1, c.toArray().length);
       assertEqual(2, c.document('test').value);
     },
 
     testUpdateWithSameRevTransaction: function () {
-      var doc = c.insert({ _key: 'test', value: 1 });
+      var doc = c.insert({ _key: 'test',
+value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
         action: function () {
-          c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
+          c.update('test', { _key: 'test',
+_rev: doc._rev,
+value: 2 }, { isRestore: true });
         }
       });
 
@@ -293,12 +311,15 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateFailingWithSameRev: function () {
-      var doc = c.insert({ _key: 'test', value: 1 });
+      var doc = c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
-            c.update('test', { _key: 'test', _rev: doc._rev, value: 2 }, { isRestore: true });
+            c.update('test', { _key: 'test',
+_rev: doc._rev,
+value: 2 }, { isRestore: true });
             throw new Error('foo');
           }
         });
@@ -311,12 +332,14 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
-            c.update({ _key: 'test', value: 2 });
+            c.update({ _key: 'test',
+value: 2 });
             throw new Error('foo');
           }
         });
@@ -329,13 +352,16 @@ function transactionRevisionsSuite () {
     },
 
     testUpdateAndInsertFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
-            c.update({ _key: 'test', value: 2 });
-            c.insert({ _key: 'test', value: 3 });
+            c.update({ _key: 'test',
+value: 2 });
+            c.insert({ _key: 'test',
+value: 3 });
             throw new Error('foo');
           }
         });
@@ -348,12 +374,14 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveAndInsert: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       db._executeTransaction({
         collections: { write: c.name() },
         action: function () {
           c.remove('test');
-          c.insert({ _key: 'test', value: 2 });
+          c.insert({ _key: 'test',
+value: 2 });
         }
       });
 
@@ -362,13 +390,15 @@ function transactionRevisionsSuite () {
     },
 
     testRemoveAndInsertFailing: function () {
-      c.insert({ _key: 'test', value: 1 });
+      c.insert({ _key: 'test',
+value: 1 });
       try {
         db._executeTransaction({
           collections: { write: c.name() },
           action: function () {
             c.remove('test');
-            c.insert({ _key: 'test', value: 3 });
+            c.insert({ _key: 'test',
+value: 3 });
             throw new Error('foo');
           }
         });
@@ -411,23 +441,51 @@ function transactionInvocationSuite () {
         { collections: true },
         { action: true },
         { action: function () { } },
-        { collections: true, action: true },
-        { collections: { }, action: true },
+        { collections: true,
+action: true },
+        { collections: { },
+action: true },
         { collections: { } },
-        { collections: true, action: function () { } },
-        { collections: { read: true }, action: function () { } },
-        { collections: { }, lockTimeout: -1, action: function () { } },
-        { collections: { }, lockTimeout: -30.0, action: function () { } },
-        { collections: { }, lockTimeout: null, action: function () { } },
-        { collections: { }, lockTimeout: true, action: function () { } },
-        { collections: { }, lockTimeout: 'foo', action: function () { } },
-        { collections: { }, lockTimeout: [ ], action: function () { } },
-        { collections: { }, lockTimeout: { }, action: function () { } },
-        { collections: { }, waitForSync: null, action: function () { } },
-        { collections: { }, waitForSync: 0, action: function () { } },
-        { collections: { }, waitForSync: 'foo', action: function () { } },
-        { collections: { }, waitForSync: [ ], action: function () { } },
-        { collections: { }, waitForSync: { }, action: function () { } }
+        { collections: true,
+action: function () { } },
+        { collections: { read: true },
+action: function () { } },
+        { collections: { },
+lockTimeout: -1,
+action: function () { } },
+        { collections: { },
+lockTimeout: -30.0,
+action: function () { } },
+        { collections: { },
+lockTimeout: null,
+action: function () { } },
+        { collections: { },
+lockTimeout: true,
+action: function () { } },
+        { collections: { },
+lockTimeout: 'foo',
+action: function () { } },
+        { collections: { },
+lockTimeout: [ ],
+action: function () { } },
+        { collections: { },
+lockTimeout: { },
+action: function () { } },
+        { collections: { },
+waitForSync: null,
+action: function () { } },
+        { collections: { },
+waitForSync: 0,
+action: function () { } },
+        { collections: { },
+waitForSync: 'foo',
+action: function () { } },
+        { collections: { },
+waitForSync: [ ],
+action: function () { } },
+        { collections: { },
+waitForSync: { },
+action: function () { } }
       ];
 
       let localDebug = false;
@@ -462,14 +520,47 @@ function transactionInvocationSuite () {
       var result;
 
       var tests = [
-        { collections: { }, action: function () { result = 1; return true; } },
-        { collections: { read: [ ] }, action: function () { result = 1; return true; } },
-        { collections: { write: [ ] }, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, lockTimeout: 5.0, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, lockTimeout: 0.0, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, waitForSync: true, action: function () { result = 1; return true; } },
-        { collections: { read: [ ], write: [ ] }, waitForSync: false, action: function () { result = 1; return true; } }
+        { collections: { },
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ] },
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { write: [ ] },
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ],
+write: [ ] },
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ],
+write: [ ] },
+lockTimeout: 5.0,
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ],
+write: [ ] },
+lockTimeout: 0.0,
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ],
+write: [ ] },
+waitForSync: true,
+action: function () {
+ result = 1; return true;
+} },
+        { collections: { read: [ ],
+write: [ ] },
+waitForSync: false,
+action: function () {
+ result = 1; return true;
+} }
       ];
 
       tests.forEach(function (test) {
@@ -486,12 +577,38 @@ function transactionInvocationSuite () {
 
     testReturnValues: function () {
       var tests = [
-        { expected: 1, trx: { collections: { }, action: function () { return 1; } } },
-        { expected: undefined, trx: { collections: { }, action: function () { } } },
-        { expected: [ ], trx: { collections: { read: [ ] }, action: function () { return [ ]; } } },
-        { expected: [ null, true, false ], trx: { collections: { write: [ ] }, action: function () { return [ null, true, false ]; } } },
-        { expected: 'foo', trx: { collections: { read: [ ], write: [ ] }, action: function () { return 'foo'; } } },
-        { expected: { 'a': 1, 'b': 2 }, trx: { collections: { read: [ ], write: [ ] }, action: function () { return { 'a': 1, 'b': 2 }; } } }
+        { expected: 1,
+trx: { collections: { },
+action: function () {
+ return 1;
+} } },
+        { expected: undefined,
+trx: { collections: { },
+action: function () { } } },
+        { expected: [ ],
+trx: { collections: { read: [ ] },
+action: function () {
+ return [ ];
+} } },
+        { expected: [ null, true, false ],
+trx: { collections: { write: [ ] },
+action: function () {
+ return [ null, true, false ];
+} } },
+        { expected: 'foo',
+trx: { collections: { read: [ ],
+write: [ ] },
+action: function () {
+ return 'foo';
+} } },
+        { expected: { 'a': 1,
+'b': 2 },
+trx: { collections: { read: [ ],
+write: [ ] },
+action: function () {
+ return { 'a': 1,
+'b': 2 };
+} } }
       ];
 
       tests.forEach(function (test) {
@@ -1018,7 +1135,8 @@ function transactionCollectionsSuite () {
           read: [ cn1, cn2 ]
         },
         action: function () {
-          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
+          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1,
+'@cn2': cn2 }).toArray();
           assertEqual(100, docs.length);
           return true;
         }
@@ -1044,7 +1162,8 @@ function transactionCollectionsSuite () {
           // intentionally empty
         },
         action: function () {
-          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1, '@cn2': cn2 }).toArray();
+          var docs = db._query('FOR i IN @@cn1 FOR j IN @@cn2 RETURN i', { '@cn1': cn1,
+'@cn2': cn2 }).toArray();
           assertEqual(100, docs.length);
           return true;
         }
@@ -1099,7 +1218,8 @@ function transactionCollectionsSuite () {
           write: [ cn2 ]
         },
         action: function () {
-          var ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 }).getExtra().stats;
+          var ops = db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1,
+'@cn2': cn2 }).getExtra().stats;
           assertEqual(10, ops.writesExecuted);
           return true;
         }
@@ -1129,7 +1249,8 @@ function transactionCollectionsSuite () {
         },
         action: function () {
           try {
-            db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1, '@cn2': cn2 });
+            db._query('FOR i IN @@cn1 REMOVE i._key IN @@cn2', { '@cn1': cn1,
+'@cn2': cn2 });
             fail();
           } catch (err) {
             assertEqual(arangodb.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
@@ -1291,7 +1412,9 @@ function transactionOperationsSuite () {
         collections: {
         },
         action: function () {
-          c1.ensureIndex({ type: "persistent", fields: ["foo"], unique: true });
+          c1.ensureIndex({ type: "persistent",
+fields: ["foo"],
+unique: true });
           fail();
         }
       };
@@ -1315,7 +1438,8 @@ function transactionOperationsSuite () {
         collections: {
         },
         action: function () {
-          c1.ensureIndex({ type: "persistent", fields: ["foo"] });
+          c1.ensureIndex({ type: "persistent",
+fields: ["foo"] });
           fail();
         }
       };
@@ -1339,7 +1463,8 @@ function transactionOperationsSuite () {
         collections: {
         },
         action: function () {
-          c1.ensureIndex({ type: "fulltext", fields: ["foo"] });
+          c1.ensureIndex({ type: "fulltext",
+fields: ["foo"] });
           fail();
         }
       };
@@ -1358,7 +1483,9 @@ function transactionOperationsSuite () {
 
     testDropIndex: function () {
       c1 = db._create(cn1);
-      var idx = c1.ensureIndex({ type: "persistent", fields: ["foo"], unique: true });
+      var idx = c1.ensureIndex({ type: "persistent",
+fields: ["foo"],
+unique: true });
 
       var obj = {
         collections: {
@@ -1383,7 +1510,8 @@ function transactionOperationsSuite () {
 
     testSingleRead1: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', a: 1 });
+      c1.save({ _key: 'foo',
+a: 1 });
 
       var obj = {
         collections: {
@@ -1406,7 +1534,8 @@ function transactionOperationsSuite () {
 
     testSingleRead2: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', a: 1 });
+      c1.save({ _key: 'foo',
+a: 1 });
 
       var obj = {
         collections: {
@@ -1431,7 +1560,8 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ _key: 'foo' + i, a: i });
+        docs.push({ _key: 'foo' + i,
+a: i });
       }
       c1.insert(docs);
 
@@ -1462,7 +1592,8 @@ function transactionOperationsSuite () {
       c1 = db._create(cn1);
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ _key: 'foo' + i, a: i });
+        docs.push({ _key: 'foo' + i,
+a: i });
       }
       c1.insert(docs);
 
@@ -1561,8 +1692,11 @@ function transactionOperationsSuite () {
 
     testReplace: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', a: 1 });
-      c1.save({ _key: 'bar', b: 2, c: 3 });
+      c1.save({ _key: 'foo',
+a: 1 });
+      c1.save({ _key: 'bar',
+b: 2,
+c: 3 });
 
       var obj = {
         collections: {
@@ -1593,7 +1727,8 @@ function transactionOperationsSuite () {
 
     testReplaceReplace: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', a: 1 });
+      c1.save({ _key: 'foo',
+a: 1 });
 
       var obj = {
         collections: {
@@ -1607,7 +1742,8 @@ function transactionOperationsSuite () {
           assertEqual(4, c1.document('foo').a);
           c1.replace('foo', { a: 5 });
           assertEqual(5, c1.document('foo').a);
-          c1.replace('foo', { a: 6, b: 99 });
+          c1.replace('foo', { a: 6,
+b: 99 });
           assertEqual(6, c1.document('foo').a);
           assertEqual(99, c1.document('foo').b);
           return true;
@@ -1626,10 +1762,14 @@ function transactionOperationsSuite () {
 
     testUpdate: function () {
       c1 = db._create(cn1);
-      c1.insert([{ _key: 'foo', a: 1 },
-                 { _key: 'bar', b: 2 },
-                 { _key: 'baz', c: 3 },
-                 { _key: 'bam', d: 4 }]);
+      c1.insert([{ _key: 'foo',
+a: 1 },
+                 { _key: 'bar',
+b: 2 },
+                 { _key: 'baz',
+c: 3 },
+                 { _key: 'bam',
+d: 4 }]);
 
       var obj = {
         collections: {
@@ -1643,7 +1783,8 @@ function transactionOperationsSuite () {
           c1.update('bar', { b: 9 });
 
           assertEqual(3, c1.document('baz').c);
-          c1.update('baz', { b: 9, c: 12 });
+          c1.update('baz', { b: 9,
+c: 12 });
 
           assertEqual(4, c1.document('bam').d);
           return true;
@@ -1666,9 +1807,12 @@ function transactionOperationsSuite () {
 
     testRemove: function () {
       c1 = db._create(cn1);
-      c1.insert([{ _key: 'foo', a: 1 },
-                 { _key: 'bar', b: 2 },
-                 { _key: 'baz', c: 3 }]);
+      c1.insert([{ _key: 'foo',
+a: 1 },
+                 { _key: 'bar',
+b: 2 },
+                 { _key: 'baz',
+c: 3 }]);
 
       var obj = {
         collections: {
@@ -1771,7 +1915,9 @@ function transactionOperationsSuite () {
 
     testByExample: function () {
       c1 = db._create(cn1);
-      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
+      c1.ensureIndex({ type: "persistent",
+fields: ["name"],
+unique: true });
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -1799,7 +1945,9 @@ function transactionOperationsSuite () {
 
     testFirstExample1: function () {
       c1 = db._create(cn1);
-      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
+      c1.ensureIndex({ type: "persistent",
+fields: ["name"],
+unique: true });
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -1826,7 +1974,8 @@ function transactionOperationsSuite () {
 
     testFirstExample2: function () {
       c1 = db._create(cn1);
-      c1.ensureIndex({ type: "persistent", fields: ["name"] });
+      c1.ensureIndex({ type: "persistent",
+fields: ["name"] });
 
       let docs = [];
       for (var i = 0; i < 100; ++i) {
@@ -1853,10 +2002,13 @@ function transactionOperationsSuite () {
 
     testFulltext: function () {
       c1 = db._create(cn1);
-      var idx = c1.ensureIndex({ type: "fulltext", fields: ["text"] });
+      var idx = c1.ensureIndex({ type: "fulltext",
+fields: ["text"] });
 
-      c1.save({ text: 'steam', other: 1 });
-      c1.save({ text: 'steamboot', other: 2 });
+      c1.save({ text: 'steam',
+other: 1 });
+      c1.save({ text: 'steamboot',
+other: 2 });
 
       let obj = {
         collections: {
@@ -1921,7 +2073,9 @@ function transactionBarriersSuite () {
         },
         action: function () {
           for (i = 0; i < 100; ++i) {
-            c1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+            c1.save({ _key: 'foo' + i,
+value1: i,
+value2: 'foo' + i + 'x' });
           }
 
           for (i = 0; i < 100; ++i) {
@@ -1964,7 +2118,9 @@ function transactionBarriersSuite () {
         },
         action: function () {
           for (i = 0; i < 100; ++i) {
-            c1.save({ _key: 'foo' + i, value1: i, value2: 'foo' + i + 'x' });
+            c1.save({ _key: 'foo' + i,
+value1: i,
+value2: 'foo' + i + 'x' });
           }
 
           for (i = 0; i < 100; ++i) {
@@ -2060,7 +2216,9 @@ function transactionGraphSuite () {
           var result = { };
           result.enxirvp = graph[cn1].save({});
           result.biitqtk = graph[cn1].save({});
-          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
+          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id,
+_to: result.biitqtk._id,
+name: 'john smith'});
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev: null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev: null });
           result.xsjzbst = (function () {
@@ -2068,10 +2226,16 @@ function transactionGraphSuite () {
             return true;
           }());
 
-          result.thizhdd = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
+          result.thizhdd = graph[cn2].save({_from: result.cvwmkym._id,
+_to: result.gsalfxu._id,
+_key: result.oboyuhh._key,
+name: 'david smith'});
           gotHere = 1;
 
-          result.rldfnre = graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
+          result.rldfnre = graph[cn2].save({_from: result.cvwmkym._id,
+_to: result.gsalfxu._id,
+_key: result.oboyuhh._key,
+name: 'david smith'});
           gotHere = 2;
 
           return result;
@@ -2105,7 +2269,9 @@ function transactionGraphSuite () {
 
           result.enxirvp = graph[cn1].save({});
           result.biitqtk = graph[cn1].save({});
-          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id, _to: result.biitqtk._id, name: 'john smith'});
+          result.oboyuhh = graph[cn2].save({_from: result.enxirvp._id,
+_to: result.biitqtk._id,
+name: 'john smith'});
           result.oboyuhh = graph[cn2].document(result.oboyuhh);
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev: null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev: null });
@@ -2114,7 +2280,10 @@ function transactionGraphSuite () {
             return true;
           }());
 
-          graph[cn2].save({_from: result.cvwmkym._id, _to: result.gsalfxu._id, _key: result.oboyuhh._key, name: 'david smith'});
+          graph[cn2].save({_from: result.cvwmkym._id,
+_to: result.gsalfxu._id,
+_key: result.oboyuhh._key,
+name: 'david smith'});
           result.rldfnre = graph[cn2].document(result.oboyuhh._key);
 
           return result;
@@ -2384,11 +2553,17 @@ function transactionRollbackSuite () {
 
     testRollbackInsertSecondaryIndexes: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c1.save({ _key: 'foo',
+value: 'foo',
+a: 1 });
+      c1.save({ _key: 'bar',
+value: 'bar',
+a: 1 });
+      c1.save({ _key: 'meow',
+value: 'meow' });
 
-      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      c1.ensureIndex({ type: "persistent",
+fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2396,11 +2571,18 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.save({ _key: 'tom', value: 'tom' });
-          c1.save({ _key: 'tim', value: 'tim' });
-          c1.save({ _key: 'tam', value: 'tam' });
-          c1.save({ _key: 'troet', value: 'foo', a: 2 });
-          c1.save({ _key: 'floxx', value: 'bar', a: 2 });
+          c1.save({ _key: 'tom',
+value: 'tom' });
+          c1.save({ _key: 'tim',
+value: 'tim' });
+          c1.save({ _key: 'tam',
+value: 'tam' });
+          c1.save({ _key: 'troet',
+value: 'foo',
+a: 2 });
+          c1.save({ _key: 'floxx',
+value: 'bar',
+a: 2 });
 
           assertEqual(8, c1.count());
 
@@ -2470,9 +2652,12 @@ function transactionRollbackSuite () {
       var d1, d2, d3;
 
       c1 = db._create(cn1);
-      d1 = c1.save({ _key: 'foo', a: 1 });
-      d2 = c1.save({ _key: 'bar', a: 2 });
-      d3 = c1.save({ _key: 'meow', a: 3 });
+      d1 = c1.save({ _key: 'foo',
+a: 1 });
+      d2 = c1.save({ _key: 'bar',
+a: 2 });
+      d3 = c1.save({ _key: 'meow',
+a: 3 });
 
       var obj = {
         collections: {
@@ -2509,9 +2694,12 @@ function transactionRollbackSuite () {
       var d1, d2, d3;
 
       c1 = db._create(cn1);
-      d1 = c1.save({ _key: 'foo', a: 1 });
-      d2 = c1.save({ _key: 'bar', a: 2 });
-      d3 = c1.save({ _key: 'meow', a: 3 });
+      d1 = c1.save({ _key: 'foo',
+a: 1 });
+      d2 = c1.save({ _key: 'bar',
+a: 2 });
+      d3 = c1.save({ _key: 'meow',
+a: 3 });
 
       var obj = {
         collections: {
@@ -2556,11 +2744,17 @@ function transactionRollbackSuite () {
 
     testRollbackUpdateSecondaryIndexes: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c1.save({ _key: 'foo',
+value: 'foo',
+a: 1 });
+      c1.save({ _key: 'bar',
+value: 'bar',
+a: 1 });
+      c1.save({ _key: 'meow',
+value: 'meow' });
 
-      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      c1.ensureIndex({ type: "persistent",
+fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2568,8 +2762,10 @@ function transactionRollbackSuite () {
           write: [ cn1 ]
         },
         action: function () {
-          c1.update('foo', { value: 'foo', a: 2 });
-          c1.update('bar', { value: 'bar', a: 2 });
+          c1.update('foo', { value: 'foo',
+a: 2 });
+          c1.update('bar', { value: 'bar',
+a: 2 });
           c1.update('meow', { value: 'troet' });
 
           assertEqual(3, c1.count());
@@ -2663,11 +2859,17 @@ function transactionRollbackSuite () {
 
     testRollbackRemoveSecondaryIndexes: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c1.save({ _key: 'foo',
+value: 'foo',
+a: 1 });
+      c1.save({ _key: 'bar',
+value: 'bar',
+a: 1 });
+      c1.save({ _key: 'meow',
+value: 'meow' });
 
-      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      c1.ensureIndex({ type: "persistent",
+fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2703,11 +2905,17 @@ function transactionRollbackSuite () {
 
     testRollbackRemoveInsertSecondaryIndexes: function () {
       c1 = db._create(cn1);
-      c1.save({ _key: 'foo', value: 'foo', a: 1 });
-      c1.save({ _key: 'bar', value: 'bar', a: 1 });
-      c1.save({ _key: 'meow', value: 'meow' });
+      c1.save({ _key: 'foo',
+value: 'foo',
+a: 1 });
+      c1.save({ _key: 'bar',
+value: 'bar',
+a: 1 });
+      c1.save({ _key: 'meow',
+value: 'meow' });
 
-      c1.ensureIndex({ type: "persistent", fields: ["value"] });
+      c1.ensureIndex({ type: "persistent",
+fields: ["value"] });
       let good = false;
 
       let obj = {
@@ -2720,8 +2928,12 @@ function transactionRollbackSuite () {
           c1.remove('foo');
           assertEqual(0, c1.count());
 
-          c1.save({ _key: 'foo2', value: 'foo', a: 2 });
-          c1.save({ _key: 'bar2', value: 'bar', a: 2 });
+          c1.save({ _key: 'foo2',
+value: 'foo',
+a: 2 });
+          c1.save({ _key: 'bar2',
+value: 'bar',
+a: 2 });
           assertEqual(2, c1.count());
 
           good = true;
@@ -2844,7 +3056,9 @@ function transactionRollbackSuite () {
 
     testRollbackUniqueSecondary: function () {
       c1 = db._create(cn1);
-      c1.ensureIndex({ type: "persistent", fields: ["name"], unique: true });
+      c1.ensureIndex({ type: "persistent",
+fields: ["name"],
+unique: true });
       let d1 = c1.save({ name: 'foo' });
 
       let obj = {
@@ -2878,7 +3092,8 @@ function transactionRollbackSuite () {
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({_key: 'key' + i, value: i });
+        docs.push({_key: 'key' + i,
+value: i });
       }
       c1.insert(docs);
 
@@ -2929,7 +3144,8 @@ function transactionRollbackSuite () {
           var i;
 
           for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
+            c1.save({ _key: 'key' + i,
+value: i });
           }
 
           for (i = 0; i < 5; ++i) {
@@ -2974,7 +3190,8 @@ function transactionRollbackSuite () {
           var i;
 
           for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
+            c1.save({ _key: 'key' + i,
+value: i });
           }
 
           for (i = 0; i < 10; ++i) {
@@ -2982,7 +3199,8 @@ function transactionRollbackSuite () {
           }
 
           for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
+            c1.save({ _key: 'key' + i,
+value: i });
           }
 
           for (i = 0; i < 10; ++i) {
@@ -2998,7 +3216,8 @@ function transactionRollbackSuite () {
           }
 
           for (i = 0; i < 10; ++i) {
-            c1.save({ _key: 'key' + i, value: i });
+            c1.save({ _key: 'key' + i,
+value: i });
           }
 
           throw new Error('doh!');
@@ -3271,8 +3490,10 @@ function transactionCrossCollectionSuite () {
       let docs1 = [];
       let docs2 = [];
       for (let i = 0; i < 10; ++i) {
-        docs1.push({ _key: 'a' + i, a: i });
-        docs2.push({ _key: 'b' + i, b: i });
+        docs1.push({ _key: 'a' + i,
+a: i });
+        docs2.push({ _key: 'b' + i,
+b: i });
       }
       c1.insert(docs1);
       c2.insert(docs2);
@@ -3310,8 +3531,10 @@ function transactionCrossCollectionSuite () {
       let docs1 = [];
       let docs2 = [];
       for (let i = 0; i < 10; ++i) {
-        docs1.push({ _key: 'a' + i, a: i });
-        docs2.push({ _key: 'b' + i, b: i });
+        docs1.push({ _key: 'a' + i,
+a: i });
+        docs2.push({ _key: 'b' + i,
+b: i });
       }
       c1.insert(docs1);
       c2.insert(docs2);
@@ -3347,8 +3570,10 @@ function transactionCrossCollectionSuite () {
       let docs1 = [];
       let docs2 = [];
       for (let i = 0; i < 10; ++i) {
-        docs1.push({ _key: 'a' + i, a: i });
-        docs2.push({ _key: 'b' + i, b: i });
+        docs1.push({ _key: 'a' + i,
+a: i });
+        docs2.push({ _key: 'b' + i,
+b: i });
       }
       c1.insert(docs1);
       c2.insert(docs2);
@@ -3432,7 +3657,8 @@ function transactionCrossCollectionSuite () {
       c2 = db._create(cn2);
 
       c1.save({ _key: 'a1' });
-      c2.save({ _key: 'b1', a: 1 });
+      c2.save({ _key: 'b1',
+a: 1 });
 
       var obj = {
         collections: {
@@ -3485,7 +3711,8 @@ function transactionCrossCollectionSuite () {
 
       let docs1 = [];
       for (let i = 0; i < 10; ++i) {
-        docs1.push({ _key: 'a' + i, a: i });
+        docs1.push({ _key: 'a' + i,
+a: i });
       }
       c1.insert(docs1);
 
@@ -3543,18 +3770,25 @@ function transactionConstraintsSuite () {
 
     testMultiUniqueConstraintInsert1: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
-      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1"],
+unique: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value2"],
+unique: true });
 
       let docs = [];
       for (let i = 0; i < 10; ++i) {
-        docs.push({ _key: 'test' + i, value1: i, value2: i });
+        docs.push({ _key: 'test' + i,
+value1: i,
+value2: i });
       }
       c.insert(docs);
       assertEqual(10, c.count());
 
       try {
-        c.insert({ value1: 9, value2: 17 });
+        c.insert({ value1: 9,
+value2: 17 });
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
@@ -3571,18 +3805,25 @@ function transactionConstraintsSuite () {
 
     testMultiUniqueConstraintInsert2: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value1"], unique: true });
-      c.ensureIndex({ type: "persistent", fields: ["value2"], unique: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1"],
+unique: true });
+      c.ensureIndex({ type: "persistent",
+fields: ["value2"],
+unique: true });
 
       let docs = [];
       for (let i = 0; i < 10; ++i) {
-        docs.push({ _key: 'test' + i, value1: i, value2: i });
+        docs.push({ _key: 'test' + i,
+value1: i,
+value2: i });
       }
       c.insert(docs);
       assertEqual(10, c.count());
 
       try {
-        c.insert({ value1: 17, value2: 9 });
+        c.insert({ value1: 17,
+value2: 9 });
         fail();
       } catch (err) {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
@@ -3591,7 +3832,7 @@ function transactionConstraintsSuite () {
       assertEqual(10, c.count());
       assertEqual(9, c.document('test9').value1);
       assertEqual(9, c.document('test9').value2);
-    },
+    }
 
   };
 }
@@ -3620,7 +3861,8 @@ function transactionTraversalSuite () {
 
       docs = [];
       for (let i = 1; i < 100; ++i) {
-        docs.push({_from: cn + 'Vertex/' + i, _to: cn + 'Vertex/' + (i + 1) });
+        docs.push({_from: cn + 'Vertex/' + i,
+_to: cn + 'Vertex/' + (i + 1) });
       }
       db.UnitTestsTransactionEdge.insert(docs);
     },
@@ -3647,8 +3889,8 @@ function transactionTraversalSuite () {
         action: function () {
           var db = require('internal').db;
 
-          var results = db._query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' + 
-                                  cn + 'Edge FILTER v._id == "' + cn + 
+          var results = db._query('WITH ' + cn + 'Vertex FOR v, e IN ANY "' + cn + 'Vertex/20" ' +
+                                  cn + 'Edge FILTER v._id == "' + cn +
                                   'Vertex/21" LIMIT 1 RETURN e').toArray();
 
           if (results.length > 0) {
@@ -3683,12 +3925,14 @@ function transactionTraversalSuite () {
           var to = cn + 'Edge/test8';
 
           var newDoc = db[cn + 'Edge'].insert(from, to, { request: true });
-          var fromCount1 = db[cn + 'Edge'].byExample({ _from: from, request: false }).count();
+          var fromCount1 = db[cn + 'Edge'].byExample({ _from: from,
+request: false }).count();
 
           newDoc.request = false;
           db[cn + 'Edge'].update({ _id: newDoc._id }, newDoc);
 
-          var fromCount2 = db[cn + 'Edge'].byExample({ _from: from, request: false }).count();
+          var fromCount2 = db[cn + 'Edge'].byExample({ _from: from,
+request: false }).count();
           return [ fromCount1, fromCount2 ];
         }
       });

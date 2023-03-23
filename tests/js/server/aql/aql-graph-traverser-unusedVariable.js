@@ -42,7 +42,7 @@ const isCluster = require('@arangodb/cluster').isCluster();
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-function unusedVariableSuite() {
+function unusedVariableSuite () {
   const gn = 'UnitTestGraph';
 
   return {
@@ -60,7 +60,8 @@ function unusedVariableSuite() {
 
       c = db._createEdgeCollection(gn + 'e');
       for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+        c.insert({_from: gn + 'v/test' + i,
+_to: gn + 'v/test' + (i + 1)});
       }
     },
 
@@ -82,11 +83,13 @@ function unusedVariableSuite() {
         [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1', 1000],
         [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v', 1],
         [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v', 100],
-        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000],
+        [ 'WITH @@vertices,@@edges FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v', 1000]
       ];
 
       queries.forEach(function (query) {
-        const r = db._query(query[0], {"start": gn + 'v/test0', "@vertices": gn+'v', "@edges": gn+'e'});
+        const r = db._query(query[0], {"start": gn + 'v/test0',
+"@vertices": gn + 'v',
+"@edges": gn + 'e'});
         const resultArray = r.toArray();
         assertEqual(query[1], resultArray.length, query);
       });
@@ -109,7 +112,7 @@ function unusedVariableSuite() {
           [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
           [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)`, 1],
           [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)`, 100],
-          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)`, 1000]
         ];
       } else {
         queries = [
@@ -124,17 +127,18 @@ function unusedVariableSuite() {
           [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
           [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
           [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
-          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
-        ]; 
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000]
+        ];
       }
 
       queries.forEach(function (query) {
-        const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});
+        const r = db._query(query[0], {"start": gn + 'v/test0',
+"@edges": gn + 'e'});
         const resultArray = r.toArray();
         assertEqual(resultArray.length, 1);
         assertEqual(query[1], resultArray[0], query);
       });
-    },
+    }
   };
 }
 

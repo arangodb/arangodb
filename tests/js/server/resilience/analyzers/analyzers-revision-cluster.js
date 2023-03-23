@@ -1,50 +1,50 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Yuriy Popov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Yuriy Popov
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var internal = require('internal');
 var ERRORS = require("@arangodb").errors;
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function analyzersRevisionTestSuite () {
 
-  function waitForRevision(dbName, revisionNumber, buildingRevision) {
+  function waitForRevision (dbName, revisionNumber, buildingRevision) {
   	let tries = 0;
-    while(tries < 2) {
+    while (tries < 2) {
       global.ArangoClusterInfo.flush();
       let revision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertTrue(revision.hasOwnProperty("coordinator"));
       assertTrue(revision.hasOwnProperty("coordinatorRebootId"));
-      if ((revision.revision === revisionNumber && 
-      	     revision.buildingRevision === buildingRevision) || 
+      if ((revision.revision === revisionNumber &&
+      	     revision.buildingRevision === buildingRevision) ||
       	  tries >= 2) {
         assertEqual(revisionNumber, revision.revision);
         assertEqual(buildingRevision, revision.buildingRevision);
@@ -54,12 +54,12 @@ function analyzersRevisionTestSuite () {
       internal.sleep(1);
     }
   }
-  
-  function waitForCompletedRevision(dbName, revisionNumber) {
+
+  function waitForCompletedRevision (dbName, revisionNumber) {
   	waitForRevision(dbName, revisionNumber, revisionNumber);
   }
 
-  function checkAnalyzers(dbName, prefix, revisionNumber) {
+  function checkAnalyzers (dbName, prefix, revisionNumber) {
     // valid name 0
     analyzers.save(prefix + "valid0", "identity");
     revisionNumber++;
@@ -70,7 +70,9 @@ function analyzersRevisionTestSuite () {
     waitForCompletedRevision(dbName, revisionNumber);
 
     // invalid name
-    try { analyzers.save(prefix + "inv:alid", "identity"); } catch(e) {};
+    try {
+ analyzers.save(prefix + "inv:alid", "identity");
+} catch (e) {}
     waitForCompletedRevision(dbName, revisionNumber);
 
     // valid name 2
@@ -79,10 +81,10 @@ function analyzersRevisionTestSuite () {
     waitForCompletedRevision(dbName, revisionNumber);
 
     // invalid repeated name 1
-    try { 
+    try {
       analyzers.save(prefix + "valid1", "delimiter", { "delimiter": "," });
-      fail(); 
-    } catch(e) {};
+      fail();
+    } catch (e) {}
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove valid name 0
@@ -91,10 +93,10 @@ function analyzersRevisionTestSuite () {
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove invalid repeated name 0
-    try { 
+    try {
       analyzers.remove(prefix + "valid0", true);
-      fail(); 
-    } catch(e) {};
+      fail();
+    } catch (e) {}
     waitForCompletedRevision(dbName, revisionNumber);
 
     // remove valid name 2
@@ -109,20 +111,22 @@ function analyzersRevisionTestSuite () {
   }
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief AnalyzersRevision tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief AnalyzersRevision tests
+// //////////////////////////////////////////////////////////////////////////////
 
-    testAnalyzersPlanDbName: function() {
+    testAnalyzersPlanDbName: function () {
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -144,15 +148,19 @@ function analyzersRevisionTestSuite () {
       db._dropDatabase(dbName);
 
       let delRevision = {};
-      try { delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName); } catch(e) {
+      try {
+ delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+} catch (e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
       assertEqual({}, delRevision);
     },
-    testAnalyzersPlanWithoutDbName: function() {
+    testAnalyzersPlanWithoutDbName: function () {
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
 
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -174,12 +182,14 @@ function analyzersRevisionTestSuite () {
       db._dropDatabase(dbName);
 
       let delRevision = {};
-      try { delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName); } catch(e) {
+      try {
+ delRevision = global.ArangoClusterInfo.getAnalyzersRevision(dbName);
+} catch (e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
       }
       assertEqual({}, delRevision);
     },
-    testAnalyzersPlanSystem: function() {
+    testAnalyzersPlanSystem: function () {
       let dbName = "_system";
       db._useDatabase(dbName);
 
@@ -191,7 +201,7 @@ function analyzersRevisionTestSuite () {
 
       checkAnalyzers(dbName, dbName + "::", revisionNumber);
     },
-    testAnalyzersPlanSystemDefault: function() {
+    testAnalyzersPlanSystemDefault: function () {
       let dbName = "_system";
       db._useDatabase(dbName);
 
@@ -203,56 +213,64 @@ function analyzersRevisionTestSuite () {
 
       checkAnalyzers(dbName, "", revisionNumber);
     },
-    testAnalyzersPlanBuiltIn: function() {
-      try { analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]); } catch(e) {
+    testAnalyzersPlanBuiltIn: function () {
+      try {
+ analyzers.save("text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", [ "frequency", "norm", "position" ]);
+} catch (e) {
         assertTrue(false);
       }
     },
-    testAnalyzersCleanupAfterFailedInsert: function() {
+    testAnalyzersCleanupAfterFailedInsert: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugSetFailAt('FailStoreAnalyzer'); 
+        internal.debugSetFailAt('FailStoreAnalyzer');
         try {
           analyzers.save("FailedToStore", "identity");
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
         }
-        assertTrue(null === analyzers.analyzer(dbName + "::FailedToStore"));
+        assertTrue(analyzers.analyzer(dbName + "::FailedToStore") === null);
         waitForCompletedRevision(dbName, 0);
       } finally {
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       	internal.debugRemoveFailAt('FailStoreAnalyzer');
       }
     },
-    testAnalyzersCleanupAfterFailedInsertCommit: function() {
+    testAnalyzersCleanupAfterFailedInsertCommit: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugSetFailAt('FinishModifyingAnalyzerCoordinator'); 
+        internal.debugSetFailAt('FinishModifyingAnalyzerCoordinator');
         try {
           analyzers.save("FailedToStore", "identity");
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
         }
-        assertTrue(null === analyzers.analyzer(dbName + "::FailedToStore"));
+        assertTrue(analyzers.analyzer(dbName + "::FailedToStore") === null);
         // commit and abort attempt will fail
         // observe unstable state of Agency
         waitForRevision(dbName, 0, 1);
@@ -273,22 +291,26 @@ function analyzersRevisionTestSuite () {
         analyzers.save("FailedToStore", "identity");
         waitForCompletedRevision(dbName, 1);
         let analyzer = analyzers.analyzer(dbName + "::FailedToStore");
-        assertFalse(null === analyzer);
+        assertFalse(analyzer === null);
         assertEqual('identity', analyzer.type());
       } finally {
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
       }
     },
-    testAnalyzersCleanupAfterFailedRemoveUpdate: function() {
+    testAnalyzersCleanupAfterFailedRemoveUpdate: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
@@ -297,25 +319,29 @@ function analyzersRevisionTestSuite () {
       	try {
           analyzers.remove("TestAnalyzer", true);
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
         }
         analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup
-        assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
+        assertFalse(analyzers.analyzer(dbName + "::TestAnalyzer") === null); // check analyzer still here
       } finally {
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       	internal.debugRemoveFailAt('UpdateAnalyzerForRemove');
       }
     },
-    testAnalyzersCleanupAfterFailedRemoveCommit: function() {
+    testAnalyzersCleanupAfterFailedRemoveCommit: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
@@ -324,7 +350,7 @@ function analyzersRevisionTestSuite () {
       	try {
           analyzers.remove("TestAnalyzer", true);
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
         }
         internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
@@ -340,17 +366,21 @@ function analyzersRevisionTestSuite () {
           internal.sleep(5);
         }
         analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup and next revision
-        assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
+        assertFalse(analyzers.analyzer(dbName + "::TestAnalyzer") === null); // check analyzer still here
       } finally {
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
       }
     },
-    testAnalyzersInsertOnUpdatedDatabase: function() {
+    testAnalyzersInsertOnUpdatedDatabase: function () {
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
@@ -365,16 +395,20 @@ function analyzersRevisionTestSuite () {
         waitForCompletedRevision(dbName, 1);
       } finally {
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       }
     },
-    testAnalyzersInsertOnUpdatedDatabaseFullAnalyzers: function() {
+    testAnalyzersInsertOnUpdatedDatabaseFullAnalyzers: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
       	db._createDatabase(dbName);
         db._useDatabase(dbName);
@@ -393,20 +427,24 @@ function analyzersRevisionTestSuite () {
       } finally {
       	internal.debugClearFailAt();
       	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       }
     },
-    testAnalyzersReadingRevisionsForUpdatedDatabase: function() {
+    testAnalyzersReadingRevisionsForUpdatedDatabase: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
       db._useDatabase("_system");
       let dbName = "testDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       try {
         try {
           analyzers.save("SystemTestAnalyzer", "identity");
-        } catch(ee) {
+        } catch (ee) {
           console.error("Trouble in creating SystemTestAnalyzer: ", JSON.stringify(ee));
           throw ee;
         }
@@ -429,15 +467,17 @@ function analyzersRevisionTestSuite () {
       	internal.debugClearFailAt();
       	db._useDatabase("_system");
         analyzers.remove("SystemTestAnalyzer", true);
-      	try { db._dropDatabase(dbName); } catch (e) {}
+      	try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       }
     }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(analyzersRevisionTestSuite);
 

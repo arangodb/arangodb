@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,64 +31,74 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/simple";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // by-example query;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function by_example_querySuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
-    setUp: function() {
-      let body = { "name" : cn, "numberOfShards" : 8 };
+    setUp: function () {
+      let body = { "name": cn,
+"numberOfShards": 8 };
       arango.POST("/_api/collection", body);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_finds_the_examples: function() {
-      let body = { "i" : 1 };
+    test_finds_the_examples: function () {
+      let body = { "i": 1 };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d1 = doc.parsedBody['_id'];
 
-      body = { "i" : 1, "a" : { "j" : 1 } };
+      body = { "i": 1,
+"a": { "j": 1 } };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d2 = doc.parsedBody['_id'];
 
-      body = { "i" : 1, "a" : { "j" : 1, "k" : 1 } };
+      body = { "i": 1,
+"a": { "j": 1,
+"k": 1 } };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d3 = doc.parsedBody['_id'];
 
-      body = { "i" : 1, "a" : { "j" : 2, "k" : 2 } };
+      body = { "i": 1,
+"a": { "j": 2,
+"k": 2 } };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d4 = doc.parsedBody['_id'];
 
-      body = { "i" : 2 };
+      body = { "i": 2 };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d5 = doc.parsedBody['_id'];
 
-      body = { "i" : 2, "a" : 2 };
+      body = { "i": 2,
+"a": 2 };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d6 = doc.parsedBody['_id'];
 
-      body = { "i" : 2, "a" : { "j" : 2, "k" : 2 } };
+      body = { "i": 2,
+"a": { "j": 2,
+"k": 2 } };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
       let d7 = doc.parsedBody['_id'];
 
       let cmd = api + "/by-example";
-      body = { "collection" : cn, "example" : { "i" : 1 } };
+      body = { "collection": cn,
+"example": { "i": 1 } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -100,11 +110,12 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['count'], 4);
 
       let other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['_id']));
+      doc.parsedBody['result'].forEach(i => other.push(i['_id']));
       assertEqual(other.sort(), [d1, d2, d3, d4].sort());
 
       cmd = api + "/by-example";
-      body = { "collection" : cn, "example" : { "a" : { "j" : 1 } } };
+      body = { "collection": cn,
+"example": { "a": { "j": 1 } } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201, doc);
@@ -115,11 +126,12 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 1);
       assertEqual(doc.parsedBody['count'], 1);
       other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['_id']));
+      doc.parsedBody['result'].forEach(i => other.push(i['_id']));
       assertEqual(other, [d2]);
 
       cmd = api + "/by-example";
-      body = { "collection" : cn, "example" : { "a.j" : 1 } };
+      body = { "collection": cn,
+"example": { "a.j": 1 } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -130,11 +142,13 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
       other = [];
-      doc.parsedBody['result'].forEach( i => other.push(i['_id']));
+      doc.parsedBody['result'].forEach(i => other.push(i['_id']));
       assertEqual(other.sort(), [d2, d3].sort());
 
       cmd = api + "/first-example";
-      body = { "collection" : cn, "example" : { "a.j" : 1, "a.k" : 1 } };
+      body = { "collection": cn,
+"example": { "a.j": 1,
+"a.k": 1 } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
@@ -144,7 +158,9 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['document']['_id'], d3);
 
       cmd = api + "/first-example";
-      body = { "collection" : cn, "example" : { "a.j" : 1, "a.k" : 2 } };
+      body = { "collection": cn,
+"example": { "a.j": 1,
+"a.k": 2 } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -153,9 +169,10 @@ function by_example_querySuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_finds_the_first_example__invalid_collection: function() {
+    test_finds_the_first_example__invalid_collection: function () {
       let cmd = api + "/first-example";
-      let body = { "collection" : "NonExistingCollection", "example" : { "a" : 1} };
+      let body = { "collection": "NonExistingCollection",
+"example": { "a": 1} };
       let doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
@@ -163,36 +180,40 @@ function by_example_querySuite () {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // by-example query with skip / limit;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function by_example_query_with_skipSuite () {
   let cn = "UnitTestsCollectionByExample";
   return {
-    setUp: function() {
-      let body = { "name" : cn, "numberOfShards" : 8 };
+    setUp: function () {
+      let body = { "name": cn,
+"numberOfShards": 8 };
       arango.POST("/_api/collection", body);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_finds_the_examples_with_skip: function() {
-      let body = { "someAttribute" : "someValue", "someOtherAttribute" : "someOtherValue" };
+    test_finds_the_examples_with_skip: function () {
+      let body = { "someAttribute": "someValue",
+"someOtherAttribute": "someOtherValue" };
       let doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
 
-      body = { "someAttribute" : "someValue", "someOtherAttribute2" : "someOtherValue2" };
+      body = { "someAttribute": "someValue",
+"someOtherAttribute2": "someOtherValue2" };
       doc = arango.POST_RAW(`/_api/document?collection=${cn}`, body);
       assertEqual(doc.code, 202);
 
       let cmd = api + "/by-example";
-      body = { "collection" : cn, "example" : { "someAttribute" : "someValue" } };
+      body = { "collection": cn,
+"example": { "someAttribute": "someValue" } };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -203,7 +224,9 @@ function by_example_query_with_skipSuite () {
       assertEqual(doc.parsedBody['result'].length, 2);
       assertEqual(doc.parsedBody['count'], 2);
 
-      body = { "collection" : cn, "example" : { "someAttribute" : "someValue" }, "skip" : 1 };
+      body = { "collection": cn,
+"example": { "someAttribute": "someValue" },
+"skip": 1 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -214,7 +237,10 @@ function by_example_query_with_skipSuite () {
       assertEqual(doc.parsedBody['result'].length, 1);
       assertEqual(doc.parsedBody['count'], 1);
 
-      body = { "collection" : cn, "example" : { "someAttribute" : "someValue" }, "skip" : 1, "limit" : 1 };
+      body = { "collection": cn,
+"example": { "someAttribute": "someValue" },
+"skip": 1,
+"limit": 1 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -225,7 +251,9 @@ function by_example_query_with_skipSuite () {
       assertEqual(doc.parsedBody['result'].length, 1);
       assertEqual(doc.parsedBody['count'], 1);
 
-      body = { "collection" : cn, "example" : { "someAttribute" : "someValue" }, "skip" : 2 };
+      body = { "collection": cn,
+"example": { "someAttribute": "someValue" },
+"skip": 2 };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -235,7 +263,7 @@ function by_example_query_with_skipSuite () {
       assertFalse(doc.parsedBody['hasMore']);
       assertEqual(doc.parsedBody['result'].length, 0);
       assertEqual(doc.parsedBody['count'], 0);
-    },
+    }
   };
 }
 jsunity.run(by_example_querySuite);

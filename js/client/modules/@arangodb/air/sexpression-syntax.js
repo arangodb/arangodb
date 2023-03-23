@@ -46,7 +46,7 @@
  * equivalent Array representation in JS.
  */
 const SExpressionParser = {
-  parse(expression) {
+  parse (expression) {
     this._expression = expression;
     this._cursor = 0;
     this._ast = [];
@@ -58,7 +58,7 @@ const SExpressionParser = {
    * s-exp : atom
    *       | list
    */
-  _parseExpression() {
+  _parseExpression () {
     this._whitespace();
 
     if (this._expression[this._cursor] === '(') {
@@ -71,7 +71,7 @@ const SExpressionParser = {
   /**
    * list : '(' list-entries ')'
    */
-  _parseList() {
+  _parseList () {
     // Allocate a new (sub-)list.
     this._ast.push([]);
 
@@ -86,7 +86,7 @@ const SExpressionParser = {
    * list-entries : s-exp list-entries
    *              | ε
    */
-  _parseListEntries() {
+  _parseListEntries () {
     this._whitespace();
 
     // ε
@@ -115,7 +115,7 @@ const SExpressionParser = {
     return this._parseListEntries();
   },
 
-  _readUntilTerminator(terminator) {
+  _readUntilTerminator (terminator) {
     let atom = '';
     while (this._expression[this._cursor] &&
            !terminator.test(this._expression[this._cursor])) {
@@ -129,7 +129,7 @@ const SExpressionParser = {
    *      | number
    *      | string
    */
-  _parseAtom() {
+  _parseAtom () {
     if (this._expression[this._cursor] === '"') {
       // We're parsing a string
       this._cursor++;
@@ -146,7 +146,7 @@ const SExpressionParser = {
     }
   },
 
-  _whitespace() {
+  _whitespace () {
     const ws = /^\s+/;
     while (this._expression[this._cursor] &&
            ws.test(this._expression[this._cursor])) {
@@ -154,7 +154,7 @@ const SExpressionParser = {
     }
   },
 
-  _expect(c) {
+  _expect (c) {
     if (this._expression[this._cursor] !== c) {
       throw new Error(
         `Unexpected token: ${this._expression[this._cursor]}, expected ${c}.`
@@ -169,12 +169,12 @@ const SExpressionParser = {
 
 const assert = require('assert');
 
-function test(actual, expected) {
+function test (actual, expected) {
   assert.deepEqual(SExpressionParser.parse(actual), expected);
 }
 
 
-function runTests() {
+function runTests () {
   // Empty lists.
   test(`()`, []);
   test(`( )`, []);

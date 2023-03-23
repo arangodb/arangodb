@@ -34,15 +34,22 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
-const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
+const dbs = [{"name": "maçã",
+"id": "9999994",
+"isUnicode": true}, {
   "name": "cachorro",
   "id": "9999995",
   "isUnicode": false
-}, {"name": "testName", "id": "9999996", "isUnicode": false}, {
+}, {"name": "testName",
+"id": "9999996",
+"isUnicode": false}, {
   "name": "😀",
   "id": "9999997",
   "isUnicode": true
-}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
+}, {"name": "かわいい犬",
+"id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ",
+"id": "9999999",
+"isUnicode": true}];
 const validatorJson = {
   "message": "",
   "level": "new",
@@ -68,7 +75,7 @@ const validatorJson = {
   }
 };
 
-function createCollectionFiles(path, cn) {
+function createCollectionFiles (path, cn) {
   let fn = fs.join(path, cn + ".structure.json");
   fs.write(fn, JSON.stringify({
     indexes: [],
@@ -81,7 +88,9 @@ function createCollectionFiles(path, cn) {
 
   let data = [];
   for (let i = 0; i < 1000; ++i) {
-    data.push({type: 2300, data: {_key: "test" + i, value: i}});
+    data.push({type: 2300,
+data: {_key: "test" + i,
+value: i}});
   }
 
   fn = fs.join(path, cn + ".data.json");
@@ -89,7 +98,7 @@ function createCollectionFiles(path, cn) {
   return data;
 }
 
-function createDumpJsonFile(path, databaseName, id) {
+function createDumpJsonFile (path, databaseName, id) {
   let fn = fs.join(path, "dump.json");
   fs.write(fn, JSON.stringify({
     database: databaseName,
@@ -100,7 +109,7 @@ function createDumpJsonFile(path, databaseName, id) {
   }));
 }
 
-function restoreIntegrationSuite() {
+function restoreIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsRestore';
   const arangorestore = pu.ARANGORESTORE_BIN;
@@ -155,7 +164,10 @@ function restoreIntegrationSuite() {
           name: cn,
           numberOfShards: 1,
           type: 2,
-          keyOptions: {type: "autoincrement", lastValue: 12345, increment: 3, offset: 19}
+          keyOptions: {type: "autoincrement",
+lastValue: 12345,
+increment: 3,
+offset: 19}
         }
       }));
 
@@ -193,7 +205,8 @@ function restoreIntegrationSuite() {
           name: cn,
           numberOfShards: 3,
           type: 2,
-          keyOptions: {type: "padded", lastValue: 12345}
+          keyOptions: {type: "padded",
+lastValue: 12345}
         }
       }));
 
@@ -233,7 +246,10 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 1000; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc"}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value1: i,
+value2: "abc"}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -273,7 +289,10 @@ function restoreIntegrationSuite() {
       let data = [];
       for (let i = 0; i < 1000; ++i) {
         // will generate keys such as test0, test0, test1, test1 etc.
-        data.push({type: 2300, data: {_key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1)}});
+        data.push({type: 2300,
+data: {_key: "test" + Math.floor(i / 2),
+value: i,
+overwrite: (i % 2 === 1)}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -308,13 +327,20 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 10; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value: i, old: true}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value: i,
+old: true}});
       }
       for (let i = 0; i < 6; ++i) {
-        data.push({type: 2302, key: "test" + i});
+        data.push({type: 2302,
+key: "test" + i});
       }
       for (let i = 4; i < 7; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value: i * 2, overwrite: true}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value: i * 2,
+overwrite: true}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -377,7 +403,11 @@ function restoreIntegrationSuite() {
       for (let i = 0; i < 1000; ++i) {
         data.push({
           type: 2300,
-          data: {_key: "test" + i, value1: i, value2: "abc", value3: i + "+abc", value4: "abc " + i}
+          data: {_key: "test" + i,
+value1: i,
+value2: "abc",
+value3: i + "+abc",
+value4: "abc " + i}
         });
       }
 
@@ -416,7 +446,9 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 1000; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value: i}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value: i}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -450,7 +482,9 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 5000; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value: i}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value: i}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -489,7 +523,9 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 5000; ++i) {
-        data.push({type: 2300, data: {_key: "test" + i, value: i}});
+        data.push({type: 2300,
+data: {_key: "test" + i,
+value: i}});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -659,7 +695,8 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 5000; ++i) {
-        data.push({_key: "test" + i, value: i});
+        data.push({_key: "test" + i,
+value: i});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -698,7 +735,8 @@ function restoreIntegrationSuite() {
 
       let data = [];
       for (let i = 0; i < 5000; ++i) {
-        data.push({_key: "test" + i, value: i});
+        data.push({_key: "test" + i,
+value: i});
       }
 
       fn = fs.join(path, cn + ".data.json");
@@ -819,9 +857,18 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-            {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+            {id: "0",
+fields: ["_key"],
+type: "primary",
+unique: true},
+            {id: "95",
+fields: ["loc"],
+type: "geo",
+geoJson: false},
+            {id: "295",
+fields: ["value"],
+type: "skiplist",
+sparse: true}
           ],
           name: cn,
           numberOfShards: 3,
@@ -845,7 +892,8 @@ function restoreIntegrationSuite() {
 
       // test if the indexes work
       for (let i = 0; i < 100; ++i) {
-        c.insert({_key: "test" + i, value: 42});
+        c.insert({_key: "test" + i,
+value: 42});
       }
       for (let i = 0; i < 100; ++i) {
         assertEqual("test" + i, c.document("test" + i)._key);
@@ -864,7 +912,10 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "95", fields: ["loc"], type: "geo1", geoJson: false},
+            {id: "95",
+fields: ["loc"],
+type: "geo1",
+geoJson: false}
           ],
           name: cn,
           numberOfShards: 3,
@@ -895,7 +946,10 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "95", fields: ["a", "b"], type: "geo2", geoJson: false},
+            {id: "95",
+fields: ["a", "b"],
+type: "geo2",
+geoJson: false}
           ],
           name: cn,
           numberOfShards: 3,
@@ -926,7 +980,10 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "95", fields: ["text"], type: "fulltext", minLength: 0},
+            {id: "95",
+fields: ["text"],
+type: "fulltext",
+minLength: 0}
           ],
           name: cn,
           numberOfShards: 3,
@@ -955,8 +1012,14 @@ function restoreIntegrationSuite() {
 
       fs.write(fn, JSON.stringify({
         indexes: [
-          {id: "95", fields: ["loc"], type: "geo", geoJson: false},
-          {id: "295", fields: ["value"], type: "skiplist", sparse: true},
+          {id: "95",
+fields: ["loc"],
+type: "geo",
+geoJson: false},
+          {id: "295",
+fields: ["value"],
+type: "skiplist",
+sparse: true}
         ],
         parameters: {
           name: cn,
@@ -981,7 +1044,8 @@ function restoreIntegrationSuite() {
 
       // test if the indexes work
       for (let i = 0; i < 100; ++i) {
-        c.insert({_key: "test" + i, value: 42});
+        c.insert({_key: "test" + i,
+value: 42});
       }
       for (let i = 0; i < 100; ++i) {
         assertEqual("test" + i, c.document("test" + i)._key);
@@ -1000,9 +1064,16 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "1", fields: ["_from", "_to"], type: "edge"},
-            {id: "95", fields: ["value"], type: "hash"},
+            {id: "0",
+fields: ["_key"],
+type: "primary",
+unique: true},
+            {id: "1",
+fields: ["_from", "_to"],
+type: "edge"},
+            {id: "95",
+fields: ["value"],
+type: "hash"}
           ],
           name: cn,
           numberOfShards: 3,
@@ -1025,7 +1096,10 @@ function restoreIntegrationSuite() {
 
       // test if the indexes work
       for (let i = 0; i < 100; ++i) {
-        c.insert({_key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42});
+        c.insert({_key: "test" + i,
+_from: "v/" + i,
+_to: "v/" + i,
+value: 42});
       }
       for (let i = 0; i < 100; ++i) {
         assertEqual("test" + i, c.document("test" + i)._key);
@@ -1053,8 +1127,13 @@ function restoreIntegrationSuite() {
         indexes: [],
         parameters: {
           indexes: [
-            {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "1", fields: ["_from", "_to"], type: "edge"},
+            {id: "0",
+fields: ["_key"],
+type: "primary",
+unique: true},
+            {id: "1",
+fields: ["_from", "_to"],
+type: "edge"}
           ],
           name: cn,
           numberOfShards: 3,
@@ -1108,7 +1187,10 @@ function restoreIntegrationSuite() {
 
       // test if the indexes work
       for (let i = 0; i < 100; ++i) {
-        c.insert({_key: "test" + i, _from: "v/" + i, _to: "v/" + i, value: 42});
+        c.insert({_key: "test" + i,
+_from: "v/" + i,
+_to: "v/" + i,
+value: 42});
       }
       for (let i = 0; i < 100; ++i) {
         assertEqual("test" + i, c.document("test" + i)._key);
@@ -1127,26 +1209,55 @@ function restoreIntegrationSuite() {
 
     testRestoreRegressionDistributeShardsLike: function () {
       const collectionsJson = [
-        {"parameters": {"name": "Comment_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Comment_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Forum_hasMember_Person", "type": 3}},
-        {"parameters": {"name": "Forum_hasTag_Tag", "type": 3}},
-        {"parameters": {"name": "Forum", "type": 2}},
-        {"parameters": {"name": "Organisation", "type": 2}},
-        {"parameters": {"name": "Person_hasCreated_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Person_hasCreated_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Person_hasInterest_Tag", "type": 3}},
-        {"parameters": {"name": "Person_knows_Person_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Person_likes_Comment_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Person_likes_Post_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Person_Smart", "type": 2}},
-        {"parameters": {"name": "Person_studyAt_University", "type": 3}},
-        {"parameters": {"name": "Person_workAt_Company", "type": 3}},
-        {"parameters": {"name": "Place", "type": 2}},
-        {"parameters": {"name": "Post_hasTag_Tag_Smart", "type": 3, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "Post_Smart", "type": 2, "distributeShardsLike": "Person_Smart"}},
-        {"parameters": {"name": "TagClass", "type": 2}},
-        {"parameters": {"name": "Tag", "type": 2}},
+        {"parameters": {"name": "Comment_hasTag_Tag_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Comment_Smart",
+"type": 2,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Forum_hasMember_Person",
+"type": 3}},
+        {"parameters": {"name": "Forum_hasTag_Tag",
+"type": 3}},
+        {"parameters": {"name": "Forum",
+"type": 2}},
+        {"parameters": {"name": "Organisation",
+"type": 2}},
+        {"parameters": {"name": "Person_hasCreated_Comment_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasCreated_Post_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_hasInterest_Tag",
+"type": 3}},
+        {"parameters": {"name": "Person_knows_Person_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Comment_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_likes_Post_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Person_Smart",
+"type": 2}},
+        {"parameters": {"name": "Person_studyAt_University",
+"type": 3}},
+        {"parameters": {"name": "Person_workAt_Company",
+"type": 3}},
+        {"parameters": {"name": "Place",
+"type": 2}},
+        {"parameters": {"name": "Post_hasTag_Tag_Smart",
+"type": 3,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "Post_Smart",
+"type": 2,
+"distributeShardsLike": "Person_Smart"}},
+        {"parameters": {"name": "TagClass",
+"type": 2}},
+        {"parameters": {"name": "Tag",
+"type": 2}}
       ];
       // satisfy the file format requirements by adding indexes
       collectionsJson.forEach(col => {
@@ -1216,7 +1327,7 @@ function restoreIntegrationSuite() {
         parameters: {
           name: cn,
           type: 2,
-          usesRevisionsAsDocumentIds: true,
+          usesRevisionsAsDocumentIds: true
         }
       }));
 
@@ -1241,7 +1352,7 @@ function restoreIntegrationSuite() {
           name: cn,
           type: 2,
           usesRevisionsAsDocumentIds: false,
-          syncByRevision: false,
+          syncByRevision: false
         }
       }));
 
@@ -1253,7 +1364,7 @@ function restoreIntegrationSuite() {
       assertTrue(props.hasOwnProperty("syncByRevision"));
       assertFalse(props.syncByRevision);
       fs.removeDirectoryRecursive(path, true);
-    },
+    }
   };
 }
 

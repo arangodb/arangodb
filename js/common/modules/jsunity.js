@@ -56,13 +56,12 @@ var currentSuiteName = "undefined";
 var testCount = 0;
 var startMessage = "";
 
-function setTestFilter(filter) {
+function setTestFilter (filter) {
   testFilter = filter;
 }
 
 jsUnity.results.begin = function (total, suiteName) {
-  if (testCount > 0)
-  {
+  if (testCount > 0) {
     print();
     testCount = 0;
   }
@@ -79,7 +78,7 @@ jsUnity.results.pass = function (index, testName) {
   RESULTS[testName].status = true;
   RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN +  ' [     PASSED ] ' +
+  print(newtime.toISOString() + internal.COLORS.COLOR_GREEN + ' [     PASSED ] ' +
        testName + internal.COLORS.COLOR_RESET +
        ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
        ' test: ' + RESULTS[testName].duration + 'ms,' +
@@ -125,7 +124,7 @@ jsUnity.results.fail = function (index, testName, message) {
     RESULTS[testName].duration = 0;
     RESULTS[testName].tearDownDuration = 0;
   }
-  
+
   if (RESULTS[testName].tearDownDuration === undefined) {
     RESULTS[testName].tearDownDuration = 0;
   }
@@ -134,7 +133,7 @@ jsUnity.results.fail = function (index, testName, message) {
        testName + internal.COLORS.COLOR_RESET +
        ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
        ' test: ' + RESULTS[testName].duration + 'ms,' +
-       ' tearDown: ' +  RESULTS[testName].tearDownDuration + 'ms)\n' +
+       ' tearDown: ' + RESULTS[testName].tearDownDuration + 'ms)\n' +
        internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
@@ -147,25 +146,23 @@ jsUnity.results.end = function (passed, failed, duration) {
        " (tearDownAll: " + (jsUnity.env.getDate() - ENDTEST) + "ms)");
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN +
        " [   PASSED   ] " + passed + " tests." + internal.COLORS.COLOR_RESET);
-  if(failed > 0)
-  {
+  if (failed > 0) {
     print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_RED +
         " [   FAILED   ] " + failed + ' tests.' + internal.COLORS.COLOR_RESET);
   }
 };
 
-jsUnity.results.beginSetUpAll = function(index) {
+jsUnity.results.beginSetUpAll = function (index) {
   SETUPS = jsUnity.env.getDate();
 };
 
-jsUnity.results.endSetUpAll = function(index) {
+jsUnity.results.endSetUpAll = function (index) {
   RESULTS.setUpAllDuration = jsUnity.env.getDate() - SETUPS;
   TOTALSETUPS += RESULTS.setUpAllDuration;
 };
 
-jsUnity.results.beginSetUp = function(index, testName) {
-  if (testCount === 0)
-  {
+jsUnity.results.beginSetUp = function (index, testName) {
+  if (testCount === 0) {
     print(STARTTEST.toISOString() + internal.COLORS.COLOR_GREEN +
          startMessage + internal.COLORS.COLOR_RESET + ' (setUpAll: ' +
          (jsUnity.env.getDate() - STARTTEST) + 'ms)' + internal.COLORS.COLOR_RESET);
@@ -175,34 +172,34 @@ jsUnity.results.beginSetUp = function(index, testName) {
   print(jsUnity.env.getDate().toISOString() + internal.COLORS.COLOR_GREEN + ' [ RUN        ] ' + testName + internal.COLORS.COLOR_RESET);
 };
 
-jsUnity.results.endSetUp = function(index, testName) {
+jsUnity.results.endSetUp = function (index, testName) {
   RESULTS[testName].setUpDuration = jsUnity.env.getDate() - SETUPS;
   TOTALSETUPS += RESULTS[testName].setUpDuration;
 
   STARTTEST = jsUnity.env.getDate();
 };
 
-jsUnity.results.beginTeardown = function(index, testName) {
+jsUnity.results.beginTeardown = function (index, testName) {
   TEARDOWNS = jsUnity.env.getDate();
 
   ENDTEST = jsUnity.env.getDate();
 };
 
-jsUnity.results.endTeardown = function(index, testName) {
+jsUnity.results.endTeardown = function (index, testName) {
   RESULTS[testName].tearDownDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS[testName].tearDownDuration;
 };
 
-jsUnity.results.beginTeardownAll = function(index) {
+jsUnity.results.beginTeardownAll = function (index) {
   TEARDOWNS = jsUnity.env.getDate();
 };
 
-jsUnity.results.endTeardownAll = function(index) {
+jsUnity.results.endTeardownAll = function (index) {
   RESULTS.teardownAllDuration = jsUnity.env.getDate() - TEARDOWNS;
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
-function matchesTestFilter(suiteName, key) {
+function matchesTestFilter (suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
@@ -242,7 +239,7 @@ function Run (testsuite) {
   if (definition.hasOwnProperty('tearDown')) {
     tearDown = definition.tearDown;
   }
-  
+
   if (definition.hasOwnProperty('setUpAll')) {
     setUpAll = definition.setUpAll;
   }
@@ -266,7 +263,8 @@ function Run (testsuite) {
         continue;
       }
 
-      var test = { name: key, fn: definition[key]};
+      var test = { name: key,
+fn: definition[key]};
 
       tests.push(test);
     } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll' && key !== 'internal') {
@@ -304,7 +302,7 @@ function Run (testsuite) {
 
   let duplicates = [];
   for (var attrname in RESULTS) {
-    if (typeof(RESULTS[attrname]) === 'number') {
+    if (typeof (RESULTS[attrname]) === 'number') {
       if (!COMPLETE.hasOwnProperty(attrname)) {
         COMPLETE[attrname] = { };
       }
@@ -322,7 +320,7 @@ function Run (testsuite) {
     }
   }
   if (duplicates.length !== 0) {
-    throw("Duplicate testsuite '" + duplicates + "'");
+    throw ("Duplicate testsuite '" + duplicates + "'");
   }
   return result;
 }
@@ -338,7 +336,7 @@ function Done (suiteName) {
 
   print(newtime.toISOString() + (ok ? internal.COLORS.COLOR_GREEN : internal.COLORS.COLOR_RED) +
        " [============] " + "Ran: " + TOTAL + " tests (" + PASSED + " passed, " + FAILED + " failed)" +
-       internal.COLORS.COLOR_RESET+ " (" + DURATION + "ms total)");
+       internal.COLORS.COLOR_RESET + " (" + DURATION + "ms total)");
   print();
 
   COMPLETE.duration = DURATION;
@@ -382,10 +380,10 @@ function RunTest (path, outputReply, filter) {
   DURATION = 0;
   RESULTS = {};
   COMPLETE = {};
-  
+
   SETUPS = 0;
   TEARDOWNS = 0;
-  
+
   TOTALSETUPS = 0;
   TOTALTEARDOWNS = 0;
   STARTTEST = 0.0;

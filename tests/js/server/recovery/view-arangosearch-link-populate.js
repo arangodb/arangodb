@@ -41,24 +41,29 @@ function runSetup () {
 
   db._dropView('UnitTestsRecoveryView');
   db._dropView('UnitTestsRecoveryView2');
-  try { analyzers.remove('calcAnalyzer', true); } catch(e) {}
+  try {
+ analyzers.remove('calcAnalyzer', true);
+} catch (e) {}
   db._createView('UnitTestsRecoveryView', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView2', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView4', 'arangosearch', {});
   db._createView('UnitTestsRecoveryView5', 'arangosearch', {});
-  analyzers.save('calcAnalyzer',"aql",{queryString:"RETURN SOUNDEX(@param)"});
+  analyzers.save('calcAnalyzer', "aql", {queryString: "RETURN SOUNDEX(@param)"});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
-  var meta2 = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true, analyzers:['calcAnalyzer'] } } };
+  var meta2 = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true,
+analyzers: ['calcAnalyzer'] } } };
   db._view('UnitTestsRecoveryView2').properties(meta2);
   db._view('UnitTestsRecoveryView3').properties(meta);
   db._view('UnitTestsRecoveryView4').properties(meta);
   db._view('UnitTestsRecoveryView5').properties(meta);
 
   for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+    c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i });
   }
 
   c.save({ name: 'crashme' }, { waitForSync: true });
@@ -89,7 +94,7 @@ function recoverySuite () {
       var p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
-      
+
       var v2 = db._view('UnitTestsRecoveryView2');
       var p2 = v2.properties().links;
       assertTrue(p2.hasOwnProperty('UnitTestsRecoveryDummy'));
@@ -99,15 +104,15 @@ function recoverySuite () {
 
       var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
 
-      let result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') "
-                              + "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') " +
+                              "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
       let result2 = db._query("FOR doc IN UnitTestsRecoveryView2 SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      let result3 = db._query("FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') "
-                              + "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      let result4 = db._query("FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') "
-                              + "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      let result5 = db._query("FOR doc IN UnitTestsRecoveryView5 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') "
-                              + "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result3 = db._query("FOR doc IN UnitTestsRecoveryView3 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') " +
+                              "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result4 = db._query("FOR doc IN UnitTestsRecoveryView4 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') " +
+                              "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let result5 = db._query("FOR doc IN UnitTestsRecoveryView5 SEARCH doc.c >= 0 AND STARTS_WITH(doc._id, 'UnitTestsRecoveryDummy') " +
+                              "OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
 
       assertEqual(result[0], expectedResult[0]);
       assertEqual(result2[0], expectedResult[0]);

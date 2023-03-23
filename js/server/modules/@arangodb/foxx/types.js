@@ -31,11 +31,11 @@ const DEFAULT_CHARSET = 'utf-8';
 
 module.exports = new Map([
   [mimeTypes.lookup('text'), {
-    fromClient(body, req, typeParameters) {
+    fromClient (body, req, typeParameters) {
       body = stringifyBuffer(body, (typeParameters || {}).charset);
       return body;
     },
-    forClient(body) {
+    forClient (body) {
       return {
         data: String(body),
         headers: {
@@ -45,12 +45,14 @@ module.exports = new Map([
     }
   }],
   [mimeTypes.lookup('json'), {
-    fromClient(body, req, typeParameters) {
-      if (!body || !body.length) return undefined;
+    fromClient (body, req, typeParameters) {
+      if (!body || !body.length) {
+return undefined;
+}
       body = stringifyBuffer(body, (typeParameters || {}).charset);
       return JSON.parse(body);
     },
-    forClient(body) {
+    forClient (body) {
       return {
         data: JSON.stringify(body),
         headers: {
@@ -60,11 +62,11 @@ module.exports = new Map([
     }
   }],
   ['application/x-www-form-urlencoded', {
-    fromClient(body, req, typeParameters) {
+    fromClient (body, req, typeParameters) {
       body = stringifyBuffer(body, (typeParameters || {}).charset);
       return querystring.parse(body);
     },
-    forClient(body) {
+    forClient (body) {
       return {
         data: querystring.stringify(body),
         headers: {
@@ -123,8 +125,8 @@ function stringifyBuffer (buf, charset) {
       throw e;
     }
     console.warn(
-      `Unable to parse buffer with charset "${charset}",`
-      + ` falling back to default "${DEFAULT_CHARSET}"`
+      `Unable to parse buffer with charset "${charset}",` +
+      ` falling back to default "${DEFAULT_CHARSET}"`
     );
     return buf.toString(DEFAULT_CHARSET);
   }

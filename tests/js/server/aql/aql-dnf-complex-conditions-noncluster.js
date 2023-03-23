@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertNotEqual, assertTrue, assertFalse, fail, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -36,22 +36,24 @@ function MaxNumberOfConditionsSuite () {
   const cn = 'UnitTestsCollection';
 
   return {
-    
-    setUpAll : function () {
+
+    setUpAll: function () {
       let c = db._create(cn);
-      c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value1", "value2"] });
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ value1: i, value2: i + 1 });
+        docs.push({ value1: i,
+value2: i + 1 });
       }
       c.insert(docs);
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
-    
-    testSimpleOrConditionStillUsesIndexes : function () {
+
+    testSimpleOrConditionStillUsesIndexes: function () {
       let parts = [];
       for (let i = 0; i < 100; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.what != 'test')`);
@@ -66,8 +68,8 @@ function MaxNumberOfConditionsSuite () {
       let result = db._query(query).toArray();
       assertEqual(100, result.length);
     },
-    
-    testSimpleOrAndConditionStillUsesIndexes : function () {
+
+    testSimpleOrAndConditionStillUsesIndexes: function () {
       let parts = [];
       for (let i = 0; i < 100; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.value2 == ${i + 1})`);
@@ -83,7 +85,7 @@ function MaxNumberOfConditionsSuite () {
       assertEqual(100, result.length);
     },
 
-    testComplexConditionNoThresholdExceedsMemory : function () {
+    testComplexConditionNoThresholdExceedsMemory: function () {
       let parts = [];
       for (let i = 0; i < 8; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
@@ -97,8 +99,8 @@ function MaxNumberOfConditionsSuite () {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
-    testComplexConditionWithThresholdMemoryUsage : function () {
+
+    testComplexConditionWithThresholdMemoryUsage: function () {
       let parts = [];
       for (let i = 0; i < 8; ++i) {
         parts.push(`(doc.value1 == ${i} && doc.foo == 'bar' && doc.what NOT IN ['test1', 'test2', 'test3'])`);
@@ -108,21 +110,23 @@ function MaxNumberOfConditionsSuite () {
 
       // with this few condition nodes, we won't exceed memory
       [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].forEach((maxDNFConditionMembers) => {
-        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
+        AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000,
+maxDNFConditionMembers });
       });
-      
+
       // with this many condition nodes, we will exceed memory
       [8192, 16384, 32768].forEach((maxDNFConditionMembers) => {
         try {
-          AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000, maxDNFConditionMembers });
+          AQL_EXPLAIN(query, null, { memoryLimit: 64 * 1000 * 1000,
+maxDNFConditionMembers });
           fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
         }
       });
     },
-    
-    testComplexConditionCheckException : function () {
+
+    testComplexConditionCheckException: function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
@@ -149,8 +153,8 @@ function MaxNumberOfConditionsSuite () {
       } finally {
         internal.debugClearFailAt();
       }
-    },
-    
+    }
+
   };
 }
 

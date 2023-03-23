@@ -1,33 +1,33 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Wilfried Goesgens
-/// @author Max Neunhoeffer
-/// @author Copyright 2020, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test for security-related server options
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Wilfried Goesgens
+// / @author Max Neunhoeffer
+// / @author Copyright 2020, ArangoDB Inc, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const crypto = require('@arangodb/crypto');
 const request = require('@arangodb/request');
@@ -46,19 +46,19 @@ if (getOptions === true) {
 
 if (runSetup === true) {
   let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
-  
+
   users.save("test_ro", "testi");
   users.grantDatabase("test_ro", "_system", "ro");
-  
+
   return true;
 }
 
 var jsunity = require('jsunity');
 
-function testSuite() {
+function testSuite () {
   let endpoint = arango.getEndpoint();
   let db = require("@arangodb").db;
 
@@ -68,11 +68,12 @@ function testSuite() {
 
   const jwt = crypto.jwtEncode(jwtSecret, {
     "server_id": "ABCD",
-    "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
+    "iss": "arangodb",
+"exp": Math.floor(Date.now() / 1000) + 3600
   }, 'HS256');
 
   return {
-    testCanAccessAdminLogRw : function() {
+    testCanAccessAdminLogRw: function () {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
@@ -83,7 +84,7 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("text"));
     },
 
-    testCanAccessAdminLogRo : function() {
+    testCanAccessAdminLogRo: function () {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log");
       assertTrue(result.error);
@@ -94,39 +95,39 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("text"));
     },
 
-    testCanAccessAdminLogLevelRw : function() {
+    testCanAccessAdminLogLevelRw: function () {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
-    testCanAccessAdminLogLevelRo : function() {
+    testCanAccessAdminLogLevelRo: function () {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
       let result = arango.GET("/_admin/log/level");
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
-    testCanChangeLogLevelRw : function() {
+    testCanChangeLogLevelRw: function () {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
-      let result = arango.PUT("/_admin/log/level",{"memory":"info"});
+      let result = arango.PUT("/_admin/log/level", {"memory": "info"});
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
-    testCanChangeAdminLogLevelRo : function() {
+    testCanChangeAdminLogLevelRo: function () {
       arango.reconnect(endpoint, db._name(), "test_ro", "testi");
-      let result = arango.PUT("/_admin/log/level",{"memory":"info"});
+      let result = arango.PUT("/_admin/log/level", {"memory": "info"});
       assertTrue(result.error);
       assertEqual(403, result.code);
     },
 
-    testCanAccessAdminLogJWT : function() {
+    testCanAccessAdminLogJWT: function () {
       let res = request.get({
         url: baseUrl() + "/_admin/log",
         auth: {
-          bearer: jwt,
+          bearer: jwt
         }
       });
       assertTrue(res.hasOwnProperty("statusCode"));
@@ -139,11 +140,11 @@ function testSuite() {
       assertTrue(body.hasOwnProperty("text"));
     },
 
-    testCanAccessAdminLogLevelJWT : function() {
+    testCanAccessAdminLogLevelJWT: function () {
       let res = request.get({
         url: baseUrl() + "/_admin/log/level",
         auth: {
-          bearer: jwt,
+          bearer: jwt
         }
       });
       assertTrue(res.hasOwnProperty("statusCode"));
@@ -156,13 +157,13 @@ function testSuite() {
       assertTrue(body.hasOwnProperty("general"));
     },
 
-    testCanModifyAdminLogLevelJWT : function() {
+    testCanModifyAdminLogLevelJWT: function () {
       let res = request.put({
         url: baseUrl() + "/_admin/log/level",
         auth: {
-          bearer: jwt,
+          bearer: jwt
         },
-        body: {"memory":"info"}
+        body: {"memory": "info"}
       });
       assertTrue(res.hasOwnProperty("statusCode"));
       assertEqual(200, res.statusCode);
@@ -172,7 +173,7 @@ function testSuite() {
       assertTrue(body.hasOwnProperty("aql"));
       assertTrue(body.hasOwnProperty("cluster"));
       assertTrue(body.hasOwnProperty("general"));
-    },
+    }
 
   };
 }

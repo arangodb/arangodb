@@ -1,59 +1,59 @@
-/*jshint globalstrict:false, strict:false, unused : false */
-/*global fail, assertTrue, assertFalse, assertEqual, assertMatch */
+/* jshint globalstrict:false, strict:false, unused : false */
+/* global fail, assertTrue, assertFalse, assertEqual, assertMatch */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the server-side database interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the server-side database interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var internal = require("internal");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: dropping databases while holding references
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: dropping databases while holding references
+// //////////////////////////////////////////////////////////////////////////////
 
 var logLevel;
 function DatabaseSuite () {
   'use strict';
   return {
 
-    setUp : function () {
+    setUp: function () {
       logLevel = require("internal").logLevel();
       internal.db._useDatabase("_system");
     },
 
-    tearDown : function () {
+    tearDown: function () {
       require("internal").logLevel(logLevel);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether the expected keys are present in db._version(true)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test whether the expected keys are present in db._version(true)
+// //////////////////////////////////////////////////////////////////////////////
 
-    testVersion : function () {
+    testVersion: function () {
       let result = internal.db._version(true);
 
       assertEqual(result.server, "arango");
@@ -61,8 +61,8 @@ function DatabaseSuite () {
       assertEqual(result.version, internal.db._version());
       assertTrue(result.hasOwnProperty("details"));
     },
-    
-    testVersionDetails : function () {
+
+    testVersionDetails: function () {
       let result = internal.db._version(true).details;
 
       let keys = [
@@ -93,12 +93,12 @@ function DatabaseSuite () {
         "zlib-version"
       ];
 
-      keys.forEach(function(k) {
+      keys.forEach(function (k) {
         assertTrue(result.hasOwnProperty(k), k);
       });
     },
 
-    testVersionBooleans : function () {
+    testVersionBooleans: function () {
       let result = internal.db._version(true).details;
 
       let keys = [
@@ -112,12 +112,12 @@ function DatabaseSuite () {
         "unaligned-access"
       ];
 
-      keys.forEach(function(k) {
+      keys.forEach(function (k) {
         assertTrue(result[k] === "true" || result[k] === "false");
       });
     },
 
-    testVersionNumbers : function () {
+    testVersionNumbers: function () {
       let result = internal.db._version(true).details;
 
       let keys = [
@@ -130,22 +130,21 @@ function DatabaseSuite () {
         "zlib-version"
       ];
 
-      keys.forEach(function(k) {
+      keys.forEach(function (k) {
         assertMatch(/^\d+(\.\d+)*([\-]([a-z]|\d)+(\.?\d*)?)?$/, result[k]);
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test references helt on dropped database collections
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test references helt on dropped database collections
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropDatabaseCollectionReferences : function () {
+    testDropDatabaseCollectionReferences: function () {
       assertEqual("_system", internal.db._name());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -156,7 +155,8 @@ function DatabaseSuite () {
       // insert 1000 docs and hold a reference on the data
       var c = internal.db._create("test");
       for (var i = 0; i < 1000; ++i) {
-        c.save({ "_key": "test" + i, "value" : i });
+        c.save({ "_key": "test" + i,
+"value": i });
       }
       assertEqual(1000, c.count());
 
@@ -183,17 +183,16 @@ function DatabaseSuite () {
       c = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test references helt on documents of dropped databases
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test references helt on documents of dropped databases
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDropDatabaseDocumentReferences : function () {
+    testDropDatabaseDocumentReferences: function () {
       assertEqual("_system", internal.db._name());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -204,7 +203,8 @@ function DatabaseSuite () {
       // insert docs and hold a reference on the data
       var c = internal.db._create("test");
       for (var i = 0; i < 10; ++i) {
-        c.save({ "_key": "test" + i, "value" : i });
+        c.save({ "_key": "test" + i,
+"value": i });
       }
 
       var d0 = c.document("test0");
@@ -241,15 +241,15 @@ function DatabaseSuite () {
       assertEqual(9, d9.value);
 
       d9 = null;
-    },
+    }
 
   };
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(DatabaseSuite);
 

@@ -38,7 +38,7 @@ const {
   setFailurePoint,
   clearFailurePoints } = require(fs.join('tests', 'js', 'server', 'replication', 'sync', 'replication-sync-malarkey.inc'));
 
-function ReplicationIncrementalMalarkeyOldFormat() {
+function ReplicationIncrementalMalarkeyOldFormat () {
   'use strict';
 
   let suite = {
@@ -52,7 +52,7 @@ function ReplicationIncrementalMalarkeyOldFormat() {
       // clear all failure points, but enforce old-style collections
       clearFailurePoints();
       setFailurePoint("disableRevisionsAsDocumentIds");
-    },
+    }
   };
 
   deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');

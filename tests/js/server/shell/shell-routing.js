@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, globalstrict: true */
-/*global assertEqual */
+/* jshint globalstrict:false, strict:false, globalstrict: true */
+/* global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for routing
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for routing
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 var actions = require("@arangodb/actions");
@@ -36,18 +36,18 @@ var flattenRoutingTree = actions.flattenRoutingTree;
 var buildRoutingTree = actions.buildRoutingTree;
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief single patterns routing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief single patterns routing
+// //////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteSingle () {
   var routing;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       var routes = [{
@@ -68,18 +68,22 @@ function routingSuiteSingle () {
           },
 
           {
-            url: { match: "/param/:hello/world", constraint: { hello: "[0-9]+" } },
+            url: { match: "/param/:hello/world",
+constraint: { hello: "[0-9]+" } },
             content: "c4"
           },
 
           {
-            url: { match: "/opt/:hello?", constraint: { hello: "[0-9]+" }, methods: [ 'get' ] },
+            url: { match: "/opt/:hello?",
+constraint: { hello: "[0-9]+" },
+methods: [ 'get' ] },
             content: "c5"
           },
 
           {
             url: "/json",
-            content: { contentType: "application/json", body: '{"text": "c6"}' }
+            content: { contentType: "application/json",
+body: '{"text": "c6"}' }
           },
 
           {
@@ -97,9 +101,9 @@ function routingSuiteSingle () {
       routing = flattenRoutingTree(buildRoutingTree(routes));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/hello/world", routing);
@@ -111,9 +115,9 @@ function routingSuiteSingle () {
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (sort-cut for match)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (sort-cut for match)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingShort: function () {
       var r = actions.firstRouting('GET', "/world/hello", routing);
@@ -125,9 +129,9 @@ function routingSuiteSingle () {
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (prefix)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (prefix)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingPrefix: function () {
       var r = actions.firstRouting('GET', "/prefix/hello/world", routing);
@@ -141,9 +145,9 @@ function routingSuiteSingle () {
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (parameter)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (parameter)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingParameter: function () {
       var r = actions.firstRouting('GET', "/param/12345/world", routing);
@@ -160,9 +164,9 @@ function routingSuiteSingle () {
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (optional)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (optional)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingOptional: function () {
       var r = actions.firstRouting('GET', "/opt/12345", routing);
@@ -176,27 +180,27 @@ function routingSuiteSingle () {
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (optional)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (optional)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingOptional2: function () {
       var r = actions.firstRouting('GET', "/opt", routing);
       assertEqual('c5', r.route.route.content);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (optional)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (optional)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingMethod: function () {
       var r = actions.firstRouting('HEAD', "/opt/12345", routing);
       assertEqual(undefined, r.route);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing (prefix vs non-prefix)
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing (prefix vs non-prefix)
+// //////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingNonPrefix: function () {
       var r = actions.firstRouting('GET', "/p/h", routing);
@@ -213,9 +217,9 @@ function routingSuiteSingle () {
       assertEqual([], r.suffix);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: content string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: content string
+// //////////////////////////////////////////////////////////////////////////////
 
     testContentString: function () {
       var r = actions.firstRouting('GET', "/opt/12345", routing);
@@ -230,9 +234,9 @@ function routingSuiteSingle () {
       assertEqual("c5", res.body);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: content json
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: content json
+// //////////////////////////////////////////////////////////////////////////////
 
     testContentJson: function () {
       var r = actions.firstRouting('GET', "/json", routing);
@@ -250,44 +254,56 @@ function routingSuiteSingle () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bundle without prefix
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bundle without prefix
+// //////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteBundle () {
   var routing;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       var routes = [{
         middleware: [
-          { url: { match: "/*" }, content: "m1" },
-          { url: { match: "/hello/*" }, content: "m2" },
-          { url: { match: "/hello/world" }, content: "m3" },
-          { url: { match: "/:name/world" }, content: "m4" }
+          { url: { match: "/*" },
+content: "m1" },
+          { url: { match: "/hello/*" },
+content: "m2" },
+          { url: { match: "/hello/world" },
+content: "m3" },
+          { url: { match: "/:name/world" },
+content: "m4" }
         ],
 
         routes: [
-          { url: { match: "/*" }, content: "c1" },
-          { url: { match: "/hello/*" }, content: "c2" },
-          { url: { match: "/hello/world" }, content: "c3" },
-          { url: { match: "/hello/:name/:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c5" },
-          { url: { match: "/:name/world" }, content: "c6" },
-          { url: { match: "/hello" }, content: "c7" }
+          { url: { match: "/*" },
+content: "c1" },
+          { url: { match: "/hello/*" },
+content: "c2" },
+          { url: { match: "/hello/world" },
+content: "c3" },
+          { url: { match: "/hello/:name/:id",
+constraint: { name: "/[a-z]+/",
+id: "/[0-9]+/" } },
+content: "c5" },
+          { url: { match: "/:name/world" },
+content: "c6" },
+          { url: { match: "/hello" },
+content: "c7" }
         ]
       }];
 
       routing = flattenRoutingTree(buildRoutingTree(routes));
     },
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing
+// //////////////////////////////////////////////////////////////////////////////
 
     testBundleSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/hello/world", routing);
@@ -332,46 +348,58 @@ function routingSuiteBundle () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief bundle with prefix
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief bundle with prefix
+// //////////////////////////////////////////////////////////////////////////////
 
 function routingSuitePrefix () {
   var routing;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       var routes = [{
         urlPrefix: "/test",
 
         middleware: [
-          { url: { match: "/*" }, content: "m1" },
-          { url: { match: "/hello/*" }, content: "m2" },
-          { url: { match: "/hello/world" }, content: "m3" },
-          { url: { match: "/:name/world" }, content: "m4" }
+          { url: { match: "/*" },
+content: "m1" },
+          { url: { match: "/hello/*" },
+content: "m2" },
+          { url: { match: "/hello/world" },
+content: "m3" },
+          { url: { match: "/:name/world" },
+content: "m4" }
         ],
 
         routes: [
-          { url: { match: "/*" }, content: "c1" },
-          { url: { match: "/hello/*" }, content: "c2" },
-          { url: { match: "/hello/world" }, content: "c3" },
-          { url: { match: "/hello/:name/:id", constraint: { name: "/[a-z]+/", id: "/[0-9]+/" } }, content: "c5" },
-          { url: { match: "/:name/world" }, content: "c6" },
-          { url: { match: "/hello" }, content: "c7" }
+          { url: { match: "/*" },
+content: "c1" },
+          { url: { match: "/hello/*" },
+content: "c2" },
+          { url: { match: "/hello/world" },
+content: "c3" },
+          { url: { match: "/hello/:name/:id",
+constraint: { name: "/[a-z]+/",
+id: "/[0-9]+/" } },
+content: "c5" },
+          { url: { match: "/:name/world" },
+content: "c6" },
+          { url: { match: "/hello" },
+content: "c7" }
         ]
       }];
 
       routing = flattenRoutingTree(buildRoutingTree(routes));
     },
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: simple routing
-////////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: simple routing
+// //////////////////////////////////////////////////////////////////////////////
 
     testPrefixSimpleRouting: function () {
       var r = actions.firstRouting('GET', "/test/hello/world", routing);
@@ -415,9 +443,9 @@ function routingSuitePrefix () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(routingSuiteSingle);
 jsunity.run(routingSuiteBundle);

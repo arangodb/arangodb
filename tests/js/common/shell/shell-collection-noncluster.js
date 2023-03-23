@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the collection interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -36,15 +36,15 @@ const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: collection
+// //////////////////////////////////////////////////////////////////////////////
 
 function CollectionSuite () {
   'use strict';
   return {
 
-    testShards : function () {
+    testShards: function () {
       var cn = "example";
 
       db._drop(cn);
@@ -58,11 +58,11 @@ function CollectionSuite () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rename loaded collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief rename loaded collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRenameLoaded : function () {
+    testRenameLoaded: function () {
       var cn = "example";
       var nn = "example2";
 
@@ -70,7 +70,7 @@ function CollectionSuite () {
       db._drop(nn);
       var c1 = db._create(cn);
 
-      c1.save({ a : 1 });
+      c1.save({ a: 1 });
 
       assertTypeOf("string", c1._id);
       assertEqual(cn, c1.name());
@@ -95,11 +95,11 @@ function CollectionSuite () {
       db._drop(nn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rename unloaded collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief rename unloaded collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRenameUnloaded : function () {
+    testRenameUnloaded: function () {
       var cn = "example";
       var nn = "example2";
 
@@ -107,7 +107,7 @@ function CollectionSuite () {
       db._drop(nn);
       var c1 = db._create(cn);
 
-      c1.save({ a : 1 });
+      c1.save({ a: 1 });
       c1.unload();
 
       assertTypeOf("string", c1._id);
@@ -133,11 +133,11 @@ function CollectionSuite () {
       db._drop(nn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rename a collection to an already existing collection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief rename a collection to an already existing collection
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRenameExisting : function () {
+    testRenameExisting: function () {
       var cn1 = "example";
       var cn2 = "example2";
 
@@ -148,19 +148,18 @@ function CollectionSuite () {
 
       try {
         c1.rename(cn2);
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err.errorNum);
       }
       db._drop(cn1);
       db._drop(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test system collection dropping / renaming / unloading
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test system collection dropping / renaming / unloading
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSystemSpecial : function () {
+    testSystemSpecial: function () {
       var cn = "_users";
       var c = db._collection(cn);
 
@@ -168,8 +167,7 @@ function CollectionSuite () {
       try {
         c.drop();
         fail();
-      }
-      catch (err1) {
+      } catch (err1) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
       }
 
@@ -188,9 +186,9 @@ function CollectionSuite () {
       c.unload();
     },
 
-    testEdgeCacheBehavior : function() {
+    testEdgeCacheBehavior: function () {
       const cn = "UnitLoadBehavior123";
-        
+
       let tries = 0;
       // allow ourselves to make up to 3 attempts for this test.
       // this is necessary because the edge cache is not 100%
@@ -202,8 +200,10 @@ function CollectionSuite () {
         try {
           let docs = [];
           for (let i = 0; i < 10000; i++) {
-            docs.push({_from: "c/v"+ (i / 100), _to: "c/v" + i});
-            docs.push({_to: "c/v"+ (i / 100), _from: "c/v" + i});
+            docs.push({_from: "c/v" + (i / 100),
+_to: "c/v" + i});
+            docs.push({_to: "c/v" + (i / 100),
+_from: "c/v" + i});
             if (docs.length === 1000) {
               c.insert(docs);
               docs = [];
@@ -215,7 +215,7 @@ function CollectionSuite () {
           assertEqual("edge", idxs[1].type, idxs);
 
           let initial = [];
-          idxs.forEach(function(idx) {
+          idxs.forEach(function (idx) {
             if (idx.figures.cacheInUse) {
               initial.push(idx.figures);
             } else {
@@ -229,7 +229,7 @@ function CollectionSuite () {
 
           // checking if edge cache grew
           idxs = c.getIndexes(true);
-          idxs.forEach(function(idx, i) {
+          idxs.forEach(function (idx, i) {
             if (idx.figures.cacheInUse) {
               assertTrue(idx.figures.cacheSize >= initial[i].cacheSize, idx);
               assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
@@ -243,12 +243,14 @@ function CollectionSuite () {
           }
           idxs = c.getIndexes(true);
           // cache was filled with same queries, hit rate must now increase
-          idxs.forEach(function(idx, i) {
+          idxs.forEach(function (idx, i) {
             if (idx.figures.cacheInUse) {
               let diff = Math.abs(initial[i].cacheSize - idx.figures.cacheSize);
-              assertTrue(diff <= Math.pow(2, 23), { diff, initial: initial[i], figures: idx.figures });
+              assertTrue(diff <= Math.pow(2, 23), { diff,
+initial: initial[i],
+figures: idx.figures });
               // this assumption is simply not safe
-              //assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
+              // assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
               initial[i] = idx.figures;
             }
           });
@@ -258,10 +260,11 @@ function CollectionSuite () {
           }
           idxs = c.getIndexes(true);
           // cache was filled with same queries, hit rate must be higher
-          idxs.forEach(function(idx, i) {
+          idxs.forEach(function (idx, i) {
             if (idx.figures.cacheInUse) {
               assertTrue(Math.abs(initial[i].cacheSize - idx.figures.cacheSize) < 1024);
-              assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, { idx, initial });
+              assertTrue(idx.figures.cacheLifeTimeHitRate > initial[i].cacheLifeTimeHitRate, { idx,
+initial });
             }
           });
           // success. exit while loop

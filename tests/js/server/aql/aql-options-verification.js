@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertMatch, fail, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertTrue, assertMatch, fail, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for invalid OPTIONS attributes
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for invalid OPTIONS attributes
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = internal.db;
@@ -33,7 +33,7 @@ const errors = internal.errors;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const isEnterprise = require("internal").isEnterprise();
 
-function aqlOptionsVerificationSuite(isSearchAlias) {
+function aqlOptionsVerificationSuite (isSearchAlias) {
   const cn = 'UnitTestsCollection';
 
   let checkQueries = (operation, queries) => {
@@ -64,18 +64,29 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
       if (isSearchAlias) {
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [{"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value[*]"}]};
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+fields: [{"name": "value[*]"}]};
         }
         let i1 = c.ensureIndex(indexMeta);
-        db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(), index: i1.name}]});
+        db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(),
+index: i1.name}]});
       } else {
         let viewMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+          viewMeta = {links: {[cn]: {includeAllFields: true,
+"fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
         } else {
-          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": {}}}};
+          viewMeta = {links: {[cn]: {includeAllFields: true,
+"fields": {}}}};
         }
         db._createView(cn + "View", "arangosearch", viewMeta);
       }
@@ -127,7 +138,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         // invalid combinations of indexHint and disableIndex
         [prefix + "{ indexHint: 'primary', disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ indexHint: ['primary'], disableIndex: true } RETURN 1", "disableIndex"],
-        [prefix + "{ disableIndex: true, indexHint: 'primary' } RETURN 1", "indexHint"],
+        [prefix + "{ disableIndex: true, indexHint: 'primary' } RETURN 1", "indexHint"]
       ];
 
       checkQueries("FOR", queries);
@@ -155,7 +166,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
         [prefix + "{ useCache: true } RETURN 1", "useCache"],
-        [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
+        [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"]
       ];
 
       // arangosearch only likes boolean attributes for its waitForSync value
@@ -201,7 +212,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
-        [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+        [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"]
       ];
 
       checkQueries("TRAVERSAL", queries);
@@ -225,7 +236,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
-        [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
+        [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"]
       ];
 
       checkQueries("SHORTEST_PATH", queries);
@@ -248,7 +259,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true } RETURN x", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN x", "maxProjections"],
         [prefix + "{ useCache: true } RETURN x", "useCache"],
-        [prefix + "{ lookahead: 0 } RETURN x", "lookahead"],
+        [prefix + "{ lookahead: 0 } RETURN x", "lookahead"]
       ];
 
       checkQueries("COLLECT", queries);
@@ -278,7 +289,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
         [prefix + "{ useCache: true }", "useCache"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ lookahead: 0 }", "lookahead"]
       ];
 
       checkQueries("INSERT", queries);
@@ -308,7 +319,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
         [prefix + "{ useCache: true }", "useCache"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ lookahead: 0 }", "lookahead"]
       ];
 
       checkQueries("UPDATE", queries);
@@ -338,7 +349,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
         [prefix + "{ useCache: true }", "useCache"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ lookahead: 0 }", "lookahead"]
       ];
 
       checkQueries("REPLACE", queries);
@@ -368,7 +379,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ disableIndex: true }", "disableIndex"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
         [prefix + "{ useCache: true }", "useCache"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ lookahead: 0 }", "lookahead"]
       ];
 
       checkQueries("REMOVE", queries);
@@ -399,7 +410,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ method: 'hash' }", "method"],
         [prefix + "{ tititi: 'piff' }", "tititi"],
         [prefix + "{ maxProjections: 123 }", "maxProjections"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ lookahead: 0 }", "lookahead"]
       ];
 
       checkQueries("UPSERT", queries);
@@ -407,9 +418,15 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
 
     testUpsertWithIndexHint: function () {
       try {
-        db[cn].ensureIndex({type: 'persistent', fields: ['value', '1234'], name: 'index1'});
-        db[cn].ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
-        db[cn].ensureIndex({type: 'persistent', fields: ['value', '5678'], name: 'index3'});
+        db[cn].ensureIndex({type: 'persistent',
+fields: ['value', '1234'],
+name: 'index1'});
+        db[cn].ensureIndex({type: 'persistent',
+fields: ['value'],
+name: 'index2'});
+        db[cn].ensureIndex({type: 'persistent',
+fields: ['value', '5678'],
+name: 'index3'});
         const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
         const queries = [
           [prefix + "{ waitForSync: false }"],
@@ -438,7 +455,7 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
   };
 }
 
-function aqlOptionsVerificationArangoSearchSuite() {
+function aqlOptionsVerificationArangoSearchSuite () {
   let suite = {};
   deriveTestSuite(
     aqlOptionsVerificationSuite(false),
@@ -448,7 +465,7 @@ function aqlOptionsVerificationArangoSearchSuite() {
   return suite;
 }
 
-function aqlOptionsVerificationSearchAliasSuite() {
+function aqlOptionsVerificationSearchAliasSuite () {
   let suite = {};
   deriveTestSuite(
     aqlOptionsVerificationSuite(true),

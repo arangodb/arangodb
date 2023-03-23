@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
 
 
@@ -14,17 +14,17 @@ const helper = require('@arangodb/testutils/user-helper');
 const endpoint = arango.getEndpoint();
 const base64Encode = require('internal').base64Encode;
 
-function testSuite() {
+function testSuite () {
   const jwtSecret = 'haxxmann';
   const user = 'bob';
 
   const system = "_system";
 
-  const rocol  = "readOnlyCollection";
-  const rwcol  = "readWriteCollection";
+  const rocol = "readOnlyCollection";
+  const rwcol = "readWriteCollection";
 
-  const rodb  = "readOnlyDatabase";
-  const rwdb  = "readWriteDatabase";
+  const rodb = "readOnlyDatabase";
+  const rwdb = "readWriteDatabase";
 
   const name = "TestAuthAnalyzer";
 
@@ -36,7 +36,7 @@ function testSuite() {
   // analyzer API does not support database selection via the usual `_db/<dbname>/_api/<api>`
 
   return {
-    setUp: function() {
+    setUp: function () {
 
       db._createDatabase(rodb);
       db._createDatabase(rwdb);
@@ -53,13 +53,13 @@ function testSuite() {
       users.grantDatabase(user, rodb, "ro");
       users.grantDatabase(user, rwdb, "rw");
       users.grantCollection(user, system, "*", "none");
-      users.grantCollection(user, rwdb,   "*", "rw");
-      users.grantCollection(user, rodb,   "*", "ro");
- 
+      users.grantCollection(user, rwdb, "*", "rw");
+      users.grantCollection(user, rodb, "*", "ro");
+
       users.reload();
     },
 
-    tearDown: function() {
+    tearDown: function () {
       helper.switchUser("root", system);
 
       db._drop(rwcol);
@@ -69,19 +69,20 @@ function testSuite() {
       arango.DELETE("/_api/analyzer/" + name + "?force=true");
     },
 
-    testAnalyzerGet : function() {
+    testAnalyzerGet: function () {
       helper.switchUser(user, system);
       let result = arango.GET("/_api/analyzer");
       assertEqual(result.error, false);
       assertEqual(result.code, 200);
     },
 
-    testAnalyzerCreateTextInRwCol : function() {
+    testAnalyzerCreateTextInRwCol: function () {
       helper.switchUser(user, rwdb);
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { locale: "en.UTF-8",
+stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -89,18 +90,19 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-    testAnalyzerCreateTextInRoCol : function() {
+    testAnalyzerCreateTextInRoCol: function () {
       helper.switchUser(user, rodb);
       let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
+        type: "text",
+        name: name,
+        properties: { locale: "en.UTF-8",
+stopwords: [ ] }
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
       assertTrue(result.error);
       assertEqual(result.code, 403);
-    },
+    }
 
   }; // return
 

@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -33,9 +33,9 @@ const assertQueryError = helper.assertQueryError;
 const sanitizeStats = helper.sanitizeStats;
 const errors = internal.errors;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
   const cn1 = "UnitTestsAhuacatlModify1";
@@ -45,9 +45,9 @@ function ahuacatlModifySuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
-      c1 = db._create(cn1, {numberOfShards:5});
+      c1 = db._create(cn1, {numberOfShards: 5});
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -56,40 +56,40 @@ function ahuacatlModifySuite () {
       c1.insert(docs);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
       c2 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDynamicOptions1 : function () {
+    testDynamicOptions1: function () {
       assertQueryError(errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS { foo: d }", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testDynamicOptions2 : function () {
+    testDynamicOptions2: function () {
       assertQueryError(errors.ERROR_QUERY_COMPILE_TIME_OPTIONS.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS { foo: MERGE(d, { }) }", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test subquery
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test subquery
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInvalidOptions : function () {
+    testInvalidOptions: function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn REMOVE d IN @@cn OPTIONS 'foo'", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test upsert update with empty update object
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test upsert update with empty update object
+// //////////////////////////////////////////////////////////////////////////////
 
     testUpsertUpdateEmpty: function () {
       for (let i = 0; i < 5; ++i) {
@@ -106,15 +106,15 @@ function ahuacatlModifySuite () {
       }
     },
 
-/////////////////////////////////////////////////////////////////////////////////
-/// @brief test upsert replace with empty replace object
-/// in 5 iterations, starting with size 1000:
-/// i = 0, document with name "test1500" doesn't exist, so inserts it size = 1001
-/// i = 1, document exists so replaces it with empty document  size = 1001
-/// i = 2, document with name "test1500" doesn't exist, so inserts it size = 1002
-/// i = 3, document exists so replaces it with empty document  size = 1002
-/// i = 4, document with name "test1500" doesn't exist, so inserts it size = 1003
-/////////////////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////////////////
+// / @brief test upsert replace with empty replace object
+// / in 5 iterations, starting with size 1000:
+// / i = 0, document with name "test1500" doesn't exist, so inserts it size = 1001
+// / i = 1, document exists so replaces it with empty document  size = 1001
+// / i = 2, document with name "test1500" doesn't exist, so inserts it size = 1002
+// / i = 3, document exists so replaces it with empty document  size = 1002
+// / i = 4, document with name "test1500" doesn't exist, so inserts it size = 1003
+// ///////////////////////////////////////////////////////////////////////////////
 
     testUpsertReplaceEmpty: function () {
       for (let i = 0; i < 5; ++i) {
@@ -132,14 +132,14 @@ function ahuacatlModifySuite () {
         }
       }
       assertEqual(1003, c1.count());
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
   const cn1 = "UnitTestsAhuacatlRemove1";
@@ -149,42 +149,47 @@ function ahuacatlRemoveSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1, {numberOfShards:5});
-      c2 = db._create(cn2, {numberOfShards:5});
+      c1 = db._create(cn1, {numberOfShards: 5});
+      c2 = db._create(cn2, {numberOfShards: 5});
 
       for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        c1.save({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
       for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        c2.save({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = null;
       c2 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveNothing : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testRemoveNothing: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       let query = "FOR d IN " + cn1 + " FILTER d.value1 < 0 REMOVE d IN " + cn1;
       var actual = getModifyQueryResults(query);
 
@@ -195,12 +200,13 @@ function ahuacatlRemoveSuite () {
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveNothingBind : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testRemoveNothingBind: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn FILTER d.value1 < 0 REMOVE d IN @@cn";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
@@ -211,45 +217,46 @@ function ahuacatlRemoveSuite () {
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInvalid1 : function () {
+    testRemoveInvalid1: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn REMOVE d.foobar IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInvalid2 : function () {
+    testRemoveInvalid2: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, "FOR d IN @@cn REMOVE { } IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInvalid3 : function () {
+    testRemoveInvalid3: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn REMOVE 'foobar' IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveReturn : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveReturn: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = AQL_EXECUTE("FOR d IN @@cn REMOVE d IN @@cn LET removed = OLD RETURN removed", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value1 - r.value1;
       });
 
@@ -263,12 +270,13 @@ function ahuacatlRemoveSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveIgnore1 : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 17 };
+    testRemoveIgnore1: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 17 };
       let query = "FOR d IN @@cn REMOVE 'foo' IN @@cn OPTIONS { ignoreErrors: true }";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
 
@@ -276,200 +284,220 @@ function ahuacatlRemoveSuite () {
       assertEqual(expected, sanitizeStats(actual));
 
       let rules = AQL_EXPLAIN(query, { "@cn": cn1 }).plan.rules;
-      assertTrue(-1 !== rules.indexOf("restrict-to-single-shard"));
+      assertTrue(rules.indexOf("restrict-to-single-shard") !== -1);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveIgnore2 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 1 };
+    testRemoveIgnore2: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 1 };
       var actual = getModifyQueryResults("FOR i IN 0..100 REMOVE CONCAT('test', i) IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll1 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveAll1: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll2 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveAll2: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d._key IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll3 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveAll3: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE { _key: d._key } IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll4 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveAll4: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..99 REMOVE { _key: CONCAT('test', i) } IN @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveAll5 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveAll5: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d INTO @@cn", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveHalf : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+    testRemoveHalf: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..99 FILTER i % 2 == 0 REMOVE { _key: CONCAT('test', i) } IN @@cn", { "@cn": cn1 });
 
       assertEqual(50, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSingleRemoveNotFound : function () {
+    testSingleRemoveNotFound: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "REMOVE 'foobar' IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSingleRemove : function () {
-      var expected = { writesExecuted: 1, writesIgnored: 0 };
+    testSingleRemove: function () {
+      var expected = { writesExecuted: 1,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("REMOVE 'test0' IN @@cn", { "@cn": cn1 });
 
       assertEqual(99, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsNotFound : function () {
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
+    testTwoCollectionsNotFound: function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1,
+"@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(50, c2.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsJoin1 : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
+    testTwoCollectionsJoin1: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1,
+"@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsJoin2 : function () {
-      var expected = { writesExecuted: 48, writesIgnored: 0 };
-      var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 >= 2 && d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
+    testTwoCollectionsJoin2: function () {
+      var expected = { writesExecuted: 48,
+writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn1 FILTER d.value1 >= 2 && d.value1 < 50 REMOVE { _key: d._key } IN @@cn2", { "@cn1": cn1,
+"@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(2, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsIgnoreErrors1 : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 50 };
-      var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1, "@cn2": cn2 });
+    testTwoCollectionsIgnoreErrors1: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 50 };
+      var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: d._key } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1,
+"@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testTwoCollectionsIgnoreErrors2 : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 100 };
-      var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: CONCAT('foo', d._key) } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1, "@cn2": cn2 });
+    testTwoCollectionsIgnoreErrors2: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 100 };
+      var actual = getModifyQueryResults("FOR d IN @@cn1 REMOVE { _key: CONCAT('foo', d._key) } IN @@cn2 OPTIONS { ignoreErrors: true }", { "@cn1": cn1,
+"@cn2": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(50, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveWaitForSync : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testRemoveWaitForSync: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn REMOVE d IN @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
 
       assertEqual(0, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test remove
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test remove
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveEdge : function () {
+    testRemoveEdge: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
       for (var i = 0; i < 100; ++i) {
-        edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i, _key: "test" + i });
+        edge.save("UnitTestsAhuacatlRemove1/foo" + i, "UnitTestsAhuacatlRemove2/bar", { what: i,
+_key: "test" + i });
       }
-      var expected = { writesExecuted: 10, writesIgnored: 0 };
+      var expected = { writesExecuted: 10,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 0..9 REMOVE CONCAT('test', i) IN @@cn", { "@cn": edge.name() });
 
       assertEqual(100, c1.count());
@@ -481,9 +509,9 @@ function ahuacatlRemoveSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlInsertSuite () {
   var cn1 = "UnitTestsAhuacatlInsert1";
@@ -495,32 +523,37 @@ function ahuacatlInsertSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
       c1 = db._create(cn1, {numberOfShards: 5});
       c2 = db._create(cn2, {numberOfShards: 5});
-      c3 = db._create(cn3, {numberOfShards: 2, shardKeys: [ "a", "b" ] });
+      c3 = db._create(cn3, {numberOfShards: 2,
+shardKeys: [ "a", "b" ] });
 
       for (i = 0; i < 100; ++i) {
-        c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        c1.save({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
       for (i = 0; i < 50; ++i) {
-        c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+        c2.save({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -529,11 +562,11 @@ function ahuacatlInsertSuite () {
       c3 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertDouble : function () {
+    testInsertDouble: function () {
       c1.truncate({ compact: false });
       c2.truncate({ compact: false });
 
@@ -542,9 +575,10 @@ function ahuacatlInsertSuite () {
                      INSERT d1 IN @@c1
                      INSERT d2 IN @@c2
                      RETURN $NEW`;
-      const bind = { "@c1" : cn1, "@c2" : cn2 };
-      const options = { optimizer : {
-                          rules : [ "+restrict-to-single-shard",
+      const bind = { "@c1": cn1,
+"@c2": cn2 };
+      const options = { optimizer: {
+                          rules: [ "+restrict-to-single-shard",
                                     "-optimize-cluster-single-document-operations",
                                     "-remove-unnecessary-remote-scatter"
                                   ]
@@ -554,7 +588,7 @@ function ahuacatlInsertSuite () {
       assertEqual(1, c2.count());
     },
 
-    testInsertTripleWithSub : function () {
+    testInsertTripleWithSub: function () {
       c1.truncate({ compact: false });
       c2.truncate({ compact: false });
 
@@ -566,122 +600,126 @@ function ahuacatlInsertSuite () {
                      INSERT @email IN @@emailsCollection
                      INSERT @edge IN @@userToEmailEdges
                      RETURN user`;
-      const bind = { "@usersCollection" : cn1,
-                     "@emailsCollection" : cn2,
-                     "@userToEmailEdges" : cn3,
-                     "user" : { "name" : "ulf" },
-                     "email" : { "addr" : "ulf@ulf.de"},
-                     "edge" : { "_from" : "usersCollection/abc" , "_to" : "emailsCollection/def"}
+      const bind = { "@usersCollection": cn1,
+                     "@emailsCollection": cn2,
+                     "@userToEmailEdges": cn3,
+                     "user": { "name": "ulf" },
+                     "email": { "addr": "ulf@ulf.de"},
+                     "edge": { "_from": "usersCollection/abc",
+"_to": "emailsCollection/def"}
                    };
-      const options = {optimizer : { rules : ["+all"] } };
+      const options = {optimizer: { rules: ["+all"] } };
 
       db._query(query, bind, options);
       assertEqual(1, c1.count());
       assertEqual(1, c2.count());
       assertEqual(1, c3.count());
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertNothing : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testInsertNothing: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 INSERT { foxx: true } IN " + cn1);
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertNothingBind : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testInsertNothingBind: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 INSERT { foxx: true } IN @@cn", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertInvalid1 : function () {
+    testInsertInvalid1: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT d.foobar IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertInvalid2 : function () {
+    testInsertInvalid2: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT [ ] IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertInvalid3 : function () {
+    testInsertInvalid3: function () {
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT 'foo' IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertInvalid4 : function () {
+    testInsertInvalid4: function () {
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT { _key: 'foo' } IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertUniqueConstraint1 : function () {
+    testInsertUniqueConstraint1: function () {
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT d IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertUniqueConstraint2 : function () {
+    testInsertUniqueConstraint2: function () {
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR i IN 0..100 INSERT { _key: CONCAT('test', i) } IN @@cn", { "@cn": cn2 });
       assertEqual(50, c2.count());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
     // This is disabled for the cluster because we do not yet have
     // full atomic transactions.
-    //testInsertUniqueConstraint3 : function () {
+    // testInsertUniqueConstraint3 : function () {
     //  assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR i IN 0..50 INSERT { _key: 'foo' } IN @@cn", { "@cn": cn1 });
     //  assertEqual(100, c1.count());
-    //},
+    // },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertReturn : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertReturn: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // key is specified
       var actual = AQL_EXECUTE("FOR d IN 0..99 INSERT { _key: CONCAT('foo', d), bar: d } IN @@cn LET result = NEW RETURN result", { "@cn": cn1 });
 
       assertEqual(200, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.bar - r.bar;
       });
 
@@ -698,19 +736,20 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertReturnNoKey : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertReturnNoKey: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // key is specified
       var actual = AQL_EXECUTE("FOR d IN 0..99 INSERT { bar: d } IN @@cn LET result = NEW RETURN result", { "@cn": cn1 });
 
       assertEqual(200, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.bar - r.bar;
       });
 
@@ -729,18 +768,19 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertReturnShardKeys : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertReturnShardKeys: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // key is specified
       var actual = AQL_EXECUTE("FOR d IN 0..99 INSERT { a: d, b: d + 1, bar: d } IN @@cn LET result = NEW RETURN result", { "@cn": cn3 });
 
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.bar - r.bar;
       });
 
@@ -763,12 +803,13 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey1 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertKey1: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // key is specified
       var actual = getModifyQueryResults("FOR d IN 0..99 INSERT { _key: CONCAT('foo', d), bar: d } IN @@cn", { "@cn": cn1 });
 
@@ -782,12 +823,13 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey2 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertKey2: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // no key is specified, must be created automatically
       var actual = getModifyQueryResults("FOR d IN 0..99 INSERT { bar: d } IN @@cn", { "@cn": cn1 });
 
@@ -807,37 +849,38 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey3 : function () {
+    testInsertKey3: function () {
       // key is specified, but sharding is by different attributes
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code, "FOR i IN 0..50 INSERT { _key: 'foo' } IN @@cn", { "@cn": cn3 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey4 : function () {
+    testInsertKey4: function () {
       // key is specified, but sharding is by different attributes
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY.code, "FOR i IN 0..50 INSERT { _key: 'foo', a: i, b: i } IN @@cn", { "@cn": cn3 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey5 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertKey5: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // no key is specified, must be created automatically
       var actual = getModifyQueryResults("FOR d IN 0..99 INSERT { bar: d, a: d, b: d } IN @@cn", { "@cn": cn3 });
 
       assertEqual(100, c3.count());
       assertEqual(expected, sanitizeStats(actual));
 
-      var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn" : cn3 }).toArray();
+      var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn": cn3 }).toArray();
 
       for (var i = 0; i < 100; ++i) {
         var doc = docs[i];
@@ -854,19 +897,20 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertKey6 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertKey6: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       // no key is specified, must be created automatically
       var actual = getModifyQueryResults("FOR d IN 0..99 INSERT { bar: d, a: d } IN @@cn", { "@cn": cn3 });
 
       assertEqual(100, c3.count());
       assertEqual(expected, sanitizeStats(actual));
 
-      var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn" : cn3 }).toArray();
+      var docs = db._query("FOR doc IN @@cn FILTER doc.bar >= 0 SORT doc.bar RETURN doc", { "@cn": cn3 }).toArray();
 
       for (var i = 0; i < 100; ++i) {
         var doc = docs[i];
@@ -882,84 +926,91 @@ function ahuacatlInsertSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertIgnore1 : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 100 };
+    testInsertIgnore1: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR d IN @@cn INSERT d IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertIgnore2 : function () {
-      var expected = { writesExecuted: 1, writesIgnored: 50 };
+    testInsertIgnore2: function () {
+      var expected = { writesExecuted: 1,
+writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 50..100 INSERT { _key: CONCAT('test', i) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(101, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertIgnore3 : function () {
-      var expected = { writesExecuted: 51, writesIgnored: 50 };
+    testInsertIgnore3: function () {
+      var expected = { writesExecuted: 51,
+writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 0..100 INSERT { _key: CONCAT('test', i) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
 
       assertEqual(101, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertIgnore4 : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 100 };
+    testInsertIgnore4: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 100 };
       var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', i) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertIgnore5 : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 50 };
+    testInsertIgnore5: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 50 };
       var actual = getModifyQueryResults("FOR i IN 0..99 INSERT { _key: CONCAT('test', i) } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn2 });
 
       assertEqual(100, c2.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEmpty : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testInsertEmpty: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn INSERT { } IN @@cn", { "@cn": cn1 });
 
       assertEqual(200, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertCopy : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+    testInsertCopy: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 50..99 INSERT { _key: CONCAT('test', i) } IN @@cn", { "@cn": cn2 });
 
       assertEqual(100, c1.count());
@@ -967,12 +1018,13 @@ function ahuacatlInsertSuite () {
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSingleInsert : function () {
-      var expected = { writesExecuted: 1, writesIgnored: 0 };
+    testSingleInsert: function () {
+      var expected = { writesExecuted: 1,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("INSERT { value: 'foobar', _key: 'test' } IN @@cn", { "@cn": cn1 });
 
       assertEqual(101, c1.count());
@@ -980,23 +1032,24 @@ function ahuacatlInsertSuite () {
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertWaitForSync : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+    testInsertWaitForSync: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { value: i } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn2 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdgeInvalid : function () {
+    testInsertEdgeInvalid: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
@@ -1006,11 +1059,11 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdgeNoFrom : function () {
+    testInsertEdgeNoFrom: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
@@ -1020,11 +1073,11 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdgeNoTo : function () {
+    testInsertEdgeNoTo: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
@@ -1034,15 +1087,16 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdge : function () {
+    testInsertEdge: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 INSERT { _key: CONCAT('test', i), _from: CONCAT('UnitTestsAhuacatlInsert1/', i), _to: CONCAT('UnitTestsAhuacatlInsert2/', i), value: [ i ], sub: { foo: 'bar' } } INTO @@cn", { "@cn": edge.name() });
 
       assertEqual(expected, sanitizeStats(actual));
@@ -1058,21 +1112,22 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertEdgeReturn : function () {
+    testInsertEdgeReturn: function () {
       db._drop("UnitTestsAhuacatlEdge");
       var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge");
 
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = AQL_EXECUTE("FOR i IN 0..49 INSERT { _key: CONCAT('test', i), _from: CONCAT('UnitTestsAhuacatlInsert1/', i), _to: CONCAT('UnitTestsAhuacatlInsert2/', i), value: [ i ], sub: { foo: 'bar' } } INTO @@cn LET result = NEW RETURN result", { "@cn": edge.name() });
 
       assertEqual(expected, sanitizeStats(actual.stats));
       assertEqual(50, edge.count());
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value[0] - r.value[0];
       });
 
@@ -1098,11 +1153,11 @@ function ahuacatlInsertSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test insert
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test insert
+// //////////////////////////////////////////////////////////////////////////////
 
-    testInsertOverwrite : function () {
+    testInsertOverwrite: function () {
       c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
@@ -1152,7 +1207,7 @@ function ahuacatlInsertSuite () {
 
     },
 
-    testInsertOverwriteUpsert : function () {
+    testInsertOverwriteUpsert: function () {
       c1.truncate({ compact: false });
       assertEqual(0, c1.count());
 
@@ -1176,18 +1231,18 @@ function ahuacatlInsertSuite () {
       assertEqual(doc2.new._key, '123');
       assertEqual(doc2.new.name, 'ulf');
       assertEqual(doc2.new.partner, 'ulfine');
-      assertEqual(doc2.new.drinks, { 'soft' : 'korn'});
+      assertEqual(doc2.new.drinks, { 'soft': 'korn'});
       assertEqual(doc2.old._rev, doc1._rev);
       assertEqual(doc2.old._key, doc1._key);
       assertEqual(doc2.old.name, doc1.name);
-    },
+    }
 
   }; // end insert tests
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlUpdateSuite () {
   var cn1 = "UnitTestsAhuacatlUpdate1";
@@ -1198,11 +1253,11 @@ function ahuacatlUpdateSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
@@ -1213,7 +1268,9 @@ function ahuacatlUpdateSuite () {
 
       let docs = [];
       for (i = 0; i < 100; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
       c1.insert(docs);
       docs = [];
@@ -1223,16 +1280,18 @@ function ahuacatlUpdateSuite () {
       c2.insert(docs);
       docs = [];
       for (i = 0; i < 100; ++i) {
-        docs.push({ _key: "test" + i, value1: i, value2: "test" + i });
+        docs.push({ _key: "test" + i,
+value1: i,
+value2: "test" + i });
       }
       c3.insert(docs);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn1);
       db._drop(cn2);
       db._drop(cn3);
@@ -1241,122 +1300,138 @@ function ahuacatlUpdateSuite () {
       c3 = null;
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateNothing : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testUpdateNothing: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1);
 
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateNothingBind : function () {
-      var expected = { writesExecuted: 0, writesIgnored: 0 };
+    testUpdateNothingBind: function () {
+      var expected = { writesExecuted: 0,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 UPDATE { foxx: true } IN @@cn", { "@cn": cn1 });
 
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalidType1 : function () {
+    testUpdateInvalidType1: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE d.foobar IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalidType2 : function () {
+    testUpdateInvalidType2: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE [ ] IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalidType : function () {
+    testUpdateInvalidType: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalidKey : function () {
+    testUpdateInvalidKey: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn UPDATE { _key: 'foo' } IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateUniqueConstraint1 : function () {
+    testUpdateUniqueConstraint1: function () {
       try {
-        c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+        c1.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
         fail();
-      }
-      catch (e) {
+      } catch (e) {
         assertEqual(errors.ERROR_CLUSTER_UNSUPPORTED.code, e.errorNum);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateUniqueConstraint2 : function () {
-      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+    testUpdateUniqueConstraint2: function () {
+      c3.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn3 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateUniqueConstraint3 : function () {
-      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
+    testUpdateUniqueConstraint3: function () {
+      c3.ensureIndex({ type: "hash",
+fields: ["value3"],
+unique: true,
+sparse: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn3 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateIgnore1 : function () {
-      c3.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
-      var expected = { writesExecuted: 1, writesIgnored: 99 };
+    testUpdateIgnore1: function () {
+      c3.ensureIndex({ type: "hash",
+fields: ["value3"],
+unique: true,
+sparse: true });
+      var expected = { writesExecuted: 1,
+writesIgnored: 99 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateIgnore2 : function () {
-      c3.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
-      var expected = { writesExecuted: 0, writesIgnored: 51 };
+    testUpdateIgnore2: function () {
+      c3.ensureIndex({ type: "hash",
+fields: ["value1"],
+unique: true });
+      var expected = { writesExecuted: 0,
+writesIgnored: 51 };
       var actual = getModifyQueryResults("FOR i IN 50..100 UPDATE { _key: CONCAT('test', i), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateEmpty1 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateEmpty1: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key } IN @@cn", { "@cn": cn1 });
 
       assertEqual(expected, sanitizeStats(actual));
@@ -1367,12 +1442,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateEmpty2 : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateEmpty2: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d IN @@cn", { "@cn": cn1 });
 
       assertEqual(expected, sanitizeStats(actual));
@@ -1383,9 +1459,9 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief test update with empty object
-////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief test update with empty object
+// //////////////////////////////////////////////////////////////////////////////
 
     testUpdateEmpty3: function () {
       const actual = AQL_EXECUTE(`FOR doc IN ${cn2} UPDATE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
@@ -1397,12 +1473,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update and return
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update and return
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateAndReturn : function () {
-      const expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateAndReturn: function () {
+      const expected = { writesExecuted: 100,
+writesIgnored: 0 };
       const query = `
         FOR d IN @@cn
           UPDATE d WITH { updated: true } IN @@cn
@@ -1424,32 +1501,34 @@ function ahuacatlUpdateSuite () {
 
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSingleUpdateNotFound : function () {
+    testSingleUpdateNotFound: function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "UPDATE { _key: 'foobar' } WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testSingleUpdate : function () {
-      var expected = { writesExecuted: 1, writesIgnored: 0 };
+    testSingleUpdate: function () {
+      var expected = { writesExecuted: 1,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("UPDATE { value: 'foobar', _key: 'test17' } IN @@cn", { "@cn": cn1 });
 
       assertEqual("foobar", c1.document("test17").value);
       assertEqual(expected, sanitizeStats(actual));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateOldValue : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateOldValue: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1461,12 +1540,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateWaitForSync : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+    testUpdateWaitForSync: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR i IN 1..50 UPDATE { _key: CONCAT('test', i) } INTO @@cn OPTIONS { waitForSync: true }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1477,12 +1557,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateKeepNullDefault : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateKeepNullDefault: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1499,12 +1580,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateKeepNullTrue : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateKeepNullTrue: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn OPTIONS { keepNull: true }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1521,12 +1603,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateKeepNullFalse : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateKeepNullFalse: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { value1: null, value3: 'foobar', value9: null, a: { b: null } } INTO @@cn OPTIONS { keepNull: false }", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1541,12 +1624,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateFilter : function () {
-      var expected = { writesExecuted: 50, writesIgnored: 0 };
+    testUpdateFilter: function () {
+      var expected = { writesExecuted: 50,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 % 2 == 0 UPDATE d._key WITH { value2: 100 } INTO @@cn", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1554,20 +1638,20 @@ function ahuacatlUpdateSuite () {
         var doc = c1.document("test" + i);
         if (i % 2 === 0) {
           assertEqual(100, doc.value2);
-        }
-        else {
+        } else {
           assertEqual("test" + i, doc.value2);
         }
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateUpdate : function () {
+    testUpdateUpdate: function () {
       var i;
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d._key WITH { counter: HAS(d, 'counter') ? d.counter + 1 : 1 } INTO @@cn", { "@cn": cn1 });
         assertEqual(expected, sanitizeStats(actual));
@@ -1579,14 +1663,15 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateAfterInsert : function () {
+    testUpdateAfterInsert: function () {
       AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn": cn1 });
 
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.wantToFind UPDATE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn", { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
 
@@ -1599,12 +1684,13 @@ function ahuacatlUpdateSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update with search document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update with search document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateSubKeepNullFalse : function () {
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+    testUpdateSubKeepNullFalse: function () {
+      let expected = { writesExecuted: 1,
+writesIgnored: 0 };
       c1.truncate({ compact: false });
       c1.insert({ _key: "foo" });
 
@@ -1645,12 +1731,13 @@ function ahuacatlUpdateSuite () {
       assertEqual("bart", doc.foo.bark);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update with search document
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update with search document
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateSubKeepNullArrayFalse : function () {
-      let expected = { writesExecuted: 1, writesIgnored: 0 };
+    testUpdateSubKeepNullArrayFalse: function () {
+      let expected = { writesExecuted: 1,
+writesIgnored: 0 };
       c1.truncate({ compact: false });
       c1.insert({ _key: "foo" });
 
@@ -1696,18 +1783,19 @@ false
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateReturnOld : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateReturnOld: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value1 - r.value1;
       });
 
@@ -1722,18 +1810,19 @@ false
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test update
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test update
+// //////////////////////////////////////////////////////////////////////////////
 
-    testUpdateReturnNew : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testUpdateReturnNew: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now", { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value1 - r.value1;
       });
 
@@ -1748,13 +1837,14 @@ false
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplace1 : function () {
+    testReplace1: function () {
       var i;
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn REPLACE d._key WITH { value4: 12 } INTO @@cn";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
@@ -1771,13 +1861,14 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplace2 : function () {
+    testReplace2: function () {
       var i;
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
@@ -1794,13 +1885,14 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceReplace : function () {
+    testReplaceReplace: function () {
       var i;
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn REPLACE d._key WITH { value1: d.value1 + 1 } INTO @@cn";
       for (i = 0; i < 5; ++i) {
         var actual = getModifyQueryResults(query, { "@cn": cn1 });
@@ -1817,19 +1909,20 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceReturnOld : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testReplaceReturnOld: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous";
       var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value1 - r.value1;
       });
 
@@ -1847,19 +1940,20 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceReturnNew : function () {
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+    testReplaceReturnNew: function () {
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now";
       var actual = AQL_EXECUTE(query, { "@cn": cn1 });
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
 
-      actual.json = actual.json.sort(function(l, r) {
+      actual.json = actual.json.sort(function (l, r) {
         return l.value3 - r.value3;
       });
 
@@ -1877,14 +1971,15 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test replace
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test replace
+// //////////////////////////////////////////////////////////////////////////////
 
-    testReplaceAfterInsert : function () {
-      AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn" : cn1 });
+    testReplaceAfterInsert: function () {
+      AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn": cn1 });
 
-      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var expected = { writesExecuted: 100,
+writesIgnored: 0 };
       let query = "FOR d IN @@cn FILTER d.wantToFind REPLACE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn";
       var actual = getModifyQueryResults(query, { "@cn": cn1 });
       assertEqual(expected, sanitizeStats(actual));
@@ -1900,11 +1995,11 @@ false
       assertEqual(-1, rules.indexOf("restrict-to-single-shard"));
     },
 
-///////////////////////////////////////////////////////////////////////////////
-/// @brief test replace with empty object
-/// replaces all documents with empty object, hence, the old documents would
-/// have the "name" key, as the new documents wouldn't
-////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
+// / @brief test replace with empty object
+// / replaces all documents with empty object, hence, the old documents would
+// / have the "name" key, as the new documents wouldn't
+// //////////////////////////////////////////////////////////////////////////////
 
     testReplaceEmpty: function () {
       const actual = AQL_EXECUTE(`FOR doc IN ${cn2} REPLACE doc WITH {} IN ${cn2} RETURN {old: OLD, new: NEW}`);
@@ -1915,7 +2010,7 @@ false
         assertFalse(res[i].new.hasOwnProperty("name"));
         assertTrue(res[i].old.hasOwnProperty("name"));
       }
-    },
+    }
 
   };
 }

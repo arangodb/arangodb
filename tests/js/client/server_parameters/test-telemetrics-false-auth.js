@@ -29,14 +29,14 @@ if (getOptions === true) {
   return {
     'server.enable-telemetrics-api': 'false',
     'server.authentication': 'true',
-    'server.jwt-secret': jwtSecret,
+    'server.jwt-secret': jwtSecret
   };
 }
 
 let jsunity = require('jsunity');
 let internal = require('internal');
 
-function getTelemetricsResult() {
+function getTelemetricsResult () {
   let res;
   let numSecs = 0.5;
   while (true) {
@@ -51,7 +51,7 @@ function getTelemetricsResult() {
   return res;
 }
 
-function telemetricsOnShellTestsuite() {
+function telemetricsOnShellTestsuite () {
 
   return {
 
@@ -63,12 +63,12 @@ function telemetricsOnShellTestsuite() {
       assertTrue(res.hasOwnProperty("errorMessage"));
       assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertTrue(res.errorMessage.includes("telemetrics API is disabled"), "error message mentioning that telemetrics API is disabled should have been returned");
-    },
+    }
 
   };
 }
 
-function telemetricsApiUsageTestsuite() {
+function telemetricsApiUsageTestsuite () {
 
   return {
 
@@ -78,7 +78,7 @@ function telemetricsApiUsageTestsuite() {
       const res = arango.GET("/_admin/telemetrics");
       assertEqual(res.errorNum, internal.errors.ERROR_HTTP_FORBIDDEN.code);
       assertTrue(res.errorMessage.includes("telemetrics API is disabled"), "error message mentioning that telemetrics API is disabled should have been returned");
-    },
+    }
 
   };
 }

@@ -1,4 +1,4 @@
-/*global describe, it */
+/* global describe, it */
 const { expect } = require("chai");
 const Auth = require("@arangodb/foxx/auth");
 const crypto = require("@arangodb/crypto");

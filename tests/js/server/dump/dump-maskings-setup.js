@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
-/*global arango */
+/* jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/* global arango */
 
 // /////////////////////////////////////////////////////////////////////////////
 // @brief tests for dump/reload
@@ -49,7 +49,7 @@
     name: "Hallo World! This is a t0st a top-level",
 
     blub: {
-      name: "Hallo World! This is a t0st in a sub-object",
+      name: "Hallo World! This is a t0st in a sub-object"
     },
 
     email: [

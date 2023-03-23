@@ -266,7 +266,8 @@ function outboundExpander (config, vertex, path) {
       edgeIterator = function (edge) {
         try {
           var v = datasource.getInVertex(edge);
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         } catch (e) {
           // continue even in the face of non-existing documents
         }
@@ -276,7 +277,8 @@ function outboundExpander (config, vertex, path) {
         try {
           var v = datasource.getInVertex(edge);
           if (config.expandFilter(config, v, edge, path)) {
-            connections.push({ edge: edge, vertex: v });
+            connections.push({ edge: edge,
+vertex: v });
           }
         } catch (e) {
           // continue even in the face of non-existing documents
@@ -287,15 +289,19 @@ function outboundExpander (config, vertex, path) {
     if (!config.expandFilter) {
       edgeIterator = function (edge) {
         var id = datasource.getEdgeTo(edge);
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
-        connections.push({ edge: edge, vertex: v });
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
+        connections.push({ edge: edge,
+vertex: v });
       };
     } else {
       edgeIterator = function (edge) {
         var id = datasource.getEdgeTo(edge);
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
         if (config.expandFilter(config, v, edge, path)) {
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         }
       };
     }
@@ -324,7 +330,8 @@ function inboundExpander (config, vertex, path) {
       edgeIterator = function (edge) {
         try {
           var v = datasource.getOutVertex(edge);
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         } catch (e) {
           // continue even in the face of non-existing documents
         }
@@ -334,7 +341,8 @@ function inboundExpander (config, vertex, path) {
         try {
           var v = datasource.getOutVertex(edge);
           if (config.expandFilter(config, v, edge, path)) {
-            connections.push({ edge: edge, vertex: v });
+            connections.push({ edge: edge,
+vertex: v });
           }
         } catch (e) {
           // continue even in the face of non-existing documents
@@ -345,15 +353,19 @@ function inboundExpander (config, vertex, path) {
     if (!config.expandFilter) {
       edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
-        connections.push({ edge: edge, vertex: v });
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
+        connections.push({ edge: edge,
+vertex: v });
       };
     } else {
       edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
         if (config.expandFilter(config, v, edge, path)) {
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         }
       };
     }
@@ -382,7 +394,8 @@ function anyExpander (config, vertex, path) {
       edgeIterator = function (edge) {
         try {
           var v = datasource.getPeerVertex(edge, vertex);
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         } catch (e) {
           // continue even in the face of non-existing documents
         }
@@ -392,7 +405,8 @@ function anyExpander (config, vertex, path) {
         try {
           var v = datasource.getPeerVertex(edge, vertex);
           if (config.expandFilter(config, v, edge, path)) {
-            connections.push({ edge: edge, vertex: v });
+            connections.push({ edge: edge,
+vertex: v });
           }
         } catch (e) {
           // continue even in the face of non-existing documents
@@ -406,8 +420,10 @@ function anyExpander (config, vertex, path) {
         if (id === vertex._id) {
           id = datasource.getEdgeTo(edge);
         }
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
-        connections.push({ edge: edge, vertex: v });
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
+        connections.push({ edge: edge,
+vertex: v });
       };
     } else {
       edgeIterator = function (edge) {
@@ -415,9 +431,11 @@ function anyExpander (config, vertex, path) {
         if (id === vertex._id) {
           id = datasource.getEdgeTo(edge);
         }
-        var v = { _id: id, _key: id.substr(id.indexOf('/') + 1)};
+        var v = { _id: id,
+_key: id.substr(id.indexOf('/') + 1)};
         if (config.expandFilter(config, v, edge, path)) {
-          connections.push({ edge: edge, vertex: v });
+          connections.push({ edge: edge,
+vertex: v });
         }
       };
     }
@@ -447,7 +465,8 @@ function expandOutEdgesWithLabels (config, vertex) {
       var label = datasource.getLabel(edge);
 
       if (config.labels.indexOf(label) >= 0) {
-        result.push({ edge: edge, vertex: datasource.getInVertex(edge) });
+        result.push({ edge: edge,
+vertex: datasource.getInVertex(edge) });
       }
     }
   }
@@ -476,7 +495,8 @@ function expandInEdgesWithLabels (config, vertex) {
       var label = datasource.getLabel(edge);
 
       if (config.labels.indexOf(label) >= 0) {
-        result.push({ edge: edge, vertex: datasource.getOutVertex(edge) });
+        result.push({ edge: edge,
+vertex: datasource.getOutVertex(edge) });
       }
     }
   }
@@ -505,7 +525,8 @@ function expandEdgesWithLabels (config, vertex) {
       var label = datasource.getLabel(edge);
 
       if (config.labels.indexOf(label) >= 0) {
-        result.push({ edge: edge, vertex: datasource.getPeerVertex(edge, vertex) });
+        result.push({ edge: edge,
+vertex: datasource.getPeerVertex(edge, vertex) });
       }
     }
   }
@@ -771,7 +792,8 @@ function breadthFirstSearch () {
     },
 
     createPath: function (items, idx) {
-      var path = { edges: [], vertices: [] };
+      var path = { edges: [],
+vertices: [] };
       var pathItem = items[idx];
 
       while (true) {
@@ -791,8 +813,11 @@ function breadthFirstSearch () {
 
     run: function (config, result, startVertex) {
       var maxIterations = config.maxIterations, visitCounter = 0;
-      var toVisit = [ { edge: null, vertex: startVertex, parentIndex: -1 } ];
-      var visited = { edges: { }, vertices: { } };
+      var toVisit = [ { edge: null,
+vertex: startVertex,
+parentIndex: -1 } ];
+      var visited = { edges: { },
+vertices: { } };
 
       var index = 0;
       var step = 1;
@@ -901,9 +926,13 @@ function depthFirstSearch () {
 
     run: function (config, result, startVertex) {
       var maxIterations = config.maxIterations, visitCounter = 0;
-      var toVisit = [ { edge: null, vertex: startVertex, visit: null } ];
-      var path = { edges: [], vertices: [] };
-      var visited = { edges: { }, vertices: { } };
+      var toVisit = [ { edge: null,
+vertex: startVertex,
+visit: null } ];
+      var path = { edges: [],
+vertices: [] };
+      var visited = { edges: { },
+vertices: { } };
       var reverse = checkReverse(config);
       var uniqueness = config.uniqueness;
       var haveUniqueness = ((uniqueness.vertices !== ArangoTraverser.UNIQUE_NONE) ||
@@ -1012,7 +1041,8 @@ function dijkstraSearch () {
     makeNode: function (vertex) {
       var id = vertex._id;
       if (!this.nodes.hasOwnProperty(id)) {
-        this.nodes[id] = { vertex: vertex, dist: Infinity };
+        this.nodes[id] = { vertex: vertex,
+dist: Infinity };
       }
 
       return this.nodes[id];
@@ -1028,7 +1058,8 @@ function dijkstraSearch () {
     },
 
     buildPath: function (vertex) {
-      var path = { vertices: [ vertex.vertex ], edges: [] };
+      var path = { vertices: [ vertex.vertex ],
+edges: [] };
       var v = vertex;
 
       while (v.parent) {
@@ -1143,7 +1174,8 @@ function dijkstraSearchMulti () {
     makeNode: function (vertex) {
       var id = vertex._id;
       if (!this.nodes.hasOwnProperty(id)) {
-        this.nodes[id] = { vertex: vertex, dist: Infinity };
+        this.nodes[id] = { vertex: vertex,
+dist: Infinity };
       }
 
       return this.nodes[id];
@@ -1159,7 +1191,8 @@ function dijkstraSearchMulti () {
     },
 
     buildPath: function (vertex) {
-      var path = { vertices: [ vertex.vertex ], edges: [] };
+      var path = { vertices: [ vertex.vertex ],
+edges: [] };
       var v = vertex;
 
       while (v.parent) {
@@ -1274,7 +1307,10 @@ function astarSearch () {
     makeNode: function (vertex) {
       var id = vertex._id;
       if (!this.nodes.hasOwnProperty(id)) {
-        this.nodes[id] = { vertex: vertex, f: 0, g: 0, h: 0 };
+        this.nodes[id] = { vertex: vertex,
+f: 0,
+g: 0,
+h: 0 };
       }
 
       return this.nodes[id];
@@ -1290,7 +1326,8 @@ function astarSearch () {
     },
 
     buildPath: function (vertex) {
-      var path = { vertices: [ vertex.vertex ], edges: [] };
+      var path = { vertices: [ vertex.vertex ],
+edges: [] };
       var v = vertex;
 
       while (v.parent) {

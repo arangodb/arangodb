@@ -88,7 +88,7 @@ let stringBuilder = {
 };
 
 /* set colors for output */
-function setColors(useSystemColors) {
+function setColors (useSystemColors) {
   'use strict';
 
   ['COLOR_RESET',
@@ -101,7 +101,7 @@ function setColors(useSystemColors) {
 
 /* colorizer and output helper functions */
 
-function bracketize(node, v) {
+function bracketize (node, v) {
   'use strict';
   if (node && node.subNodes && node.subNodes.length > 1) {
     return '(' + v + ')';
@@ -109,12 +109,12 @@ function bracketize(node, v) {
   return v;
 }
 
-function attributeUncolored(v) {
+function attributeUncolored (v) {
   'use strict';
   return '`' + v + '`';
 }
 
-function indexFieldToName(v) {
+function indexFieldToName (v) {
   'use strict';
   if (typeof v === 'object') {
     return v.name;
@@ -122,17 +122,17 @@ function indexFieldToName(v) {
   return v;
 }
 
-function keyword(v) {
+function keyword (v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
 }
 
-function annotation(v) {
+function annotation (v) {
   'use strict';
   return colors.COLOR_BLUE + v + colors.COLOR_RESET;
 }
 
-function value(v) {
+function value (v) {
   'use strict';
   if (typeof v === 'string' && v.length > 1024) {
     return colors.COLOR_GREEN + v.substr(0, 1024) + '...' + colors.COLOR_RESET;
@@ -140,7 +140,7 @@ function value(v) {
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
 
-function variable(v) {
+function variable (v) {
   'use strict';
   if (v[0] === '#') {
     return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
@@ -148,43 +148,43 @@ function variable(v) {
   return colors.COLOR_YELLOW + v + colors.COLOR_RESET;
 }
 
-function func(v) {
+function func (v) {
   'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
 
-function collection(v) {
+function collection (v) {
   'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
-function view(v) {
+function view (v) {
   'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
-function attribute(v) {
+function attribute (v) {
   'use strict';
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
 }
 
-function attributePath(v) {
+function attributePath (v) {
   'use strict';
   return v.split('.').map(attribute).join('.');
 }
 
-function header(v) {
+function header (v) {
   'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
 }
 
-function section(v) {
+function section (v) {
   'use strict';
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
 // return n times ' '
-function pad(n) {
+function pad (n) {
   'use strict';
   if (n < 0) {
     // value seems invalid...
@@ -194,7 +194,7 @@ function pad(n) {
 }
 
 /* print query string */
-function printQuery(query, cacheable) {
+function printQuery (query, cacheable) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
@@ -211,7 +211,7 @@ function printQuery(query, cacheable) {
 }
 
 /* print write query modification flags */
-function printModificationFlags(flags) {
+function printModificationFlags (flags) {
   'use strict';
   if (flags === undefined) {
     return;
@@ -231,7 +231,7 @@ function printModificationFlags(flags) {
 }
 
 /* print optimizer rules */
-function printRules(rules, stats) {
+function printRules (rules, stats) {
   'use strict';
 
   const maxIdLen = String('Id').length;
@@ -245,22 +245,23 @@ function printRules(rules, stats) {
     }
   }
   stringBuilder.appendLine();
- 
+
   if (!stats || !stats.rules) {
     return;
   }
 
   let maxNameLength = 0;
-  let times = Object.keys(stats.rules).map(function(key) {
+  let times = Object.keys(stats.rules).map(function (key) {
     if (key.length > maxNameLength) {
       maxNameLength = key.length;
     }
-    return { name: key, time: stats.rules[key] };
+    return { name: key,
+time: stats.rules[key] };
   });
   // filter out everything that was reasonably fast
   times = times.filter((item) => item.time >= 0.0002);
 
-  times.sort(function(l, r) {
+  times.sort(function (l, r) {
     // highest cost first
     return r.time - l.time;
   });
@@ -270,10 +271,10 @@ function printRules(rules, stats) {
   if (times.length > 0) {
     stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
     stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
-    times.forEach(function(rule) {
+    times.forEach(function (rule) {
       stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
     });
-  
+
     stringBuilder.appendLine();
   }
 
@@ -290,7 +291,7 @@ function printRules(rules, stats) {
 }
 
 /* print warnings */
-function printWarnings(warnings) {
+function printWarnings (warnings) {
   'use strict';
   if (!Array.isArray(warnings) || warnings.length === 0) {
     return;
@@ -306,7 +307,7 @@ function printWarnings(warnings) {
 }
 
 /* print stats */
-function printStats(stats, isCoord) {
+function printStats (stats, isCoord) {
   'use strict';
   if (!stats) {
     return;
@@ -324,7 +325,7 @@ function printStats(stats, isCoord) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') +
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -339,7 +340,7 @@ function printStats(stats, isCoord) {
   stringBuilder.appendLine();
 }
 
-function printProfile(profile) {
+function printProfile (profile) {
   'use strict';
   if (!profile) {
     return;
@@ -364,7 +365,7 @@ function printProfile(profile) {
 }
 
 /* print indexes used */
-function printIndexes(indexes) {
+function printIndexes (indexes) {
   'use strict';
 
   stringBuilder.appendLine(section('Indexes used:'));
@@ -473,7 +474,7 @@ function printIndexes(indexes) {
   }
 }
 
-function printFunctions(functions) {
+function printFunctions (functions) {
   'use strict';
 
   let funcArray = [];
@@ -522,7 +523,7 @@ function printFunctions(functions) {
 
 /* create a table with a given amount of columns and arbitrary many rows */
 class PrintedTable {
-  constructor(numColumns) {
+  constructor (numColumns) {
     this.content = [];
     for (let i = 0; i < numColumns; ++i) {
       this.content.push({
@@ -533,29 +534,31 @@ class PrintedTable {
     }
   }
 
-  setHeader(index, value) {
+  setHeader (index, value) {
     this.content[index].header = value;
     this.content[index].size = Math.max(this.content[index].size, value.length);
   }
 
-  addCell(index, value, valueLength) {
+  addCell (index, value, valueLength) {
     // Value might be empty
     value = value || "";
     valueLength = valueLength || value.length;
-    this.content[index].cells.push({ formatted: value, size: valueLength });
+    this.content[index].cells.push({ formatted: value,
+size: valueLength });
     this.content[index].size = Math.max(this.content[index].size, valueLength);
   }
 
-  alignNewEntry() {
+  alignNewEntry () {
     let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
     for (let c of this.content) {
       while (c.cells.length < rowsNeeded) {
-        c.cells.push({ formatted: '', size: 0 });
+        c.cells.push({ formatted: '',
+size: 0 });
       }
     }
   }
 
-  print(builder) {
+  print (builder) {
     let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
     // Print the header
     let line = ' ';
@@ -584,7 +587,7 @@ class PrintedTable {
 }
 
 /* print traversal info */
-function printTraversalDetails(traversals) {
+function printTraversalDetails (traversals) {
   'use strict';
   if (traversals.length === 0) {
     return;
@@ -660,7 +663,7 @@ function printTraversalDetails(traversals) {
 }
 
 /* print shortest_path info */
-function printShortestPathDetails(shortestPaths) {
+function printShortestPathDetails (shortestPaths) {
   'use strict';
   if (shortestPaths.length === 0) {
     return;
@@ -722,7 +725,7 @@ function printShortestPathDetails(shortestPaths) {
   }
 }
 
-function printKShortestPathsDetails(shortestPaths) {
+function printKShortestPathsDetails (shortestPaths) {
   'use strict';
   if (shortestPaths.length === 0) {
     return;
@@ -786,7 +789,7 @@ function printKShortestPathsDetails(shortestPaths) {
 
 
 /* analyze and print execution plan */
-function processQuery(query, explain, planIndex) {
+function processQuery (query, explain, planIndex) {
   'use strict';
   var nodes = {},
     parents = {},
@@ -806,7 +809,7 @@ function processQuery(query, explain, planIndex) {
     plan = explain.plans[planIndex];
   }
 
-  /// mode with actual runtime stats per node
+  // / mode with actual runtime stats per node
   let profileMode = stats && stats.hasOwnProperty('nodes');
 
   var recursiveWalk = function (partNodes, level, site) {
@@ -1121,12 +1124,16 @@ function processQuery(query, explain, planIndex) {
         return '(' + buildExpression(node.subNodes[0]) + ' ? ' + buildExpression(node.subNodes[1]) + ' : ' + buildExpression(node.subNodes[2]) + ')';
       case 'n-ary or':
         if (node.hasOwnProperty('subNodes')) {
-          return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' || '));
+          return bracketize(node, node.subNodes.map(function (sub) {
+ return buildExpression(sub);
+}).join(' || '));
         }
         return '';
       case 'n-ary and':
         if (node.hasOwnProperty('subNodes')) {
-          return bracketize(node, node.subNodes.map(function (sub) { return buildExpression(sub); }).join(' && '));
+          return bracketize(node, node.subNodes.map(function (sub) {
+ return buildExpression(sub);
+}).join(' && '));
         }
         return '';
       case 'parameter':
@@ -1213,7 +1220,7 @@ function processQuery(query, explain, planIndex) {
 
   const projections = function (value, attributeName, label) {
     if (value && value.hasOwnProperty(attributeName) && value[attributeName].length > 0) {
-      let p = value[attributeName].map(function(p) {
+      let p = value[attributeName].map(function (p) {
         if (Array.isArray(p)) {
           return p.join('`.`', p);
         }
@@ -1355,11 +1362,11 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
-        
+
         var scorersSort = '';
         if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
-          node.scorersSort.forEach(function(sort) {
-              if (scorersSort.length > 0 ) {
+          node.scorersSort.forEach(function (sort) {
+              if (scorersSort.length > 0) {
                 scorersSort += ', ';
               }
               scorersSort += variableName(node.scorers[sort.index]);
@@ -1368,11 +1375,11 @@ function processQuery(query, explain, planIndex) {
               } else {
                 scorersSort += keyword(' DESC');
               }
-          
+
           });
            scorersSort = keyword(' SORT ') + scorersSort;
            scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
-           
+
         }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId')) {
@@ -1381,8 +1388,9 @@ function processQuery(query, explain, planIndex) {
           viewAnnotation += ' without materialization';
         }
         if (node.hasOwnProperty('options')) {
-          if (node.options.hasOwnProperty('countApproximate'))
-          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+          if (node.options.hasOwnProperty('countApproximate')) {
+viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+}
         }
         viewAnnotation += ' */';
         let viewVariables = '';
@@ -1418,7 +1426,9 @@ function processQuery(query, explain, planIndex) {
         if (node.count) {
           indexAnnotation += '/* with count optimization */';
         }
-        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
+        node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, false);
+});
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
           `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
           '   ' + annotation(indexAnnotation);
@@ -1483,10 +1493,12 @@ function processQuery(query, explain, planIndex) {
           if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
             // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
             // on the same collection
-            directions.push({ collection: node.edgeCollections[i], direction: 0 /* ANY */ });
+            directions.push({ collection: node.edgeCollections[i],
+direction: 0 /* ANY */ });
             ++i;
           } else {
-            directions.push({ collection: node.edgeCollections[i], direction: node.directions[i] });
+            directions.push({ collection: node.edgeCollections[i],
+direction: node.directions[i] });
           }
         }
 
@@ -1626,7 +1638,8 @@ function processQuery(query, explain, planIndex) {
                   d = 0; // ANY
                   ++i;
               }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+              directions.push({ collection: node.edgeCollections[i],
+direction: d });
           }
           rc += directions.map(function (g, index) {
             var tmp = '';
@@ -1744,7 +1757,8 @@ function processQuery(query, explain, planIndex) {
                   d = 0; // ANY
                   ++i;
               }
-              directions.push({ collection: node.edgeCollections[i], direction: d });
+              directions.push({ collection: node.edgeCollections[i],
+direction: d });
           }
           rc += directions.map(function (g, index) {
             var tmp = '';
@@ -1834,7 +1848,9 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') +
           (node.count ? ' ' + keyword('WITH COUNT') : '') +
           (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
-          (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable); }).join(', ') : '') +
+          (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) {
+ return variableName(variable);
+}).join(', ') : '') +
           '   ' + annotation('/* ' + node.aggregationOptions.method + ' */');
       case 'CollectNode':
         var collect = keyword('COLLECT') + ' ' +
@@ -1855,7 +1871,9 @@ function processQuery(query, explain, planIndex) {
           (node.count ? ' ' + keyword('WITH COUNT') : '') +
           (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
           ((node.expressionVariable && node.outVariable) ? " = " + variableName(node.expressionVariable) : "") +
-          (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
+          (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) {
+ return variableName(variable.variable);
+}).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
       case 'SortNode':
@@ -1869,7 +1887,7 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
       case 'SubqueryStartNode':
-        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}`;
       case 'SubqueryEndNode':
         if (node.inVariable) {
           return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
@@ -1898,7 +1916,9 @@ function processQuery(query, explain, planIndex) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
         return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'ReplaceNode': {
@@ -1915,13 +1935,17 @@ function processQuery(query, explain, planIndex) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
         return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         let indexRef = `${variableName(node.inDocVariable)}`;
-        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
       case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
@@ -1930,7 +1954,9 @@ function processQuery(query, explain, planIndex) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
         let indexRef = `${variableName(node.inVariable)}`;
-        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'SingleRemoteOperationNode': {
@@ -1938,7 +1964,9 @@ function processQuery(query, explain, planIndex) {
           case "IndexNode": {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
-            node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
             return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variableName(node.outVariable)}.${attribute('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
@@ -1947,7 +1975,9 @@ function processQuery(query, explain, planIndex) {
             collectionVariables[node.inVariable.id] = node.collection;
             let indexRef = `${variableName(node.inVariable)}`;
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
             }
             return `${keyword('INSERT')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)}`;
           }
@@ -1973,7 +2003,9 @@ function processQuery(query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -2004,7 +2036,9 @@ function processQuery(query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -2033,7 +2067,9 @@ function processQuery(query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) {
+ iterateIndexes(idx, i, node, types, indexRef);
+});
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -2064,7 +2100,9 @@ function processQuery(query, explain, planIndex) {
         }
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
-            return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+            return variableName(node.inVariable) + node.path.map(function (n) {
+ return '.' + attribute(n);
+}) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
@@ -2141,7 +2179,7 @@ function processQuery(query, explain, planIndex) {
     }
   };
 
-  const callstackSplit = function(node) {
+  const callstackSplit = function (node) {
     if (node.isCallstackSplitEnabled) {
       return annotation(' /* callstack split */');
     }
@@ -2273,11 +2311,12 @@ function processQuery(query, explain, planIndex) {
 }
 
 /* the exposed explain function */
-function explain(data, options, shouldPrint) {
+function explain (data, options, shouldPrint) {
   'use strict';
   // we need to clone here because options are modified later
   if (typeof data === 'string') {
-    data = { query: data, options: _.clone(options) };
+    data = { query: data,
+options: _.clone(options) };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
@@ -2324,7 +2363,7 @@ function explain(data, options, shouldPrint) {
 
 
 /* the exposed profile query function */
-function profileQuery(data, shouldPrint) {
+function profileQuery (data, shouldPrint) {
   'use strict';
   if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
     throw 'ArangoStatement needs initial data';
@@ -2350,7 +2389,7 @@ function profileQuery(data, shouldPrint) {
 }
 
 /* the exposed debug function */
-function debug(query, bindVars, options) {
+function debug (query, bindVars, options) {
   'use strict';
   let input = {};
 
@@ -2445,7 +2484,7 @@ function debug(query, bindVars, options) {
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
 
-  let handleCollection = function(collection) {
+  let handleCollection = function (collection) {
     let c = db._collection(collection.name);
     if (c === null) {
       // probably a view...
@@ -2476,7 +2515,8 @@ function debug(query, bindVars, options) {
         } else if (max < 0) {
           max = 0;
         }
-        examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
+        examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max,
+"@collection": collection.name }).toArray();
         if (input.options.anonymize) {
           examples = examples.map(anonymize);
         }
@@ -2500,7 +2540,7 @@ function debug(query, bindVars, options) {
 
   // add prototypes used for distributeShardsLike
   let sortedCollections = [];
-  Object.values(result.collections).forEach(function(collection) {
+  Object.values(result.collections).forEach(function (collection) {
     if (collection.properties.distributeShardsLike &&
         !result.collections.hasOwnProperty(collection.distributeShardsLike)) {
       handleCollection({ name: collection.name });
@@ -2508,7 +2548,7 @@ function debug(query, bindVars, options) {
     sortedCollections.push(collection);
   });
 
-  sortedCollections.sort(function(l, r) {
+  sortedCollections.sort(function (l, r) {
     if (l.properties.distributeShardsLike && !r.properties.distributeShardsLike) {
       return 1;
     } else if (!l.properties.distributeShardsLike && r.properties.distributeShardsLike) {
@@ -2529,7 +2569,7 @@ function debug(query, bindVars, options) {
   });
 
   result.collections = {};
-  sortedCollections.forEach(function(c) {
+  sortedCollections.forEach(function (c) {
     result.collections[c.name] = c;
   });
 
@@ -2537,13 +2577,13 @@ function debug(query, bindVars, options) {
   return result;
 }
 
-function debugDump(filename, query, bindVars, options) {
+function debugDump (filename, query, bindVars, options) {
   let result = debug(query, bindVars, options);
   require('fs').write(filename, JSON.stringify(result));
   require('console').log("stored query debug information in file '" + filename + "'");
 }
 
-function inspectDump(filename, outfile) {
+function inspectDump (filename, outfile) {
   let internal = require('internal');
   if (outfile !== undefined) {
     internal.startCaptureMode();
@@ -2647,7 +2687,9 @@ function inspectDump(filename, outfile) {
   print();
 
   print("/* explain result */");
-  print(data.fancy.trim().split(/\n/).map(function (line) { return "// " + line; }).join("\n"));
+  print(data.fancy.trim().split(/\n/).map(function (line) {
+ return "// " + line;
+}).join("\n"));
   print();
 
   print("/* explain command */");
@@ -2666,7 +2708,7 @@ function inspectDump(filename, outfile) {
   }
 }
 
-function explainQuerysRegisters(plan) {
+function explainQuerysRegisters (plan) {
 
   /**
    * @typedef Node
@@ -2695,7 +2737,7 @@ function explainQuerysRegisters(plan) {
     readRegister: '←',
     unusedRegister: '-',
     subqueryBegin: '↘',
-    subqueryEnd: '↙',
+    subqueryEnd: '↙'
   };
   Object.freeze(symbols);
 
@@ -2710,13 +2752,13 @@ function explainQuerysRegisters(plan) {
     return result;
   };
   const nodesById = getNodesById(nodes);
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // First, we build up the array nodesData. This will (though not while its
   // being built!) contain all nodes in a linearized fashion in the "canonical"
   // order, that is, starting from the leaf (singleton) at index 0. Subqueries
   // are inlined in that way as well. Each subquery node will occur *twice*,
   // once before and once after the actual subquery.
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
 
   /**
    * @type {Array<{node:Node, direction:('open'|'close'|undefined)}>}
@@ -2728,7 +2770,7 @@ function explainQuerysRegisters(plan) {
   const rootNode = nodes[nodes.length - 1];
 
   const subqueryStack = [];
-  for (let node = rootNode; node !== undefined; ) {
+  for (let node = rootNode; node !== undefined;) {
     const current = {node};
     nodesData.push(current);
     if (node.type === 'SubqueryNode') {
@@ -2757,11 +2799,11 @@ function explainQuerysRegisters(plan) {
 
   nodesData.reverse();
 
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // Second, we build up rowsInfos. Will contain one element per row/line that
   // shall be printed, with enough information that each field can be printed
   // and formatted on its own.
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
 
   /**
    * @typedef RowInfo
@@ -2788,7 +2830,9 @@ function explainQuerysRegisters(plan) {
     const regIdByVarId = Object.fromEntries(
       varInfoList.filter(varInfo => varInfo.RegisterId < 1000).map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
-    const meta = {id, type, depth};
+    const meta = {id,
+type,
+depth};
     const result = [];
 
     const varName = (variable) => {
@@ -2876,24 +2920,38 @@ function explainQuerysRegisters(plan) {
         let regsToKeep = regsToKeepStack[regsToKeepStack.length - 2];
         let regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 2];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, unusedRegs, regVarMap})});
-        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
-        result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+        result.push({meta,
+registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere,
+unusedRegs,
+regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear,
+regsToKeep})});
+        result.push({separator: symbols.subqueryBegin,
+registerFields: createRegisterFields(nrRegs)});
         regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
         regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap, unusedRegs})});
+        result.push({meta,
+registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere,
+regVarMap,
+unusedRegs})});
         result.push({registerFields: createRegisterFields(nrRegs, {regsToKeep})});
       }
         break;
       case 'SubqueryEndNode': {
-        const nrRegsInner = nrRegsArray[depth-1];
+        const nrRegsInner = nrRegsArray[depth - 1];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegsInner, {unusedRegs, regIdToVarNameUsedHere})});
-        result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegsInner)});
+        result.push({meta,
+registerFields: createRegisterFields(nrRegsInner, {unusedRegs,
+regIdToVarNameUsedHere})});
+        result.push({separator: symbols.subqueryEnd,
+registerFields: createRegisterFields(nrRegsInner)});
         const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
         const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, regVarMap})});
-        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+        result.push({meta,
+registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere,
+regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear,
+regsToKeep})});
       }
         break;
       case 'SubqueryNode': {
@@ -2901,15 +2959,21 @@ function explainQuerysRegisters(plan) {
         switch (direction) {
           case 'open': {
             // We could print regIdToVarNameUsedHere here...
-            result.push({separator: symbols.subqueryBegin, registerFields: createRegisterFields(nrRegs)});
+            result.push({separator: symbols.subqueryBegin,
+registerFields: createRegisterFields(nrRegs)});
           }
             break;
           case 'close': {
             const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
             const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
-            result.push({separator: symbols.subqueryEnd, registerFields: createRegisterFields(nrRegs)});
-            result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere, unusedRegs, regVarMap})});
-            result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+            result.push({separator: symbols.subqueryEnd,
+registerFields: createRegisterFields(nrRegs)});
+            result.push({meta,
+registerFields: createRegisterFields(nrRegs, {regIdToVarNameSetHere,
+unusedRegs,
+regVarMap})});
+            result.push({registerFields: createRegisterFields(nrRegs, {regsToClear,
+regsToKeep})});
           }
             break;
         }
@@ -2919,8 +2983,13 @@ function explainQuerysRegisters(plan) {
         const regsToKeep = regsToKeepStack[regsToKeepStack.length - 1];
         const unusedRegs = unusedRegsStack[unusedRegsStack.length - 1];
         const regVarMap = regIdToVarNameMapStack[regIdToVarNameMapStack.length - 1];
-        result.push({meta, registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere, regIdToVarNameSetHere, unusedRegs, regVarMap})});
-        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear, regsToKeep})});
+        result.push({meta,
+registerFields: createRegisterFields(nrRegs, {regIdToVarNameUsedHere,
+regIdToVarNameSetHere,
+unusedRegs,
+regVarMap})});
+        result.push({registerFields: createRegisterFields(nrRegs, {regsToClear,
+regsToKeep})});
       }
     }
 
@@ -2928,14 +2997,17 @@ function explainQuerysRegisters(plan) {
     }
   );
 
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // Third, set up additional information we'll need for formatting whole lines,
   // like the maximum width of all columns.
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   const columns = [
-    {name: 'id', alignment: 'r'},
-    {name: 'type', alignment: 'l'},
-    {name: 'depth', alignment: 'r'},
+    {name: 'id',
+alignment: 'r'},
+    {name: 'type',
+alignment: 'l'},
+    {name: 'depth',
+alignment: 'r'}
   ];
 
   /**
@@ -2958,9 +3030,9 @@ function explainQuerysRegisters(plan) {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // Fourth, do the actual formatting of each line and print them.
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
 
   /**
    * @param {string} value
@@ -3020,9 +3092,9 @@ function explainQuerysRegisters(plan) {
   }
 
 
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // Print a legend
-  //////////////////////////////////////////////////////////////////////////////
+  // ////////////////////////////////////////////////////////////////////////////
   // TODO Should this be optional?
 
   print(``);
@@ -3036,13 +3108,14 @@ function explainQuerysRegisters(plan) {
   print(` [ ${symbols.subqueryEnd} ]: Leaving a subquery`);
 }
 
-function explainRegisters(data, options, shouldPrint) {
+function explainRegisters (data, options, shouldPrint) {
   'use strict';
 
   console.warn("explainRegisters() is purposefully undocumented and may be changed or removed without notice.");
 
   if (typeof data === 'string') {
-    data = { query: data, options: options };
+    data = { query: data,
+options: options };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';

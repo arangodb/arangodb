@@ -41,14 +41,7 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
-
-
-
-
-
-
-function exampleGraphsSuite() {
+function exampleGraphsSuite () {
   let ex = require('@arangodb/graph-examples/example-graph');
 
   const ruleList = [["-all"], ["+all"], ["-all", "+optimize-traversals"], ["+all", "-optimize-traversals"]];

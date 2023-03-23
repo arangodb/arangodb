@@ -1,24 +1,24 @@
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -37,7 +37,8 @@ function ShellAqlRegressionSuite () {
     setUpAll: function () {
       // Create two shards, in one of them all `.value`s are smaller than all in the other.
       const numberOfShards = 2;
-      const col = db._create(colName, {numberOfShards, shardKeys: ["shardKey"]});
+      const col = db._create(colName, {numberOfShards,
+shardKeys: ["shardKey"]});
       const shardToKey = new Map();
       for (let shardKey = 0; shardToKey.size < numberOfShards; ++shardKey) {
         shardToKey.set(col.getResponsibleShard({shardKey}), shardKey);
@@ -45,7 +46,8 @@ function ShellAqlRegressionSuite () {
       let value = 0;
       for (const [shard, shardKey] of shardToKey) {
         shardKeys.push(shardKey);
-        const docs = Array.from({length: 1001}).map(_ => ({shardKey, value: value++}));
+        const docs = Array.from({length: 1001}).map(_ => ({shardKey,
+value: value++}));
         col.insert(docs);
       }
     },
@@ -57,13 +59,17 @@ function ShellAqlRegressionSuite () {
     testConstrainedSortingGatherSoftLimit: function () {
       const limit = 10;
       const query = `FOR d IN @@col SORT d.value LIMIT @limit RETURN d`;
-      const bindVars = {'@col': colName, limit};
+      const bindVars = {'@col': colName,
+limit};
       const batchSize = 1;
       const options = {
         optimizer: {rules: ['-parallelize-gather']},
-        stream: true,
+        stream: true
       };
-      const data = {query, bindVars, batchSize, options};
+      const data = {query,
+bindVars,
+batchSize,
+options};
       const stmt = db._createStatement(data);
       const {plan} = stmt.explain();
       assertEqual([
@@ -75,9 +81,9 @@ function ShellAqlRegressionSuite () {
           'RemoteNode',
           'GatherNode',
           'LimitNode',
-          'ReturnNode',
+          'ReturnNode'
         ],
-        plan.nodes.map(node => node.type),
+        plan.nodes.map(node => node.type)
       );
       const sortNode = plan.nodes[3];
       assertEqual('SortNode', sortNode.type);
@@ -101,7 +107,7 @@ function ShellAqlRegressionSuite () {
       } finally {
         cursor.dispose();
       }
-    },
+    }
   };
 }
 

@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,19 +31,19 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 let api = "/_api/explain";
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   return {
-    test_returns_an_error_if_body_is_missing: function() {
+    test_returns_an_error_if_body_is_missing: function () {
       let cmd = api;
-      let doc =  arango.POST_RAW(cmd, "");
+      let doc = arango.POST_RAW(cmd, "");
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -51,20 +51,20 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    test_returns_an_error_for_an_invalid_path: function() {
+    test_returns_an_error_for_an_invalid_path: function () {
       let cmd = api + "/foo";
-      let body = { "query" : "RETURN 1" };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "RETURN 1" };
+      let doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
     },
 
-    test_returns_an_error_if_collection_is_unknown: function() {
+    test_returns_an_error_if_collection_is_unknown: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN unknowncollection LIMIT 2 RETURN u.n" };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN unknowncollection LIMIT 2 RETURN u.n" };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -73,10 +73,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
     },
 
-    test_returns_an_error_if_bind_variables_are_missing_completely: function() {
+    test_returns_an_error_if_bind_variables_are_missing_completely: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN [1,2] FILTER u.id == @id RETURN 1" };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN [1,2] FILTER u.id == @id RETURN 1" };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -85,10 +85,11 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
     },
 
-    test_returns_an_error_if_bind_variables_are_required_but_empty: function() {
+    test_returns_an_error_if_bind_variables_are_required_but_empty: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN [1,2] FILTER u.id == @id RETURN 1", "bindVars" : { } };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN [1,2] FILTER u.id == @id RETURN 1",
+"bindVars": { } };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -97,10 +98,11 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
     },
 
-    test_returns_an_error_if_bind_variables_are_missing: function() {
+    test_returns_an_error_if_bind_variables_are_missing: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN [1,2] FILTER u.id == @id RETURN 1", "bindVars" : { "id2" : 1 } };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN [1,2] FILTER u.id == @id RETURN 1",
+"bindVars": { "id2": 1 } };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -109,10 +111,10 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code);
     },
 
-    test_returns_an_error_if_query_contains_a_parse_error: function() {
+    test_returns_an_error_if_query_contains_a_parse_error: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN " };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN " };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
       assertEqual(doc.headers['content-type'], contentType);
@@ -122,16 +124,16 @@ function error_handlingSuite () {
     }
   };
 }
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // explaining;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 
 function explaining_queriesSuite () {
   return {
-    test_explains_a_simple_query: function() {
+    test_explains_a_simple_query: function () {
       let cmd = api;
-      let body = { "query" : "FOR u IN [1,2] RETURN u" };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR u IN [1,2] RETURN u" };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -139,16 +141,16 @@ function explaining_queriesSuite () {
       assertEqual(doc.parsedBody['code'], 200);
     },
 
-    test_explains_query_window_aggregate_no_arguments: function() {
+    test_explains_query_window_aggregate_no_arguments: function () {
       let cmd = api;
-      let body = { "query" : "FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1" };
-      let doc =  arango.POST_RAW(cmd, body);
+      let body = { "query": "FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1" };
+      let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-    },
+    }
   };
 }
 jsunity.run(error_handlingSuite);

@@ -250,7 +250,9 @@ function EdgeIndexSuite () {
 
         // assert equal values
         if (n <= 1001) {
-          var keys = rv.map(function (x) { return x._to; });
+          var keys = rv.map(function (x) {
+ return x._to;
+});
           keys.sort();
           toKeys.sort();
           keys.forEach(function (x, i) {
@@ -271,7 +273,7 @@ function EdgeIndexSuite () {
       assertEqual([ '_from', '_to' ], indexes[1].fields);
       assertFalse(indexes[1].unique);
       assertFalse(indexes[1].sparse);
-    },
+    }
 
   };
 }

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertLess, AQL_EXECUTE, assertTrue, fail */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertLess, AQL_EXECUTE, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for regression returning blocks to the manager
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2021 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-/// @author Copyright 2021, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for regression returning blocks to the manager
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2021 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// / @author Copyright 2021, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const {assertEqual} = jsunity.jsUnity.assertions;
@@ -35,12 +35,12 @@ const errors = internal.errors;
 const db = require("@arangodb").db;
 
 // Regression test suite for https://github.com/arangodb/arangodb/issues/15107
-function subquerySplicingCrashRegressionSuite() {
+function subquerySplicingCrashRegressionSuite () {
   return {
-    setUpAll: function() {},
-    tearDownAll: function() {},
+    setUpAll: function () {},
+    tearDownAll: function () {},
 
-    testSubqueryEndHitShadowRowFirst: function() {
+    testSubqueryEndHitShadowRowFirst: function () {
       // This tests needs to fill an AQL itemBlock, s.t. one shadowRow
       // for the subqueryEnd is the start of the next AQLItemBlock
       // This will cause the upstream on subquery to be "DONE" but
@@ -54,14 +54,14 @@ function subquerySplicingCrashRegressionSuite() {
                    RETURN [] )
        RETURN response`;
       // Data
-      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } });
       const res = q.toArray();
-    },
+    }
   };
 }
 
 // Regression test for https://github.com/arangodb/arangodb/issues/16451
-function subquerySplicingLimitDroppingOuterRowsSuite() {
+function subquerySplicingLimitDroppingOuterRowsSuite () {
   return {
     testNestedSubqueryInnerLimitDroppingOuterRows: function () {
       // In the noted bug, the second SQS node (which starts the sqInner subquery)
@@ -75,7 +75,7 @@ function subquerySplicingLimitDroppingOuterRowsSuite() {
             LIMIT 1
           RETURN null)
         RETURN null`;
-      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } });
       const res = q.toArray();
       assertEqual(1000, res.length);
     },
@@ -98,10 +98,10 @@ function subquerySplicingLimitDroppingOuterRowsSuite() {
           )
         RETURN null`;
 
-      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } } );
+      const q = db._query(query, {}, { optimizer: { rules: [ "-all" ] } });
       const res = q.toArray();
       assertEqual(1000, res.length);
-    },
+    }
   };
 }
 

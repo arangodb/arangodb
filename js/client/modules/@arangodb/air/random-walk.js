@@ -37,7 +37,7 @@ exports.random_walk_program = random_walk_program;
 exports.random_walk = random_walk;
 exports.test = test;
 
-function random_walk_program(
+function random_walk_program (
     resultField
 ) {
     return {
@@ -303,7 +303,7 @@ function random_walk_program(
     };
 }
 
-function random_walk(
+function random_walk (
     graphName,
     resultField
 ) {
@@ -316,7 +316,7 @@ function random_walk(
     );
 }
 
-function compare_pregel(aqlResult) {
+function compare_pregel (aqlResult) {
     const res = aqlResult.toArray();
     if (res.length > 0) {
         internal.print("Test failed.");
@@ -328,7 +328,7 @@ function compare_pregel(aqlResult) {
     return true;
 }
 
-function exec_test_random_walk_impl(graphSpec) {
+function exec_test_random_walk_impl (graphSpec) {
     // Find the ID of a vertex to start at.
 
     internal.print(" -- computing random walk");
@@ -363,7 +363,7 @@ function exec_test_random_walk_impl(graphSpec) {
     }));
 }
 
-function exec_test_random_walk() {
+function exec_test_random_walk () {
     let results = [];
 
     results.push(exec_test_random_walk_impl(examplegraphs.create_line_graph("LineGraph10", 10, 1)));
@@ -441,6 +441,6 @@ function exec_test_random_walk() {
     return !results.includes(false);
 }
 
-function test() {
+function test () {
     return exec_test_random_walk();
 }

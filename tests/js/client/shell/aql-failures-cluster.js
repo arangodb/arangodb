@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue */
+/* jshint globalstrict:false, strict:false, maxlen: 400 */
+/* global fail, assertEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure scenarios
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test failure scenarios
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -49,9 +49,9 @@ const endpointToURL = (endpoint) => {
 
 const getEndpointById = (id) => {
   const toEndpoint = (d) => (d.endpoint);
-  return global.instanceManager.arangods.filter((d) => (d.id === id))
-    .map(toEndpoint)
-    .map(endpointToURL)[0];
+  return global.instanceManager.arangods.filter((d) => (d.id === id)).
+    map(toEndpoint).
+    map(endpointToURL)[0];
 };
 
 const callFinish = (server, route) => {
@@ -68,7 +68,7 @@ function aqlFailureSuite () {
   'use strict';
   const cn = "UnitTestsAhuacatlFailures";
 
-  let  assertFailingQuery = function (query, error) {
+  let assertFailingQuery = function (query, error) {
     if (error === undefined) {
       error = internal.errors.ERROR_DEBUG;
     }
@@ -100,7 +100,7 @@ function aqlFailureSuite () {
       }
     }
   };
-        
+
   return {
     setUpAll: function () {
       internal.debugClearFailAt();
@@ -121,7 +121,7 @@ function aqlFailureSuite () {
       internal.debugClearFailAt();
     },
 
-    testThatQueryIsntStuckAtShutdownIfFinishDBServerPartsThrows: function() {
+    testThatQueryIsntStuckAtShutdownIfFinishDBServerPartsThrows: function () {
       // Force cleanup to fail.
       // This should result in a positive query, but may leave locks on DBServers.
       internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
@@ -135,7 +135,7 @@ function aqlFailureSuite () {
       } finally {
         cleanUpLeftovers(warnings);
       }
-    },
+    }
 
     /*
      * This test is disabled due to the following reasons:
@@ -155,7 +155,7 @@ function aqlFailureSuite () {
     */
   };
 }
- 
+
 if (internal.debugCanUseFailAt()) {
   jsunity.run(aqlFailureSuite);
 }

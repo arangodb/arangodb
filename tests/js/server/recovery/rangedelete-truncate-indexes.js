@@ -38,16 +38,22 @@ function runSetup () {
   let c = db._createEdgeCollection('UnitTestsRecovery1');
   let docs = [];
   for (let i = 0; i < 100000; i++) {
-    docs.push({ _key: "test" + i, _from: "test/1", _to: "test/" + i, value: i });
+    docs.push({ _key: "test" + i,
+_from: "test/1",
+_to: "test/" + i,
+value: i });
     if (docs.length === 10000) {
       c.insert(docs);
       docs = [];
     }
   }
 
-  c.ensureIndex({ type: "hash", fields: ["value"] });
-  c.ensureIndex({ type: "hash", fields: ["value", "_to"], unique: true });
- 
+  c.ensureIndex({ type: "hash",
+fields: ["value"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value", "_to"],
+unique: true });
+
   // should trigger range deletion
   c.truncate();
 
@@ -73,13 +79,14 @@ function recoverySuite () {
       let c = db._collection('UnitTestsRecovery1');
       assertEqual(0, c.count());
       assertNotNull(db._collection('UnitTestsRecovery2'));
-  
+
       assertEqual([], c.edges("test/1"));
       let query = "FOR doc IN @@collection FILTER doc.value == @value RETURN doc";
-      
+
       for (let i = 0; i < 100000; i += 1000) {
         assertFalse(c.exists("key" + i));
-        assertEqual([], db._query(query, { "@collection": c.name(), value: i }).toArray());
+        assertEqual([], db._query(query, { "@collection": c.name(),
+value: i }).toArray());
         assertEqual([], c.edges("test/" + i));
       }
 

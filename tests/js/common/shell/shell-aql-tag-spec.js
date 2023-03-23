@@ -1,8 +1,8 @@
-/*global describe, it */
+/* global describe, it */
 const {expect} = require("chai");
 const {aql} = require("@arangodb");
 
-function createDummyCollection(name) {
+function createDummyCollection (name) {
   return {
     isArangoCollection: true,
     name: () => name
@@ -158,21 +158,29 @@ describe("aql.join", () => {
   it("merges fragments with a space by default", () => {
     const query = aql.join(fragments);
     expect(query.query).to.equal("x @value0 y @value1 z @value2");
-    expect(query.bindVars).to.eql({ value0: 1, value1: 2, value2: 3 });
+    expect(query.bindVars).to.eql({ value0: 1,
+value1: 2,
+value2: 3 });
   });
   it("merges fragments with an empty string", () => {
     const query = aql.join(fragments, "");
     expect(query.query).to.equal("x @value0y @value1z @value2");
-    expect(query.bindVars).to.eql({ value0: 1, value1: 2, value2: 3 });
+    expect(query.bindVars).to.eql({ value0: 1,
+value1: 2,
+value2: 3 });
   });
   it("merges fragments with an arbitrary string", () => {
     const query = aql.join(fragments, "abc");
     expect(query.query).to.equal("x @value0abcy @value1abcz @value2");
-    expect(query.bindVars).to.eql({ value0: 1, value1: 2, value2: 3 });
+    expect(query.bindVars).to.eql({ value0: 1,
+value1: 2,
+value2: 3 });
   });
   it("merges anything", () => {
     const query = aql.join([1, true, "yes", aql.literal("test")]);
     expect(query.query).to.equal("@value0 @value1 @value2 test");
-    expect(query.bindVars).to.eql({ value0: 1, value1: true, value2: "yes" });
+    expect(query.bindVars).to.eql({ value0: 1,
+value1: true,
+value2: "yes" });
   });
 });

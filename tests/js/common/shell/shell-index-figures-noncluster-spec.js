@@ -36,12 +36,12 @@ var db = internal.db;
 var expect = require('chai').expect;
 var should = require('chai').should();
 
-function verifyMemory(index){
+function verifyMemory (index) {
   expect(index.figures).to.be.ok;
   expect(index.figures.memory).to.be.a('number');
 }
 
-function verifyCache(index){
+function verifyCache (index) {
   if (index.type !== 'primary') {
     expect(index.figures).to.be.ok;
     expect(index.figures.cacheInUse).to.be.true;
@@ -69,39 +69,40 @@ describe('Index figures', function () {
     const colName = 'UnitTestEdges';
     let col;
 
-    before('create collection', function(){
+    before('create collection', function () {
       db._drop(colName);
       col = db._createEdgeCollection(colName);
     });
 
 
-    after(function() {
+    after(function () {
       db._drop(colName);
     });
 
-    describe('verify statistics', function() {
+    describe('verify statistics', function () {
 
-      before('insert documents', function() {
+      before('insert documents', function () {
         for (let i = 0; i < 100; i++) {
-          col.insert({"_from": "source/1", "_to": "sink/" + i});
+          col.insert({"_from": "source/1",
+"_to": "sink/" + i});
         }
       });
 
-      it('index types', function() {
+      it('index types', function () {
         var indexes = col.getIndexes(true);
         expect(indexes.length).to.be.equal(2);
         expect(indexes[0].type).to.be.equal("primary");
         expect(indexes[1].type).to.be.equal("edge");
       });
 
-      it('index - memory', function() {
+      it('index - memory', function () {
         var indexes = col.getIndexes(true);
         indexes.forEach((i) => {
             verifyMemory(i);
         });
       });
 
-      it('figures - cache', function() {
+      it('figures - cache', function () {
         var indexes = col.getIndexes(true);
         indexes.forEach((i) => {
           verifyCache(i);
@@ -110,17 +111,18 @@ describe('Index figures', function () {
 
     });
 
-    describe('loading indexes into memory', function() {
+    describe('loading indexes into memory', function () {
 
-      before('insert document', function() {
+      before('insert document', function () {
         // We insert enough documents to trigger resizing
         // of initial cache size.
         for (let i = 0; i < 23000; i++) {
-          col.insert({"_from": "source/" + i, "_to": "sink/" + i});
+          col.insert({"_from": "source/" + i,
+"_to": "sink/" + i});
         }
       });
 
-      it('should fill the cache', function() {
+      it('should fill the cache', function () {
         // The cache does not expose fillgrades an such.
         // We can only check memory consumption...
         let indexes = col.getIndexes(true);
@@ -148,37 +150,38 @@ describe('Index figures', function () {
   describe('hash index', function () {
     const colName = "UnitTestDoggyHash";
     var col;
-    before('create collection',function(){
+    before('create collection', function () {
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "hash", fields: ["name"]});
-      for(var i = 0; i < 100; i++){
-        col.insert({"name":"Harry"+i});
+      col.ensureIndex({type: "hash",
+fields: ["name"]});
+      for (var i = 0; i < 100; i++) {
+        col.insert({"name": "Harry" + i});
       }
     });
-    after(function() {
+    after(function () {
       db._drop(colName);
     });
-    it('verify index types', function() {
+    it('verify index types', function () {
       var indexes = col.getIndexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("hash");
     });
-    it('verify index - memory', function() {
+    it('verify index - memory', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
-    it.skip('verify figures - cache', function() {
+    it.skip('verify figures - cache', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
     });
-    after(function(){
+    after(function () {
       db._drop(col);
     });
   }); // end hash index
@@ -187,37 +190,38 @@ describe('Index figures', function () {
   describe('skiplist index', function () {
     const colName = "UnitTestDoggySkip";
     var col;
-    before('create collection',function(){
+    before('create collection', function () {
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "skiplist", fields: ["name"]});
-      for(var i = 0; i < 100; i++){
-        col.insert({"name":"Harry"+i});
+      col.ensureIndex({type: "skiplist",
+fields: ["name"]});
+      for (var i = 0; i < 100; i++) {
+        col.insert({"name": "Harry" + i});
       }
     });
-    after(function() {
+    after(function () {
       db._drop(colName);
     });
-    it('verify index types', function() {
+    it('verify index types', function () {
       var indexes = col.getIndexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("skiplist");
     });
-    it('verify index - memory', function() {
+    it('verify index - memory', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
-    it.skip('verify figures - cache', function() {
+    it.skip('verify figures - cache', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
     });
-    after(function(){
+    after(function () {
       db._drop(col);
     });
   }); // end skiplist index
@@ -226,37 +230,39 @@ describe('Index figures', function () {
   describe('fulltext index', function () {
     const colName = "UnitTestDoggyFull";
     var col;
-    before('create collection',function(){
+    before('create collection', function () {
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "fulltext", fields: ["name"], minLength : 3});
-      for(var i = 0; i < 100; i++){
-        col.insert({"name":"Harry"+i});
+      col.ensureIndex({type: "fulltext",
+fields: ["name"],
+minLength: 3});
+      for (var i = 0; i < 100; i++) {
+        col.insert({"name": "Harry" + i});
       }
     });
-    after(function() {
+    after(function () {
       db._drop(colName);
     });
-    it('verify index types', function() {
+    it('verify index types', function () {
       var indexes = col.getIndexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("fulltext");
     });
-    it('verify index - memory', function() {
+    it('verify index - memory', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
-    it.skip('verify figures - cache', function() {
+    it.skip('verify figures - cache', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
     });
-    after(function(){
+    after(function () {
       db._drop(col);
     });
   }); // end fulltext index
@@ -265,41 +271,42 @@ describe('Index figures', function () {
   describe('geo index', function () {
     const colName = "UnitTestGeoSpass";
     var col;
-    before('create collection',function(){
+    before('create collection', function () {
       db._drop(colName);
       col = db._createDocumentCollection(colName);
-      col.ensureIndex({type: "geo", fields: ["loc"]});
-      for(var i = 0; i < 10; i++){
-        for(var j = 0; j < 10; j++){
+      col.ensureIndex({type: "geo",
+fields: ["loc"]});
+      for (var i = 0; i < 10; i++) {
+        for (var j = 0; j < 10; j++) {
           col.insert({ "name": "place" + i + "/" + j,
-                       loc : [i, j]
+                       loc: [i, j]
                     });
         }
       }
     });
-    after(function() {
+    after(function () {
       db._drop(colName);
     });
-    it('verify index types', function() {
+    it('verify index types', function () {
       var indexes = col.getIndexes(true);
       expect(indexes.length).to.be.equal(2);
       expect(indexes[0].type).to.be.equal("primary");
       expect(indexes[1].type).to.be.equal("geo");
     });
-    it('verify index - memory', function() {
+    it('verify index - memory', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyMemory(i);
       });
     });
     // FIXME not implemented
-    it.skip('verify figures - cache', function() {
+    it.skip('verify figures - cache', function () {
       var indexes = col.getIndexes(true);
       indexes.forEach((i) => {
         verifyCache(i);
       });
     });
-    after(function(){
+    after(function () {
       db._drop(col);
     });
   }); // end fulltext index

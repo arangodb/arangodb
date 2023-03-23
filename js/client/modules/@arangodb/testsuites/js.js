@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'js_driver': 'javascript client driver test',
+  'js_driver': 'javascript client driver test'
 };
 const optionsDocumentation = [
   '   - `jssource`: directory of the java driver',
@@ -66,11 +66,11 @@ const testPaths = {
 
 function jsDriver (options) {
   class runInJsTest extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runInJsTest";
     }
-    run(file) {
+    run (file) {
       let topology;
       let results = {
         'message': ''
@@ -86,10 +86,10 @@ function jsDriver (options) {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;
       }
-      process.env['ARANGO_VERSION']='30700'; // todo db._version(),
+      process.env['ARANGO_VERSION'] = '30700'; // todo db._version(),
       process.env['TEST_ARANGODB_URL'] = this.instanceManager.endpoints.join(',');
       process.env['TEST_ARANGODB_URL_SELF_REACHABLE'] = this.instanceManager.url;
-      
+
       // testResultsDir
       let args = [
         '-s', // Silent, only json
@@ -135,14 +135,14 @@ function jsDriver (options) {
       testResults.tests.forEach(test => {
         let isSucces = _.isEmpty(test.err);
         let message = test.fullTitle + '\n' + test.file + '\n';
-        print((isSucces ? GREEN + '[     PASSED ] ':
-               RED + '[   FAILED   ] ') + test.title + RESET);
+        print((isSucces ? GREEN + '[     PASSED ] '
+               : RED + '[   FAILED   ] ') + test.title + RESET);
         if (!isSucces) {
           print(test);
           totalSuccess = false;
           message += test.err.message + '\n' + test.err.stack;
         }
-        
+
         results[test.title] = {
           "setUpDuration": 0,
           "tearDownDuration": 0,
@@ -153,7 +153,7 @@ function jsDriver (options) {
       });
       results['timeout'] = false;
       results['status'] = totalSuccess;
-      results['message'] = totalSuccess?'':'did you remember running yarn in the source?';
+      results['message'] = totalSuccess ? '' : 'did you remember running yarn in the source?';
       // this.instanceManager.dumpAgency();
       return results;
     }
@@ -172,6 +172,10 @@ function jsDriver (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['js_driver'] = jsDriver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

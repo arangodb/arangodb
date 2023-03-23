@@ -38,12 +38,19 @@ function runSetup () {
 
   db._drop(cn);
   let c = db._create(cn);
-  c.ensureIndex({ type: "persistent", fields: ["value1"], cacheEnabled: true, name: "idx-1" });
-  c.ensureIndex({ type: "persistent", fields: ["value2"], cacheEnabled: false, name: "idx-2" });
+  c.ensureIndex({ type: "persistent",
+fields: ["value1"],
+cacheEnabled: true,
+name: "idx-1" });
+  c.ensureIndex({ type: "persistent",
+fields: ["value2"],
+cacheEnabled: false,
+name: "idx-2" });
 
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
-    docs.push({ value1: i, value2: i });
+    docs.push({ value1: i,
+value2: i });
   }
   c.insert(docs);
 
@@ -61,7 +68,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    testIndexRecovery: function() {
+    testIndexRecovery: function () {
       let c = db._collection(cn);
       let indexes = c.indexes();
       assertEqual(3, indexes.length);
@@ -72,7 +79,7 @@ function recoverySuite () {
       assertEqual('persistent', indexes[2].type);
       assertEqual('idx-2', indexes[2].name);
       assertFalse(indexes[2].cacheEnabled);
-    },
+    }
 
   };
 }

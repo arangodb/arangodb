@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, fail, more */
+/* jshint globalstrict:false, strict:false, maxlen:1000*/
+/* global assertEqual, assertTrue, assertFalse, fail, more */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the statement class
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the statement class
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -34,20 +34,21 @@ const arangodb = require("@arangodb");
 const queries = require('@arangodb/aql/queries');
 const db = arangodb.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: statements
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: statements
+// //////////////////////////////////////////////////////////////////////////////
 
 function StatementSuite () {
   'use strict';
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cursor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testCursor : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
+    testCursor: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
+count: true });
       var cursor = stmt.execute();
 
       assertEqual(11, cursor.count());
@@ -59,35 +60,13 @@ function StatementSuite () {
       assertFalse(cursor.hasNext());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test to string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test to string
+// //////////////////////////////////////////////////////////////////////////////
 
-    testToString : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
-      var cursor = stmt.execute();
-
-      assertEqual(11, cursor.count());
-      assertTrue(cursor.hasNext());
-
-      // print it. this should not modify the cursor apart from when it's accessed for printing
-      cursor.toString();
-      assertTrue(more === cursor);
-
-      for (var i = 1; i <= 11; ++i) {
-        assertEqual(i, cursor.next());
-        assertEqual(i !== 11, cursor.hasNext());
-      }
-
-      assertFalse(cursor.hasNext());
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test more
-////////////////////////////////////////////////////////////////////////////////
-
-    testMore : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
+    testToString: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
+count: true });
       var cursor = stmt.execute();
 
       assertEqual(11, cursor.count());
@@ -97,6 +76,30 @@ function StatementSuite () {
       cursor.toString();
       assertTrue(more === cursor);
 
+      for (var i = 1; i <= 11; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 11, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test more
+// //////////////////////////////////////////////////////////////////////////////
+
+    testMore: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
+count: true });
+      var cursor = stmt.execute();
+
+      assertEqual(11, cursor.count());
+      assertTrue(cursor.hasNext());
+
+      // print it. this should not modify the cursor apart from when it's accessed for printing
+      cursor.toString();
+      assertTrue(more === cursor);
+
       cursor.toString();
       for (var i = 1; i <= 11; ++i) {
         assertEqual(i, cursor.next());
@@ -106,12 +109,13 @@ function StatementSuite () {
       assertFalse(cursor.hasNext());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test more
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test more
+// //////////////////////////////////////////////////////////////////////////////
 
-    testMoreEof : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", count: true });
+    testMoreEof: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
+count: true });
       var cursor = stmt.execute();
 
       assertEqual(11, cursor.count());
@@ -128,7 +132,7 @@ function StatementSuite () {
       } catch (err) {
         // we're expecting the cursor to be at the end
       }
-      
+
       assertTrue(cursor.hasNext());
       for (var i = 1; i <= 11; ++i) {
         assertEqual(i, cursor.next());
@@ -142,20 +146,20 @@ function StatementSuite () {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: statements
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: statements
+// //////////////////////////////////////////////////////////////////////////////
 
 function StatementStreamSuite () {
   'use strict';
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cursor
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test cursor
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStreamCursor : function () {
+    testStreamCursor: function () {
       var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
                                        options: { stream: true },
                                        batchSize: 50});
@@ -169,8 +173,8 @@ function StatementStreamSuite () {
 
       assertFalse(cursor.hasNext());
     },
-    
-    testStreamCursorOnTopLevel : function () {
+
+    testStreamCursorOnTopLevel: function () {
       var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
                                        stream: true,
                                        batchSize: 50});
@@ -185,12 +189,12 @@ function StatementStreamSuite () {
       assertFalse(cursor.hasNext());
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test to string
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test to string
+// //////////////////////////////////////////////////////////////////////////////
 
-    testStreamToString : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
+    testStreamToString: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
                                        options: { stream: true } });
       var cursor = stmt.execute();
 
@@ -210,8 +214,8 @@ function StatementStreamSuite () {
       assertFalse(cursor.hasNext());
     },
 
-    testStreamToStringOnTopLevel : function () {
-      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
+    testStreamToStringOnTopLevel: function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i",
                                        stream: true });
       var cursor = stmt.execute();
 
@@ -234,9 +238,9 @@ function StatementStreamSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(StatementSuite);
 jsunity.run(StatementStreamSuite);

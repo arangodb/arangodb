@@ -30,7 +30,7 @@
 let internal = require('internal');
 let arangosh = require('@arangodb/arangosh');
 
-let allDatabases = function(params) {
+let allDatabases = function (params) {
   let result = false;
   if (typeof params === 'boolean') {
     result = Boolean(params);

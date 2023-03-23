@@ -1,37 +1,37 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// //////////////////////////////////////////////////////////////////////////////
 
 const {db} = require("@arangodb");
 
-function* ValidKeyGenerator() {
+function *ValidKeyGenerator () {
   yield "6010215";
   // yield "test";
 }
 
-function* SpecialCharacterKeyGenerator() {
+function *SpecialCharacterKeyGenerator () {
   const keys = [
     ":", "-", "_", "@", ".", "..", "...", "a@b", "a@b.c", "a-b-c", "_a", "@a", "@a-b", ":80", ":_", "@:_",
     "0", "1", "123456", "0123456", "true", "false", "a", "A", "a1", "A1", "01ab01", "01AB01",
@@ -48,7 +48,7 @@ function* SpecialCharacterKeyGenerator() {
   }
 }
 
-function* BasicDocumentGenerator(keyGenerator) {
+function *BasicDocumentGenerator (keyGenerator) {
   for (const key of keyGenerator) {
     yield {
       _key: key,
@@ -59,35 +59,35 @@ function* BasicDocumentGenerator(keyGenerator) {
 
 class CollectionWrapper {
 
-  constructor(name) {
+  constructor (name) {
     this._collectionName = name;
   }
 
-  setUp() {
+  setUp () {
     db._create(this._collectionName);
   }
 
-  tearDown() {
+  tearDown () {
     db._drop(this._collectionName);
   }
 
-  clear() {
+  clear () {
     db[this._collectionName].truncate();
   }
 
-  rawCollection() {
+  rawCollection () {
     return db[this._collectionName];
   }
 
-  validKeyGenerator() {
+  validKeyGenerator () {
     return ValidKeyGenerator();
   }
 
-  specialKeyGenerator() {
+  specialKeyGenerator () {
     return SpecialCharacterKeyGenerator();
   }
 
-  documentGeneratorWithKeys(keyGenerator) {
+  documentGeneratorWithKeys (keyGenerator) {
     return BasicDocumentGenerator(keyGenerator);
   }
 }

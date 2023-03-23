@@ -1,4 +1,4 @@
-/*global describe, it */
+/* global describe, it */
 'use strict';
 const expect = require('chai').expect;
 const validateManifest = require('@arangodb/foxx/manifest').validateJson;
@@ -19,8 +19,8 @@ describe('Foxx manifest $schema field', () => {
       expect.fail();
     }
     // this may fail if logs are not printed
-    //const logs = request.get(`/_db/${db._name()}/_admin/log`, {json: true}).json;
-    //expect(logs.text.filter(text => text.includes(BAD_VALUE))).not.to.be.empty;
+    // const logs = request.get(`/_db/${db._name()}/_admin/log`, {json: true}).json;
+    // expect(logs.text.filter(text => text.includes(BAD_VALUE))).not.to.be.empty;
   });
   it(`falls back to "${CANONICAL_SCHEMA}" if invalid`, () => {
     const manifest = validateManifest('fake', { $schema: 'http://example.com' }, '/fake');

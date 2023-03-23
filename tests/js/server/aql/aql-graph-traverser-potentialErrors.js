@@ -42,13 +42,12 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 
-function potentialErrorsSuite() {
+function potentialErrorsSuite () {
   var vc, ec;
   var vertex = {};
-  
+
 
   return {
 

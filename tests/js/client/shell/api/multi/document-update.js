@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,25 +31,25 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function error_handlingSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
-      cid = db._create(cn, { waitForSync: true } );
+    setUp: function () {
+      cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_returns_an_error_if_document_identifier_is_missing: function() {
+    test_returns_an_error_if_document_identifier_is_missing: function () {
       let cmd = "/_api/document";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
@@ -63,7 +63,7 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted: function() {
+    test_returns_an_error_if_document_identifier_is_corrupted: function () {
       let cmd = "/_api/document/123456";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
@@ -77,7 +77,7 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function() {
+    test_returns_an_error_if_document_identifier_is_corrupted_with_empty_cid: function () {
       let cmd = "/_api/document//123456";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
@@ -99,7 +99,7 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_collection_identifier_is_unknown: function() {
+    test_returns_an_error_if_collection_identifier_is_unknown: function () {
       let cmd = "/_api/document/123456/234567";
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
@@ -113,7 +113,7 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_document_identifier_is_unknown: function() {
+    test_returns_an_error_if_document_identifier_is_unknown: function () {
       let cmd = `/_api/document/${cid._id}/234567`;
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
@@ -127,9 +127,9 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_returns_an_error_if_the_policy_parameter_is_bad: function() {
+    test_returns_an_error_if_the_policy_parameter_is_bad: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -154,7 +154,7 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_update_it_with_invalid_JSON: function() {
+    test_create_a_document_and_update_it_with_invalid_JSON: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -173,7 +173,7 @@ function error_handlingSuite () {
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
     },
 
-    test_create_a_document_and_replace_it__using_ignoreRevsEQfalse: function() {
+    test_create_a_document_and_replace_it__using_ignoreRevsEQfalse: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
       let body = "{ \"Hallo\" : \"World\" }";
       let doc = arango.POST_RAW(cmd, body);
@@ -188,7 +188,8 @@ function error_handlingSuite () {
 
       // update document, different revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": "658993", "World" : "Hallo" };
+      body = { "_rev": "658993",
+"World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 412);
@@ -205,7 +206,8 @@ function error_handlingSuite () {
 
       // update document, same revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": rev, "World" : "Hallo" };
+      body = { "_rev": rev,
+"World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -220,7 +222,7 @@ function error_handlingSuite () {
       assertNotEqual(rev2, rev);
 
       cmd = `/_api/collection/${cid._id}/properties`;
-      body = { "waitForSync" : false };
+      body = { "waitForSync": false };
       doc = arango.PUT_RAW(cmd, body);
 
       // wait for dbservers to pick up the change;
@@ -228,7 +230,8 @@ function error_handlingSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": rev2, "World" : "Hallo2" };
+      body = { "_rev": rev2,
+"World": "Hallo2" };
       let doc3 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc3.code, 202);
@@ -237,7 +240,8 @@ function error_handlingSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false&waitForSync=true`;
-      body = { "_rev": rev3, "World" : "Hallo3" };
+      body = { "_rev": rev3,
+"World": "Hallo3" };
       let doc4 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc4.code, 201);
@@ -249,9 +253,10 @@ function error_handlingSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_replace_it__using_ignoreRevsEQfalse_with_key: function() {
+    test_create_a_document_and_replace_it__using_ignoreRevsEQfalse_with_key: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "_key" : "hello", "Hallo" : "World" };
+      let body = { "_key": "hello",
+"Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -264,7 +269,9 @@ function error_handlingSuite () {
 
       // update document, different revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev" : "658993", "World" : "Hallo" };
+      body = { "_key": "hello",
+"_rev": "658993",
+"World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code);
@@ -281,7 +288,9 @@ function error_handlingSuite () {
 
       // update document, same revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev": rev, "World" : "Hallo" };
+      body = { "_key": "hello",
+"_rev": rev,
+"World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -296,7 +305,7 @@ function error_handlingSuite () {
       assertNotEqual(rev2, rev);
 
       cmd = `/_api/collection/${cid._id}/properties`;
-      body = { "waitForSync" : false };
+      body = { "waitForSync": false };
       doc = arango.PUT_RAW(cmd, body);
 
       // wait for dbservers to pick up the change;
@@ -304,7 +313,9 @@ function error_handlingSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev": rev2, "World" : "Hallo2" };
+      body = { "_key": "hello",
+"_rev": rev2,
+"World": "Hallo2" };
       let doc3 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc3.code, 202);
@@ -313,7 +324,9 @@ function error_handlingSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false&waitForSync=true`;
-      body = { "_key" : "hello", "_rev": rev3, "World" : "Hallo3" };
+      body = { "_key": "hello",
+"_rev": rev3,
+"World": "Hallo3" };
       let doc4 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc4.code, 201);
@@ -323,28 +336,28 @@ function error_handlingSuite () {
       arango.DELETE(location);
 
       assertEqual(db[cn].count(), 0);
-    },
+    }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // updating documents;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function updating_documentSuite () {
   let cn = "UnitTestsCollectionBasics";
   let cid;
   return {
-    setUp: function() {
-      cid = db._create(cn, { waitForSync: true } );
+    setUp: function () {
+      cid = db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db._drop(cn);
     },
 
-    test_create_a_document_and_update_it: function() {
+    test_create_a_document_and_update_it: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -357,7 +370,7 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}`;
-      body = { "World" : "Hallo" };
+      body = { "World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -376,9 +389,9 @@ function updating_documentSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_update_it__using_if_match: function() {
+    test_create_a_document_and_update_it__using_if_match: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -392,7 +405,7 @@ function updating_documentSuite () {
       // replace document, different revision;
       cmd = `/_api/document/${did}`;
       let hdr = { "if-match": '"658993"' };
-      body = { "World" : "Hallo" };
+      body = { "World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body, hdr);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code);
@@ -410,7 +423,7 @@ function updating_documentSuite () {
       // update document, same revision;
       cmd = `/_api/document/${did}`;
       hdr = { "if-match": rev };
-      body = { "World" : "Hallo" };
+      body = { "World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body, hdr);
 
       assertEqual(doc.code, 201);
@@ -425,7 +438,7 @@ function updating_documentSuite () {
       assertNotEqual(rev2, rev);
 
       cmd = `/_api/collection/${cid._id}/properties`;
-      body = { "waitForSync" : false };
+      body = { "waitForSync": false };
       doc = arango.PUT_RAW(cmd, body);
 
       // wait for dbservers to pick up the change;
@@ -434,7 +447,7 @@ function updating_documentSuite () {
       // update document ;
       cmd = `/_api/document/${did}`;
       hdr = { "if-match": rev2 };
-      body = { "World" : "Hallo2" };
+      body = { "World": "Hallo2" };
       let doc3 = arango.PUT_RAW(cmd, body, hdr);
 
       assertEqual(doc3.code, 202);
@@ -444,7 +457,7 @@ function updating_documentSuite () {
       // update document ;
       cmd = `/_api/document/${did}?waitForSync=true`;
       hdr = { "if-match": rev3 };
-      body = { "World" : "Hallo3" };
+      body = { "World": "Hallo3" };
       let doc4 = arango.PUT_RAW(cmd, body, hdr);
 
       assertEqual(doc4.code, 201);
@@ -456,9 +469,9 @@ function updating_documentSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_update_it__using_an_invalid_revision: function() {
+    test_create_a_document_and_update_it__using_an_invalid_revision: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -497,9 +510,9 @@ function updating_documentSuite () {
       assertEqual(doc.code, 201);
     },
 
-    test_create_a_document_and_update_it__waitForSync_URL_paramEQfalse: function() {
+    test_create_a_document_and_update_it__waitForSync_URL_paramEQfalse: function () {
       let cmd = `/_api/document?collection=${cid._id}&waitForSync=false`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -512,7 +525,7 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}`;
-      body = { "World" : "Hallo" };
+      body = { "World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -531,9 +544,9 @@ function updating_documentSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_update_it__waitForSync_URL_paramEQtrue: function() {
+    test_create_a_document_and_update_it__waitForSync_URL_paramEQtrue: function () {
       let cmd = `/_api/document?collection=${cid._id}&waitForSync=true`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -546,7 +559,7 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}`;
-      body = { "World" : "Hallo" };
+      body = { "World": "Hallo" };
       doc = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -565,9 +578,9 @@ function updating_documentSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_update_a_document__using_patch: function() {
+    test_update_a_document__using_patch: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -580,7 +593,7 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}`;
-      body = { "fox" : "Foxy" };
+      body = { "fox": "Foxy" };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -604,9 +617,9 @@ function updating_documentSuite () {
       assertEqual(doc.parsedBody['fox'], 'Foxy');
     },
 
-    test_update_a_document__using_patch__keepNull_EQ_true: function() {
+    test_update_a_document__using_patch__keepNull_EQ_true: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -619,7 +632,8 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}?keepNull=true`;
-      body = { "fox" : "Foxy", "Hallo" : null };
+      body = { "fox": "Foxy",
+"Hallo": null };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -643,9 +657,9 @@ function updating_documentSuite () {
       assertEqual(doc.parsedBody['fox'], 'Foxy');
     },
 
-    test_update_a_document__using_patch__keepNull_EQ_false: function() {
+    test_update_a_document__using_patch__keepNull_EQ_false: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -658,7 +672,8 @@ function updating_documentSuite () {
 
       // update document;
       cmd = `/_api/document/${did}?keepNull=false`;
-      body = { "fox" : "Foxy", "Hallo" : null };
+      body = { "fox": "Foxy",
+"Hallo": null };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -682,9 +697,9 @@ function updating_documentSuite () {
       assertEqual(doc.parsedBody['fox'], 'Foxy');
     },
 
-    test_update_a_document__using_duplicate_attributes: function() {
+    test_update_a_document__using_duplicate_attributes: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -703,9 +718,9 @@ function updating_documentSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_update_a_document__using_duplicate_nested_attributes: function() {
+    test_update_a_document__using_duplicate_nested_attributes: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -724,9 +739,9 @@ function updating_documentSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_replace_a_document__using_duplicate_attributes: function() {
+    test_replace_a_document__using_duplicate_attributes: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -745,9 +760,9 @@ function updating_documentSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_replace_a_document__using_duplicate_nested_attributes: function() {
+    test_replace_a_document__using_duplicate_nested_attributes: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -766,9 +781,9 @@ function updating_documentSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_create_a_document_and_update_it__using_ignoreRevsEQfalse: function() {
+    test_create_a_document_and_update_it__using_ignoreRevsEQfalse: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "Hallo" : "World" };
+      let body = { "Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -781,7 +796,8 @@ function updating_documentSuite () {
 
       // update document, different revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": "658993", "World" : "Hallo" };
+      body = { "_rev": "658993",
+"World": "Hallo" };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code);
@@ -798,7 +814,8 @@ function updating_documentSuite () {
 
       // update document, same revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": rev, "World" : "Hallo" };
+      body = { "_rev": rev,
+"World": "Hallo" };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -813,7 +830,7 @@ function updating_documentSuite () {
       assertNotEqual(rev2, rev);
 
       cmd = `/_api/collection/${cid._id}/properties`;
-      body = { "waitForSync" : false };
+      body = { "waitForSync": false };
       doc = arango.PUT_RAW(cmd, body);
 
       // wait for dbservers to pick up the change;
@@ -821,7 +838,8 @@ function updating_documentSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_rev": rev2, "World" : "Hallo2" };
+      body = { "_rev": rev2,
+"World": "Hallo2" };
       let doc3 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc3.code, 202);
@@ -830,7 +848,8 @@ function updating_documentSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false&waitForSync=true`;
-      body = { "_rev": rev3, "World" : "Hallo3" };
+      body = { "_rev": rev3,
+"World": "Hallo3" };
       let doc4 = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc4.code, 201);
@@ -842,9 +861,10 @@ function updating_documentSuite () {
       assertEqual(db[cn].count(), 0);
     },
 
-    test_create_a_document_and_update_it__using_ignoreRevsEQfalse_with_key: function() {
+    test_create_a_document_and_update_it__using_ignoreRevsEQfalse_with_key: function () {
       let cmd = `/_api/document?collection=${cid._id}`;
-      let body = { "_key" : "hello", "Hallo" : "World" };
+      let body = { "_key": "hello",
+"Hallo": "World" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -857,7 +877,9 @@ function updating_documentSuite () {
 
       // update document, different revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev" : "658993", "World" : "Hallo" };
+      body = { "_key": "hello",
+"_rev": "658993",
+"World": "Hallo" };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code);
@@ -874,7 +896,9 @@ function updating_documentSuite () {
 
       // update document, same revision;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev" : rev, "World" : "Hallo" };
+      body = { "_key": "hello",
+"_rev": rev,
+"World": "Hallo" };
       doc = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc.code, 201);
@@ -889,7 +913,7 @@ function updating_documentSuite () {
       assertNotEqual(rev2, rev);
 
       cmd = `/_api/collection/${cid._id}/properties`;
-      body = { "waitForSync" : false };
+      body = { "waitForSync": false };
       doc = arango.PUT_RAW(cmd, body);
 
       // wait for dbservers to pick up the change;
@@ -897,7 +921,9 @@ function updating_documentSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false`;
-      body = { "_key" : "hello", "_rev": rev2, "World" : "Hallo2" };
+      body = { "_key": "hello",
+"_rev": rev2,
+"World": "Hallo2" };
       let doc3 = arango.PUT_RAW(cmd, body);
 
       assertEqual(doc3.code, 202);
@@ -906,7 +932,9 @@ function updating_documentSuite () {
 
       // update document ;
       cmd = `/_api/document/${did}?ignoreRevs=false&waitForSync=true`;
-      body = { "_key" : "hello", "_rev": rev3, "World" : "Hallo3" };
+      body = { "_key": "hello",
+"_rev": rev3,
+"World": "Hallo3" };
       let doc4 = arango.PATCH_RAW(cmd, body);
 
       assertEqual(doc4.code, 201);
@@ -916,7 +944,7 @@ function updating_documentSuite () {
       arango.DELETE(location);
 
       assertEqual(db[cn].count(), 0);
-    },
+    }
   };
 }
 

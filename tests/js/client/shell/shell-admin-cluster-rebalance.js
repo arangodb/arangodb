@@ -37,7 +37,7 @@ const suspendExternal = internal.suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const wait = require("internal").wait;
 
-function resignServer(server) {
+function resignServer (server) {
   let res = arango.POST_RAW("/_admin/cluster/resignLeadership", {server});
   assertEqual(202, res.code);
   const id = res.parsedBody.id;
@@ -53,27 +53,27 @@ function resignServer(server) {
   assertTrue(false, `We failed to resign a leader in 50s. We cannot reliably test rebalancing of shards now.`);
 }
 
-function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {
+function getRebalancePlan (moveLeaders, moveFollowers, leaderChanges, excludeSystemCollections) {
   const result = arango.POST('/_admin/cluster/rebalance', {
     version: 1,
     moveLeaders: moveLeaders,
     moveFollowers: moveFollowers,
     leaderChanges: leaderChanges,
     excludeSystemCollections: excludeSystemCollections,
-    databasesExcluded: ["_system"],
+    databasesExcluded: ["_system"]
   });
   assertEqual(result.code, 200);
   assertEqual(result.error, false);
   return result;
 }
 
-function getServersHealth() {
+function getServersHealth () {
   let result = arango.GET_RAW('/_admin/cluster/health');
   assertTrue(result.parsedBody.hasOwnProperty("Health"));
   return result.parsedBody.Health;
 }
 
-function clusterRebalanceSuite() {
+function clusterRebalanceSuite () {
   let prevDB = null;
   return {
     setUpAll: function () {
@@ -113,7 +113,7 @@ function clusterRebalanceSuite() {
         moveLeaders: true,
         moveFollowers: true,
         leaderChanges: true,
-        databasesExcluded: ["_system"],
+        databasesExcluded: ["_system"]
       });
       assertEqual(result.code, 200); // should be refused
       assertEqual(result.error, false); // should be refused
@@ -129,7 +129,7 @@ function clusterRebalanceSuite() {
         moveLeaders: true,
         moveFollowers: true,
         leaderChanges: true,
-        databasesExcluded: ["_system"],
+        databasesExcluded: ["_system"]
       });
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
@@ -138,7 +138,8 @@ function clusterRebalanceSuite() {
         assertNotEqual(job.database, "_system");
       }
 
-      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves});
+      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1,
+moves});
       if (moves.length > 0) {
         assertEqual(result.code, 202);
       } else {
@@ -147,7 +148,8 @@ function clusterRebalanceSuite() {
       assertEqual(result.error, false);
 
       // empty set of moves
-      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1, moves: []});
+      result = arango.POST('/_admin/cluster/rebalance/execute', {version: 1,
+moves: []});
       assertEqual(result.code, 200);
       assertEqual(result.error, false);
 
@@ -165,14 +167,15 @@ function clusterRebalanceSuite() {
 
     testExecuteRebalanceVersion: function () {
       let result = arango.POST('/_admin/cluster/rebalance/execute', {
-        version: 3, moves: []
+        version: 3,
+moves: []
       });
       assertEqual(result.code, 400);
-    },
+    }
   };
 }
 
-function clusterRebalanceOtherOptionsSuite() {
+function clusterRebalanceOtherOptionsSuite () {
   let prevDB = null;
   const numCols = 3;
 
@@ -183,7 +186,8 @@ function clusterRebalanceOtherOptionsSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
       for (let i = 0; i < numCols; ++i) {
-        db._create("col" + i, {numberOfShards: 2, replicationFactor: 2});
+        db._create("col" + i, {numberOfShards: 2,
+replicationFactor: 2});
       }
 
       let docs = [];
@@ -332,12 +336,12 @@ function clusterRebalanceOtherOptionsSuite() {
           }
         }
       });
-    },
+    }
 
   };
 }
 
-function clusterRebalanceWithMovesToMakeSuite() {
+function clusterRebalanceWithMovesToMakeSuite () {
   let prevDB = null;
   const cn = "col1";
 
@@ -360,7 +364,8 @@ function clusterRebalanceWithMovesToMakeSuite() {
       const end = start + 300;
       for (let i = 1; i <= 3; ++i) {
         const toServer = "DBServer000" + i;
-        db._create(cn, {numberOfShards: 8, replicationFactor: 1});
+        db._create(cn, {numberOfShards: 8,
+replicationFactor: 1});
         try {
           const plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
           Object.entries(plan).forEach((shardInfo) => {
@@ -404,7 +409,7 @@ function clusterRebalanceWithMovesToMakeSuite() {
           db._drop(cn);
         }
       }
-    },
+    }
   };
 }
 

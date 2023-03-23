@@ -47,7 +47,7 @@ module.exports = function collectionStorage (cfg) {
   assert(cfg.collection, 'Must pass a collection to store sessions');
   assert(collection.isArangoCollection, `No such collection: ${cfg.collection}`);
   return {
-    prune() {
+    prune () {
       return db._query(aql`
         FOR session IN ${collection}
         FILTER session.expires < DATE_NOW()
@@ -55,7 +55,7 @@ module.exports = function collectionStorage (cfg) {
         RETURN OLD._key
       `).toArray();
     },
-    fromClient(sid) {
+    fromClient (sid) {
       try {
         const now = Date.now();
         const session = collection.document(sid);
@@ -81,10 +81,10 @@ module.exports = function collectionStorage (cfg) {
         throw e;
       }
     },
-    forClient(session) {
+    forClient (session) {
       return session && session._key || null;
     },
-    save(session) {
+    save (session) {
       if (!session) {
         return null;
       }
@@ -115,7 +115,7 @@ module.exports = function collectionStorage (cfg) {
       }
       return session;
     },
-    clear(session) {
+    clear (session) {
       if (!session || !session._key) {
         return false;
       }
@@ -129,7 +129,7 @@ module.exports = function collectionStorage (cfg) {
       }
       return true;
     },
-    new() {
+    new () {
       return {
         uid: null,
         created: Date.now(),

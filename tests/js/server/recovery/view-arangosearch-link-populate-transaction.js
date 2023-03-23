@@ -48,10 +48,12 @@ function runSetup () {
     collections: {
       write: ['UnitTestsRecoveryDummy']
     },
-    action: function() {
+    action: function () {
       var c = db.UnitTestsRecoveryDummy;
       for (let i = 0; i < 10000; i++) {
-        c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+        c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i });
       }
     },
     waitForSync: true

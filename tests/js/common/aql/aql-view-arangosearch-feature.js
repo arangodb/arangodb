@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrey Abramov
+// / @author Vasiliy Nabatchikov
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -32,35 +32,37 @@ const arango = require('@arangodb').arango;
 const internal = require('internal');
 const isCluster = internal.isCluster();
 const isEnterprise = internal.isEnterprise();
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function iResearchFeatureAqlTestSuite () {
-  let cleanup = function() {
+  let cleanup = function () {
     db._useDatabase("_system");
-    db._analyzers.toArray().forEach(function(analyzer) {
-      try { analyzers.remove(analyzer.name, true); } catch (err) {}
+    db._analyzers.toArray().forEach(function (analyzer) {
+      try {
+ analyzers.remove(analyzer.name, true);
+} catch (err) {}
     });
     assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
   };
 
   return {
-    setUp : function () {
+    setUp: function () {
       cleanup();
     },
 
-    tearDown : function () {
+    tearDown: function () {
       cleanup();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchAnalyzerFeature tests
-////////////////////////////////////////////////////////////////////////////////
-    testAnalyzersCollectionPresent: function() {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief IResearchAnalyzerFeature tests
+// //////////////////////////////////////////////////////////////////////////////
+    testAnalyzersCollectionPresent: function () {
       let dbName = "analyzersCollTestDb";
-      try { 
-        db._dropDatabase(dbName); 
+      try {
+        db._dropDatabase(dbName);
       } catch (e) {}
 
       db._createDatabase(dbName);
@@ -73,11 +75,14 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testAnalyzersInvalidPropertiesDiscarded : function() {
+    testAnalyzersInvalidPropertiesDiscarded: function () {
       {
-        try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
+        try {
+analyzers.remove("normPropAnalyzer");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale": "en",
+"invalid_param": true});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -88,9 +93,13 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
+        try {
+analyzers.remove("textPropAnalyzer");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords": [],
+"locale": "en",
+"invalid_param": true});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -101,9 +110,14 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("textPropAnalyzerWithNgram"); } catch (e) {}
+        try {
+analyzers.remove("textPropAnalyzerWithNgram");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords" : [], "locale":"en", "edgeNgram" : { "min" : 2, "invalid_param":true}});
+        let analyzer = analyzers.save("textPropAnalyzerWithNgram", "text", {"stopwords": [],
+"locale": "en",
+"edgeNgram": { "min": 2,
+"invalid_param": true}});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -114,9 +128,12 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
+        try {
+analyzers.remove("delimiterPropAnalyzer");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter": "|",
+"invalid_param": true});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -127,9 +144,12 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
+        try {
+analyzers.remove("stemPropAnalyzer");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale": "en",
+"invalid_param": true});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -140,9 +160,14 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldCount, db._analyzers.count());
       }
       {
-        try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
+        try {
+analyzers.remove("ngramPropAnalyzer");
+} catch (e) {}
         let oldCount = db._analyzers.count();
-        let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min": 1,
+"max": 5,
+"preserveOriginal": true,
+"invalid_param": true});
         try {
           assertEqual(oldCount + 1, db._analyzers.count());
           assertNotNull(analyzer);
@@ -155,16 +180,23 @@ function iResearchFeatureAqlTestSuite () {
       {
         if (!isEnterprise) {
           try {
-            analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter", properties: { delimiter:"-" } }, numHashes: 5 }); 
+            analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter",
+properties: { delimiter: "-" } },
+numHashes: 5 });
             assertTrue(false);
           } catch (e) {
             assertEqual(9, e.errorNum);
             assertEqual("Not implemented analyzer type 'minhash'.", e.errorMessage);
           }
         } else {
-          try {analyzers.remove("minHashAnalyzer"); } catch (e) {}
+          try {
+analyzers.remove("minHashAnalyzer");
+} catch (e) {}
           let oldCount = db._analyzers.count();
-          let analyzer = analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter", properties: { delimiter:"-" } }, numHashes: 5, invalid_param: true }); 
+          let analyzer = analyzers.save("minHashAnalyzer", "minhash", { analyzer: { type: "delimiter",
+properties: { delimiter: "-" } },
+numHashes: 5,
+invalid_param: true });
           try {
             assertEqual(oldCount + 1, db._analyzers.count());
             assertNotNull(analyzer);
@@ -181,16 +213,20 @@ function iResearchFeatureAqlTestSuite () {
 
         if (!isEnterprise) {
           try {
-            analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true}); 
+            analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile,
+"invalid_param": true});
             assertTrue(false);
           } catch (e) {
             assertEqual(9, e.errorNum);
             assertEqual("Not implemented analyzer type 'classification'.", e.errorMessage);
           }
         } else {
-          try {analyzers.remove("classificationPropAnalyzer"); } catch (e) {}
+          try {
+analyzers.remove("classificationPropAnalyzer");
+} catch (e) {}
           let oldCount = db._analyzers.count();
-          let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile, "invalid_param": true});
+          let analyzer = analyzers.save("classificationPropAnalyzer", "classification", { "model_location": modelFile,
+"invalid_param": true});
           try {
             assertEqual(oldCount + 1, db._analyzers.count());
             assertNotNull(analyzer);
@@ -206,17 +242,21 @@ function iResearchFeatureAqlTestSuite () {
         const modelFile = require("path").resolve(filePath);
 
         if (!isEnterprise) {
-          try { 
-            analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+          try {
+            analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile,
+"invalid_param": true});
             assertTrue(false);
           } catch (e) {
             assertEqual(9, e.errorNum);
             assertEqual("Not implemented analyzer type 'nearest_neighbors'.", e.errorMessage);
           }
         } else {
-          try {analyzers.remove("nearestNeighborsPropAnalyzer"); } catch (e) {}
+          try {
+analyzers.remove("nearestNeighborsPropAnalyzer");
+} catch (e) {}
           let oldCount = db._analyzers.count();
-          let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile, "invalid_param": true});
+          let analyzer = analyzers.save("nearestNeighborsPropAnalyzer", "nearest_neighbors", { "model_location": modelFile,
+"invalid_param": true});
           try {
             assertEqual(oldCount + 1, db._analyzers.count());
             assertNotNull(analyzer);
@@ -229,21 +269,25 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testAnalyzerRemovalWithDatabaseName_InSystem: function() {
+    testAnalyzerRemovalWithDatabaseName_InSystem: function () {
       let dbName = "analyzerWrongDbName1";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         try {
           db._useDatabase(dbName);
-          analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          analyzers.save("MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           db._useDatabase("_system");
           analyzers.remove(dbName + "::MyTrigram");
           fail(); // removal with db name in wrong current used db should also fail
-        } catch(e) {
-          assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+        } catch (e) {
+          assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
                          e.errorNum);
-        } finally { 
+        } finally {
           db._useDatabase(dbName);
           analyzers.remove(dbName + "::MyTrigram", true);
         }
@@ -252,33 +296,43 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzerCreateRemovalWithDatabaseName_InDb: function() {
+    testAnalyzerCreateRemovalWithDatabaseName_InDb: function () {
       let dbName = "analyzerWrongDbName2";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         try {
-          analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
                          e.errorNum);
         }
         db._useDatabase(dbName);
-        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-        analyzers.remove(dbName + "::MyTrigram", true); 
+        analyzers.save(dbName + "::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
+        analyzers.remove(dbName + "::MyTrigram", true);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzerUseOnDBServer_InDb: function() {
+    testAnalyzerUseOnDBServer_InDb: function () {
       let dbName = "analyzerUseOnDbServer";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
-        analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+        analyzers.save("MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
 
         // NOOPT guarantees that TOKENS function will be executed on DB server
         let res = db._query("FOR d IN _analyzers FILTER NOOPT(LENGTH(TOKENS('foobar', 'MyTrigram')) > 0) RETURN d").toArray();
@@ -302,51 +356,69 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzerCreateRemovalWithDatabaseName_InSystem: function() {
+    testAnalyzerCreateRemovalWithDatabaseName_InSystem: function () {
       let dbName = "analyzerWrongDbName3";
-      try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove("MyTrigram"); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
+      try {
+ analyzers.remove("MyTrigram");
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         // cross-db request should fail
         try {
-          analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          analyzers.save("::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
                          e.errorNum);
         }
         try {
-          analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          analyzers.save("_system::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
                          e.errorNum);
         }
         // in _system db requests should be ok
         db._useDatabase("_system");
-        analyzers.save("::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-        analyzers.remove("::MyTrigram", true); 
-        analyzers.save("_system::MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true }); 
-        analyzers.remove("_system::MyTrigram", true); 
+        analyzers.save("::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
+        analyzers.remove("::MyTrigram", true);
+        analyzers.save("_system::MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
+        analyzers.remove("_system::MyTrigram", true);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
-        try {analyzers.remove("::MyTrigram", true); } catch (e) {} 
+        try {
+analyzers.remove("::MyTrigram", true);
+} catch (e) {}
       }
     },
-    testAnalyzerInvalidName: function() {
+    testAnalyzerInvalidName: function () {
       let dbName = "analyzerWrongDbName4";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         try {
           // invalid ':' in name
-          analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          analyzers.save(dbName + "::MyTr:igram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           fail();
-        } catch(e) {
+        } catch (e) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       e.errorNum);
         }
@@ -355,24 +427,30 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzerGetFromOtherDatabase: function() {
+    testAnalyzerGetFromOtherDatabase: function () {
       let dbName = "analyzerDbName";
       let anotherDbName = "anotherDbName";
-      try { db._dropDatabase(dbName); } catch (e) {}
-      try { db._dropDatabase(anotherDbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
+      try {
+ db._dropDatabase(anotherDbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._createDatabase(anotherDbName);
         try {
           db._useDatabase(dbName);
-          let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2, max: 3, preserveOriginal: true });
+          let analyzer = analyzers.save("MyTrigram", "ngram", { min: 2,
+max: 3,
+preserveOriginal: true });
           assertNotNull(analyzer);
           db._useDatabase(anotherDbName);
           try {
             analyzers.analyzer(dbName + "::MyTrigram");
             fail();
-          } catch(e) {
-            assertEqual(require("internal").errors.ERROR_FORBIDDEN .code,
+          } catch (e) {
+            assertEqual(require("internal").errors.ERROR_FORBIDDEN.code,
                            e.errorNum);
           }
         } finally {
@@ -384,25 +462,33 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzerGetFromSystemDatabaseDifferentRevision: function() {
+    testAnalyzerGetFromSystemDatabaseDifferentRevision: function () {
       if (!isCluster) { // only cluster has revisions. Do not waste time on single
        return;
       }
       let dbName = "analyzerDbName";
       let analyzerName = "my_identity";
-      try { db._dropDatabase(dbName); } catch (e) {}
-      try { analyzers.remove(analyzerName, true); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       db._createDatabase(dbName, {sharding: "single"});
       try {
         let analyzer = analyzers.save(analyzerName, "identity", {}); // so system revision is at least 1
         try {
           db._useDatabase(dbName); // fresh database will have revision 0 ( 0 < 1 so using db revision for system analyzer will fail!)
-          db._create("test_coll"); 
-          db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields:true, analyzers:[ "::" + analyzerName ] } } });
+          db._create("test_coll");
+          db._createView("tv", "arangosearch", {links: { test_coll: { includeAllFields: true,
+analyzers: [ "::" + analyzerName ] } } });
           db.test_coll.save({field: "value1"});
           let indexMeta = {};
-          db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": `::${analyzerName}`}]});
-          
+          db.test_coll.ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: [{"name": "field",
+"analyzer": `::${analyzerName}`}]});
+
           var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '::" + analyzerName + "') OPTIONS {waitForSync:true}  RETURN d");
           assertEqual(1, res.toArray().length);
 
@@ -417,14 +503,14 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testAnalyzers: function() {
+    testAnalyzers: function () {
       let oldList = analyzers.toArray();
       let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
       assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
       // creation
-      analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
+      analyzers.save("testAnalyzer", "stem", { "locale": "en"}, [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
@@ -446,7 +532,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual("testAnalyzer", savedAnalyzer.name);
       assertEqual("stem", savedAnalyzer.type);
       assertNotUndefined(savedAnalyzer.revision);
-      if(isCluster) {
+      if (isCluster) {
         assertNotEqual(0, savedAnalyzer.revision); // we have added analyzer so revision should increment at least once
       } else {
         assertEqual(0, savedAnalyzer.revision); // for single server it is always 0
@@ -454,7 +540,7 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(analyzer.properties(), savedAnalyzer.properties);
       assertEqual(analyzer.features(), savedAnalyzer.features);
 
-      analyzer = undefined; // release reference 
+      analyzer = undefined; // release reference
 
       // check the analyzers collection in database
       assertEqual(oldListInCollection.length + 1, db._analyzers.toArray().length);
@@ -493,11 +579,11 @@ function iResearchFeatureAqlTestSuite () {
       assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
-    testAnalyzersFeatures: function() {
+    testAnalyzersFeatures: function () {
       try {
         analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
         fail(); // unsupported feature
-      } catch(e) {
+      } catch (e) {
         assertTrue(e instanceof TypeError ||
                    require("internal").errors.ERROR_BAD_PARAMETER.code === e.errorNum);
       }
@@ -505,7 +591,7 @@ function iResearchFeatureAqlTestSuite () {
       try {
         analyzers.save("testAnalyzer", "identity", {}, [ "position" ]);
         fail(); // feature with dependency
-      } catch(e) {
+      } catch (e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
       }
@@ -515,9 +601,11 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.remove("testAnalyzer", true);
     },
 
-    testAnalyzersPrefix: function() {
+    testAnalyzersPrefix: function () {
       let dbName = "TestDB";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
@@ -571,48 +659,57 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(oldList.length, analyzers.toArray().length);
       } finally {
         db._useDatabase(dbName);
-        try { analyzers.remove("testAnalyzer", true); } catch (e) {}
+        try {
+ analyzers.remove("testAnalyzer", true);
+} catch (e) {}
         db._useDatabase("_system");
-        try { analyzers.remove("testAnalyzer", true); } catch (e) {}
+        try {
+ analyzers.remove("testAnalyzer", true);
+} catch (e) {}
         db._dropDatabase(dbName);
       }
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief OneShard analyzers loading tests
-////////////////////////////////////////////////////////////////////////////////
-    testAnalyzerGetFromSameDatabaseOneShard: function() {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief OneShard analyzers loading tests
+// //////////////////////////////////////////////////////////////////////////////
+    testAnalyzerGetFromSameDatabaseOneShard: function () {
       if (!isEnterprise || !isCluster) {
        return;
       }
       let dbName = "analyzerDbName";
       let analyzerName = "my_identity";
-      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName, {sharding: "single"});
       try {
         db._useDatabase(dbName);
         let analyzer = analyzers.save(analyzerName, "identity", {});
         db._create("test_coll");
-        db.test_coll.ensureIndex({type: 'inverted', name: 'inverted', fields: [{"name": "field", "analyzer": analyzerName}]});
-        db._createView("tv", "arangosearch", 
-                       {links: { test_coll: { includeAllFields:true,
-                                              analyzers:[ "" + analyzerName ] } } });
+        db.test_coll.ensureIndex({type: 'inverted',
+name: 'inverted',
+fields: [{"name": "field",
+"analyzer": analyzerName}]});
+        db._createView("tv", "arangosearch",
+                       {links: { test_coll: { includeAllFields: true,
+                                              analyzers: [ "" + analyzerName ] } } });
         db.test_coll.save({"field": "value1"});
-        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName + 
+        var res = db._query("FOR d IN tv SEARCH ANALYZER(d.field == 'value1', '" + analyzerName +
                             "') OPTIONS {waitForSync:true}  RETURN d");
         assertEqual(1, res.toArray().length);
 
         res = db._query('FOR doc IN test_coll OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER doc.field == "value1" RETURN doc');
         assertEqual(1, res.toArray().length);
-        
+
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchFeature tests
-////////////////////////////////////////////////////////////////////////////////
-    testTokensFunctions : function() {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief IResearchFeature tests
+// //////////////////////////////////////////////////////////////////////////////
+    testTokensFunctions: function () {
       // null argument
       {
         let result = db._query(
@@ -624,8 +721,8 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(Array === result[0].constructor);
         assertEqual(1, result[0].length);
         assertEqual([""], result[0]);
-      } 
-      // array of strings 
+      }
+      // array of strings
       {
         let result = db._query(
           "RETURN TOKENS(['a quick brown fox jumps', 'jumps over lazy dog'], 'text_en')",
@@ -642,10 +739,10 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(4, result[0][1].length);
         assertEqual([ "jump", "over", "lazi", "dog" ], result[0][1]);
       }
-      // array of arrays of strings 
+      // array of arrays of strings
       {
         let result = db._query(
-          "RETURN TOKENS([['a quick brown fox jumps', 'jumps over lazy dog'], " + 
+          "RETURN TOKENS([['a quick brown fox jumps', 'jumps over lazy dog'], " +
           "['may the force be with you', 'yet another brick'] ], 'text_en')",
           null,
           { }
@@ -843,8 +940,8 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual(1, result[0].length);
         assertEqual([[]], result[0][0]);
       }
-      //// failures
-      //no parameters
+      // // failures
+      // no parameters
       {
         try {
           let result = db._query(
@@ -853,12 +950,12 @@ function iResearchFeatureAqlTestSuite () {
             { }
           );
           fail();
-        } catch(err) {
+        } catch (err) {
            assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
                        err.errorNum);
         }
       }
-      //too many parameters
+      // too many parameters
       {
         try {
           let result = db._query(
@@ -867,12 +964,12 @@ function iResearchFeatureAqlTestSuite () {
             { }
           );
           fail();
-        } catch(err) {
+        } catch (err) {
            assertEqual(require("internal").errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code,
                        err.errorNum);
         }
       }
-      //invalid first parameter type
+      // invalid first parameter type
       {
         try {
           let result = db._query(
@@ -881,12 +978,12 @@ function iResearchFeatureAqlTestSuite () {
             { }
           );
           fail();
-        } catch(err) {
+        } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         }
       }
-      //invalid second parameter type
+      // invalid second parameter type
       {
         try {
           let result = db._query(
@@ -895,7 +992,7 @@ function iResearchFeatureAqlTestSuite () {
             { }
           );
           fail();
-        } catch(err) {
+        } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         }
@@ -903,8 +1000,8 @@ function iResearchFeatureAqlTestSuite () {
 
     },
 
-    testTokensFunctionWithNumberAnalyzer : function() {
-      let analyzer = analyzers.save("gd","aql",
+    testTokensFunctionWithNumberAnalyzer: function () {
+      let analyzer = analyzers.save("gd", "aql",
         { queryString: "RETURN @param",
           returnType: "number"}, []);
       assertNotNull(analyzer);
@@ -920,7 +1017,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testDefaultAnalyzers : function() {
+    testDefaultAnalyzers: function () {
       // invalid
       {
         try {
@@ -1120,11 +1217,12 @@ function iResearchFeatureAqlTestSuite () {
 
     },
 
-    testNormAnalyzer : function() {
+    testNormAnalyzer: function () {
       let analyzerName = "normUnderTest";
       // case upper
       {
-        analyzers.save(analyzerName, "norm", { "locale" : "en", "case": "upper" });
+        analyzers.save(analyzerName, "norm", { "locale": "en",
+"case": "upper" });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1140,7 +1238,8 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case lower
       {
-        analyzers.save(analyzerName, "norm",  {  "locale" : "en", "case": "lower" });
+        analyzers.save(analyzerName, "norm", { "locale": "en",
+"case": "lower" });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1156,7 +1255,8 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case none
       {
-        analyzers.save(analyzerName, "norm", {  "locale" : "en", "case": "none" });
+        analyzers.save(analyzerName, "norm", { "locale": "en",
+"case": "none" });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1172,7 +1272,9 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent removal
       {
-        analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false });
+        analyzers.save(analyzerName, "norm", { "locale": "de_DE.UTF8",
+"case": "none",
+"accent": false });
         try {
           let result = db._query(
             "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
@@ -1188,7 +1290,9 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent leave
       {
-        analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true });
+        analyzers.save(analyzerName, "norm", { "locale": "de_DE.UTF8",
+"case": "none",
+"accent": true });
         try {
           let result = db._query(
             "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
@@ -1213,10 +1317,10 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    testCustomStemAnalyzer : function() {
+    testCustomStemAnalyzer: function () {
       let analyzerName = "stemUnderTest";
       {
-        analyzers.save(analyzerName, "stem", {  "locale" : "en"});
+        analyzers.save(analyzerName, "stem", { "locale": "en"});
         try {
           let result = db._query(
             "RETURN TOKENS('jumps', '" + analyzerName + "' )",
@@ -1241,11 +1345,13 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    testCustomTextAnalyzer : function() {
+    testCustomTextAnalyzer: function () {
       let analyzerName = "textUnderTest";
       // case upper
       {
-        analyzers.save(analyzerName, "text", { "locale" : "en", "case": "upper", "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "upper",
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1261,7 +1367,9 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case lower
       {
-        analyzers.save(analyzerName, "text", { "locale" : "en", "case": "lower", "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "lower",
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1277,7 +1385,9 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case none
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('fOx', '" + analyzerName + "' )",
@@ -1293,7 +1403,11 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent removal
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false, "stopwords": [], "stemming":false });
+        analyzers.save(analyzerName, "text", { "locale": "de_DE.UTF8",
+"case": "none",
+"accent": false,
+"stopwords": [],
+"stemming": false });
         try {
           let result = db._query(
             "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
@@ -1309,7 +1423,11 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent leave
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true, "stopwords": [], "stemming":false});
+        analyzers.save(analyzerName, "text", { "locale": "de_DE.UTF8",
+"case": "none",
+"accent": true,
+"stopwords": [],
+"stemming": false});
         try {
           let result = db._query(
             "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
@@ -1326,7 +1444,10 @@ function iResearchFeatureAqlTestSuite () {
 
       // no stemming
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": false,
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('jumps', '" + analyzerName + "' )",
@@ -1342,7 +1463,10 @@ function iResearchFeatureAqlTestSuite () {
       }
       // stemming
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": true,
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('jumps', '" + analyzerName + "' )",
@@ -1359,7 +1483,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // empty ngram object
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{} });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": false,
+"stopwords": [],
+"edgeNgram": {} });
         try {
           let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
           assertEqual(undefined, props);
@@ -1378,7 +1506,12 @@ function iResearchFeatureAqlTestSuite () {
 
       // non empty ngram object
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2} });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": false,
+"stopwords": [],
+"edgeNgram": { "min": 1,
+"max": 2} });
         try {
           let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
           assertNotEqual(undefined, props);
@@ -1400,7 +1533,13 @@ function iResearchFeatureAqlTestSuite () {
 
       // non empty ngram object
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":2, "preserveOriginal": true} });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": false,
+"stopwords": [],
+"edgeNgram": { "min": 1,
+"max": 2,
+"preserveOriginal": true} });
         try {
           let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
           assertNotEqual(undefined, props);
@@ -1422,7 +1561,13 @@ function iResearchFeatureAqlTestSuite () {
 
       // non empty ngram object
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [], "edgeNgram":{ "min": 1, "max":200, "preserveOriginal": false} });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": false,
+"stopwords": [],
+"edgeNgram": { "min": 1,
+"max": 200,
+"preserveOriginal": false} });
         try {
           let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
           assertNotEqual(undefined, props);
@@ -1444,7 +1589,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // non empty ngram object with stemming
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [], "edgeNgram":{ "min": 1 } });
+        analyzers.save(analyzerName, "text", { "locale": "en",
+"case": "none",
+"stemming": true,
+"stopwords": [],
+"edgeNgram": { "min": 1 } });
         try {
           let props = analyzers.analyzer(analyzerName).properties().edgeNgram;
           assertNotEqual(undefined, props);
@@ -1465,7 +1614,10 @@ function iResearchFeatureAqlTestSuite () {
       }
       // Greek stemming - test for snowball 2.0
       {
-        analyzers.save(analyzerName, "text", {  "locale" : "el_GR.UTF8", "case": "none", "stemming":true, "stopwords": [] });
+        analyzers.save(analyzerName, "text", { "locale": "el_GR.UTF8",
+"case": "none",
+"stemming": true,
+"stopwords": [] });
         try {
           let result = db._query(
             "RETURN TOKENS('Αθλητές', '" + analyzerName + "' )",
@@ -1492,12 +1644,14 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomNGramAnalyzer : function() {
+    testCustomNGramAnalyzer: function () {
       let analyzerName = "textUnderTest";
 
       // without preserveOriginal
       {
-        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":false  });
+        analyzers.save(analyzerName, "ngram", { "min": 1,
+"max": 2,
+"preserveOriginal": false });
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(1, props.min);
@@ -1513,7 +1667,7 @@ function iResearchFeatureAqlTestSuite () {
           ).toArray();
           assertEqual(1, result.length);
           assertEqual(9, result[0].length);
-          assertEqual([ "q", "qu", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+          assertEqual([ "q", "qu", "u", "ui", "i", "ic", "c", "ck", "k" ], result[0]);
         } finally {
           analyzers.remove(analyzerName, true);
         }
@@ -1521,7 +1675,9 @@ function iResearchFeatureAqlTestSuite () {
 
       // with preserveOriginal
       {
-        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true});
+        analyzers.save(analyzerName, "ngram", { "min": 1,
+"max": 2,
+"preserveOriginal": true});
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(1, props.min);
@@ -1537,7 +1693,7 @@ function iResearchFeatureAqlTestSuite () {
           ).toArray();
           assertEqual(1, result.length);
           assertEqual(10, result[0].length);
-          assertEqual([ "q", "qu", "quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+          assertEqual([ "q", "qu", "quick", "u", "ui", "i", "ic", "c", "ck", "k" ], result[0]);
         } finally {
           analyzers.remove(analyzerName, true);
         }
@@ -1545,7 +1701,10 @@ function iResearchFeatureAqlTestSuite () {
 
       // with optional start marker
       {
-        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$"});
+        analyzers.save(analyzerName, "ngram", { "min": 1,
+"max": 2,
+"preserveOriginal": true,
+"startMarker": "$"});
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(1, props.min);
@@ -1561,7 +1720,7 @@ function iResearchFeatureAqlTestSuite () {
           ).toArray();
           assertEqual(1, result.length);
           assertEqual(10, result[0].length);
-          assertEqual([ "$q", "$qu", "$quick", "u", "ui", "i", "ic", "c", "ck", "k"  ], result[0]);
+          assertEqual([ "$q", "$qu", "$quick", "u", "ui", "i", "ic", "c", "ck", "k" ], result[0]);
         } finally {
           analyzers.remove(analyzerName, true);
         }
@@ -1569,7 +1728,11 @@ function iResearchFeatureAqlTestSuite () {
 
       // with optional end marker
       {
-        analyzers.save(analyzerName, "ngram", { "min":1, "max":2, "preserveOriginal":true, "startMarker":"$", "endMarker":"^"});
+        analyzers.save(analyzerName, "ngram", { "min": 1,
+"max": 2,
+"preserveOriginal": true,
+"startMarker": "$",
+"endMarker": "^"});
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(1, props.min);
@@ -1593,7 +1756,10 @@ function iResearchFeatureAqlTestSuite () {
 
       // utf8 sequence
       {
-        analyzers.save(analyzerName, "ngram", { "min":3, "max":2, "preserveOriginal":false, "streamType":"utf8"});
+        analyzers.save(analyzerName, "ngram", { "min": 3,
+"max": 2,
+"preserveOriginal": false,
+"streamType": "utf8"});
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(3, props.min);
@@ -1609,16 +1775,17 @@ function iResearchFeatureAqlTestSuite () {
           ).toArray();
           assertEqual(1, result.length);
           assertEqual(4, result[0].length);
-          assertEqual([ "хор", "оро", "рош", "ошо"  ], result[0]);
+          assertEqual([ "хор", "оро", "рош", "ошо" ], result[0]);
         } finally {
           analyzers.remove(analyzerName, true);
         }
       }
 
-      // invalid properties 
+      // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "ngram", { "min":1, "max":2 } );
+          analyzers.save(analyzerName, "ngram", { "min": 1,
+"max": 2 });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1629,7 +1796,8 @@ function iResearchFeatureAqlTestSuite () {
       // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "ngram", { "max":2, "preserveOriginal":false } );
+          analyzers.save(analyzerName, "ngram", { "max": 2,
+"preserveOriginal": false });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1640,7 +1808,8 @@ function iResearchFeatureAqlTestSuite () {
       // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "ngram", { "min":2, "preserveOriginal":false } );
+          analyzers.save(analyzerName, "ngram", { "min": 2,
+"preserveOriginal": false });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1651,7 +1820,10 @@ function iResearchFeatureAqlTestSuite () {
       // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "ngram", { "max":2, "min":2, "preserveOriginal":false, "streamType":"invalid" } );
+          analyzers.save(analyzerName, "ngram", { "max": 2,
+"min": 2,
+"preserveOriginal": false,
+"streamType": "invalid" });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1660,7 +1832,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomClassificationAnalyzer : function() {
+    testCustomClassificationAnalyzer: function () {
       if (!isEnterprise) {
         return;
       }
@@ -1691,7 +1863,8 @@ function iResearchFeatureAqlTestSuite () {
 
       // With top_k
       {
-        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 2 });
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile,
+"top_k": 2 });
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(2, props.top_k);
@@ -1711,7 +1884,8 @@ function iResearchFeatureAqlTestSuite () {
 
       // With multiple lines
       {
-        analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": 1 });
+        analyzers.save(analyzerName, "classification", { "model_location": modelFile,
+"top_k": 1 });
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(1, props.top_k);
@@ -1732,7 +1906,7 @@ function iResearchFeatureAqlTestSuite () {
       // Invalid model location
       {
         try {
-          analyzers.save(analyzerName, "classification", { "model_location": "this path does not exist" } );
+          analyzers.save(analyzerName, "classification", { "model_location": "this path does not exist" });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1742,7 +1916,7 @@ function iResearchFeatureAqlTestSuite () {
       // Missing model location
       {
         try {
-          analyzers.save(analyzerName, "classification", {} );
+          analyzers.save(analyzerName, "classification", {});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1752,7 +1926,8 @@ function iResearchFeatureAqlTestSuite () {
       // Invalid top_k
       {
         try {
-          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "top_k": -1 } );
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile,
+"top_k": -1 });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1762,7 +1937,8 @@ function iResearchFeatureAqlTestSuite () {
       // Invalid threshold
       {
         try {
-          analyzers.save(analyzerName, "classification", { "model_location": modelFile, "threshold": 2.0 } );
+          analyzers.save(analyzerName, "classification", { "model_location": modelFile,
+"threshold": 2.0 });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1771,7 +1947,7 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomNearestNeighborsAnalyzer: function() {
+    testCustomNearestNeighborsAnalyzer: function () {
       if (!isEnterprise) {
         return;
       }
@@ -1803,7 +1979,8 @@ function iResearchFeatureAqlTestSuite () {
 
       // With top_k
       {
-        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile,
+"top_k": 2 });
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(2, props.top_k);
@@ -1822,7 +1999,8 @@ function iResearchFeatureAqlTestSuite () {
 
       // With multiple words in string
       {
-        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": 2 });
+        analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile,
+"top_k": 2 });
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(2, props.top_k);
@@ -1842,7 +2020,7 @@ function iResearchFeatureAqlTestSuite () {
       // Invalid model location
       {
         try {
-          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": "this path does not exist" } );
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": "this path does not exist" });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1852,7 +2030,7 @@ function iResearchFeatureAqlTestSuite () {
       // Missing model location
       {
         try {
-          analyzers.save(analyzerName, "nearest_neighbors", {} );
+          analyzers.save(analyzerName, "nearest_neighbors", {});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1862,7 +2040,8 @@ function iResearchFeatureAqlTestSuite () {
       // Invalid top_k
       {
         try {
-          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile, "top_k": -1 } );
+          analyzers.save(analyzerName, "nearest_neighbors", { "model_location": modelFile,
+"top_k": -1 });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -1871,15 +2050,21 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomPipelineAnalyzer : function() {
+    testCustomPipelineAnalyzer: function () {
       let analyzerName = "pipeUnderTest";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       {
-        analyzers.save(analyzerName,"pipeline",
-                        {pipeline:[
-                          {type:"delimiter", properties:{delimiter:" "}},
-                          {type:"delimiter", properties:{delimiter:","}},
-                          {type:"norm", properties:{locale:"en", "case":"upper"}}
+        analyzers.save(analyzerName, "pipeline",
+                        {pipeline: [
+                          {type: "delimiter",
+properties: {delimiter: " "}},
+                          {type: "delimiter",
+properties: {delimiter: ","}},
+                          {type: "norm",
+properties: {locale: "en",
+"case": "upper"}}
                         ]}, ["position", "frequency"]);
         try {
           let result = db._query(
@@ -1896,11 +2081,17 @@ function iResearchFeatureAqlTestSuite () {
       }
       // upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
-                        {pipeline:[
-                          {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
-                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
-       
+        analyzers.save(analyzerName, "pipeline",
+                        {pipeline: [
+                          {type: "norm",
+properties: {locale: "ru_RU.UTF8",
+"case": "upper"}},
+                          {type: "ngram",
+properties: { "preserveOriginal": false,
+min: 2,
+max: 3,
+streamType: "utf8"}}]});
+
         try {
           let props = analyzers.analyzer(analyzerName).properties();
           assertEqual(2, props.pipeline[1].properties.min);
@@ -1924,9 +2115,12 @@ function iResearchFeatureAqlTestSuite () {
       // check preserving output type of last pipe member
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"identity", properties:{}},
-            {type:"aql", properties:{queryString:"RETURN @param", returnType:"number"}},]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "identity",
+properties: {}},
+            {type: "aql",
+properties: {queryString: "RETURN @param",
+returnType: "number"}}]});
           let result = db._query(
             "RETURN TOKENS('1', '" + analyzerName + "' )",
             null,
@@ -1936,15 +2130,19 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result[0].length);
           assertEqual([["oL/wAAAAAAAA", "sL/wAAAAAA==", "wL/wAAA=", "0L/w"]], result[0]);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // with identity
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"aql", properties:{queryString:"RETURN '7'"}},
-            {type:"identity", properties:{}}]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "aql",
+properties: {queryString: "RETURN '7'"}},
+            {type: "identity",
+properties: {}}]});
           let result = db._query(
             "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
             null,
@@ -1954,70 +2152,94 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result[0].length);
           assertEqual([ "7"], result[0]);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // incompatible pipeline members
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
-            {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}}]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "aql",
+properties: {returnType: "number",
+queryString: "RETURN 7"}},
+            {type: "norm",
+properties: {locale: "ru_RU.UTF8",
+"case": "upper"}}]});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // incompatible pipeline members with geojson (non-primitive type acceptor)
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
-            {type:"geojson", properties:{}}]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "aql",
+properties: {returnType: "number",
+queryString: "RETURN 7"}},
+            {type: "geojson",
+properties: {}}]});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // incompatible aql retval with identity
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
-            {type:"identity", properties:{}}]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "aql",
+properties: {returnType: "number",
+queryString: "RETURN 7"}},
+            {type: "identity",
+properties: {}}]});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // incompatible pipeline inside the pipeline aql retval with identity
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:[
-            {type:"pipeline", properties:{pipeline:[
-              {type:"aql", properties:{returnType:"number", queryString:"RETURN 7"}},
-              {type:"identity", properties:{}}]}}]});
+          analyzers.save(analyzerName, "pipeline", { pipeline: [
+            {type: "pipeline",
+properties: {pipeline: [
+              {type: "aql",
+properties: {returnType: "number",
+queryString: "RETURN 7"}},
+              {type: "identity",
+properties: {}}]}}]});
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                       err.errorNum);
         } finally {
-          try{analyzers.remove(analyzerName, true);} catch(e) {}
+          try {
+analyzers.remove(analyzerName, true);
+} catch (e) {}
         }
       }
       // invalid pipeline properties
       {
         try {
-          analyzers.save(analyzerName, "pipeline", { pipeline:2 } );
+          analyzers.save(analyzerName, "pipeline", { pipeline: 2 });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -2025,13 +2247,15 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    
-    testCustomAqlAnalyzer : function() {
+
+    testCustomAqlAnalyzer: function () {
       let analyzerName = "calcUnderTest";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       // soundex expression
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
+        analyzers.save(analyzerName, "aql", {queryString: "RETURN SOUNDEX(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
@@ -2047,7 +2271,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // datetime
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
+        analyzers.save(analyzerName, "aql", {queryString: "RETURN DATE_ISO8601(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
@@ -2063,7 +2287,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // cycle
       {
-        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+        analyzers.save(analyzerName, "aql", {queryString: "FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
         try {
           let result = db._query(
             "RETURN TOKENS('4', '" + analyzerName + "' )",
@@ -2079,11 +2303,16 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
-                        {pipeline:[
-                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
-                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
-       
+        analyzers.save(analyzerName, "pipeline",
+                        {pipeline: [
+                          {type: "aql",
+properties: {queryString: "RETURN UPPER(@param)"}},
+                          {type: "ngram",
+properties: { "preserveOriginal": false,
+min: 2,
+max: 3,
+streamType: "utf8"}}]});
+
         try {
           let result = db._query(
             "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
@@ -2099,11 +2328,16 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for ngram utf8 sequence + upper
       {
-        analyzers.save(analyzerName,"pipeline",
-                        {pipeline:[
-                          {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
-                          {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
-       
+        analyzers.save(analyzerName, "pipeline",
+                        {pipeline: [
+                          {type: "ngram",
+properties: { "preserveOriginal": false,
+min: 2,
+max: 3,
+streamType: "utf8"}},
+                          {type: "aql",
+properties: {queryString: "RETURN UPPER(@param)"}}]});
+
         try {
           let result = db._query(
             "RETURN TOKENS('хорошо', '" + analyzerName + "' )",
@@ -2120,7 +2354,7 @@ function iResearchFeatureAqlTestSuite () {
       // invalid properties
       {
         try {
-          analyzers.save(analyzerName, "aql", { queryString:"" } );
+          analyzers.save(analyzerName, "aql", { queryString: "" });
           fail();
         } catch (err) {
           assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
@@ -2128,13 +2362,15 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    
-    testCustomStopwordsAnalyzer : function() {
+
+    testCustomStopwordsAnalyzer: function () {
       let analyzerName = "stopwordsUnderTest";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
-                        {stopwords:["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
+        analyzers.save(analyzerName, "stopwords",
+                        {stopwords: ["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
         try {
           let result = db._query(
             "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe', 'abcd'], '" + analyzerName + "' )",
@@ -2152,10 +2388,13 @@ function iResearchFeatureAqlTestSuite () {
           analyzers.remove(analyzerName, true);
         }
       }
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
-                        {stopwords:["515745", "717765", "717171"], hex:true}, ["position", "frequency"]);
+        analyzers.save(analyzerName, "stopwords",
+                        {stopwords: ["515745", "717765", "717171"],
+hex: true}, ["position", "frequency"]);
         try {
           let result = db._query(
             "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe'], '" + analyzerName + "' )",
@@ -2174,15 +2413,17 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomCollationAnalyzer : function() {
+    testCustomCollationAnalyzer: function () {
       let analyzerName = "collationUnderTest";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
-      try { 
-        analyzers.save(analyzerName,"collation", {}, []);
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
+      try {
+        analyzers.save(analyzerName, "collation", {}, []);
         assertTrue(false);
       } catch (e) { }
       {
-        analyzers.save(analyzerName,"collation", {locale:"ru_RU.UTf-8"}, []);
+        analyzers.save(analyzerName, "collation", {locale: "ru_RU.UTf-8"}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('АрангоДБ', '" + analyzerName + "' )",
@@ -2192,7 +2433,7 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(16, result[0][0].length);
 
           const expected = [
-            39, 6,  1158, 6, 120, 16, 1090, 26, 12,
+            39, 6, 1158, 6, 120, 16, 1090, 26, 12,
             1, 12, 1, 1862, 1537, 1862, 1862];
 
           assertTrue(
@@ -2202,44 +2443,64 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
     },
-    
+
     // BTS-712
-    testCustomCollationUtf8Convertable : function() {
+    testCustomCollationUtf8Convertable: function () {
       let analyzerName = "collationUnderTest";
       let collectionName = "testBTS712";
       let viewName = "viewTestBTS712";
       let searchAliasViewName = "searchAliasView";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
-      try { db._drop(collectionName); } catch(e) {}
-      try { db._dropView(viewName); } catch(e) {}
-      try { 
-        analyzers.save(analyzerName, "collation", {locale:"sv.utf-8"}, []);
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
+      try {
+ db._drop(collectionName);
+} catch (e) {}
+      try {
+ db._dropView(viewName);
+} catch (e) {}
+      try {
+        analyzers.save(analyzerName, "collation", {locale: "sv.utf-8"}, []);
         let col = db._create(collectionName);
-        col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" },  ]);
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        col.save([ { text: "a" }, { text: "\u00E5" }, { text: "b" }, { text: "z" } ]);
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
           viewMeta = {
-            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true,
+            links: { [collectionName]: { analyzers: ["collationUnderTest"],
+includeAllFields: true,
             "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": `${analyzerName}`},
-            {"name": "text", "analyzer": `${analyzerName}`},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": `${analyzerName}`},
+            {"name": "text",
+"analyzer": `${analyzerName}`},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}]};
         } else {
           viewMeta = {
-            links: { [collectionName] : { analyzers: ["collationUnderTest"], includeAllFields: true}}
+            links: { [collectionName]: { analyzers: ["collationUnderTest"],
+includeAllFields: true}}
           };
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": `::${analyzerName}`},
-            {"name": "text", "analyzer": `::${analyzerName}`}, 
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": `::${analyzerName}`},
+            {"name": "text",
+"analyzer": `::${analyzerName}`},
             {"name": "value[*]"}]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         db._collection(collectionName).ensureIndex(indexMeta);
-        db._createView(searchAliasViewName, "search-alias", {indexes:[{collection: collectionName, index: "inverted"}]});
+        db._createView(searchAliasViewName, "search-alias", {indexes: [{collection: collectionName,
+index: "inverted"}]});
       } catch (e) { }
       {
         try {
@@ -2272,11 +2533,13 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomSegmentationAnalyzer : function() {
+    testCustomSegmentationAnalyzer: function () {
       let analyzerName = "segmentationUnderTest";
-      try { analyzers.remove(analyzerName, true); } catch(e) {}
+      try {
+ analyzers.remove(analyzerName, true);
+} catch (e) {}
       {
-        analyzers.save(analyzerName,"segmentation", {}, []);
+        analyzers.save(analyzerName, "segmentation", {}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('Arango DB', '" + analyzerName + "' )",
@@ -2290,56 +2553,67 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
 
-    testCustomAqlAnalyzerInView : function() {
+    testCustomAqlAnalyzerInView: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"andrey"});
-        col.save({field:"mike"});
-        col.save({field:"frank"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN SOUNDEX(@param)"});
+        col.save({field: "andrey"});
+        col.save({field: "mike"});
+        col.save({field: "frank"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN SOUNDEX(@param)"});
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
-          ]};     
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
-               analyzers:['calcUnderTest']}}};
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
-          ]};     
+          ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
 
-        assertEqual(3, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" + 
+        assertEqual(3, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != SOUNDEX('andrei'), 'calcUnderTest')" +
                                  "OPTIONS { waitForSync: true } RETURN d ",
-                                { '@v':viewName }).toArray().length);
-        assertEqual(1, db._query("FOR d IN @@v  " + 
+                                { '@v': viewName }).toArray().length);
+        assertEqual(1, db._query("FOR d IN @@v  " +
                                  "SEARCH ANALYZER(d.field == SOUNDEX('andrei'), 'calcUnderTest') OPTIONS { waitForSync: true } RETURN d ",
-                                { '@v':viewName }).toArray().length);
+                                { '@v': viewName }).toArray().length);
 
         assertEqual(3, db._query(`
         FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
@@ -2347,72 +2621,83 @@ function iResearchFeatureAqlTestSuite () {
 
        assertEqual(1, db._query(`
        FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true}
-        FILTER d.field == SOUNDEX('andrei') RETURN d`, {}).toArray().length);                        
+        FILTER d.field == SOUNDEX('andrei') RETURN d`, {}).toArray().length);
       } finally {
         db._useDatabase("_system");
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerNumericInView : function() {
+
+    testCustomAqlAnalyzerNumericInView: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
-                                              returnType:"number"});
-        
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN TO_NUMBER(@param)",
+                                              returnType: "number"});
+
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
-          ]};     
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
+          ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
-          ]};          
+          ]};
         }
-        col.ensureIndex(indexMeta);                                                                            
+        col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
 
-        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("1", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == 3 OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res3.length);
         assertEqual("3", res3[0].field);
-        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " +
                              "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2442,64 +2727,75 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerNumericInViewStringRetval : function() {
+
+    testCustomAqlAnalyzerNumericInViewStringRetval: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_STRING(@param)",
-                                              returnType:"number"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN TO_STRING(@param)",
+                                              returnType: "number"});
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-                {"name": "field", "analyzer": "calcUnderTest"},
-                {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+                {"name": "field",
+"analyzer": "calcUnderTest"},
+                {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
-          ]};          
-        }                                     
+          ]};
+        }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field < 2" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("1", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == 3 OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res3.length);
         assertEqual("3", res3[0].field);
-        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " +
                              "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2529,155 +2825,78 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerNumericArrayInView : function() {
+
+    testCustomAqlAnalyzerNumericArrayInView: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
-                                              returnType:"number"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN a",
+                                              returnType: "number"});
         let viewMeta = {};
         let indexMeta = {};
-        if (isEnterprise) {   
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-              "fields": { field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               includeAllFields:false, 
-               analyzers:['calcUnderTest']}}};      
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-                {"name": "field", "analyzer": "calcUnderTest"},
-                {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+              "fields": { field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               includeAllFields: false,
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+                {"name": "field",
+"analyzer": "calcUnderTest"},
+                {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta =  {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value[*]"}
-          ]};          
-        }               
-        col.ensureIndex(indexMeta);
-        db._createView(viewName, "arangosearch", viewMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
-                             "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(1, res1.length);
-        assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
-                             "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(2, res3.length);
-        assertEqual("2", res3[0].field);
-        assertEqual("3", res3[1].field);
-        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
-                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(2, res23.length);
-        assertEqual("2", res23[0].field);
-        assertEqual("3", res23[1].field);
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
 
-        res1 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-            FILTER d.field > 2 RETURN d`
-        ).toArray();
-        assertEqual(1, res1.length);
-        assertEqual("3", res1[0].field);
-
-        res3 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
-            FILTER d.field == 2 RETURN d`).toArray();
-        assertEqual(2, res3.length);
-        assertEqual("2", res3[0].field);
-        assertEqual("3", res3[1].field);
-
-        res23 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
-            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
-        assertEqual(2, res23.length);
-        assertEqual("2", res23[0].field);
-        assertEqual("3", res23[1].field);
-    
-      } finally {
-        db._useDatabase("_system");
-        db._dropDatabase(dbName);
-      }
-    },
-    
-    testCustomAqlAnalyzerNumericArrayInViewStringRetVal : function() {
-      let dbName = "testDb";
-      let colName = "testCollection";
-      let viewName = "testView";
-      db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
-      db._createDatabase(dbName);
-      try {
-        db._useDatabase(dbName);
-        let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_STRING(a)",
-                                              returnType:"number"});
-        let viewMeta = {};
-        let indexMeta = {};
-        if (isEnterprise) {        
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
-          ]};
-        } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
-        db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
+        db._createView(viewName, "arangosearch", viewMeta);
+        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res3.length);
         assertEqual("2", res3[0].field);
         assertEqual("3", res3[1].field);
-        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " + 
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " +
                              "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2708,63 +2927,175 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerStringInView : function() {
+
+    testCustomAqlAnalyzerNumericArrayInViewStringRetVal: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN @param",
-                                              returnType:"string"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN TO_STRING(a)",
+                                              returnType: "number"});
         let viewMeta = {};
         let indexMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
+        let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" +
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " +
+                             "SEARCH d.field == 2 OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH IN_RANGE(d.field, 2, 3, true, true) " +
+                             "OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > 2 RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == 2 RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, 2, 3, true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+
+    testCustomAqlAnalyzerStringInView: function () {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN @param",
+                                              returnType: "string"});
+        let viewMeta = {};
+        let indexMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res3.length);
         assertEqual("2", res3[0].field);
         let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
                               ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2794,63 +3125,74 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerStringInViewNumberRetVal : function() {
+
+    testCustomAqlAnalyzerStringInViewNumberRetVal: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param)",
-                                              returnType:"string"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN TO_NUMBER(@param)",
+                                              returnType: "string"});
         let viewMeta = {};
         let indexMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res3.length);
         assertEqual("2", res3[0].field);
         let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
                               ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -2879,159 +3221,79 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerStringArrayInView : function() {
+
+    testCustomAqlAnalyzerStringArrayInView: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a",
-                                              returnType:"string"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN a",
+                                              returnType: "string"});
         let viewMeta = {};
         let indexMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +
                              "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res3.length);
         assertEqual("2", res3[0].field);
         assertEqual("3", res3[1].field);
         let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
                               ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(2, res23.length);
-        assertEqual("2", res23[0].field);
-        assertEqual("3", res23[1].field);
-
-        res1 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
-            FILTER d.field > '2' RETURN d`
-        ).toArray();
-        assertEqual(1, res1.length);
-        assertEqual("3", res1[0].field);
-
-        res3 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
-            FILTER d.field == '2' RETURN d`).toArray();
-        assertEqual(2, res3.length);
-        assertEqual("2", res3[0].field);
-        assertEqual("3", res3[1].field);
-
-        res23 = db._query(
-          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
-            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
-        assertEqual(2, res23.length);
-        assertEqual("2", res23[0].field);
-        assertEqual("3", res23[1].field);
-        
-      } finally {
-        db._useDatabase("_system");
-        db._dropDatabase(dbName);
-      }
-    },
-    
-    testCustomAqlAnalyzerStringArrayInViewNumberRetVal : function() {
-      let dbName = "testDb";
-      let colName = "testCollection";
-      let viewName = "testView";
-      db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
-      db._createDatabase(dbName);
-      try {
-        db._useDatabase(dbName);
-        let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN TO_NUMBER(a)",
-                                              returnType:"string"});
-        let viewMeta = {};
-        let indexMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
-          ]};
-        } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value[*]"}
-          ]};
-        }
-        db._createView(viewName, "arangosearch", viewMeta);
-        col.ensureIndex(indexMeta);
-
-        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
-                             "OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(1, res1.length);
-        assertEqual("3", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
-                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
-                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
-        assertEqual(2, res3.length);
-        assertEqual("2", res3[0].field);
-        assertEqual("3", res3[1].field);
-        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
-                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res23.length);
         assertEqual("2", res23[0].field);
         assertEqual("3", res23[1].field);
@@ -3062,60 +3324,175 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerBoolInView : function() {
+
+    testCustomAqlAnalyzerStringArrayInViewNumberRetVal: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ",
-                                              returnType:"bool"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN TO_NUMBER(a)",
+                                              returnType: "string"});
+        let viewMeta = {};
+        let indexMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value[*]"}
+          ]};
+        }
+        db._createView(viewName, "arangosearch", viewMeta);
+        col.ensureIndex(indexMeta);
+
+        let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +
+                             "OPTIONS { waitForSync: true } RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+        let res3 = db._query("FOR d IN @@v  " +
+                             "SEARCH ANALYZER(d.field == '2', 'calcUnderTest') " +
+                             " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+        let res23 = db._query("FOR d IN @@v SEARCH ANALYZER(IN_RANGE(d.field, '2', '3', true, true) " +
+                              ", 'calcUnderTest') OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
+                             { '@v': viewName }).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
+        res1 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+            FILTER d.field > '2' RETURN d`
+        ).toArray();
+        assertEqual(1, res1.length);
+        assertEqual("3", res1[0].field);
+
+        res3 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}  
+            FILTER d.field == '2' RETURN d`).toArray();
+        assertEqual(2, res3.length);
+        assertEqual("2", res3[0].field);
+        assertEqual("3", res3[1].field);
+
+        res23 = db._query(
+          `FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+            FILTER IN_RANGE(d.field, '2', '3', true, true) SORT d.field ASC RETURN d`).toArray();
+        assertEqual(2, res23.length);
+        assertEqual("2", res23[0].field);
+        assertEqual("3", res23[1].field);
+
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+
+    testCustomAqlAnalyzerBoolInView: function () {
+      let dbName = "testDb";
+      let colName = "testCollection";
+      let viewName = "testView";
+      db._useDatabase("_system");
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
+      db._createDatabase(dbName);
+      try {
+        db._useDatabase(dbName);
+        let col = db._create(colName);
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN TO_NUMBER(@param) == 2 ",
+                                              returnType: "bool"});
         let indexMeta = {};
         let viewMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
+        if (isEnterprise) {
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
               "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
-          ]};     
+          ]};
         }
         col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" +
                              " OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("2", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == false " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("3", res3[1].field);
@@ -3138,58 +3515,69 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerBoolInViewNumberRetVal : function() {
+
+    testCustomAqlAnalyzerBoolInViewNumberRetVal: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"RETURN TO_NUMBER(@param) == 2 ? 1 : 0 ",
-                                              returnType:"bool"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "RETURN TO_NUMBER(@param) == 2 ? 1 : 0 ",
+                                              returnType: "bool"});
         let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true,
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" +
                              " OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(1, res1.length);
         assertEqual("2", res1[0].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == false " +
                              " OPTIONS { waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("3", res3[1].field);
@@ -3212,62 +3600,74 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerBoolArrayInView : function() {
+
+    testCustomAqlAnalyzerBoolArrayInView: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2",
-                                              returnType:"bool"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN a == 2",
+                                              returnType: "bool"});
         let indexMeta = {};
         let viewMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers: ['calcUnderTest']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false,
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
-        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" +
                              " OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res1.length);
         assertEqual("2", res1[0].field);
         assertEqual("3", res1[1].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == false OPTIONS " +
                              "{ waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(3, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("2", res3[1].field);
@@ -3294,63 +3694,75 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerBoolArrayInViewNumberRetVal : function() {
+
+    testCustomAqlAnalyzerBoolArrayInViewNumberRetVal: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"1"});
-        col.save({field:"2"});
-        col.save({field:"3"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
-        analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a == 2 ? 1 : 0",
-                                              returnType:"bool"});
+        col.save({field: "1"});
+        col.save({field: "2"});
+        col.save({field: "3"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN a == 2 ? 1 : 0",
+                                              returnType: "bool"});
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['calcUnderTest']}}};
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {},
+"value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
+               analyzers: ['calcUnderTest']}}};
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
-    
+
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:false, 
-               fields:{field:{}},
-               analyzers:['calcUnderTest']}}};
-          
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "calcUnderTest"},
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: false,
+               fields: {field: {}},
+               analyzers: ['calcUnderTest']}}};
+
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "calcUnderTest"},
             {"name": "value[*]"}
           ]};
         }
         db._createView(viewName, "arangosearch", viewMeta);
         col.ensureIndex(indexMeta);
 
-        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
+        let res1 = db._query("FOR d IN @@v SEARCH d.field == true" +
                              " OPTIONS { waitForSync: true } RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(2, res1.length);
         assertEqual("2", res1[0].field);
         assertEqual("3", res1[1].field);
-        let res3 = db._query("FOR d IN @@v  " + 
+        let res3 = db._query("FOR d IN @@v  " +
                              "SEARCH d.field == false OPTIONS " +
                              "{ waitForSync: true } SORT d.field ASC RETURN d ",
-                             { '@v':viewName }).toArray();
+                             { '@v': viewName }).toArray();
         assertEqual(3, res3.length);
         assertEqual("1", res3[0].field);
         assertEqual("2", res3[1].field);
@@ -3376,19 +3788,19 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    
-    testCustomAqlAnalyzerInvalidTypeInView : function() {
+
+    testCustomAqlAnalyzerInvalidTypeInView: function () {
       try {
-        let invalid  =  analyzers.save("calcUnderTest","aql",{queryString:"FOR a IN 1..@param RETURN a % 2 == 0",
-                                       returnType:"null"});
-        fail();                               
-      } catch(err) {
+        let invalid = analyzers.save("calcUnderTest", "aql", {queryString: "FOR a IN 1..@param RETURN a % 2 == 0",
+                                       returnType: "null"});
+        fail();
+      } catch (err) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code,
                     err.errorNum);
       }
     },
-    
-    testInvalidTypeAnalyzer : function() {
+
+    testInvalidTypeAnalyzer: function () {
       let analyzerName = "unknownUnderTest";
       try {
         analyzers.save(analyzerName, "unknownAnalyzerType");
@@ -3398,75 +3810,85 @@ function iResearchFeatureAqlTestSuite () {
                     err.errorNum);
       }
     },
-    testDisjunctionWithExclude : function() {
+    testDisjunctionWithExclude: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({field:"value"});
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        col.save({field: "value"});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         let viewMeta = {};
         let indexMeta = {};
         if (isEnterprise) {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['identity']}}};
+               analyzers: ['identity']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "identity"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "identity"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {links: 
-            {[colName]: 
-              {storeValues: 'id', 
-               includeAllFields:true, 
-               analyzers:['identity']}}};
+          viewMeta = {links:
+            {[colName]:
+              {storeValues: 'id',
+               includeAllFields: true,
+               analyzers: ['identity']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "identity"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "identity"},
             {"name": "value[*]"}
           ]};
         }
         col.ensureIndex(indexMeta);
         db._createView(viewName, "arangosearch", viewMeta);
 
-        assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " + 
+        assertEqual(2, db._query("FOR d IN @@v SEARCH ANALYZER(d.field != 'nothing', 'identity') OR true == false " +
                                  "OPTIONS { waitForSync: true } RETURN d ",
-                                { '@v':viewName }).toArray().length);
-        assertEqual(2, db._query("FOR d IN @@v  " + 
-                                 "SEARCH ANALYZER(d.field != 'nothing', 'identity') OR ANALYZER(EXISTS(d.field) " + 
+                                { '@v': viewName }).toArray().length);
+        assertEqual(2, db._query("FOR d IN @@v  " +
+                                 "SEARCH ANALYZER(d.field != 'nothing', 'identity') OR ANALYZER(EXISTS(d.field) " +
                                  " && true == false, 'identity')  OPTIONS { waitForSync: true } RETURN d ",
-                                { '@v':viewName }).toArray().length);
-        let actual1 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' " + 
+                                { '@v': viewName }).toArray().length);
+        let actual1 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' " +
                                                      "OR  true == false, 'identity') RETURN s.field" });
         assertEqual(2, actual1.execute().toArray().length);
-        let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' "+ 
+        let actual2 = db._createStatement({ "query": "FOR s IN `testView` SEARCH ANALYZER(s.field != 'nothing' " +
                                                      " OR (EXISTS(s.field) && true == false), 'identity') RETURN s.field" });
         assertEqual(2, actual2.execute().toArray().length);
 
 
-        
         assertEqual(2, db._query(`FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d.field != 'nothing' OR true == false RETURN d`).toArray().length);
 
         assertEqual(2, db._query(`FOR d IN ${colName} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d.field != 'nothing' OR EXISTS(d.field) && true == false RETURN d`).toArray().length);
 
-        actual1 = db._createStatement({ 
+        actual1 = db._createStatement({
           "query": `FOR s IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER
           s.field != 'nothing' OR  true == false RETURN s.field` });
         assertEqual(2, actual1.execute().toArray().length);
 
-        actual2 = db._createStatement({ 
+        actual2 = db._createStatement({
           "query": `FOR s IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER
           s.field != 'nothing' OR EXISTS(s.field) && true == false RETURN s.field` });
         assertEqual(2, actual2.execute().toArray().length);
@@ -3476,40 +3898,55 @@ function iResearchFeatureAqlTestSuite () {
         db._dropDatabase(dbName);
       }
     },
-    testRemoveAllInJustConsolidated : function() {
+    testRemoveAllInJustConsolidated: function () {
       let dbName = "testDb";
       let colName = "testCollection";
       let viewName = "testView";
       db._useDatabase("_system");
-      try { db._dropDatabase(dbName); } catch(e) {}
+      try {
+ db._dropDatabase(dbName);
+} catch (e) {}
       db._createDatabase(dbName);
       try {
         db._useDatabase(dbName);
         let col = db._create(colName);
-        col.save({ name_1: "123", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        col.save({ name_1: "123",
+"value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
         let indexMeta = {};
         let viewMeta = {};
-        if (isEnterprise) { 
-          viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
-            {[colName]: 
+        if (isEnterprise) {
+          viewMeta = {consolidationIntervalMsec: 0,
+commitIntervalMsec: 0,
+links:
+            {[colName]:
               {storeValues: 'id',
-               includeAllFields:true, 
+               includeAllFields: true,
                "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}},
-               analyzers:['identity']}}};
+               analyzers: ['identity']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "identity"},
-            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "identity"},
+            {"name": "value",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]}
           ]};
         } else {
-          viewMeta = {consolidationIntervalMsec: 0, commitIntervalMsec: 0, links: 
-            {[colName]: 
+          viewMeta = {consolidationIntervalMsec: 0,
+commitIntervalMsec: 0,
+links:
+            {[colName]:
               {storeValues: 'id',
-               includeAllFields:true, 
-               analyzers:['identity']}}};
+               includeAllFields: true,
+               analyzers: ['identity']}}};
 
-          indexMeta = {type: 'inverted', name: 'inverted', fields: [
-            {"name": "field", "analyzer": "identity"},
+          indexMeta = {type: 'inverted',
+name: 'inverted',
+fields: [
+            {"name": "field",
+"analyzer": "identity"},
             {"name": "value[*]"}
           ]};
         }
@@ -3518,13 +3955,14 @@ function iResearchFeatureAqlTestSuite () {
         let docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({field: i});
-          docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
+          docs.push({ name_1: i.toString(),
+"value": [{ "nested_1": [{ "nested_2": "foo321"}]}]});
         }
         col.insert(docs);
         db._view(viewName).properties({commitIntervalMsec: 10});
-        let res1 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
-                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
-                            + " length RETURN length").toArray();
+        let res1 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " +
+                            " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO " +
+                            " length RETURN length").toArray();
         assertEqual(1, res1.length);
         assertEqual(1000, res1[0]);
 
@@ -3541,9 +3979,9 @@ function iResearchFeatureAqlTestSuite () {
         }
         col.insert(docs);
         db._view(viewName).properties({commitIntervalMsec: 10});
-        let res2 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
-                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
-                            + " length RETURN length").toArray();
+        let res2 = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " +
+                            " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO " +
+                            " length RETURN length").toArray();
         assertEqual(1, res2.length);
         assertEqual(2000, res2[0]);
 
@@ -3560,9 +3998,9 @@ function iResearchFeatureAqlTestSuite () {
         db._view(viewName).properties({commitIntervalMsec: 10});
 
         // force sync
-        let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " 
-                            + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO "
-                            + " length RETURN length").toArray();
+        let res = db._query("FOR doc IN " + viewName + " SEARCH doc.field >= 0 " +
+                            " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO " +
+                            " length RETURN length").toArray();
         assertEqual(1, res.length);
         assertEqual(0, res[0]);
 
@@ -3579,9 +4017,9 @@ function iResearchFeatureAqlTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(iResearchFeatureAqlTestSuite);
 

@@ -64,7 +64,7 @@ function recoverySuite () {
 
       assertTrue(fs.isFile(crashFile), crashFile);
 
-      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function(line) {
+      let lines = fs.readFileSync(crashFile).toString().split("\n").filter(function (line) {
         return line.match(/\{crash\}/);
       });
       assertTrue(lines.length > 0);
@@ -72,14 +72,14 @@ function recoverySuite () {
       // check message
       let line = lines.shift();
       assertMatch(/FATAL.*thread \d+.*caught unexpected signal 11.*signal handler invoked/, line);
-      
+
       // check debug symbols
       // it is a bit compiler- and optimization-level-dependent what
       // symbols we get
       let expected = [ /crashHandlerSignalHandler/, /TerminateDebugging/, /JS_DebugTerminate/ ];
       let matches = 0;
-      lines.forEach(function(line) {
-        expected.forEach(function(ex) {
+      lines.forEach(function (line) {
+        expected.forEach(function (ex) {
           if (line.match(/ frame /) && line.match(ex)) {
             ++matches;
           }

@@ -365,7 +365,9 @@ Users.prototype.setup = function (options) {
     db._create(this._collectionName);
   }
 
-  this.storage().ensureIndex({ type: 'hash', fields: [ 'identifier' ], sparse: true });
+  this.storage().ensureIndex({ type: 'hash',
+fields: [ 'identifier' ],
+sparse: true });
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -684,7 +686,8 @@ Sessions.prototype.setup = function (options) {
     db._create(this._collectionName);
   }
 
-  this.storage().ensureIndex({ type: 'hash', fields: ['identifier']});
+  this.storage().ensureIndex({ type: 'hash',
+fields: ['identifier']});
 };
 
 // //////////////////////////////////////////////////////////////////////////////

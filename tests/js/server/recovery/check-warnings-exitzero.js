@@ -57,7 +57,7 @@ function recoverySuite () {
       }
 
       // find all warnings, errors, fatal errors...
-      let lines = fs.readFileSync(crashFile).toString().trim().split("\n").filter(function(line) {
+      let lines = fs.readFileSync(crashFile).toString().trim().split("\n").filter(function (line) {
         // we are interested in errors, warnings, fatal errors
         if (!line.match(/ (ERROR|WARNING|FATAL) \[[a-f0-9]+\] /)) {
           return false;
@@ -67,7 +67,7 @@ function recoverySuite () {
           // ignore errors about memory/performance configuration
           return false;
         }
-        
+
         if (line.match(/\[0458b\].*DO NOT USE IN PRODUCTION/i)) {
           // intentionally ignore DO NOT USE IN PRODUCTION line
           return false;

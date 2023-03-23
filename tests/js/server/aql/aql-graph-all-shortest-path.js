@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, assertMatch, fail */
+/* jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, graph functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Anthony Mahanna
-/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, graph functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Anthony Mahanna
+// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -145,38 +145,58 @@ const createGraph = () => {
         case 0: {
           if (pathNum < 6) {
             // source -> v
-            e1s.push({_from: source, _to: `${vName}/${key}`, weight});
+            e1s.push({_from: source,
+_to: `${vName}/${key}`,
+weight});
             if (pathNum < 3) {
               // Add INBOUND shortcut 0 <- 2 in e2 (we intentionally go to path 6-8 to not interfer with the original paths)
-              e2s.push({_from: `${vName}/vertex_${pathNum + 6}_0`, _to: `${vName}/${key}`, weight});
+              e2s.push({_from: `${vName}/vertex_${pathNum + 6}_0`,
+_to: `${vName}/${key}`,
+weight});
             }
           } else if (pathNum < 9) {
             // v -> target
-            e1s.push({_from: `${vName}/${key}`, _to: target, weight});
+            e1s.push({_from: `${vName}/${key}`,
+_to: target,
+weight});
           } else {
             // v-> bad
-            e1s.push({_from: `${vName}/${key}`, _to: badTarget, weight});
+            e1s.push({_from: `${vName}/${key}`,
+_to: badTarget,
+weight});
           }
           break;
         }
         case 1: {
           // connect to step 0
-          e1s.push({_from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight});
+          e1s.push({_from: `${vName}/vertex_${pathNum}_0`,
+_to: `${vName}/${key}`,
+weight});
           const mod = pathNum % 3;
           if (mod !== 0) {
             // Connect to the path before
-            e1s.push({_from: `${vName}/vertex_${pathNum - 1}_0`, _to: `${vName}/${key}`, weight});
+            e1s.push({_from: `${vName}/vertex_${pathNum - 1}_0`,
+_to: `${vName}/${key}`,
+weight});
           }
           if (mod !== 2) {
             // Connect to the path after
-            e1s.push({_from: `${vName}/vertex_${pathNum + 1}_0`, _to: `${vName}/${key}`, weight});
+            e1s.push({_from: `${vName}/vertex_${pathNum + 1}_0`,
+_to: `${vName}/${key}`,
+weight});
           }
           if (mod === 2 && pathNum === 2) {
             // Add a path loop and a duplicate edge
             // duplicate edge
-            e1s.push({_from: `${vName}/vertex_${pathNum}_0`, _to: `${vName}/${key}`, weight: weight + 1});
-            e1s.push({_from: `${vName}/${key}`, _to: looper, weight});
-            e1s.push({_from: looper, _to: `${vName}/vertex_${pathNum}_0`, weight});
+            e1s.push({_from: `${vName}/vertex_${pathNum}_0`,
+_to: `${vName}/${key}`,
+weight: weight + 1});
+            e1s.push({_from: `${vName}/${key}`,
+_to: looper,
+weight});
+            e1s.push({_from: looper,
+_to: `${vName}/vertex_${pathNum}_0`,
+weight});
           }
           break;
         }
@@ -187,15 +207,23 @@ const createGraph = () => {
               const additional = `vertex_${pathNum}_3`;
               vertices.push({_key: additional});
               // Add an aditional step only on the second path to have differnt path lengths
-              e1s.push({_from: `${vName}/${key}`, _to: `${vName}/${additional}`, weight});
-              e1s.push({_from: `${vName}/${additional}`, _to: target, weight});
+              e1s.push({_from: `${vName}/${key}`,
+_to: `${vName}/${additional}`,
+weight});
+              e1s.push({_from: `${vName}/${additional}`,
+_to: target,
+weight});
             } else {
-              e1s.push({_from: `${vName}/${key}`, _to: target, weight});
+              e1s.push({_from: `${vName}/${key}`,
+_to: target,
+weight});
             }
           }
           // Always connect to source:
           // 1 -> 2 is connected in e2
-          e2s.push({_from: `${vName}/vertex_${pathNum}_1`, _to: `${vName}/${key}`, weight});
+          e2s.push({_from: `${vName}/vertex_${pathNum}_1`,
+_to: `${vName}/${key}`,
+weight});
           break;
         }
       }
@@ -222,7 +250,7 @@ const createGraph = () => {
   // * 31 path1->path2 (4 edges)
   // * 36 path2 (4 edges)
   // * 37 path2 alt(4 edges)
-  // * 47 on loop path (8 edges) 
+  // * 47 on loop path (8 edges)
 
 
   // We hav no paths source -> badTarget
@@ -237,7 +265,7 @@ const createGraph = () => {
   // * 121 on loop
 };
 
-function allConstantWeightShortestPathTestSuite() {
+function allConstantWeightShortestPathTestSuite () {
   return {
     setUpAll: function () {
       tearDownAll();
@@ -352,7 +380,7 @@ function allConstantWeightShortestPathTestSuite() {
       }
     },
 
-    testPathDepth0: function() {
+    testPathDepth0: function () {
       const query = `
         WITH ${vName}
         FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${source}" ${e1Name}, INBOUND ${e2Name}
@@ -376,7 +404,7 @@ function allConstantWeightShortestPathTestSuite() {
 
 }
 
-function allShortestPathsSyntaxTestSuite() {
+function allShortestPathsSyntaxTestSuite () {
   return {
     testTooManyVariables: function () {
       const query = `
@@ -391,7 +419,7 @@ function allShortestPathsSyntaxTestSuite() {
   };
 }
 
-function allShortestPathsErrorTestSuite() {
+function allShortestPathsErrorTestSuite () {
 
   const graphName = "UnitTestGraph";
   const vName = "UnitTestVertices";
@@ -402,22 +430,34 @@ function allShortestPathsErrorTestSuite() {
   const keyC = "C";
   const keyD = "D";
 
-  function createGraph() {
+  function createGraph () {
     // Graph: Simple diamond
     gm._create(graphName, [gm._relation(eName, vName, vName)], [], {});
 
     const vertexes = [
-      {_key: keyA, value: 1},
-      {_key: keyB, value: 1},
-      {_key: keyC, value: 1},
-      {_key: keyD, value: 1}
+      {_key: keyA,
+value: 1},
+      {_key: keyB,
+value: 1},
+      {_key: keyC,
+value: 1},
+      {_key: keyD,
+value: 1}
     ];
 
     const edges = [
-      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyB}`, weight: -1},
-      {_from: `${vName}/${keyB}`, _to: `${vName}/${keyD}`, weight: 1},
-      {_from: `${vName}/${keyA}`, _to: `${vName}/${keyC}`, weight: 1},
-      {_from: `${vName}/${keyC}`, _to: `${vName}/${keyD}`, weight: -1}
+      {_from: `${vName}/${keyA}`,
+_to: `${vName}/${keyB}`,
+weight: -1},
+      {_from: `${vName}/${keyB}`,
+_to: `${vName}/${keyD}`,
+weight: 1},
+      {_from: `${vName}/${keyA}`,
+_to: `${vName}/${keyC}`,
+weight: 1},
+      {_from: `${vName}/${keyC}`,
+_to: `${vName}/${keyD}`,
+weight: -1}
     ];
 
     db[vName].insert(vertexes);

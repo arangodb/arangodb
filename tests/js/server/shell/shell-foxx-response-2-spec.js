@@ -16,7 +16,8 @@ describe('SyntheticResponse', function () {
       const res = new SyntheticResponse(rawRes, {});
       res.cookie('hello', 'banana');
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana'}
+        {name: 'hello',
+value: 'banana'}
       ]);
     });
     it('optionally adds a TTL', function () {
@@ -25,7 +26,9 @@ describe('SyntheticResponse', function () {
       const res = new SyntheticResponse(rawRes, {});
       res.cookie('hello', 'banana', {ttl: 22});
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana', lifeTime: 22}
+        {name: 'hello',
+value: 'banana',
+lifeTime: 22}
       ]);
     });
     it('optionally adds some metadata', function () {
@@ -59,8 +62,10 @@ describe('SyntheticResponse', function () {
       const res = new SyntheticResponse(rawRes, {});
       res.cookie('hello', 'banana', {secret: 'potato'});
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana'},
-        {name: 'hello.sig', value: crypto.hmac('potato', 'banana')}
+        {name: 'hello',
+value: 'banana'},
+        {name: 'hello.sig',
+value: crypto.hmac('potato', 'banana')}
       ]);
     });
     it('supports signed cookies with different algorithms', function () {
@@ -72,8 +77,10 @@ describe('SyntheticResponse', function () {
         algorithm: 'sha512'
       });
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana'},
-        {name: 'hello.sig', value: crypto.hmac('potato', 'banana', 'sha512')}
+        {name: 'hello',
+value: 'banana'},
+        {name: 'hello.sig',
+value: crypto.hmac('potato', 'banana', 'sha512')}
       ]);
     });
     it('treats options string as a secret', function () {
@@ -82,8 +89,10 @@ describe('SyntheticResponse', function () {
       const res = new SyntheticResponse(rawRes, {});
       res.cookie('hello', 'banana', 'potato');
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana'},
-        {name: 'hello.sig', value: crypto.hmac('potato', 'banana')}
+        {name: 'hello',
+value: 'banana'},
+        {name: 'hello.sig',
+value: crypto.hmac('potato', 'banana')}
       ]);
     });
     it('treats options number as a TTL value', function () {
@@ -92,7 +101,9 @@ describe('SyntheticResponse', function () {
       const res = new SyntheticResponse(rawRes, {});
       res.cookie('hello', 'banana', 22);
       expect(rawRes.cookies).to.eql([
-        {name: 'hello', value: 'banana', lifeTime: 22}
+        {name: 'hello',
+value: 'banana',
+lifeTime: 22}
       ]);
     });
   });

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, fail, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for memory limits
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for memory limits
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const errors = internal.errors;
@@ -37,36 +37,36 @@ const isCluster = require('@arangodb/cluster').isCluster();
 function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   return {
 
-    testUnlimited : function () {
+    testUnlimited: function () {
       let actual = AQL_EXECUTE("FOR i IN 1..100000 RETURN CONCAT('foobarbaz', i)").json;
       assertEqual(100000, actual.length);
-      
+
       actual = AQL_EXECUTE("FOR i IN 1..100000 RETURN CONCAT('foobarbaz', i)", null, { memoryLimit: 0 }).json;
       assertEqual(100000, actual.length);
     },
 
-    testLimitedButValid : function () {
+    testLimitedButValid: function () {
       let actual = AQL_EXECUTE("FOR i IN 1..100000 RETURN CONCAT('foobarbaz', i)", null, { memoryLimit: 100 * 1000 * 1000 }).json;
       assertEqual(100000, actual.length);
-      
+
       // should still be ok
       actual = AQL_EXECUTE("FOR i IN 1..100000 RETURN CONCAT('foobarbaz', i)", null, { memoryLimit: 10 * 1000 * 1000 }).json;
       assertEqual(100000, actual.length);
-      
+
       // should still be ok
       actual = AQL_EXECUTE("FOR i IN 1..100000 RETURN CONCAT('foobarbaz', i)", null, { memoryLimit: 5 * 1000 * 1000 }).json;
       assertEqual(100000, actual.length);
-      
+
       // should still be ok
       actual = AQL_EXECUTE("FOR i IN 1..10000 RETURN i", null, { memoryLimit: 1000 * 1000 }).json;
       assertEqual(10000, actual.length);
-      
+
       // should still be ok
       actual = AQL_EXECUTE("FOR i IN 1..10000 RETURN i", null, { memoryLimit: 100 * 1000 + 4096 }).json;
       assertEqual(10000, actual.length);
     },
 
-    testLimitedAndInvalid : function () {
+    testLimitedAndInvalid: function () {
       const queries = [
         [ "FOR i IN 1..100000 SORT CONCAT('foobarbaz', i) RETURN CONCAT('foobarbaz', i)", 200000 ],
         [ "FOR i IN 1..100000 SORT CONCAT('foobarbaz', i) RETURN CONCAT('foobarbaz', i)", 100000 ],
@@ -80,7 +80,7 @@ function ahuacatlMemoryLimitStaticQueriesTestSuite () {
         [ "FOR i IN 1..10000 RETURN CONCAT('foobarbaz', i)", 10 ]
       ];
 
-      queries.forEach(function(q) {
+      queries.forEach(function (q) {
         try {
           AQL_EXECUTE(q[0], null, { memoryLimit: q[1] });
           fail();
@@ -88,7 +88,7 @@ function ahuacatlMemoryLimitStaticQueriesTestSuite () {
           assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
         }
       });
-    },
+    }
 
   };
 }
@@ -99,44 +99,32 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
   let c;
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       // only one shard because that is more predictable for memory usage
       c = db._create(cn, { numberOfShards: 1 });
 
       let docs = [];
       for (let i = 0; i < 100 * 1000; ++i) {
-        docs.push({ value1: i, value2: i % 10, _key: "test" + i });
+        docs.push({ value1: i,
+value2: i % 10,
+_key: "test" + i });
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
         }
       }
     },
-    
-    tearDownAll : function () {
+
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testFullScan : function () {
+    testFullScan: function () {
       const query = "FOR doc IN " + cn + " RETURN doc";
-      
+
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000 }).json;
       assertEqual(100000, actual.length);
-        
-      try {
-        AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-    
-    testIndexScan : function () {
-      const query = "FOR doc IN " + cn + " SORT doc._key RETURN doc";
-      
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000 }).json;
-      assertEqual(100000, actual.length);
-        
+
       try {
         AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 });
         fail();
@@ -145,29 +133,12 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
       }
     },
 
-    testSort : function () {
-      // turn off constrained heap sort
-      const optimizer = { rules: ["-sort-limit"] };
-      const query = "FOR doc IN " + cn + " SORT doc.value1 LIMIT 10 RETURN doc";
-      
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 15 * 1000 * 1000, optimizer }).json;
-      assertEqual(10, actual.length);
-        
-      try {
-        AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000, optimizer });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-    
-    testCollectOnUniqueAttribute : function () {
-      // values of doc.value1 are all unique
-      const query = "FOR doc IN " + cn + " COLLECT v = doc.value1 OPTIONS { method: 'hash' } RETURN v";
-      
+    testIndexScan: function () {
+      const query = "FOR doc IN " + cn + " SORT doc._key RETURN doc";
+
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000 }).json;
       assertEqual(100000, actual.length);
-      
+
       try {
         AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 });
         fail();
@@ -175,24 +146,57 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
-    testCollectOnRepeatedAttribute : function () {
+
+    testSort: function () {
+      // turn off constrained heap sort
+      const optimizer = { rules: ["-sort-limit"] };
+      const query = "FOR doc IN " + cn + " SORT doc.value1 LIMIT 10 RETURN doc";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 15 * 1000 * 1000,
+optimizer }).json;
+      assertEqual(10, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000,
+optimizer });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testCollectOnUniqueAttribute: function () {
+      // values of doc.value1 are all unique
+      const query = "FOR doc IN " + cn + " COLLECT v = doc.value1 OPTIONS { method: 'hash' } RETURN v";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 * 1000 }).json;
+      assertEqual(100000, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 5 * 1000 * 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testCollectOnRepeatedAttribute: function () {
       // values of doc.value2 are repeating a lot (only 10 different values)
       const query = "FOR doc IN " + cn + " COLLECT v = doc.value2 OPTIONS { method: 'hash' } RETURN v";
-      
+
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000 }).json;
       assertEqual(10, actual.length);
-      
+
       actual = AQL_EXECUTE(query, null, { memoryLimit: 500 * 1000 }).json;
       assertEqual(10, actual.length);
-        
+
       try {
         AQL_EXECUTE(query, null, { memoryLimit: 10 * 1000 });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
-    },
+    }
   };
 }
 
@@ -201,10 +205,10 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
   const en = "UnitTestsEdge";
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(en);
       db._drop(vn);
-      
+
       const n = 400;
 
       // only one shard because that is more predictable for memory usage
@@ -219,11 +223,13 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       c = db._createEdgeCollection(en, { numberOfShards: 1 });
 
       const weight = 1;
-      
+
       docs = [];
       for (let i = 0; i < n; ++i) {
         for (let j = i + 1; j < n; ++j) {
-          docs.push({ _from: vn + "/test" + i, _to: vn + "/test" + j, weight });
+          docs.push({ _from: vn + "/test" + i,
+_to: vn + "/test" + j,
+weight });
           if (docs.length === 5000) {
             c.insert(docs);
             docs = [];
@@ -234,13 +240,13 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         c.insert(docs);
       }
     },
-    
-    tearDownAll : function () {
+
+    tearDownAll: function () {
       db._drop(en);
       db._drop(vn);
     },
-    
-    testKShortestPaths : function () {
+
+    testKShortestPaths: function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
 
       if (isCluster) {
@@ -261,7 +267,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       }
     },
 
-    testAllShortestPaths : function () {
+    testAllShortestPaths: function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND ALL_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
 
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 250 * 1000 }).json;
@@ -276,50 +282,52 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       }
     },
 
-    testKPaths : function () {
+    testKPaths: function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_PATHS '" + vn + "/test0' TO '" + vn + "/test317' " + en + " RETURN p";
-      
+
       let actual = AQL_EXECUTE(query, null, { memoryLimit: 250 * 1000 }).json;
       // no shortest path available
       assertEqual(1, actual.length);
-      
+
       try {
         AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-    
-    testShortestPathDefaultWeight : function () {
-      const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
-      
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 500 * 1000 }).json;
-      assertEqual(2, actual.length);
-      
-      try {
-        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-    
-    testShortestPathWeightAttribute : function () {
-      const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
-      
-      let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000, weightAttribute: "weight" }).json;
-      assertEqual(2, actual.length);
-      
-      try {
-        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000, weightAttribute: "weight" });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
 
-    testTraversal : function () {
+    testShortestPathDefaultWeight: function () {
+      const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 500 * 1000 }).json;
+      assertEqual(2, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testShortestPathWeightAttribute: function () {
+      const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 1000 * 1000,
+weightAttribute: "weight" }).json;
+      assertEqual(2, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000,
+weightAttribute: "weight" });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testTraversal: function () {
       const query = "WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v";
 
       if (isCluster) {
@@ -329,7 +337,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         let actual = AQL_EXECUTE(query, { maxDepth: 2 }, { memoryLimit: 20 * 1000 * 1000 }).json;
         assertEqual(79800, actual.length);
       }
-      
+
       try {
         // run query with same depth, but lower mem limit
         AQL_EXECUTE("WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v", { maxDepth: 2 }, { memoryLimit: 2 * 1000 * 1000 });
@@ -337,7 +345,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
-        
+
       try {
         // increase traversal depth
         AQL_EXECUTE("WITH " + vn + " FOR v, e, p IN 1..@maxDepth OUTBOUND '" + vn + "/test0' " + en + " RETURN v", { maxDepth: 5 }, { memoryLimit: 10 * 1000 * 1000 });
@@ -345,7 +353,7 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
-    },
+    }
 
   };
 }

@@ -39,7 +39,7 @@ module.exports = function auth (cfg) {
   const workFactor = cfg.workFactor || 1;
 
   return {
-    verify(authData, password = '') {
+    verify (authData, password = '') {
       if (typeof authData === 'string') {
         authData = {hash: authData};
       } else if (!authData) {
@@ -57,7 +57,7 @@ module.exports = function auth (cfg) {
       return crypto.constantEquals(storedHash, generatedHash);
     },
 
-    create(password) {
+    create (password) {
       const salt = crypto.genRandomSalt(saltLength);
       const method = hashMethod;
       if (method === 'pbkdf2') {
@@ -71,7 +71,9 @@ module.exports = function auth (cfg) {
         };
       }
       const hash = crypto[method](salt + password);
-      return {method, salt, hash};
+      return {method,
+salt,
+hash};
     }
   };
 };

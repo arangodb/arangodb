@@ -1,33 +1,33 @@
 
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertFalse, assertEqual, arango */
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief test for soft shutdown of a coordinator
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2021 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
-/// @author Max Neunhoeffer
-/// @author Copyright 2021, ArangoDB Inc, Cologne, Germany
-//////////////////////////////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////////////////////////////
+// / @brief test for soft shutdown of a coordinator
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2021 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Copyright 2021, ArangoDB Inc, Cologne, Germany
+// ////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const internal = require("internal");
@@ -38,21 +38,22 @@ const {
   getCtrlCoordinators
 } = require('@arangodb/test-helper');
 
-function testSuite() {
+function testSuite () {
   let cn = "UnitTestSoftShutdown";
 
   let coordinator;
 
   return {
-    setUp : function() {
+    setUp: function () {
       if (coordinator && !coordinator.checkArangoAlive()) {
         throw new Error("coordinator not healthy!");
       }
       db._drop(cn);
-      let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
+      let collection = db._create(cn, {numberOfShards: 2,
+replicationFactor: 2});
       let docs = [];
       for (let i = 0; i < 10; ++i) {
-        docs.push({Hallo:i});
+        docs.push({Hallo: i});
       }
       collection.save(docs);
 
@@ -63,7 +64,7 @@ function testSuite() {
       coordinator = coordinators[0];
     },
 
-    tearDown : function() {
+    tearDown: function () {
       // Every test is supposed to initiate a soft shutdown
       // hence, once we tear down the test we expect
       // the coordinator to be gone
@@ -78,7 +79,7 @@ function testSuite() {
       db._drop(cn);
     },
 
-    testSoftShutdownWithoutTraffic : function() {
+    testSoftShutdownWithoutTraffic: function () {
       // Now use soft shutdown API to shut coordinator down:
       let status = arango.GET("/_admin/shutdown");
       assertFalse(status.softShutdownOngoing, "expect status.softShutdownOngoing == false");
@@ -89,7 +90,7 @@ function testSuite() {
       assertEqual(0, status.AQLcursors, "expect status.AQLcursors == 0");
     },
 
-    testSoftShutdownWithAQLCursor : function() {
+    testSoftShutdownWithAQLCursor: function () {
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -115,20 +116,20 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        let next = arango.PUT("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // And the last one:
       wait(2);
-      let next = arango.PUT("/_api/cursor/" + resp.id,{});
+      let next = arango.PUT("/_api/cursor/" + resp.id, {});
       console.warn("Read last document:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(200, next.code);
     },
 
-    testSoftShutdownWithAQLCursorDeleted : function() {
+    testSoftShutdownWithAQLCursorDeleted: function () {
       // Create an AQL cursor:
       let data = {
         query: `FOR x in ${cn} RETURN x`,
@@ -156,20 +157,20 @@ function testSuite() {
       // Now slowly read the cursor through:
       for (let i = 0; i < 8; ++i) {
         wait(2);
-        let next = arango.PUT("/_api/cursor/" + resp.id,{});
+        let next = arango.PUT("/_api/cursor/" + resp.id, {});
         console.warn("Read document:", next);
         assertTrue(next.hasMore);
       }
       // Instead of the last one, now delete the cursor:
       wait(2);
-      let next = arango.DELETE("/_api/cursor/" + resp.id,{});
+      let next = arango.DELETE("/_api/cursor/" + resp.id, {});
       console.warn("Deleted cursor:", next, "awaiting shutdown...");
       assertFalse(next.hasMore);
       assertFalse(next.error);
       assertEqual(202, next.code);
     },
 
-    testSoftShutdownWithStreamingTrx : function() {
+    testSoftShutdownWithStreamingTrx: function () {
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -199,7 +200,7 @@ function testSuite() {
       assertEqual(200, resp.code);
     },
 
-    testSoftShutdownWithAQLStreamingTrxAborted : function() {
+    testSoftShutdownWithAQLStreamingTrxAborted: function () {
       // Create a streaming transaction:
       let data = { collections: {write: [cn]} };
 
@@ -230,11 +231,11 @@ function testSuite() {
       assertEqual(200, resp.code);
     },
 
-    testSoftShutdownWithAsyncRequest : function() {
+    testSoftShutdownWithAsyncRequest: function () {
       // Create a streaming transaction:
       let data = { query: `RETURN SLEEP(15)` };
 
-      let resp = arango.POST_RAW("/_api/cursor", data, {"x-arango-async":"store"});
+      let resp = arango.POST_RAW("/_api/cursor", data, {"x-arango-async": "store"});
       console.warn("Produced cursor asynchronously:", resp);
 
       // Now use soft shutdown API to shut coordinator down:
@@ -252,12 +253,12 @@ function testSuite() {
       assertFalse(status.allClear);
 
       // It should fail to create a new cursor:
-      let respFailed = arango.POST_RAW("/_api/cursor", data, {"x-arango-async":"store"});
+      let respFailed = arango.POST_RAW("/_api/cursor", data, {"x-arango-async": "store"});
       assertTrue(respFailed.error);
       assertEqual(503, respFailed.code);
 
       // Now wait for some seconds:
-      wait(20);   // Let query terminate, then the job should be done
+      wait(20); // Let query terminate, then the job should be done
 
       status = arango.GET("/_admin/shutdown");
       console.warn("status2:", status);
@@ -275,14 +276,14 @@ function testSuite() {
       assertEqual(201, resp.code);
     },
 
-    testSoftShutdownWithQueuedLowPrio : function() {
+    testSoftShutdownWithQueuedLowPrio: function () {
       // Create a streaming transaction:
       let op = `require("internal").wait(1); return 1;`;
 
       let jobs = [];
       for (let i = 0; i < 128; ++i) {
         // that is more than we have threads, so there should be a queue
-        let resp = arango.POST_RAW("/_admin/execute", op, {"x-arango-async":"store"});
+        let resp = arango.POST_RAW("/_admin/execute", op, {"x-arango-async": "store"});
         jobs.push(resp.headers["x-arango-async-id"]);
       }
       console.warn("Produced 128 jobs asynchronously:", jobs);
@@ -309,7 +310,7 @@ function testSuite() {
         status = arango.GET("/_admin/shutdown");
         if (status.lowPrioQueuedRequests === 0 &&
             status.lowPrioOngoingRequests === 0) {
-          break;   // all good!
+          break; // all good!
         }
         if (time() - startTime > 90) {
           // 45 seconds should be enough for at least 2 threads
@@ -334,7 +335,7 @@ function testSuite() {
       assertEqual(0, status.pendingJobs, `expect status.pendingJobs = ${status.pendingJobs} == 0`);
       assertEqual(0, status.doneJobs, `expect status.doneJobs = ${status.doneJobs} == 0`);
       assertTrue(status.allClear);
-    },
+    }
 
   };
 }

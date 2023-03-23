@@ -42,9 +42,9 @@ const binaryMime = 'image/gif';
 const textMime = 'text/plain';
 const pixelStr = 'R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==';
 const pixelGif = new Buffer(pixelStr, 'base64');
-const vpackObjectSize = forceJson ? 75: 73;
+const vpackObjectSize = forceJson ? 75 : 73;
 
-const cmpBuffer = function(a, b) {
+const cmpBuffer = function (a, b) {
   if (a.length !== b.length) {
     return false;
   }
@@ -84,7 +84,7 @@ function foxxInterfaceSuite () {
     tearDownAll: function () {
       FoxxManager.uninstall(mount, {force: true});
     },
-    
+
     testFoxxInterfacePostBody: function () {
       [
         'POST_RAW',
@@ -99,9 +99,10 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': jsonMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
+        assertEqual(res.code, 200, { meth: reqMethod,
+replyBody: res.parsedBody });
         assertTrue(typeof res.parsedBody === 'object');
-        
+
         assertEqual(JSON.stringify(res.parsedBody), JSON.stringify({ pixelStr }));
         assertEqual(res.headers['content-length'], vpackObjectSize);
         assertEqual(res.headers['content-type'], vpackMime);
@@ -113,7 +114,7 @@ function foxxInterfaceSuite () {
       let res = arango.GET_RAW(url);
       assertEqual(res.code, 200, res.parsedBody);
       assertTrue(typeof res.parsedBody === 'object');
-      
+
       assertEqual(JSON.stringify(res.parsedBody), JSON.stringify({ pixelStr }));
       assertEqual(res.headers['content-length'], vpackObjectSize);
       assertEqual(res.headers['content-type'], vpackMime);
@@ -141,9 +142,10 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': binaryMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
+        assertEqual(res.code, 200, { meth: reqMethod,
+replyBody: res.parsedBody });
         assertTrue(res.body instanceof Buffer);
-        
+
         let respBody = new Buffer(res.body);
         assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
         assertEqual(res.headers['content-length'], pixelGif.length);
@@ -156,7 +158,7 @@ function foxxInterfaceSuite () {
       let res = arango.GET_RAW(binUrl);
       assertEqual(res.code, 200, res.parsedBody);
       assertTrue(res.body instanceof Buffer);
-      
+
       let respBody = new Buffer(res.body);
       assertTrue(cmpBuffer(respBody, pixelGif), "whether the server sent us a proper one pixel gif");
       assertEqual(res.headers['content-length'], pixelGif.length);
@@ -186,7 +188,8 @@ function foxxInterfaceSuite () {
                                     {
                                       'content-type': textMime
                                     });
-        assertEqual(res.code, 200, { meth: reqMethod, replyBody: res.parsedBody });
+        assertEqual(res.code, 200, { meth: reqMethod,
+replyBody: res.parsedBody });
         assertTrue(typeof res.body === 'string');
 
         assertEqual(res.body, pixelStr, "whether the server sent us a proper one pixel gif");

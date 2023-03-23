@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false */
+/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test vertex centric indexes
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test vertex centric indexes
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const internal = require("internal");
@@ -35,18 +35,18 @@ const cn = "UnitTestEdgeCollection";
 const testHelper = require("@arangodb/test-helper").Helper;
 const arangodb = require('@arangodb');
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: index creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: index creation
+// //////////////////////////////////////////////////////////////////////////////
 
-function vertexCentricIndexSuite() {
+function vertexCentricIndexSuite () {
   var collection = null;
 
   return {
 
     setUp: () => {
       internal.db._drop(cn);
-      collection = internal.db._createEdgeCollection(cn, { waitForSync : false });
+      collection = internal.db._createEdgeCollection(cn, { waitForSync: false });
     },
 
     tearDown: () => {
@@ -55,7 +55,7 @@ function vertexCentricIndexSuite() {
       internal.wait(0.0);
     },
 
-    testCreateDefault : () => {
+    testCreateDefault: () => {
       let before = collection.getIndexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound"});
 
@@ -70,16 +70,18 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateHash : () => {
+    testCreateHash: () => {
       let before = collection.getIndexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "hash", direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex("label", {type: "hash",
+direction: "outbound"});
 
       // creation
       let after = collection.getIndexes();
@@ -92,16 +94,18 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateSkiplist : () => {
+    testCreateSkiplist: () => {
       let before = collection.getIndexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "skiplist", direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex("label", {type: "skiplist",
+direction: "outbound"});
 
       // creation
       let after = collection.getIndexes();
@@ -114,16 +118,18 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to skiplist [_from, label]
-      let idx2 = collection.ensureIndex({ type: "skiplist", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "skiplist",
+fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreatePersistent : () => {
+    testCreatePersistent: () => {
       let before = collection.getIndexes();
-      let idx = collection.ensureVertexCentricIndex("label", {type: "persistent", direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex("label", {type: "persistent",
+direction: "outbound"});
 
       // creation
       let after = collection.getIndexes();
@@ -136,14 +142,15 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({type: "persistent", fields:["_from", "label"]});
+      let idx2 = collection.ensureIndex({type: "persistent",
+fields: ["_from", "label"]});
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateMultiFields : () => {
+    testCreateMultiFields: () => {
       let before = collection.getIndexes();
       let idx = collection.ensureVertexCentricIndex("label", "type", {direction: "outbound"});
 
@@ -158,16 +165,18 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateOnlyOptions : () => {
+    testCreateOnlyOptions: () => {
       let before = collection.getIndexes();
-      let idx = collection.ensureVertexCentricIndex({fields: ["label", "type"], direction: "outbound"});
+      let idx = collection.ensureVertexCentricIndex({fields: ["label", "type"],
+direction: "outbound"});
 
       // creation
       let after = collection.getIndexes();
@@ -180,14 +189,15 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label, type]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label", "type"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_from", "label", "type"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateInbound : () => {
+    testCreateInbound: () => {
       let before = collection.getIndexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "inbound"});
 
@@ -202,14 +212,15 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_to, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_to", "label"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_to", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
 
-    testCreateWrongTyping : () => {
+    testCreateWrongTyping: () => {
       let before = collection.getIndexes();
       let idx = collection.ensureVertexCentricIndex("label", {direction: "oUtBoUnD"});
 
@@ -224,14 +235,15 @@ function vertexCentricIndexSuite() {
       assertTrue(idx.isNewlyCreated);
 
       // is identical to hash [_from, label]
-      let idx2 = collection.ensureIndex({ type: "hash", fields: ["_from", "label"] });
+      let idx2 = collection.ensureIndex({ type: "hash",
+fields: ["_from", "label"] });
       assertFalse(idx2.isNewlyCreated);
 
       let after2 = collection.getIndexes();
       assertEqual(after.length, after2.length);
     },
- 
-    testErrorDirection : () => {
+
+    testErrorDirection: () => {
       let before = collection.getIndexes();
       try {
         let idx = collection.ensureVertexCentricIndex("label", {direction: "any"});
@@ -244,10 +256,11 @@ function vertexCentricIndexSuite() {
       assertEqual(before.length, after.length);
     },
 
-    testErrorType : () => {
+    testErrorType: () => {
       let before = collection.getIndexes();
       try {
-        let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound", type: "circus"});
+        let idx = collection.ensureVertexCentricIndex("label", {direction: "outbound",
+type: "circus"});
         fail();
       } catch (e) {
         assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
@@ -256,8 +269,8 @@ function vertexCentricIndexSuite() {
       let after = collection.getIndexes();
       assertEqual(before.length, after.length);
     },
- 
-    testErrorFields : () => {
+
+    testErrorFields: () => {
       let before = collection.getIndexes();
       try {
         let idx = collection.ensureVertexCentricIndex({direction: "outbound"});

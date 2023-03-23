@@ -30,7 +30,7 @@ const jsunity = require('jsunity');
 const fs = require('fs');
 const cn = "UnitTestCollection";
 
-function runSetup() {
+function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
@@ -46,12 +46,13 @@ function runSetup() {
     }
   }
 
-  db._query(`FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`, null, {spillOverThresholdNumRows: 5000, stream: true});
+  db._query(`FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`, null, {spillOverThresholdNumRows: 5000,
+stream: true});
 
   internal.debugTerminate('crashing server');
 }
 
-function recoverySuite() {
+function recoverySuite () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
@@ -60,7 +61,7 @@ function recoverySuite() {
     // / @brief test whether the temp directory was cleaned up after query execution
     // //////////////////////////////////////////////////////////////////////////////
 
-    testTempDirCleanupAfterQuery: function() {
+    testTempDirCleanupAfterQuery: function () {
       const tempDir = fs.join(internal.options()["temp.intermediate-results-path"], "temp");
       const tree = fs.listTree(tempDir);
       assertEqual(tree.length, 1);
@@ -68,7 +69,7 @@ function recoverySuite() {
   };
 }
 
-function main(argv) {
+function main (argv) {
   'use strict';
   if (argv[1] === 'setup') {
     runSetup();

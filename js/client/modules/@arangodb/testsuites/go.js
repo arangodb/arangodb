@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'go_driver': 'go client driver test',
+  'go_driver': 'go client driver test'
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
@@ -65,14 +65,14 @@ const testPaths = {
 
 function goDriver (options) {
   class runGoTest extends testRunnerBase {
-    constructor(options, testname, ...optionalArgs) {
+    constructor (options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
-    runOneTest(file) {
+    runOneTest (file) {
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
-      let jwt = this.instanceManager.JWT; 
+      let jwt = this.instanceManager.JWT;
       if (jwt) {
         process.env['TEST_JWTSECRET'] = jwt;
       }
@@ -99,7 +99,7 @@ function goDriver (options) {
       }
       if (this.options.hasOwnProperty('goOptions')) {
         for (var key in this.options.goOptions) {
-          args.push('-'+key);
+          args.push('-' + key);
           args.push(this.options.goOptions[key]);
         }
       }
@@ -143,7 +143,7 @@ function goDriver (options) {
                     // this is the final PASS, ignore it.
                     print(item.Output);
                     continue;
-                  } else if (item.Output.substring(0, 3) === 'ok '){
+                  } else if (item.Output.substring(0, 3) === 'ok ') {
                     print(item.Output);
                     continue;
                   } else {
@@ -160,7 +160,7 @@ function goDriver (options) {
                   };
                 }
                 let thiscase = results[testcase];
-                switch(item.Action) {
+                switch (item.Action) {
                 case 'fail':
                   status = false;
                   thiscase.status = false;
@@ -226,6 +226,10 @@ function goDriver (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['go_driver'] = goDriver;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

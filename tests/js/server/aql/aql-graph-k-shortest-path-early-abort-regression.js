@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/* jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
+/* global assertEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, graph functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Markus Pfeiffer
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, graph functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Markus Pfeiffer
+// / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -54,28 +54,44 @@ const createGraph = () => {
 
   for (var i = 0; i < 9; i++) {
     vertices.push({
-      _key: i.toString(),
+      _key: i.toString()
     });
   }
 
-  edges.push({ _from: `${vName}/0`, _to: `${vName}/1`, weight: 1000 });
-  edges.push({ _from: `${vName}/0`, _to: `${vName}/4`, weight: 500 });
+  edges.push({ _from: `${vName}/0`,
+_to: `${vName}/1`,
+weight: 1000 });
+  edges.push({ _from: `${vName}/0`,
+_to: `${vName}/4`,
+weight: 500 });
 
-  edges.push({ _from: `${vName}/2`, _to: `${vName}/1`, weight: 500 });
+  edges.push({ _from: `${vName}/2`,
+_to: `${vName}/1`,
+weight: 500 });
 
-  edges.push({ _from: `${vName}/3`, _to: `${vName}/2`, weight: 50 });
-  edges.push({ _from: `${vName}/3`, _to: `${vName}/6`, weight: 200 });
-  edges.push({ _from: `${vName}/3`, _to: `${vName}/7`, weight: 300 });
+  edges.push({ _from: `${vName}/3`,
+_to: `${vName}/2`,
+weight: 50 });
+  edges.push({ _from: `${vName}/3`,
+_to: `${vName}/6`,
+weight: 200 });
+  edges.push({ _from: `${vName}/3`,
+_to: `${vName}/7`,
+weight: 300 });
 
-  edges.push({ _from: `${vName}/4`, _to: `${vName}/3`, weight: 50 });
+  edges.push({ _from: `${vName}/4`,
+_to: `${vName}/3`,
+weight: 50 });
 
-  edges.push({ _from: `${vName}/5`, _to: `${vName}/2`, weight: 100 });
+  edges.push({ _from: `${vName}/5`,
+_to: `${vName}/2`,
+weight: 100 });
 
   db[vName].save(vertices);
   db[eName].save(edges);
 };
 
-function kEarlyAbortRegressionTest() {
+function kEarlyAbortRegressionTest () {
   return {
     setUpAll: function () {
       tearDownAll();
@@ -109,8 +125,8 @@ function kEarlyAbortRegressionTest() {
           OPTIONS {weightAttribute: "weight"}
           RETURN path.weight`;
       const result = db._query(query).toArray();
-      assertEqual([1000,1100], result);
-    },
+      assertEqual([1000, 1100], result);
+    }
   };
 }
 

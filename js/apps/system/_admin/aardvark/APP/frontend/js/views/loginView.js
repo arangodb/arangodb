@@ -32,7 +32,9 @@
       }
 
       let user = arangoHelper.getCurrentJwtUsername();
-      if (!user || user === "undefined") user = null;
+      if (!user || user === "undefined") {
+user = null;
+}
       if (frontendConfig.authenticationEnabled && !loggedIn && user === null) {
         $('.bodyWrapper').show();
         setTimeout(() => {
@@ -189,7 +191,7 @@
             '<option value="' + _.escape(db) + '"><pre>' + _.escape(db) + '</pre></option>'
           );
         }
-            
+
         $('#loginDatabase').show();
         $('.fa-database').show();
       } else {
@@ -253,11 +255,11 @@
         url: path,
         success: (data) => {
           window.location.href = path;
-  
+
           // show hidden divs
           $('.bodyWrapper').show();
           $('.navbar').show();
-  
+
           $('#currentUser').text(username);
           this.collection.loadUserSettings((error) => {
             if (error) {

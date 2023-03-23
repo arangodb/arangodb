@@ -35,15 +35,18 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ type: "hash", fields: ["value1"] });
-  c.ensureIndex({ type: "hash", fields: ["value2"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value1"] });
+  c.ensureIndex({ type: "hash",
+fields: ["value2"] });
 
   let docs = [];
   for (let i = 0; i < 10000; ++i) {
-    docs.push({ value1: i, value2: (i % 10) });
+    docs.push({ value1: i,
+value2: (i % 10) });
   }
   c.insert(docs);
-  
+
   internal.waitForEstimatorSync();
   internal.wal.flush(true, true);
 
@@ -69,8 +72,8 @@ function recoverySuite () {
       assertEqual('hash', idx.type);
       // values in the index are unique, but the estimates are approximate.
       // so leave some leeway.
-      assertTrue(idx.selectivityEstimate >= 0.90, idx); 
-      
+      assertTrue(idx.selectivityEstimate >= 0.90, idx);
+
       idx = c.getIndexes()[2];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
@@ -78,7 +81,7 @@ function recoverySuite () {
       assertEqual('hash', idx.type);
       // values in the index are unique, but the estimates are approximate.
       // so leave some leeway.
-      assertTrue(idx.selectivityEstimate < 0.005, idx); 
+      assertTrue(idx.selectivityEstimate < 0.005, idx);
     }
 
   };

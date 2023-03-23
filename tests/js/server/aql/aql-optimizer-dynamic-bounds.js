@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, AQL_EXECUTEJSON */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for optimizer rules
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
@@ -34,51 +34,54 @@ var isEqual = helper.isEqual;
 var db = require("@arangodb").db;
 var _ = require("lodash");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function singleAttributeTestSuite () {
   var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 
-  // various choices to control the optimizer: 
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  // various choices to control the optimizer:
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(cn);
       c = db._create(cn);
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ value1: "test" + i, value2: i });
+        docs.push({ value1: "test" + i,
+value2: i });
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
-      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["value1"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["value2"] });
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test results
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRangesSingleAttribute : function () {
-      var queries = [ 
+    testRangesSingleAttribute: function () {
+      var queries = [
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value2 == i SORT j.value2 RETURN j.value2", [ 2 ], true ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 == i SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
-        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 >= i FILTER j.value2 <= i SORT j.value2 RETURN j.value2", [ 2, 3 ] , true ],
-        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i <= j.value2 FILTER i >= j.value2 SORT j.value2 RETURN j.value2", [ 2, 3 ] , true ],
+        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 >= i FILTER j.value2 <= i SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
+        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i <= j.value2 FILTER i >= j.value2 SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 >= i FILTER j.value2 < i + 1 SORT j.value2 RETURN j.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value2 >= i FILTER j.value2 <= i + 1 SORT j.value2 RETURN j.value2", [ 2, 3, 3, 4 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value2 == 2 FOR j IN " + cn + " FILTER i.value2 == j.value2 RETURN j.value2", [ 2 ], true ],
@@ -99,14 +102,13 @@ function singleAttributeTestSuite () {
       opts.allPlans = true;
       opts.verbosePlans = true;
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        var resultEnabled = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
         if (query[2]) {
           assertNotEqual(-1, AQL_EXPLAIN(query[0], { }, paramEnabled).plan.rules.indexOf(ruleName), query[0]);
-        }
-        else {
+        } else {
           assertEqual(-1, AQL_EXPLAIN(query[0], { }, paramEnabled).plan.rules.indexOf(ruleName), query[0]);
         }
 
@@ -114,7 +116,7 @@ function singleAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = AQL_EXPLAIN(query[0], { }, opts).plans;
-        plans.forEach(function(plan) {
+        plans.forEach(function (plan) {
           var result = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
           assertEqual(query[1], result, query[0]);
         });
@@ -124,44 +126,46 @@ function singleAttributeTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function nonIndexedAttributeTestSuite () {
   var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 
-  // various choices to control the optimizer: 
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  // various choices to control the optimizer:
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       c = db._create(cn);
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ value1: i * 10, value2: i });
+        docs.push({ value1: i * 10,
+value2: i });
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["value1", "value2"] });
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test results
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRangesNonIndexed : function () {
-      var queries = [ 
+    testRangesNonIndexed: function () {
+      var queries = [
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value2 == i SORT j.value2 RETURN j.value2", [ 2 ] ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2 ] ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i == j.value2 SORT j.value2 RETURN j.value2", [ 2, 3 ] ],
@@ -187,9 +191,9 @@ function nonIndexedAttributeTestSuite () {
       opts.allPlans = true;
       opts.verbosePlans = true;
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        var resultEnabled = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
         assertEqual(-1, AQL_EXPLAIN(query[0], { }, paramEnabled).plan.rules.indexOf(ruleName), query[0]);
 
@@ -197,7 +201,7 @@ function nonIndexedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = AQL_EXPLAIN(query[0], { }, opts).plans;
-        plans.forEach(function(plan) {
+        plans.forEach(function (plan) {
           var result = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
           assertEqual(query[1], result, query[0]);
         });
@@ -207,22 +211,22 @@ function nonIndexedAttributeTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function nestedAttributeTestSuite () {
   var ruleName = "use-indexes";
   var cn = "UnitTestsAhuacatlRange";
   var c;
 
-  // various choices to control the optimizer: 
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  // various choices to control the optimizer:
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       c = db._create(cn);
 
@@ -232,25 +236,26 @@ function nestedAttributeTestSuite () {
       }
       c.insert(docs);
 
-      c.ensureIndex({ type: "skiplist", fields: ["value1.value2"] });
+      c.ensureIndex({ type: "skiplist",
+fields: ["value1.value2"] });
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test results
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test results
+// //////////////////////////////////////////////////////////////////////////////
 
-    testRangesNested : function () {
-      var queries = [ 
+    testRangesNested: function () {
+      var queries = [
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER j.value1.value2 == i SORT j.value1.value2 RETURN j.value1.value2", [ 2 ], true ],
         [ "FOR i IN [ 2 ] FOR j IN " + cn + " FILTER i == j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i == j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 == i SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
-        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 >= i FILTER j.value1.value2 <= i SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ] , true ],
-        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i <= j.value1.value2 FILTER i >= j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ] , true ],
+        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 >= i FILTER j.value1.value2 <= i SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
+        [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER i <= j.value1.value2 FILTER i >= j.value1.value2 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 >= i FILTER j.value1.value2 < i + 1 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3 ], true ],
         [ "FOR i IN [ 2, 3 ] FOR j IN " + cn + " FILTER j.value1.value2 >= i FILTER j.value1.value2 <= i + 1 SORT j.value1.value2 RETURN j.value1.value2", [ 2, 3, 3, 4 ], true ],
         [ "FOR i IN " + cn + " FILTER i.value1.value2 == 2 FOR j IN " + cn + " FILTER i.value1.value2 == j.value1.value2 RETURN j.value1.value2", [ 2 ], true ],
@@ -270,14 +275,13 @@ function nestedAttributeTestSuite () {
       opts.allPlans = true;
       opts.verbosePlans = true;
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         var resultDisabled = AQL_EXECUTE(query[0], { }, paramDisabled).json;
-        var resultEnabled  = AQL_EXECUTE(query[0], { }, paramEnabled).json;
+        var resultEnabled = AQL_EXECUTE(query[0], { }, paramEnabled).json;
 
         if (query[2]) {
           assertNotEqual(-1, AQL_EXPLAIN(query[0], { }, paramEnabled).plan.rules.indexOf(ruleName), query[0]);
-        }
-        else {
+        } else {
           assertEqual(-1, AQL_EXPLAIN(query[0], { }, paramEnabled).plan.rules.indexOf(ruleName), query[0]);
         }
 
@@ -285,7 +289,7 @@ function nestedAttributeTestSuite () {
         assertTrue(isEqual(query[1], resultEnabled), query[0]);
 
         var plans = AQL_EXPLAIN(query[0], { }, opts).plans;
-        plans.forEach(function(plan) {
+        plans.forEach(function (plan) {
           var result = AQL_EXECUTEJSON(plan, { optimizer: { rules: [ "-all" ] } }).json;
           assertEqual(query[1], result, query[0]);
         });
@@ -295,9 +299,9 @@ function nestedAttributeTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(singleAttributeTestSuite);
 jsunity.run(nonIndexedAttributeTestSuite);

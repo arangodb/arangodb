@@ -42,10 +42,9 @@ const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
 
-
 const gh = require('@arangodb/graph/helpers');
 
-function namedGraphSuite() {
+function namedGraphSuite () {
   /* *********************************************************************
    * Graph under test:
    *
@@ -81,16 +80,17 @@ function namedGraphSuite() {
 
     testGraphNameAccessFromParser: function () {
       let queries = [
-        [ 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x', { graph: gn, startId: gh.vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH @graph RETURN x', { graph: gn,
+startId: gh.vertex.B } ],
         [ 'FOR x IN OUTBOUND @startId GRAPH ' + gn + ' RETURN x', { startId: gh.vertex.B } ],
         [ 'FOR x IN OUTBOUND @startId GRAPH "' + gn + '" RETURN x', { startId: gh.vertex.B } ],
         [ 'FOR x IN OUTBOUND @startId GRAPH `' + gn + '` RETURN x', { startId: gh.vertex.B } ],
-        [ 'FOR x IN OUTBOUND @startId GRAPH \'' + gn + '\' RETURN x', { startId: gh.vertex.B } ],
+        [ 'FOR x IN OUTBOUND @startId GRAPH \'' + gn + '\' RETURN x', { startId: gh.vertex.B } ]
       ];
 
-      queries.forEach(function(query) {
+      queries.forEach(function (query) {
         let nodes = AQL_EXPLAIN(query[0], query[1]).plan.nodes;
-        assertEqual("TraversalNode", nodes[1].type); 
+        assertEqual("TraversalNode", nodes[1].type);
         assertEqual("UnitTestGraph", nodes[1].graph);
       });
     },

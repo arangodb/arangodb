@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, modification blocks
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Michael Hackstein
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, modification blocks
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -38,9 +38,9 @@ const isCluster = require('@arangodb/cluster').isCluster();
 const collectionName = "UnitTestAqlModify";
 let col;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper functions
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief helper functions
+// //////////////////////////////////////////////////////////////////////////////
 
 let invCounter = 0;
 const genInvalidValue = function () {
@@ -84,14 +84,15 @@ const validateDocsAreUpdated = function (docs, invalid, areUpdated) {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function aqlUpdateOptionsSuite() {
+function aqlUpdateOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testUpdateSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -205,7 +206,8 @@ function aqlUpdateOptionsSuite() {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, { key: d._key, rev: d._rev });
+        db._query(q, { key: d._key,
+rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
@@ -232,14 +234,15 @@ function aqlUpdateOptionsSuite() {
       db._query(q);
 
       validateDocsAreUpdated(docs, invalid, true);
-    },
+    }
   };
-};
+}
 
-function aqlUpdateWithOptionsSuite() {
+function aqlUpdateWithOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testUpdateWithSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -354,7 +357,8 @@ function aqlUpdateWithOptionsSuite() {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, { key: d._key, rev: d._rev });
+        db._query(q, { key: d._key,
+rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
@@ -383,14 +387,15 @@ function aqlUpdateWithOptionsSuite() {
       db._query(q);
 
       validateDocsAreUpdated(docs, invalid, true);
-    },
+    }
   };
-};
+}
 
-function aqlUpdateWithRevOptionsSuite() {
+function aqlUpdateWithRevOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testUpdateWithRevSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -482,12 +487,13 @@ function aqlUpdateWithRevOptionsSuite() {
       validateDocsAreUpdated(docs, invalid, true);
     }
   };
-};
+}
 
-function aqlReplaceOptionsSuite() {
+function aqlReplaceOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testReplaceSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -601,7 +607,8 @@ function aqlReplaceOptionsSuite() {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, { key: d._key, rev: d._rev });
+        db._query(q, { key: d._key,
+rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
@@ -628,15 +635,16 @@ function aqlReplaceOptionsSuite() {
       db._query(q);
 
       validateDocsAreUpdated(docs, invalid, true);
-    },
+    }
 
   };
-};
+}
 
-function aqlReplaceWithOptionsSuite() {
+function aqlReplaceWithOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testReplaceWithSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -751,7 +759,8 @@ function aqlReplaceWithOptionsSuite() {
                OPTIONS {ignoreRevs: false}`;
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
-        db._query(q, { key: d._key, rev: d._rev });
+        db._query(q, { key: d._key,
+rev: d._rev });
       }
       validateDocsAreUpdated(docs, invalid, true);
     },
@@ -780,15 +789,16 @@ function aqlReplaceWithOptionsSuite() {
       db._query(q);
 
       validateDocsAreUpdated(docs, invalid, true);
-    },
+    }
 
   };
-};
+}
 
-function aqlReplaceWithRevOptionsSuite() {
+function aqlReplaceWithRevOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testReplaceWithRevSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -881,17 +891,18 @@ function aqlReplaceWithRevOptionsSuite() {
     }
 
   };
-};
+}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function aqlRemoveOptionsSuite() {
+function aqlRemoveOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testRemoveSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -996,17 +1007,18 @@ function aqlRemoveOptionsSuite() {
       assertEqual(0, col.count(), `We did not remove the document`);
     }
   };
-};
+}
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function aqlUpsertOptionsSuite() {
+function aqlUpsertOptionsSuite () {
 
   return {
-    setUp, tearDown,
+    setUp,
+tearDown,
 
     testUpsertSingleWithInvalidRev: function () {
       const invalid = genInvalidValue();
@@ -1175,7 +1187,7 @@ function aqlUpsertOptionsSuite() {
       assertEqual(0, writesIgnored);
       assertEqual(10, writesExecuted);
       assertEqual(0, res.toArray().length);
-      assertEqual(10, col.count()- countBefore, `Did not insert enough documents, we need to insert all 10, but just report the first 5`);
+      assertEqual(10, col.count() - countBefore, `Did not insert enough documents, we need to insert all 10, but just report the first 5`);
     },
 
     testUpsertSkipAndHardLimitInSubquery: function () {
@@ -1324,9 +1336,9 @@ function aqlUpsertOptionsSuite() {
     },
     */
   };
-};
+}
 
-function aqlUpsertReadCompleteInputSuite() {
+function aqlUpsertReadCompleteInputSuite () {
 
   return {
     setUp: function () {
@@ -1343,25 +1355,25 @@ function aqlUpsertReadCompleteInputSuite() {
         collectionName + "/key_1",
         collectionName + "/key_2",
         collectionName + "/key_3",
-        collectionName + "/key_1",
+        collectionName + "/key_1"
       ];
-      
+
       const query1 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN ' + collectionName + ' RETURN NEW._id';
 
       let result = db._query(query1).toArray();
       assertEqual(expected, result);
 
       db[collectionName].truncate({ compact: false });
-      
+
       const query2 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN @@collection RETURN NEW._id';
       result = db._query(query2, { "@collection": collectionName }).toArray();
       assertEqual(expected, result);
-    },
+    }
 
   };
-};
+}
 
-function aqlBts195Suite() {
+function aqlBts195Suite () {
   return {
     setUp: function () {
       db._drop(collectionName);
@@ -1371,7 +1383,7 @@ function aqlBts195Suite() {
     tearDown: function () {
       db._drop(collectionName);
     },
-    
+
     testKeepNullFalseOnMain: function () {
       let c = db._collection(collectionName);
       c.insert({});
@@ -1382,7 +1394,7 @@ function aqlBts195Suite() {
       let doc = result[0];
       assertTrue(doc.sub);
       assertFalse(doc.hasOwnProperty("mustBeGone"));
-     
+
       // execute again - result should not change
       result = db._query(query).toArray();
       assertEqual(1, result.length);
@@ -1390,7 +1402,7 @@ function aqlBts195Suite() {
       assertTrue(doc.sub);
       assertFalse(doc.hasOwnProperty("mustBeGone"));
     },
-    
+
     testKeepNullTrueOnMain: function () {
       let c = db._collection(collectionName);
       c.insert({});
@@ -1402,7 +1414,7 @@ function aqlBts195Suite() {
       assertTrue(doc.sub);
       assertTrue(doc.hasOwnProperty("mustBeGone"));
       assertNull(doc.mustBeGone);
-     
+
       // execute again - result should not change
       result = db._query(query).toArray();
       assertEqual(1, result.length);
@@ -1422,7 +1434,7 @@ function aqlBts195Suite() {
       let doc = result[0];
       assertEqual({ sub: true }, doc.test);
       assertFalse(doc.test.hasOwnProperty("mustBeGone"));
-     
+
       // execute again - result should not change
       result = db._query(query).toArray();
       assertEqual(1, result.length);
@@ -1430,7 +1442,7 @@ function aqlBts195Suite() {
       assertEqual({ sub: true }, doc.test);
       assertFalse(doc.test.hasOwnProperty("mustBeGone"));
     },
-    
+
     testKeepNullTrueOnSub: function () {
       let c = db._collection(collectionName);
       c.insert({});
@@ -1439,21 +1451,23 @@ function aqlBts195Suite() {
       let result = db._query(query).toArray();
       assertEqual(1, result.length);
       let doc = result[0];
-      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertEqual({ sub: true,
+mustBeGone: null }, doc.test);
       assertTrue(doc.test.hasOwnProperty("mustBeGone"));
       assertNull(doc.test.mustBeGone);
-     
+
       // execute again - result should not change
       result = db._query(query).toArray();
       assertEqual(1, result.length);
       doc = result[0];
-      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertEqual({ sub: true,
+mustBeGone: null }, doc.test);
       assertTrue(doc.test.hasOwnProperty("mustBeGone"));
       assertNull(doc.test.mustBeGone);
-    },
+    }
 
   };
-};
+}
 
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);

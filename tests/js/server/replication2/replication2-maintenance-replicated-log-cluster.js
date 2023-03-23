@@ -1,28 +1,28 @@
-/*jshint strict: true */
-/*global assertEqual */
+/* jshint strict: true */
+/* global assertEqual */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License")
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Lars Maier
+// //////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
 const _ = require('lodash');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
@@ -36,12 +36,15 @@ const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database
 const replicationFactor = 3;
 const planConfig = {
   effectiveWriteConcern: 2,
-  waitForSync: false,
+  waitForSync: false
 };
 
 const checkCommitFailReasonReport = function () {
   return {
-    setUpAll, tearDownAll, setUp, tearDown,
+    setUpAll,
+tearDownAll,
+setUp,
+tearDown,
 
     testNothingToCommit: function () {
       const {logId} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
@@ -54,8 +57,10 @@ const checkCommitFailReasonReport = function () {
 
       const [followerA, followerB] = _.sampleSize(followers, 2);
       lh.replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
-        [followerA]: {allowedInQuorum: false, forced: false},
-        [followerB]: {allowedInQuorum: false, forced: false},
+        [followerA]: {allowedInQuorum: false,
+forced: false},
+        [followerB]: {allowedInQuorum: false,
+forced: false}
       });
 
       lh.waitFor(lp.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
@@ -67,19 +72,24 @@ const checkCommitFailReasonReport = function () {
       }
 
       lh.replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
-        [followerA]: {allowedInQuorum: false, forced: false},
-        [followerB]: {allowedInQuorum: true, forced: false},
+        [followerA]: {allowedInQuorum: false,
+forced: false},
+        [followerB]: {allowedInQuorum: true,
+forced: false}
       });
 
       lh.waitFor(lp.replicatedLogLeaderCommitFail(database, logId, undefined));
       lh.replicatedLogDeletePlan(database, logId);
-    },
+    }
   };
 };
 
 const replicatedLogSuite = function () {
   return {
-    setUpAll, tearDownAll, setUp, tearDown,
+    setUpAll,
+tearDownAll,
+setUp,
+tearDown,
 
     testCreateReplicatedLog: function () {
       const logId = lh.nextUniqueLogId();
@@ -90,7 +100,8 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, servers, leader),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
-        properties: {implementation: {type: "black-hole", parameters: {}}}
+        properties: {implementation: {type: "black-hole",
+parameters: {}}}
       });
 
       // wait for all servers to have reported in current
@@ -107,7 +118,8 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, servers),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
-        properties: {implementation: {type: "black-hole", parameters: {}}}
+        properties: {implementation: {type: "black-hole",
+parameters: {}}}
       });
 
       // wait for all servers to have reported in current
@@ -197,7 +209,8 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, newServers, leader),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, newServers),
-        properties: {implementation: {type: "black-hole", parameters: {}}}
+        properties: {implementation: {type: "black-hole",
+parameters: {}}}
       });
 
       // wait for all servers to have reported in current
@@ -207,7 +220,7 @@ const replicatedLogSuite = function () {
       });
       lh.waitFor(lp.replicatedLogParticipantsFlag(database, logId, {[toBeRemoved]: null}));
       lh.replicatedLogDeletePlan(database, logId);
-    },
+    }
   };
 };
 
@@ -239,7 +252,10 @@ const assertLocalStatusStatusCode = function (database, logId, servers, code, er
 
 const replicatedLogDropSuite = function () {
   return {
-    setUpAll, tearDownAll, setUp, tearDown,
+    setUpAll,
+tearDownAll,
+setUp,
+tearDown,
 
     testCreateDropReplicatedLog: function () {
       const {logId, servers} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
@@ -248,11 +264,11 @@ const replicatedLogDropSuite = function () {
       lh.replicatedLogDeletePlan(database, logId);
 
       // wait for current to be gone as well
-      //lh.waitFor(lp.replicatedLogIsGone(database, logId));
+      // lh.waitFor(lp.replicatedLogIsGone(database, logId));
 
       // we expect all servers to report 404
       lh.waitFor(hasLocalStatusStatusCode(database, logId, servers, 404, 1418));
-    },
+    }
 
   };
 };

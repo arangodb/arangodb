@@ -28,7 +28,7 @@
 const jsunity = require('jsunity');
 const { fail,
   assertTrue,
-  assertEqual,
+  assertEqual
 } = jsunity.jsUnity.assertions;
 
 const arangodb = require('@arangodb');
@@ -50,7 +50,7 @@ const console = require('console');
  * Its purpose is to synchronize the participants of replicated logs with the participants of their respective shards.
  * This is needed because we're using the list of participants from two places.
  */
-const syncShardsWithLogs = function(dbn) {
+const syncShardsWithLogs = function (dbn) {
   const coordinator = replicatedLogsHelper.coordinators[0];
   let logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
   let collections = replicatedLogsHelper.readAgencyValueAt(`Plan/Collections/${dbn}`);
@@ -63,11 +63,11 @@ const syncShardsWithLogs = function(dbn) {
     }
   }
 
-  const waitForCurrent  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+  const waitForCurrent = replicatedLogsHelper.readAgencyValueAt("Current/Version");
   helper.agency.increaseVersion(`Plan/Version`);
 
   replicatedLogsHelper.waitFor(() => {
-    const currentVersion  = replicatedLogsHelper.readAgencyValueAt("Current/Version");
+    const currentVersion = replicatedLogsHelper.readAgencyValueAt("Current/Version");
     if (currentVersion > waitForCurrent) {
       return true;
     }
@@ -82,7 +82,7 @@ const syncShardsWithLogs = function(dbn) {
  * In this test suite we check if the DocumentState can survive modifications to the cluster participants
  * during transactions. We check for failover and moveshard.
  */
-function transactionReplication2Recovery() {
+function transactionReplication2Recovery () {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
@@ -101,7 +101,7 @@ function transactionReplication2Recovery() {
     continueServerWait,
     continueServersWait,
     setUpAnd,
-    tearDownAnd,
+    tearDownAnd
   } =
     replicatedLogsHelper.testHelperFunctions(dbn, {replicationVersion: '2'});
 
@@ -109,7 +109,9 @@ function transactionReplication2Recovery() {
     setUpAll,
     tearDownAll,
     setUp: setUpAnd(() => {
-      c = db._create(cn, { "numberOfShards": 1, "writeConcern": WC, "replicationFactor": 3 });
+      c = db._create(cn, { "numberOfShards": 1,
+"writeConcern": WC,
+"replicationFactor": 3 });
       shards = c.shards();
       shardId = shards[0];
       logId = shardId.slice(1);
@@ -130,8 +132,10 @@ function transactionReplication2Recovery() {
         collections: { write: c.name() }
       });
       let tc = trx.collection(c.name());
-      tc.insert({ _key: 'test1', value: 1 });
-      tc.insert({ _key: 'test2', value: 2 });
+      tc.insert({ _key: 'test1',
+value: 1 });
+      tc.insert({ _key: 'test2',
+value: 2 });
 
       // Stop the leader. This triggers a failover.
       const logs = replicatedLogsHttpHelper.listLogs(coordinator, dbn).result;
@@ -175,7 +179,8 @@ function transactionReplication2Recovery() {
 
       // Expect further transaction operations to fail.
       try {
-        tc.insert({ _key: 'test3', value: 3 });
+        tc.insert({ _key: 'test3',
+value: 3 });
         fail('Insert was expected to fail due to transaction abort.');
       } catch (ex) {
         logContents = replicatedLogsHelper.dumpShardLog(shardId);
@@ -278,8 +283,10 @@ function transactionReplication2Recovery() {
         collections: {write: c.name()}
       });
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test1', value: 1});
-      tc.insert({_key: 'test2', value: 2});
+      tc.insert({_key: 'test1',
+value: 1});
+      tc.insert({_key: 'test2',
+value: 2});
 
       // Replace the follower.
       const result = replicatedStateHelper.replaceParticipant(dbn, logId, oldParticipant, newParticipant);
@@ -316,7 +323,8 @@ function transactionReplication2Recovery() {
 
       // Continue the transaction and expect it to succeed.
       try {
-        tc.insert({_key: "test3", value: 3});
+        tc.insert({_key: "test3",
+value: 3});
       } catch (err) {
         const logContents = replicatedLogsHelper.dumpShardLog(shardId);
         fail(`Transaction failed with: ${JSON.stringify(err)}.` +
@@ -359,12 +367,14 @@ function transactionReplication2Recovery() {
       stopServersWait(allOtherServers);
 
       let tc = trx.collection(c.name());
-      tc.insert({_key: 'test1', value: 1});
+      tc.insert({_key: 'test1',
+value: 1});
 
       // Commit transaction
       const coordinatorEndpoint = replicatedLogsHelper.getServerUrl(coordinator);
       const url = `/_db/${dbn}/_api/transaction/${trx._id}`;
-      request.put({url: coordinatorEndpoint + url, timeout: 3});
+      request.put({url: coordinatorEndpoint + url,
+timeout: 3});
 
       let leaderServer = replicatedLogsHelper.getServerUrl(leader);
       replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(leaderServer, dbn, shardId,
@@ -387,12 +397,12 @@ function transactionReplication2Recovery() {
       //   replicatedLogsHelper.waitFor(replicatedStatePredicates.localKeyStatus(server, dbn, shardId,
       //     "test1", true, 1));
       // }
-    },
+    }
   };
 }
 
 let suites = [
-  transactionReplication2Recovery,
+  transactionReplication2Recovery
 ];
 
 for (const suite of suites) {

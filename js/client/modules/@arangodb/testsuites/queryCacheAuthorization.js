@@ -99,7 +99,8 @@ function queryCacheAuthorization (options) {
   instanceManager.reconnect();
 
   const requests = [
-    [200, 'put', '/_api/query-cache/properties', 'root', {mode: 'on', maxResults: 128}],
+    [200, 'put', '/_api/query-cache/properties', 'root', {mode: 'on',
+maxResults: 128}],
     [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
     [201, 'post', '/_api/cursor', 'root', {query: 'for d in testcol filter d.a == 2 return d'}],
     [403, 'post', '/_api/cursor', 'test', {query: 'for d in testcol filter d.a == 2 return d'}]
@@ -111,7 +112,8 @@ function queryCacheAuthorization (options) {
       const res = request[r[1]]({
         url: `${instanceManager.url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
-        auth: {username: r[3], password: ''}
+        auth: {username: r[3],
+password: ''}
       });
       try {
         bodies.push(JSON.parse(res.body));
@@ -163,6 +165,10 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['queryCacheAuthorization'] = queryCacheAuthorization;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

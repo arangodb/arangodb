@@ -86,7 +86,7 @@ module.exports = function sessionMiddleware (cfg) {
   return {
     storage,
     transport: transports,
-    register() {
+    register () {
       return (req, res, next) => {
         let sid = null;
         for (const transport of transports) {

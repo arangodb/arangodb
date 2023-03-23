@@ -114,11 +114,11 @@
       return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief client side failpoints functionality
   // //////////////////////////////////////////////////////////////////////////////
-  function endpointToURL(endpoint) {
+  function endpointToURL (endpoint) {
     if (endpoint.substr(0, 6) === 'ssl://') {
       return 'https://' + endpoint.substr(6);
     }
@@ -127,9 +127,9 @@
       return 'http://' + endpoint;
     }
     return 'http' + endpoint.substr(pos);
-  };
-  
-  exports.debugClearFailAt = function(failAt) {
+  }
+
+  exports.debugClearFailAt = function (failAt) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
@@ -144,8 +144,8 @@
 
   // On server side the API with failurePointName is called removeFailAt
   exports.debugRemoveFailAt = exports.debugClearFailAt;
-  
-  exports.debugSetFailAt = function(failAt) {
+
+  exports.debugSetFailAt = function (failAt) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
@@ -157,21 +157,21 @@
       }
     });
   };
-  
-  exports.debugTerminate = function() {
+
+  exports.debugTerminate = function () {
     // NOOP. Terminate should be executed
     // by tests framework not by client
   };
-  
-  exports.debugTerminateInstance = function(endpoint) {
+
+  exports.debugTerminateInstance = function (endpoint) {
     const request = require('@arangodb/request');
     let res = request.put({
       url: endpointToURL(endpoint) + '/_admin/debug/crash',
       body: ""
     });
   };
-  
-  exports.debugCanUseFailAt = function() {
+
+  exports.debugCanUseFailAt = function () {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     let res = request.get({
@@ -183,7 +183,7 @@
     }
     return res.body === "true";
   };
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief are we talking to a single server or cluster?
   // //////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,7 @@
     arangosh.checkRequestResult(requestResult);
     return requestResult.Health;
   };
-  
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief processStatistics
   // //////////////////////////////////////////////////////////////////////////////
@@ -217,7 +217,7 @@
     arangosh.checkRequestResult(requestResult);
     return requestResult.system;
   };
-  
+
   // / @brief serverStatistics
   exports.serverStatistics = function () {
     const arangosh = require('@arangodb/arangosh');
@@ -338,7 +338,7 @@
     };
   };
 
-  let appendHeaders = function(appender, headers) {
+  let appendHeaders = function (appender, headers) {
     var key;
     // generate header
     const protocol = exports.arango.protocol();
@@ -356,7 +356,7 @@
       if (headers.hasOwnProperty(key)) {
         if (key !== 'http/1.1') {
           // Could filter out some common header fields here
-          //key !== 'server' && key !== 'connection' && key !== 'content-length'
+          // key !== 'server' && key !== 'connection' && key !== 'content-length'
           appender(`${key}: ${headers[key]}\n`);
         }
       }
@@ -421,8 +421,7 @@
       // overwrite body with parsed JSON && append
       try {
         response.body = JSON.parse(response.body);
-      }
-      catch (e) {
+      } catch (e) {
         throw ` ${e}: ${JSON.stringify(response)}`;
       }
       syntaxAppend(response);
@@ -447,13 +446,12 @@
       }
 
       var splitted = response.body.split("\n");
-      splitted.forEach(function(line) {
+      splitted.forEach(function (line) {
         try {
           if (line.length > 0) {
             syntaxAppender(exports.inspect(JSON.parse(line)));
           }
-        }
-        catch (e) {
+        } catch (e) {
           throw ` ${e}: (${line})\n${JSON.stringify(response)}`;
         }
       }

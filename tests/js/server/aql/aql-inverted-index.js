@@ -1,25 +1,25 @@
 /* global fail, AQL_EXPLAIN*/
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrei Lobov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrei Lobov
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -37,63 +37,81 @@ const lateDocumentMaterialization = "late-document-materialization";
 const sleep = require('internal').sleep;
 const errors = require('internal').errors;
 
-function optimizerRuleInvertedIndexTestSuite() {
+function optimizerRuleInvertedIndexTestSuite () {
   const colName = 'UnitTestInvertedIndexCollection';
   let col;
   const docs = 10000;
   return {
     setUpAll: function () {
       col = db._create(colName);
-      analyzers.save("my_geo", "geojson",{type: 'point'}, ["frequency", "norm", "position"]);
+      analyzers.save("my_geo", "geojson", {type: 'point'}, ["frequency", "norm", "position"]);
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexUnsorted',
-                       fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
-                                {name:'norm_field2', analyzer: 'text_en'},
-                                {name:'searchField', searchField:true},
-                                {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'}]});
+                       fields: ['data_field', {name: 'norm_field',
+analyzer: 'text_en'},
+                                {name: 'norm_field2',
+analyzer: 'text_en'},
+                                {name: 'searchField',
+searchField: true},
+                                {name: 'geo_field',
+analyzer: 'my_geo'},
+                                {name: 'custom_field',
+analyzer: 'text_en'}]});
       col.ensureIndex({type: 'inverted',
                        name: 'InvertedIndexSorted',
                        storedValues: ['norm_field'],
                        fields: ['data_field',
-                                {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'},
-                                {name:'trackListField', trackListPositions:true}],
-                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                                {name: 'geo_field',
+analyzer: 'my_geo'},
+                                {name: 'custom_field',
+analyzer: 'text_en'},
+                                {name: 'trackListField',
+trackListPositions: true}],
+                       primarySort: {fields: [{field: "count",
+direction: "desc"}]}});
       let data = [];
       for (let i = 0; i < docs; i++) {
         if (i % 10 === 0) {
-          data.push({count:i,
+          data.push({count: i,
                      norm_field: 'fOx',
-                     searchField:i,
-                     trackListField:i,
-                     data_field:'value' + i % 100,
-                     custom_field:"quick brown",
-                     geo_field:{type: 'Point', coordinates: [37.615895, 55.7039]}});
+                     searchField: i,
+                     trackListField: i,
+                     data_field: 'value' + i % 100,
+                     custom_field: "quick brown",
+                     geo_field: {type: 'Point',
+coordinates: [37.615895, 55.7039]}});
         } else {
-          data.push({count:i,
+          data.push({count: i,
                      norm_field: 'sOx',
                      norm_field2: 'BOX',
-                     data_field:'value' + i % 100,
+                     data_field: 'value' + i % 100,
                      custom_field: i,
-                     geo_field:{type: 'Point', coordinates: [27.615895, 15.7039]}});  
+                     geo_field: {type: 'Point',
+coordinates: [27.615895, 15.7039]}});
         }
       }
       col.insert(data);
     },
     tearDownAll: function () {
       col.drop();
-      try { analyzers.remove("my_geo", true); } catch (e) {}
+      try {
+ analyzers.remove("my_geo", true);
+} catch (e) {}
     },
     testCreateDuplicate: function () {
        let idx = col.ensureIndex({type: 'inverted',
                         name: 'InvertedIndexUnsorted_duplicate',
-                        fields: ['data_field', {name:'norm_field', analyzer: 'text_en'},
-                                {name:'norm_field2', analyzer: 'text_en'},
-                                {name:'searchField', searchField:true},
-                                {name:'geo_field', analyzer:'my_geo'},
-                                {name:'custom_field', analyzer:'text_en'}]});
-       assertEqual("InvertedIndexUnsorted", idx.name);       
+                        fields: ['data_field', {name: 'norm_field',
+analyzer: 'text_en'},
+                                {name: 'norm_field2',
+analyzer: 'text_en'},
+                                {name: 'searchField',
+searchField: true},
+                                {name: 'geo_field',
+analyzer: 'my_geo'},
+                                {name: 'custom_field',
+analyzer: 'text_en'}]});
+       assertEqual("InvertedIndexUnsorted", idx.name);
     },
     testIndexNotHinted: function () {
       const query = aql`
@@ -141,7 +159,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs/10, executeRes.toArray()[0]);
+      assertEqual(docs / 10, executeRes.toArray()[0]);
     },
     testIndexGeoDistance: function () {
       const query = aql`
@@ -154,7 +172,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs - (docs/10), executeRes.toArray()[0]);
+      assertEqual(docs - (docs / 10), executeRes.toArray()[0]);
     },
     testIndexGeoContains: function () {
       const query = aql`
@@ -167,7 +185,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs/10, executeRes.toArray()[0]);
+      assertEqual(docs / 10, executeRes.toArray()[0]);
     },
     testIndexGeoInRange: function () {
       const query = aql`
@@ -180,7 +198,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars);
-      assertEqual(docs/10, executeRes.toArray()[0]);
+      assertEqual(docs / 10, executeRes.toArray()[0]);
     },
     testIndexExists: function () {
       const query = aql`
@@ -208,8 +226,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexForSort));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs / 100, executeRes.length);
-      for(let i = 1; i < executeRes.length; ++i) {
-        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      for (let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i - 1].count > executeRes[i].count);
       }
     },
     testIndexHintedSortedWrongOrder: function () {
@@ -226,8 +244,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertFalse(appliedRules.includes(useIndexForSort));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs / 100, executeRes.length);
-      for(let i = 1; i < executeRes.length; ++i) {
-        assertTrue(executeRes[i-1].count < executeRes[i].count);
+      for (let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i - 1].count < executeRes[i].count);
       }
     },
     testIndexHintedUnsortedWithSort: function () {
@@ -243,12 +261,12 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertFalse(appliedRules.includes(useIndexForSort));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(docs / 100, executeRes.length);
-      for(let i = 1; i < executeRes.length; ++i) {
-        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      for (let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i - 1].count > executeRes[i].count);
       }
     },
     testIndexHintedRemove: function () {
-      col.save({data_field:'remove_me'});
+      col.save({data_field: 'remove_me'});
       const query = aql`
         FOR d IN ${col} OPTIONS {indexHint: "InvertedIndexUnsorted", waitForSync: true}
           FILTER d.data_field == 'remove_me'
@@ -263,36 +281,40 @@ function optimizerRuleInvertedIndexTestSuite() {
           FILTER STARTS_WITH(d.data_field, 'remove') COLLECT WITH COUNT INTO c  RETURN c`;
       assertEqual(0, db._query(checkQuery).toArray()[0]);
     },
-    testEmptyFields: function() {
+    testEmptyFields: function () {
       col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty',
-                       includeAllFields:true,
+                       includeAllFields: true,
                        fields: [],
-                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                       primarySort: {fields: [{field: "count",
+direction: "desc"}]}});
       col.dropIndex('AllFieldsEmpty');
       col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty2',
-                       includeAllFields:true,
-                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                       includeAllFields: true,
+                       primarySort: {fields: [{field: "count",
+direction: "desc"}]}});
       col.dropIndex('AllFieldsEmpty2');
       try {
         col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty3',
-                       includeAllFields:false,
+                       includeAllFields: false,
                        fields: [],
-                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                       primarySort: {fields: [{field: "count",
+direction: "desc"}]}});
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
       }
       try {
         col.ensureIndex({type: 'inverted',
                        name: 'AllFieldsEmpty4',
-                       includeAllFields:false,
-                       primarySort:{fields:[{field: "count", direction:"desc"}]}});
+                       includeAllFields: false,
+                       primarySort: {fields: [{field: "count",
+direction: "desc"}]}});
         fail();
-      } catch(e) {
+      } catch (e) {
         assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
       }
@@ -375,7 +397,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       // value1, value0, value10..value19
-      assertEqual(docs/100 * 12, executeRes.length);
+      assertEqual(docs / 100 * 12, executeRes.length);
     },
     testIndexHintedArrayComparisonAnyLE: function () {
       const query = aql`
@@ -389,7 +411,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       // value0 will be rejected
-      assertEqual(docs - docs/100, executeRes.length);
+      assertEqual(docs - docs / 100, executeRes.length);
     },
     testIndexHintedArrayComparisonAnyLT: function () {
       const query = aql`
@@ -403,7 +425,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       // value0 and value1 will be rejected
-      assertEqual(docs - docs/50, executeRes.length);
+      assertEqual(docs - docs / 50, executeRes.length);
     },
     testIndexHintedArrayComparisonAnyEQ: function () {
       const query = aql`
@@ -417,7 +439,7 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexes));
       assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
       let executeRes = db._query(query.query, query.bindVars).toArray();
-      assertEqual(docs/50, executeRes.length);
+      assertEqual(docs / 50, executeRes.length);
     },
     testIndexHintedArrayComparisonAnyNE: function () {
       const query = aql`
@@ -610,8 +632,8 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(lateDocumentMaterialization));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(110, executeRes.length);
-      for(let i = 1; i < executeRes.length; ++i) {
-        assertTrue(executeRes[i-1].norm_field >= executeRes[i].norm_field);
+      for (let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i - 1].norm_field >= executeRes[i].norm_field);
       }
     },
     testLateMaterializedSorted: function () {
@@ -628,10 +650,10 @@ function optimizerRuleInvertedIndexTestSuite() {
       assertTrue(appliedRules.includes(useIndexForSort));
       let executeRes = db._query(query.query, query.bindVars).toArray();
       assertEqual(110, executeRes.length);
-      for(let i = 1; i < executeRes.length; ++i) {
-        assertTrue(executeRes[i-1].count > executeRes[i].count);
+      for (let i = 1; i < executeRes.length; ++i) {
+        assertTrue(executeRes[i - 1].count > executeRes[i].count);
       }
-    },
+    }
   };
 }
 

@@ -327,12 +327,12 @@ global.DEFINE_MODULE('assert', (function () {
   // 11. Expected to throw an error:
   // assert.throws(block, Error_opt, message_opt)
 
-  assert.throws = function ( /* block, ?error, ?message*/) {
+  assert.throws = function (/* block, ?error, ?message*/) {
     _throws.apply(this, [true].concat(pSlice.call(arguments)));
   };
 
   // EXTENSION! This is annoying to write outside this module.
-  assert.doesNotThrow = function ( /* block, ?message*/) {
+  assert.doesNotThrow = function (/* block, ?message*/) {
     _throws.apply(this, [false].concat(pSlice.call(arguments)));
   };
 

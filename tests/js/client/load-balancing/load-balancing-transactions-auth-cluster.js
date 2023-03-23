@@ -1,28 +1,28 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, require*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -43,11 +43,13 @@ function TransactionsSuite () {
   const cn = 'UnitTestsCollection';
   let coordinators = [];
   const users = [
-    { username: 'alice', password: 'pass1' },
-    { username: 'bob', password: 'pass2' },
+    { username: 'alice',
+password: 'pass1' },
+    { username: 'bob',
+password: 'pass2' }
   ];
 
-  function sendRequest(auth, method, endpoint, body, usePrimary) {
+  function sendRequest (auth, method, endpoint, body, usePrimary) {
     let res;
     const i = usePrimary ? 0 : 1;
     try {
@@ -64,7 +66,7 @@ function TransactionsSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -80,17 +82,21 @@ function TransactionsSuite () {
   }
 
   let assertInList = function (list, trx) {
-    assertTrue(list.filter(function(data) { return data.id === trx.id; }).length > 0,
+    assertTrue(list.filter(function (data) {
+ return data.id === trx.id;
+}).length > 0,
                "transaction " + trx.id + " not found in list of transactions " + JSON.stringify(trx));
   };
-  
+
   let assertNotInList = function (list, trx) {
-    assertTrue(list.filter(function(data) { return data.id === trx.id; }).length === 0,
+    assertTrue(list.filter(function (data) {
+ return data.id === trx.id;
+}).length === 0,
                "transaction " + trx.id + " not found in list of transactions " + JSON.stringify(trx));
   };
 
   return {
-    setUp: function() {
+    setUp: function () {
       coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
@@ -98,7 +104,7 @@ function TransactionsSuite () {
 
       db._drop(cn);
       db._create(cn);
-      
+
       try {
         userModule.remove(users[0].username);
         userModule.remove(users[1].username);
@@ -110,18 +116,18 @@ function TransactionsSuite () {
       userModule.grantDatabase(users[1].username, '_system', 'rw');
       userModule.grantCollection(users[0].username, '_system', cn, 'rw');
       userModule.grantCollection(users[1].username, '_system', cn, 'rw');
-      
+
       require("internal").wait(2);
     },
 
-    tearDown: function() {
+    tearDown: function () {
       coordinators = [];
       db._drop(cn);
       userModule.remove(users[0].username);
       userModule.remove(users[1].username);
     },
 
-    testListTransactions: function() {
+    testListTransactions: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -139,31 +145,31 @@ function TransactionsSuite () {
         assertInList(result.body.transactions, trx1);
 
         result = sendRequest(users[0], 'GET', url, {}, false);
-        
+
         assertEqual(result.status, 200);
         assertInList(result.body.transactions, trx1);
       } finally {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-    
-    testListTransactions2: function() {
+
+    testListTransactions2: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
       let trx1, trx2;
-      
+
       try {
         let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
         assertEqual(result.status, 201);
         assertFalse(result.body.result.id === undefined);
         trx1 = result.body.result;
-        
+
         result = sendRequest(users[0], 'POST', url + "/begin", obj, false);
         assertEqual(result.status, 201);
         assertFalse(result.body.result.id === undefined);
         trx2 = result.body.result;
-      
+
         result = sendRequest(users[0], 'GET', url, {}, true);
 
         assertEqual(result.status, 200);
@@ -171,7 +177,7 @@ function TransactionsSuite () {
         assertInList(result.body.transactions, trx2);
 
         result = sendRequest(users[0], 'GET', url, {}, false);
-        
+
         assertEqual(result.status, 200);
         assertInList(result.body.transactions, trx1);
         assertInList(result.body.transactions, trx2);
@@ -180,9 +186,9 @@ function TransactionsSuite () {
         result = sendRequest(users[0], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("committed", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, false);
-        
+
         assertEqual(result.status, 200);
         assertNotInList(result.body.transactions, trx1);
         assertInList(result.body.transactions, trx2);
@@ -191,9 +197,9 @@ function TransactionsSuite () {
         result = sendRequest(users[0], 'DELETE', url + "/" + encodeURIComponent(trx2.id), {}, true);
         assertEqual(trx2.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, false);
-        
+
         assertEqual(result.status, 200);
         assertNotInList(result.body.transactions, trx1);
         assertNotInList(result.body.transactions, trx2);
@@ -202,8 +208,8 @@ function TransactionsSuite () {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-    
-    testCreateAndCommitElsewhere: function() {
+
+    testCreateAndCommitElsewhere: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -221,15 +227,15 @@ function TransactionsSuite () {
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("committed", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-    
-    testCreateAndAbortElsewhere: function() {
+
+    testCreateAndAbortElsewhere: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -247,7 +253,7 @@ function TransactionsSuite () {
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
@@ -255,7 +261,7 @@ function TransactionsSuite () {
       }
     },
 
-    testCreateAndCommitDifferentUser: function() {
+    testCreateAndCommitDifferentUser: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -275,15 +281,15 @@ function TransactionsSuite () {
         result = sendRequest(users[0], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("committed", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
     },
-    
-    testCreateAndAbortDifferentUser: function() {
+
+    testCreateAndAbortDifferentUser: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -305,7 +311,7 @@ function TransactionsSuite () {
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
@@ -313,7 +319,7 @@ function TransactionsSuite () {
       }
     },
 
-    testCreateAndGetDifferentUser: function() {
+    testCreateAndGetDifferentUser: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -335,7 +341,7 @@ function TransactionsSuite () {
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
@@ -343,7 +349,7 @@ function TransactionsSuite () {
       }
     },
 
-    testCreateAndGetListDifferentUser: function() {
+    testCreateAndGetListDifferentUser: function () {
       const obj = { collections: { read: cn } };
 
       let url = "/_api/transaction";
@@ -365,13 +371,13 @@ function TransactionsSuite () {
         assertEqual(result.status, 200);
         assertEqual(trx1.id, result.body.result.id);
         assertEqual("aborted", result.body.result.status);
-        
+
         result = sendRequest(users[0], 'GET', url, {}, true);
         assertNotInList(result.body.transactions, trx1);
       } finally {
         sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
       }
-    },
+    }
 
   };
 }

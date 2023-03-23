@@ -1,40 +1,40 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global AQL_EXECUTE */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global AQL_EXECUTE */
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for query language, functions
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
 var errors = internal.errors;
 var jsunity = require("jsunity");
 var db = internal.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFunctionsBruteTestSuite () {
   var c = null;
@@ -163,10 +163,10 @@ function ahuacatlFunctionsBruteTestSuite () {
     "PARSE_IDENTIFIER",
     "IS_SAME_COLLECTION"
   ];
-    
+
   // find all functions that have parameters
   var funcs = [];
-  all.forEach(function(func) {
+  all.forEach(function (func) {
     var query = "RETURN " + func + "()";
     try {
       AQL_EXECUTE(query);
@@ -176,65 +176,68 @@ function ahuacatlFunctionsBruteTestSuite () {
       if (re) {
         var min = Number(re[1]);
         var max = Number(re[2]);
-        
+
         if (max >= 1000) {
           max = min + 1;
-        } 
+        }
         if (max > 0) {
-          funcs.push({ name: func, min: min, max: max }); 
+          funcs.push({ name: func,
+min: min,
+max: max });
         }
       }
     }
   });
 
-  var oneArgument = function(func) {
+  var oneArgument = function (func) {
     return func.min === 1;
   };
-  
-  var twoArguments = function(func) {
+
+  var twoArguments = function (func) {
     return func.min === 2;
   };
 
-  var skip = function(err) {
+  var skip = function (err) {
     if (!err.hasOwnProperty('errorNum')) {
       return false;
     }
-    
+
     return [
       errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
       errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
       errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code,
       errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code,
       errors.ERROR_GRAPH_NOT_FOUND.code,
-      errors.ERROR_GRAPH_INVALID_GRAPH.code,
+      errors.ERROR_GRAPH_INVALID_GRAPH.code
     ].indexOf(err.errorNum) !== -1;
   };
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop("UnitTestsFunctions");
       c = db._create("UnitTestsFunctions");
-      c.insert({ _key: "test", value: "test" });
+      c.insert({ _key: "test",
+value: "test" });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop("UnitTestsFunctions");
     },
 
-    testFunctionsOneWithDoc : function() {
-      funcs.filter(oneArgument).forEach(function(func) {
+    testFunctionsOneWithDoc: function () {
+      funcs.filter(oneArgument).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -242,12 +245,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsOneWithDocArray : function() {
-      funcs.filter(oneArgument).forEach(function(func) {
+
+    testFunctionsOneWithDocArray: function () {
+      funcs.filter(oneArgument).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -255,12 +258,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsOneWithKey : function() {
-      funcs.filter(oneArgument).forEach(function(func) {
+
+    testFunctionsOneWithKey: function () {
+      funcs.filter(oneArgument).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc._key)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -268,12 +271,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsOneWithId : function() {
-      funcs.filter(oneArgument).forEach(function(func) {
+
+    testFunctionsOneWithId: function () {
+      funcs.filter(oneArgument).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc._id)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -281,12 +284,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsOneWithIdArray : function() {
-      funcs.filter(oneArgument).forEach(function(func) {
+
+    testFunctionsOneWithIdArray: function () {
+      funcs.filter(oneArgument).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc._id ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -294,12 +297,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithDoc : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithDoc: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc, doc)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -307,12 +310,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithDocArray : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithDocArray: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc ], [ doc ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             require("internal").print(query);
@@ -321,12 +324,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionTwoWithKey : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionTwoWithKey: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc._key, doc._key)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -334,12 +337,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithId : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithId: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc._id, doc._id)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -347,12 +350,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithIdArray : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithIdArray: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc._id ], [ doc._id ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -360,12 +363,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithDocId : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithDocId: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc, doc._id)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -373,12 +376,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithDocIdArray : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithDocIdArray: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc, [ doc._id ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -386,12 +389,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithIdDoc : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithIdDoc: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "(doc._id, doc)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -399,12 +402,12 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithIdDocArray : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithIdDocArray: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc._id ], doc)";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
@@ -412,26 +415,26 @@ function ahuacatlFunctionsBruteTestSuite () {
         }
       });
     },
-    
-    testFunctionsTwoWithIdArrayDocArray : function() {
-      funcs.filter(twoArguments).forEach(function(func) {
+
+    testFunctionsTwoWithIdArrayDocArray: function () {
+      funcs.filter(twoArguments).forEach(function (func) {
         var query = "FOR doc IN @@collection RETURN " + func.name + "([ doc._id ], [ doc ])";
         try {
-          AQL_EXECUTE(query, { "@collection" : c.name() });
+          AQL_EXECUTE(query, { "@collection": c.name() });
         } catch (err) {
           if (!skip(err)) {
             throw err;
           }
         }
       });
-    },
+    }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlFunctionsBruteTestSuite);
 

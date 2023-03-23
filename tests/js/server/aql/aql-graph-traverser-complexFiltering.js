@@ -44,7 +44,7 @@ const isCluster = require('@arangodb/cluster').isCluster();
 
 const gh = require('@arangodb/graph/helpers');
 
-function complexFilteringSuite() {
+function complexFilteringSuite () {
   var vertex = {};
   var edge = {};
   /* *********************************************************************
@@ -65,28 +65,54 @@ function complexFilteringSuite() {
       gh.cleanup();
       var vc = db._create(vn, {numberOfShards: 4});
       var ec = db._createEdgeCollection(en, {numberOfShards: 4});
-      vertex.A = vc.save({_key: 'A', left: false, right: false})._id;
-      vertex.B = vc.save({_key: 'B', left: true, right: false, value: 25})._id;
-      vertex.C = vc.save({_key: 'C', left: true, right: false})._id;
-      vertex.D = vc.save({_key: 'D', left: false, right: true, value: 75})._id;
-      vertex.E = vc.save({_key: 'E', left: false, right: true})._id;
-      vertex.F = vc.save({_key: 'F', left: true, right: false})._id;
-      vertex.G = vc.save({_key: 'G', left: false, right: true})._id;
+      vertex.A = vc.save({_key: 'A',
+left: false,
+right: false})._id;
+      vertex.B = vc.save({_key: 'B',
+left: true,
+right: false,
+value: 25})._id;
+      vertex.C = vc.save({_key: 'C',
+left: true,
+right: false})._id;
+      vertex.D = vc.save({_key: 'D',
+left: false,
+right: true,
+value: 75})._id;
+      vertex.E = vc.save({_key: 'E',
+left: false,
+right: true})._id;
+      vertex.F = vc.save({_key: 'F',
+left: true,
+right: false})._id;
+      vertex.G = vc.save({_key: 'G',
+left: false,
+right: true})._id;
 
-      edge.AB = ec.save(vertex.A, vertex.B, {left: true, right: false})._id;
-      edge.BC = ec.save(vertex.B, vertex.C, {left: true, right: false})._id;
-      edge.AD = ec.save(vertex.A, vertex.D, {left: false, right: true})._id;
-      edge.DE = ec.save(vertex.D, vertex.E, {left: false, right: true})._id;
-      edge.BF = ec.save(vertex.B, vertex.F, {left: true, right: false})._id;
-      edge.DG = ec.save(vertex.D, vertex.G, {left: false, right: true})._id;
+      edge.AB = ec.save(vertex.A, vertex.B, {left: true,
+right: false})._id;
+      edge.BC = ec.save(vertex.B, vertex.C, {left: true,
+right: false})._id;
+      edge.AD = ec.save(vertex.A, vertex.D, {left: false,
+right: true})._id;
+      edge.DE = ec.save(vertex.D, vertex.E, {left: false,
+right: true})._id;
+      edge.BF = ec.save(vertex.B, vertex.F, {left: true,
+right: false})._id;
+      edge.DG = ec.save(vertex.D, vertex.G, {left: false,
+right: true})._id;
 
-      vertex.Tri1 = vc.save({_key: 'Tri1', isLoop: true})._id;
-      vertex.Tri2 = vc.save({_key: 'Tri2', isLoop: true})._id;
-      vertex.Tri3 = vc.save({_key: 'Tri3', isLoop: true})._id;
+      vertex.Tri1 = vc.save({_key: 'Tri1',
+isLoop: true})._id;
+      vertex.Tri2 = vc.save({_key: 'Tri2',
+isLoop: true})._id;
+      vertex.Tri3 = vc.save({_key: 'Tri3',
+isLoop: true})._id;
 
       edge.Tri12 = ec.save(vertex.Tri1, vertex.Tri2, {isLoop: true})._id;
       edge.Tri23 = ec.save(vertex.Tri2, vertex.Tri3, {isLoop: true})._id;
-      edge.Tri31 = ec.save(vertex.Tri3, vertex.Tri1, {isLoop: true, lateLoop: true})._id;
+      edge.Tri31 = ec.save(vertex.Tri3, vertex.Tri1, {isLoop: true,
+lateLoop: true})._id;
     },
 
     tearDownAll: gh.cleanup,
@@ -145,17 +171,17 @@ function complexFilteringSuite() {
       };
       let queryResult = db._query(query, bindVars).toArray();
       assertEqual(queryResult.length, 4);
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; 
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes;
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
           return;
         }
       });
       assertFalse(foundExtraLet);
     },
-   
+
     testStorePruneConditionVertexInVariableFilter: function () {
       let condition = "v.value == 75";
       let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
@@ -174,7 +200,7 @@ function complexFilteringSuite() {
       assertEqual(query1result[query1result.length - 1].key, "D");
       assertEqual(query2result[query2result.length - 1].key, "D");
     },
-   
+
     testStorePruneConditionVertexInVariableFilterWithOptions: function () {
       let condition = "v.value == 75";
       let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
@@ -193,7 +219,7 @@ function complexFilteringSuite() {
       assertEqual(query1result[query1result.length - 1].key, "D");
       assertEqual(query2result[query2result.length - 1].key, "D");
     },
- 
+
     testStorePruneConditionVertexInVariableFilterLogicalOr: function () {
       const condition = "v.value == 75 || v.value == 25";
       let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition SORT v._key RETURN {value: v.value, key: v._key}`;
@@ -298,7 +324,7 @@ function complexFilteringSuite() {
       }
     },
 
-    
+
     testUseVariableInPruneConditionInTraversal: function () {
       let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v._key == 'G' FILTER pruneCondition FOR v2, e2, p2 IN 1..10 INBOUND v @@eCol 
       FILTER  pruneCondition SORT v2._key RETURN {outerVertex: v._key, innerVertex: v2._key}  `;
@@ -321,16 +347,15 @@ function complexFilteringSuite() {
         'start': vertex.A
       };
       let queryResult = db._query(query, bindVars).toArray();
-      assertEqual(queryResult.length, 6); //B, C, D, E, F, G
+      assertEqual(queryResult.length, 6); // B, C, D, E, F, G
       queryResult.forEach((result, index) => {
-        if(index < 5) {
+        if (index < 5) {
           assertTrue(result["subquery"].length === 0);
-        }
-        else {
+        } else {
           assertEqual(result["subquery"].length, 3);
-          assertEqual(result["subquery"][0],'A');
-          assertEqual(result["subquery"][1],'D');
-          assertEqual(result["subquery"][2],'G');
+          assertEqual(result["subquery"][0], 'A');
+          assertEqual(result["subquery"][1], 'D');
+          assertEqual(result["subquery"][2], 'G');
         }
       });
     },
@@ -343,9 +368,9 @@ function complexFilteringSuite() {
       };
       let queryResult = db._query(query, bindVars).toArray();
       assertEqual(queryResult.length, 3);
-      assertFalse(queryResult[0][0]); //D
-      assertFalse(queryResult[1][0]); //E
-      assertTrue(queryResult[2][0]);  //G
+      assertFalse(queryResult[0][0]); // D
+      assertFalse(queryResult[1][0]); // E
+      assertTrue(queryResult[2][0]); // G
     },
 
    testUseVariableInPruneConditionInFilterNot: function () {
@@ -365,7 +390,7 @@ function complexFilteringSuite() {
 
     testUseVariableInPruneConditionInPathFilter: function () {
       const condition = "v._key == 'F'";
-      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER e.left == true SORT v._key RETURN {subquery: (FOR v2, e2, p2 IN 1..10 INBOUND v @@eCol FILTER p2.edges[*].left ALL == pruneCondition RETURN e2), vertex: v._key, pruneCondition: pruneCondition}`; 
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER e.left == true SORT v._key RETURN {subquery: (FOR v2, e2, p2 IN 1..10 INBOUND v @@eCol FILTER p2.edges[*].left ALL == pruneCondition RETURN e2), vertex: v._key, pruneCondition: pruneCondition}`;
       let bindVars = {
         '@eCol': en,
         'start': vertex.A
@@ -484,13 +509,13 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
@@ -506,16 +531,16 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
-        if(node.type === "TraversalNode") {
+        if (node.type === "TraversalNode") {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
@@ -531,13 +556,13 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
@@ -553,16 +578,16 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
-        if(node.type === "TraversalNode") {
+        if (node.type === "TraversalNode") {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
@@ -580,13 +605,13 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
       });
@@ -600,10 +625,10 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
           return;
         }
@@ -620,16 +645,16 @@ function complexFilteringSuite() {
         'eCol': en,
         'start': vertex.A
       };
-      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; // check for extra LET
       let foundExtraLet = false;
-      queryExplain.forEach((node) => { 
-        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+      queryExplain.forEach((node) => {
+        if (node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
           foundExtraLet = true;
         }
-        if(node.type === "FilterNode") {
+        if (node.type === "FilterNode") {
           assertEqual(node["inVariable"]["name"], "pruneCondition");
         }
-        if(node.type === "TraversalNode") {
+        if (node.type === "TraversalNode") {
           assertEqual(node["options"]["order"], "bfs");
         }
       });
@@ -1105,7 +1130,7 @@ function complexFilteringSuite() {
       }
       // 1 Filter On D
       assertEqual(stats.filtered, 3);
-    },
+    }
 
   };
 }

@@ -54,13 +54,13 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params, agencyConfig) {
-  let additionalParams= {
+  let additionalParams = {
     'log.foreground-tty': 'true',
     'javascript.enabled': 'true',
     'agency.activate': 'true',
     'agency.compaction-keep-size': '10000',
     'agency.wait-for-sync': 'false',
-    'agency.size': '1',
+    'agency.size': '1'
   };
 
   let argv = [];
@@ -133,7 +133,7 @@ function agencyRestart (options) {
 
     if (tu.filterTestcaseByOptions(test, options, filtered)) {
       count += 1;
-      ////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tmpMgr.tempDir,
@@ -151,7 +151,7 @@ function agencyRestart (options) {
       let agencyConfig = new inst.agencyConfig(options, null);
       runArangodRecovery(params, agencyConfig);
 
-      ////////////////////////////////////////////////////////////////////////
+      // //////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
@@ -203,6 +203,10 @@ function agencyRestart (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['agency-restart'] = agencyRestart;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  for (var attrname in functionsDocumentation) {
+ fnDocs[attrname] = functionsDocumentation[attrname];
+}
+  for (var i = 0; i < optionsDocumentation.length; i++) {
+ optionsDoc.push(optionsDocumentation[i]);
+}
 };

@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the general-graph class
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Florian Bartels, Michael Hackstein
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the general-graph class
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2014 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Florian Bartels, Michael Hackstein
+// / @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
@@ -43,11 +43,11 @@ var ERRORS = arangodb.errors;
 var _ = require("lodash");
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: general-graph Creation and edge definition
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: general-graph Creation and edge definition
+// //////////////////////////////////////////////////////////////////////////////
 
-function GeneralGraphCreationSuite() {
+function GeneralGraphCreationSuite () {
   'use strict';
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
@@ -128,9 +128,9 @@ function GeneralGraphCreationSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rename
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: rename
+// //////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameEdge: function () {
       if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
@@ -165,9 +165,9 @@ function GeneralGraphCreationSuite() {
       assertEqual([], doc.orphanCollections);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rename
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: rename
+// //////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameVertex: function () {
       if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
@@ -193,9 +193,9 @@ function GeneralGraphCreationSuite() {
       assertEqual([], doc.orphanCollections);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rename
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: rename
+// //////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameVertices: function () {
       if ((cluster && cluster.isCluster && cluster.isCluster()) || (!cluster || !cluster.isCluster)) {
@@ -223,9 +223,9 @@ function GeneralGraphCreationSuite() {
       assertEqual([], doc.orphanCollections);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: rename with module function renameCollection
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: rename with module function renameCollection
+// //////////////////////////////////////////////////////////////////////////////
 
     test_collectionRenameCollectionsWithModule1: function () {
       // tests edge collection name from vertex and to vertex collections
@@ -295,9 +295,9 @@ function GeneralGraphCreationSuite() {
       db._drop("mj7");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: Graph Creation
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test: Graph Creation
+// //////////////////////////////////////////////////////////////////////////////
 
     test_undirectedRelation: function () {
       var r = graph._relation(rn, [vn1, vn2], [vn1, vn2]);
@@ -408,10 +408,10 @@ function GeneralGraphCreationSuite() {
 
     testEdgeDefinitions: function () {
 
-      //with empty args
+      // with empty args
       assertEqual(graph._edgeDefinitions(), []);
 
-      //with args
+      // with args
       assertEqual(graph._edgeDefinitions(
         graph._relation(rn, vn1, vn1),
         graph._relation(rn1,
@@ -431,10 +431,10 @@ function GeneralGraphCreationSuite() {
     },
 
     testExtendEdgeDefinitions: function () {
-      //with empty args
+      // with empty args
       assertEqual(graph._edgeDefinitions(), []);
 
-      //with args
+      // with args
       var ed = graph._edgeDefinitions(
         graph._relation("relationName", "vertexC1", "vertexC1"),
         graph._relation("relationName",
@@ -589,15 +589,15 @@ function GeneralGraphCreationSuite() {
         {
           collection: rn,
           from: [vn1],
-          to: [vn1],
-        },
+          to: [vn1]
+        }
       ];
       const edgeDefs2 = [
         {
           to: [vn1],
           from: [vn1],
-          collection: rn,
-        },
+          collection: rn
+        }
       ];
       graph._create(gn1, edgeDefs1);
       graph._create(gn2, edgeDefs2);
@@ -618,15 +618,15 @@ function GeneralGraphCreationSuite() {
         {
           collection: rn,
           from: [vn1, vn2, vn3, vn4],
-          to: [vn2, vn1, vn4, vn3],
-        },
+          to: [vn2, vn1, vn4, vn3]
+        }
       ];
       const edgeDefs2 = [
         {
           collection: rn,
           from: [vn4, vn3, vn2, vn1],
-          to: [vn3, vn4, vn1, vn2],
-        },
+          to: [vn3, vn4, vn1, vn2]
+        }
       ];
       graph._create(gn1, edgeDefs1);
       graph._create(gn2, edgeDefs2);
@@ -1014,11 +1014,11 @@ function GeneralGraphCreationSuite() {
       } finally {
         graph._drop("gg", true);
       }
-    },
+    }
   };
 }
 
-function EdgesAndVerticesSuite() {
+function EdgesAndVerticesSuite () {
   'use strict';
 
   var g;
@@ -1409,7 +1409,9 @@ function EdgesAndVerticesSuite() {
       var vertexId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g[ec1].replace(edgeId1, {_from: vertexId1, _to: vertexId2, label: "knows"});
+      edge = g[ec1].replace(edgeId1, {_from: vertexId1,
+_to: vertexId2,
+label: "knows"});
       assertFalse(edge.error);
       var edgeObj = g[ec1].document(edgeId1);
       assertEqual(edgeObj.label, "knows");
@@ -1423,7 +1425,9 @@ function EdgesAndVerticesSuite() {
       var vertexId2 = vertex2._id;
       var edge = g[ec1].save(vertexId1, vertexId2, {});
       var edgeId1 = edge._id;
-      edge = g[ec1].replace(edgeId1, {_from: vertexId1, _to: vertexId2, label: "knows"});
+      edge = g[ec1].replace(edgeId1, {_from: vertexId1,
+_to: vertexId2,
+label: "knows"});
       edge = g[ec1].update(edgeId1, {blub: "blub"});
       assertFalse(edge.error);
       var edgeObj = g[ec1].document(edgeId1);
@@ -1649,7 +1653,7 @@ function EdgesAndVerticesSuite() {
   };
 }
 
-function GeneralGraphCommonNeighborsSuite() {
+function GeneralGraphCommonNeighborsSuite () {
   'use strict';
   var testGraph, actual;
 
@@ -1673,9 +1677,9 @@ function GeneralGraphCommonNeighborsSuite() {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(v1ColName);
@@ -1686,16 +1690,26 @@ function GeneralGraphCommonNeighborsSuite() {
       var vertex2 = db._create(v2ColName);
       var edge1 = db._createEdgeCollection(eColName);
 
-      v1 = vertex1.save({_key: "v1", hugo: true})._id;
-      v2 = vertex1.save({_key: "v2", hugo: true})._id;
-      v3 = vertex1.save({_key: "v3", heinz: 1})._id;
-      v4 = vertex1.save({_key: "v4", harald: "meier"})._id;
-      v5 = vertex2.save({_key: "v5", ageing: true})._id;
-      v6 = vertex2.save({_key: "v6", harald: "meier", ageing: true})._id;
-      v7 = vertex2.save({_key: "v7", harald: "meier"})._id;
-      v8 = vertex2.save({_key: "v8", heinz: 1, harald: "meier"})._id;
+      v1 = vertex1.save({_key: "v1",
+hugo: true})._id;
+      v2 = vertex1.save({_key: "v2",
+hugo: true})._id;
+      v3 = vertex1.save({_key: "v3",
+heinz: 1})._id;
+      v4 = vertex1.save({_key: "v4",
+harald: "meier"})._id;
+      v5 = vertex2.save({_key: "v5",
+ageing: true})._id;
+      v6 = vertex2.save({_key: "v6",
+harald: "meier",
+ageing: true})._id;
+      v7 = vertex2.save({_key: "v7",
+harald: "meier"})._id;
+      v8 = vertex2.save({_key: "v8",
+heinz: 1,
+harald: "meier"})._id;
 
-      function makeEdge(from, to, collection) {
+      function makeEdge (from, to, collection) {
         collection.save(from, to, {what: from.split("/")[1] + "->" + to.split("/")[1]});
       }
 
@@ -1725,9 +1739,9 @@ function GeneralGraphCommonNeighborsSuite() {
       );
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       db._drop(v1ColName);
@@ -1739,9 +1753,9 @@ function GeneralGraphCommonNeighborsSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS() and GRAPH_COMMON_PROPERTIES()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks GRAPH_COMMON_NEIGHBORS() and GRAPH_COMMON_PROPERTIES()
+// //////////////////////////////////////////////////////////////////////////////
 
 
     testNeighborsAnyV3: function () {
@@ -1771,9 +1785,9 @@ function GeneralGraphCommonNeighborsSuite() {
       actual = testGraph._countCommonNeighbors(v3, v6);
       assertEqual(actual[0][v3][0][v6], 2);
     },
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks GRAPH_COMMON_NEIGHBORS()
+// //////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsIn: function () {
       actual = testGraph._commonNeighbors({}, {}, {direction: 'inbound'}, {direction: 'inbound'});
@@ -1785,15 +1799,19 @@ function GeneralGraphCommonNeighborsSuite() {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_NEIGHBORS()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks GRAPH_COMMON_NEIGHBORS()
+// //////////////////////////////////////////////////////////////////////////////
 
     testCommonNeighborsOut: function () {
       actual = testGraph._commonNeighbors(
         {hugo: true}, {heinz: 1},
-        {direction: 'outbound', minDepth: 1, maxDepth: 3},
-        {direction: 'outbound', minDepth: 1, maxDepth: 3}
+        {direction: 'outbound',
+minDepth: 1,
+maxDepth: 3},
+        {direction: 'outbound',
+minDepth: 1,
+maxDepth: 3}
       );
 
       actual.sort(function (a, b) {
@@ -1830,8 +1848,12 @@ function GeneralGraphCommonNeighborsSuite() {
 
       actual = testGraph._countCommonNeighbors(
         {hugo: true}, {heinz: 1},
-        {direction: 'outbound', minDepth: 1, maxDepth: 3},
-        {direction: 'outbound', minDepth: 1, maxDepth: 3}
+        {direction: 'outbound',
+minDepth: 1,
+maxDepth: 3},
+        {direction: 'outbound',
+minDepth: 1,
+maxDepth: 3}
       );
       if (actual[0].hasOwnProperty(v1)) {
         if (actual[0][v1][0].hasOwnProperty(v8)) {
@@ -1868,9 +1890,9 @@ function GeneralGraphCommonNeighborsSuite() {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks GRAPH_COMMON_PROPERTIES()
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks GRAPH_COMMON_PROPERTIES()
+// //////////////////////////////////////////////////////////////////////////////
 
     testCommonProperties: function () {
       actual = testGraph._commonProperties({}, {}, {});
@@ -1931,7 +1953,7 @@ function GeneralGraphCommonNeighborsSuite() {
   };
 }
 
-function OrphanCollectionSuite() {
+function OrphanCollectionSuite () {
   'use strict';
   var prefix = "UnitTestGraphVertexCollection",
     g1,
@@ -2109,7 +2131,7 @@ function OrphanCollectionSuite() {
   };
 }
 
-function MeasurementsSuite() {
+function MeasurementsSuite () {
   'use strict';
   var g;
   var unitTestGraphName = "unitTestGraph";
@@ -2125,7 +2147,8 @@ function MeasurementsSuite() {
     var ids = {};
     var vertex = g[vc1].save({first_name: "Tam"});
     ids.vId11 = vertex._id;
-    vertex = g[vc1].save({first_name: "Tem", age: 20});
+    vertex = g[vc1].save({first_name: "Tem",
+age: 20});
     ids.vId12 = vertex._id;
     vertex = g[vc1].save({first_name: "Tim"});
     ids.vId13 = vertex._id;
@@ -2137,7 +2160,8 @@ function MeasurementsSuite() {
     ids.vId31 = vertex._id;
     vertex = g[vc2].save({first_name: "Tem"});
     ids.vId32 = vertex._id;
-    vertex = g[vc2].save({first_name: "Tim", age: 24});
+    vertex = g[vc2].save({first_name: "Tim",
+age: 24});
     ids.vId33 = vertex._id;
     vertex = g[vc2].save({first_name: "Tom"});
     ids.vId34 = vertex._id;
@@ -2195,29 +2219,33 @@ function MeasurementsSuite() {
 
     test_shortestPaths: function () {
       var a = g._shortestPath([
-        {first_name: 'Tim', age: 24},
+        {first_name: 'Tim',
+age: 24},
         {first_name: 'Tom'}
       ], [
         {first_name: 'Tam'},
-        {first_name: 'Tem', age: 20}
+        {first_name: 'Tem',
+age: 20}
       ]);
       assertEqual(a.length, 9);
     },
 
     test_distanceTo: function () {
       var a = g._distanceTo([
-        {first_name: 'Tim', age: 24},
+        {first_name: 'Tim',
+age: 24},
         {first_name: 'Tom'}
       ], [
         {first_name: 'Tam'},
-        {first_name: 'Tem', age: 20}
+        {first_name: 'Tem',
+age: 20}
       ]);
       assertEqual(a.length, 9);
     }
   };
 }
 
-function MeasurementsMovedFromAQLSuite() {
+function MeasurementsMovedFromAQLSuite () {
   'use strict';
 
   const v1 = "UnitTests_Berliner";
@@ -2237,9 +2265,9 @@ function MeasurementsMovedFromAQLSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(v1);
@@ -2259,13 +2287,27 @@ function MeasurementsMovedFromAQLSuite() {
       db._createEdgeCollection(KenntAnderenBerliner);
       db._createEdgeCollection(KenntAnderen);
 
-      var Anton = Berlin.save({_key: "Anton", gender: "male", age: 20});
-      var Berta = Berlin.save({_key: "Berta", gender: "female", age: 25});
-      var Caesar = Hamburg.save({_key: "Caesar", gender: "male", age: 30});
-      var Dieter = Hamburg.save({_key: "Dieter", gender: "male", age: 20});
-      var Emil = Frankfurt.save({_key: "Emil", gender: "male", age: 25});
-      var Fritz = Frankfurt.save({_key: "Fritz", gender: "male", age: 30});
-      var Gerda = Leipzig.save({_key: "Gerda", gender: "female", age: 40});
+      var Anton = Berlin.save({_key: "Anton",
+gender: "male",
+age: 20});
+      var Berta = Berlin.save({_key: "Berta",
+gender: "female",
+age: 25});
+      var Caesar = Hamburg.save({_key: "Caesar",
+gender: "male",
+age: 30});
+      var Dieter = Hamburg.save({_key: "Dieter",
+gender: "male",
+age: 20});
+      var Emil = Frankfurt.save({_key: "Emil",
+gender: "male",
+age: 25});
+      var Fritz = Frankfurt.save({_key: "Fritz",
+gender: "male",
+age: 30});
+      var Gerda = Leipzig.save({_key: "Gerda",
+gender: "female",
+age: 40});
 
       vertexIds.Anton = Anton._id;
       vertexIds.Berta = Berta._id;
@@ -2290,8 +2332,9 @@ function MeasurementsMovedFromAQLSuite() {
         )
       );
 
-      function makeEdge(from, to, collection, distance) {
-        collection.save(from, to, {what: from.split("/")[1] + "->" + to.split("/")[1], entfernung: distance});
+      function makeEdge (from, to, collection, distance) {
+        collection.save(from, to, {what: from.split("/")[1] + "->" + to.split("/")[1],
+entfernung: distance});
       }
 
       makeEdge(Berta._id, Anton._id, g[KenntAnderenBerliner], 0.1);
@@ -2303,9 +2346,9 @@ function MeasurementsMovedFromAQLSuite() {
       makeEdge(Emil._id, Fritz._id, g[KenntAnderen], 0.2);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       graph._drop("werKenntWen", true);
@@ -2318,7 +2361,8 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testRadiusWeight: function () {
-      var actual = g._radius({weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._radius({weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 450.1);
     },
 
@@ -2328,7 +2372,9 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testRadiusInboundWeight: function () {
-      var actual = g._radius({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._radius({direction: "inbound",
+weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 250.1);
     },
 
@@ -2338,7 +2384,9 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testRadiusOutboundWeight: function () {
-      var actual = g._radius({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._radius({direction: "outbound",
+weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 0.2);
     },
 
@@ -2351,7 +2399,8 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testDiameterWeight: function () {
-      var actual = g._diameter({weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._diameter({weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 830.3);
     },
 
@@ -2361,7 +2410,9 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testDiameterInboundWeight: function () {
-      var actual = g._diameter({direction: "inbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._diameter({direction: "inbound",
+weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 830.3);
     },
 
@@ -2371,7 +2422,9 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testDiameterOutboundWeight: function () {
-      var actual = g._diameter({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._diameter({direction: "outbound",
+weightAttribute: "entfernung",
+defaultWeight: 80});
       assertEqual(actual.toFixed(1), 830.3);
     },
 
@@ -2383,7 +2436,8 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testAbsoluteEccentricityWeight: function () {
-      var actual = g._absoluteEccentricity(vertexIds.Anton, {weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._absoluteEccentricity(vertexIds.Anton, {weightAttribute: "entfernung",
+defaultWeight: 80});
       var expected = {};
       expected[vertexIds.Anton] = 580.3;
       validateNumericValues(actual, expected);
@@ -2495,7 +2549,9 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testEccentricityOutboundWeight: function () {
-      var actual = g._eccentricity({direction: "outbound", weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._eccentricity({direction: "outbound",
+weightAttribute: "entfernung",
+defaultWeight: 80});
       var expected = {};
       expected[vertexIds.Anton] = 0;
       expected[vertexIds.Berta] = 0.2 / 580.2;
@@ -2523,7 +2579,8 @@ function MeasurementsMovedFromAQLSuite() {
     },
 
     testFarnessExampleWeight: function () {
-      var actual = g._farness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      var actual = g._farness({gender: "male"}, {weightAttribute: "entfernung",
+defaultWeight: 80});
       var expected = {};
       expected[vertexIds.Anton] = 1890.9;
       expected[vertexIds.Caesar] = 3140.9;
@@ -2533,7 +2590,8 @@ function MeasurementsMovedFromAQLSuite() {
       validateNumericValues(actual, expected);
 
       // Legacy
-      actual = g._absoluteCloseness({gender: "male"}, {weightAttribute: "entfernung", defaultWeight: 80});
+      actual = g._absoluteCloseness({gender: "male"}, {weightAttribute: "entfernung",
+defaultWeight: 80});
       validateNumericValues(actual, expected);
     },
 
@@ -2685,9 +2743,9 @@ function MeasurementsMovedFromAQLSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(EdgesAndVerticesSuite);

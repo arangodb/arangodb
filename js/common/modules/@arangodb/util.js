@@ -187,22 +187,22 @@ exports.indentation = function (level, indentWith) {
 };
 
 function xmlAttrValue (str) {
-  return String(str)
-  .replace(/&/g, '&amp;')
-  .replace(/"/g, '&quot;');
+  return String(str).
+  replace(/&/g, '&amp;').
+  replace(/"/g, '&quot;');
 }
 
 function xmlCharacterData (str) {
-  return String(str)
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;');
+  return String(str).
+  replace(/&/g, '&amp;').
+  replace(/</g, '&lt;');
 }
 
 exports.jsonml2xml = function (jsonml, html = false, indentLevel = 0) {
   if (typeof jsonml === 'string') {
-    return jsonml.split('\n')
-    .map((line) => exports.indentation(indentLevel, '\t') + xmlCharacterData(line))
-    .join('\n');
+    return jsonml.split('\n').
+    map((line) => exports.indentation(indentLevel, '\t') + xmlCharacterData(line)).
+    join('\n');
   }
   const [tagname, attrs, ...children] = jsonml;
   const xml = (

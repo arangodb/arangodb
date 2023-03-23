@@ -164,8 +164,8 @@ exports.grantDatabase = function (username, database, type) {
   }
 
   var db = internal.db;
-  var uri = '_api/user/' + encodeURIComponent(username)
-  + '/database/' + encodeURIComponent(database);
+  var uri = '_api/user/' + encodeURIComponent(username) +
+  '/database/' + encodeURIComponent(database);
   var data = { grant: type };
 
   var requestResult = db._connection.PUT(uri, data);
@@ -176,8 +176,8 @@ exports.grantDatabase = function (username, database, type) {
 // changes the allowed databases
 exports.revokeDatabase = function (username, database) {
   var db = internal.db;
-  var uri = '_api/user/' + encodeURIComponent(username)
-  + '/database/' + encodeURIComponent(database);
+  var uri = '_api/user/' + encodeURIComponent(username) +
+  '/database/' + encodeURIComponent(database);
   var requestResult = db._connection.DELETE(uri);
 
   return arangosh.checkRequestResult(requestResult).result;
@@ -190,9 +190,9 @@ exports.grantCollection = function (username, database, collection, type) {
   }
 
   var db = internal.db;
-  var uri = '_api/user/' + encodeURIComponent(username)
-  + '/database/' + encodeURIComponent(database) + '/'
-  + encodeURIComponent(collection);
+  var uri = '_api/user/' + encodeURIComponent(username) +
+  '/database/' + encodeURIComponent(database) + '/' +
+  encodeURIComponent(collection);
   var data = { grant: type };
 
   var requestResult = db._connection.PUT(uri, data);
@@ -203,9 +203,9 @@ exports.grantCollection = function (username, database, collection, type) {
 // changes the collection access level
 exports.revokeCollection = function (username, database, collection) {
   var db = internal.db;
-  var uri = '_api/user/' + encodeURIComponent(username)
-  + '/database/' + encodeURIComponent(database) + '/'
-  + encodeURIComponent(collection);
+  var uri = '_api/user/' + encodeURIComponent(username) +
+  '/database/' + encodeURIComponent(database) + '/' +
+  encodeURIComponent(collection);
   var requestResult = db._connection.DELETE(uri);
 
   return arangosh.checkRequestResult(requestResult).result;
@@ -218,13 +218,13 @@ exports.updateConfigData = function (username, key, value) {
   var uri;
 
   if (key === undefined || key === null) {
-    uri = '_api/user/' + encodeURIComponent(username)
-      + '/config';
+    uri = '_api/user/' + encodeURIComponent(username) +
+      '/config';
 
     requestResult = db._connection.DELETE(uri);
   } else {
-    uri = '_api/user/' + encodeURIComponent(username)
-    + '/config/' + encodeURIComponent(key);
+    uri = '_api/user/' + encodeURIComponent(username) +
+    '/config/' + encodeURIComponent(key);
 
     var data = { value: value };
     requestResult = db._connection.PUT(uri, data);
@@ -240,13 +240,13 @@ exports.configData = function (username, key) {
   var uri;
 
   if (key === undefined || key === null) {
-    uri = '_api/user/' + encodeURIComponent(username)
-      + '/config';
+    uri = '_api/user/' + encodeURIComponent(username) +
+      '/config';
 
     requestResult = db._connection.GET(uri);
   } else {
-    uri = '_api/user/' + encodeURIComponent(username)
-    + '/config/' + encodeURIComponent(key);
+    uri = '_api/user/' + encodeURIComponent(username) +
+    '/config/' + encodeURIComponent(key);
 
     requestResult = db._connection.GET(uri);
   }
@@ -261,13 +261,13 @@ exports.permission = function (username, dbName, coll) {
   let uri;
 
   if (dbName === undefined || dbName === null) {
-    uri = '_api/user/' + encodeURIComponent(username)
-      + '/database';
+    uri = '_api/user/' + encodeURIComponent(username) +
+      '/database';
 
     requestResult = db._connection.GET(uri);
   } else {
-    uri = '_api/user/' + encodeURIComponent(username)
-    + '/database/' + encodeURIComponent(dbName);
+    uri = '_api/user/' + encodeURIComponent(username) +
+    '/database/' + encodeURIComponent(dbName);
     if (coll) {
       uri += '/' + encodeURIComponent(coll);
     }
@@ -280,8 +280,8 @@ exports.permission = function (username, dbName, coll) {
 // return the full list of permissions and collections
 exports.permissionFull = function (username) {
   let db = internal.db;
-  let uri  = '_api/user/' + encodeURIComponent(username)
-      + '/database?full=true';
+  let uri = '_api/user/' + encodeURIComponent(username) +
+      '/database?full=true';
   let requestResult = db._connection.GET(uri);
   return arangosh.checkRequestResult(requestResult).result;
 };
@@ -298,16 +298,16 @@ exports.exists = function (username) {
   }
 };
 
-exports.currentUser = function() {
+exports.currentUser = function () {
   return internal.arango.connectedUser();
 };
 
-exports.isAuthActive = function() {
+exports.isAuthActive = function () {
   let active = false;
   try {
     let c = internal.db._collection("_users");
     c.properties(); // we need to access c to trigger the exception
-  } catch(e) {
+  } catch (e) {
     active = true;
   }
   return active;

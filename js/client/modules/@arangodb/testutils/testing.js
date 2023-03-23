@@ -4,14 +4,14 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
@@ -19,9 +19,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Max Neunhoeffer
 // @author Wilfried Goesgnes
 // /////////////////////////////////////////////////////////////////////////////
@@ -173,7 +173,7 @@ const optionsDefaults = {
   'agencyWaitForSync': false,
   'agencySupervision': true,
   'build': '',
-  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
+  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo' : '',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,
@@ -190,7 +190,7 @@ const optionsDefaults = {
   'force': true,
   'forceJson': false,
   'getSockStat': false,
-  'arangosearch':true,
+  'arangosearch': true,
   'loopEternal': false,
   'loopSleepSec': 1,
   'loopSleepWhen': 1,
@@ -207,7 +207,7 @@ const optionsDefaults = {
   'sanitizer': isSan,
   'activefailover': false,
   'singles': 1,
-  'setInterruptable': ! internal.isATTy(),
+  'setInterruptable': !internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
   'sniffDBServers': true,
@@ -220,7 +220,7 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
-  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
+  'oneTestTimeout': (isInstrumented ? 25 : 15) * 60,
   'isSan': isSan,
   'isCov': isCoverage,
   'isInstrumented': isInstrumented,
@@ -246,9 +246,9 @@ const optionsDefaults = {
   'disableMonitor': false,
   'enableAliveMonitor': true,
   'disableClusterMonitor': true,
-  'sleepBeforeStart' : 0,
-  'sleepBeforeShutdown' : 0,
-  'failed': false,
+  'sleepBeforeStart': 0,
+  'sleepBeforeShutdown': 0,
+  'failed': false
 };
 
 let globalStatus = true;
@@ -289,7 +289,7 @@ function printUsage () {
 
 let allTestPaths = {};
 
-function findTestCases(options) {
+function findTestCases (options) {
   let filterTestcases = (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined'));
   let found = !filterTestcases;
   let allTestFiles = {};
@@ -317,7 +317,7 @@ function findTestCases(options) {
   return [found, allTestFiles];
 }
 
-function isClusterTest(options) {
+function isClusterTest (options) {
   let rc = false;
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     if (typeof (options.test) === 'string') {
@@ -335,7 +335,7 @@ function isClusterTest(options) {
   return rc;
 }
 
-function findTest(options) {
+function findTest (options) {
   if (isClusterTest(options)) {
     options.cluster = true;
   }
@@ -374,7 +374,7 @@ function findTest(options) {
   }
 }
 
-function autoTest(options) {
+function autoTest (options) {
   if (!options.hasOwnProperty('test') || (typeof (options.test) === 'undefined')) {
     return {
       findTest: {
@@ -443,14 +443,14 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+function translateTestList (cases) {
   let caselist = [];
-  const expandWildcard = ( name ) => {
+  const expandWildcard = (name) => {
     if (!name.endsWith('*')) {
       return name;
     }
     const prefix = name.substring(0, name.length - 1);
-    return allTests.filter( ( s ) => s.startsWith(prefix) ).join(',');
+    return allTests.filter((s) => s.startsWith(prefix)).join(',');
   };
 
   for (let n = 0; n < cases.length; ++n) {
@@ -467,12 +467,14 @@ function translateTestList(cases) {
     }
   }
   // Expand meta tests like ldap, all
-  caselist = (function() {
+  caselist = (function () {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
       let w = testFuncs[caselist[n]];
       if (Array.isArray(w)) {
-        w.forEach(function(sub) { flattened.push(sub); });
+        w.forEach(function (sub) {
+ flattened.push(sub);
+});
       } else {
         flattened.push(caselist[n]);
       }
@@ -481,14 +483,14 @@ function translateTestList(cases) {
   })();
   if (cases === undefined || cases.length === 0) {
     printUsage();
-    
+
     print('\nFATAL: "which" is undefined\n');
     throw new Error("USAGE ERROR");
   }
   return caselist;
 }
 
-function iterateTests(cases, options) {
+function iterateTests (cases, options) {
   // tests to run
   let caselist = [];
 
@@ -585,13 +587,12 @@ function unitTest (cases, options) {
     internal.SetSignalToImmediateDeadline();
   }
   if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
+    options.singles = 2;
   }
-  
+
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
-  }
-  catch (err) {
+  } catch (err) {
     print(err);
     return {
       status: false,

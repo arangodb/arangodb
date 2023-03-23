@@ -31,7 +31,7 @@ const internal = require('internal');
 const db = internal.db;
 const fs = require('fs');
 
-function StorageForQueryWithCollectionSortSuite() {
+function StorageForQueryWithCollectionSortSuite () {
   const cn = 'UnitTestCollection';
 
   let assertResult = (order, res, expectedCount) => {
@@ -41,7 +41,9 @@ function StorageForQueryWithCollectionSortSuite() {
     while (res.hasNext()) {
       ++count;
       let el = res.next();
-      assertTrue(order === "asc" ? el.value1 >= firstVal : el.value1 <= firstVal, {order, el, firstVal});
+      assertTrue(order === "asc" ? el.value1 >= firstVal : el.value1 <= firstVal, {order,
+el,
+firstVal});
       firstVal = el.value1;
     }
     assertEqual(count, expectedCount);
@@ -49,7 +51,7 @@ function StorageForQueryWithCollectionSortSuite() {
 
   return {
 
-    setUpAll: function() {
+    setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn);
 
@@ -63,19 +65,21 @@ function StorageForQueryWithCollectionSortSuite() {
       }
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testSortComparePeakMemoryUsageAscCollection: function() {
+    testSortComparePeakMemoryUsageAscCollection: function () {
       let query = `FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`;
-      let res = db._query(query, null, {spillOverThresholdNumRows: 100000000, stream: true});
+      let res = db._query(query, null, {spillOverThresholdNumRows: 100000000,
+stream: true});
       assertResult("asc", res, 500000);
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
 
-      res = db._query(query, null, {spillOverThresholdNumRows: 5000, stream: true});
+      res = db._query(query, null, {spillOverThresholdNumRows: 5000,
+stream: true});
       assertResult("asc", res, 500000);
       queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
@@ -84,7 +88,8 @@ function StorageForQueryWithCollectionSortSuite() {
         previous: memoryUsage1
       });
 
-      res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000, stream: true});
+      res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000,
+stream: true});
       assertResult("asc", res, 500000);
       queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
@@ -94,15 +99,17 @@ function StorageForQueryWithCollectionSortSuite() {
       });
     },
 
-    testSortComparePeakMemoryUsageDescCollection: function() {
+    testSortComparePeakMemoryUsageDescCollection: function () {
       let query = `FOR doc IN ${cn} SORT doc.value1 DESC RETURN doc`;
-      let res = db._query(query, null, {spillOverThresholdNumRows: 100000000, stream: true});
+      let res = db._query(query, null, {spillOverThresholdNumRows: 100000000,
+stream: true});
       assertResult("desc", res, 500000);
       let queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       const memoryUsage1 = queryStats.peakMemoryUsage;
 
-      res = db._query(query, null, {spillOverThresholdNumRows: 5000, stream: true});
+      res = db._query(query, null, {spillOverThresholdNumRows: 5000,
+stream: true});
       assertResult("desc", res, 500000);
       queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
@@ -111,7 +118,8 @@ function StorageForQueryWithCollectionSortSuite() {
         previous: memoryUsage1
       });
 
-      res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000, stream: true});
+      res = db._query(query, null, {spillOverThresholdMemoryUsage: 5000,
+stream: true});
       assertResult("desc", res, 500000);
       queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
@@ -119,24 +127,26 @@ function StorageForQueryWithCollectionSortSuite() {
         current: queryStats.peakMemoryUsage,
         previous: memoryUsage1
       });
-    },
+    }
 
   };
 }
 
-function StorageForQueryWithoutCollectionSortSuite() {
+function StorageForQueryWithoutCollectionSortSuite () {
 
   let assertOrder = (order, values) => {
     let firstVal = values[0];
     values.forEach(el => {
-      assertTrue(order === "asc" ? el >= firstVal : el <= firstVal, {order, el, firstVal});
+      assertTrue(order === "asc" ? el >= firstVal : el <= firstVal, {order,
+el,
+firstVal});
       firstVal = el;
     });
   };
 
   return {
 
-    testSortComparePeakMemoryUsageAscRange: function() {
+    testSortComparePeakMemoryUsageAscRange: function () {
       let query = `FOR i IN 1..500000 SORT i ASC RETURN i`;
       let res = db._query(query, null, {spillOverThresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -163,7 +173,7 @@ function StorageForQueryWithoutCollectionSortSuite() {
       assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1);
     },
 
-    testSortComparePeakMemoryUsageDescRange: function() {
+    testSortComparePeakMemoryUsageDescRange: function () {
       let query = `FOR i IN 1..500000 SORT i DESC RETURN i`;
       let res = db._query(query, null, {spillOverThresholdNumRows: 100000000});
       let allDocs = res.toArray();
@@ -188,12 +198,12 @@ function StorageForQueryWithoutCollectionSortSuite() {
       queryStats = res.getExtra().stats;
       assertTrue(queryStats.hasOwnProperty("peakMemoryUsage"));
       assertTrue(queryStats.peakMemoryUsage * 2 < memoryUsage1);
-    },
+    }
 
   };
 }
 
-function StorageForQueryCleanUpWhenFailureSuite() {
+function StorageForQueryCleanUpWhenFailureSuite () {
   const query = `FOR i IN 1..500000 SORT i ASC RETURN i`;
   const tempDir = fs.join(internal.options()["temp.intermediate-results-path"], "temp");
 
@@ -211,7 +221,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
 
   return {
 
-    tearDown: function() {
+    tearDown: function () {
       const tree = fs.listTree(tempDir);
       tree.forEach(fileName => {
         if (fileName !== "") {
@@ -219,8 +229,8 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         }
       });
     },
-    
-    testQueryFailureBecauseCapacityReached: function() {
+
+    testQueryFailureBecauseCapacityReached: function () {
       internal.debugSetFailAt("lowTempStorageCapacity");
       try {
         const query = `FOR i IN 1..5000000 SORT i ASC RETURN i`;
@@ -234,7 +244,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
       }
     },
 
-    testQueryFailureIngestAll1NoExtraSst: function() {
+    testQueryFailureIngestAll1NoExtraSst: function () {
       internal.debugSetFailAt("failOnIngestAll1");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
@@ -247,7 +257,7 @@ function StorageForQueryCleanUpWhenFailureSuite() {
       }
     },
 
-    testQueryFailureIngestAll1ExtraSst: function() {
+    testQueryFailureIngestAll1ExtraSst: function () {
       // use an .sst filename that doesn't exist under normal circumstances.
       // filename shouldn't get too long because of lovely Windows' path
       // name length restriction
@@ -266,20 +276,20 @@ function StorageForQueryCleanUpWhenFailureSuite() {
       }
     },
 
-    testQueryFailureIngestAll2NoExtraSst: function() {
+    testQueryFailureIngestAll2NoExtraSst: function () {
       internal.debugSetFailAt("failOnIngestAll2");
       try {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, 1100); //this failure point doesn't throw exception, so it has rocksdb corruption code
+        assertEqual(err.errorNum, 1100); // this failure point doesn't throw exception, so it has rocksdb corruption code
         assertRangeCleanUp("");
       } finally {
         internal.debugClearFailAt();
       }
     },
 
-    testQueryFailureIngestAll2ExtraSst: function() {
+    testQueryFailureIngestAll2ExtraSst: function () {
       // use an .sst filename that doesn't exist under normal circumstances.
       // filename shouldn't get too long because of lovely Windows' path
       // name length restriction
@@ -291,13 +301,13 @@ function StorageForQueryCleanUpWhenFailureSuite() {
         db._query(query, null, {spillOverThresholdNumRows: 5000});
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, 1100); //this failure point doesn't throw exception, so it has rocksdb corruption code
+        assertEqual(err.errorNum, 1100); // this failure point doesn't throw exception, so it has rocksdb corruption code
         assertRangeCleanUp(tempFileName, tempFileNameData);
       } finally {
         internal.debugClearFailAt();
 
       }
-    },
+    }
 
   };
 }

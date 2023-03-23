@@ -58,7 +58,9 @@ for (let l of rightLevels) {
 
 const wait = (keySpaceId, key) => {
   for (let i = 0; i < 200; i++) {
-    if (getKey(keySpaceId, key)) break;
+    if (getKey(keySpaceId, key)) {
+break;
+}
     require('internal').wait(0.1);
   }
 };
@@ -97,7 +99,7 @@ helper.generateAllUsers();
 
 describe('User Rights Management', () => {
   it('should test rights for', () => {
-    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.be.greaterThan(0);
     for (let name of userSet) {
       let canUse = false;
       try {

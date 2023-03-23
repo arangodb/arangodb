@@ -37,13 +37,15 @@ function runSetup () {
 
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery');
-  c.ensureIndex({ "type" : "geo", "fields" : ["geoloc.lat", "geoloc.lon"] });
-  
+  c.ensureIndex({ "type": "geo",
+"fields": ["geoloc.lat", "geoloc.lon"] });
+
   for (var i = 0; i < 1000; ++i) {
     var a = Math.floor(Math.random() * 100000000);
     var b = Math.floor(Math.random() * 100000000);
-   
-    c.insert({ geoloc: { lat: a % 90, lon: b % 90 } });
+
+    c.insert({ geoloc: { lat: a % 90,
+lon: b % 90 } });
   }
   c.save({ _key: 'crashme' }, true);
 
@@ -69,12 +71,12 @@ function recoverySuite () {
     testIndexesGeo: function () {
       var c = db._collection('UnitTestsRecovery');
 
-      // update all documents in the collection. this will re-write the geo index 
+      // update all documents in the collection. this will re-write the geo index
       // entries. this simply should not fail
       db._query("FOR doc IN " + c.name() + " UPDATE doc WITH { modified: true } IN " + c.name()).toArray();
       assertEqual(1001, db._query("FOR doc IN " + c.name() + " FILTER doc.modified == true RETURN 1").toArray().length);
-      
-      // again update all documents in the collection. this will re-write the geo index 
+
+      // again update all documents in the collection. this will re-write the geo index
       // entries. again this simply should not fail
       db._query("FOR doc IN " + c.name() + " UPDATE doc WITH { modified: false } IN " + c.name()).toArray();
       assertEqual(1001, db._query("FOR doc IN " + c.name() + " FILTER doc.modified == false RETURN 1").toArray().length);

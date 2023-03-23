@@ -40,7 +40,8 @@ function runSetup () {
   db._create('UnitTestsRecovery');
   var i;
   for (i = 0; i < 10; ++i) {
-    db._collection('UnitTestsRecovery').save({ _key: 'test' + i, value: i });
+    db._collection('UnitTestsRecovery').save({ _key: 'test' + i,
+value: i });
   }
   var id = db.UnitTestsRecovery._id;
 
@@ -51,7 +52,8 @@ function runSetup () {
   // re-create using the same id
   var c = db._create('UnitTestsRecovery', { id: id });
   for (i = 100; i < 110; ++i) {
-    c.save({ _key: 'test' + i, value: i });
+    c.save({ _key: 'test' + i,
+value: i });
   }
 
   require('internal').wal.flush(true, true);

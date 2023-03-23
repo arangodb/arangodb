@@ -143,7 +143,7 @@ exports.lockCycleRaw = function (opts) {
     }
   });
 
-  const randomSort = function ( /* l, r */ ) {
+  const randomSort = function (/* l, r */) {
     return -0.5 + Math.random();
   };
 
@@ -182,7 +182,8 @@ exports.lockCycleRaw = function (opts) {
 
       const obj = {
         collections: {
-        read, write},
+        read,
+write},
         action: transactionFunction
       };
 

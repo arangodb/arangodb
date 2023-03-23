@@ -333,16 +333,20 @@
                   'Wait for sync',
                   wfs,
                   'Synchronize to disk before returning from a create or update of a document.',
-                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
+                  [{value: false,
+label: 'No'}, {value: true,
+label: 'Yes'}])
               );
-              
+
               tableContent.push(
                 window.modalView.createSelectEntry(
                   'change-collection-cache',
                   'Enable documents cache',
                   data.cacheEnabled,
                   'Enable in-memory cache for documents and primary index',
-                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
+                  [{value: false,
+label: 'No'}, {value: true,
+label: 'Yes'}])
               );
             }
             after();

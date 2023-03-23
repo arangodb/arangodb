@@ -1,30 +1,30 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for filters
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for filters
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
@@ -88,7 +88,14 @@ function OptimizerConditionsMergingSuite () {
       let query = `FOR doc IN ${cn} FILTER ${operations.join(' && ')} SORT doc.value RETURN doc.value`;
       let res = db._query(query).toArray();
       let buildContext = () => {
-        return { query, min, max, minInclusive, maxInclusive, minSet, maxSet, result: JSON.stringify(res) };
+        return { query,
+min,
+max,
+minInclusive,
+maxInclusive,
+minSet,
+maxSet,
+result: JSON.stringify(res) };
       };
       let emptyCondition = false;
       if (min > max) {
@@ -103,15 +110,19 @@ function OptimizerConditionsMergingSuite () {
         assertNotEqual(0, res.length);
         let v = res[0];
         if (minInclusive) {
-          assertTrue(v >= min, { v, min }, buildContext());
+          assertTrue(v >= min, { v,
+min }, buildContext());
         } else {
-          assertTrue(v > min, { v, min }, buildContext());
+          assertTrue(v > min, { v,
+min }, buildContext());
         }
         v = res[res.length - 1];
         if (maxInclusive) {
-          assertTrue(v <= max, { v, max }, buildContext());
+          assertTrue(v <= max, { v,
+max }, buildContext());
         } else {
-          assertTrue(v < max, { v, max }, buildContext());
+          assertTrue(v < max, { v,
+max }, buildContext());
         }
       }
 
@@ -141,7 +152,7 @@ function OptimizerConditionsMergingSuite () {
           assertEqual('value', cond.subNodes[1].type);
           assertEqual(min, cond.subNodes[1].value);
           ++expectedConditions;
-        } 
+        }
         if (maxSet && (min !== max)) {
           let cond = subNodes[expectedConditions];
           if (maxInclusive) {
@@ -161,31 +172,32 @@ function OptimizerConditionsMergingSuite () {
   };
 
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       let c = db._create(cn);
       let docs = [];
       for (let i = minValue; i <= maxValue; ++i) {
         docs.push({ value: i });
       }
       c.insert(docs);
-      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({ type: "persistent",
+fields: ["value"] });
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testConditionsMerging2Conditions : function () {
+    testConditionsMerging2Conditions: function () {
       runTests(100, 2);
     },
-    
-    testConditionsMerging3Conditions : function () {
+
+    testConditionsMerging3Conditions: function () {
       runTests(100, 3);
     },
-    
-    testConditionsMerging4Conditions : function () {
+
+    testConditionsMerging4Conditions: function () {
       runTests(100, 4);
-    },
+    }
 
   };
 }

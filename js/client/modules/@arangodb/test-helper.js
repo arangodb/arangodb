@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/* jshint strict: false */
 /* global print */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief helper for JavaScript Tests
@@ -38,7 +38,7 @@ const {
   compareStringIds,
   endpointToURL,
   versionHas,
-  isEnterprise,
+  isEnterprise
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
 const _ = require('lodash');
@@ -67,7 +67,7 @@ exports.flushInstanceInfo = () => {
   instanceInfo = null;
 };
 
-function getInstanceInfo() {
+function getInstanceInfo () {
   if (global.hasOwnProperty('instanceManger')) {
     return global.instanceManger;
   }
@@ -84,12 +84,12 @@ function getInstanceInfo() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
-/// @brief set failure point
+// / @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   const primaryEndpoint = arango.getEndpoint();
   try {
     reconnectRetry(endpoint, db._name(), "root", "");
-    
+
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
@@ -97,7 +97,7 @@ exports.debugCanUseFailAt = function (endpoint) {
   }
 };
 
-/// @brief set failure point
+// / @brief set failure point
 exports.debugSetFailAt = function (endpoint, failAt) {
   const primaryEndpoint = arango.getEndpoint();
   try {
@@ -126,7 +126,7 @@ exports.debugResetRaceControl = function (endpoint) {
   }
 };
 
-/// @brief remove failure point
+// / @brief remove failure point
 exports.debugRemoveFailAt = function (endpoint, failAt) {
   const primaryEndpoint = arango.getEndpoint();
   try {
@@ -205,7 +205,7 @@ exports.getAllMetric = function (endpoint, tags) {
   return res.body;
 };
 
-function getMetricName(text, name) {
+function getMetricName (text, name) {
   let re = new RegExp("^" + name);
   let matches = text.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
@@ -231,7 +231,7 @@ const debug = function (text) {
   console.warn(text);
 };
 
-const runShell = function(args, prefix) {
+const runShell = function (args, prefix) {
   let options = internal.options();
 
   let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
@@ -253,14 +253,14 @@ const runShell = function(args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/);
+  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /* usePipes*/);
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
   return result.pid;
 };
 
-const buildCode = function(key, command, cn, duration) {
+const buildCode = function (key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
@@ -290,7 +290,9 @@ while (++saveTries < 100) {
   let args = {'javascript.execute': file};
   let pid = runShell(args, file);
   debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-  return { key, file, pid };
+  return { key,
+file,
+pid };
 };
 exports.runShell = runShell;
 
@@ -298,7 +300,7 @@ const abortSignal = 6;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
   assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
-  
+
   assertFalse(db[cn].exists("stop"));
   let clients = [];
   debug("starting " + tests.length + " test clients");
@@ -314,7 +316,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
     debug("running test for " + duration + " s...");
 
-    for (let count = 0; count < duration; count ++) {
+    for (let count = 0; count < duration; count++) {
       internal.sleep(1);
       clients.forEach(function (client) {
         if (!client.done) {
@@ -379,7 +381,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       console.warn("Not all shells could be joined!");
     }
   } finally {
-    clients.forEach(function(client) {
+    clients.forEach(function (client) {
       try {
         if (!client.failed) {
           fs.remove(client.file);
@@ -406,7 +408,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           let status = internal.statusExternal(client.pid).status;
           if (status === 'RUNNING') {
             debug("forcefully killing test client with pid " + client.pid);
-            internal.killExternal(client.pid, 9 /*SIGKILL*/);
+            internal.killExternal(client.pid, 9 /* SIGKILL*/);
           }
         } catch (err) { }
       }
@@ -433,8 +435,8 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
     let shards = Object.keys(collInfo.Plan);
     let insync = 0;
     for (let s of shards) {
-      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length
-        && minimumRequiredFollowers <= collInfo.Plan[s].followers.length) {
+      if (collInfo.Plan[s].followers.length === collInfo.Current[s].followers.length &&
+        minimumRequiredFollowers <= collInfo.Plan[s].followers.length) {
         ++insync;
       }
     }
@@ -451,13 +453,13 @@ exports.getControleableServers = function (role) {
 };
 
 // These functions lean on special runners to export the actual instance object into the global namespace.
-exports.getCtrlAgents = function() {
+exports.getCtrlAgents = function () {
   return exports.getControleableServers(inst.instanceRole.agent);
 };
-exports.getCtrlDBServers = function() {
+exports.getCtrlDBServers = function () {
   return exports.getControleableServers(inst.instanceRole.dbServer);
 };
-exports.getCtrlCoordinators = function() {
+exports.getCtrlCoordinators = function () {
   return exports.getControleableServers(inst.instanceRole.coordinator);
 };
 
@@ -502,8 +504,8 @@ exports.getEndpointById = function (id) {
 exports.getUrlById = function (id) {
   const toUrl = (d) => (d.url);
   const instanceInfo = getInstanceInfo();
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-    .map(toUrl)[0];
+  return instanceInfo.arangods.filter((d) => (d.id === id)).
+    map(toUrl)[0];
 };
 
 exports.getEndpointsByType = function (type) {
@@ -511,9 +513,9 @@ exports.getEndpointsByType = function (type) {
   const toEndpoint = (d) => (d.endpoint);
 
   const instanceInfo = getInstanceInfo();
-  return instanceInfo.arangods.filter(isType)
-    .map(toEndpoint)
-    .map(endpointToURL);
+  return instanceInfo.arangods.filter(isType).
+    map(toEndpoint).
+    map(endpointToURL);
 };
 
 exports.triggerMetrics = function () {
@@ -556,7 +558,7 @@ const callAgency = function (operation, body) {
   const res = request.post({
     url: `${agents[0]}/_api/agency/${operation}`,
     body: JSON.stringify(body),
-    timeout: 300,
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -569,7 +571,7 @@ const callAgency = function (operation, body) {
 exports.agency = {
   get: function (key) {
     const res = callAgency('read', [[
-      `/arango/${key}`,
+      `/arango/${key}`
     ]]);
     return res[0];
   },
@@ -578,8 +580,8 @@ exports.agency = {
     callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'set',
-        'new': value,
-      },
+        'new': value
+      }
     }]]);
   },
 
@@ -587,7 +589,7 @@ exports.agency = {
     callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'delete'
-      },
+      }
     }]]);
   },
 
@@ -596,14 +598,14 @@ exports.agency = {
   increaseVersion: function (path) {
     callAgency('write', [[{
       [`/arango/${path}`]: {
-        'op': 'increment',
-      },
+        'op': 'increment'
+      }
     }]]);
-  },
+  }
 
   // TODO implement the rest...
 };
 
-exports.uniqid = function  () {
+exports.uniqid = function () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };

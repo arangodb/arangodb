@@ -7,7 +7,7 @@ const EventEmitter = require('events').EventEmitter;
 const Pending = require('@arangodb/mocha/pending');
 const milliseconds = require('ms');
 
-function createInvalidExceptionError(message, value) {
+function createInvalidExceptionError (message, value) {
   var err = new Error(message);
   err.code = 'ERR_MOCHA_INVALID_EXCEPTION';
   err.valueType = typeof value;
@@ -15,7 +15,7 @@ function createInvalidExceptionError(message, value) {
   return err;
 }
 
-function toValueOrError(value) {
+function toValueOrError (value) {
   return (
     value ||
     createInvalidExceptionError(
@@ -30,7 +30,7 @@ var Date = global.Date;
 var toString = Object.prototype.toString;
 
 class Runnable extends EventEmitter {
-  constructor(title, fn) {
+  constructor (title, fn) {
     super();
     this.title = title;
     this.fn = fn;
@@ -46,7 +46,7 @@ class Runnable extends EventEmitter {
     this.pending = false;
   }
 
-  timeout(ms) {
+  timeout (ms) {
     if (!arguments.length) {
       return this._timeout;
     }
@@ -64,7 +64,7 @@ class Runnable extends EventEmitter {
     return this;
   }
 
-  slow(ms) {
+  slow (ms) {
     if (!arguments.length || typeof ms === 'undefined') {
       return this._slow;
     }
@@ -75,7 +75,7 @@ class Runnable extends EventEmitter {
     return this;
   }
 
-  enableTimeouts(enabled) {
+  enableTimeouts (enabled) {
     if (!arguments.length) {
       return this._enableTimeouts;
     }
@@ -83,48 +83,48 @@ class Runnable extends EventEmitter {
     return this;
   }
 
-  skip() {
+  skip () {
     throw new Pending('sync skip');
   }
 
-  isPending() {
+  isPending () {
     return this.pending || (this.parent && this.parent.isPending());
   }
 
-  isFailed() {
+  isFailed () {
     return !this.isPending() && this.state === 'failed';
   }
 
-  isPassed() {
+  isPassed () {
     return !this.isPending() && this.state === 'passed';
   }
 
-  retries(n) {
+  retries (n) {
     if (!arguments.length) {
       return this._retries;
     }
     this._retries = n;
   }
 
-  currentRetry(n) {
+  currentRetry (n) {
     if (!arguments.length) {
       return this._currentRetry;
     }
     this._currentRetry = n;
   }
 
-  fullTitle() {
+  fullTitle () {
     return this.titlePath().join(' ');
   }
 
-  titlePath() {
+  titlePath () {
     return this.parent.titlePath().concat([this.title]);
   }
 
-  inspect() {
+  inspect () {
     return JSON.stringify(
       this,
-      function(key, val) {
+      function (key, val) {
         if (key[0] === '_') {
           return;
         }
@@ -140,14 +140,14 @@ class Runnable extends EventEmitter {
     );
   }
 
-  globals(globals) {
+  globals (globals) {
     if (!arguments.length) {
       return this._allowedGlobals;
     }
     this._allowedGlobals = globals;
   }
 
-  run(fn) {
+  run (fn) {
     var self = this;
     var start = new Date();
     var ctx = this.ctx;
@@ -158,7 +158,7 @@ class Runnable extends EventEmitter {
       ctx.runnable(this);
     }
 
-    function multiple(err) {
+    function multiple (err) {
       if (emitted) {
         return;
       }
@@ -172,7 +172,7 @@ class Runnable extends EventEmitter {
       }
     }
 
-    function done(err) {
+    function done (err) {
       var ms = self.timeout();
       if (self.timedOut) {
         return;
@@ -193,7 +193,7 @@ class Runnable extends EventEmitter {
     this.callback = done;
 
     if (this.async) {
-      this.skip = function asyncSkip() {
+      this.skip = function asyncSkip () {
         done(new Pending('async skip call'));
         throw new Pending('async skip; aborting execution');
       };
@@ -228,8 +228,8 @@ class Runnable extends EventEmitter {
       done(toValueOrError(err));
     }
 
-    function callFnAsync(fn) {
-      fn.call(ctx, function(err) {
+    function callFnAsync (fn) {
+      fn.call(ctx, function (err) {
         if (err instanceof Error || toString.call(err) === '[object Error]') {
           return done(err);
         }
@@ -246,7 +246,7 @@ class Runnable extends EventEmitter {
     }
   }
 
-  _timeoutError(ms) {
+  _timeoutError (ms) {
     var msg =
       'Timeout of ' +
       ms +

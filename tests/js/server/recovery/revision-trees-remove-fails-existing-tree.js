@@ -51,7 +51,7 @@ function runSetup () {
       docs = [];
     }
   }
-  
+
   // wait until all changes have been applied
   let haveUpdates;
   while (true) {
@@ -72,10 +72,10 @@ function runSetup () {
     }
     internal.wait(0.25);
   }
-  
+
   // now break inserts
   internal.debugSetFailAt("RevisionTree::applyRemoves");
-  
+
   c = db._collection(colName1);
 
   for (let i = 0; i < 500; ++i) {
@@ -97,7 +97,7 @@ function runSetup () {
   // unfortunately there is no proper way to control that it was
   // was already run with our data above
   internal.wait(6.0);
-  
+
   c.insert({ _key: 'crashme' }, true);
 
   internal.debugTerminate('crashing server');
@@ -112,7 +112,7 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
 
-    testRevisionTreeRemoveFails: function() {
+    testRevisionTreeRemoveFails: function () {
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
       assertEqual(c1._revisionTreeSummary().count, 500);
@@ -120,7 +120,7 @@ function recoverySuite () {
       const c2 = db._collection(colName2);
       assertEqual(c2._revisionTreeSummary().count, c2.count());
       assertEqual(c2._revisionTreeSummary().count, 50001);
-    },
+    }
 
   };
 }

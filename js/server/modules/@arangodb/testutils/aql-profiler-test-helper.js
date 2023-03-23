@@ -1,29 +1,29 @@
-/*jshint globalstrict:true, strict:true, esnext: true */
+/* jshint globalstrict:true, strict:true, esnext: true */
 /* global global */
 
 "use strict";
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Tobias Gödderz
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Tobias Gödderz
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const db = require('@arangodb').db;
@@ -32,9 +32,9 @@ const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 const { getResponsibleServers } = global.ArangoClusterInfo;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @file common variables and functions for aql-profiler* tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @file common variables and functions for aql-profiler* tests
+// //////////////////////////////////////////////////////////////////////////////
 
 const colName = 'UnitTestProfilerCol';
 const edgeColName = 'UnitTestProfilerEdgeCol';
@@ -75,8 +75,8 @@ const UpsertNode = 'UpsertNode';
 const nodeTypesList = [
   AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode, 
-  RemoveNode, ReplaceNode, ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, 
+  InsertNode, LimitNode, MaterializeNode, MutexNode, NoResultsNode, RemoteNode,
+  RemoveNode, ReplaceNode, ReturnNode, ScatterNode, ShortestPathNode, SingletonNode,
   SortNode, TraversalNode, UpdateNode, UpsertNode
 ];
 
@@ -117,7 +117,7 @@ const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 const blockTypesList = [
   AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock, 
+  HashedCollectBlock, IndexBlock, LimitBlock, MaterializeBlock, MutexBlock, NoResultsBlock,
   RemoteBlock, ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
   SortedCollectBlock, SortingGatherBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
@@ -125,9 +125,9 @@ const blockTypesList = [
   IResearchViewBlock, IResearchViewOrderedBlock
 ];
 
-let translateType = function(nodes, node) {
+let translateType = function (nodes, node) {
   let types = {};
-  nodes.forEach(function(node) {
+  nodes.forEach(function (node) {
     let type = node.type;
     if (type === 'CollectNode') {
       if (node.collectOptions.method === 'sorted') {
@@ -160,14 +160,14 @@ let translateType = function(nodes, node) {
   return types[node.id];
 };
 
-/// @brief check that numbers in actual are in the range specified by
-/// expected. Each element in expected may either be
-///  - a number, for an exact match;
-///  - a range [min, max], to check if the actual element lies in this interval;
-///  - null, so the actual element will be ignored
-///  - undefined must be undefined
-/// Also, the arrays must be of equal lengths.
-function assertFuzzyNumArrayEquality(expected, actual, details) {
+// / @brief check that numbers in actual are in the range specified by
+// / expected. Each element in expected may either be
+// /  - a number, for an exact match;
+// /  - a range [min, max], to check if the actual element lies in this interval;
+// /  - null, so the actual element will be ignored
+// /  - undefined must be undefined
+// / Also, the arrays must be of equal lengths.
+function assertFuzzyNumArrayEquality (expected, actual, details) {
   assert.assertEqual(expected.length, actual.length, details);
 
   for (let i = 0; i < expected.length; i++) {
@@ -176,19 +176,21 @@ function assertFuzzyNumArrayEquality(expected, actual, details) {
 
     if (exp === null) {
       // do nothing
-    } else if ('number' === typeof exp) {
+    } else if (typeof exp === 'number') {
       assert.assertEqual(exp, act, Object.assign({i}, details));
-    } else if ('undefined' === typeof exp) {
+    } else if (typeof exp === 'undefined') {
       assert.assertEqual(exp, act, Object.assign({i}, details));
     } else if (Array.isArray(exp)) {
       assert.assertTrue(exp[0] <= act && act <= exp[1],
         Object.assign(
-          {i, 'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
+          {i,
+'failed_test': `${exp[0]} <= ${act} <= ${exp[1]}`},
           details
         )
       );
     } else {
-      assert.assertTrue(false, {msg: "Logical error in the test code", exp});
+      assert.assertTrue(false, {msg: "Logical error in the test code",
+exp});
     }
   }
 }
@@ -208,7 +210,8 @@ function zipPlanNodesIntoStatsNodes (profile) {
     {
       id: node.id,
       type: translateType(profile.plan.nodes, node),
-      fromStats: statsNodesById[node.id], fromPlan: node
+      fromStats: statsNodesById[node.id],
+fromPlan: node
     }
   ));
 }
@@ -221,7 +224,7 @@ function getCompactStatsNodes (profile) {
       type: translateType(profile.plan.nodes, node),
       calls: node.fromStats.calls,
       items: node.fromStats.items,
-      filtered: node.fromStats.filtered || 0,
+      filtered: node.fromStats.filtered || 0
     })
   );
 }
@@ -230,7 +233,7 @@ function getPlanNodesWithId (profile) {
   return profile.plan.nodes.map(
     node => ({
       id: node.id,
-      type: node.type,
+      type: node.type
     })
   );
 }
@@ -243,15 +246,15 @@ function getStatsNodesWithId (profile) {
   );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.stats
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert structure of profile.stats
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsProfileStatsObject (stats, {level, fullCount}) {
   // internal argument check
-  expect(level)
-    .to.be.a('number')
-    .and.to.be.oneOf([0, 1, 2]);
+  expect(level).
+    to.be.a('number').
+    and.to.be.oneOf([0, 1, 2]);
 
   expect(stats).to.be.an('object');
 
@@ -268,7 +271,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'httpRequests',
     'peakMemoryUsage',
     'intermediateCommits',
-    'executionTime',
+    'executionTime'
   ];
 
   if (level === 2) {
@@ -297,9 +300,9 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.warnings
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert structure of profile.warnings
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsProfileWarningsArray (warnings) {
   expect(warnings).to.be.an('array');
@@ -307,9 +310,9 @@ function assertIsProfileWarningsArray (warnings) {
   // TODO check element type
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.profile
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert structure of profile.profile
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsProfileProfileObject (profile) {
   expect(profile).to.have.all.keys([
@@ -321,7 +324,7 @@ function assertIsProfileProfileObject (profile) {
     'optimizing plan',
     'instantiating executors',
     'executing',
-    'finalizing',
+    'finalizing'
   ]);
 
   expect(profile.initializing).to.be.a('number');
@@ -334,9 +337,9 @@ function assertIsProfileProfileObject (profile) {
   expect(profile.finalizing).to.be.a('number');
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert structure of profile.plan
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert structure of profile.plan
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsProfilePlanObject (plan) {
   expect(plan).to.have.all.keys([
@@ -346,7 +349,7 @@ function assertIsProfilePlanObject (plan) {
     'variables',
     'estimatedCost',
     'estimatedNrItems',
-    'isModificationQuery',
+    'isModificationQuery'
   ]);
 
   expect(plan.nodes).to.be.an('array');
@@ -362,19 +365,19 @@ function assertIsProfilePlanObject (plan) {
       'dependencies',
       'id',
       'estimatedCost',
-      'estimatedNrItems',
+      'estimatedNrItems'
     ]);
 
     expect(node.id).to.be.a('number');
     expect(node.estimatedCost).to.be.a('number');
     expect(node.estimatedNrItems).to.be.a('number');
 
-    expect(node.type)
-      .to.be.a('string')
-      .and.to.be.oneOf(nodeTypesList);
+    expect(node.type).
+      to.be.a('string').
+      and.to.be.oneOf(nodeTypesList);
 
-    expect(node.dependencies)
-      .to.be.an('array');
+    expect(node.dependencies).
+      to.be.an('array');
     // TODO add deep checks for plan.nodes[].dependencies
 
     // TODO add checks for the optional variables, maybe dependent on the type
@@ -389,7 +392,7 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.include.all.keys([
       'id',
       'name',
-      'isFullDocumentFromCollection',
+      'isFullDocumentFromCollection'
     ]);
 
     expect(variable.id).to.be.a('number');
@@ -397,64 +400,67 @@ function assertIsProfilePlanObject (plan) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 0 profile
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert that the passed variable looks like a level 0 profile
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsLevel0Profile (profile, {fullCount} = {}) {
-  expect(profile)
-    .to.be.an('object')
-    .that.has.all.keys([
+  expect(profile).
+    to.be.an('object').
+    that.has.all.keys([
     'stats',
-    'warnings',
+    'warnings'
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 0, fullCount});
+  assertIsProfileStatsObject(profile.stats, {level: 0,
+fullCount});
   assertIsProfileWarningsArray(profile.warnings);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 1 profile
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert that the passed variable looks like a level 1 profile
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsLevel1Profile (profile, {fullCount} = {}) {
-  expect(profile)
-    .to.be.an('object')
-    .that.has.all.keys([
+  expect(profile).
+    to.be.an('object').
+    that.has.all.keys([
     'stats',
     'warnings',
-    'profile',
+    'profile'
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 1, fullCount});
+  assertIsProfileStatsObject(profile.stats, {level: 1,
+fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the passed variable looks like a level 2 profile
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert that the passed variable looks like a level 2 profile
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertIsLevel2Profile (profile, {fullCount} = {}) {
-  expect(profile)
-    .to.be.an('object')
-    .that.has.all.keys([
+  expect(profile).
+    to.be.an('object').
+    that.has.all.keys([
     'stats',
     'warnings',
     'profile',
-    'plan',
+    'plan'
   ]);
 
-  assertIsProfileStatsObject(profile.stats, {level: 2, fullCount});
+  assertIsProfileStatsObject(profile.stats, {level: 2,
+fullCount});
   assertIsProfileWarningsArray(profile.warnings);
   assertIsProfileProfileObject(profile.profile);
   assertIsProfilePlanObject(profile.plan);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the list of AQL nodes in the explain result matches the
-/// list of AQL nodes of the profile.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert that the list of AQL nodes in the explain result matches the
+// / list of AQL nodes of the profile.
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertStatsNodesMatchPlanNodes (profile) {
   // Note: reorderings in the plan would break this comparison, because the
@@ -464,32 +470,32 @@ function assertStatsNodesMatchPlanNodes (profile) {
     profile.stats.nodes.map(node => node.id).sort(),
     {
       'profile.plan.nodes': getPlanNodesWithId(profile),
-      'profile.stats.nodes': getStatsNodesWithId(profile),
+      'profile.stats.nodes': getStatsNodesWithId(profile)
     }
   );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief assert that the key/value pairs in expectedStats have matching
-/// key/value pairs in profile.stats. Keys would for example be fullCount,
-/// scannedFull, or scannedIndex.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert that the key/value pairs in expectedStats have matching
+// / key/value pairs in profile.stats. Keys would for example be fullCount,
+// / scannedFull, or scannedIndex.
+// //////////////////////////////////////////////////////////////////////////////
 
-function assertStatsMatchGenStats(profile, expectedStats) {
+function assertStatsMatchGenStats (profile, expectedStats) {
   for (const key of Object.keys(expectedStats)) {
     assert.assertEqual(expectedStats[key], profile.stats[key], `when comparing stats.${key}`);
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Compares lists of nodes with items and calls, i.e., expected and
-/// actual both have the structure [ { type, calls, items } ].
-/// details may contain an object that will be output when the test fails,
-/// maybe with additional fields.
-/// .calls and .items may be either a number for an exact test, or a range
-/// [min, max] which tests for min <= actualCalls <= max instead, or null to
-/// ignore the value.
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Compares lists of nodes with items and calls, i.e., expected and
+// / actual both have the structure [ { type, calls, items } ].
+// / details may contain an object that will be output when the test fails,
+// / maybe with additional fields.
+// / .calls and .items may be either a number for an exact test, or a range
+// / [min, max] which tests for min <= actualCalls <= max instead, or null to
+// / ignore the value.
+// //////////////////////////////////////////////////////////////////////////////
 
 function assertNodesItemsAndCalls (expected, actual, details = {}) {
   // assert node types first
@@ -512,7 +518,7 @@ function assertNodesItemsAndCalls (expected, actual, details = {}) {
     actual.map(node => node.calls),
     details
   );
-  
+
   // assert filtered count last
   assertFuzzyNumArrayEquality(
     expected.map(node => node.filtered),
@@ -521,25 +527,25 @@ function assertNodesItemsAndCalls (expected, actual, details = {}) {
   );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Common checks for most blocks
-/// @param query string - is assumed to have one bind parameter 'rows'
-/// @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
-///        must generate the list of expected nodes
-/// @param prepare function: (rows) => {...}
-///        called before the query is executed
-/// @param bind function: (rows) => ({rows})
-///        must return the bind parameters for the query
-/// Example for genNodeList:
-/// genNodeList(2500, 3) ===
-/// [
-///   { type : SingletonNode, calls : 1, items : 1 },
-///   { type : EnumerateListNode, calls : 3, items : 2500 },
-///   { type : ReturnNode, calls : 3, items : 2500 }
-/// ]
-/// The number of calls may be a range [min, max], e.g.:
-///   { type : EnumerateCollectionNode, calls : [3,5] , items : 2500 }
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Common checks for most blocks
+// / @param query string - is assumed to have one bind parameter 'rows'
+// / @param genNodeList function: (rows, batches) => [ { type, calls, items } ]
+// /        must generate the list of expected nodes
+// / @param prepare function: (rows) => {...}
+// /        called before the query is executed
+// / @param bind function: (rows) => ({rows})
+// /        must return the bind parameters for the query
+// / Example for genNodeList:
+// / genNodeList(2500, 3) ===
+// / [
+// /   { type : SingletonNode, calls : 1, items : 1 },
+// /   { type : EnumerateListNode, calls : 3, items : 2500 },
+// /   { type : ReturnNode, calls : 3, items : 2500 }
+// / ]
+// / The number of calls may be a range [min, max], e.g.:
+// /   { type : EnumerateCollectionNode, calls : [3,5] , items : 2500 }
+// //////////////////////////////////////////////////////////////////////////////
 
 function runDefaultChecks (
   {
@@ -550,7 +556,7 @@ function runDefaultChecks (
     bind = rows => ({rows}),
     options = {},
     testRowCounts = defaultTestRowCounts,
-    additionalTestRowCounts = [],
+    additionalTestRowCounts = []
   }
 ) {
   const {fullCount} = options;
@@ -558,9 +564,10 @@ function runDefaultChecks (
   testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
-    
+
     const queryResults = db._query(query, bind(rows),
-      _.merge(options, {profile, defaultBatchSize})
+      _.merge(options, {profile,
+defaultBatchSize})
     ).getExtra();
 
     const batches = Math.ceil(rows / defaultBatchSize);
@@ -573,17 +580,22 @@ function runDefaultChecks (
     const actual = getCompactStatsNodes(queryResults);
 
     assertNodesItemsAndCalls(expected, actual,
-     {query, bind: bind(rows), rows, batches, expected, actual});
+     {query,
+bind: bind(rows),
+rows,
+batches,
+expected,
+actual});
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get an array of arrays of numbers. Each inner array is of length
-///        numberOfShards. Specifies the number of rows per shard.
-/// @param numberOfShards The number of shards
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Get an array of arrays of numbers. Each inner array is of length
+// /        numberOfShards. Specifies the number of rows per shard.
+// / @param numberOfShards The number of shards
+// //////////////////////////////////////////////////////////////////////////////
 
-function clusterTestRowCounts({numberOfShards}) {
+function clusterTestRowCounts ({numberOfShards}) {
   const testRowCounts = [];
   const empty = _.fill(Array(numberOfShards), 0);
 
@@ -603,7 +615,7 @@ function clusterTestRowCounts({numberOfShards}) {
       // last shard has "rows" documents
       // e.g. [0, 0, 0, 0, rows]
       array = empty.slice();
-      array[array.length-1] = rows;
+      array[array.length - 1] = rows;
       testRowCounts.push(array);
     }
 
@@ -616,16 +628,16 @@ function clusterTestRowCounts({numberOfShards}) {
   return testRowCounts;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Common checks for cluster tests
-/// @param col ArangoCollection object
-/// @param exampleDocumentsByShard Object, keys are shard ids and values are
-///        arrays of documents which the specified shard is responsible for.
-/// @param query string - is assumed to have no bind parameter
-/// @param genNodeList function: (rowsByShard, rowsByServer) => [ { type, calls, items } ]
-///        must generate the list of expected nodes, gets a { shard => rows }
-///        map (string to number) and a { server => rows } map (string to number).
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Common checks for cluster tests
+// / @param col ArangoCollection object
+// / @param exampleDocumentsByShard Object, keys are shard ids and values are
+// /        arrays of documents which the specified shard is responsible for.
+// / @param query string - is assumed to have no bind parameter
+// / @param genNodeList function: (rowsByShard, rowsByServer) => [ { type, calls, items } ]
+// /        must generate the list of expected nodes, gets a { shard => rows }
+// /        map (string to number) and a { server => rows } map (string to number).
+// //////////////////////////////////////////////////////////////////////////////
 
 function runClusterChecks (
   {
@@ -633,7 +645,7 @@ function runClusterChecks (
     exampleDocumentsByShard,
     query,
     genNodeList,
-    options = {},
+    options = {}
   }
 ) {
   const numberOfShards = Object.keys(exampleDocumentsByShard).length;
@@ -666,7 +678,8 @@ function runClusterChecks (
     const rowsByShard = prepareCollection(rowCounts);
     const rowsByServer = getRowsPerServer(rowsByShard);
     const profile = db._query(query, {},
-      _.merge(options, {profile: 2, defaultBatchSize})
+      _.merge(options, {profile: 2,
+defaultBatchSize})
     ).getExtra();
 
     assertIsLevel2Profile(profile);
@@ -676,17 +689,21 @@ function runClusterChecks (
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
-      {query: query, rowCounts, rowsByShard, expected, actual});
+      {query: query,
+rowCounts,
+rowsByShard,
+expected,
+actual});
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Fill the passed collections with a balanced binary tree.
-///        All existing documents will be deleted in both collections!
-/// @param vertexCol A document ArangoCollection
-/// @param edgeCol An edge ArangoCollection
-/// @param numVertices Number of vertices the binary tree should contain
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Fill the passed collections with a balanced binary tree.
+// /        All existing documents will be deleted in both collections!
+// / @param vertexCol A document ArangoCollection
+// / @param edgeCol An edge ArangoCollection
+// / @param numVertices Number of vertices the binary tree should contain
+// //////////////////////////////////////////////////////////////////////////////
 function createBinaryTree (vertexCol, edgeCol, numVertices) {
   // clear collections
   vertexCol.truncate();
@@ -698,32 +715,34 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
   // create a balanced binary tree on edgeCol
   edgeCol.insert(
     // for every v._key from col
-    _.range(1, numVertices + 1)
+    _.range(1, numVertices + 1).
       // calculate child indices of (potential) children
-      .map(i => [{from: i, to: 2 * i}, {from: i, to: 2 * i + 1}])
+      map(i => [{from: i,
+to: 2 * i}, {from: i,
+to: 2 * i + 1}]).
       // flatten
-      .reduce((accum, cur) => accum.concat(cur), [])
+      reduce((accum, cur) => accum.concat(cur), []).
       // omit edges to non-existent vertices
-      .filter(e => e.to <= numVertices)
+      filter(e => e.to <= numVertices).
       // create edge documents
-      .map(e => (
+      map(e => (
         {
           _from: `${colName}/${e.from}`,
-          _to: `${colName}/${e.to}`,
+          _to: `${colName}/${e.to}`
         }
       ))
   );
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Adds a and b. Both may either be numbers or intervals of numbers,
-///        modeled as two-element arrays. The result again is either a number
-///        or an array of two numbers.
-/// @param a A number or an array of two numbers
-/// @param b A number or an array of two numbers
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Adds a and b. Both may either be numbers or intervals of numbers,
+// /        modeled as two-element arrays. The result again is either a number
+// /        or an array of two numbers.
+// / @param a A number or an array of two numbers
+// / @param b A number or an array of two numbers
+// //////////////////////////////////////////////////////////////////////////////
 //
-function addIntervals(a, b) {
+function addIntervals (a, b) {
   // helper
   const assertInterval = (x) => {
     assert.assertInstanceOf(Array, x);
@@ -733,8 +752,12 @@ function addIntervals(a, b) {
   };
 
   // normalize arguments
-  if (typeof a === "number") {a = [a, a];}
-  if (typeof b === "number") {b = [b, b];}
+  if (typeof a === "number") {
+a = [a, a];
+}
+  if (typeof b === "number") {
+b = [b, b];
+}
   assertInterval(a);
   assertInterval(b);
 

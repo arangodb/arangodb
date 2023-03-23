@@ -44,12 +44,14 @@ function runSetup () {
   e = db._createEdgeCollection('UnitTestsEdges');
 
   for (i = 0; i < 1000; ++i) {
-    v.save({ _key: 'node' + i, name: 'some-name' + i });
+    v.save({ _key: 'node' + i,
+name: 'some-name' + i });
   }
 
   for (i = 0; i < 1000; ++i) {
     e.save('UnitTestsVertices/node' + i, 'UnitTestsVertices/node' + (i % 10),
-      { _key: 'edge' + i, what: 'some-value' + i });
+      { _key: 'edge' + i,
+what: 'some-value' + i });
   }
 
   db._drop('test');

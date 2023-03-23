@@ -10,7 +10,7 @@ const EventEmitter = require('events').EventEmitter;
 const milliseconds = require('ms');
 const Hook = require('@arangodb/mocha/hook');
 
-function createInvalidArgumentTypeError(message, argument, expected) {
+function createInvalidArgumentTypeError (message, argument, expected) {
   var err = new TypeError(message);
   err.code = 'ERR_MOCHA_INVALID_ARG_TYPE';
   err.argument = argument;
@@ -20,7 +20,7 @@ function createInvalidArgumentTypeError(message, argument, expected) {
 }
 
 class Suite extends EventEmitter {
-  constructor(title, parentContext, isRoot) {
+  constructor (title, parentContext, isRoot) {
     super();
     if (typeof title !== "string") {
       throw createInvalidArgumentTypeError(
@@ -51,7 +51,7 @@ class Suite extends EventEmitter {
     this.delayed = false;
   }
 
-  clone() {
+  clone () {
     var suite = new Suite(this.title);
     suite.ctx = this.ctx;
     suite.root = this.root;
@@ -63,7 +63,7 @@ class Suite extends EventEmitter {
     return suite;
   }
 
-  timeout(ms) {
+  timeout (ms) {
     if (!arguments.length) {
       return this._timeout;
     }
@@ -77,7 +77,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  retries(n) {
+  retries (n) {
     if (!arguments.length) {
       return this._retries;
     }
@@ -85,7 +85,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  enableTimeouts(enabled) {
+  enableTimeouts (enabled) {
     if (!arguments.length) {
       return this._enableTimeouts;
     }
@@ -93,7 +93,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  slow(ms) {
+  slow (ms) {
     if (!arguments.length) {
       return this._slow;
     }
@@ -104,7 +104,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  bail(bail) {
+  bail (bail) {
     if (!arguments.length) {
       return this._bail;
     }
@@ -112,11 +112,11 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  isPending() {
+  isPending () {
     return this.pending || (this.parent && this.parent.isPending());
   }
 
-  _createHook(title, fn) {
+  _createHook (title, fn) {
     var hook = new Hook(title, fn);
     hook.parent = this;
     hook.timeout(this.timeout());
@@ -128,7 +128,7 @@ class Suite extends EventEmitter {
     return hook;
   }
 
-  beforeAll(title, fn) {
+  beforeAll (title, fn) {
     if (this.isPending()) {
       return this;
     }
@@ -144,7 +144,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  afterAll(title, fn) {
+  afterAll (title, fn) {
     if (this.isPending()) {
       return this;
     }
@@ -160,7 +160,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  beforeEach(title, fn) {
+  beforeEach (title, fn) {
     if (this.isPending()) {
       return this;
     }
@@ -176,7 +176,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  afterEach(title, fn) {
+  afterEach (title, fn) {
     if (this.isPending()) {
       return this;
     }
@@ -192,7 +192,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  addSuite(suite) {
+  addSuite (suite) {
     suite.parent = this;
     suite.root = false;
     suite.timeout(this.timeout());
@@ -205,7 +205,7 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  addTest(test) {
+  addTest (test) {
     test.parent = this;
     test.timeout(this.timeout());
     test.retries(this.retries());
@@ -217,11 +217,11 @@ class Suite extends EventEmitter {
     return this;
   }
 
-  fullTitle() {
+  fullTitle () {
     return this.titlePath().join(' ');
   }
 
-  titlePath() {
+  titlePath () {
     var result = [];
     if (this.parent) {
       result = result.concat(this.parent.titlePath());
@@ -232,71 +232,71 @@ class Suite extends EventEmitter {
     return result;
   }
 
-  total() {
+  total () {
     return (
-      this.suites.reduce(function(sum, suite) {
+      this.suites.reduce(function (sum, suite) {
         return sum + suite.total();
       }, 0) + this.tests.length
     );
   }
 
-  eachTest(fn) {
+  eachTest (fn) {
     this.tests.forEach(fn);
-    this.suites.forEach(function(suite) {
+    this.suites.forEach(function (suite) {
       suite.eachTest(fn);
     });
     return this;
   }
 
-  run() {
+  run () {
     if (this.root) {
       this.emit('run');
     }
   }
 
-  hasOnly() {
+  hasOnly () {
     return (
       this._onlyTests.length > 0 ||
       this._onlySuites.length > 0 ||
-      this.suites.some(function(suite) {
+      this.suites.some(function (suite) {
         return suite.hasOnly();
       })
     );
   }
 
-  filterOnly() {
+  filterOnly () {
     if (this._onlyTests.length) {
       this.tests = this._onlyTests;
       this.suites = [];
     } else {
       this.tests = [];
-      this._onlySuites.forEach(function(onlySuite) {
+      this._onlySuites.forEach(function (onlySuite) {
         if (onlySuite.hasOnly()) {
           onlySuite.filterOnly();
         }
       });
       var onlySuites = this._onlySuites;
-      this.suites = this.suites.filter(function(childSuite) {
+      this.suites = this.suites.filter(function (childSuite) {
         return onlySuites.indexOf(childSuite) !== -1 || childSuite.filterOnly();
       });
     }
     return this.tests.length > 0 || this.suites.length > 0;
   }
 
-  appendOnlySuite(suite) {
+  appendOnlySuite (suite) {
     this._onlySuites.push(suite);
   }
 
-  appendOnlyTest(test) {
+  appendOnlyTest (test) {
     this._onlyTests.push(test);
   }
 
-  getHooks(name) {
+  getHooks (name) {
     return this['_' + name];
   }
 
-  cleanReferences() {
-    function cleanArrReferences(arr) {
+  cleanReferences () {
+    function cleanArrReferences (arr) {
       for (var i = 0; i < arr.length; i++) {
         delete arr[i].fn;
       }
@@ -326,7 +326,7 @@ class Suite extends EventEmitter {
 
 module.exports = Suite;
 
-Suite.create = function(parent, title) {
+Suite.create = function (parent, title) {
   var suite = new Suite(title, parent.ctx);
   suite.parent = parent;
   title = suite.fullTitle();

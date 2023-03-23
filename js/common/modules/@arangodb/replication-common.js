@@ -8,7 +8,7 @@
 // /
 // / DISCLAIMER
 // /
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const sleep = require('internal').sleep;
 
-exports.compareTicks = function(l, r) {
+exports.compareTicks = function (l, r) {
   var i;
   if (l === null) {
     l = "0";
@@ -54,7 +54,7 @@ exports.compareTicks = function(l, r) {
   return 0;
 };
 
-exports.reconnectRetry = function(endpoint, databaseName, user, password) {
+exports.reconnectRetry = function (endpoint, databaseName, user, password) {
   let sleepTime = 0.1;
   let ex;
   do {

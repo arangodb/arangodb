@@ -1,32 +1,32 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertMatch, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for client/server side transaction invocation
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for client/server side transaction invocation
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Jan Steemann
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -35,11 +35,11 @@ const ERRORS = arangodb.errors;
 const ArangoError = require("@arangodb").ArangoError;
 const db = arangodb.db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function TransactionsInvocationsSuite() {
+function TransactionsInvocationsSuite () {
   'use strict';
 
   return {
@@ -47,7 +47,7 @@ function TransactionsInvocationsSuite() {
     tearDown: function () {
       internal.wait(0);
     },
-    
+
     testNestingLevelArrayOk: function () {
       let params = { doc: [] };
       let level = 0;
@@ -69,7 +69,7 @@ function TransactionsInvocationsSuite() {
       let result = db._executeTransaction(obj);
       assertEqual(params.doc, result);
     },
-    
+
     testNestingLevelArrayBorderline: function () {
       let params = { doc: [] };
       let level = 0;
@@ -91,10 +91,10 @@ function TransactionsInvocationsSuite() {
       let result = db._executeTransaction(obj);
       assertEqual(params.doc, result);
     },
-    
+
     testNestingLevelArrayTooDeep: function () {
       if (!global.ARANGOSH_PATH) {
-        // we are arangod... in this case the JS -> JSON -> JS 
+        // we are arangod... in this case the JS -> JSON -> JS
         // conversion will not take place, and we will not run into
         // an error here
         return;
@@ -124,7 +124,7 @@ function TransactionsInvocationsSuite() {
         assertEqual(arangodb.errors.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
     },
-    
+
     testNestingLevelObjectOk: function () {
       let params = { doc: {} };
       let level = 0;
@@ -146,7 +146,7 @@ function TransactionsInvocationsSuite() {
       let result = db._executeTransaction(obj);
       assertEqual(params.doc, result);
     },
-    
+
     testNestingLevelObjectBorderline: function () {
       let params = { doc: {} };
       let level = 0;
@@ -168,10 +168,10 @@ function TransactionsInvocationsSuite() {
       let result = db._executeTransaction(obj);
       assertEqual(params.doc, result);
     },
-    
+
     testNestingLevelObjectTooDeep: function () {
       if (!global.ARANGOSH_PATH) {
-        // we are arangod... in this case the JS -> JSON -> JS 
+        // we are arangod... in this case the JS -> JSON -> JS
         // conversion will not take place, and we will not run into
         // an error here
         return;
@@ -210,7 +210,9 @@ function TransactionsInvocationsSuite() {
             var err = new Error('test');
             err.errorNum = 1234;
             Object.defineProperty(err, 'name', {
-              get: function () { throw new Error('Error in getter'); }
+              get: function () {
+ throw new Error('Error in getter');
+}
             });
             throw err;
           }
@@ -242,10 +244,10 @@ function TransactionsInvocationsSuite() {
         assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum);
       }
     },
-    
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with a string action
-    ////////////////////////////////////////////////////////////////////////////////
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with a string action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionString: function () {
       let result = db._executeTransaction({
@@ -256,9 +258,9 @@ function TransactionsInvocationsSuite() {
       assertEqual(23, result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with a string function action
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with a string function action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionStringFunction: function () {
       var result = db._executeTransaction({
@@ -269,28 +271,30 @@ function TransactionsInvocationsSuite() {
       assertEqual(11, result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with a function action
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with a function action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionFunction: function () {
       var result = db._executeTransaction({
         collections: {},
-        action: function () { return 42; }
+        action: function () {
+ return 42;
+}
       });
 
       assertEqual(42, result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with an invalid action
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with an invalid action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionInvalid1: function () {
       try {
         db._executeTransaction({
           collections: {},
-          action: null,
+          action: null
         });
         fail();
       } catch (err) {
@@ -298,9 +302,9 @@ function TransactionsInvocationsSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction without an action
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction without an action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeNoAction: function () {
       try {
@@ -313,9 +317,9 @@ function TransactionsInvocationsSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with a non-working action declaration
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with a non-working action declaration
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionBroken1: function () {
       try {
@@ -329,9 +333,9 @@ function TransactionsInvocationsSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with a non-working action declaration
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with a non-working action declaration
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionBroken2: function () {
       try {
@@ -345,15 +349,15 @@ function TransactionsInvocationsSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief execute a transaction with an invalid action
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief execute a transaction with an invalid action
+    // //////////////////////////////////////////////////////////////////////////////
 
     testInvokeActionInvalid2: function () {
       try {
         db._executeTransaction({
           collections: {},
-          action: null,
+          action: null
         });
         fail();
       } catch (err) {
@@ -361,9 +365,9 @@ function TransactionsInvocationsSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief parameters
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief parameters
+    // //////////////////////////////////////////////////////////////////////////////
 
     testParametersString: function () {
       var result = db._executeTransaction({
@@ -375,9 +379,9 @@ function TransactionsInvocationsSuite() {
       assertEqual([2, 5], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief parameters
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief parameters
+    // //////////////////////////////////////////////////////////////////////////////
 
     testParametersFunction: function () {
       var result = db._executeTransaction({
@@ -394,11 +398,11 @@ function TransactionsInvocationsSuite() {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
-function TransactionsImplicitCollectionsSuite() {
+function TransactionsImplicitCollectionsSuite () {
   'use strict';
 
   var cn1 = "UnitTestsTransaction1";
@@ -408,9 +412,9 @@ function TransactionsImplicitCollectionsSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       db._drop(cn1);
@@ -419,9 +423,9 @@ function TransactionsImplicitCollectionsSuite() {
       c2 = db._createEdgeCollection(cn2);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       c1 = null;
@@ -430,22 +434,23 @@ function TransactionsImplicitCollectionsSuite() {
       db._drop(cn2);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test allowImplicit
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test allowImplicit
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleReadOnly: function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, read: cn1 },
+        collections: { allowImplicit: false,
+read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn1 RETURN doc', { '@cn1' : params.cn }).toArray(); }",
         params: { cn: cn1 }
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test read collection object
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test read collection object
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleReadCollectionObject: function () {
       assertEqual([], db._executeTransaction({
@@ -456,9 +461,9 @@ function TransactionsImplicitCollectionsSuite() {
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test read collection object in array
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test read collection object in array
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleReadCollectionArray: function () {
       assertEqual([], db._executeTransaction({
@@ -469,22 +474,23 @@ function TransactionsImplicitCollectionsSuite() {
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test allowImplicit
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test allowImplicit
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteOnly: function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, write: cn1 },
+        collections: { allowImplicit: false,
+write: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test write collection object
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test write collection object
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteCollectionObject: function () {
       assertEqual([], db._executeTransaction({
@@ -495,9 +501,9 @@ function TransactionsImplicitCollectionsSuite() {
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test write collection object in array
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test write collection object in array
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleWriteCollectionArray: function () {
       assertEqual([], db._executeTransaction({
@@ -508,45 +514,48 @@ function TransactionsImplicitCollectionsSuite() {
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test allowImplicit
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test allowImplicit
+    // //////////////////////////////////////////////////////////////////////////////
 
     testSingleReadWrite: function () {
       assertEqual([], db._executeTransaction({
-        collections: { allowImplicit: false, write: cn1, read: cn1 },
+        collections: { allowImplicit: false,
+write: cn1,
+read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
         params: { cn: cn1 }
       }));
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test allowImplicit
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test allowImplicit
+    // //////////////////////////////////////////////////////////////////////////////
 
     testMultiRead: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn1 },
+          collections: { allowImplicit: false,
+read: cn1 },
           action: "function (params) { " +
             "return require('internal').db._query('FOR doc IN @@cn RETURN doc', { '@cn' : params.cn }).toArray(); }",
           params: { cn: cn2 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlTraversal: function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: cn2 },
+        collections: { allowImplicit: false,
+read: cn2 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
         params: { cn: cn2 }
@@ -554,13 +563,14 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlTraversalTwoCollections: function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: [cn1, cn2] },
+        collections: { allowImplicit: false,
+read: [cn1, cn2] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
         params: { cn: cn2 }
@@ -568,85 +578,88 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlTraversalUndeclared: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn1 },
+          collections: { allowImplicit: false,
+read: cn1 },
           action: "function (params) { " +
             "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
           params: { cn: cn2 }
         });
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlTraversalUndeclared2: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn2 },
+          collections: { allowImplicit: false,
+read: cn2 },
           action: "function (params) { " +
             "return require('internal').db._query('WITH @@cn1 FOR i IN ANY @start @@cn RETURN i', { '@cn1': params.cn1, '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
-          params: { cn1: cn1, cn2: cn2 }
+          params: { cn1: cn1,
+cn2: cn2 }
         });
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlTraversalUndeclared3: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn1 },
+          collections: { allowImplicit: false,
+read: cn1 },
           action: "function (params) { " +
             "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn2, start: params.cn1 + '/1' }).toArray(); }",
-          params: { cn1: cn1, cn2: cn2 }
+          params: { cn1: cn1,
+cn2: cn2 }
         });
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlDocument: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn1 },
+          collections: { allowImplicit: false,
+read: cn1 },
           action: "function (params) { " +
             "return require('internal').db._query('RETURN DOCUMENT(@v)', { v: params.cn + '/1' }).toArray(); }",
           params: { cn: cn2 }
         });
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAql: function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: cn1 },
+        collections: { allowImplicit: false,
+read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
         params: { cn1: cn1 }
@@ -654,9 +667,9 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseInAqlUndeclared: function () {
       try {
@@ -667,19 +680,19 @@ function TransactionsImplicitCollectionsSuite() {
           params: { cn1: cn1 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseImplicitAql: function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: true, read: cn1 },
+        collections: { allowImplicit: true,
+read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
         params: { cn1: cn1 }
@@ -687,28 +700,28 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses implicitly declared collections in AQL
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses implicitly declared collections in AQL
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseNoImplicitAql: function () {
       try {
         db._executeTransaction({
-          collections: { allowImplicit: false, read: cn2 },
+          collections: { allowImplicit: false,
+read: cn2 },
           action: "function (params) { " +
             "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
           params: { cn1: cn1 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an explicitly declared collection for reading
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an explicitly declared collection for reading
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseForRead: function () {
       var result = db._executeTransaction({
@@ -720,33 +733,35 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an explicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an explicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseForWriteAllowImplicit: function () {
       db._executeTransaction({
-        collections: { write: cn1, allowImplicit: true },
+        collections: { write: cn1,
+allowImplicit: true },
         action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
         params: { cn1: cn1 }
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an explicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an explicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseForWriteNoAllowImplicit: function () {
       db._executeTransaction({
-        collections: { write: cn1, allowImplicit: false },
+        collections: { write: cn1,
+allowImplicit: false },
         action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate({ compact: false }); }",
         params: { cn1: cn1 }
       });
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for reading
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for reading
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForRead: function () {
       var result = db._executeTransaction({
@@ -758,13 +773,14 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for reading
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for reading
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForReadAllowImplicit: function () {
       var result = db._executeTransaction({
-        collections: { read: cn1, allowImplicit: true },
+        collections: { read: cn1,
+allowImplicit: true },
         action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
         params: { cn2: cn2 }
       });
@@ -772,46 +788,46 @@ function TransactionsImplicitCollectionsSuite() {
       assertEqual([], result);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for reading
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for reading
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForReadNoAllowImplicit: function () {
       try {
         db._executeTransaction({
-          collections: { read: cn1, allowImplicit: false },
+          collections: { read: cn1,
+allowImplicit: false },
           action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
           params: { cn2: cn2 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForWriteNoAllowImplicit: function () {
       try {
         db._executeTransaction({
-          collections: { read: cn1, allowImplicit: false },
+          collections: { read: cn1,
+allowImplicit: false },
           action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate({ compact: false }); }",
           params: { cn2: cn2 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseForWriting: function () {
       try {
@@ -821,15 +837,14 @@ function TransactionsImplicitCollectionsSuite() {
           params: { cn1: cn1 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseReadForWriting: function () {
       try {
@@ -839,15 +854,14 @@ function TransactionsImplicitCollectionsSuite() {
           params: { cn1: cn1 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForWriting: function () {
       try {
@@ -857,35 +871,34 @@ function TransactionsImplicitCollectionsSuite() {
           params: { cn1: cn1 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief uses an implicitly declared collection for writing
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief uses an implicitly declared collection for writing
+    // //////////////////////////////////////////////////////////////////////////////
 
     testUseOtherForWriteAllowImplicit: function () {
       try {
         db._executeTransaction({
-          collections: { read: cn1, allowImplicit: true },
+          collections: { read: cn1,
+allowImplicit: true },
           action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate({ compact: false }); }",
           params: { cn2: cn2 }
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
       }
     }
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function TransactionsInvocationsParametersSuite () {
   'use strict';
@@ -895,41 +908,41 @@ function TransactionsInvocationsParametersSuite () {
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn);
       c = db._create(cn);
     },
 
-    tearDown : function () {
+    tearDown: function () {
       db._drop(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief transactions
-////////////////////////////////////////////////////////////////////////////////
-    
-    testSmallMaxTransactionSize : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief transactions
+// //////////////////////////////////////////////////////////////////////////////
+
+    testSmallMaxTransactionSize: function () {
       try {
-        db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", 
+        db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn",
           {"@cn": cn}, {maxTransactionSize: 100 * 1000}); // 100 KB => not enough!
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
-      
+
       assertEqual(0, db._collection(cn).count());
       assertEqual(0, db._collection(cn).toArray().length);
     },
 
-    testBigMaxTransactionSize : function () {
-      db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", 
+    testBigMaxTransactionSize: function () {
+      db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn",
         {"@cn": cn}, {maxTransactionSize: 10 * 1000 * 1000}); // 10 MB => enough!
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitCountVerySmall : function () {
-      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+
+    testIntermediateCommitCountVerySmall: function () {
+      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn},
         { intermediateCommitCount: 1 });
       assertEqual(1, res.getExtra().stats.intermediateCommits);
       // AQL operates in batches of 1000 documents. Each batch is processed in a single babies operation.
@@ -939,20 +952,20 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(1000, db._collection(cn).toArray().length);
     },
 
-    testIntermediateCommitCountBigger : function () {
-      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+    testIntermediateCommitCountBigger: function () {
+      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn},
         { intermediateCommitCount: 1000 });
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       // this should produce 10 intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitCountWithFail : function () {
+
+    testIntermediateCommitCountWithFail: function () {
       let failed = false;
 
       try {
-        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
+        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn},
           { intermediateCommitCount: 1000 });
         fail();
         // this should produce 10 intermediate commits
@@ -966,11 +979,11 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(10000, db._collection(cn).toArray().length);
     },
 
-    testIntermediateCommitCountWithFailInTheMiddle : function () {
+    testIntermediateCommitCountWithFailInTheMiddle: function () {
       let failed = false;
 
       try {
-        db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn}, 
+        db._query("FOR i IN 1..10000 FILTER i != 6532 OR FAIL('peng') INSERT { someValue: i } INTO @@cn ", {"@cn": cn},
           { intermediateCommitCount: 1000 });
         // this should produce 6 intermediate commits
         fail();
@@ -985,29 +998,29 @@ function TransactionsInvocationsParametersSuite () {
     },
 
 
-    testIntermediateCommitSizeVerySmall : function () {
-      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+    testIntermediateCommitSizeVerySmall: function () {
+      let res = db._query("FOR i IN 1..1000 INSERT { someValue: i } INTO @@cn", {"@cn": cn},
         { intermediateCommitSize: 10 });
       assertEqual(1, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(1000, db._collection(cn).count());
       assertEqual(1000, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitSizeBigger : function () {
-      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+
+    testIntermediateCommitSizeBigger: function () {
+      let res = db._query("FOR i IN 1..10000 INSERT { someValue: i } INTO @@cn", {"@cn": cn},
         { intermediateCommitSize: 1000 });
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       // this should produce a lot of intermediate commits
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitSizeWithFail : function () {
+
+    testIntermediateCommitSizeWithFail: function () {
       let failed = false;
 
       try {
-        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn", {"@cn": cn}, 
+        db._query("FOR i IN 1..10001 FILTER i < 10001 OR FAIL('peng') INSERT { someValue: i } INTO @@cn", {"@cn": cn},
           { intermediateCommitSize: 10 });
         // this should produce a lot of intermediate commits
         fail();
@@ -1020,8 +1033,8 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitDuplicateKeys1 : function () {
+
+    testIntermediateCommitDuplicateKeys1: function () {
       let failed = false;
 
       try { // should fail because intermediate commits are not allowed
@@ -1034,7 +1047,7 @@ function TransactionsInvocationsParametersSuite () {
             "for (var i = 0; i < 10; ++i) { c.insert({ _key: 'test' + i }); } " +
             "}",
           params: { cn },
-          intermediateCommitCount: 10 
+          intermediateCommitCount: 10
         });
         fail();
       } catch (err) {
@@ -1047,8 +1060,8 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(0, db._collection(cn).toArray().length);
     },
 
-        
-    testIntermediateCommitDuplicateKeys2 : function () {
+
+    testIntermediateCommitDuplicateKeys2: function () {
       let failed = false;
 
       try { // should fail because intermediate commits are not allowed
@@ -1063,8 +1076,8 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(2, db._collection(cn).count());
       assertEqual(2, db._collection(cn).toArray().length);
     },
-    
-    testIntermediateCommitDuplicateKeys3 : function () {
+
+    testIntermediateCommitDuplicateKeys3: function () {
       let failed = false;
 
       try {
@@ -1080,45 +1093,49 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(0, db._collection(cn).toArray().length);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aql queries
-////////////////////////////////////////////////////////////////////////////////
-    
-    testAqlSmallMaxTransactionSize : function () {
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief aql queries
+// //////////////////////////////////////////////////////////////////////////////
+
+    testAqlSmallMaxTransactionSize: function () {
       try {
-        db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { maxTransactionSize: 1000 } });
+        db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn,
+options: { maxTransactionSize: 1000 } });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
-      
+
       assertEqual(0, db._collection(cn).count());
       assertEqual(0, db._collection(cn).toArray().length);
     },
 
-    testAqlBigMaxTransactionSize : function () {
-      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { maxTransactionSize: 10 * 1000 * 1000 } });
+    testAqlBigMaxTransactionSize: function () {
+      db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn,
+options: { maxTransactionSize: 10 * 1000 * 1000 } });
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testAqlIntermediateCommitCountVerySmall : function () {
-      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1 } });
+
+    testAqlIntermediateCommitCountVerySmall: function () {
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn,
+options: { intermediateCommitCount: 1 } });
       // 10 intermediate commits only because inserts are executed in batches of 1000 ops
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
 
-    testAqlIntermediateCommitCountBigger : function () {
-      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+    testAqlIntermediateCommitCountBigger: function () {
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn,
+options: { intermediateCommitCount: 1000 } });
       // 10 intermediate commits only because inserts are executed in batches of 1000 ops
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testAqlIntermediateCommitCountMultipleShards : function () {
+
+    testAqlIntermediateCommitCountMultipleShards: function () {
       if (!internal.isCluster()) {
         return;
       }
@@ -1127,7 +1144,8 @@ function TransactionsInvocationsParametersSuite () {
       db._drop(cn);
       c = db._create(cn, { numberOfShards: 5 });
 
-      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn, options: { intermediateCommitCount: 1000 } });
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT {} INTO " + cn,
+options: { intermediateCommitCount: 1000 } });
       // we don't know exactly upfront how many intermediate commits are going to happen, because we
       // don't know how many documents there will be on each shard, and which shards will be co-located
       // on the same DB server. So we assume it must be >= 5 and <= 10
@@ -1137,12 +1155,13 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testAqlIntermediateCommitCountWithFail : function () {
+
+    testAqlIntermediateCommitCountWithFail: function () {
       let failed = false;
 
       try {
-        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitCount: 1000 } });
+        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn,
+options: { intermediateCommitCount: 1000 } });
         fail();
       } catch (err) {
         failed = true;
@@ -1154,25 +1173,28 @@ function TransactionsInvocationsParametersSuite () {
       assertEqual(8000, db._collection(cn).toArray().length);
     },
 
-    testAqlIntermediateCommitSizeVerySmall : function () {
-      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 1000 } });
+    testAqlIntermediateCommitSizeVerySmall: function () {
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn,
+options: { intermediateCommitSize: 1000 } });
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testAqlIntermediateCommitSizeBigger : function () {
-      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn, options: { intermediateCommitSize: 10000 } });
+
+    testAqlIntermediateCommitSizeBigger: function () {
+      let res = db._query({ query: "FOR i IN 1..10000 INSERT { someValue: i } INTO " + cn,
+options: { intermediateCommitSize: 10000 } });
       assertEqual(10, res.getExtra().stats.intermediateCommits);
       assertEqual(10000, db._collection(cn).count());
       assertEqual(10000, db._collection(cn).toArray().length);
     },
-    
-    testAqlIntermediateCommitSizeWithFailInTheMiddle : function () {
+
+    testAqlIntermediateCommitSizeWithFailInTheMiddle: function () {
       let failed = false;
 
       try {
-        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn, options: { intermediateCommitSize: 10 } });
+        db._query({ query: "FOR i IN 1..10000 LET x = NOOPT(i == 8533 ? FAIL('peng!') : i) INSERT { value: x } INTO " + cn,
+options: { intermediateCommitSize: 10 } });
         fail();
       } catch (err) {
         failed = true;
@@ -1192,9 +1214,9 @@ function TransactionsInvocationsParametersSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(TransactionsInvocationsSuite);
 jsunity.run(TransactionsImplicitCollectionsSuite);

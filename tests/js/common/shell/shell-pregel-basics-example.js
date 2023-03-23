@@ -1,5 +1,5 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertNotEqual, JSON */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ let pregelTestHelpers = require("@arangodb/graph/pregel-test-helpers");
 const graphName = "UnitTest_pregel";
 const vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
-function testAlgo(a, p) {
+function testAlgo (a, p) {
   let pid = pregel.start(a, graphName, p);
   assertTrue(typeof pid === "string");
   const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
@@ -54,13 +54,14 @@ function testAlgo(a, p) {
     assertTrue(stats.storageTime >= 0.0, stats);
   }
   attrs.forEach((k) => {
-    assertTrue(stats.hasOwnProperty(k), { p, stats });
+    assertTrue(stats.hasOwnProperty(k), { p,
+stats });
     assertEqual("number", typeof stats[k]);
     assertTrue(stats[k] >= 0.0, stats);
   });
 
-  db[vColl].all().toArray()
-    .forEach(function (d) {
+  db[vColl].all().toArray().
+    forEach(function (d) {
       if (d[a] && d[a] !== -1) {
         var diff = Math.abs(d[a] - d.result);
         if (diff > EPS) {
@@ -70,13 +71,13 @@ function testAlgo(a, p) {
     });
 }
 
-function basicTestSuite() {
+function basicTestSuite () {
   'use strict';
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
 
@@ -99,69 +100,139 @@ function basicTestSuite() {
       var edges = db[eColl];
 
 
-      vertices.insert([{ _key: 'A', sssp: 3, pagerank: 0.027645934 },
-                       { _key: 'B', sssp: 2, pagerank: 0.3241496 },
-                       { _key: 'C', sssp: 3, pagerank: 0.289220 },
-                       { _key: 'D', sssp: 2, pagerank: 0.0329636 },
-                       { _key: 'E', sssp: 1, pagerank: 0.0682141 },
-                       { _key: 'F', sssp: 2, pagerank: 0.0329636 },
-                       { _key: 'G', sssp: -1, pagerank: 0.0136363 },
-                       { _key: 'H', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'I', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'J', sssp: -1, pagerank: 0.01363636 },
-                       { _key: 'K', sssp: 0, pagerank: 0.013636363 }]);
+      vertices.insert([{ _key: 'A',
+sssp: 3,
+pagerank: 0.027645934 },
+                       { _key: 'B',
+sssp: 2,
+pagerank: 0.3241496 },
+                       { _key: 'C',
+sssp: 3,
+pagerank: 0.289220 },
+                       { _key: 'D',
+sssp: 2,
+pagerank: 0.0329636 },
+                       { _key: 'E',
+sssp: 1,
+pagerank: 0.0682141 },
+                       { _key: 'F',
+sssp: 2,
+pagerank: 0.0329636 },
+                       { _key: 'G',
+sssp: -1,
+pagerank: 0.0136363 },
+                       { _key: 'H',
+sssp: -1,
+pagerank: 0.01363636 },
+                       { _key: 'I',
+sssp: -1,
+pagerank: 0.01363636 },
+                       { _key: 'J',
+sssp: -1,
+pagerank: 0.01363636 },
+                       { _key: 'K',
+sssp: 0,
+pagerank: 0.013636363 }]);
 
-      edges.insert([{ _from: vColl + '/B', _to: vColl + '/C', vertex: 'B' },
-                    { _from: vColl + '/C', _to: vColl + '/B', vertex: 'C' },
-                    { _from: vColl + '/D', _to: vColl + '/A', vertex: 'D' },
-                    { _from: vColl + '/D', _to: vColl + '/B', vertex: 'D' },
-                    { _from: vColl + '/E', _to: vColl + '/B', vertex: 'E' },
-                    { _from: vColl + '/E', _to: vColl + '/D', vertex: 'E' },
-                    { _from: vColl + '/E', _to: vColl + '/F', vertex: 'E' },
-                    { _from: vColl + '/F', _to: vColl + '/B', vertex: 'F' },
-                    { _from: vColl + '/F', _to: vColl + '/E', vertex: 'F' },
-                    { _from: vColl + '/G', _to: vColl + '/B', vertex: 'G' },
-                    { _from: vColl + '/G', _to: vColl + '/E', vertex: 'G' },
-                    { _from: vColl + '/H', _to: vColl + '/B', vertex: 'H' },
-                    { _from: vColl + '/H', _to: vColl + '/E', vertex: 'H' },
-                    { _from: vColl + '/I', _to: vColl + '/B', vertex: 'I' },
-                    { _from: vColl + '/I', _to: vColl + '/E', vertex: 'I' },
-                    { _from: vColl + '/J', _to: vColl + '/E', vertex: 'J' },
-                    { _from: vColl + '/K', _to: vColl + '/E', vertex: 'K' }]);
+      edges.insert([{ _from: vColl + '/B',
+_to: vColl + '/C',
+vertex: 'B' },
+                    { _from: vColl + '/C',
+_to: vColl + '/B',
+vertex: 'C' },
+                    { _from: vColl + '/D',
+_to: vColl + '/A',
+vertex: 'D' },
+                    { _from: vColl + '/D',
+_to: vColl + '/B',
+vertex: 'D' },
+                    { _from: vColl + '/E',
+_to: vColl + '/B',
+vertex: 'E' },
+                    { _from: vColl + '/E',
+_to: vColl + '/D',
+vertex: 'E' },
+                    { _from: vColl + '/E',
+_to: vColl + '/F',
+vertex: 'E' },
+                    { _from: vColl + '/F',
+_to: vColl + '/B',
+vertex: 'F' },
+                    { _from: vColl + '/F',
+_to: vColl + '/E',
+vertex: 'F' },
+                    { _from: vColl + '/G',
+_to: vColl + '/B',
+vertex: 'G' },
+                    { _from: vColl + '/G',
+_to: vColl + '/E',
+vertex: 'G' },
+                    { _from: vColl + '/H',
+_to: vColl + '/B',
+vertex: 'H' },
+                    { _from: vColl + '/H',
+_to: vColl + '/E',
+vertex: 'H' },
+                    { _from: vColl + '/I',
+_to: vColl + '/B',
+vertex: 'I' },
+                    { _from: vColl + '/I',
+_to: vColl + '/E',
+vertex: 'I' },
+                    { _from: vColl + '/J',
+_to: vColl + '/E',
+vertex: 'J' },
+                    { _from: vColl + '/K',
+_to: vColl + '/E',
+vertex: 'K' }]);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       graph_module._drop(graphName, true);
     },
 
     testSSSPNormal: function () {
-      testAlgo("sssp", { source: vColl + "/K", resultField: "result", store: true });
+      testAlgo("sssp", { source: vColl + "/K",
+resultField: "result",
+store: true });
     },
 
     testPageRank: function () {
       // should test correct convergence behavior, might fail if EPS is too low
-      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+      testAlgo("pagerank", { threshold: EPS / 10,
+resultField: "result",
+store: true });
     },
 
     testPageRankMMap: function () {
       // should test correct convergence behavior, might fail if EPS is too low
-      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
+      testAlgo("pagerank", { threshold: EPS / 10,
+resultField: "result",
+store: true,
+useMemoryMaps: true });
     },
 
     testPageRankSeeded: function () {
       // test that pagerank picks the seed value
-      testAlgo("pagerank", { maxGSS: 1, sourceField: "pagerank", resultField: "result", store: true });
+      testAlgo("pagerank", { maxGSS: 1,
+sourceField: "pagerank",
+resultField: "result",
+store: true });
       // since we already use converged values this should not change anything
-      testAlgo("pagerank", { maxGSS: 5, sourceField: "pagerank", resultField: "result", store: true });
+      testAlgo("pagerank", { maxGSS: 5,
+sourceField: "pagerank",
+resultField: "result",
+store: true });
     },
 
     // test the PREGEL_RESULT AQL function
     test_AQL_pregel_result_contains_pregel_results_when_they_are_not_stored_in_the_database: function () {
-      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false });
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10,
+store: false });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
 
       assertEqual(stats.vertexCount, 11, stats);
@@ -214,7 +285,9 @@ function basicTestSuite() {
 
     test_AQL_pregel_result_is_empty_after_ttl_expires: function () {
 			// set ttl to one second
-      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: false, ttl: 1 });
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10,
+store: false,
+ttl: 1 });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
@@ -228,7 +301,8 @@ function basicTestSuite() {
     },
 
     test_AQL_pregel_result_is_empty_when_pregel_results_are_stored_in_database: function () {
-      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10, store: true });
+      var pid = pregel.start("pagerank", graphName, { threshold: EPS / 10,
+store: true });
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);
@@ -242,25 +316,25 @@ function basicTestSuite() {
       assertEqual(results.length, 0);
     }
   };
-};
+}
 
 
-function exampleTestSuite() {
+function exampleTestSuite () {
   'use strict';
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       var examples = require("@arangodb/graph-examples/example-graph.js");
       examples.loadGraph("social");
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       graph_module._drop("social", true);
@@ -268,8 +342,8 @@ function exampleTestSuite() {
 
     testSocial: function () {
       var pid = pregel.start("effectivecloseness", {
-        vertexCollections: ['female', 'male'], 
-        edgeCollections: ['relation'],
+        vertexCollections: ['female', 'male'],
+        edgeCollections: ['relation']
       }, { resultField: "closeness" });
       assertTrue(typeof pid === "string");
       const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
@@ -277,7 +351,7 @@ function exampleTestSuite() {
       assertEqual(stats.edgeCount, 4, stats);
     }
   };
-};
+}
 
 jsunity.run(basicTestSuite);
 jsunity.run(exampleTestSuite);

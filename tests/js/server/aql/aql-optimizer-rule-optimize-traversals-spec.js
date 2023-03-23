@@ -74,7 +74,9 @@ const assertResultsAreUnchanged = (query) => {
 
   expect(isEqual(resultDisabled, resultEnabled)).to.equal(true, query);
 
-  const opts = { allPlans: true, verbosePlans: true, optimizer: { rules: [ '-all', '+' + ruleName ] } };
+  const opts = { allPlans: true,
+verbosePlans: true,
+optimizer: { rules: [ '-all', '+' + ruleName ] } };
 
   const plans = AQL_EXPLAIN(query, {}, opts).plans;
   plans.forEach(function (plan) {
@@ -95,21 +97,40 @@ describe('Rule optimize-traversals', () => {
       graphModule._relation('edges', 'circles', 'circles')]);
 
     // Add circle circles
-    graph.circles.save({'_key': 'A', 'label': '1'});
-    graph.circles.save({'_key': 'B', 'label': '2'});
-    graph.circles.save({'_key': 'C', 'label': '3'});
-    graph.circles.save({'_key': 'D', 'label': '4'});
-    graph.circles.save({'_key': 'E', 'label': '5'});
-    graph.circles.save({'_key': 'F', 'label': '6'});
-    graph.circles.save({'_key': 'G', 'label': '7'});
+    graph.circles.save({'_key': 'A',
+'label': '1'});
+    graph.circles.save({'_key': 'B',
+'label': '2'});
+    graph.circles.save({'_key': 'C',
+'label': '3'});
+    graph.circles.save({'_key': 'D',
+'label': '4'});
+    graph.circles.save({'_key': 'E',
+'label': '5'});
+    graph.circles.save({'_key': 'F',
+'label': '6'});
+    graph.circles.save({'_key': 'G',
+'label': '7'});
 
     // Add relevant edges
-    edgeKey = graph.edges.save('circles/A', 'circles/C', {theFalse: false, theTruth: true, 'label': 'foo'})._key;
-    graph.edges.save('circles/A', 'circles/B', {theFalse: false, theTruth: true, 'label': 'bar'});
-    graph.edges.save('circles/B', 'circles/D', {theFalse: false, theTruth: true, 'label': 'blarg'});
-    graph.edges.save('circles/B', 'circles/E', {theFalse: false, theTruth: true, 'label': 'blub'});
-    graph.edges.save('circles/C', 'circles/F', {theFalse: false, theTruth: true, 'label': 'schubi'});
-    graph.edges.save('circles/C', 'circles/G', {theFalse: false, theTruth: true, 'label': 'doo'});
+    edgeKey = graph.edges.save('circles/A', 'circles/C', {theFalse: false,
+theTruth: true,
+'label': 'foo'})._key;
+    graph.edges.save('circles/A', 'circles/B', {theFalse: false,
+theTruth: true,
+'label': 'bar'});
+    graph.edges.save('circles/B', 'circles/D', {theFalse: false,
+theTruth: true,
+'label': 'blarg'});
+    graph.edges.save('circles/B', 'circles/E', {theFalse: false,
+theTruth: true,
+'label': 'blub'});
+    graph.edges.save('circles/C', 'circles/F', {theFalse: false,
+theTruth: true,
+'label': 'schubi'});
+    graph.edges.save('circles/C', 'circles/G', {theFalse: false,
+theTruth: true,
+'label': 'doo'});
   });
 
   // / @brief tear down
@@ -665,8 +686,8 @@ describe('Rule optimize-traversals', () => {
 
     describe('should optimize', () => {
       it('symetric operators for point access vs constants', () => {
-        const conditions = multiplyArrays(singleStarts, symetricOperators, constValues)
-          .concat(multiplyArrays(constValues, symetricOperators, singleStarts));
+        const conditions = multiplyArrays(singleStarts, symetricOperators, constValues).
+          concat(multiplyArrays(constValues, symetricOperators, singleStarts));
         checkDoesOptimize(conditions, true);
       });
 
@@ -766,9 +787,12 @@ describe('Rule optimize-traversals', () => {
       graph = graphModule._create(graphName, [
         graphModule._relation('E', 'V', 'V')]);
 
-      graph.V.save({_key: '1', label: false});
-      graph.V.save({_key: '2', label: true});
-      graph.V.save({_key: '3', label: false});
+      graph.V.save({_key: '1',
+label: false});
+      graph.V.save({_key: '2',
+label: true});
+      graph.V.save({_key: '3',
+label: false});
 
       graph.E.save('V/1', 'V/2', {});
       graph.E.save('V/1', 'V/3', {});

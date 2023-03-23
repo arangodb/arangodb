@@ -52,12 +52,14 @@ function runSetup () {
     collections: {
       write: ['UnitTestsRecoveryDummy']
     },
-    action: function() {
+    action: function () {
       var c = db.UnitTestsRecoveryDummy;
       for (let j = 0; j < 100; j++) {
         var values = [];
         for (let i = 0; i < 100; i++) {
-          values.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+          values.push({ a: "foo_" + i,
+b: "bar_" + i,
+c: i });
         }
         c.save(values);
       }

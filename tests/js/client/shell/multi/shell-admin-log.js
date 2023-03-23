@@ -34,7 +34,7 @@ const dbservers = (function () {
   return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
-function adminLogSuite() {
+function adminLogSuite () {
   'use strict';
 
   let log = function (level) {
@@ -89,7 +89,8 @@ function adminLogSuite() {
         Object.keys(res).forEach((topic) => {
           assertEqual(res[topic], "TRACE");
         });
-        res = arango.PUT("/_admin/log/level", {all: "info", syscall: "trace"});
+        res = arango.PUT("/_admin/log/level", {all: "info",
+syscall: "trace"});
         Object.keys(res).forEach((topic) => {
           if (topic === "syscall") {
             assertEqual(res[topic], "TRACE");
@@ -117,7 +118,8 @@ function adminLogSuite() {
       const newValue = request.get(`${url}/_admin/log/level`);
       assertEqual(newValue.json.trx, "TRACE");
       // restore old value
-      request.put(`${url}/_admin/log/level`, {body: {"trx": old.json.trx}, json: true});
+      request.put(`${url}/_admin/log/level`, {body: {"trx": old.json.trx},
+json: true});
       // now read the restored value
       const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
       assertEqual(old.json.trx, newOld.trx);
@@ -406,7 +408,7 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
-    },
+    }
 
   };
 }

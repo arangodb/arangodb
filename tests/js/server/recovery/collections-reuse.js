@@ -42,7 +42,8 @@ function runSetup () {
     // use fake collection ids
     c = db._create('UnitTestsRecovery' + i, { 'id': `${9999990 + i}` });
     for (j = 0; j < 10; ++j) {
-      c.save({ _key: 'test' + j, value: j });
+      c.save({ _key: 'test' + j,
+value: j });
     }
   }
 
@@ -55,7 +56,8 @@ function runSetup () {
   for (i = 0; i < 10; ++i) {
     c = db._create('UnitTestsRecoveryX' + i, { 'id': `${9999990 + i}` });
     for (j = 0; j < 10; ++j) {
-      c.save({ _key: 'test' + j, value: 'X' + j });
+      c.save({ _key: 'test' + j,
+value: 'X' + j });
     }
   }
 
@@ -68,7 +70,8 @@ function runSetup () {
   for (i = 0; i < 10; ++i) {
     c = db._create('UnitTestsRecoveryY' + i, { 'id': `${9999990 + i}` });
     for (j = 0; j < 10; ++j) {
-      c.save({ _key: 'test' + j, value: 'peterY' + j });
+      c.save({ _key: 'test' + j,
+value: 'peterY' + j });
     }
   }
 

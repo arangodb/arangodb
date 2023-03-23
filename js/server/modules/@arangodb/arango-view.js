@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, exports, module */
+/* jshint strict: false */
+/* global require, exports, module */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoView
@@ -47,13 +47,21 @@ ArangoView.prototype._PRINT = function (context) {
   var useColor = context.useColor;
 
   context.output += '[ArangoView ';
-  if (useColor) { context.output += colors.COLOR_NUMBER; }
+  if (useColor) {
+ context.output += colors.COLOR_NUMBER;
+}
   context.output += this._id;
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += ', "';
-  if (useColor) { context.output += colors.COLOR_STRING; }
+  if (useColor) {
+ context.output += colors.COLOR_STRING;
+}
   context.output += this.name() || 'unknown';
-  if (useColor) { context.output += colors.COLOR_RESET; }
+  if (useColor) {
+ context.output += colors.COLOR_RESET;
+}
   context.output += '" (type ' + this.type() + ')]';
 };
 

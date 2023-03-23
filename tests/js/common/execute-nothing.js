@@ -30,5 +30,7 @@
 
 function main (args) {
   'use strict';
-  while (true) {assertTrue(true);}
+  while (true) {
+assertTrue(true);
+}
 }

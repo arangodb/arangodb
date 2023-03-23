@@ -6,12 +6,12 @@
 const Suite = require('@arangodb/mocha/suite');
 const Test = require('@arangodb/mocha/test');
 
-module.exports = function(suite) {
+module.exports = function (suite) {
   var suites = [suite];
 
   suite.on('require', visit);
 
-  function visit(obj, file) {
+  function visit (obj, file) {
     var suite;
     for (var key in obj) {
       if (typeof obj[key] === 'function') {

@@ -38,7 +38,8 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery'), i;
 
-  c.save({ _key: 'value', value: 42 });
+  c.save({ _key: 'value',
+value: 42 });
   for (i = 0; i < 200000; ++i) {
     c.update('value', { value: i });
   }

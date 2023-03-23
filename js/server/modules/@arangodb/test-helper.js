@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global arango, db, assertTrue */
+/* jshint strict: false */
+/* global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -44,7 +44,7 @@ const {
   compareStringIds,
   endpointToURL,
   versionHas,
-  isEnterprise,
+  isEnterprise
 } = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
@@ -62,15 +62,15 @@ exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
 
-/// @brief set failure point
+// / @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   let res = request.get({
-    url: endpoint + '/_admin/debug/failat',
+    url: endpoint + '/_admin/debug/failat'
   });
   return res.status === 200;
 };
 
-/// @brief set failure point
+// / @brief set failure point
 exports.debugSetFailAt = function (endpoint, failAt) {
   let res = request.put({
     url: endpoint + '/_admin/debug/failat/' + failAt,
@@ -113,12 +113,12 @@ exports.debugClearFailAt = function (endpoint) {
 
 exports.getChecksum = function (endpoint, name) {
   let res = request.get({
-    url: endpoint + '/_api/collection/' + name + '/checksum',
+    url: endpoint + '/_api/collection/' + name + '/checksum'
   });
   return JSON.parse(res.body).checksum;
 };
 
-function getMetricName(text, name) {
+function getMetricName (text, name) {
   let re = new RegExp("^" + name);
   let matches = text.split("\n").filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
@@ -129,7 +129,7 @@ function getMetricName(text, name) {
 
 exports.getMetric = function (endpoint, name) {
   let res = request.get({
-    url: endpoint + "/_admin/metrics",
+    url: endpoint + "/_admin/metrics"
   });
   return getMetricName(res.body, name);
 };
@@ -142,7 +142,7 @@ exports.getMetricSingle = function (name) {
   return getMetricName(res.body, name);
 };
 
-exports.waitForShardsInSync = function(cn, timeout) {
+exports.waitForShardsInSync = function (cn, timeout) {
   if (!timeout) {
     timeout = 300;
   }
@@ -195,7 +195,7 @@ exports.getCoordinators = function () {
   return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
 };
 
-exports.getDBServers = function() {
+exports.getDBServers = function () {
   // Note that the client implementation has more information, not all of which
   // we have available.
   return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));

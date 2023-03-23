@@ -1,28 +1,28 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/* jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
-/// @author Andrei Lobov
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Andrei Lobov
+// / @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 // Some tests skips cluster until ticket TG-1110 (Some fullCount seems to not be propagated well enough)
 // is fixed. Or all cluster tests with fullCount will hang
@@ -37,7 +37,7 @@ var assertQueryError = helper.assertQueryError;
 const isCluster = require("@arangodb/cluster").isCluster();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function viewCountOptimization(isSearchAlias) {
+function viewCountOptimization (isSearchAlias) {
   return {
     setUpAll: function () {
       db._dropView("UnitTestView");
@@ -47,43 +47,59 @@ function viewCountOptimization(isSearchAlias) {
 
       let docs = [];
       for (let i = 0; i < 10010; ++i) {
-        docs.push({value: "test" + (i % 10), count: i});
-        docs.push({name_1: i.toString(), count: i, "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        docs.push({value: "test" + (i % 10),
+count: i});
+        docs.push({name_1: i.toString(),
+count: i,
+"value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       }
       c.insert(docs);
       if (isSearchAlias) {
         let c = db._collection("UnitTestsCollection");
         let indexMeta = {};
         if (isEnterprise) {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, "fields": [
-            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+"fields": [
+            {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
             {"name": "value"}
           ]};
         } else {
-          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, "fields": [
+          indexMeta = {type: "inverted",
+name: "inverted",
+includeAllFields: true,
+"fields": [
             {"name": "value_nested[*]"},
             {"name": "value"}
           ]};
         }
         let i = c.ensureIndex(indexMeta);
-        db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection", index: i.name}]});
+        db._createView("UnitTestView", "search-alias", {indexes: [{collection: "UnitTestsCollection",
+index: i.name}]});
         if (isEnterprise) {
           indexMeta = {
             type: "inverted",
             name: "inverted1",
             fields: [
               "count",
-              {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+              {"name": "value_nested",
+"nested": [{"name": "nested_1",
+"nested": [{"name": "nested_2"}]}]},
               {"name": "value"}
             ],
-            primarySort: {fields: [{"field": "count", "direction": "asc"}]}
+            primarySort: {fields: [{"field": "count",
+"direction": "asc"}]}
           };
         } else {
           indexMeta = {
             type: "inverted",
             name: "inverted1",
             fields: ["value", "count"],
-            primarySort: {fields: [{"field": "count", "direction": "asc"}]}
+            primarySort: {fields: [{"field": "count",
+"direction": "asc"}]}
           };
         }
         let i2 = c.ensureIndex(indexMeta);
@@ -107,8 +123,8 @@ function viewCountOptimization(isSearchAlias) {
                   count: {
                     analyzers: ["identity"]
                   },
-                  "value_nested": { 
-                    "nested": { 
+                  "value_nested": {
+                    "nested": {
                       "nested_1": {
                         "nested": {
                           "nested_2": {
@@ -142,7 +158,8 @@ function viewCountOptimization(isSearchAlias) {
 
         if (isEnterprise) {
           viewMeta = {
-            primarySort: [{"field": "count", "direction": "asc"}],
+            primarySort: [{"field": "count",
+"direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
@@ -156,7 +173,8 @@ function viewCountOptimization(isSearchAlias) {
           };
         } else {
           viewMeta = {
-            primarySort: [{"field": "count", "direction": "asc"}],
+            primarySort: [{"field": "count",
+"direction": "asc"}],
             links: {
               UnitTestsCollection: {
                 includeAllFields: false,
@@ -181,23 +199,23 @@ function viewCountOptimization(isSearchAlias) {
       db._drop("UnitTestsCollection");
     },
 
-    testNoSortWithoutFiltersExact() {
+    testNoSortWithoutFiltersExact () {
       let res = db._query("FOR d IN UnitTestView  COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(20020, res[0]);
     },
-    testNoSortWithoutFiltersCost() {
+    testNoSortWithoutFiltersCost () {
       let res = db._query("FOR d IN UnitTestView OPTIONS{countApproximate:'cost'} " +
         "COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(20020, res[0]);
     },
-    testNoSortLimitFullCountExact() {
+    testNoSortLimitFullCountExact () {
       if (isCluster) {
         return; // TG-1110
       }
       let res = db._query("FOR d IN UnitTestView LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(20020, res.getExtra().stats.fullCount);
     },
-    testNoSortLimitFullCountCost() {
+    testNoSortLimitFullCountCost () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -205,7 +223,7 @@ function viewCountOptimization(isSearchAlias) {
         "LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(20020, res.getExtra().stats.fullCount);
     },
-    testNoSortLimitFiltersFullCountExact() {
+    testNoSortLimitFiltersFullCountExact () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -213,14 +231,14 @@ function viewCountOptimization(isSearchAlias) {
         "d.value == 'test2' LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER d.value == 'test1' OR
         d.value == 'test2' LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
         assertEqual(2002, res.getExtra().stats.fullCount);
       }
     },
-    testNoSortLimitFiltersFullCountCost() {
+    testNoSortLimitFiltersFullCountCost () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -229,39 +247,39 @@ function viewCountOptimization(isSearchAlias) {
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
         FILTER d.value == 'test1' OR d.value == 'test2' LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
         assertEqual(2002, res.getExtra().stats.fullCount);
       }
     },
-    testNoSortCountFiltersExact() {
+    testNoSortCountFiltersExact () {
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
         " d.value == 'test2'  COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
         FILTER d.value == 'test1' OR d.value == 'test2' COLLECT WITH COUNT INTO c RETURN c`).toArray();
         assertEqual(2002, res[0]);
       }
     },
-    testNoSortCountFiltersCost() {
+    testNoSortCountFiltersCost () {
       let res = db._query("FOR d IN UnitTestView SEARCH d.value == 'test1' OR " +
         " d.value == 'test2' OPTIONS{countApproximate:'cost'} " +
         " COLLECT WITH COUNT INTO c RETURN c").toArray();
       assertEqual(2002, res[0]);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
         FILTER d.value == 'test1' OR d.value == 'test2' COLLECT WITH COUNT INTO c RETURN c`).toArray();
         assertEqual(2002, res[0]);
       }
     },
-    testSortLimitWithFullCountExact() {
+    testSortLimitWithFullCountExact () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -269,7 +287,7 @@ function viewCountOptimization(isSearchAlias) {
         {}, {fullCount: true});
       assertEqual(20020, res.getExtra().stats.fullCount);
     },
-    testSortLimitWithFullCountCost() {
+    testSortLimitWithFullCountCost () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -277,7 +295,7 @@ function viewCountOptimization(isSearchAlias) {
         "SORT d.count ASC LIMIT 10, 100 RETURN d", {}, {fullCount: true});
       assertEqual(20020, res.getExtra().stats.fullCount);
     },
-    testSortLimitFiltersFullCountExact() {
+    testSortLimitFiltersFullCountExact () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -287,14 +305,14 @@ function viewCountOptimization(isSearchAlias) {
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'exact'} 
         FILTER d.value == 'test1' OR d.value == 'test2' SORT d.count ASC LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
         assertEqual(2002, res.getExtra().stats.fullCount);
       }
     },
-    testSortLimitFiltersFullCountCost() {
+    testSortLimitFiltersFullCountCost () {
       if (isCluster) {
         return; // TG-1110
       }
@@ -304,17 +322,17 @@ function viewCountOptimization(isSearchAlias) {
         {}, {fullCount: true});
       assertEqual(2002, res.getExtra().stats.fullCount);
 
-      if(isSearchAlias) {
+      if (isSearchAlias) {
         res = db._query(`
         FOR d IN UnitTestsCollection OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true, countApproximate:'cost'} 
         FILTER d.value == 'test1' OR d.value == 'test2' SORT d.count ASC LIMIT 10, 100 RETURN d`, {}, {fullCount: true});
         assertEqual(2002, res.getExtra().stats.fullCount);
       }
-    },
+    }
   };
 }
 
-function arangoSearchCountOptimization() {
+function arangoSearchCountOptimization () {
   let suite = {};
   deriveTestSuite(
     viewCountOptimization(false),
@@ -324,7 +342,7 @@ function arangoSearchCountOptimization() {
   return suite;
 }
 
-function searchAliasCountOptimization() {
+function searchAliasCountOptimization () {
   let suite = {};
   deriveTestSuite(
     viewCountOptimization(true),

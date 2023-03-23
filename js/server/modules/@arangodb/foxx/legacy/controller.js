@@ -35,7 +35,7 @@ var authControllerProps = {
   // / JSF_foxx_controller_getUsers
   // / @brief Get the users of this controller
   // //////////////////////////////////////////////////////////////////////////////
-  getUsers() {
+  getUsers () {
     const foxxAuthentication = require('@arangodb/foxx/legacy/authentication');
     return new foxxAuthentication.Users(this.applicationContext);
   },
@@ -44,14 +44,14 @@ var authControllerProps = {
   // / JSF_foxx_controller_getAuth
   // / @brief Get the auth object of this controller
   // //////////////////////////////////////////////////////////////////////////////
-  getAuth() {
+  getAuth () {
     return this.auth;
   },
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_controller_login
   // //////////////////////////////////////////////////////////////////////////////
-  login(route, opts) {
+  login (route, opts) {
     var authentication = require('@arangodb/foxx/legacy/authentication');
     return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
@@ -59,7 +59,7 @@ var authControllerProps = {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_controller_logout
   // //////////////////////////////////////////////////////////////////////////////
-  logout(route, opts) {
+  logout (route, opts) {
     var authentication = require('@arangodb/foxx/legacy/authentication');
     return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   },
@@ -67,7 +67,7 @@ var authControllerProps = {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_controller_register
   // //////////////////////////////////////////////////////////////////////////////
-  register(route, opts) {
+  register (route, opts) {
     var authentication = require('@arangodb/foxx/legacy/authentication');
     return this.post(
       route,
@@ -78,7 +78,7 @@ var authControllerProps = {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief was docuBlock JSF_foxx_controller_changePassword
   // //////////////////////////////////////////////////////////////////////////////
-  changePassword(route, opts) {
+  changePassword (route, opts) {
     var authentication = require('@arangodb/foxx/legacy/authentication');
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
   }
@@ -89,7 +89,7 @@ var sessionControllerProps = {
   // / JSF_foxx_controller_getSessions
   // / @brief Get the sessions object of this controller
   // //////////////////////////////////////////////////////////////////////////////
-  getSessions() {
+  getSessions () {
     return this.sessions;
   },
 
@@ -97,7 +97,7 @@ var sessionControllerProps = {
   // / @brief defines a route to logout/destroy the session
   // //////////////////////////////////////////////////////////////////////////////
 
-  destroySession(route, opts) {
+  destroySession (route, opts) {
     var method = opts.method;
     if (typeof method === 'string') {
       method = method.toLowerCase();
@@ -200,7 +200,8 @@ class Controller {
   // //////////////////////////////////////////////////////////////////////////////
 
   handleRequest (method, route, callback) {
-    var constraints = {queryParams: {}, urlParams: {}};
+    var constraints = {queryParams: {},
+urlParams: {}};
     var newRoute = internal.constructRoute(method, route, callback, this, constraints);
     var requestContext = new RequestContext(
       this.allRoutes, this.models, newRoute, route, this.rootElement, constraints, this.extensions
@@ -287,7 +288,7 @@ class Controller {
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback(req, res, opts, next) {
+        callback (req, res, opts, next) {
           var result = func(req, res, opts);
           if (result !== false) {
             next();
@@ -311,7 +312,9 @@ class Controller {
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback(req, res, opts, next) { next(); func(req, res, opts); }
+        callback (req, res, opts, next) {
+ next(); func(req, res, opts);
+}
       }
     });
   }
@@ -330,7 +333,7 @@ class Controller {
       priority: this.currentPriority = this.currentPriority + 1,
       url: {match: path},
       action: {
-        callback(req, res, opts, next) {
+        callback (req, res, opts, next) {
           func(req, res, opts, next);
         }
       }

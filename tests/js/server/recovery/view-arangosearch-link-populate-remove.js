@@ -45,7 +45,10 @@ function runSetup () {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   for (let i = 0; i < 20000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+    c.save({ a: "foo_" + i,
+b: "bar_" + i,
+c: i,
+_key: "doc_" + i });
   }
 
   for (let i = 10000; i < 20000; i++) {

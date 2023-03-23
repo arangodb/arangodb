@@ -2,7 +2,7 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
+// / @brief
 // /
 // /
 // / DISCLAIMER
@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -31,32 +31,32 @@
 const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const contentType = forceJson ? "application/json" : "application/x-velocypack";
 const jsunity = require("jsunity");
 
 
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 // error handling;
-////////////////////////////////////////////////////////////////////////////////;
+// //////////////////////////////////////////////////////////////////////////////;
 function testing_keysSuite () {
   let cn = "UnitTestsKey";
   return {
-    
-    setUpAll: function() {
+
+    setUpAll: function () {
       db._create(cn, { waitForSync: true });
     },
 
-    tearDown: function() {
+    tearDown: function () {
       db[cn].truncate();
     },
 
-    tearDownAll: function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    test_returns_an_error_if__key_is_null: function() {
+    test_returns_an_error_if__key_is_null: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : null };
+      let body = { "_key": null };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -66,9 +66,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_a_bool: function() {
+    test_returns_an_error_if__key_is_a_bool: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : true };
+      let body = { "_key": true };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -78,9 +78,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_a_number_1: function() {
+    test_returns_an_error_if__key_is_a_number_1: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : 12 };
+      let body = { "_key": 12 };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -90,9 +90,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_a_number_2: function() {
+    test_returns_an_error_if__key_is_a_number_2: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : 12.554 };
+      let body = { "_key": 12.554 };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -102,9 +102,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_a_list: function() {
+    test_returns_an_error_if__key_is_a_list: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : [ ] };
+      let body = { "_key": [ ] };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -114,9 +114,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_an_object: function() {
+    test_returns_an_error_if__key_is_an_object: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : { } };
+      let body = { "_key": { } };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -126,9 +126,9 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_is_empty_string: function() {
+    test_returns_an_error_if__key_is_empty_string: function () {
       let cmd = `/_api/document?collection=${cn}`;
-      let body = { "_key" : "" };
+      let body = { "_key": "" };
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -138,7 +138,7 @@ function testing_keysSuite () {
       assertEqual(doc.headers['content-type'], contentType);
     },
 
-    test_returns_an_error_if__key_contains_invalid_characters: function() {
+    test_returns_an_error_if__key_contains_invalid_characters: function () {
       let cmd = `/_api/document?collection=${cn}`;
 
       let keys = [
@@ -167,8 +167,8 @@ function testing_keysSuite () {
         "a".repeat(255)
       ];
 
-      keys.forEach( key => {
-        let body = { "_key" : key };
+      keys.forEach(key => {
+        let body = { "_key": key };
         let doc = arango.POST_RAW(cmd, body);
 
         assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
@@ -179,7 +179,7 @@ function testing_keysSuite () {
       });
     },
 
-    test_test_valid_key_values: function() {
+    test_test_valid_key_values: function () {
       let cmd = `/_api/document?collection=${cn}`;
 
       let keys = [
@@ -261,11 +261,11 @@ function testing_keysSuite () {
         ".".repeat(254), // 254 bytes is the maximum allowed length;
         "!".repeat(254), // 254 bytes is the maximum allowed length;
         "_".repeat(254), // 254 bytes is the maximum allowed length;
-        "a".repeat(254)  // 254 bytes is the maximum allowed length;
+        "a".repeat(254) // 254 bytes is the maximum allowed length;
       ];
 
-      keys.forEach( key => {
-        let body = { "_key" : key };
+      keys.forEach(key => {
+        let body = { "_key": key };
         let doc = arango.POST_RAW(cmd, body);
 
         assertEqual(doc.code, 201, doc);
@@ -274,7 +274,7 @@ function testing_keysSuite () {
       });
     },
 
-    test_test_duplicate_key_values: function() {
+    test_test_duplicate_key_values: function () {
       let cmd = `/_api/document?collection=${cn}`;
 
       // prefill collection;
@@ -290,8 +290,8 @@ function testing_keysSuite () {
               "aBcD-"
              ];
 
-      keys.forEach( key => {
-        let body = { "_key" : key };
+      keys.forEach(key => {
+        let body = { "_key": key };
         // insert initially;
         let doc = arango.POST_RAW(cmd, body);
 
@@ -310,7 +310,7 @@ function testing_keysSuite () {
       });
     }
   };
-};
+}
 
 jsunity.run(testing_keysSuite);
 return jsunity.done();
