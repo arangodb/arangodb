@@ -22,31 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/Worker/Messages.h"
-#include "State.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 
 namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
 struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor) : conductor{conductor} {
-    conductor.timing.total.finish();
-  }
-  ~FatalError() {}
+  FatalError(ConductorState& conductor);
+  ~FatalError() = default;
   auto name() const -> std::string override { return "fatal error"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
   ConductorState& conductor;
 };
 
