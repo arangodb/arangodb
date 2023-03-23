@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
+#include "Aql/GraphOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
