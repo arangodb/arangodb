@@ -156,8 +156,8 @@ void DatabaseManagerThread::run() {
             if (dealer.isEnabled()) {
               dealer.removeDatabase(*database);
             }
-            if (auto* registry = QueryRegistryFeature::registry(); registry) {
-              registry->destroy(database->name());
+            if (queryRegistry != nullptr) {
+              queryRegistry->destroy(database->name());
             }
           }
         }
