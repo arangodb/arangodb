@@ -615,9 +615,42 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   }
   TRI_ASSERT(leader.committedParticipantsConfig.has_value());
   auto const& committedParticipantsConfig = *leader.committedParticipantsConfig;
+  if (committedParticipantsConfig.generation !=
+      plan.participantsConfig.generation) {
+    return;
+  }
 
   auto const& targetParticipants = target.participants;
   auto const& planParticipants = plan.participantsConfig.participants;
+
+  // check if, after a remove, enough servers are available to form a quorum
+  auto wanted = plan.participantsConfig.config.effectiveWriteConcern;
+  auto have = std::count_if(
+      plan.participantsConfig.participants.begin(),
+      plan.participantsConfig.participants.end(), [&](auto const& pair) {
+        // server should be healthy and have a snapshot
+        auto const& [pid, flags] = pair;
+        if (not health.notIsFailed(pid)) {
+          return false;
+        }
+
+        if (auto local = log.current->localState.find(pid);
+            local != log.current->localState.end()) {
+          if (not local->second.snapshotAvailable) {
+            return false;
+          }
+        } else {
+          return false;  // not even in current
+        }
+
+        return true;
+      });
+  TRI_ASSERT(have > 0);
+
+  if (wanted + 1 < static_cast<std::size_t>(have)) {
+    ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
+    return;
+  }
 
   for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
        planParticipants) {
@@ -625,9 +658,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
     if (!targetParticipants.contains(maybeRemovedParticipant) and
         maybeRemovedParticipant != leader.serverId) {
       // If the participant is not allowed in Quorum it is safe to remove it
-      if (not maybeRemovedParticipantFlags.allowedInQuorum and
-          committedParticipantsConfig.generation ==
-              plan.participantsConfig.generation) {
+      if (not maybeRemovedParticipantFlags.allowedInQuorum) {
         ctx.createAction<RemoveParticipantFromPlanAction>(
             maybeRemovedParticipant);
       } else if (maybeRemovedParticipantFlags.allowedInQuorum) {
