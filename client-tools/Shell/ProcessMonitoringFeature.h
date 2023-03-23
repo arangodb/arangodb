@@ -73,6 +73,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   ////////////////////////////////////////////////////////////////////////////////
 
   void removeMonitorPID(ExternalId const& pid);
+  void removeMonitorPIDNoLock(ExternalId const& pid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get info about maybe exited processes
