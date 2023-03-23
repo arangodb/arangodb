@@ -161,6 +161,7 @@ let optionsDocumentation = [
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
   '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+  '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
 
@@ -249,6 +250,7 @@ const optionsDefaults = {
   'sleepBeforeStart' : 0,
   'sleepBeforeShutdown' : 0,
   'failed': false,
+  'optionsJson': null,
 };
 
 let globalStatus = true;
@@ -500,12 +502,22 @@ function iterateTests(cases, options) {
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
   caselist = translateTestList(cases);
+  let optionsList = [];
+  if (options.optionsJson != null) {
+    optionsList = JSON.parse(options.optionsJson);
+    if (optionsList.length !== caselist.length) {
+      throw new Error("optionsJson must have one entry per suite!");
+    }
+  }
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     if (localOptions.failed) {
       localOptions.failed = localOptions.failed[currentTest];
+    }
+    if (optionsList.length !== 0) {
+      localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
     if (options.testBuckets) {
