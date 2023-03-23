@@ -1,3 +1,17 @@
+v3.10.6 (XXXX-XX-XX)
+--------------------
+
+* Fixed single-to-single replication that used HTTP authentication to 
+  authenticate requests on the leader. This could be broken if the collections
+  on the leader were created with 3.8 or later, and thus used the Merkle tree
+  protocol to exchange different document revisions. 
+  When using HTTP authentication, the prefetching code for document revisions
+  did not pass on the authentication credentials, so the leader could reject
+  requests with HTTP 401 or HTTP 403, and replication failed.
+  Replication in the cluster and replication using JWT authentication were not
+  affected.
+
+
 v3.10.5 (2023-03-16)
 --------------------
 
