@@ -93,13 +93,6 @@ struct AlgorithmFake : IAlgorithm {
       arangodb::velocypack::Slice userParams) const -> WorkerContext* override {
     return nullptr;
   }
-  [[nodiscard]] auto workerContextUnique(
-      std::unique_ptr<AggregatorHandler> readAggregators,
-      std::unique_ptr<AggregatorHandler> writeAggregators,
-      arangodb::velocypack::Slice userParams) const
-      -> std::unique_ptr<WorkerContext> override {
-    return nullptr;
-  }
   [[nodiscard]] auto name() const -> std::string_view override {
     return "fake";
   };
@@ -129,7 +122,7 @@ TEST(CreateWorkersStateTest, creates_as_many_messages_as_required_servers) {
         std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
         std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
     auto createWorkersState = CreateWorkers(cState);
-    auto msgs = createWorkersState.messages();
+    auto msgs = createWorkersState.messagesToServers();
     ASSERT_EQ(msgs.size(), servers.size());
 
     for (auto const& serverName : servers) {
@@ -147,7 +140,7 @@ TEST(CreateWorkersStateTest, creates_worker_pids_from_received_messages) {
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
       std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
-  auto msgs = createWorkers.messages();
+  auto msgs = createWorkers.messagesToServers();
 
   auto created = arangodb::ResultT<message::WorkerCreated>();
   ASSERT_TRUE(created.ok());
@@ -180,7 +173,7 @@ TEST(CreateWorkersStateTest,
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
       std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
-  auto msgs = createWorkers.messages();
+  auto msgs = createWorkers.messagesToServers();
   ASSERT_EQ(msgs.size(), servers.size());
 
   {
@@ -216,7 +209,7 @@ TEST(CreateWorkersStateTest, receive_invalid_message_type) {
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
       std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
-  auto msgs = createWorkers.messages();
+  auto msgs = createWorkers.messagesToServers();
 
   {
     actor::ActorPID actorPid{
@@ -236,7 +229,7 @@ TEST(CreateWorkersStateTest, receive_valid_message_from_unknown_server) {
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
       std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
-  auto msgs = createWorkers.messages();
+  auto msgs = createWorkers.messagesToServers();
 
   {
     actor::ActorPID unknownActorPid{
@@ -256,7 +249,7 @@ TEST(CreateWorkersStateTest, receive_valid_error_message) {
       std::make_unique<AlgorithmFake>(), ExecutionSpecifications(),
       std::make_unique<LookupInfoMock>(servers), fakeActorPID, fakeActorPID);
   auto createWorkers = CreateWorkers(cState);
-  auto msgs = createWorkers.messages();
+  auto msgs = createWorkers.messagesToServers();
 
   {
     actor::ActorPID unknownActorPid{

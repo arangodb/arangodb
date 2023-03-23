@@ -575,6 +575,9 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
 std::string headersToString(
     std::unordered_map<std::string, std::string> const& headers);
 
+/// @brief returns the endpoint from a URL
+std::string getEndpointFromUrl(std::string const& url);
+
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb

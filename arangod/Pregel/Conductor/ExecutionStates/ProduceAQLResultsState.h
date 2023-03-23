@@ -42,9 +42,11 @@ struct ProduceAQLResults : ExecutionState {
   // Discussable Note: To prevent API state change we're using "storing" as the
   // defined name here. Better: Use the real name of that state.
   auto name() const -> std::string override { return "storing"; };
-  auto message() -> worker::message::WorkerMessages override {
-    return worker::message::WorkerMessages{};
-  };
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 

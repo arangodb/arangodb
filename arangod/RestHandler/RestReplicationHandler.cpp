@@ -688,7 +688,7 @@ Result RestReplicationHandler::testPermissions() {
               std::string dbName = _request->databaseName();
               DatabaseFeature& databaseFeature =
                   _vocbase.server().getFeature<DatabaseFeature>();
-              TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+              auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
               }
@@ -855,11 +855,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   DatabaseFeature& databaseFeature =
       _vocbase.server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
-  if (vocbase) {
-    resultBuilder.add(VPackValue(StaticStrings::Properties));
-    vocbase->toVelocyPack(resultBuilder);
+  auto vocbase = databaseFeature.useDatabase(dbName);
+  if (!vocbase) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return;
   }
+
+  resultBuilder.add(VPackValue(StaticStrings::Properties));
+  vocbase->toVelocyPack(resultBuilder);
+  vocbase.reset();
 
   auto& exec = ExecContext::current();
   ExecContextSuperuserScope escope(exec.isAdminUser());
@@ -867,7 +871,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser() &&
-        !exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -2097,7 +2101,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   if (!slice.isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-
     return;
   }
 
@@ -2385,7 +2388,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2453,7 +2456,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shardSlice.copyString());
+  auto col = _vocbase.lookupCollection(shardSlice.stringView());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2636,7 +2639,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2695,7 +2698,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   std::string leaderId = leaderIdSlice.copyString();
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2795,7 +2798,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TransactionId id = ExtractReadlockId(idSlice);
-  auto col = _vocbase.lookupCollection(collection.copyString());
+  auto col = _vocbase.lookupCollection(collection.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,

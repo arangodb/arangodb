@@ -7,6 +7,9 @@ devel
   The wrong counted situations are: other server crashes, restore of a HotBackup,
   rotation of JWT secret.
 
+* SEARCH-279 Fix consistency during update/replace operations
+  for arangosearch links and inverted indexes.
+
 * Updated arangosync to v2.16.1-preview-1.
 
 
