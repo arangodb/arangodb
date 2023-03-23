@@ -847,7 +847,7 @@ ErrorCode V8DealerFeature::createDatabase(std::string_view name,
   return createApplicationDirectory(dirName, _appPath, removeExisting);
 }
 
-void V8DealerFeature::removeDatabase(TRI_vocbase_t& database) {
+void V8DealerFeature::cleanupDatabase(TRI_vocbase_t& database) {
   if (_appPath.empty()) {
     return;
   }
