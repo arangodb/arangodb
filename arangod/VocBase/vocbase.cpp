@@ -1728,6 +1728,12 @@ TRI_vocbase_t::~TRI_vocbase_t() {
     WRITE_LOCKER_EVENTUAL(locker, coll->statusLock());
     coll->close();  // required to release indexes
   }
+  // clear before deallocating TRI_vocbase_t members
+  _collections.clear();
+  _deadCollections.clear();
+  _dataSourceById.clear();
+  _dataSourceByName.clear();
+  _dataSourceByUuid.clear();
 }
 
 std::string TRI_vocbase_t::path() const {
