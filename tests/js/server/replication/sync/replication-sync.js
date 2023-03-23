@@ -78,7 +78,9 @@ const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, inc
     endpoint: leaderEndpoint,
     verbose: true,
     includeSystem: true,
-    incremental
+    incremental,
+    username: "root",
+    password: "",
   });
 
   db._flushCache();
@@ -133,7 +135,10 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
+
           });
           // collection present on follower now
           var c = db._collection(cn);
@@ -195,7 +200,9 @@ function BaseTestConfig () {
             //  already create the collection on the follower
             replication.syncCollection(cn, {
               endpoint: leaderEndpoint,
-              incremental: false
+              incremental: false,
+              username: "root",
+              password: "",
             });
 
             // collection present on follower now
@@ -430,7 +437,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -487,7 +496,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -560,7 +571,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -625,7 +638,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -710,7 +725,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -803,7 +820,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -905,7 +924,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -964,7 +985,7 @@ function BaseTestConfig () {
       connectToFollower();
       internal.wait(0.1, false);
       //  sync on follower
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       db._flushCache();
       {
@@ -995,7 +1016,7 @@ function BaseTestConfig () {
       db._flushCache();
       connectToFollower();
 
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       // check replicated analyzer
       {
@@ -1044,7 +1065,7 @@ function BaseTestConfig () {
       connectToFollower();
       internal.wait(0.1, false);
       //  sync on follower
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       db._flushCache();
 
@@ -1100,7 +1121,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1162,7 +1185,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1284,7 +1309,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1322,7 +1349,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1354,7 +1383,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1393,7 +1424,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1438,7 +1471,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1482,7 +1517,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1526,7 +1563,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1570,7 +1609,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1617,7 +1658,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1668,7 +1711,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1718,7 +1763,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1767,7 +1814,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1818,7 +1867,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1870,7 +1921,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -2074,7 +2127,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2105,7 +2160,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2139,7 +2196,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2162,7 +2221,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2199,7 +2260,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2223,7 +2286,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2247,7 +2312,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2279,7 +2346,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2321,7 +2390,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2381,7 +2452,9 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2413,7 +2486,9 @@ function ReplicationNonIncrementalKeyConflict () {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
-        skipCreateDrop: true
+        skipCreateDrop: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2447,7 +2522,9 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2490,7 +2567,9 @@ function ReplicationNonIncrementalKeyConflict () {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
-        skipCreateDrop: true
+        skipCreateDrop: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
