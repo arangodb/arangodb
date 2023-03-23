@@ -1,39 +1,38 @@
-import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useContext } from "react";
+import { Box, FormLabel, Input } from "@chakra-ui/react";
+import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
 
-const ParameterNodeStart = () => {
+const ParameterNodeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
 
   const handleChange = event => {
+    setNodeLabel(event.target.value);
     const newUrlParameters = {
       ...urlParameters,
-      nodeStart: event.target.value
+      nodeLabel: event.target.value
     };
     setUrlParameters(newUrlParameters);
   };
 
   return (
     <>
-      <FormLabel htmlFor="startNode"> Start node</FormLabel>
+      <FormLabel htmlFor="nodeLabel">Node label</FormLabel>
       <Input
-        id="startNode"
-        width="200px"
+        id="nodeLabel"
         min={1}
         required={true}
-        value={urlParameters.nodeStart}
+        value={nodeLabel}
         background="#ffffff"
         size="sm"
         onChange={handleChange}
       />
       <InfoTooltip
-        label={
-          "A valid node ID or a space-separated list of IDs. If empty, a random node will be chosen."
-        }
+        label={"Enter a valid node attribute to be used as a node label."}
       />
     </>
   );
 };
 
-export default ParameterNodeStart;
+export default ParameterNodeLabel;

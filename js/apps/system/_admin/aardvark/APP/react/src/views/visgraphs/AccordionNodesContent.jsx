@@ -1,5 +1,5 @@
 import React from "react";
-import { Stack } from "@chakra-ui/react";
+import { Grid, Stack } from "@chakra-ui/react";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
@@ -10,7 +10,11 @@ import ParameterNodeSize from "./ParameterNodeSize";
 
 export const AccordionNodesContent = () => {
   return (
-    <Stack>
+    <Grid
+      alignItems="center"
+      templateColumns="150px 1fr 40px"
+      justifyItems="start"
+    >
       <ParameterNodeLabel />
       <ParameterNodeColor />
       <ParameterNodeLabelByCollection />
@@ -18,6 +22,6 @@ export const AccordionNodesContent = () => {
       <ParameterNodeColorAttribute />
       <ParameterNodeSizeByEdges />
       <ParameterNodeSize />
-    </Stack>
+    </Grid>
   );
 };

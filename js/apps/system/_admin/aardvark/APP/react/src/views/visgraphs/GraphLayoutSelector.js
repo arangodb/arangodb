@@ -1,6 +1,6 @@
-import { Spacer } from '@chakra-ui/react';
-import React, { useContext, useState } from 'react';
-import ToolTip from '../../components/arango/tootip';
+import { FormLabel, Select } from "@chakra-ui/react";
+import React, { useContext, useState } from "react";
+import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const GraphLayoutSelector = () => {
@@ -9,46 +9,35 @@ const GraphLayoutSelector = () => {
 
   const layouts = [
     {
-      layout: 'forceAtlas2'
+      layout: "forceAtlas2"
     },
     {
-      layout: 'hierarchical'
+      layout: "hierarchical"
     }
   ];
 
-  const handleChange = (event) => {
+  const handleChange = event => {
     setLayout(event.target.value);
-    const newUrlParameters = {...urlParameters, layout: event.target.value};
+    const newUrlParameters = { ...urlParameters, layout: event.target.value };
     setUrlParameters(newUrlParameters);
-  }
+  };
 
   return (
-    <div style={{ 'display': 'flex', 'alignItems': 'center', 'justifyContent': 'flexStart' }}>
-      <label for="graphlayout" style={{ 'color': '#ffffff', 'width': '150px' }}>Layout</label>
-      <select
-        name="graphlayout"
-        value={layout}
-        onChange={handleChange}
-        style={{ width: "200px" }}
-      >
-        {
-          layouts.map(style => {
-            const { layout } = style;
-            return (
-              <option key={layout} value={layout}>{layout}</option>
-            );
-          })
-        }
-      </select>
-      <Spacer />
-      <ToolTip
-        title={"Graph layouts are the algorithms arranging the node positions."}
-        setArrow={true}
-      >
-        <div className="arangoicon icon_arangodb_info" style={{ fontSize: '16px', color: '#989CA1' }}></div>
-      </ToolTip>
-    </div>
+    <>
+      <FormLabel htmlFor="layout">Layout</FormLabel>
+      <Select id="layout" value={layout} onChange={handleChange}>
+        {layouts.map(style => {
+          const { layout } = style;
+          return (
+            <option key={layout} value={layout}>
+              {layout}
+            </option>
+          );
+        })}
+      </Select>
+      <InfoTooltip />
+    </>
   );
-}
+};
 
 export default GraphLayoutSelector;

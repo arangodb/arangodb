@@ -75,7 +75,7 @@ const GraphAccordionItem = ({
   title: string;
 }) => {
   return (
-    <AccordionItem border="0">
+    <AccordionItem borderColor="gray.300">
       <AccordionButton>
         <Box as="span" flex="1" textAlign="left">
           {title}

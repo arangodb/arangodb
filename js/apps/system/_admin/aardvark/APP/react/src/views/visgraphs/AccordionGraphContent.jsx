@@ -1,17 +1,17 @@
+import { Grid } from "@chakra-ui/react";
 import React from "react";
-import ParameterNodeStart from "./ParameterNodeStart";
+import GraphLayoutSelector from "./GraphLayoutSelector";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
-import GraphLayoutSelector from "./GraphLayoutSelector";
-import { Stack } from "@chakra-ui/react";
+import ParameterNodeStart from "./ParameterNodeStart";
 
 export const AccordionGraphContent = () => {
   return (
-    <Stack>
+    <Grid alignItems="center" templateColumns="150px 1fr 40px">
       <ParameterNodeStart />
       <GraphLayoutSelector />
       <ParameterDepth />
       <ParameterLimit />
-    </Stack>
+    </Grid>
   );
 };
