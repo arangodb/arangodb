@@ -334,6 +334,10 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
 
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = true;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -363,6 +367,68 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   ASSERT_EQ(action._flags, (ParticipantFlags{.forced = false,
                                              .allowedInQuorum = false,
                                              .allowedAsLeader = true}));
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
+  SupervisionContext ctx;
+
+  auto const& logId = LogId{44};
+  // Server D is missing in target, but B has no snapshot. Removing D
+  // would violate the effective write concern.
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                LogTargetConfig(3, 3, true));
+
+  ParticipantsFlagsMap participantsFlags{{"A", ParticipantFlags{}},
+                                         {"B", ParticipantFlags{}},
+                                         {"C", ParticipantFlags{}},
+                                         {"D", ParticipantFlags{}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 1,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, true)};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
+      participantsConfig);
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfig,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+
+  current.supervision.emplace(LogCurrentSupervision{});
+  current.supervision->assumedWriteConcern = 3;
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = false;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
+
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  checkReplicatedLog(ctx, log, health);
+
+  // no action is expected.
+  EXPECT_FALSE(ctx.hasAction());
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
@@ -410,6 +476,10 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = true;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -439,6 +509,85 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[0]));
+}
+
+TEST_F(LogSupervisionTest, test_remove_participant_undo_exclude_from_quorum) {
+  SupervisionContext ctx;
+
+  auto const& logId = LogId{44};
+
+  // Server D is supposed to be removed, but B has no snapshot. Removing
+  // D would violate the effective write concern. If the allowedInQuorum = false
+  // is already set, remove it.
+  auto const& target =
+      LogTarget(logId,
+                ParticipantsFlagsMap{{"A", ParticipantFlags{}},
+                                     {"B", ParticipantFlags{}},
+                                     {"C", ParticipantFlags{}}},
+                LogTargetConfig(3, 3, true));
+
+  ParticipantsFlagsMap participantsFlags{
+      {"A", ParticipantFlags{}},
+      {"B", ParticipantFlags{}},
+      {"C", ParticipantFlags{}},
+      {"D", ParticipantFlags{.allowedInQuorum = false}}};
+  auto const& participantsConfig =
+      ParticipantsConfig{.generation = 2,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, true)};
+
+  auto const& plan = LogPlanSpecification(
+      logId,
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
+      participantsConfig);
+
+  ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
+                                            {"B", ParticipantFlags{}},
+                                            {"C", ParticipantFlags{}},
+                                            {"D", ParticipantFlags{}}};
+  auto const& participantsConfigOld =
+      ParticipantsConfig{.generation = 1, .participants = participantsFlagsOld};
+
+  auto current = LogCurrent();
+  current.leader =
+      LogCurrent::Leader{.serverId = "A",
+                         .term = LogTerm{1},
+                         .committedParticipantsConfig = participantsConfigOld,
+                         .leadershipEstablished = true,
+                         .commitStatus = std::nullopt};
+  current.supervision.emplace(LogCurrentSupervision{});
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = false;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
+
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
+  auto const& health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{42}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  checkReplicatedLog(ctx, log, health);
+
+  EXPECT_TRUE(ctx.hasAction());
+  auto const& a = ctx.getAction();
+
+  ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(a))
+      << fmt::format("{}", a);
+
+  auto action = std::get<UpdateParticipantFlagsAction>(a);
+  ASSERT_EQ(action._participant, "D");
+  ASSERT_EQ(action._flags, (ParticipantFlags{.forced = false,
+                                             .allowedInQuorum = true,
+                                             .allowedAsLeader = true}));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
@@ -480,6 +629,10 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .commitStatus = std::nullopt};
   current.supervision.emplace(LogCurrentSupervision{});
   current.supervision->assumedWriteConcern = 3;
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = true;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -560,6 +713,10 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
       {"D", LogCurrentLocalState(
                 LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)}};
   current.supervision.emplace(LogCurrentSupervision{});
+  current.localState["A"].snapshotAvailable = true;
+  current.localState["B"].snapshotAvailable = true;
+  current.localState["C"].snapshotAvailable = true;
+  current.localState["D"].snapshotAvailable = true;
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 

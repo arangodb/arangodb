@@ -182,15 +182,9 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
     FollowerTermInformation const& termInfo, LoggerContext const& lctx)
     -> std::optional<AppendEntriesResult> {
-  if (not messageIdAcceptor.accept(request.messageId)) {
-    LOG_CTX("bef55", INFO, lctx)
-        << "rejecting append entries - dropping outdated message "
-        << request.messageId;
-    return AppendEntriesResult::withRejection(
-        termInfo.term, request.messageId,
-        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
-  }
-
+  // First check for term, then check for message id. The message id is reset
+  // on a term change. If an old leader still sends a message to a new follower,
+  // the next accepted message id will be a very high value.
   if (request.leaderTerm != termInfo.term) {
     LOG_CTX("8ef92", DEBUG, lctx)
         << "rejecting append entries - wrong term - expected " << termInfo.term
@@ -198,6 +192,15 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
+  }
+
+  if (not messageIdAcceptor.accept(request.messageId)) {
+    LOG_CTX("bef55", INFO, lctx)
+        << "rejecting append entries - dropping outdated message "
+        << request.messageId << " expected > " << messageIdAcceptor.get();
+    return AppendEntriesResult::withRejection(
+        termInfo.term, request.messageId,
+        {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
   }
 
   if (request.leaderId != termInfo.leader) {
