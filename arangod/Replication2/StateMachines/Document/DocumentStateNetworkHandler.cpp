@@ -79,10 +79,12 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
                               opts)
       .thenValue([self = shared_from_this(), id = id](
                      network::Response&& resp) -> futures::Future<Result> {
+        // Only retry on network error
         if (resp.fail()) {
           LOG_TOPIC("2e771", ERR, Logger::REPLICATION2)
               << "Failed to finish snapshot " << id << " on "
-              << self->_participantId << ", retrying in 5 seconds";
+              << self->_participantId << ": " << resp.combinedResult()
+              << " - retrying in 5 seconds";
           std::this_thread::sleep_for(std::chrono::seconds(5));
           return self->finishSnapshot(id);
         } else if (!fuerte::statusIsSuccess(resp.statusCode())) {
