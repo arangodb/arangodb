@@ -1,4 +1,4 @@
-@startDocuBlock UserHandling_fetch
+@startDocuBlock get_api_user_user
 @brief fetch the properties of a user.
 
 @RESTHEADER{GET /_api/user/{user}, Fetch User}
