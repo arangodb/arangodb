@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, localStorage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
+/* global Backbone, $, L, sessionStorage, ace, Storage, localStorage, window, _ */
+/* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';

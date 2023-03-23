@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa, JSONEditor */
+/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, JSONEditor */
 /* global numeral */
 
 (function () {

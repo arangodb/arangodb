@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, btoa, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
+/* global _, Backbone, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
 (function () {
   'use strict';
 

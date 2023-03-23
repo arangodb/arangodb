@@ -1,7 +1,7 @@
 /* jshint unused: false */
 // eslint-disable-next-line no-unused-vars
 /* global window, $, Backbone, document, d3, ReactDOM, React */
-/* global arangoHelper, btoa, atob, _, frontendConfig */
+/* global arangoHelper, _, frontendConfig */
 
 (function () {
   'use strict';

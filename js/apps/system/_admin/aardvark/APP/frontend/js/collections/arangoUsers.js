@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint strict: false, unused: false */
-/* global window, atob, Backbone, $,_, window, frontendConfig, arangoHelper */
+/* global window, Backbone, $,_, window, frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
