@@ -1224,7 +1224,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         } else if ((result == WAIT_TIMEOUT) && (timeout != 0)) {
           wantGetExitCode = false;
           status->_status = TRI_EXT_TIMEOUT;
-          status->._exitStatus = -1;
+          status->_exitStatus = -1;
         }
       } else {
         DWORD result;
