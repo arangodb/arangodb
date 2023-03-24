@@ -39,19 +39,12 @@ if [ -z "$*" ] ; then
       "
   fi
 else
-  JSLINT_JAVASCRIPT="$*"
+  JAVASCRIPT_JSLINT="$*"
 fi
-
-FILELIST=""
-for file in ${JAVASCRIPT_JSLINT}; do
-  FILELIST="${FILELIST} --jslint ${file}";
-done
 
 # wordspitting is intentional here - no arrays in POSIX shells
 # shellcheck disable=2086
 exec eslint \
   -c js/.eslintrc \
   --quiet \
-  --format junit \
-  --output-file test_detail.xml \
   ${JAVASCRIPT_JSLINT}
