@@ -97,6 +97,21 @@ using namespace arangodb;
 
 namespace {
 
+#ifdef _WIN32
+HANDLE getProcessHandle(pid) {
+  {
+    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    auto found = std::find_if(
+        ExternalProcesses.begin(), ExternalProcesses.end(),
+        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
+    if (found != ExternalProcesses.end()) {
+      return (*found)->_process;
+    }
+  }
+  return INVALID_HANDLE_VALUE;
+}
+#endif
+
 #ifdef TRI_HAVE_LINUX_PROC
 /// @brief consumes all whitespace
 void skipWhitespace(char const*& p, char const* e) {
@@ -229,21 +244,6 @@ std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
   }
   return std::nullopt;
 }
-
-#ifdef _WIN32
-HANDLE TRI_getProcessHandle(pid) {
-  {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-    auto found = std::find_if(
-        ExternalProcesses.begin(), ExternalProcesses.end(),
-        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
-    if (found != ExternalProcesses.end()) {
-      return (*found)->_process;
-    }
-  }
-  return INVALID_HANDLE_VALUE;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
@@ -1205,7 +1205,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         if (timeout != 0) {
           waitFor = timeout;
         }
-        HANDLE process = TRI_getProcessHandle(pid);
+        HANDLE process = getProcessHandle(pid);
         if (process == INVALID_HANDLE_VALUE) {
           return *status;
         }
