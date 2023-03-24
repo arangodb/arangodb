@@ -189,10 +189,7 @@ class Request final : public Message {
       std::chrono::seconds(300);
 
   Request(RequestHeader messageHeader = RequestHeader())
-      : header(std::move(messageHeader)),
-        _timeout(defaultTimeout),
-        _timeReceivedIsSet(false),
-        _timeUntilSentIsSet(false) {}
+      : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
 
   /// @brief request header
   RequestHeader header;
@@ -237,31 +234,26 @@ class Request final : public Message {
   void timeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
 
   // Sending time accounting:
-  void setTimeReceived() {
-    _timeReceived = std::chrono::steady_clock::now();
-    _timeReceivedIsSet = true;
+  void setTimeReceived() { _timeReceived = std::chrono::steady_clock::now(); }
+  void setTimeAsyncWrite() {
+    _timeAsyncWrite = std::chrono::steady_clock::now();
   }
-  void setTimeSent() {
-    if (_timeReceivedIsSet) {
-      _timeUntilSent = std::chrono::steady_clock::now() - _timeReceived;
-      _timeUntilSentIsSet = true;
-    }
-  }
-  bool timeReceivedIsSet() const noexcept { return _timeReceivedIsSet; }
-  bool timeUntilSentIsSet() const noexcept { return _timeUntilSentIsSet; }
+  void setTimeSent() { _timeSent = std::chrono::steady_clock::now(); }
   std::chrono::steady_clock::time_point timeReceived() const {
     return _timeReceived;
   }
-  std::chrono::duration<double> timeUntilSent() const { return _timeUntilSent; }
+  std::chrono::steady_clock::time_point timeAsyncWrite() const {
+    return _timeAsyncWrite;
+  }
+  std::chrono::steady_clock::time_point timeSent() const { return _timeSent; }
 
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
   std::optional<std::string> _fuzzReqHeader = std::nullopt;
   std::chrono::steady_clock::time_point _timeReceived;
-  std::chrono::duration<double> _timeUntilSent;
-  bool _timeReceivedIsSet;
-  bool _timeUntilSentIsSet;
+  std::chrono::steady_clock::time_point _timeAsyncWrite;
+  std::chrono::steady_clock::time_point _timeSent;
 };
 
 // Response contains the message resulting from a request to a server.

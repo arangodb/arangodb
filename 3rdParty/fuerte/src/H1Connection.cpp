@@ -347,6 +347,7 @@ void H1Connection<ST>::asyncWriteNextRequest() {
                                              std::size_t nwrite) {
         static_cast<H1Connection<ST>&>(*self).asyncWriteCallback(ec, nwrite);
       });
+  this->_item->request->setTimeAsyncWrite();
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
 
