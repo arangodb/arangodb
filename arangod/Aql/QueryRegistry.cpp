@@ -240,7 +240,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
       if (canDestroyQuery) {
         auto queryMapIt = _queries.find(ei._queryInfo->_query->id());
         TRI_ASSERT(queryMapIt != _queries.end());
-        doDestroyQuery(queryMapIt);
+        deleteQuery(queryMapIt);
       } else if (ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
@@ -266,7 +266,7 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
   }
 
   if (queryMapIt->second->_numOpen == 0) {
-    doDestroyQuery(queryMapIt);
+    deleteQuery(queryMapIt);
   }
 }
 
@@ -294,7 +294,7 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
   }
 
   auto result = queryInfo._query;
-  doDestroyQuery(queryMapIt);
+  deleteQuery(queryMapIt);
   return result;
 }
 
@@ -341,7 +341,7 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   return queryMapIt;
 }
 
-void QueryRegistry::doDestroyQuery(QueryInfoMap::iterator queryMapIt) {
+void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
   auto id = queryMapIt->first;
   // move query into our unique ptr, so we can process it outside
   // of the lock
