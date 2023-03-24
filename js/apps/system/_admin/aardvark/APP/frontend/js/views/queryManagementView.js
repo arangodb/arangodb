@@ -1,4 +1,4 @@
-/* global templateEngine, prettyBytes */
+/* global templateEngine */
 
 (function () {
   'use strict';

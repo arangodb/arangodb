@@ -1,4 +1,4 @@
-/* global Joi, templateEngine */
+/* global templateEngine */
 (function () {
   'use strict';
 

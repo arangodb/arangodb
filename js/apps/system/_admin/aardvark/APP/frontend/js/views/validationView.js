@@ -1,4 +1,4 @@
-/* global templateEngine, JSONEditor */
+/* global templateEngine */
 
 (function () {
   'use strict';

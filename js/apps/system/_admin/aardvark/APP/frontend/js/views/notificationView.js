@@ -1,4 +1,4 @@
-/* global frontendConfig, templateEngine, noty, Noty */
+/* global frontendConfig, templateEngine */
 (function () {
   'use strict';
 

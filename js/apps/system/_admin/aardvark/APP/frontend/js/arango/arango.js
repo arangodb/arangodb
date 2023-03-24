@@ -1,4 +1,4 @@
-/* global Noty, Joi, sigma, tippy, frontendConfig */
+/* global frontendConfig */
 
 (function () {
   'use strict';

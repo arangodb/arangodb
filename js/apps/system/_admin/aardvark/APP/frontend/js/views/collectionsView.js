@@ -1,4 +1,4 @@
-/* global frontendConfig, templateEngine, Joi */
+/* global frontendConfig, templateEngine */
 
 (function () {
   'use strict';

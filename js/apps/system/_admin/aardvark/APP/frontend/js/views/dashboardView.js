@@ -1,5 +1,4 @@
-/* global moment, nv, d3, prettyBytes */
-/* global frontendConfig, Dygraph,templateEngine */
+/* global nv, frontendConfig, templateEngine */
 
 (function () {
   'use strict';

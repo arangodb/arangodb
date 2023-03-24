@@ -1,4 +1,4 @@
-/* global frontendConfig, slicePath, icon, Joi, wheelnav, sigma, templateEngine, JSONEditor */
+/* global frontendConfig, slicePath, icon, wheelnav, templateEngine */
 (function () {
   'use strict';
 

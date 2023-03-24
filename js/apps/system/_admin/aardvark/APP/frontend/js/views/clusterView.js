@@ -1,4 +1,4 @@
-/* global frontendConfig, prettyBytes, templateEngine, nv, d3 */
+/* global frontendConfig, templateEngine, nv */
 (function () {
   'use strict';
 

@@ -1,5 +1,3 @@
-/* global CryptoJS */
-
 (function () {
   'use strict';
 

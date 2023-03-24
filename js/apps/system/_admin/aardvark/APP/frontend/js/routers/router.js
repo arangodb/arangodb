@@ -1,4 +1,3 @@
-/* global d3, ReactDOM, React */
 /* global frontendConfig */
 
 (function () {

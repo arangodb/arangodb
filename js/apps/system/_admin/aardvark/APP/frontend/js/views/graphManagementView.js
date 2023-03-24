@@ -1,4 +1,4 @@
-/* global templateEngine, GraphViewerUI, Joi, frontendConfig */
+/* global templateEngine, GraphViewerUI, frontendConfig */
 
 (function () {
   'use strict';

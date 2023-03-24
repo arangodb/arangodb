@@ -1,4 +1,4 @@
-/* global ace, CryptoJS, templateEngine, Joi */
+/* global ace, templateEngine */
 (function () {
   'use strict';
 

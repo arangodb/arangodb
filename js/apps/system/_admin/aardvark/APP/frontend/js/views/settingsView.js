@@ -1,4 +1,4 @@
-/* global frontendConfig, Joi */
+/* global frontendConfig */
 
 (function () {
   'use strict';

@@ -1,4 +1,3 @@
-/* global Joi */
 /* global templateEngine */
 
 (function () {

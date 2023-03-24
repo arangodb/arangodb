@@ -1,4 +1,4 @@
-/* global templateEngine, nv, d3*/
+/* global templateEngine, nv */
 (function () {
   'use strict';
 

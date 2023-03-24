@@ -1,4 +1,4 @@
-/* global templateEngine, d3, Dygraph */
+/* global templateEngine */
 
 (function () {
   'use strict';
