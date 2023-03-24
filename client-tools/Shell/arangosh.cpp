@@ -54,6 +54,7 @@
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
 #include "Shell/V8ShellFeature.h"
+#include "Shell/ProcessMonitoringFeature.h"
 #include "Ssl/SslFeature.h"
 
 #ifdef USE_ENTERPRISE
