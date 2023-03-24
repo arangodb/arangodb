@@ -72,6 +72,9 @@ auto DocumentFollowerState::getAssociatedShardList() const
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
+  LOG_CTX("1f67d", DEBUG, loggerContext)
+      << "Trying to acquire snapshot from destination " << destination;
+
   auto snapshotVersion = _guardedData.doUnderLock(
       [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
@@ -87,6 +90,9 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
       });
 
   if (snapshotVersion.fail()) {
+    LOG_CTX("5ef29", DEBUG, loggerContext)
+        << "Aborting snapshot transfer before contacting destination "
+        << destination << ": " << snapshotVersion.result();
     return snapshotVersion.result();
   }
 
@@ -104,6 +110,11 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
               << "Snapshot transfer failed: " << snapshotTransferResult.res;
           return snapshotTransferResult.res;
         }
+
+        LOG_CTX("b4fcb", DEBUG, self->loggerContext)
+            << "Snapshot " << *snapshotTransferResult.snapshotId
+            << " data transfer completed, sending finish request";
+
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
             .thenValue([snapshotTransferResult](auto&& res) {
               if (res.fail()) {
@@ -112,13 +123,26 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                     << *snapshotTransferResult.snapshotId << ": " << res;
               }
 
+              LOG_TOPIC("42ffd", DEBUG, Logger::REPLICATION2)
+                  << "Successfully sent finish command for snapshot  "
+                  << *snapshotTransferResult.snapshotId;
+
               TRI_ASSERT(snapshotTransferResult.res.fail() ||
                          (snapshotTransferResult.res.ok() &&
                           !snapshotTransferResult.reportFailure));
 
               if (snapshotTransferResult.reportFailure) {
+                LOG_TOPIC("2883c", DEBUG, Logger::REPLICATION2)
+                    << "During the processing of snapshot "
+                    << *snapshotTransferResult.snapshotId
+                    << ", the following problem occurred on the follower: "
+                    << snapshotTransferResult.res;
                 return snapshotTransferResult.res;
               }
+
+              LOG_TOPIC("d73cb", DEBUG, Logger::REPLICATION2)
+                  << "Snapshot " << *snapshotTransferResult.snapshotId
+                  << " finished: " << snapshotTransferResult.res;
               return Result{};
             });
       });
@@ -228,6 +252,9 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         if (snapshotRes->shards.empty()) {
+          LOG_CTX("289dc", DEBUG, self->loggerContext)
+              << "No shards to transfer for snapshot "
+              << snapshotRes->snapshotId;
           // There are no shards, no need to continue.
           return SnapshotTransferResult{.snapshotId = snapshotRes->snapshotId};
         }
@@ -247,6 +274,16 @@ auto DocumentFollowerState::handleSnapshotTransfer(
               }
 
               auto transactionHandler = data.core->getTransactionHandler();
+
+              std::stringstream ss;
+              for (auto const& [shardId, _] : shards) {
+                ss << shardId << " ";
+              }
+              LOG_CTX("2410c", DEBUG, self->loggerContext)
+                  << "While starting snapshot " << snapshotId
+                  << ", the follower tries to create the following shards: "
+                  << ss.str();
+
               for (auto const& [shardId, properties] : shards) {
                 auto res = transactionHandler->applyEntry(
                     ReplicatedOperation::buildCreateShardOperation(
@@ -269,13 +306,16 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                 .snapshotId = snapshotRes->snapshotId};
           }
           // If we got here, it means the snapshot transfer is no longer needed.
-          return SnapshotTransferResult{.snapshotId = snapshotRes->snapshotId};
+          return SnapshotTransferResult{.res = res,
+                                        .snapshotId = snapshotRes->snapshotId};
         }
 
+        LOG_CTX("d6666", DEBUG, self->loggerContext)
+            << "Trying to first batch of snapshot: " << snapshotRes->snapshotId;
         auto fut = leader->nextSnapshotBatch(snapshotRes->snapshotId);
-        return self->handleSnapshotTransfer(snapshotRes->snapshotId,
-                                            std::move(leader), waitForIndex,
-                                            snapshotVersion, std::move(fut));
+        return self->handleSnapshotTransfer(
+            snapshotRes->snapshotId, std::move(leader), waitForIndex,
+            snapshotVersion, std::nullopt, std::move(fut));
       });
 }
 
@@ -283,11 +323,13 @@ auto DocumentFollowerState::handleSnapshotTransfer(
     SnapshotId snapshotId,
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     LogIndex waitForIndex, std::uint64_t snapshotVersion,
+    std::optional<ShardID> currentShard,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
     -> futures::Future<SnapshotTransferResult> {
   return std::move(snapshotFuture)
       .then([weak = weak_from_this(), leader = std::move(leader), waitForIndex,
-             snapshotVersion, snapshotId](
+             snapshotVersion, snapshotId,
+             currentShard = std::move(currentShard)](
                 futures::Try<ResultT<SnapshotBatch>>&& tryResult) mutable
             -> futures::Future<SnapshotTransferResult> {
         auto catchRes =
@@ -316,6 +358,27 @@ auto DocumentFollowerState::handleSnapshotTransfer(
               .snapshotId = snapshotId};
         }
 
+        if (currentShard.has_value()) {
+          if (currentShard != snapshotRes->shardId) {
+            LOG_CTX("9f630", DEBUG, self->loggerContext)
+                << "Snapshot transfer " << snapshotId
+                << " completed all batches for shard " << *currentShard;
+            if (snapshotRes->shardId.has_value()) {
+              LOG_CTX("2add0", DEBUG, self->loggerContext)
+                  << "Snapshot transfer " << snapshotId
+                  << " beginning to transfer batches for shard "
+                  << *snapshotRes->shardId;
+              currentShard = snapshotRes->shardId;
+            } else {
+              LOG_CTX("ee8f7", DEBUG, self->loggerContext)
+                  << "Snapshot transfer " << snapshotId
+                  << " does not get any more batches";
+            }
+          }
+        } else {
+          currentShard = snapshotRes->shardId;
+        }
+
         if (snapshotRes->shardId.has_value()) {
           bool reportingFailure = false;
           auto insertRes = self->_guardedData.doUnderLock([&self, &snapshotRes,
@@ -340,6 +403,10 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   "Snapshot transfer cancelled because a new one was started!"};
             }
 
+            LOG_CTX("c1d58", DEBUG, self->loggerContext)
+                << "Trying to insert " << snapshotRes->payload.length()
+                << " documents with " << snapshotRes->payload.byteSize()
+                << " bytes into shard " << *snapshotRes->shardId;
             if (auto localShardRes = self->populateLocalShard(
                     *snapshotRes->shardId, snapshotRes->payload,
                     data.core->getTransactionHandler());
@@ -360,12 +427,20 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         }
 
         if (snapshotRes->hasMore) {
+          LOG_CTX("a732f", DEBUG, self->loggerContext)
+              << "Trying to fetch the next batch of snapshot: "
+              << snapshotRes->snapshotId;
           auto fut = leader->nextSnapshotBatch(snapshotId);
-          return self->handleSnapshotTransfer(snapshotId, std::move(leader),
-                                              waitForIndex, snapshotVersion,
-                                              std::move(fut));
+          return self->handleSnapshotTransfer(
+              snapshotId, std::move(leader), waitForIndex, snapshotVersion,
+              std::move(currentShard), std::move(fut));
         }
 
+        LOG_CTX("742df", DEBUG, self->loggerContext)
+            << "Leader informed the follower there is no more data to be sent "
+               "for "
+               "snapshot "
+            << snapshotRes->snapshotId;
         return SnapshotTransferResult{.snapshotId = snapshotId};
       });
 }

@@ -125,8 +125,15 @@ struct DocumentStateMachineTest : testing::Test {
     });
     ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
         .WillByDefault([&](SnapshotId) {
+          // An array is needed so that we can call the "length" method on the
+          // the slice later on.
+          auto payload = std::vector<int>{1, 2, 3};
           return futures::Future<ResultT<SnapshotBatch>>{
-              std::in_place, SnapshotBatch{SnapshotId{1}, shardId}};
+              std::in_place,
+              SnapshotBatch{.snapshotId = SnapshotId{1},
+                            .shardId = shardId,
+                            .hasMore = false,
+                            .payload = velocypack::serialize(payload)}};
         });
     ON_CALL(*leaderInterfaceMock, finishSnapshot)
         .WillByDefault(

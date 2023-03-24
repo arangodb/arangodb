@@ -776,7 +776,6 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       result = dh.allSnapshotsStatus(leaderUrl, database, logId);
       lh.checkRequestResult(result);
-      internal.print(result.json.result.snapshots);
       assertEqual(Object.keys(result.json.result.snapshots).length, 1);
 
       // Also, finish should work
