@@ -1,6 +1,18 @@
 devel
 -----
 
+* Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
+  DELETE /_api/document/{collection} using _key or _id values as document 
+  selectors, the INBOUND and OUTBOUND entries of the SmartEdges could diverge.
+  Using a document like {_key: "xxxx"} as a selector was always correct. 
+  Now _key and _id variants are supported as intended.
+
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In
+  some cases where multiple connections to a server are canceled the metric
+  could miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a 
+  HotBackup, rotation of JWT secret.
+
 * SEARCH-279 Fix consistency during update/replace operations
   for arangosearch links and inverted indexes.
 

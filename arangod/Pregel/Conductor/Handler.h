@@ -87,6 +87,40 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
+  auto operator()(ResultT<message::GlobalSuperStepFinished> message)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Global super step finished on worker {}",
+        this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(message));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+      sendMessages();
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::StatusUpdate message)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("f89db", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Received status update from worker {}: {}",
+        this->sender, inspection::json(message));
+    return std::move(this->state);
+  }
+
+  auto operator()(ResultT<message::Stored> msg)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("de3e3", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Graph was stored in worker {}", this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(msg));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+    }
+    return std::move(this->state);
+  }
+
   auto operator()(message::ResultCreated msg)
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("e1791", INFO, Logger::PREGEL) << fmt::format(

@@ -24,11 +24,13 @@
 
 #include <map>
 
+#include "Actor/ActorPID.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
@@ -61,9 +63,60 @@ auto inspect(Inspector& f, GraphLoaded& x) {
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount));
 }
 
-struct GlobalSuperStepFinished {};
+struct GlobalSuperStepFinished {
+  GlobalSuperStepFinished() noexcept = default;
+  GlobalSuperStepFinished(
+      MessageStats messageStats,
+      std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
+      uint64_t activeCount, uint64_t vertexCount, uint64_t edgeCount,
+      VPackBuilder aggregators)
+      : messageStats{std::move(messageStats)},
+        sendCountPerActor{std::move(sendCountPerActor)},
+        activeCount{activeCount},
+        vertexCount{vertexCount},
+        edgeCount{edgeCount},
+        aggregators{std::move(aggregators)} {};
+  auto add(GlobalSuperStepFinished const& other) -> void {
+    messageStats.accumulate(other.messageStats);
+    for (auto& [actor, count] : other.sendCountPerActor) {
+      sendCountPerActor[actor] += count;
+    }
+    activeCount += other.activeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
+    // TODO directly aggregate in here when aggregators have an inspector
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!aggregators.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(aggregators.slice()));
+      }
+      newAggregators.add(other.aggregators.slice());
+    }
+    aggregators = newAggregators;
+  }
+
+  MessageStats messageStats;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  uint64_t activeCount;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  VPackBuilder aggregators;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
+  return f.object(x).fields(
+      f.field("messageStats", x.messageStats),
+      // f.field("sentCounts", x.sendCountPerActor), // make inspection worker
+      // with self-defined hashtable
+      f.field("activeCount", x.activeCount),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("aggregators", x.aggregators));
+}
+
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
   return f.object(x).fields();
 }
 
@@ -87,11 +140,11 @@ auto inspect(Inspector& f, StatusUpdate& x) {
 }
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
-                   ResultT<GlobalSuperStepFinished>, ResultCreated,
-                   StatusUpdate> {
+                   ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+                   ResultCreated, StatusUpdate> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
                      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
-                     ResultCreated, StatusUpdate>::variant;
+                     ResultT<Stored>, ResultCreated, StatusUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -101,6 +154,7 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "GlobalSuperStepFinished"),
+      arangodb::inspection::type<ResultT<Stored>>("Stored"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }
@@ -168,4 +222,8 @@ struct fmt::formatter<arangodb::pregel::PrepareGlobalSuperStep>
     : arangodb::inspection::inspection_formatter {};
 template<>
 struct fmt::formatter<arangodb::pregel::RunGlobalSuperStep>
+    : arangodb::inspection::inspection_formatter {};
+template<>
+struct fmt::formatter<
+    arangodb::pregel::conductor::message::GlobalSuperStepFinished>
     : arangodb::inspection::inspection_formatter {};

@@ -1,5 +1,5 @@
 /* jshint -W051, -W020 */
-/* global global:true, require, arango */
+/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
