@@ -36,8 +36,6 @@ namespace arangodb {
 class ProcessMonitoringFeature;
 
 class ProcessMonitorThread : public arangodb::Thread {
-  friend ProcessMonitoringFeature;
-
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server,
                        ProcessMonitoringFeature& processMonitorFeature)
@@ -51,8 +49,6 @@ class ProcessMonitorThread : public arangodb::Thread {
 };
 
 class ProcessMonitoringFeature final : public ArangoshFeature {
-  friend ProcessMonitorThread;
-
  public:
   explicit ProcessMonitoringFeature(Server& server);
   ~ProcessMonitoringFeature();
@@ -61,18 +57,6 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief enlist external process to become monitored
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void addMonitorPID(ExternalId const& pid);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief enlist external process to become monitored
-  ////////////////////////////////////////////////////////////////////////////////
-
-  void removeMonitorPID(ExternalId const& pid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get info about maybe exited processes
@@ -84,7 +68,26 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   /// @brief external process stati of processes exited while being monitored
   ////////////////////////////////////////////////////////////////////////////////
 
- protected:
+  void addMonitorPID(ExternalId const& pid);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enlist external process to become monitored
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void removeMonitorPID(ExternalId const& pid);
+
+  void moveMonitoringPIDToAttic(ExternalId const& pid,
+                                ExternalProcessStatus const& exitStatus);
+
+  std::vector<ExternalId> getMonitoringVector();
+
+ private:
+  void removeMonitorPIDNoLock(ExternalId const& pid);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief enlist external process to become monitored
+  ////////////////////////////////////////////////////////////////////////////////
+
   arangodb::Mutex _MonitoredExternalProcessesLock;
   std::map<TRI_pid_t, ExternalProcessStatus> _ExitedExternalProcessStatus;
 

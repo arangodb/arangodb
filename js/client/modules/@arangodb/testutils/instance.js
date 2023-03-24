@@ -793,7 +793,12 @@ class instance {
     if (this.pid === null) {
       return false;
     }
-    const res = statusExternal(this.pid, false);
+    let res = statusExternal(this.pid, false);
+    if (res.status === 'NOT-FOUND') {
+      print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
+      time.sleep(0.2);
+      res = statusExternal(this.pid, false);
+    }
     const running = res.status === 'RUNNING';
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
       print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
