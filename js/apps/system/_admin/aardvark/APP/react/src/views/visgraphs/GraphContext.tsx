@@ -1,12 +1,23 @@
 import { useDisclosure } from "@chakra-ui/react";
 import { ArangojsResponse } from "arangojs/lib/request.node";
 import React, { createContext, ReactNode, useContext, useState } from "react";
-import useSWRImmutable from "swr/immutable";
+import useSWR from "swr";
 import { Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
 import { VisGraphData } from "./VisGraphData.types";
+
+type SelectedEntityType = {
+  type: string;
+  nodeId?: string;
+  edgeId?: string;
+};
+
+export type SelectedActionType = {
+  action: "delete" | "edit";
+  entity: SelectedEntityType;
+};
 
 type GraphContextType = {
   graphData: VisGraphData | undefined;
@@ -15,12 +26,14 @@ type GraphContextType = {
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
-  deleteEdgeModalData?: { edgeId: string };
+  selectedEntity?: SelectedEntityType;
+  setSelectedEntity: (selectedEntity: SelectedEntityType | undefined) => void;
+  selectedAction?: SelectedActionType;
+  setSelectedAction: (selectedAction: SelectedActionType | undefined) => void;
   setNetwork: (network: Network) => void;
   toggleSettings: () => void;
   onCloseSettings: () => void;
-  onDeleteEdge: (edgeId?: string) => void;
-  onCancelDelete: () => void;
+  onCancelAction: () => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -45,14 +58,16 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
   let [network, setNetwork] = useState<Network>();
+  let [selectedEntity, setSelectedEntity] = useState<SelectedEntityType>();
 
   const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
   const [params, setParams] = useState(URLPARAMETERS);
-  const { data, isLoading: isGraphLoading } = useSWRImmutable<ArangojsResponse>(
+  const { data, isLoading: isGraphLoading } = useSWR<ArangojsResponse>(
     ["visData", graphName, params],
     () => fetchVisData({ graphName, params }),
     {
-      keepPreviousData: true
+      keepPreviousData: true,
+      revalidateIfStale: true
     }
   );
   const onApplySettings = () => {
@@ -66,18 +81,11 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const toggleSettings = () => {
     isSettingsOpen ? onCloseSettings() : onOpenSettings();
   };
-  const [deleteEdgeModalData, setDeleteEdgeModalData] = useState<
-    { edgeId: string } | undefined
+  const [selectedAction, setSelectedAction] = useState<
+    SelectedActionType | undefined
   >();
-  const onDeleteEdge = (edgeId?: string) => {
-    console.log("ondelete", edgeId);
-    if (!edgeId) {
-      return;
-    }
-    setDeleteEdgeModalData({ edgeId });
-  };
-  const onCancelDelete = () => {
-    setDeleteEdgeModalData(undefined);
+  const onCancelAction = () => {
+    setSelectedAction(undefined);
   };
   return (
     <GraphContext.Provider
@@ -89,11 +97,13 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         graphName,
         toggleSettings,
         onCloseSettings,
-        onDeleteEdge,
-        onCancelDelete,
-        deleteEdgeModalData,
+        selectedAction,
+        setSelectedAction,
+        onCancelAction,
         isSettingsOpen,
-        isGraphLoading
+        isGraphLoading,
+        selectedEntity,
+        setSelectedEntity
       }}
     >
       <UrlParametersContext.Provider

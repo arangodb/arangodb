@@ -14,17 +14,13 @@ import {
   useMenuPositioner,
   useMultiStyleConfig
 } from "@chakra-ui/react";
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode } from "react";
 import { AccordionEdgesContent } from "./AccordionEdgesContent";
 import { AccordionGraphContent } from "./AccordionGraphContent";
 import { AccordionNodesContent } from "./AccordionNodesContent";
 import { useGraph } from "./GraphContext";
 
 export const GraphSettings = () => {
-  console.log("settings re rnder");
-  useEffect(() => {
-    console.log("settings re mount");
-  }, []);
   return (
     <Menu closeOnSelect={false} closeOnBlur={false}>
       <MenuButton

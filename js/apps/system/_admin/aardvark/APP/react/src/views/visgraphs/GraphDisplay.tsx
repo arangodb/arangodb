@@ -2,7 +2,7 @@ import React from "react";
 import { GraphContextProvider } from "./GraphContext";
 import { GraphNetwork } from "./GraphNetwork";
 import { GraphHeader } from "./GraphHeader";
-import { GraphModals } from "./GraphModals";
+import { GraphModals } from "./graphModals/GraphModals";
 
 export const GraphDisplay = () => {
   return (

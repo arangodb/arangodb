@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
 import { useGraph } from "./GraphContext";
-import { GraphContextMenu } from "./GraphContextMenu";
+import { GraphRightClickMenu } from "./GraphRightClickMenu";
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
@@ -38,8 +38,8 @@ export const GraphNetwork = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges]);
   return (
-    <div>
-      <GraphContextMenu visJsRef={visJsRef} />
+    <>
+      <GraphRightClickMenu visJsRef={visJsRef} />
       <div
         ref={visJsRef}
         style={{
@@ -49,6 +49,6 @@ export const GraphNetwork = () => {
           margin: "auto"
         }}
       />
-    </div>
+    </>
   );
 };
