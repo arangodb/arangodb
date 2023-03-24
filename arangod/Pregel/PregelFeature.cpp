@@ -55,6 +55,7 @@
 #include "Pregel/StatusActor.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/ResultActor.h"
+#include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Utils.h"
@@ -405,7 +406,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
 
     return en;
   } else {
-    // TODO needs to be part of the conductor state
     auto c = std::make_shared<pregel::Conductor>(executionSpecifications,
                                                  vocbase, *this);
     addConductor(std::move(c), en);
@@ -788,7 +788,7 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
         TRI_ERROR_HTTP_NOT_FOUND,
         fmt::format("Cannot find results for pregel run {}.", execNr)};
   }
-  if (state.value().finished) {
+  if (state.value().complete) {
     return state.value().results;
   }
   return Result{
@@ -1150,7 +1150,14 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
   }
 
   // pregel can still have ran with actors, then the result actor would exist
-  if (_resultActor.contains(executionNumber)) {
+  auto resultActor = _resultActor.find(executionNumber);
+  if (resultActor != _resultActor.end()) {
+    if (_actorRuntime->contains(resultActor->second.id)) {
+      _actorRuntime->dispatch<pregel::message::ResultMessages>(
+          resultActor->second, resultActor->second,
+          pregel::message::ResultCleanup{});
+    }
+
     auto conductorActor = _conductorActor.find(executionNumber);
     if (conductorActor != _conductorActor.end() and
         _actorRuntime->contains(conductorActor->second.id)) {
@@ -1158,6 +1165,7 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
           conductorActor->second, conductorActor->second,
           pregel::conductor::message::Cancel{});
     }
+
     return Result{};
   }
 

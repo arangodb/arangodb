@@ -54,10 +54,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     for (auto& [server, message] : messages) {
       this->dispatch(
           this->state->spawnActor,
-          pregel::message::SpawnMessages{
-              pregel::message::SpawnWorker{.destinationServer = server,
-                                           .conductor = this->self,
-                                           .message = message}});
+          pregel::message::SpawnMessages{pregel::message::SpawnWorker{
+              .destinationServer = server,
+              .conductor = this->self,
+              .resultActorOnCoordinator = this->state->resultActor,
+              .message = message}});
     }
     return std::move(this->state);
   }
