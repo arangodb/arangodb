@@ -148,12 +148,15 @@ jobs:
       - run:
           name: Compile does not change files in repository
           command: |
-            mkdir -p /tmp/post-compile-diff/
-            git status
-            git status enterprise
-            git diff > /tmp/post-compile-diff/community.diff
-            git diff enterprise > /tmp/post-compile-diff/enterprise.diff
-            git diff --exit-code > /dev/null || git diff --exit-code enterprise > /dev/null
+            mkdir -p /tmp/post-compile-diff/community
+            mkdir -p /tmp/post-compile-diff/enterprise
+            scripts/working-directory-clean.sh . /tmp/post-compile-diff/community
+            community=$?
+            scripts/working-directory-clean.sh enterprise /tmp/post-compile-diff/enterprise
+            enterprise=$?
+            if [ $community -ne 0 ] || [ $enterprise -ne 0 ]; then
+              exit 1
+            fi
       - run:
           name: Cleanup build directory
           command: |
