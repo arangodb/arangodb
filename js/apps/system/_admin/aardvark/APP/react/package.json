@@ -11,7 +11,7 @@
     "ajv": "^8.12.0",
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
-    "arangojs": "^7.5.0",
+    "arangojs": "^8.1.0",
     "axios": "^0.18.0",
     "backbone": "^1.3.3",
     "bfj": "6.1.1",
