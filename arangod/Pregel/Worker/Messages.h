@@ -42,7 +42,6 @@ struct CreateWorker {
   std::string algorithm;
   VPackBuilder userParameters;
   std::string coordinatorId;
-  bool useMemoryMaps;
   size_t parallelism;
   std::unordered_map<CollectionID, std::vector<ShardID>>
       edgeCollectionRestrictions;
@@ -58,7 +57,6 @@ auto inspect(Inspector& f, CreateWorker& x) {
       f.field("algorithm", x.algorithm),
       f.field("userParameters", x.userParameters),
       f.field("coordinatorId", x.coordinatorId),
-      f.field("useMemoryMaps", x.useMemoryMaps),
       f.field("parallelism", x.parallelism),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
       f.field("vertexShards", x.vertexShards),
