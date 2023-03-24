@@ -140,6 +140,9 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
     }
   }
+  // TODO GORDO-1584 and when using actors: send message to status actor instead
+  // currently if statusUpdateCallback captures WorkerHandler by reference, this
+  // can lead to to a bad alloc
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                      statusUpdateCallback);
   return result;
