@@ -74,6 +74,9 @@ class IResearchLinkMock final : public Index, public IResearchLink {
                                                          meta(), &tick);
   }
 
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId,
+                bool nested, uint64_t const* recoveryTick);
+
   bool isSorted() const final { return IResearchLink::isSorted(); }
 
   bool isHidden() const final { return IResearchLink::isHidden(); }

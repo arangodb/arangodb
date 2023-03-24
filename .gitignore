@@ -28,6 +28,7 @@ build-presets
 *.diff
 *.patch
 !js/node/patches/*.patch
+!js/apps/system/_admin/aardvark/APP/react/patches/*.patch
 *.lnk
 Thumbs.db
 

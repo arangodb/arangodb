@@ -583,76 +583,8 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for internal.download()
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string GetEndpointFromUrl(std::string const& url) {
-  char const* p = url.c_str();
-  char const* e = p + url.size();
-  size_t slashes = 0;
-
-  while (p < e) {
-    if (*p == '?') {
-      // http(s)://example.com?foo=bar
-      return url.substr(0, p - url.c_str());
-    } else if (*p == '/') {
-      if (++slashes == 3) {
-        return url.substr(0, p - url.c_str());
-      }
-    }
-    ++p;
-  }
-
-  return url;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief downloads data from a URL
-///
-/// @FUN{internal.download(@FA{url}, @FA{body}, @FA{options}, @FA{outfile})}
-///
-/// Downloads the data from the URL specified by @FA{url} and saves the
-/// response body to @FA{outfile}. The following @FA{options} are supported:
-///
-/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
-///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
-///
-/// - @LIT{timeout}: a timeout value for the connection
-///
-/// - @LIT{followRedirects}: whether or not to follow redirects
-///
-/// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
-///   if @LIT{followRedirects} is *true*.
-///
-/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
-///   error
-///
-/// - @LIT{returnBodyAsBuffer}: whether or not to return the result body in
-///   a Buffer object (default is false, body will be returned in a String)
-///
-/// - @LIT{headers}: an optional array of headers to be sent for the first
-///   (non-redirect) request.
-///
-/// Up to 5 redirects will be followed. Any user-defined headers will only be
-/// sent for the first request. If no timeout is given, a default timeout will
-/// be used.
-///
-/// If @FA{outfile} is specified, the result body will be saved in a file
-/// specified by @FA{outfile}. If @FA{outfile} already exists, an error will
-/// be thrown.
-///
-/// If @FA{outfile} is not specified, the result body will be returned in the
-/// @LIT{body} attribute of the result object.
-///
-/// `process-utils.js` depends on simple http client error messages.
-///   this needs to be adjusted if this is ever changed!
-////////////////////////////////////////////////////////////////////////////////
-namespace {
-
-auto getEndpoint(v8::Isolate* isolate,
-                 std::vector<std::string> const& endpoints, std::string& url,
-                 std::string& lastEndpoint)
+auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
+                 std::string const& lastEndpoint)
     -> std::tuple<std::string, std::string, std::string> {
   // returns endpoint, relative, error
   std::string relative;
@@ -664,7 +596,8 @@ auto getEndpoint(v8::Isolate* isolate,
     if (!url.starts_with(prefix)) {
       return false;
     }
-    endpoint = GetEndpointFromUrl(url).substr(prefix.size());
+    endpoint =
+        basics::StringUtils::getEndpointFromUrl(url).substr(prefix.size());
     relative = url.substr(prefix.size() + endpoint.size());
 
     if (relative.empty() || relative[0] != '/') {
@@ -731,7 +664,48 @@ auto getEndpoint(v8::Isolate* isolate,
   }
   return {std::move(endpoint), std::move(relative), ""};
 }
-}  // namespace
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief downloads data from a URL
+///
+/// @FUN{internal.download(@FA{url}, @FA{body}, @FA{options}, @FA{outfile})}
+///
+/// Downloads the data from the URL specified by @FA{url} and saves the
+/// response body to @FA{outfile}. The following @FA{options} are supported:
+///
+/// - @LIT{method}: the HTTP method to be used. The supported HTTP methods are
+///   @LIT{DELETE}, @LIT{GET}, @LIT{HEAD}, @LIT{POST}, @LIT{PUT}, @LIT{PATCH}
+///
+/// - @LIT{timeout}: a timeout value for the connection
+///
+/// - @LIT{followRedirects}: whether or not to follow redirects
+///
+/// - @LIT{maxRedirects}: maximum number of redirects to follow, only useful
+///   if @LIT{followRedirects} is *true*.
+///
+/// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
+///   error
+///
+/// - @LIT{returnBodyAsBuffer}: whether or not to return the result body in
+///   a Buffer object (default is false, body will be returned in a String)
+///
+/// - @LIT{headers}: an optional array of headers to be sent for the first
+///   (non-redirect) request.
+///
+/// Up to 5 redirects will be followed. Any user-defined headers will only be
+/// sent for the first request. If no timeout is given, a default timeout will
+/// be used.
+///
+/// If @FA{outfile} is specified, the result body will be saved in a file
+/// specified by @FA{outfile}. If @FA{outfile} already exists, an error will
+/// be thrown.
+///
+/// If @FA{outfile} is not specified, the result body will be returned in the
+/// @LIT{body} attribute of the result object.
+///
+/// `process-utils.js` depends on simple http client error messages.
+///   this needs to be adjusted if this is ever changed!
+////////////////////////////////////////////////////////////////////////////////
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -789,7 +763,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string lastEndpoint = GetEndpointFromUrl(url);
+  std::string lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
 
   std::string body;
   if (args.Length() > 1) {
@@ -979,7 +953,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   while (numRedirects < maxRedirects) {
     auto [endpoint, relative, error] =
-        getEndpoint(isolate, endpoints, url, lastEndpoint);
+        getEndpoint(endpoints, url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
@@ -1073,7 +1047,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           isLocalUrl = true;
         }
         if (url.starts_with("http:") || url.starts_with("https:")) {
-          lastEndpoint = GetEndpointFromUrl(url);
+          lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
         continue;
       }
@@ -4724,9 +4698,10 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
   bool wait = false;
   if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
@@ -4738,8 +4713,13 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
-  ExternalProcessStatus external =
-      TRI_CheckExternalProcess(pid, wait, timeoutms);
+  ExternalProcessStatus external;
+  auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
+  if (historicStatus.has_value()) {
+    external = *historicStatus;
+  } else {
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms);
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
@@ -4763,7 +4743,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                static_cast<int32_t>(external._exitStatus)))
         .FromMaybe(false);
   }
-  if (external._errorMessage.length() > 0) {
+  if (!external._errorMessage.empty()) {
     result
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
               TRI_V8_STD_STRING(isolate, external._errorMessage))
