@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
 #include <unordered_map>
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/State.h"
-#include "Pregel/MasterContext.h"
 #include "Pregel/Worker/Messages.h"
 #include "State.h"
 
@@ -33,28 +32,20 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct Computing : ExecutionState {
-  Computing(ConductorState& conductor,
-            std::unique_ptr<MasterContext> masterContext,
-            std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor);
-  ~Computing();
-  auto name() const -> std::string override { return "computing"; };
+struct Storing : ExecutionState {
+  Storing(ConductorState& conductor) : conductor{conductor} {}
+  ~Storing() {}
+  auto name() const -> std::string override { return "storing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override;
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
-  struct PostGlobalSuperStepResult {
-    bool finished;
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
   };
-  auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
-
   ConductorState& conductor;
-  std::unique_ptr<MasterContext> masterContext;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
-
-  std::unordered_set<actor::ActorPID> respondedWorkers;
-  message::GlobalSuperStepFinished messageAccumulation;
 };
 
 }  // namespace arangodb::pregel::conductor

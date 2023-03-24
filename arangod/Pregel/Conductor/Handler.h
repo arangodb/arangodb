@@ -92,6 +92,12 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Global super step finished on worker {}",
         this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(message));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+      sendMessages();
+    }
     return std::move(this->state);
   }
 
