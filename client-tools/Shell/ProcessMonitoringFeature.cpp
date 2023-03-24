@@ -67,12 +67,6 @@ void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
   _exitedExternalProcessStatus[pid._pid] = exitStatus;
 }
 
-std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
-  std::lock_guard lock{_monitoredExternalProcessesLock};
-  _counter.fetch_add(1);
-  return _monitoredProcesses;
-}
-
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
   std::unique_lock lock{_monitoredExternalProcessesLock};
   removeMonitorPIDNoLock(pid);
@@ -132,7 +126,7 @@ void ProcessMonitoringFeature::stop() {
 void ProcessMonitorThread::run() {  // override
   while (!isStopping()) {
     try {
-      for (auto const& pid : _processMonitorFeature.getMonitoringVector()) {
+      _processMonitorFeature.visitMonitoring([&](auto const& pid) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
@@ -141,7 +135,7 @@ void ProcessMonitorThread::run() {  // override
           _processMonitorFeature.moveMonitoringPIDToAttic(pid, status);
           triggerV8DeadlineNow(false);
         }
-      }
+      });
       std::this_thread::sleep_for(kTimeoutMs);
     } catch (std::exception const& e) {
       LOG_TOPIC("e78b9", ERR, Logger::SYSCALL)

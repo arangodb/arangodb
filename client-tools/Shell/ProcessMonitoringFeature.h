@@ -32,6 +32,7 @@
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
 #include "Shell/arangosh.h"
+#include <absl/cleanup/cleanup.h>
 
 namespace arangodb {
 class ProcessMonitoringFeature;
@@ -82,7 +83,16 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   void moveMonitoringPIDToAttic(ExternalId const& pid,
                                 ExternalProcessStatus const& exitStatus);
 
-  std::vector<ExternalId> getMonitoringVector();
+  template<typename Func>
+  void visitMonitoring(Func const& func) {
+    absl::Cleanup increment = [&] { _counter.fetch_add(1); };
+    std::unique_lock lock{_monitoredExternalProcessesLock};
+    auto pids = _monitoredProcesses;
+    lock.unlock();
+    for (auto const& pid : pids) {
+      func(pid);
+    }
+  }
 
  private:
   void removeMonitorPIDNoLock(ExternalId const& pid);
