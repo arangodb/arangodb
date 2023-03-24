@@ -31,10 +31,10 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <optional>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
@@ -189,15 +189,19 @@ class Request final : public Message {
       std::chrono::seconds(300);
 
   Request(RequestHeader messageHeader = RequestHeader())
-      : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
+      : header(std::move(messageHeader)),
+        _timeout(defaultTimeout),
+        _timeReceivedIsSet(false),
+        _timeUntilSentIsSet(false) {}
 
   /// @brief request header
   RequestHeader header;
 
-
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
-  void setFuzzReqHeader(std::string fuzzHeader) { _fuzzReqHeader = std::move(fuzzHeader); }
+  void setFuzzReqHeader(std::string fuzzHeader) {
+    _fuzzReqHeader = std::move(fuzzHeader);
+  }
   std::optional<std::string> getFuzzReqHeader() const { return _fuzzReqHeader; }
   bool getFuzzerReq() const noexcept { return _fuzzReqHeader.has_value(); }
 
@@ -232,10 +236,32 @@ class Request final : public Message {
   // set timeout
   void timeout(std::chrono::milliseconds timeout) { _timeout = timeout; }
 
+  // Sending time accounting:
+  void setTimeReceived() {
+    _timeReceived = std::chrono::steady_clock::now();
+    _timeReceivedIsSet = true;
+  }
+  void setTimeSent() {
+    if (_timeReceivedIsSet) {
+      _timeUntilSent = std::chrono::steady_clock::now() - _timeReceived;
+      _timeUntilSentIsSet = true;
+    }
+  }
+  bool timeReceivedIsSet() const noexcept { return _timeReceivedIsSet; }
+  bool timeUntilSentIsSet() const noexcept { return _timeUntilSentIsSet; }
+  std::chrono::steady_clock::time_point timeReceived() const {
+    return _timeReceived;
+  }
+  std::chrono::duration<double> timeUntilSent() const { return _timeUntilSent; }
+
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
   std::optional<std::string> _fuzzReqHeader = std::nullopt;
+  std::chrono::steady_clock::time_point _timeReceived;
+  std::chrono::duration<double> _timeUntilSent;
+  bool _timeReceivedIsSet;
+  bool _timeUntilSentIsSet;
 };
 
 // Response contains the message resulting from a request to a server.

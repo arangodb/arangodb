@@ -327,11 +327,34 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
   bool isFromPool = false;
+  auto now = std::chrono::steady_clock::now();
   auto conn = pool.leaseConnection(endpoint, isFromPool);
+  auto dur = std::chrono::steady_clock::now() - now;
+  if (dur > std::chrono::seconds(1)) {
+    LOG_TOPIC("52418", WARN, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool << " leasing took "
+        << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
+               .count()
+        << " seconds.";
+  } else {
+    LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
+        << "have leased connection to '" << endpoint
+        << "' came from pool: " << isFromPool;
+  }
   conn->sendRequest(std::move(req),
-                    [this, &pool, isFromPool, cb = std::move(cb)](
+                    [this, &pool, isFromPool, cb = std::move(cb),
+                     endpoint = std::move(endpoint)](
                         fuerte::Error err, std::unique_ptr<fuerte::Request> req,
                         std::unique_ptr<fuerte::Response> res) {
+                      if (req->timeUntilSentIsSet()) {
+                        auto timeUntilSent = req->timeUntilSent();
+                        if (timeUntilSent > std::chrono::seconds(3)) {
+                          LOG_TOPIC("f2612", WARN, Logger::COMMUNICATION)
+                              << "Time to send off request to " << endpoint
+                              << ": " << timeUntilSent.count() << " seconds.";
+                        }
+                      }
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
                       TRI_ASSERT(req != nullptr);
