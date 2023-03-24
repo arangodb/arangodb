@@ -79,6 +79,7 @@ struct DocumentFollowerState
       SnapshotId shapshotId,
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       LogIndex waitForIndex, std::uint64_t snapshotVersion,
+      std::optional<ShardID> currentShard,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
       -> futures::Future<SnapshotTransferResult>;
 
