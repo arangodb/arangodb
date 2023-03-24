@@ -567,9 +567,8 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
         auto fut = _queryRegistry->finishQuery(queryId, errorCode);
         TRI_ASSERT(fut.isReady());
         auto query = fut.get();
-        _queryRegistry->destroyQuery(queryId, errorCode);
         TRI_ASSERT(query != nullptr)
-            << "QueryRegistry::destroyQuery does not give us the query pointer";
+            << "QueryRegistry::finishQuery does not give us the query pointer";
         auto f = query->finalizeClusterQuery(errorCode);
         // Wait for query to be fully finalized, as a finish call would do.
         f.wait();
@@ -802,7 +801,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)
-          .thenValue([self = shared_from_this(), this, qid,
+          .thenValue([self = shared_from_this(), this,
                       errorCode](std::shared_ptr<ClusterQuery> query) mutable
                      -> futures::Future<futures::Unit> {
             if (query == nullptr) {
@@ -814,8 +813,6 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                             TRI_ERROR_HTTP_NOT_FOUND);
               return {};
             }
-
-            _queryRegistry->destroyQuery(qid, errorCode);
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {
