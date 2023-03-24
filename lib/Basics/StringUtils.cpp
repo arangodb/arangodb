@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/debugging.h"
 #include "Basics/fpconv.h"
 #include "Basics/voc-errors.h"
@@ -2043,6 +2044,27 @@ std::string formatSize(uint64_t value) {
     out = out.substr(0, pos + 2);
   }
   return out + ' ' + label;
+}
+
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers) {
+  std::string headersForLogging;
+  headersForLogging.reserve(headers.size() * 60);  // just a guess
+  for (auto const& p : headers) {
+    if (p.first == StaticStrings::Authorization) {
+      headersForLogging.append(StaticStrings::Authorization);
+      headersForLogging.append(": SENSITIVE_DETAILS_HIDDEN,");
+    } else {
+      headersForLogging.append(StringUtils::escapeUnicode(p.first));
+      headersForLogging.append(":");
+      headersForLogging.append(StringUtils::escapeUnicode(p.second));
+      headersForLogging.append(",");
+    }
+  }
+  if (!headersForLogging.empty()) {
+    headersForLogging.pop_back();
+  }
+  return headersForLogging;
 }
 
 }  // namespace StringUtils
