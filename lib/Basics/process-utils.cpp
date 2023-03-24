@@ -1269,7 +1269,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         if (!GetExitCodeProcess(process, &exitCode)) {
           LOG_TOPIC("798af", WARN, arangodb::Logger::FIXME)
               << "exit status could not be determined for pid " << pid._pid;
-          status._errorMessage =
+          status->_errorMessage =
               std::string("exit status could not be determined for pid ") +
               arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(pid._pid));
