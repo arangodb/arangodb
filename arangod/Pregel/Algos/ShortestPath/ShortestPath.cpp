@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Pregel/Algos/ShortestPath/ShortestPath.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -62,10 +63,8 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         return;
       }
 
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<int64_t>* edge = *edges;
-        int64_t val = edge->data() + current;
+      for (auto& edge : getEdges()) {
+        int64_t val = edge.data() + current;
         if (val < max) {
           sendMessage(edge, val);
         }
@@ -81,24 +80,20 @@ struct arangodb::pregel::algos::SPGraphFormat
   std::string _sourceDocId, _targetDocId;
 
  public:
-  SPGraphFormat(application_features::ApplicationServer& server,
-                std::string const& source, std::string const& target)
-      : InitGraphFormat<int64_t, int64_t>(server, "length", 0, 1),
+  SPGraphFormat(std::string const& source, std::string const& target)
+      : InitGraphFormat<int64_t, int64_t>("length", 0, 1),
         _sourceDocId(source),
         _targetDocId(target) {}
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
-                      arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      arangodb::velocypack::Slice document, int64_t& targetPtr,
+                      uint64_t vertexIdRange) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
 
-ShortestPathAlgorithm::ShortestPathAlgorithm(
-    application_features::ApplicationServer& server, VPackSlice userParams)
-    : Algorithm(server, "ShortestPath") {
+ShortestPathAlgorithm::ShortestPathAlgorithm(VPackSlice userParams) {
   VPackSlice val1 = userParams.get("source");
   VPackSlice val2 = userParams.get("target");
   if (val1.isNone() || val2.isNone()) {
@@ -113,12 +108,14 @@ std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
   return std::set<std::string>{_source};
 }
 
-GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {
-  return new SPGraphFormat(_server, _source, _target);
+std::shared_ptr<GraphFormat<int64_t, int64_t> const>
+ShortestPathAlgorithm::inputFormat() const {
+  return std::make_shared<SPGraphFormat>(_source, _target);
 }
 
 VertexComputation<int64_t, int64_t, int64_t>*
-ShortestPathAlgorithm::createComputation(WorkerConfig const* _config) const {
+ShortestPathAlgorithm::createComputation(
+    std::shared_ptr<WorkerConfig const> _config) const {
   VertexID target = _config->documentIdToPregel(_target);
   return new SPComputation(target);
 }
@@ -128,4 +125,44 @@ IAggregator* ShortestPathAlgorithm::aggregator(std::string const& name) const {
     return new MinAggregator<int64_t>(INT64_MAX, true);
   }
   return nullptr;
+}
+
+struct ShortestPathWorkerContext : public WorkerContext {
+  ShortestPathWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                            std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto ShortestPathAlgorithm::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ShortestPathWorkerContext(std::move(readAggregators),
+                                       std::move(writeAggregators));
+}
+[[nodiscard]] auto ShortestPathAlgorithm::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ShortestPathWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators));
+}
+
+struct ShortestPathMasterContext : public MasterContext {
+  ShortestPathMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                            std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ShortestPathAlgorithm::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ShortestPathMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ShortestPathAlgorithm::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ShortestPathMasterContext>(vertexCount, edgeCount,
+                                                     std::move(aggregators));
 }

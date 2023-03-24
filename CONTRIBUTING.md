@@ -335,10 +335,16 @@ exposing _all_ dependencies of _all_ modules to ArangoDB users.
 Finally add the module's licensing information to
 `LICENSES-OTHER-COMPONENTS.md`.
 
-When updating dependencies make sure that any mocked dependencies (like `glob`
-for `mocha`) match the versions required by the updated module and delete any
-duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`) to
-make sure the global (mocked) version is used instead.
+If you need to make adjustments/modifications to dependencies or replace
+transitive dependencies with mocks, make sure to run `npx patch-package $dependencyName`
+in the `js/node` folder and commit the resulting patch file in `js/node/patches`.
+This will ensure the changes are persisted if the dependency is overwritten by `npm`
+in the future.
+
+For example to commit a patch for the transitive dependency `is-wsl` of the dependency
+`node-netstat`, make your changes in `js/node/node_modules/node-netstat/node_modules/is-wsl`
+and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
+patch file in `js/node/patches`.
 
 ---
 
@@ -848,9 +854,9 @@ Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
 `scripts/unittest` is only a wrapper for the most part, the backend
-functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
-`process-utils.js`, `test-utils.js`). The actual testsuites are located in the
-`testsuites` subfolder.
+functionality lives in `js/client/modules/@arangodb/testutils`.
+The actual testsuites are located in the
+`js/client/modules/@arangodb/testsuites` folder.
 
 #### Passing Options
 
@@ -931,9 +937,23 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
+Specifying a `--test `-Filter containing `-cluster` will implicitely set `--cluster true` and launch a cluster test.
+
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
 This failed filter should work for all jsunity and mocha tests.
+
+#### Running several Suites in one go
+
+Several testsuites can be launched consequently in one run by specifying them as coma separated list.
+They all share the specified commandline arguments. Individual arguments can be passed as a JSON array.
+The JSON Array has to contain the same number of elements as testsuites specified. The specified individual
+parameters will overrule global and default values.
+
+Running the same testsuite twice with different and shared parameters would look like this:
+
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"vst":true,"suffix":"vst"}]'
+
 
 #### Running Foxx Tests with a Fake Foxx Repo
 

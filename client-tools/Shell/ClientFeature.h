@@ -81,7 +81,8 @@ class ClientFeature final : public HttpEndpointProvider {
   void stop() override final;
 
   std::string const& databaseName() const { return _databaseName; }
-  bool authentication() const { return _authentication; }
+  void setDatabaseName(std::string const& databaseName);
+  bool authentication() const noexcept { return _authentication; }
   // get single endpoint. used by client tools that can handle only one endpoint
   std::string const& endpoint() const { return _endpoints[0]; }
   // set single endpoint
@@ -92,13 +93,18 @@ class ClientFeature final : public HttpEndpointProvider {
   void setPassword(std::string const& value) { _password = value; }
   std::string const& jwtSecret() const { return _jwtSecret; }
   void setJwtSecret(std::string_view jwtSecret) { _jwtSecret = jwtSecret; }
-  double connectionTimeout() const { return _connectionTimeout; }
-  double requestTimeout() const { return _requestTimeout; }
-  void requestTimeout(double value) { _requestTimeout = value; }
-  uint64_t maxPacketSize() const { return _maxPacketSize; }
-  uint64_t sslProtocol() const { return _sslProtocol; }
-  bool forceJson() const { return _forceJson; }
-  void setForceJson(bool value) { _forceJson = value; }
+  double connectionTimeout() const noexcept { return _connectionTimeout; }
+  double requestTimeout() const noexcept { return _requestTimeout; }
+  void requestTimeout(double value) noexcept { _requestTimeout = value; }
+  uint64_t maxPacketSize() const noexcept { return _maxPacketSize; }
+  uint64_t sslProtocol() const noexcept { return _sslProtocol; }
+  bool forceJson() const noexcept { return _forceJson; }
+  void setForceJson(bool value) noexcept { _forceJson = value; }
+  void setRetries(size_t retries) noexcept { _retries = retries; }
+  void setWarn(bool warn) noexcept { _warn = warn; }
+  bool getWarn() const noexcept { return _warn; }
+  void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
+  bool getWarnConnect() const noexcept { return _warnConnect; }
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -111,17 +117,7 @@ class ClientFeature final : public HttpEndpointProvider {
       httpclient::SimpleHttpClientParams const&) const;
   std::vector<std::string> httpEndpoints() override;
 
-  void setDatabaseName(std::string const& databaseName);
-
-  void setRetries(size_t retries) { _retries = retries; }
-
-  void setWarn(bool warn) { _warn = warn; }
-
-  bool getWarn() { return _warn; }
-
-  void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
-
-  bool getWarnConnect() { return _warnConnect; }
+  CommunicationFeaturePhase& getCommFeaturePhase() { return _comm; }
 
   ApplicationServer& server() const noexcept;
 

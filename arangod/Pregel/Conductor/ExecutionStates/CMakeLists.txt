@@ -1,2 +1,6 @@
-target_sources(arango_pregel PRIVATE
-  CreateWorkers.cpp)
+target_sources(arango_pregel_with_actors PRIVATE
+  CreateWorkersState.cpp
+  LoadingState.cpp
+  ComputingState.cpp
+  StoringState.cpp
+  ProduceAQLResultsState.cpp)

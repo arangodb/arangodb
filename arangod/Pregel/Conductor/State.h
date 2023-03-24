@@ -23,39 +23,49 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
+#include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/ExecutionStates/InitialState.h"
-#include "Pregel/Conductor/ExecutionStates/State.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/Status/ConductorStatus.h"
 #include "Pregel/Status/ExecutionStatus.h"
-#include "Utils/DatabaseGuard.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb::pregel::conductor {
 
-struct ConductorState {
-  ConductorState(ExecutionSpecifications specifications, TRI_vocbase_t& vocbase)
-      : _specifications{std::move(specifications)}, _vocbaseGuard{vocbase} {}
+struct Initial;
 
-  ExecutionTimings _timing;
-  uint64_t _globalSuperstep = 0;
-  std::unique_ptr<ExecutionState> _executionState = std::make_unique<Initial>();
-  // TODO how to update metrics in feature (needed for 'loading' and subsequent
-  // states)
-  ConductorStatus _status;
-  std::vector<actor::ActorPID> _workers;
-  const ExecutionSpecifications _specifications;
-  const DatabaseGuard _vocbaseGuard;
+struct ConductorState {
+  ConductorState(std::unique_ptr<IAlgorithm> algorithm,
+                 ExecutionSpecifications specifications,
+                 std::unique_ptr<CollectionLookup>&& lookupInfo,
+                 actor::ActorPID spawnActor, actor::ActorPID resultActor)
+      : algorithm{std::move(algorithm)},
+        specifications{std::move(specifications)},
+        lookupInfo(std::move(lookupInfo)),
+        spawnActor{std::move(spawnActor)},
+        resultActor{std::move(resultActor)} {}
+
+  ExecutionTimings timing;
+  std::unique_ptr<ExecutionState> executionState = std::make_unique<Initial>();
+  uint64_t globalSuperstep = 0;
+  ConductorStatus status;
+  std::unordered_set<actor::ActorPID> workers;
+  std::unique_ptr<IAlgorithm> algorithm;
+  const ExecutionSpecifications specifications;
+  std::unique_ptr<CollectionLookup> lookupInfo;
+  actor::ActorPID spawnActor;
+  actor::ActorPID resultActor;
 };
 
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorState& x) {
   return f.object(x).fields(
-      f.field("timing", x._timing),
-      f.field("globalSuperstep", x._globalSuperstep),
-      f.field("executionState", x._executionState->name()),
-      f.field("status", x._status), f.field("workers", x._workers),
-      f.field("specifications", x._specifications));
+      f.field("timing", x.timing),
+      f.field("globalSuperstep", x.globalSuperstep),
+      f.field("executionState", x.executionState->name()),
+      f.field("status", x.status),
+      // f.field("workers", x._workers), TODO make set inspectionable
+      f.field("specifications", x.specifications));
 }
 
 }  // namespace arangodb::pregel::conductor

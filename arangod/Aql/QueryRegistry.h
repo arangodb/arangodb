@@ -28,6 +28,7 @@
 #include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
+#include "Futures/Promise.h"
 
 #include <unordered_map>
 
@@ -96,8 +97,11 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  std::shared_ptr<ClusterQuery> destroyQuery(std::string const& vocbase,
-                                             QueryId id, ErrorCode errorCode);
+  void destroyQuery(std::string const& vocbase, QueryId id,
+                    ErrorCode errorCode);
+
+  futures::Future<std::shared_ptr<ClusterQuery>> finishQuery(
+      std::string const& vocbase, QueryId id, ErrorCode errorCode);
 
   /// used for a legacy shutdown
   bool destroyEngine(EngineId engineId, ErrorCode errorCode);
@@ -142,6 +146,10 @@ class QueryRegistry {
 
     std::shared_ptr<ClusterQuery> _query;  // the actual query pointer
 
+    /// @brief promise to finish a query that was still active when we
+    /// received the finish request
+    futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
+
     const double _timeToLive;  // in seconds
     double _expires;           // UNIX UTC timestamp of expiration
     size_t _numEngines;        // used for legacy shutdown
@@ -149,6 +157,7 @@ class QueryRegistry {
 
     ErrorCode _errorCode;
     bool const _isTombstone;
+    bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
@@ -181,11 +190,17 @@ class QueryRegistry {
     bool _isOpen;
   };
 
+  using QueryInfoMap = std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>;
+  using VocbaseMap = std::unordered_map<std::string, QueryInfoMap>;
+
+  bool lookupQueryForFinalization(std::string const& vocbase, QueryId id,
+                                  ErrorCode errorCode,
+                                  VocbaseMap::iterator& vocbaseIt,
+                                  QueryInfoMap::iterator& queryMapIt);
+
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
-  std::unordered_map<std::string,
-                     std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>>
-      _queries;
+  VocbaseMap _queries;
 
   std::unordered_map<EngineId, EngineInfo> _engines;
 

@@ -63,7 +63,14 @@ exports.compareStringIds = compareStringIds;
 
 let instanceInfo = null;
 
+exports.flushInstanceInfo = () => {
+  instanceInfo = null;
+};
+
 function getInstanceInfo() {
+  if (global.hasOwnProperty('instanceManger')) {
+    return global.instanceManger;
+  }
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -253,10 +260,11 @@ const runShell = function(args, prefix) {
   return result.pid;
 };
 
-const buildCode = function(key, command, cn) {
+const buildCode = function(key, command, cn, duration) {
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
+require('internal').SetGlobalExecutionDeadlineTo((${duration} + 10) * 1000);
 let tries = 0;
 while (true) {
   if (++tries % 3 === 0) {
@@ -298,7 +306,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
     tests.forEach(function (test) {
       let key = test[0];
       let code = test[1];
-      let client = buildCode(key, code, cn);
+      let client = buildCode(key, code, cn, duration);
       client.done = false;
       client.failed = true; // assume the worst
       clients.push(client);
@@ -314,7 +322,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (status.status !== 'RUNNING') {
             client.done = true;
             client.failed = true;
-            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${status}`);
+            debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${JSON.stringify(status)}`);
             count = duration + 10;
           }
         }
@@ -324,6 +332,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (!client.done) {
             debug(`force terminating ${client.pid} since we're aborting the tests`);
             internal.killExternal(client.pid, abortSignal);
+            internal.statusExternal(client.pid, false);
+            client.failed = true;
           }
         });
       }
@@ -385,7 +395,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         }
       }
       try {
-        fs.remove(logfile);
+        if (!client.failed) {
+          fs.remove(logfile);
+        }
       } catch (err) { }
 
       if (!client.done) {

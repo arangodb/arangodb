@@ -108,6 +108,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -823,6 +825,17 @@ arangodb::Result TRI_vocbase_t::dropCollectionWorker(
     arangodb::LogicalCollection& collection) {
   std::string const colName(collection.name());
   std::string const& dbName = _info.getName();
+
+  // intentionally set the deleted flag of the collection already
+  // here, without holding the lock. this is thread-safe, because
+  // setDeleted() only modifies an atomic boolean value.
+  // we want to switch the flag here already so that any other
+  // actions can observe the deletion and abort prematurely.
+  // these other actions may have acquired the collection's status
+  // lock in read mode, and if we ourselves try to acquire the
+  // collection's status lock in write mode, we would just block
+  // here.
+  collection.setDeleted();
 
   arangodb::Result res;
 
@@ -2194,6 +2207,64 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
     }
     it.next();
   }
+}
+
+[[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
+    -> arangodb::DatabaseConfiguration {
+  auto& cl = server().getFeature<ClusterFeature>();
+  auto& db = server().getFeature<DatabaseFeature>();
+
+  auto config = std::invoke([&]() -> DatabaseConfiguration {
+    if (!ServerState::instance()->isCoordinator() &&
+        !ServerState::instance()->isDBServer()) {
+      return {[]() { return DataSourceId(TRI_NewTickServer()); },
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                return c->getCollectionProperties();
+              }};
+    } else {
+      auto& ci = cl.clusterInfo();
+      return {[&ci]() { return DataSourceId(ci.uniqid(1)); },
+              [this](std::string const& name)
+                  -> ResultT<UserInputCollectionProperties> {
+                CollectionNameResolver resolver{*this};
+                auto c = resolver.getCollection(name);
+                if (c == nullptr) {
+                  return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
+                                "Collection not found: " + name +
+                                    " in database " + this->name()};
+                }
+                return c->getCollectionProperties();
+              }};
+    }
+  });
+
+  config.maxNumberOfShards = cl.maxNumberOfShards();
+  config.allowExtendedNames = db.extendedNamesForCollections();
+  config.shouldValidateClusterSettings = true;
+  config.minReplicationFactor = cl.minReplicationFactor();
+  config.maxReplicationFactor = cl.maxReplicationFactor();
+  config.enforceReplicationFactor = true;
+  config.defaultNumberOfShards = 1;
+  config.defaultReplicationFactor =
+      std::max(replicationFactor(), cl.systemReplicationFactor());
+  config.defaultWriteConcern = writeConcern();
+
+  config.isOneShardDB = cl.forceOneShard() || isOneShard();
+  if (config.isOneShardDB) {
+    config.defaultDistributeShardsLike = shardingPrototypeName();
+  } else {
+    config.defaultDistributeShardsLike = "";
+  }
+
+  return config;
 }
 
 // -----------------------------------------------------------------------------

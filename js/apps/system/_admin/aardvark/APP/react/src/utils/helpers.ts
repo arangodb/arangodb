@@ -1,13 +1,9 @@
 import { ChangeEvent, Dispatch, useCallback, useEffect, useRef } from "react";
-import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "./arangoClient";
 import minimatch from "minimatch";
 import { cloneDeep, compact, has, isEqual, merge, set, uniqueId, unset } from "lodash";
 import { DispatchArgs, State } from "./constants";
 import { ErrorObject, ValidateFunction } from "ajv";
-
-declare var frontendConfig: { [key: string]: any };
-declare var arangoHelper: { [key: string]: any };
+import { fixFieldsInit } from "../views/views/reducerHelper";
 
 export const getChangeHandler = (setter: (value: string) => void) => {
   return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -25,17 +21,6 @@ export const usePrevious = (value: any) => {
   return ref.current;
 };
 
-
-export const usePermissions = () => {
-  const { data } = useSWR(
-    `/user/${arangoHelper.getCurrentJwtUsername()}/database/${frontendConfig.db}`,
-    (path) => getApiRouteForCurrentDB().get(path)
-  );
-
-  return data ? data.body.result : 'none';
-};
-
-export const isAdminUser = (permission: string) => permission === 'rw' || !frontendConfig.authenticationEnabled;
 
 export const facetedFilter = (filterExpr: string, list: { [key: string]: any }[], facets: string[]) => {
   let filteredList = list;
@@ -116,6 +101,7 @@ export const getReducer = <FormState extends object> (initialState: State<FormSt
       case 'setField':
         if (action.field && action.field.value !== undefined) {
           newState = cloneDeep(state);
+          fixFieldsInit(newState.formCache, action);
           const path = getPath(action.basePath, action.field.path);
 
           set(newState.formCache, path, action.field.value);

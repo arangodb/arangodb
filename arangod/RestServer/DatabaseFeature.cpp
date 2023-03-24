@@ -335,7 +335,8 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30807);
+      .setIntroducedIn(30807)
+      .setIntroducedIn(30902);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -1061,6 +1062,11 @@ VocbasePtr DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
   }
 
   return nullptr;
+}
+
+bool DatabaseFeature::existsDatabase(std::string_view name) const {
+  auto databases = _databases.load();
+  return databases->contains(name);
 }
 
 /// @brief lookup a database by its name, not increasing its reference count

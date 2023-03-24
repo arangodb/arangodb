@@ -454,12 +454,12 @@ function TaskSuite () {
       assertEqual(1, t.length);
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(2);
+        internal.wait(0.2);
       }
 
       fail();
@@ -490,12 +490,12 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(2);
+        internal.wait(0.2);
       }
 
       fail();
@@ -516,24 +516,24 @@ function TaskSuite () {
       var task = tasks.register({
         name: "UnitTests1",
         command: command,
-        offset: 5,
+        offset: 2,
         params: 23
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
-      assertEqual(5, task.offset);
+      assertEqual(2, task.offset);
       assertEqual("_system", task.database);
 
-      internal.wait(5);
+      internal.wait(2);
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(2);
+        internal.wait(0.1);
       }
 
       // task hasn't been executed
@@ -566,7 +566,7 @@ function TaskSuite () {
 
       tasks.unregister(task);
 
-      internal.wait(5);
+      internal.wait(2);
 
       assertEqual(0, db[cn].count());
       assertEqual(0, db[cn].byExample({ value: 23 }).toArray().length);
@@ -601,13 +601,13 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
           return; // alright
         }
 
-        internal.wait(2);
+        internal.wait(0.2);
       }
 
       fail();
@@ -641,13 +641,13 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
           return; // alright
         }
 
-        internal.wait(2);
+        internal.wait(0.2);
       }
 
       fail();

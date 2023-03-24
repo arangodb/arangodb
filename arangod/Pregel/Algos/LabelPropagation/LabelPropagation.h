@@ -36,19 +36,52 @@ namespace arangodb::pregel::algos {
 /// most frequently. Tries to avoid osscilation, usually won't converge so
 /// specify a
 /// maximum superstep number.
+
+struct LabelPropagationType {
+  using Vertex = LPValue;
+  using Edge = int8_t;
+  using Message = uint64_t;
+};
+
 struct LabelPropagation : public SimpleAlgorithm<LPValue, int8_t, uint64_t> {
  public:
-  explicit LabelPropagation(application_features::ApplicationServer& server,
-                            VPackSlice userParams)
-      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(server, "labelpropagation",
-                                                   userParams) {}
+  explicit LabelPropagation(VPackSlice userParams)
+      : SimpleAlgorithm<LPValue, int8_t, uint64_t>(userParams) {}
 
-  GraphFormat<LPValue, int8_t>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "labelpropagation";
+  };
+
+  std::shared_ptr<GraphFormat<LPValue, int8_t> const> inputFormat()
+      const override;
   MessageFormat<uint64_t>* messageFormat() const override {
     return new NumberMessageFormat<uint64_t>();
   }
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<NumberMessageFormat<uint64_t>>();
+  }
 
   VertexComputation<LPValue, int8_t, uint64_t>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos

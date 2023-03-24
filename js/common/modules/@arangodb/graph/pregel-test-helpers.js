@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/*global assertEqual, assertTrue */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -270,8 +270,6 @@ const makeSetUp = function (smart, smartAttribute, numberOfShards) {
         } else {
             db._create(vColl, {numberOfShards: numberOfShards});
             db._createEdgeCollection(eColl, {
-                numberOfShards: numberOfShards,
-                replicationFactor: 1,
                 shardKeys: ["vertex"],
                 distributeShardsLike: vColl
             });

@@ -23,8 +23,8 @@
 
 #include "SSSP.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 
 using namespace arangodb;
@@ -44,10 +44,8 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
     if (tmp < *state || (tmp == 0 && localSuperstep() == 0)) {
       *state = tmp;  // update state
 
-      RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (; edges.hasMore(); ++edges) {
-        Edge<int64_t>* edge = *edges;
-        int64_t val = edge->data() + tmp;
+      for (auto& edge : getEdges()) {
+        int64_t val = edge.data() + tmp;
         sendMessage(edge, val);
       }
     }
@@ -55,19 +53,37 @@ struct SSSPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
   }
 };
 
-uint32_t SSSPAlgorithm::messageBatchSize(WorkerConfig const& config,
-                                         MessageStats const& stats) const {
-  if (config.localSuperstep() <= 1) {
+SSSPAlgorithm::SSSPAlgorithm(VPackSlice userParams) {
+  if (!userParams.isObject() || !userParams.hasKey("source")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER, "You need to specify the source document id");
+  }
+  _sourceDocumentId = userParams.get("source").copyString();
+
+  VPackSlice slice = userParams.get("resultField");
+  if (slice.isString()) {
+    _resultField = slice.copyString();
+  } else {
+    VPackSlice slice = userParams.get("_resultField");
+    if (slice.isString()) {
+      _resultField = slice.copyString();
+    }
+  }
+}
+uint32_t SSSPAlgorithm::messageBatchSize(
+    std::shared_ptr<WorkerConfig const> config,
+    MessageStats const& stats) const {
+  if (config->localSuperstep() <= 1) {
     return 5;
   } else {
     double msgsPerSec = stats.sendCount / stats.superstepRuntimeSecs;
-    msgsPerSec /= config.parallelism();  // per thread
+    msgsPerSec /= config->parallelism();  // per thread
     return msgsPerSec > 100.0 ? (uint32_t)msgsPerSec : 100;
   }
 }
 
 VertexComputation<int64_t, int64_t, int64_t>* SSSPAlgorithm::createComputation(
-    WorkerConfig const* config) const {
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPComputation();
 }
 
@@ -75,22 +91,20 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
   std::string _sourceDocId, resultField;
 
  public:
-  SSSPGraphFormat(application_features::ApplicationServer& server,
-                  std::string const& source, std::string const& result)
-      : InitGraphFormat<int64_t, int64_t>(server, result, 0, 1),
-        _sourceDocId(source) {}
+  SSSPGraphFormat(std::string const& source, std::string const& result)
+      : InitGraphFormat<int64_t, int64_t>(result, 0, 1), _sourceDocId(source) {}
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
-                      arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) override {
+                      arangodb::velocypack::Slice document, int64_t& targetPtr,
+                      uint64_t vertexId) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };
 
-GraphFormat<int64_t, int64_t>* SSSPAlgorithm::inputFormat() const {
-  return new SSSPGraphFormat(_server, _sourceDocumentId, _resultField);
+std::shared_ptr<GraphFormat<int64_t, int64_t> const>
+SSSPAlgorithm::inputFormat() const {
+  return std::make_shared<SSSPGraphFormat>(_sourceDocumentId, _resultField);
 }
 
 struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
@@ -105,6 +119,47 @@ struct SSSPCompensation : public VertexCompensation<int64_t, int64_t, int64_t> {
 };
 
 VertexCompensation<int64_t, int64_t, int64_t>*
-SSSPAlgorithm::createCompensation(WorkerConfig const* config) const {
+SSSPAlgorithm::createCompensation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new SSSPCompensation();
+}
+
+struct SSSPWorkerContext : public WorkerContext {
+  SSSPWorkerContext(std::unique_ptr<AggregatorHandler> readAggregators,
+                    std::unique_ptr<AggregatorHandler> writeAggregators)
+      : WorkerContext(std::move(readAggregators),
+                      std::move(writeAggregators)){};
+};
+[[nodiscard]] auto SSSPAlgorithm::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new SSSPWorkerContext(std::move(readAggregators),
+                               std::move(writeAggregators));
+}
+[[nodiscard]] auto SSSPAlgorithm::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<SSSPWorkerContext>(std::move(readAggregators),
+                                             std::move(writeAggregators));
+}
+
+struct SSSPMasterContext : public MasterContext {
+  SSSPMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                    std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto SSSPAlgorithm::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new SSSPMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto SSSPAlgorithm::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<SSSPMasterContext>(vertexCount, edgeCount,
+                                             std::move(aggregators));
 }

@@ -8,13 +8,11 @@ add_compile_warnings_flags()
 
 if (MSVC)
   set(LIB_ARANGO_MSVC
-    Basics/memory-map-win32.cpp
     Basics/win-utils.cpp
     Zip/iowin32.cpp
   )
 else ()
   set(LIB_ARANGO_POSIX
-    Basics/memory-map-posix.cpp
     Endpoint/EndpointUnixDomain.cpp
     Endpoint/EndpointSrv.cpp
   )

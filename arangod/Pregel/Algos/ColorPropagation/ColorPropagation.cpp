@@ -24,12 +24,14 @@
 #include "ColorPropagation.h"
 #include <atomic>
 #include <climits>
+#include <memory>
 #include <utility>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/IncomingCache.h"
+#include "Pregel/MasterContext.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -92,17 +94,54 @@ void ColorPropagationComputation::compute(
 }
 
 VertexComputation<ColorPropagationValue, int8_t, ColorPropagationMessageValue>*
-ColorPropagation::createComputation(WorkerConfig const* config) const {
+ColorPropagation::createComputation(
+    std::shared_ptr<WorkerConfig const> config) const {
   return new ColorPropagationComputation();
 }
 
-WorkerContext* ColorPropagation::workerContext(VPackSlice userParams) const {
-  return new ColorPropagationWorkerContext(_maxGss, _numColors);
+[[nodiscard]] auto ColorPropagation::workerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> WorkerContext* {
+  return new ColorPropagationWorkerContext(std::move(readAggregators),
+                                           std::move(writeAggregators), _maxGss,
+                                           _numColors);
+}
+[[nodiscard]] auto ColorPropagation::workerContextUnique(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators,
+    velocypack::Slice userParams) const -> std::unique_ptr<WorkerContext> {
+  return std::make_unique<ColorPropagationWorkerContext>(
+      std::move(readAggregators), std::move(writeAggregators), _maxGss,
+      _numColors);
 }
 
-ColorPropagationWorkerContext::ColorPropagationWorkerContext(uint64_t maxGss,
-                                                             uint16_t numColors)
-    : numColors{numColors}, maxGss{maxGss} {}
+struct ColorPropagationMasterContext : public MasterContext {
+  ColorPropagationMasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                                std::unique_ptr<AggregatorHandler> aggregators)
+      : MasterContext(vertexCount, edgeCount, std::move(aggregators)){};
+};
+[[nodiscard]] auto ColorPropagation::masterContext(
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const -> MasterContext* {
+  return new ColorPropagationMasterContext(0, 0, std::move(aggregators));
+}
+[[nodiscard]] auto ColorPropagation::masterContextUnique(
+    uint64_t vertexCount, uint64_t edgeCount,
+    std::unique_ptr<AggregatorHandler> aggregators,
+    arangodb::velocypack::Slice userParams) const
+    -> std::unique_ptr<MasterContext> {
+  return std::make_unique<ColorPropagationMasterContext>(
+      vertexCount, edgeCount, std::move(aggregators));
+}
+
+ColorPropagationWorkerContext::ColorPropagationWorkerContext(
+    std::unique_ptr<AggregatorHandler> readAggregators,
+    std::unique_ptr<AggregatorHandler> writeAggregators, uint64_t maxGss,
+    uint16_t numColors)
+    : WorkerContext(std::move(readAggregators), std::move(writeAggregators)),
+      numColors{numColors},
+      maxGss{maxGss} {}
 
 CollectionIdType getEquivalenceClass(
     VPackSlice vertexDocument, std::string_view equivalenceClassFieldName) {
@@ -166,7 +205,7 @@ Result getInitialColors(ColorPropagationValue& senders,
 void ColorPropagationGraphFormat::copyVertexData(
     arangodb::velocypack::Options const&, std::string const& documentId,
     arangodb::velocypack::Slice document, ColorPropagationValue& senders,
-    uint64_t& vertexIdRange) {
+    uint64_t vertexId) const {
   senders.equivalenceClass =
       getEquivalenceClass(document, equivalenceClassFieldName);
 
@@ -189,11 +228,11 @@ bool ColorPropagationGraphFormat::buildVertexDocument(
   return true;
 }
 
-GraphFormat<ColorPropagationValue, int8_t>* ColorPropagation::inputFormat()
-    const {
-  return new ColorPropagationGraphFormat(
-      _server, _inputColorsFieldName, _outputColorsFieldName,
-      _equivalenceClassFieldName, _numColors);
+std::shared_ptr<GraphFormat<ColorPropagationValue, int8_t> const>
+ColorPropagation::inputFormat() const {
+  return std::make_shared<ColorPropagationGraphFormat>(
+      _inputColorsFieldName, _outputColorsFieldName, _equivalenceClassFieldName,
+      _numColors);
 }
 
 IAggregator* ColorPropagation::aggregator(std::string const& name) const {

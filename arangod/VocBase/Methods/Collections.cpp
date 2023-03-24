@@ -60,7 +60,8 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -601,9 +602,9 @@ void Collections::enumerate(
 Collections::create(         // create collection
     TRI_vocbase_t& vocbase,  // collection vocbase
     OperationOptions const& options,
-    std::vector<PlanCollection> collections,  // Collections to create
-    bool createWaitsForSyncReplication,       // replication wait flag
-    bool enforceReplicationFactor,            // replication factor flag
+    std::vector<CreateCollectionBody> collections,  // Collections to create
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
     bool isRestore) {
   std::vector<std::shared_ptr<LogicalCollection>> results;
@@ -1191,6 +1192,11 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   auto idxs = coll.getIndexes();
   for (auto const& idx : idxs) {
     if (idx->canWarmup()) {
+      TRI_IF_FAILURE("warmup::executeDirectly") {
+        // when this failure point is set, execute the warmup directly
+        idx->warmup();
+        continue;
+      }
       engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
     }
   }
