@@ -470,18 +470,19 @@ ErrorCode Conductor::_initializeWorkers() {
   for (auto const& [server, vertexShardMap] : vertexMap) {
     auto const& edgeShardMap = edgeMap[server];
 
-    auto createWorker =
-        CreateWorker{.executionNumber = _specifications.executionNumber,
-                     .algorithm = std::string{_algorithm->name()},
-                     .userParameters = _specifications.userParameters,
-                     .coordinatorId = coordinatorId,
-                     .useMemoryMaps = _specifications.useMemoryMaps,
-                     .edgeCollectionRestrictions =
-                         _specifications.edgeCollectionRestrictions,
-                     .vertexShards = vertexShardMap,
-                     .edgeShards = edgeShardMap,
-                     .collectionPlanIds = collectionPlanIdMap,
-                     .allShards = shardList};
+    auto createWorker = worker::message::CreateWorker{
+        .executionNumber = _specifications.executionNumber,
+        .algorithm = std::string{_algorithm->name()},
+        .userParameters = _specifications.userParameters,
+        .coordinatorId = coordinatorId,
+        .useMemoryMaps = _specifications.useMemoryMaps,
+        .parallelism = _specifications.parallelism,
+        .edgeCollectionRestrictions =
+            _specifications.edgeCollectionRestrictions,
+        .vertexShards = vertexShardMap,
+        .edgeShards = edgeShardMap,
+        .collectionPlanIds = collectionPlanIdMap,
+        .allShards = shardList};
 
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {

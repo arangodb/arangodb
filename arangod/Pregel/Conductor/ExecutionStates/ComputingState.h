@@ -33,18 +33,28 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-// TODO implement in GORDO-1548
 struct Computing : ExecutionState {
   Computing(ConductorState& conductor,
-            std::unique_ptr<MasterContext> masterContext);
+            std::unique_ptr<MasterContext> masterContext,
+            std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor);
   ~Computing();
   auto name() const -> std::string override { return "computing"; };
-  auto message() -> worker::message::WorkerMessages override;
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
+  struct PostGlobalSuperStepResult {
+    bool finished;
+  };
+  auto _postGlobalSuperStep() -> PostGlobalSuperStepResult;
 
   ConductorState& conductor;
   std::unique_ptr<MasterContext> masterContext;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+
+  std::unordered_set<actor::ActorPID> respondedWorkers;
+  message::GlobalSuperStepFinished messageAccumulation;
 };
 
 }  // namespace arangodb::pregel::conductor

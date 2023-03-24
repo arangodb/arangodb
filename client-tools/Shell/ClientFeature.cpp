@@ -33,6 +33,7 @@
 #include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -40,12 +41,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
+#include "Utils/ClientManager.h"
 
-#include <chrono>
-#include <iostream>
-#include <thread>
-
-#include <Logger/LogMacros.h>
+#include <fuerte/jwt.h>
 
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -387,7 +385,7 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition, SimpleHttpClientParams const& params) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
-  if (endpoint.get() == nullptr) {
+  if (endpoint == nullptr) {
     if (definition != "none") {
       LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
           << "invalid value for --server.endpoint ('" << definition << "')";
@@ -400,7 +398,19 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
                                        _connectionTimeout, _retries,
                                        _sslProtocol));
 
-  return std::make_unique<SimpleHttpClient>(connection, params);
+  // takes over ownership for the connection object
+  auto httpClient = std::make_unique<SimpleHttpClient>(connection, params);
+  // set client parameters
+  httpClient->params().setLocationRewriter(static_cast<void const*>(this),
+                                           &ClientManager::rewriteLocation);
+  httpClient->params().setUserNamePassword("/", _username, _password);
+  if (!_jwtSecret.empty()) {
+    TRI_ASSERT(!_endpoints.empty());
+    httpClient->params().setJwt(
+        fuerte::jwt::generateInternalToken(_jwtSecret, _endpoints[0]));
+  }
+
+  return httpClient;
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {

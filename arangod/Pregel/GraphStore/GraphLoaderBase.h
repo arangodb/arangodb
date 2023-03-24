@@ -18,36 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include <memory>
-#include <string>
+#include <functional>
 
-#include "Basics/Common.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
+#include <Pregel/GraphStore/Quiver.h>
 
-namespace arangodb {
-namespace httpclient {
-class GeneralClientConnection;
-class SimpleHttpResult;
-}  // namespace httpclient
+namespace arangodb::pregel {
 
-class ArangoClientHelper {
- public:
-  ArangoClientHelper();
+class WorkerConfig;
 
- public:
-  static std::string rewriteLocation(void* data, std::string const& location);
+template<typename V, typename E>
+struct Quiver;
 
- public:
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result,
-                                  ErrorCode* err);
-  bool getArangoIsCluster(ErrorCode* err);
-
- protected:
-  std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;
+template<typename V, typename E>
+struct GraphLoaderBase {
+  virtual auto load() -> std::shared_ptr<Quiver<V, E>> = 0;
+  virtual ~GraphLoaderBase() = default;
 };
-}  // namespace arangodb
+
+}  // namespace arangodb::pregel

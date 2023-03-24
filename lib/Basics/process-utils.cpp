@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -170,17 +171,8 @@ ExternalId::ExternalId()
 }
 #endif
 
-ExternalProcess::ExternalProcess()
-    : _numberArguments(0),
-      _arguments(nullptr),
-#ifdef _WIN32
-      _process(nullptr),
-#endif
-      _status(TRI_EXT_NOT_STARTED),
-      _exitStatus(0) {
-}
-
 ExternalProcess::~ExternalProcess() {
+  TRI_ASSERT(_numberArguments == 0 || _arguments != nullptr);
   for (size_t i = 0; i < _numberArguments; i++) {
     if (_arguments[i] != nullptr) {
       TRI_Free(_arguments[i]);
@@ -207,9 +199,6 @@ ExternalProcess::~ExternalProcess() {
   }
 #endif
 }
-
-ExternalProcessStatus::ExternalProcessStatus()
-    : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
@@ -1063,7 +1052,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
                                                uint32_t timeout) {
   ExternalProcessStatus status;
   status._status = TRI_EXT_NOT_FOUND;
-  status._exitStatus = 0;
 
   auto external = TRI_LookupSpawnedProcess(pid._pid);
 
@@ -1071,7 +1059,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
     status._errorMessage =
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
-    status._status = TRI_EXT_NOT_FOUND;
     LOG_TOPIC("f5f99", WARN, arangodb::Logger::FIXME)
         << "checkExternal: pid not found: " << pid._pid;
 

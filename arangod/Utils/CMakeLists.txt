@@ -1,6 +1,7 @@
 add_library(arango_utils STATIC
   ExecContext.cpp
   OperationOptions.cpp
+  SupportInfoBuilder.cpp
   UrlHelper.cpp)
 
 if (NOT USE_ENTERPRISE)
