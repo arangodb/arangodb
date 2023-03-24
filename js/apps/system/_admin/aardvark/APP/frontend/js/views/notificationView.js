@@ -1,4 +1,4 @@
-/* global frontendConfig, templateEngine, noty, arangoHelper, Noty */
+/* global frontendConfig, templateEngine, noty, Noty */
 (function () {
   'use strict';
 

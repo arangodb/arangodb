@@ -1,5 +1,5 @@
 /* global L, ace */
-/* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
+/* global frontendConfig, numeral, templateEngine, Joi, Noty */
 
 (function () {
   'use strict';

@@ -1,5 +1,3 @@
-/* global  arangoHelper */
-
 (function () {
   'use strict';
   window.ArangoDatabase = Backbone.Collection.extend({

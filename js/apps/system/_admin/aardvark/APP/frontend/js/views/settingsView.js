@@ -1,4 +1,4 @@
-/* global frontendConfig, arangoHelper, Joi */
+/* global frontendConfig, Joi */
 
 (function () {
   'use strict';

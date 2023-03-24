@@ -1,4 +1,4 @@
-/* global arangoDocumentModel, arangoHelper */
+/* global arangoDocumentModel */
 
 window.ArangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',

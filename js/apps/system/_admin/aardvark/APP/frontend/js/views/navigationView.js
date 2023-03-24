@@ -1,4 +1,4 @@
-/* global templateEngine, arangoHelper, frontendConfig, Noty */
+/* global templateEngine, frontendConfig, Noty */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({

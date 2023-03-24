@@ -1,4 +1,4 @@
-/* global arangoHelper, templateEngine, Joi, frontendConfig */
+/* global templateEngine, Joi, frontendConfig */
 (function () {
   'use strict';
 

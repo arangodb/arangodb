@@ -1,4 +1,4 @@
-/* global arangoHelper, templateEngine, JSONEditor */
+/* global templateEngine, JSONEditor */
 
 (function () {
   'use strict';

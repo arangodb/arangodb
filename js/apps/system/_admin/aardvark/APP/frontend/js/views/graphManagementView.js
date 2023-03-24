@@ -1,4 +1,4 @@
-/* global templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
+/* global templateEngine, GraphViewerUI, Joi, frontendConfig */
 
 (function () {
   'use strict';

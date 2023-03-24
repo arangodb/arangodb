@@ -1,4 +1,4 @@
-/* global arangoHelper, templateEngine, prettyBytes */
+/* global templateEngine, prettyBytes */
 
 (function () {
   'use strict';

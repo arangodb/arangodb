@@ -1,4 +1,4 @@
-/* global frontendConfig, arangoHelper, prettyBytes, templateEngine, nv, d3 */
+/* global frontendConfig, prettyBytes, templateEngine, nv, d3 */
 (function () {
   'use strict';
 

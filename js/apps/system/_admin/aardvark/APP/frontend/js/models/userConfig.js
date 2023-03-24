@@ -1,4 +1,4 @@
-/* global frontendConfig, arangoHelper */
+/* global frontendConfig */
 window.UserConfig = Backbone.Model.extend({
   defaults: {
     graphs: '',

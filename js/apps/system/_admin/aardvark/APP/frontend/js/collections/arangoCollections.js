@@ -1,4 +1,4 @@
-/* global arangoCollectionModel, arangoHelper */
+/* global arangoCollectionModel */
 (function () {
   'use strict';
 

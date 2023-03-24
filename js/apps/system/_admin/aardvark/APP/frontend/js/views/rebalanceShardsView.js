@@ -1,4 +1,4 @@
-/* global arangoHelper, templateEngine */
+/* global templateEngine */
 (function () {
   'use strict';
   window.RebalanceShardsView = Backbone.View.extend({

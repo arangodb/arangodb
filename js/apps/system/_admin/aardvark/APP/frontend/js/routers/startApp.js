@@ -1,5 +1,4 @@
-/* global arangoHelper */
-
+global 
 (function () {
   'use strict';
   // We have to start the app only in production mode, not in test mode

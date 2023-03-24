@@ -6,8 +6,6 @@
     "Backbone": readonly
     "_": readonly
     "$": readonly
+    "arangoHelper": readonly
   
   ignorePatterns: ["lib/*.js"]
-
-  rules:
-    no-unused-vars: error

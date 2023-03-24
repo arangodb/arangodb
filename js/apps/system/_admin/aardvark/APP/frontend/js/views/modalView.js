@@ -1,4 +1,4 @@
-/* global Joi, arangoHelper */
+/* global Joi */
 /* global templateEngine */
 
 (function () {

@@ -1,5 +1,5 @@
 /* global d3, ReactDOM, React */
-/* global arangoHelper, frontendConfig */
+/* global frontendConfig */
 
 (function () {
   'use strict';

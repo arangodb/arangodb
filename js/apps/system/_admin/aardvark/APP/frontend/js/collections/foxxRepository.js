@@ -1,4 +1,3 @@
-/* global arangoHelper */
 (function () {
   'use strict';
   window.FoxxRepository = Backbone.Collection.extend({

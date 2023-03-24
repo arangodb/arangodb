@@ -1,4 +1,4 @@
-/* global frontendConfig, ArangoQuery, arangoHelper */
+/* global frontendConfig, ArangoQuery */
 (function () {
   'use strict';
 

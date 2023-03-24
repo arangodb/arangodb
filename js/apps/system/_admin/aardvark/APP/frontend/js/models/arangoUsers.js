@@ -1,5 +1,3 @@
-/* jshint strict: false */
-/* global arangoHelper */
 window.Users = Backbone.Model.extend({
   defaults: {
     user: '',

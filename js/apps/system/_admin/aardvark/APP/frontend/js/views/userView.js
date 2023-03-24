@@ -1,4 +1,4 @@
-/* global CryptoJS, arangoHelper */
+/* global CryptoJS */
 
 (function () {
   'use strict';

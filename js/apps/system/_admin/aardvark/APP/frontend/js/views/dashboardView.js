@@ -1,4 +1,4 @@
-/* global arangoHelper, moment, nv, d3, prettyBytes */
+/* global moment, nv, d3, prettyBytes */
 /* global frontendConfig, Dygraph,templateEngine */
 
 (function () {

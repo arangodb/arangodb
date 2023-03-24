@@ -1,4 +1,4 @@
-/* global templateEngine, randomColor, arangoHelper, nv, d3 */
+/* global templateEngine, randomColor, nv, d3 */
 (function () {
   'use strict';
 
