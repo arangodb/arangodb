@@ -32,6 +32,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -120,8 +121,13 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
                       "expecting numeric value for frequency");
       }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
-      if (frequency < TtlProperties::minFrequency) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+      TRI_IF_FAILURE("allow-low-ttl-frequency") {
+        // for faster js tests we want to allow lower frequency values
+      }
+      else {
+        if (frequency < TtlProperties::minFrequency) {
+          return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+        }
       }
     }
     if (slice.hasKey("maxTotalRemoves")) {

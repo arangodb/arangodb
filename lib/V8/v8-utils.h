@@ -35,12 +35,12 @@ namespace arangodb {
 class Result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief downloads data from a URL
-////////////////////////////////////////////////////////////////////////////////
+/// @brief splits url into an endpoint, and a relative URL. the third return
+/// value contains an error message in case the first two returned parts are
+/// empty strings
 std::tuple<std::string, std::string, std::string> getEndpoint(
-    v8::Isolate* isolate, std::vector<std::string> const& endpoints,
-    std::string& url, std::string& lastEndpoint);
+    std::vector<std::string> const& endpoints, std::string& url,
+    std::string const& lastEndpoint);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.

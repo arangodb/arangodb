@@ -26,7 +26,7 @@
 #include <utility>
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/Iterators.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
 
@@ -295,10 +295,10 @@ struct HITSKleinbergGraphFormat : public GraphFormat<VertexType, int8_t> {
   [[nodiscard]] size_t estimatedEdgeSize() const override { return 0; }
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/,
-                      VertexType& /*targetPtr*/,
-                      uint64_t& /*vertexIdRange*/) const override {}
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document,
+                      VertexType& targetPtr, uint64_t vertexId) const override {
+  }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            VertexType const* value) const override {
