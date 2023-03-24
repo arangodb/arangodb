@@ -1,8 +1,8 @@
-name: rocksdb_live_wal_files
-introducedIn: "3.10.5"
+name: rocksdb_live_wal_files_size
+introducedIn: "3.9.11"
 help: |
-  Number of live RocksDB WAL files.
-unit: number
+  Cumulated live RocksDB WAL files.
+unit: bytes
 type: gauge
 category: RocksDB
 complexity: medium
@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the total number of live RocksDB WAL files. These are
+  This metric exhibits the cumulated size of live RocksDB WAL files on disk.
   WAL files that cannot be garbage-collected until they are moved over to the
   archive.
