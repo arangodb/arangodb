@@ -95,6 +95,9 @@ struct PregelOptions {
   std::string algorithm;
   VPackBuilder userParameters;
   GraphSource graphSource;
+  // A switch between running pregel with or without actors
+  // Can be deleted if we finished refactoring to use only actors
+  bool useActors = false;
 };
 
 struct TTL {

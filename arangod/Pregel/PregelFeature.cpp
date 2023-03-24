@@ -358,47 +358,50 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .parallelism = parallelismVar,
       .userParameters = std::move(options.userParameters)};
 
-  // TODO needs to be part of the conductor state
-  auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
-                                               *this);
-  addConductor(std::move(c), en);
-  TRI_ASSERT(conductor(en));
-  conductor(en)->start();
+  if (options.useActors) {
+    auto vocbaseLookupInfo =
+        std::make_unique<conductor::DatabaseCollectionLookup>(
+            vocbase, executionSpecifications.vertexCollections,
+            executionSpecifications.edgeCollections);
 
-  auto vocbaseLookupInfo =
-      std::make_unique<conductor::DatabaseCollectionLookup>(
-          vocbase, executionSpecifications.vertexCollections,
-          executionSpecifications.edgeCollections);
+    auto resultActorID = _actorRuntime->spawn<ResultActor>(
+        vocbase.name(), std::make_unique<ResultState>(),
+        message::ResultMessages{message::ResultStart{}});
+    auto resultActorPID = actor::ActorPID{
+        .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
+    _resultActor.emplace(en, resultActorPID);
 
-  auto resultActorID = _actorRuntime->spawn<ResultActor>(
-      vocbase.name(), std::make_unique<ResultState>(),
-      message::ResultMessages{message::ResultStart{}});
-  auto resultActorPID = actor::ActorPID{
-      .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
-  _resultActor.emplace(en, resultActorPID);
+    auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+        vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
+        message::SpawnMessages{message::SpawnStart{}});
+    auto spawnActor = actor::ActorPID{
+        .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
+    auto algorithm = AlgoRegistry::createAlgorithmNew(
+        executionSpecifications.algorithm,
+        executionSpecifications.userParameters.slice());
+    if (not algorithm.has_value()) {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    fmt::format("Unsupported Algorithm: {}",
+                                executionSpecifications.algorithm)};
+    }
+    _actorRuntime->spawn<conductor::ConductorActor>(
+        vocbase.name(),
+        std::make_unique<conductor::ConductorState>(
+            std::move(algorithm.value()), executionSpecifications,
+            std::move(vocbaseLookupInfo), std::move(spawnActor),
+            std::move(resultActorPID)),
+        conductor::message::ConductorStart{});
 
-  auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
-      vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
-      message::SpawnMessages{message::SpawnStart{}});
-  auto spawnActor = actor::ActorPID{
-      .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
-  auto algorithm = AlgoRegistry::createAlgorithmNew(
-      executionSpecifications.algorithm,
-      executionSpecifications.userParameters.slice());
-  if (not algorithm.has_value()) {
-    return Result{TRI_ERROR_BAD_PARAMETER,
-                  fmt::format("Unsupported Algorithm: {}",
-                              executionSpecifications.algorithm)};
+    return en;
+  } else {
+    // TODO needs to be part of the conductor state
+    auto c = std::make_shared<pregel::Conductor>(executionSpecifications,
+                                                 vocbase, *this);
+    addConductor(std::move(c), en);
+    TRI_ASSERT(conductor(en));
+    conductor(en)->start();
+    return en;
   }
-  _actorRuntime->spawn<conductor::ConductorActor>(
-      vocbase.name(),
-      std::make_unique<conductor::ConductorState>(
-          std::move(algorithm.value()), executionSpecifications,
-          std::move(vocbaseLookupInfo), std::move(spawnActor),
-          std::move(resultActorPID)),
-      conductor::message::ConductorStart{});
-
-  return en;
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {

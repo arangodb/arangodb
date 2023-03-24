@@ -187,7 +187,21 @@ arangodb::Result fetchRevisions(
   std::string path = arangodb::replutils::ReplicationUrl + "/" +
                      RestReplicationHandler::Revisions + "/" +
                      RestReplicationHandler::Documents;
-  auto headers = arangodb::replutils::createHeaders();
+
+  arangodb::network::Headers headers;
+  if (arangodb::ServerState::instance()->isSingleServer() &&
+      config.applier._jwt.empty()) {
+    // if we are the single-server replication and there is no JWT
+    // present, inject the username/password credentials into the
+    // requests.
+    // this is not state-of-the-art, but fixes a problem in single
+    // server replication when the leader uses authentication with
+    // username/password
+    headers.emplace(arangodb::StaticStrings::Authorization,
+                    "Basic " + arangodb::basics::StringUtils::encodeBase64(
+                                   config.applier._username + ":" +
+                                   config.applier._password));
+  }
 
   config.progress.set("fetching documents by revision for collection '" +
                       collection.name() + "' from " + path);
@@ -287,7 +301,7 @@ arangodb::Result fetchRevisions(
       auto buffer = requestBuilder.steal();
       auto f = arangodb::network::sendRequestRetry(
           pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
-          std::move(*buffer), reqOptions);
+          std::move(*buffer), reqOptions, headers);
       futures.emplace_back(std::move(f));
       shoppingLists.emplace_back(std::move(shoppingList));
       ++stats.numDocsRequests;
@@ -443,7 +457,7 @@ arangodb::Result fetchRevisions(
         auto buffer = requestBuilder.steal();
         auto f = arangodb::network::sendRequestRetry(
             pool, config.leader.endpoint, arangodb::fuerte::RestVerb::Put, path,
-            std::move(*buffer), reqOptions);
+            std::move(*buffer), reqOptions, headers);
         futures.emplace_back(std::move(f));
         shoppingLists.emplace_back(std::move(newList));
         ++stats.numDocsRequests;

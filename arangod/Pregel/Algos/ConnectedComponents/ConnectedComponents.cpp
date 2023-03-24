@@ -25,7 +25,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/WorkerContext.h"
@@ -64,9 +63,8 @@ struct MyGraphFormat final : public VertexGraphFormat<uint64_t, uint8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& /*documentId*/,
                       arangodb::velocypack::Slice /*document*/,
-                      uint64_t& targetPtr,
-                      uint64_t& vertexIdRange) const override {
-    targetPtr = vertexIdRange++;
+                      uint64_t& targetPtr, uint64_t vertexId) const override {
+    targetPtr = vertexId;
   }
 };
 

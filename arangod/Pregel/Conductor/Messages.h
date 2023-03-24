@@ -76,6 +76,26 @@ struct GlobalSuperStepFinished {
         vertexCount{vertexCount},
         edgeCount{edgeCount},
         aggregators{std::move(aggregators)} {};
+  auto add(GlobalSuperStepFinished const& other) -> void {
+    messageStats.accumulate(other.messageStats);
+    for (auto& [actor, count] : other.sendCountPerActor) {
+      sendCountPerActor[actor] += count;
+    }
+    activeCount += other.activeCount;
+    vertexCount += other.vertexCount;
+    edgeCount += other.edgeCount;
+    // TODO directly aggregate in here when aggregators have an inspector
+    VPackBuilder newAggregators;
+    {
+      VPackArrayBuilder ab(&newAggregators);
+      if (!aggregators.isEmpty()) {
+        newAggregators.add(VPackArrayIterator(aggregators.slice()));
+      }
+      newAggregators.add(other.aggregators.slice());
+    }
+    aggregators = newAggregators;
+  }
+
   MessageStats messageStats;
   std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
   uint64_t activeCount;
@@ -92,6 +112,12 @@ auto inspect(Inspector& f, GlobalSuperStepFinished& x) {
       f.field("activeCount", x.activeCount),
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
       f.field("aggregators", x.aggregators));
+}
+
+struct Stored {};
+template<typename Inspector>
+auto inspect(Inspector& f, Stored& x) {
+  return f.object(x).fields();
 }
 
 struct ResultCreated {
@@ -114,11 +140,11 @@ auto inspect(Inspector& f, StatusUpdate& x) {
 }
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
-                   ResultT<GlobalSuperStepFinished>, ResultCreated,
-                   StatusUpdate> {
+                   ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
+                   ResultCreated, StatusUpdate> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
                      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
-                     ResultCreated, StatusUpdate>::variant;
+                     ResultT<Stored>, ResultCreated, StatusUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -128,6 +154,7 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ResultT<GraphLoaded>>("GraphLoaded"),
       arangodb::inspection::type<ResultT<GlobalSuperStepFinished>>(
           "GlobalSuperStepFinished"),
+      arangodb::inspection::type<ResultT<Stored>>("Stored"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"));
 }
