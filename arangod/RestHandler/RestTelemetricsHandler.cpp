@@ -59,7 +59,7 @@ struct RequestTracker {
                           std::chrono::steady_clock::now().time_since_epoch())
                           .count();
     // round stamp down to full hours (note: we are using integer division here)
-    bucket /= bucketWidth;
+    bucket /= kbucketWidth;
 
     std::unique_lock lk(_mtx);
     if (_lastRequestBucket != bucket) {
@@ -77,7 +77,7 @@ struct RequestTracker {
 
  private:
   // width of bucket (in seconds) in which we track telemetrics requests.
-  static constexpr uint64_t bucketWidth = 7200;
+  static constexpr uint64_t kbucketWidth = 7200;
   // with these default value it means that we only let up to 3 requests
   // from the arangosh through to the telemetrics API every 2 hours.
   // any additional requests will be responded to by the API with HTTP
