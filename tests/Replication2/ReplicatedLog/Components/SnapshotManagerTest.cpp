@@ -50,7 +50,6 @@ namespace {
 struct StorageManagerMock;
 
 struct StorageTransactionMock : IStorageTransaction {
-  MOCK_METHOD(InMemoryLog, getInMemoryLog, (), (const, noexcept, override));
   MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
   MOCK_METHOD(futures::Future<Result>, removeFront, (LogIndex),
               (noexcept, override));

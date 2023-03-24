@@ -90,7 +90,8 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
   {
     auto store = guard->storage.transaction();
-    if (store->getInMemoryLog().getLastIndex() != request.prevLogEntry.index) {
+    if (store->getLogBounds().to.saturatedDecrement() !=
+        request.prevLogEntry.index) {
       auto startRemoveIndex = request.prevLogEntry.index + 1;
       LOG_CTX("9272b", DEBUG, lctx)
           << "log does not append cleanly, removing starting at "

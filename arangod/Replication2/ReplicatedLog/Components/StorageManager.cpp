@@ -44,29 +44,23 @@ struct comp::StorageManager::StorageOperation {
 struct comp::StorageManagerTransaction : IStorageTransaction {
   using GuardType = Guarded<StorageManager::GuardedData>::mutex_guard_type;
 
-  auto getInMemoryLog() const noexcept -> InMemoryLog override {
-    return guard->spearheadLog;
-  }
   auto getLogBounds() const noexcept -> LogRange override {
-    return guard->spearheadLog.getIndexRange();
+    return guard->spearheadMapping.getIndexRange();
   }
 
   template<typename F>
-  auto scheduleOperation(InMemoryLog result, TermIndexMapping mapResult,
-                         F&& fn) noexcept {
-    return manager.scheduleOperationLambda(std::move(guard), std::move(result),
-                                           std::move(mapResult),
-                                           std::forward<F>(fn));
+  auto scheduleOperation(TermIndexMapping mapResult, F&& fn) noexcept {
+    return manager.scheduleOperationLambda(
+        std::move(guard), std::move(mapResult), std::forward<F>(fn));
   }
 
   auto removeFront(LogIndex stop) noexcept -> futures::Future<Result> override {
     LOG_CTX("37d15", TRACE, manager.loggerContext)
         << "scheduling remove front, stop = " << stop;
-    auto newLog = guard->spearheadLog.removeFront(stop);
     auto mapping = guard->spearheadMapping;
     mapping.removeFront(stop);
     return scheduleOperation(
-        std::move(newLog), std::move(mapping),
+        std::move(mapping),
         [stop](StorageManager::IStorageEngineMethods& methods) noexcept {
           return methods.removeFront(stop, {}).thenValue(
               [](auto&& res) { return res.result(); });
@@ -76,11 +70,10 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
   auto removeBack(LogIndex start) noexcept -> futures::Future<Result> override {
     LOG_CTX("eb9da", TRACE, manager.loggerContext)
         << "scheduling remove back, start = " << start;
-    auto newLog = guard->spearheadLog.removeBack(start);
     auto mapping = guard->spearheadMapping;
     mapping.removeBack(start);
     return scheduleOperation(
-        std::move(newLog), std::move(mapping),
+        std::move(mapping),
         [start](StorageManager::IStorageEngineMethods& methods) noexcept {
           return methods.removeBack(start, {}).thenValue(
               [](auto&& res) { return res.result(); });
@@ -91,19 +84,18 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
       -> futures::Future<Result> override {
     LOG_CTX("eb8da", TRACE, manager.loggerContext)
         << "scheduling append, range = " << slice.getIndexRange();
-    ADB_PROD_ASSERT(guard->spearheadLog.empty() ||
+    ADB_PROD_ASSERT(guard->spearheadMapping.empty() ||
                     slice.getFirstIndex() ==
-                        guard->spearheadLog.getLastIndex() + 1)
+                        guard->spearheadMapping.getLastIndex()->index + 1)
         << "tried to append non matching slice - log range is: "
-        << guard->spearheadLog.getIndexRange() << " new piece starts at "
+        << guard->spearheadMapping.getIndexRange() << " new piece starts at "
         << slice.getFirstIndex();
     auto iter = slice.getPersistedLogIterator();
-    auto newLog = guard->spearheadLog.append(slice);
     auto mapping = guard->spearheadMapping;
     auto sliceMapping = slice.computeTermIndexMap();
     mapping.append(sliceMapping);
     return scheduleOperation(
-        std::move(newLog), std::move(mapping),
+        std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter)](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
           return methods.insert(std::move(iter), {}).thenValue([](auto&& res) {
@@ -138,20 +130,18 @@ StorageManager::GuardedData::GuardedData(
     std::unique_ptr<IStorageEngineMethods> methods_ptr)
     : methods(std::move(methods_ptr)) {
   ADB_PROD_ASSERT(methods != nullptr);
-  spearheadLog = onDiskLog = InMemoryLog::loadFromMethods(*methods);
+  // TODO is it really necessary to load the entire log?
+  auto log = InMemoryLog::loadFromMethods(*methods);
   info = methods->readMetadata().get();
-  spearheadMapping = onDiskMapping = spearheadLog.computeTermIndexMap();
+  spearheadMapping = onDiskMapping = log.computeTermIndexMap();
 }
 
 auto StorageManager::scheduleOperation(
-    GuardType&& guard, InMemoryLog result, TermIndexMapping mapResult,
+    GuardType&& guard, TermIndexMapping mapResult,
     std::unique_ptr<StorageOperation> operation)
     -> futures::Future<arangodb::Result> {
-  guard->spearheadLog = result;
   guard->spearheadMapping = mapResult;
-  auto f = guard->queue
-               .emplace_back(std::move(operation), std::move(result),
-                             std::move(mapResult))
+  auto f = guard->queue.emplace_back(std::move(operation), std::move(mapResult))
                .promise.getFuture();
   triggerQueueWorker(std::move(guard));
   return f;
@@ -159,7 +149,6 @@ auto StorageManager::scheduleOperation(
 
 template<typename F>
 auto StorageManager::scheduleOperationLambda(GuardType&& guard,
-                                             InMemoryLog result,
                                              TermIndexMapping mapResult, F&& fn)
     -> futures::Future<Result> {
   struct LambdaOperation : F, StorageOperation {
@@ -173,7 +162,7 @@ auto StorageManager::scheduleOperationLambda(GuardType&& guard,
   };
 
   return scheduleOperation(
-      std::move(guard), std::move(result), std::move(mapResult),
+      std::move(guard), std::move(mapResult),
       std::make_unique<LambdaOperation>(std::forward<F>(fn)));
 }
 
@@ -214,7 +203,6 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
             << "storage operation completed";
         // first update the on disk state
         guard = self->guardedData.getLockedGuard();
-        guard->onDiskLog = std::move(req.logResult);
         guard->onDiskMapping = std::move(req.mappingResult);
         guard.unlock();
         // then resolve the promise
@@ -229,7 +217,7 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
         // immediately abort any retries with `precondition` failed
         guard = self->guardedData.getLockedGuard();
         // restore old state
-        guard->spearheadLog = guard->onDiskLog;
+        guard->spearheadMapping = guard->onDiskMapping;
         // clear queue
         auto queue = std::move(guard->queue);
         guard->queue.clear();
@@ -360,7 +348,7 @@ auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
 auto StorageManager::getCommittedLogIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
   auto guard = guardedData.getLockedGuard();
-  auto range = guard->onDiskLog.getIndexRange();
+  auto range = guard->onDiskMapping.getIndexRange();
   if (bounds) {
     range = intersect(*bounds, range);
   }
@@ -396,9 +384,6 @@ auto StorageManager::getCommittedLogIterator(
 }
 
 StorageManager::StorageRequest::StorageRequest(
-    std::unique_ptr<StorageOperation> op, InMemoryLog logResult,
-    TermIndexMapping mappingResult)
-    : operation(std::move(op)),
-      logResult(std::move(logResult)),
-      mappingResult(std::move(mappingResult)) {}
+    std::unique_ptr<StorageOperation> op, TermIndexMapping mappingResult)
+    : operation(std::move(op)), mappingResult(std::move(mappingResult)) {}
 StorageManager::StorageRequest::~StorageRequest() = default;

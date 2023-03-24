@@ -51,7 +51,6 @@ inline namespace comp {
 
 struct IStorageTransaction {
   virtual ~IStorageTransaction() = default;
-  [[nodiscard]] virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
   [[nodiscard]] virtual auto getLogBounds() const noexcept -> LogRange = 0;
   virtual auto removeFront(LogIndex stop) noexcept
       -> futures::Future<Result> = 0;
