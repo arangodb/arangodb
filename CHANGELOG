@@ -14,8 +14,17 @@ v3.10.6 (XXXX-XX-XX)
   files (previously: 10 files), and retry flushing every 30 minutes (previous
   interval: every 60 minutes).
 
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In some
+  cases where multiple connections to a server are canceled the metric could
+  miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a
+  HotBackup, rotation of JWT secret.
 
-v3.10.5 (XXXX-XX-XX)
+* Added support to log response bodies as well as HTTP headers (incoming
+  and outgoing), when the requests log topic is set to TRACE.
+
+
+v3.10.5 (2023-03-16)
 --------------------
 
 * Stabilized resilience tests. The assumption that an AQL query can run

@@ -2817,6 +2817,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
+  LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
+      << "opening views and collections metadata in database '"
+      << vocbase->name() << "'";
+
   VPackBuilder builder;
   auto scanViews = [&](std::string_view type) {
     try {
@@ -2835,6 +2839,9 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           continue;
         }
         // we found a view that is still active
+        LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
+            << "processing view metadata in database '" << vocbase->name()
+            << "': " << it.toJson();
 
         TRI_ASSERT(!it.get("id").isNone());
 
@@ -2848,7 +2855,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in vocbase'") +
+              std::string("failed to instantiate view in database '") +
                   vocbase->name() + "' from definition: " + it.toString());
         }
 
@@ -2858,11 +2865,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: " << ex.what();
+          << "error while opening database '" << vocbase->name()
+          << "': " << ex.what();
       throw;
     } catch (...) {
       LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: unknown exception";
+          << "error while opening database '" << vocbase->name()
+          << "': unknown exception";
       throw;
     }
   };
@@ -2885,6 +2894,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
+      LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
+          << "processing collection metadata in database '" << vocbase->name()
+          << "': " << it.toJson();
+
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
@@ -2896,21 +2909,24 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
             << "error while "
-            << "loading metadata of collection '" << collection->name()
-            << "': " << r.errorMessage();
+            << "loading metadata of collection '" << vocbase->name() << "/"
+            << collection->name() << "': " << r.errorMessage();
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << collection->name() << "'";
+          << "added document collection '" << vocbase->name() << "/"
+          << collection->name() << "'";
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
+        << "error while opening database '" << vocbase->name()
+        << "': " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
+        << "error while opening database '" << vocbase->name()
+        << "': unknown exception";
     throw;
   }
 
