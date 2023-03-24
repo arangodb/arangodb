@@ -1,5 +1,8 @@
 devel
 -----
+* Marked all memory-mapping options for Pregel as obsolete;
+  The memory mapping code was removed as it did not provide any advantages
+  over spilling into system-provided swap space.
 
 * Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
   DELETE /_api/document/{collection} using _key or _id values as document 
