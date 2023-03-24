@@ -1085,15 +1085,13 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
   auto status = TRI_LookupSpawnedProcessStatus(pid._pid);
 
   if (!status.has_value()) {
-    auto msg = std::string("the pid you're looking for is not in our list: ") +
-      arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     LOG_TOPIC("f5f99", WARN, arangodb::Logger::FIXME)
-      << "checkExternal: pid not found: " << pid._pid;
+        << "checkExternal: pid not found: " << pid._pid;
     return ExternalProcessStatus{
-      TRI_EXT_NOT_FOUND,
-      -1,
-      msg
-    };
+        TRI_EXT_NOT_FOUND, -1,
+        std::string("the pid you're looking for is not in our list: ") +
+            arangodb::basics::StringUtils::itoa(
+                static_cast<int64_t>(pid._pid))};
   }
 
   if (status->_status == TRI_EXT_RUNNING ||
