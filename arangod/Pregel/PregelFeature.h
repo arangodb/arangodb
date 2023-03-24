@@ -102,6 +102,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
+  void garbageCollectActors();
 
   void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);

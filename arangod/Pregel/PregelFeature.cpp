@@ -27,6 +27,7 @@
 #include <atomic>
 #include <unordered_set>
 
+#include "Actor/ActorPID.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -458,6 +459,7 @@ void PregelFeature::scheduleGarbageCollection() {
                                         offset, [this](bool canceled) {
                                           if (!canceled) {
                                             garbageCollectConductors();
+                                            garbageCollectActors();
                                             scheduleGarbageCollection();
                                           }
                                         });
@@ -723,6 +725,27 @@ std::shared_ptr<Conductor> PregelFeature::conductor(
   return (it != _conductors.end() && ::authorized(it->second.user))
              ? it->second.conductor
              : nullptr;
+}
+
+void PregelFeature::garbageCollectActors() {
+  // garbage collect all finished actors
+  _actorRuntime->garbageCollect();
+
+  // clean up maps
+  _resultActor.doUnderLock(
+      [this](std::unordered_map<ExecutionNumber, actor::ActorPID>& actors) {
+        std::erase_if(actors, [this](auto& item) {
+          auto const& [_, actor] = item;
+          return not _actorRuntime->contains(actor.id);
+        });
+      });
+  _conductorActor.doUnderLock(
+      [this](std::unordered_map<ExecutionNumber, actor::ActorPID>& actors) {
+        std::erase_if(actors, [this](const auto& item) {
+          auto const& [_, actor] = item;
+          return not _actorRuntime->contains(actor.id);
+        });
+      });
 }
 
 void PregelFeature::garbageCollectConductors() try {
