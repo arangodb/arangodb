@@ -146,6 +146,14 @@ jobs:
           command: |
             ls -Ssha build/bin/*.a
       - run:
+          name: Compile does not change files in repository
+          command: |
+            mkdir -p /tmp/post-compile-diff/
+            git status
+            git status enterprise
+            git diff --exit-code > /tmp/post-compile-diff/community.diff
+            git diff --exit-code enterprise > /tmp/post-compile-diff/enterprise.diff
+      - run:
           name: Cleanup build directory
           command: |
             find build/ -iname *.a -delete || true
@@ -157,6 +165,8 @@ jobs:
           path: build/bin/arango*
       - store_artifacts:
           path: /tmp/sccache.log
+      - store_artifacts:
+          path: /tmp/post-compile-diff/
       - persist_to_workspace:
           root: .
           paths:
