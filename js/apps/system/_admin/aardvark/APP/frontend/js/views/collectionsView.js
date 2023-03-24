@@ -318,7 +318,7 @@
       }
     },
 
-    submitCreateCollection: function () {
+    submitCreateCollection: function (isOneShardDB) {
       var self = this;
       var callbackCoord = function (error, isCoordinator) {
         if (error) {
@@ -434,20 +434,27 @@
             wfs: wfs,
             isSystem: isSystem,
             collType: collType,
-            shards: shards,
             shardKeys: shardKeys
           };
 
-          if (smartJoinAttribute !== '') {
-            tmpObj.smartJoinAttribute = smartJoinAttribute;
-          }
+          if (!isOneShardDB) {
+            if (smartJoinAttribute !== '') {
+              tmpObj.smartJoinAttribute = smartJoinAttribute;
+            }
 
-          tmpObj.distributeShardsLike = distributeShardsLike;
-          if (distributeShardsLike === '' && window.App.isCluster) {
-            // if we are in the cluster and are not using distribute shards like
-            // then we want to make use of the replication factor
-            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-            tmpObj.writeConcern = Number(writeConcern);
+            // If we are in a oneShardDB we are not allowed to set those values
+            // They are always inferred
+            if (distributeShardsLike === '') {
+              // if we are not using distribute shards like
+              // then we want to make use of the given shard information
+              tmpObj.shards = shards;
+              tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+              tmpObj.writeConcern = Number(writeConcern);
+            } else {
+              // If we use distribute shards like on purpose do not add other
+              // sharding information. All of it will be deferred.
+              tmpObj.distributeShardsLike = distributeShardsLike;
+            }
           }
 
           if (!abort) {
@@ -600,7 +607,7 @@
           buttons.push(
             window.modalView.createSuccessButton(
               'Save',
-              this.submitCreateCollection.bind(this)
+              this.submitCreateCollection.bind(this, properties.sharding === 'single' || frontendConfig.forceOneShard)
             )
           );
           if (window.App.isCluster) {
