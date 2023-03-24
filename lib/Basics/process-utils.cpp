@@ -75,7 +75,6 @@
 #include <unistd.h>
 #endif
 
-#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
@@ -160,7 +159,7 @@ T readEntry(char const*& p, char const* e) {
 std::vector<ExternalProcess*> ExternalProcesses;
 
 /// @brief lock for protected access to vector ExternalProcesses
-static arangodb::Mutex ExternalProcessesLock;
+arangodb::Mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
     : _minorPageFaults(0),
@@ -1216,12 +1215,12 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
           LOG_TOPIC("64246", WARN, arangodb::Logger::FIXME)
               << "could not wait for subprocess with pid " << pid._pid << ": "
               << windowsErrorBuf;
-          status._errorMessage =
+          status->_errorMessage =
               std::string("could not wait for subprocess with pid ") +
               arangodb::basics::StringUtils::itoa(
                   static_cast<int64_t>(pid._pid)) +
               windowsErrorBuf;
-          status._exitStatus = GetLastError();
+          status->_exitStatus = GetLastError();
         } else if ((result == WAIT_TIMEOUT) && (timeout != 0)) {
           wantGetExitCode = false;
           pid._status = TRI_EXT_TIMEOUT;
@@ -1251,12 +1250,12 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
             LOG_TOPIC("f79de", WARN, arangodb::Logger::FIXME)
                 << "could not wait for subprocess with pid " << pid._pid << ": "
                 << windowsErrorBuf;
-            status._errorMessage =
+            status->_errorMessage =
                 std::string("could not wait for subprocess with PID '") +
                 arangodb::basics::StringUtils::itoa(
                     static_cast<int64_t>(pid._pid)) +
                 std::string("'") + windowsErrorBuf;
-            status._exitStatus = GetLastError();
+            status->_exitStatus = GetLastError();
           default:
             wantGetExitCode = true;
             LOG_TOPIC("5c1fb", WARN, arangodb::Logger::FIXME)

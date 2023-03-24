@@ -80,6 +80,7 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Basics/socket-utils.h"
@@ -4525,6 +4526,8 @@ static void JS_GetExternalSpawned(
         "not allowed to execute or modify state of external processes");
   }
 
+  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 
