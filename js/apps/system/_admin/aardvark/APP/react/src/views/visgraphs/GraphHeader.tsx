@@ -1,7 +1,7 @@
 import { DownloadIcon } from "@chakra-ui/icons";
 import { Box, HStack, Icon, IconButton } from "@chakra-ui/react";
 import React from "react";
-import { Fullscreen, Undo } from "styled-icons/material";
+import { CloudDownload, Fullscreen, Undo } from "styled-icons/material";
 import { useGraph } from "./GraphContext";
 import { GraphSettings } from "./GraphSettings";
 
@@ -21,6 +21,7 @@ export const GraphHeader = () => {
       <HStack justifyContent="end" alignItems="center">
         <DownloadButton />
         <FullscreenButton />
+        <LoadFullGraph />
         <SwitchToOld />
         <GraphSettings />
       </HStack>
@@ -94,6 +95,20 @@ const SwitchToOld = () => {
       }}
       icon={<Icon width="5" height="5" as={Undo} />}
       aria-label={"Enter fullscreen"}
+    />
+  );
+};
+
+const LoadFullGraph = () => {
+  const { setLoadFullGraph } = useGraph();
+  return (
+    <IconButton
+      size="sm"
+      onClick={() => {
+        setLoadFullGraph(true);
+      }}
+      icon={<Icon width="5" height="5" as={CloudDownload} />}
+      aria-label={"Load full graph"}
     />
   );
 };

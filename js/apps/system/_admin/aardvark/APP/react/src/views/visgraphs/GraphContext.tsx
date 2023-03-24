@@ -35,10 +35,12 @@ type DatasetsType = {
 type GraphContextType = {
   graphData: VisGraphData | undefined;
   graphName: string;
-  onApplySettings: () => void;
+  onApplySettings: (urlParameters?: any) => void;
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
+  loadFullGraph: boolean;
+  setLoadFullGraph: (load: boolean) => void;
   datasets?: DatasetsType;
   setDatasets: (datasets: DatasetsType) => void;
   selectedEntity?: SelectedEntityType;
@@ -73,6 +75,7 @@ const fetchVisData = ({
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+  let [loadFullGraph, setLoadFullGraph] = useState(false);
   let [network, setNetwork] = useState<Network>();
   const [datasets, setDatasets] = useState<DatasetsType>();
   let [selectedEntity, setSelectedEntity] = useState<SelectedEntityType>();
@@ -88,12 +91,12 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
   const graphData = data && (data.body as VisGraphData);
-  const onApplySettings = () => {
-    let { nodeStart } = urlParameters;
+  const onApplySettings = (params?: any) => {
+    let { nodeStart } = params || urlParameters;
     if (!nodeStart) {
       nodeStart = graphData?.settings.startVertex._id || nodeStart;
     }
-    setParams({ ...urlParameters, nodeStart });
+    setParams({ ...(params || urlParameters), nodeStart });
   };
   const {
     onOpen: onOpenSettings,
@@ -136,7 +139,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         setSelectedEntity,
         onAddEdge,
         datasets,
-        setDatasets
+        setDatasets,
+        setLoadFullGraph,
+        loadFullGraph
       }}
     >
       <UrlParametersContext.Provider
