@@ -326,16 +326,14 @@ auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
         : _range(range), _disk(std::move(disk)) {}
 
     auto next() -> std::optional<PersistingLogEntry> override {
-      while (true) {
-        auto entry = _disk->next();
-        if (not entry) {
-          return std::nullopt;
-        }
-        if (not _range.contains(entry->logIndex())) {
-          return std::nullopt;  // end of range
-        }
-        return entry;
+      auto entry = _disk->next();
+      if (not entry) {
+        return std::nullopt;
       }
+      if (not _range.contains(entry->logIndex())) {
+        return std::nullopt;  // end of range
+      }
+      return entry;
     }
 
     LogRange _range;
