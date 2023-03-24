@@ -85,10 +85,15 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 
   template<typename Func>
   void visitMonitoring(Func const& func) {
-    absl::Cleanup increment = [&] { _counter.fetch_add(1); };
     std::unique_lock lock{_monitoredExternalProcessesLock};
+    // if someone erase from _monitoredProcesses before visitMonitoring,
+    // it can stop waiting
+    _counter.fetch_add(1);
     auto pids = _monitoredProcesses;
     lock.unlock();
+    // if someone erase from _monitoredProcesses after _monitoredProcesses
+    // he want to wait when we stop using pids
+    absl::Cleanup increment = [&] { _counter.fetch_add(1); };
     for (auto const& pid : pids) {
       func(pid);
     }
