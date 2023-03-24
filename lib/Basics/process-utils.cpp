@@ -1223,8 +1223,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
           status->_exitStatus = GetLastError();
         } else if ((result == WAIT_TIMEOUT) && (timeout != 0)) {
           wantGetExitCode = false;
-          pid._status = TRI_EXT_TIMEOUT;
-          pid._exitStatus = -1;
+          status->_status = TRI_EXT_TIMEOUT;
+          status->._exitStatus = -1;
         }
       } else {
         DWORD result;
@@ -1242,7 +1242,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
             break;
           case WAIT_TIMEOUT:
             // success - process is up and running.
-            pid._exitStatus = 0;
+            status->_exitStatus = 0;
             break;
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
