@@ -19,7 +19,7 @@ type GraphContextType = {
   setNetwork: (network: Network) => void;
   toggleSettings: () => void;
   onCloseSettings: () => void;
-  onDeleteEdge: (edgeId: string) => void;
+  onDeleteEdge: (edgeId?: string) => void;
   onCancelDelete: () => void;
 };
 
@@ -69,7 +69,11 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [deleteEdgeModalData, setDeleteEdgeModalData] = useState<
     { edgeId: string } | undefined
   >();
-  const onDeleteEdge = (edgeId: string) => {
+  const onDeleteEdge = (edgeId?: string) => {
+    console.log("ondelete", edgeId);
+    if (!edgeId) {
+      return;
+    }
     setDeleteEdgeModalData({ edgeId });
   };
   const onCancelDelete = () => {

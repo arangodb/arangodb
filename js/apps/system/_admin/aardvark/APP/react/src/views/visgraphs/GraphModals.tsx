@@ -1,21 +1,10 @@
 import React from "react";
-import { GraphContextProvider } from "./GraphContext";
-import { GraphNetwork } from "./GraphNetwork";
-import { GraphHeader } from "./GraphHeader";
+import { DeleteEdgeModal } from "./DeleteEdgeModalWrap";
 
-export const GraphDisplay = () => {
-  return (
-    <GraphContextProvider>
-      <GraphContent />
-    </GraphContextProvider>
-  );
-};
-
-const GraphContent = () => {
+export const GraphModals = () => {
   return (
     <>
-      <GraphHeader />
-      <GraphNetwork />
+      <DeleteEdgeModal />
     </>
   );
 };

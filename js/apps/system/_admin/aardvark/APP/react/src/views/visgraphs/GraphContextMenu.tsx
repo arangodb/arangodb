@@ -63,16 +63,18 @@ export const GraphContextMenu = ({
     }
     if (selectedItem && selectedItem.type === "edge") {
       return (
-        <MenuOptionGroup
-          title={(selectedItem && `Edge: ${selectedItem.edgeId}`) || ""}
-        >
-          <MenuList ref={ref}>
-            <MenuItem onClick={() => onDeleteEdge(edgeId)}>
+        <MenuList ref={ref}>
+          <MenuOptionGroup
+            title={(selectedItem && `Edge: ${selectedItem.edgeId}`) || ""}
+          >
+            <MenuItem
+              onClick={() => onDeleteEdge(selectedItem.edgeId as string)}
+            >
               Delete Edge
             </MenuItem>
             <MenuItem>Edit Edge</MenuItem>
-          </MenuList>
-        </MenuOptionGroup>
+          </MenuOptionGroup>
+        </MenuList>
       );
     }
     if (!selectedItem) {
