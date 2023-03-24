@@ -269,10 +269,6 @@ auto StorageManager::transaction() -> std::unique_ptr<IStorageTransaction> {
   return std::make_unique<StorageManagerTransaction>(std::move(guard), *this);
 }
 
-InMemoryLog StorageManager::getCommittedLog() const {
-  return guardedData.getLockedGuard()->onDiskLog;
-}
-
 struct comp::StateInfoTransaction : IStateInfoTransaction {
   using GuardType = Guarded<StorageManager::GuardedData>::mutex_guard_type;
 
@@ -324,7 +320,41 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
 
 auto StorageManager::getPeristedLogIterator(LogIndex first) const
     -> std::unique_ptr<PersistedLogIterator> {
-  return guardedData.getLockedGuard()->methods->read(first);
+  return getPeristedLogIterator(
+      LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
+}
+
+auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<PersistedLogIterator> {
+  auto range =
+      bounds ? *bounds
+             : LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}};
+
+  auto diskIter = guardedData.getLockedGuard()->methods->read(range.from);
+
+  struct Iterator : PersistedLogIterator {
+    explicit Iterator(LogRange range,
+                      std::unique_ptr<PersistedLogIterator> disk)
+        : _range(range), _disk(std::move(disk)) {}
+
+    auto next() -> std::optional<PersistingLogEntry> override {
+      while (true) {
+        auto entry = _disk->next();
+        if (not entry) {
+          return std::nullopt;
+        }
+        if (not _range.contains(entry->logIndex())) {
+          return std::nullopt;  // end of range
+        }
+        return entry;
+      }
+    }
+
+    LogRange _range;
+    std::unique_ptr<PersistedLogIterator> _disk;
+  };
+
+  return std::make_unique<Iterator>(range, std::move(diskIter));
 }
 
 auto StorageManager::getCommittedLogIterator(

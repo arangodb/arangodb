@@ -67,7 +67,6 @@ struct StateInfoTransactionMock : IStateInfoTransaction {
 struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
-  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
   MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
               getCommittedLogIterator, (std::optional<LogRange>),
               (const, override));
