@@ -6,12 +6,27 @@ v3.9.11 (XXXX-XX-XX)
     archived)
   - `rocksdb_archived_wal_files_size`: cumulated size of archive WAL files
 
-* Set default threshold value for automatic column flushing to 20 live WAL
-  files (previously: 10 files), and retry flushing every 30 minutes (previous
+* Set default threshold value for automatic column flushing to 20 live WAL files
+  (previously: 10 files), and retry flushing every 30 minutes (previous
   interval: every 60 minutes).
 
+* Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
+  DELETE /_api/document/{collection} using _key or _id values as document
+  selectors, the INBOUND and OUTBOUND entries of the SmartEdges could diverge.
+  Using a document like {_key: "xxxx"} as a selector was always correct. Now
+  _key and _id variants are supported as intended.
 
-v3.9.10 (XXXX-XX-XX)
+* Added support to log response bodies as well as HTTP headers (incoming and
+  outgoing), when the requests log topic is set to TRACE.
+
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In some
+  cases where multiple connections to a server are canceled the metric could
+  miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a
+  HotBackup, rotation of JWT secret.
+
+
+v3.9.10 (2023-03-16)
 --------------------
 
 * Stabilized resilience tests. The assumption that an AQL query can run
