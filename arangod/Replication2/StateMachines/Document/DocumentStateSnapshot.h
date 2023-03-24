@@ -24,11 +24,13 @@
 #pragma once
 
 #include "Basics/Identifier.h"
+#include "Basics/Guarded.h"
 #include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/Transformers.h"
 #include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
 
@@ -180,6 +182,8 @@ struct SnapshotConfig {
   }
 };
 
+std::ostream& operator<<(std::ostream& os, SnapshotConfig const& config);
+
 /*
  * This namespace encloses the different states a snapshot can be in.
  */
@@ -312,12 +316,21 @@ class Snapshot {
   auto giveUpOnShard(ShardID const& shardId) -> Result;
   auto isInactive() const -> bool;
 
+  LoggerContext logContext;
+
  private:
-  std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
-  std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
-  SnapshotConfig _config;
-  SnapshotState _state;
-  SnapshotStatistics _statistics;
-  mutable std::mutex _mutex;
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<IDatabaseSnapshot> databaseSnapshot,
+                         ShardMap const& shardsConfig);
+
+    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot;
+    SnapshotState state;
+    SnapshotStatistics statistics;
+    std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> shards;
+  };
+
+ private:
+  const SnapshotConfig _config;
+  Guarded<GuardedData> _guardedData;
 };
 }  // namespace arangodb::replication2::replicated_state::document

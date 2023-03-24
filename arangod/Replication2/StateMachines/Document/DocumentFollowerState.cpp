@@ -72,6 +72,9 @@ auto DocumentFollowerState::getAssociatedShardList() const
 auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                                             LogIndex waitForIndex) noexcept
     -> futures::Future<Result> {
+  LOG_CTX("1f67d", DEBUG, loggerContext)
+      << "Trying to acquire snapshot from destination " << destination;
+
   auto snapshotVersion = _guardedData.doUnderLock(
       [self = shared_from_this()](auto& data) -> ResultT<std::uint64_t> {
         if (data.didResign()) {
@@ -87,6 +90,9 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
       });
 
   if (snapshotVersion.fail()) {
+    LOG_CTX("5ef29", DEBUG, loggerContext)
+        << "Aborting snapshot transfer before contacting destination "
+        << destination << ": " << snapshotVersion.result();
     return snapshotVersion.result();
   }
 
@@ -104,6 +110,11 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
               << "Snapshot transfer failed: " << snapshotTransferResult.res;
           return snapshotTransferResult.res;
         }
+
+        LOG_CTX("b4fcb", DEBUG, self->loggerContext)
+            << "Snapshot " << *snapshotTransferResult.snapshotId
+            << " data transfer completed, sending finish request";
+
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
             .thenValue([snapshotTransferResult](auto&& res) {
               if (res.fail()) {
@@ -112,13 +123,26 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
                     << *snapshotTransferResult.snapshotId << ": " << res;
               }
 
+              LOG_TOPIC("42ffd", DEBUG, Logger::REPLICATION2)
+                  << "Successfully sent finish command for snapshot  "
+                  << *snapshotTransferResult.snapshotId;
+
               TRI_ASSERT(snapshotTransferResult.res.fail() ||
                          (snapshotTransferResult.res.ok() &&
                           !snapshotTransferResult.reportFailure));
 
               if (snapshotTransferResult.reportFailure) {
+                LOG_TOPIC("2883c", DEBUG, Logger::REPLICATION2)
+                    << "During the processing of snapshot "
+                    << *snapshotTransferResult.snapshotId
+                    << ", the following problem occurred on the follower: "
+                    << snapshotTransferResult.res;
                 return snapshotTransferResult.res;
               }
+
+              LOG_TOPIC("d73cb", DEBUG, Logger::REPLICATION2)
+                  << "Snapshot " << *snapshotTransferResult.snapshotId
+                  << " successfully finished";
               return Result{};
             });
       });
