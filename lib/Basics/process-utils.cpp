@@ -219,7 +219,7 @@ std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(
         ExternalProcesses.begin(), ExternalProcesses.end(),
-        [pid](const ExternalProcess* m) -> bool { return m->_pid == pid; });
+        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
     if (found != ExternalProcesses.end()) {
       ExternalProcessStatus ret;
       ret._status = (*found)->_status;
