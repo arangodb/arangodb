@@ -131,14 +131,15 @@ FollowerManager::~FollowerManager() {
 
 auto FollowerManager::getStatus() const -> LogStatus {
   auto commitIndex = commit->getCommitIndex();
-  auto log = storage->getCommittedLog();
+  auto mapping = storage->getTermIndexMapping();
   auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   return LogStatus{FollowerStatus{
       .local =
           LogStatistics{
-              .spearHead = log.getLastTermIndexPair(),
+              .spearHead = mapping.getLastIndex().value_or(TermIndexPair{}),
               .commitIndex = commitIndex,
-              .firstIndex = log.getFirstIndex(),
+              .firstIndex =
+                  mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
           },
       .leader = termInfo->leader,
@@ -201,7 +202,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   // the wrong order could see the snapshot status available from before it was
   // toggled to missing, and then the commit index that was just increased.
   auto const commitIndex = commit->getCommitIndex();
-  auto const log = storage->getCommittedLog();
+  auto const mapping = storage->getTermIndexMapping();
   auto const [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   bool const snapshotAvailable =
       snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
@@ -216,9 +217,10 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
       .term = termInfo->term,
       .local =
           LogStatistics{
-              .spearHead = log.getLastTermIndexPair(),
+              .spearHead = mapping.getLastIndex().value_or(TermIndexPair{}),
               .commitIndex = commitIndex,
-              .firstIndex = log.getFirstIndex(),
+              .firstIndex =
+                  mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
           },
       .leadershipEstablished = commitIndex.value > 0,
@@ -273,12 +275,7 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
 
 auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
-  auto log = guarded.getLockedGuard()->storage->getCommittedLog();
-  if (bounds.has_value()) {
-    return log.getInternalIteratorRange(*bounds);
-  } else {
-    return log.getPersistedLogIterator();
-  }
+  return guarded.getLockedGuard()->storage->getPeristedLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
