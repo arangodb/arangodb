@@ -151,8 +151,9 @@ jobs:
             mkdir -p /tmp/post-compile-diff/
             git status
             git status enterprise
-            git diff --exit-code > /tmp/post-compile-diff/community.diff
-            git diff --exit-code enterprise > /tmp/post-compile-diff/enterprise.diff
+            git diff > /tmp/post-compile-diff/community.diff
+            git diff enterprise > /tmp/post-compile-diff/enterprise.diff
+            git diff --exit-code > /dev/null || git diff --exit-code enterprise > /dev/null
       - run:
           name: Cleanup build directory
           command: |
