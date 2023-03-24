@@ -503,3 +503,67 @@ exports.getDBServerEndpoints = function () {
 exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
 };
+
+const callAgency = function (operation, body) {
+  // Memoize the agents
+  const getAgents = (function () {
+    let agents;
+    return function () {
+      if (!agents) {
+        agents = exports.getAgentEndpoints();
+      }
+      return agents;
+    };
+  }());
+  const agents = getAgents();
+  assertTrue(agents.length > 0, 'No agents present');
+  const res = request.post({
+    url: `${agents[0]}/_api/agency/${operation}`,
+    body: JSON.stringify(body),
+    timeout: 300,
+  });
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
+  assertTrue(res.hasOwnProperty('json'));
+  return arangosh.checkRequestResult(res.json);
+};
+
+// client-side API compatible to global.ArangoAgency
+exports.agency = {
+  get: function (key) {
+    const res = callAgency('read', [[
+      `/arango/${key}`,
+    ]]);
+    return res[0];
+  },
+
+  set: function (path, value) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'set',
+        'new': value,
+      },
+    }]]);
+  },
+
+  remove: function (path) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'delete'
+      },
+    }]]);
+  },
+
+  call: callAgency,
+
+  increaseVersion: function (path) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'increment',
+      },
+    }]]);
+  },
+
+  // TODO implement the rest...
+};

@@ -349,7 +349,7 @@ arangodb::Result Databases::create(ArangodServer& server,
       // coordinator already.
       // we should not make the validation fail on the DB server only,
       // because that can lead to all sorts of problems later on if _new_
-      // DB servers are added and that validate _existing_ database
+      // DB servers are added that validate _existing_ databases
       // differently.
       createInfo.strictValidation(false);
     }
