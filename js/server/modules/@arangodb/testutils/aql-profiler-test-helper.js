@@ -1,5 +1,4 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/* global global */
 
 "use strict";
 
