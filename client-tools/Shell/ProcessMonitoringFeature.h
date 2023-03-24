@@ -27,36 +27,40 @@
 #include <memory>
 #include <optional>
 #include <vector>
+#include <mutex>
 
 #include "Basics/Thread.h"
 #include "Basics/process-utils.h"
 #include "Shell/arangosh.h"
+#include <absl/cleanup/cleanup.h>
 
 namespace arangodb {
 class ProcessMonitoringFeature;
 
-class ProcessMonitorThread : public arangodb::Thread {
+class ProcessMonitorThread final : public arangodb::Thread {
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server,
                        ProcessMonitoringFeature& processMonitorFeature)
       : Thread(server, "ProcessMonitor"),
         _processMonitorFeature(processMonitorFeature) {}
-  ~ProcessMonitorThread() { shutdown(); }
+  ~ProcessMonitorThread() final { shutdown(); }
 
- protected:
+ private:
+  void run() final;
+
   ProcessMonitoringFeature& _processMonitorFeature;
-  void run() override;
 };
 
 class ProcessMonitoringFeature final : public ArangoshFeature {
  public:
   explicit ProcessMonitoringFeature(Server& server);
-  ~ProcessMonitoringFeature();
+  ~ProcessMonitoringFeature() final;
   static constexpr std::string_view name() noexcept { return "ProcessMonitor"; }
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void beginShutdown() override final;
-  void stop() override final;
+  void validateOptions(
+      std::shared_ptr<options::ProgramOptions> /*options*/) final;
+  void start() final;
+  void beginShutdown() final;
+  void stop() final;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get info about maybe exited processes
@@ -79,7 +83,16 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   void moveMonitoringPIDToAttic(ExternalId const& pid,
                                 ExternalProcessStatus const& exitStatus);
 
-  std::vector<ExternalId> getMonitoringVector();
+  template<typename Func>
+  void visitMonitoring(Func const& func) {
+    absl::Cleanup increment = [&] { _counter.fetch_add(1); };
+    std::unique_lock lock{_monitoredExternalProcessesLock};
+    auto pids = _monitoredProcesses;
+    lock.unlock();
+    for (auto const& pid : pids) {
+      func(pid);
+    }
+  }
 
  private:
   void removeMonitorPIDNoLock(ExternalId const& pid);
@@ -88,7 +101,8 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   /// @brief enlist external process to become monitored
   ////////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _monitoredExternalProcessesLock;
+  std::atomic_uint64_t _counter{0};
+  std::mutex _monitoredExternalProcessesLock;
   std::map<TRI_pid_t, ExternalProcessStatus> _exitedExternalProcessStatus;
 
   ////////////////////////////////////////////////////////////////////////////////

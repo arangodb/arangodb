@@ -40,9 +40,11 @@
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
-using namespace arangodb;
 
 namespace arangodb {
+
+// Some random time
+static constexpr auto kTimeoutMs = std::chrono::milliseconds(100);
 
 void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
   MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
@@ -50,38 +52,28 @@ void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
 }
 
 void ProcessMonitoringFeature::removeMonitorPIDNoLock(ExternalId const& pid) {
-  for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
-       ++it) {
-    if (it->_pid == pid._pid) {
-      _monitoredProcesses.erase(it);
-      break;
-    }
+  auto it = std::find_if(_monitoredProcesses.begin(), _monitoredProcesses.end(),
+                         [&](auto const& e) { return e._pid == pid._pid; });
+  if (it != _monitoredProcesses.end()) {
+    std::swap(*it, _monitoredProcesses.back());
+    _monitoredProcesses.pop_back();
   }
 }
 
 void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
     ExternalId const& pid, ExternalProcessStatus const& exitStatus) {
-  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+  std::lock_guard lock{_monitoredExternalProcessesLock};
   removeMonitorPIDNoLock(pid);
   _exitedExternalProcessStatus[pid._pid] = exitStatus;
 }
 
-std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
-  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
-  _counter += 1;
-  return _monitoredProcesses;
-}
-
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
-  uint64_t localCount;
-  {
-    MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
-    localCount = _counter;
-    removeMonitorPIDNoLock(pid);
-  }
-  // make sure its really not monitored anymore once we exit:
-  while (_counter == localCount) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  std::unique_lock lock{_monitoredExternalProcessesLock};
+  removeMonitorPIDNoLock(pid);
+  auto const counter = _counter.load();
+  lock.unlock();
+  while (counter + 1 > _counter.load()) {
+    std::this_thread::sleep_for(kTimeoutMs);
   }
 }
 
@@ -104,7 +96,7 @@ ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
 ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
 
 void ProcessMonitoringFeature::validateOptions(
-    std::shared_ptr<options::ProgramOptions>) {
+    std::shared_ptr<options::ProgramOptions> /*options*/) {
   _enabled =
       server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses();
 }
@@ -134,7 +126,7 @@ void ProcessMonitoringFeature::stop() {
 void ProcessMonitorThread::run() {  // override
   while (!isStopping()) {
     try {
-      for (auto const& pid : _processMonitorFeature.getMonitoringVector()) {
+      _processMonitorFeature.visitMonitoring([&](auto const& pid) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
@@ -143,11 +135,11 @@ void ProcessMonitorThread::run() {  // override
           _processMonitorFeature.moveMonitoringPIDToAttic(pid, status);
           triggerV8DeadlineNow(false);
         }
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    } catch (std::exception const& ex) {
+      });
+      std::this_thread::sleep_for(kTimeoutMs);
+    } catch (std::exception const& e) {
       LOG_TOPIC("e78b9", ERR, Logger::SYSCALL)
-          << "process monitoring thread caught exception: " << ex.what();
+          << "process monitoring thread caught exception: " << e.what();
     } catch (...) {
       LOG_TOPIC("7269b", ERR, Logger::SYSCALL)
           << "process monitoring thread caught unknown exception";
