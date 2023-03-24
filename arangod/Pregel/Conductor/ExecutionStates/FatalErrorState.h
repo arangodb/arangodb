@@ -38,9 +38,11 @@ struct FatalError : ExecutionState {
   }
   ~FatalError() {}
   auto name() const -> std::string override { return "fatal error"; };
-  auto message() -> worker::message::WorkerMessages override {
-    return worker::message::WorkerMessages{};
-  };
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override {
     return std::nullopt;

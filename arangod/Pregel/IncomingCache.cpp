@@ -49,7 +49,7 @@ InCache<M>::InCache(MessageFormat<M> const* format)
     : _containedMessageCount(0), _format(format) {}
 
 template<typename M>
-void InCache<M>::parseMessages(PregelMessage const& message) {
+void InCache<M>::parseMessages(worker::message::PregelMessage const& message) {
   // every packet contains one shard
   VPackValueLength i = 0;
   std::string_view key;
@@ -254,7 +254,11 @@ void CombiningInCache<M>::mergeCache(std::shared_ptr<WorkerConfig const> config,
   CombiningInCache<M>* other = (CombiningInCache<M>*)otherCache;
   this->_containedMessageCount += other->_containedMessageCount;
 
-  // ranomize access to buckets, don't wait for the lock
+  if (this->_containedMessageCount == 0) {
+    return;
+  }
+
+  // randomize access to buckets, don't wait for the lock
   std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_device rd;

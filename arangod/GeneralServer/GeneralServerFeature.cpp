@@ -96,6 +96,7 @@
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -156,6 +157,11 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
 #endif
       _allowEarlyConnections(false),
       _allowMethodOverride(false),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _enableTelemetrics(false),
+#else
+      _enableTelemetrics(true),
+#endif
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
@@ -202,6 +208,14 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("no-server", "server.rest-server");
 
+  options
+      ->addOption("--server.enable-telemetrics-api",
+                  "Whether to enable the telemetrics API.",
+                  new options::BooleanParameter(&_enableTelemetrics),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31100);
+
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
       new UInt64Parameter(&_numIoThreads),
@@ -209,7 +223,8 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--server.support-info-api",
-                  "The policy for exposing the support info API.",
+                  "The policy for exposing the support info and also the "
+                  "telemetrics API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
@@ -797,6 +812,9 @@ void GeneralServerFeature::defineRemainingHandlers(
   if (_supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+
+    f.addHandler("/_admin/telemetrics",
+                 RestHandlerCreator<RestTelemetricsHandler>::createNoData);
   }
 
   f.addHandler("/_admin/system-report",

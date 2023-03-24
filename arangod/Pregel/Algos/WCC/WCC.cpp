@@ -27,7 +27,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
 
@@ -147,11 +146,10 @@ struct WCCGraphFormat final : public GraphFormat<WCCValue, uint64_t> {
   size_t estimatedEdgeSize() const override { return sizeof(uint64_t); }
 
   void copyVertexData(arangodb::velocypack::Options const&,
-                      std::string const& /*documentId*/,
-                      arangodb::velocypack::Slice /*document*/,
-                      WCCValue& targetPtr,
-                      uint64_t& vertexIdRange) const override {
-    targetPtr.component = vertexIdRange++;
+                      std::string const& documentId,
+                      arangodb::velocypack::Slice document, WCCValue& targetPtr,
+                      uint64_t vertexId) const override {
+    targetPtr.component = vertexId;
   }
 
   void copyEdgeData(arangodb::velocypack::Options const&,

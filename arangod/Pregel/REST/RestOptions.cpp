@@ -33,14 +33,16 @@ auto RestOptions::options() -> PregelOptions {
         .algorithm = x.options.algorithm,
         .userParameters = x.options.userParameters,
         .graphSource = {{GraphName{.graph = x.graph}},
-                        {x.options.edgeCollectionRestrictions}}};
+                        {x.options.edgeCollectionRestrictions}},
+        .useActors = x.options.useActors};
   }
   auto x = std::get<pregel::RestCollectionSettings>(*this);
   return PregelOptions{
       .algorithm = x.options.algorithm,
       .userParameters = x.options.userParameters,
-      .graphSource = {
-          {GraphCollectionNames{.vertexCollections = x.vertexCollections,
-                                .edgeCollections = x.edgeCollections}},
-          {x.options.edgeCollectionRestrictions}}};
+      .graphSource = {{GraphCollectionNames{
+                          .vertexCollections = x.vertexCollections,
+                          .edgeCollections = x.edgeCollections}},
+                      {x.options.edgeCollectionRestrictions}},
+      .useActors = x.options.useActors};
 }
