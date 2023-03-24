@@ -66,10 +66,9 @@ void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
   _ExitedExternalProcessStatus[pid._pid] = exitStatus;
 }
 
-std::vector<ExternalId>& ProcessMonitoringFeature::getMonitoringVector() {
+std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
   MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
-  _monitoredProcessesThreadCopy = _monitoredProcesses;
-  return _monitoredProcessesThreadCopy;
+  return _monitoredProcesses;
 }
 
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
@@ -95,7 +94,6 @@ ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
     : ArangoshFeature{server, *this} {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
-  _monitoredProcessesThreadCopy.reserve(10);
 }
 
 ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
