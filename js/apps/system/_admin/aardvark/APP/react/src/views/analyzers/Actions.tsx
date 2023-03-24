@@ -1,17 +1,13 @@
 import React, { MouseEvent, useState } from 'react';
-import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
+import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../components/modal";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { mutate } from "swr";
-import { noop, pick } from 'lodash';
+import { pick } from 'lodash';
 import { FormState } from "./constants";
 import { State } from '../../utils/constants';
-import {isAdminUser as userIsAdmin} from "../../utils/helpers";
-import { Cell, Grid } from "../../components/pure-css/grid";
-import BaseForm from "./forms/BaseForm";
-import FeatureForm from "./forms/FeatureForm";
-import { getForm } from "./helpers";
-import Textarea from "../../components/pure-css/form/Textarea";
 import { IconButton } from "../../components/arango/buttons";
+import { ViewAnalyzerModal } from './ViewAnalyzerModal';
+import { userIsAdmin } from '../../utils/usePermissions';
 
 declare var frontendConfig: { [key: string]: any };
 declare var arangoHelper: { [key: string]: any };
@@ -21,7 +17,7 @@ type ButtonProps = {
   modalCid: string;
 }
 
-const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
+const DeleteButton = ({ analyzer }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [forceDelete, setForceDelete] = useState(false);
 
@@ -46,8 +42,10 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
 
   return <>
     <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
-    <Modal show={show} setShow={setShow} cid={modalCid}>
-      <ModalHeader title={`Delete Analyzer ${analyzer.name}?`}/>
+    <Modal isOpen={show} onClose={() => setShow(false)}>
+      <ModalHeader>
+        Delete Analyzer {analyzer.name}?
+      </ModalHeader>
       <ModalBody>
         <p>
           This Analyzer might be in use. Deleting it will impact the Views using it. Clicking on
@@ -57,6 +55,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
           Select the <b>Force Delete</b> option below if you want to delete the Analyzer even if it is being
           used.
         </p>
+        <br />
         <label htmlFor={'force-delete'} className="pure-checkbox">
           <input id={'force-delete'} type={'checkbox'} checked={forceDelete} onChange={toggleForce}
                  style={{ width: 'auto' }}/> Force Delete
@@ -70,7 +69,7 @@ const DeleteButton = ({ analyzer, modalCid }: ButtonProps) => {
   </>;
 };
 
-const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
+const ViewButton = ({ analyzer }: ButtonProps) => {
   const [show, setShow] = useState(false);
   const [showJsonForm, setShowJsonForm] = useState(false);
 
@@ -100,59 +99,24 @@ const ViewButton = ({ analyzer, modalCid }: ButtonProps) => {
     jsonRows = jsonFormState.split('\n').length;
   }
 
-  return <>
-    <IconButton icon={'eye'} onClick={handleClick} style={{ background: 'transparent' }}/>
-    <Modal show={show} setShow={setShow} cid={modalCid}>
-      <ModalHeader title={formState.name}>
-        <button className={'button-info'} onClick={toggleJsonForm} style={{ float: 'right' }}>
-          {showJsonForm ? 'Switch to form view' : 'Switch to code view'}
-        </button>
-      </ModalHeader>
-      <ModalBody maximize={true} show={show}>
-        <Grid>
-          {
-            showJsonForm
-              ? <Cell size={'1'}>
-                <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}
-                          style={{ cursor: 'text' }}/>
-              </Cell>
-              : <>
-                <Cell size={'11-24'}>
-                  <fieldset>
-                    <legend style={{ fontSize: '12pt' }}>Basic</legend>
-                    <BaseForm formState={formState} dispatch={noop} disabled={true}/>
-                  </fieldset>
-                </Cell>
-                <Cell size={'1-12'}/>
-                <Cell size={'11-24'}>
-                  <fieldset>
-                    <legend style={{ fontSize: '12pt' }}>Features</legend>
-                    <FeatureForm formState={formState} dispatch={noop} disabled={true}/>
-                  </fieldset>
-                </Cell>
-
-                {
-                  formState.type === 'identity' ? null
-                    : <Cell size={'1'}>
-                      <fieldset>
-                        <legend style={{ fontSize: '12pt' }}>Configuration</legend>
-                        {getForm({
-                          formState,
-                          dispatch: noop,
-                          disabled: true
-                        })}
-                      </fieldset>
-                    </Cell>
-                }
-              </>
-          }
-        </Grid>
-      </ModalBody>
-      <ModalFooter>
-        <button className="button-close" onClick={() => setShow(false)}>Close</button>
-      </ModalFooter>
-    </Modal>
-  </>;
+  return (
+    <>
+      <IconButton
+        icon={"eye"}
+        onClick={handleClick}
+        style={{ background: "transparent" }}
+      />
+      <ViewAnalyzerModal
+        isOpen={show}
+        onClose={() => setShow(false)}
+        formState={formState}
+        toggleJsonForm={toggleJsonForm}
+        showJsonForm={showJsonForm}
+        jsonFormState={jsonFormState}
+        jsonRows={jsonRows}
+      />
+    </>
+  );
 };
 
 interface ActionProps {
@@ -183,3 +147,4 @@ const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
 };
 
 export default Actions;
+
