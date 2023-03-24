@@ -50,7 +50,8 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
   // into ClusteringProperties. Doing it here was the quicker to implement way,
   // so we went with it first DistributeShardsLike has the strongest binding. We
   // have to handle this first
-  if (!config.defaultDistributeShardsLike.empty() && !distributeShardsLike.has_value()) {
+  if (!config.defaultDistributeShardsLike.empty() &&
+      !distributeShardsLike.has_value()) {
     distributeShardsLike = config.defaultDistributeShardsLike;
   }
 
