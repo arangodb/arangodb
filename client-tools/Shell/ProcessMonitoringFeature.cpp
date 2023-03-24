@@ -49,16 +49,32 @@ void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
   _monitoredProcesses.push_back(pid);
 }
 
+void ProcessMonitoringFeature::removeMonitorPIDNoLock(ExternalId const& pid) {
+  for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
+       ++it) {
+    if (it->_pid == pid._pid) {
+      _monitoredProcesses.erase(it);
+      break;
+    }
+  }
+}
+
+void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
+    ExternalId const& pid, ExternalProcessStatus const& exitStatus) {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  removeMonitorPIDNoLock(pid);
+  _ExitedExternalProcessStatus[pid._pid] = exitStatus;
+}
+
+std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  return _monitoredProcesses;
+}
+
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
   {
     MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
-    for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
-         ++it) {
-      if (it->_pid == pid._pid) {
-        _monitoredProcesses.erase(it);
-        break;
-      }
-    }
+    removeMonitorPIDNoLock(pid);
   }
   // make sure its really not monitored anymore once we exit:
   std::this_thread::sleep_for(std::chrono::milliseconds(110));
@@ -111,29 +127,15 @@ void ProcessMonitoringFeature::stop() {
 }
 
 void ProcessMonitorThread::run() {  // override
-  std::vector<ExternalId> mp;
-  mp.reserve(10);
   while (!isStopping()) {
     try {
-      {
-        MUTEX_LOCKER(mutexLocker,
-                     _processMonitorFeature._MonitoredExternalProcessesLock);
-        mp = _processMonitorFeature._monitoredProcesses;
-      }
-      for (auto const& pid : mp) {
+      for (auto const& pid : _processMonitorFeature.getMonitoringVector()) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
             (status._status == TRI_EXT_NOT_FOUND)) {
           // Its dead and gone - good
-          _processMonitorFeature.removeMonitorPID(pid);
-          {
-            MUTEX_LOCKER(
-                mutexLocker,
-                _processMonitorFeature._MonitoredExternalProcessesLock);
-            _processMonitorFeature._ExitedExternalProcessStatus[pid._pid] =
-                status;
-          }
+          { _processMonitorFeature.moveMonitoringPIDToAttic(pid, status); }
           triggerV8DeadlineNow(false);
         }
       }
