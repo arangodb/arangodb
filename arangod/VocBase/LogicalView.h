@@ -160,12 +160,6 @@ class LogicalView : public LogicalDataSource {
   LogicalView(std::pair<ViewType, std::string_view> typeInfo,
               TRI_vocbase_t& vocbase, velocypack::Slice definition);
 
-  // TODO seems to be ugly
-  friend struct ::TRI_vocbase_t;
-  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
-  // asynchronously
-  mutable basics::ReadWriteLock _lock;
-
   std::pair<ViewType, std::string_view> _typeInfo;
 };
 
