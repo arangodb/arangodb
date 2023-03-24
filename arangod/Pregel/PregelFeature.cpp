@@ -373,7 +373,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     });
 
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
-        vocbase.name(), std::make_unique<ResultState>(),
+        vocbase.name(), std::make_unique<ResultState>(ttl),
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
@@ -1174,7 +1174,7 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
     if (_actorRuntime->contains(resultActor.value().id)) {
       _actorRuntime->dispatch<pregel::message::ResultMessages>(
           resultActor.value(), resultActor.value(),
-          pregel::message::ResultCleanup{});
+          pregel::message::CleanupResults{});
     }
 
     auto conductorActor = _conductorActor.doUnderLock(

@@ -65,6 +65,12 @@ struct PregelScheduler {
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestLane::INTERNAL_LOW, fn);
   }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    auto workItem = scheduler->queueDelayed(
+        "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
+  }
 };
 
 class Conductor;
