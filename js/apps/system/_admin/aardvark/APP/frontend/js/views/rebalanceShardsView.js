@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _ */
+/* global arangoHelper, Backbone, templateEngine, $, _ */
 (function () {
   'use strict';
   window.RebalanceShardsView = Backbone.View.extend({

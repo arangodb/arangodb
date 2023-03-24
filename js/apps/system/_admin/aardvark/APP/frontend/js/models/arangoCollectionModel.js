@@ -1,4 +1,4 @@
-/* global window, Backbone, $, arangoHelper, frontendConfig */
+/* global  Backbone, $, arangoHelper, frontendConfig */
 (function () {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({

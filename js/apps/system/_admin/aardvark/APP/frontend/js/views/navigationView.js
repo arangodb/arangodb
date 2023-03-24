@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, templateEngine, $, window, document, sessionStorage, Storage, arangoHelper, frontendConfig, Noty, _ */
+/* global Backbone, templateEngine, $, arangoHelper, frontendConfig, Noty, _ */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({

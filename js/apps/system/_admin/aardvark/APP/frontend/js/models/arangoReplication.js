@@ -1,4 +1,4 @@
-/* global Backbone, window */
+/* global Backbone */
 
 window.Replication = Backbone.Model.extend({
   defaults: {

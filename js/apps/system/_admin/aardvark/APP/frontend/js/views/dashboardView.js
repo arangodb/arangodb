@@ -1,7 +1,5 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
-/* global document, frontendConfig, Dygraph, _,templateEngine */
+/* global Backbone, $, arangoHelper, moment, nv, d3, prettyBytes */
+/* global frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
   'use strict';

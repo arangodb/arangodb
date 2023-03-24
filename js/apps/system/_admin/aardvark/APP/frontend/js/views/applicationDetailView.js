@@ -1,5 +1,4 @@
-/* jshint browser: true */
-/* global Backbone, $, window, ace, arangoHelper, CryptoJS, templateEngine, Joi, _ */
+/* global Backbone, $, ace, arangoHelper, CryptoJS, templateEngine, Joi, _ */
 (function () {
   'use strict';
 

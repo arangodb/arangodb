@@ -1,5 +1,4 @@
-/* jshint strict: false */
-/* global _, Backbone, frontendConfig, window, arangoHelper, sessionStorage, $ */
+/* global _, Backbone, frontendConfig, arangoHelper, $ */
 window.UserConfig = Backbone.Model.extend({
   defaults: {
     graphs: '',

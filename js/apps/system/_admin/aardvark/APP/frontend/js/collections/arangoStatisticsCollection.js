@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, window */
+/* global Backbone */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
   url: '/_admin/statistics'

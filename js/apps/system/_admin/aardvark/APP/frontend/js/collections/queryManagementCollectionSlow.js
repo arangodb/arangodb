@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global window, Backbone, arangoHelper, frontendConfig, $ */
+/* global  Backbone, arangoHelper, frontendConfig, $ */
 (function () {
   'use strict';
   window.QueryManagementSlow = Backbone.Collection.extend({

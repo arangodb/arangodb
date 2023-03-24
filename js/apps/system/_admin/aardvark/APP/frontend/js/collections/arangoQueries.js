@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, _, FileReader, sessionStorage, frontendConfig, window, ArangoQuery, $, arangoHelper */
+/* global Backbone, _, frontendConfig, ArangoQuery, $, arangoHelper */
 (function () {
   'use strict';
 

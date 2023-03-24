@@ -1,5 +1,4 @@
-/* jshint unused: false */
-/* global $, window, _, arangoHelper */
+/* global $, _, arangoHelper */
 (function () {
   'use strict';
 

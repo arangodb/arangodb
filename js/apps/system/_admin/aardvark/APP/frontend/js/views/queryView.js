@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, L, sessionStorage, ace, Storage, localStorage, window, _ */
+/* global Backbone, $, L, ace, _ */
 /* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {

@@ -1,4 +1,4 @@
-/* global window, arangoHelper */
+/* global arangoHelper */
 (function () {
   'use strict';
 

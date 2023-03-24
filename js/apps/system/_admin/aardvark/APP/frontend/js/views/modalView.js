@@ -1,5 +1,4 @@
-/* jshint browser: true */
-/* global Backbone, $, window, Joi, _, arangoHelper */
+/* global Backbone, $, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {

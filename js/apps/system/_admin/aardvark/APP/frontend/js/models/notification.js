@@ -1,4 +1,4 @@
-/* global window, Backbone */
+/* global  Backbone */
 (function () {
   'use strict';
 

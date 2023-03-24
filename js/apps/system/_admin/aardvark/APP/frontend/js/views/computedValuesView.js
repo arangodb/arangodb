@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global arangoHelper, Backbone, window, $, _, templateEngine, document, JSONEditor */
+/* global arangoHelper, Backbone, $, _, templateEngine, JSONEditor */
 
 (function () {
   'use strict';

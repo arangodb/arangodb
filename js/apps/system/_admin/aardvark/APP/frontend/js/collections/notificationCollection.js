@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global window, Backbone */
+/* global  Backbone */
 (function () {
   'use strict';
   window.NotificationCollection = Backbone.Collection.extend({

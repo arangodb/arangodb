@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global CryptoJS, _, arangoHelper, Backbone, window, $ */
+/* global CryptoJS, _, arangoHelper, Backbone, $ */
 
 (function () {
   'use strict';

@@ -1,4 +1,3 @@
-/* jshint browser: true */
 /* eslint-env browser */
 /* global Backbone, $, _, arangoHelper */
 (function () {
