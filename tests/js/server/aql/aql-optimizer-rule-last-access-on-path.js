@@ -32,7 +32,7 @@
 const jsunity = require("jsunity");
 const gm = require("@arangodb/general-graph");
 const {db} = require("@arangodb");
-const ruleName = "not-decided-yet";
+const ruleName = "optimize-traversal-last-element-access";
 
 function TraversalOptimizeLastPathAccessTestSuite() {
     const makePath = (length, keyOffset = 0) => {
