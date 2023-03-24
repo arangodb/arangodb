@@ -36,8 +36,6 @@ namespace arangodb {
 class ProcessMonitoringFeature;
 
 class ProcessMonitorThread : public arangodb::Thread {
-  friend ProcessMonitoringFeature;
-
  public:
   ProcessMonitorThread(application_features::ApplicationServer& server,
                        ProcessMonitoringFeature& processMonitorFeature)
@@ -51,8 +49,6 @@ class ProcessMonitorThread : public arangodb::Thread {
 };
 
 class ProcessMonitoringFeature final : public ArangoshFeature {
-  friend ProcessMonitorThread;
-
  public:
   explicit ProcessMonitoringFeature(Server& server);
   ~ProcessMonitoringFeature();
