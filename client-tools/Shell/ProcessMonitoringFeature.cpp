@@ -68,16 +68,21 @@ void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
 
 std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
   MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+  _counter += 1;
   return _monitoredProcesses;
 }
 
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
+  uint64_t localCount;
   {
     MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+    localCount = _counter;
     removeMonitorPIDNoLock(pid);
   }
   // make sure its really not monitored anymore once we exit:
-  std::this_thread::sleep_for(std::chrono::milliseconds(110));
+  while (_counter == localCount) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 }
 
 std::optional<ExternalProcessStatus>
