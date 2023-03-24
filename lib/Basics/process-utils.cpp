@@ -236,7 +236,7 @@ HANDLE TRI_getProcessHandle(pid) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(
         ExternalProcesses.begin(), ExternalProcesses.end(),
-        [pid](const ExternalProcess* m) -> bool { return m->_pid == pid; });
+        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
     if (found != ExternalProcesses.end()) {
       return (*found)->_process;
     }
