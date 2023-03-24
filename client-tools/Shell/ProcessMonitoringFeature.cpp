@@ -135,7 +135,7 @@ void ProcessMonitorThread::run() {  // override
             (status._status == TRI_EXT_ABORTED) ||
             (status._status == TRI_EXT_NOT_FOUND)) {
           // Its dead and gone - good
-          { _processMonitorFeature.moveMonitoringPIDToAttic(pid, status); }
+          _processMonitorFeature.moveMonitoringPIDToAttic(pid, status);
           triggerV8DeadlineNow(false);
         }
       }
