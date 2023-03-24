@@ -59,6 +59,19 @@ void ProcessMonitoringFeature::removeMonitorPIDNoLock(ExternalId const& pid) {
   }
 }
 
+void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
+    ExternalId const& pid, ExternalProcessStatus const& exitStatus) {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  removeMonitorPIDNoLock(pid);
+  _ExitedExternalProcessStatus[pid._pid] = exitStatus;
+}
+
+std::vector<ExternalId>& ProcessMonitoringFeature::getMonitoringVector() {
+  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  _monitoredProcessesThreadCopy = _monitoredProcesses;
+  return _monitoredProcessesThreadCopy;
+}
+
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
   {
     MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
@@ -82,6 +95,7 @@ ProcessMonitoringFeature::ProcessMonitoringFeature(Server& server)
     : ArangoshFeature{server, *this} {
   startsAfter<V8SecurityFeature>();
   _monitoredProcesses.reserve(10);
+  _monitoredProcessesThreadCopy.reserve(10);
 }
 
 ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
@@ -115,29 +129,15 @@ void ProcessMonitoringFeature::stop() {
 }
 
 void ProcessMonitorThread::run() {  // override
-  std::vector<ExternalId> mp;
-  mp.reserve(10);
   while (!isStopping()) {
     try {
-      {
-        MUTEX_LOCKER(mutexLocker,
-                     _processMonitorFeature._MonitoredExternalProcessesLock);
-        mp = _processMonitorFeature._monitoredProcesses;
-      }
-      for (auto const& pid : mp) {
+      for (auto const& pid : _processMonitorFeature.getMonitoringVector()) {
         auto status = TRI_CheckExternalProcess(pid, false, 0);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
             (status._status == TRI_EXT_NOT_FOUND)) {
           // Its dead and gone - good
-          {
-            MUTEX_LOCKER(
-                mutexLocker,
-                _processMonitorFeature._MonitoredExternalProcessesLock);
-            _processMonitorFeature.removeMonitorPIDNoLock(pid);
-            _processMonitorFeature._ExitedExternalProcessStatus[pid._pid] =
-                status;
-          }
+          { _processMonitorFeature.moveMonitoringPIDToAttic(pid, status); }
           triggerV8DeadlineNow(false);
         }
       }

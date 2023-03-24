@@ -80,7 +80,12 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 
   void removeMonitorPID(ExternalId const& pid);
 
- protected:
+  void moveMonitoringPIDToAttic(ExternalId const& pid,
+                                ExternalProcessStatus const& exitStatus);
+
+  std::vector<ExternalId>& getMonitoringVector();
+
+ private:
   void removeMonitorPIDNoLock(ExternalId const& pid);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -95,6 +100,7 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   ////////////////////////////////////////////////////////////////////////////////
 
   std::vector<ExternalId> _monitoredProcesses;
+  std::vector<ExternalId> _monitoredProcessesThreadCopy;
   std::unique_ptr<ProcessMonitorThread> _monitorThread;
 
   bool _enabled;
