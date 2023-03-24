@@ -1,27 +1,46 @@
 import React, { useEffect, useRef } from "react";
 import { Network } from "vis-network";
+import { DataSet } from "vis-data";
 import { useGraph } from "./GraphContext";
 import { GraphContextMenu } from "./GraphContextMenu";
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
-  const { graphData, setNetwork } = useGraph();
+  const { graphData, network, setNetwork } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout } = settings || {};
   useEffect(() => {
-    const network =
+    if (!nodes || !edges || network) {
+      return;
+    }
+    console.log("setup network!");
+    const nodesDataSet = new DataSet(nodes);
+    const edgesDataSet = new DataSet(edges);
+    const newNetwork =
       visJsRef.current &&
       new Network(
         visJsRef.current,
         {
-          nodes: nodes,
-          edges: edges
+          nodes: nodesDataSet,
+          edges: edgesDataSet
         },
         layout
       );
-    network && setNetwork(network);
+    newNetwork && setNetwork(newNetwork);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edges, nodes, layout]);
+  }, [edges, nodes, network]);
+  useEffect(() => {
+    if (!nodes || !edges) {
+      return;
+    }
+    const nodesDataSet = new DataSet(nodes);
+    const edgesDataSet = new DataSet(edges);
+    network && network.setData({ nodes: nodesDataSet, edges: edgesDataSet });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nodes, edges]);
+  if (!graphData) {
+    return null;
+  }
   return (
     <div>
       <GraphContextMenu visJsRef={visJsRef} />

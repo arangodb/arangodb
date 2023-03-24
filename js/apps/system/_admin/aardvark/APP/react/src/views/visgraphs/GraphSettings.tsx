@@ -14,14 +14,17 @@ import {
   useMenuPositioner,
   useMultiStyleConfig
 } from "@chakra-ui/react";
-import React, { ReactNode } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { AccordionEdgesContent } from "./AccordionEdgesContent";
 import { AccordionGraphContent } from "./AccordionGraphContent";
 import { AccordionNodesContent } from "./AccordionNodesContent";
 import { useGraph } from "./GraphContext";
 
 export const GraphSettings = () => {
-  const { onOpenSettings } = useGraph();
+  console.log("settings re rnder");
+  useEffect(() => {
+    console.log("settings re mount");
+  }, []);
   return (
     <Menu closeOnSelect={false} closeOnBlur={false}>
       <MenuButton
@@ -30,7 +33,6 @@ export const GraphSettings = () => {
         leftIcon={<SettingsIcon />}
         aria-label={"Settings"}
         colorScheme="green"
-        onClick={onOpenSettings}
       >
         Settings
       </MenuButton>
@@ -53,7 +55,7 @@ const SettingsMenuContent = () => {
         ...styles.list
       }}
       maxHeight="600px"
-      overflow="auto"
+      overflow="overlay"
       width="400px"
       position="relative"
       paddingY="0"
@@ -104,8 +106,9 @@ const GraphAccordionItem = ({
   );
 };
 const ApplyButton = () => {
+  const { onApplySettings } = useGraph();
   return (
-    <Button colorScheme="green" onClick={() => {}}>
+    <Button colorScheme="green" onClick={onApplySettings}>
       Apply
     </Button>
   );
