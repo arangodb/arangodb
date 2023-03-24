@@ -1,6 +1,5 @@
-import { Button, Checkbox, HStack } from "@chakra-ui/react";
-import { pick } from "lodash";
-import React, { useEffect, useState } from "react";
+import { Button, Checkbox, HStack, Stack } from "@chakra-ui/react";
+import React, { useState } from "react";
 import {
   Modal,
   ModalBody,
@@ -8,46 +7,11 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import {
-  getApiRouteForCurrentDB,
   getCurrentDB
 } from "../../../utils/arangoClient";
 import { SelectedActionType, useGraph } from "../GraphContext";
 import { AttributesInfo } from "./AttributesInfo";
-
-const fetchNodeData = ({
-  nodeId,
-  setNodeData
-}: {
-  nodeId: string;
-  setNodeData: (data: { [key: string]: string }) => void;
-}) => {
-  const slashPos = nodeId.indexOf("/");
-  const nodeDataObject = {
-    keys: [nodeId.substring(slashPos + 1)],
-    collection: nodeId.substring(0, slashPos)
-  };
-  getApiRouteForCurrentDB()
-    .put("/simple/lookup-by-keys", nodeDataObject)
-    .then(data => {
-      const basicData = pick(data.body.documents[0], ["_id", "_key", "_rev"]);
-      setNodeData(basicData);
-    })
-    .catch(err => {
-      window.window.arangoHelper.arangoError(
-        "Graph",
-        "Could not look up this node."
-      );
-      console.log(err);
-    });
-};
-
-const useNodeData = ({ nodeId }: { nodeId?: string }) => {
-  const [nodeData, setNodeData] = useState<{ [key: string]: string }>();
-  useEffect(() => {
-    nodeId && fetchNodeData({ nodeId, setNodeData });
-  }, [nodeId]);
-  return nodeData;
-};
+import { useNodeData } from "./useNodeData";
 
 const useDeleteNodeAction = ({
   selectedAction,
@@ -59,7 +23,7 @@ const useDeleteNodeAction = ({
   graphName: string;
 }) => {
   const { nodeId } = selectedAction?.entity || {};
-  const nodeData = useNodeData({ nodeId });
+  const { nodeData } = useNodeData({ nodeId });
   const deleteNode = async (nodeId: string) => {
     const slashPos = nodeId.indexOf("/");
     const collection = nodeId.substring(0, slashPos);
@@ -100,7 +64,7 @@ const useDeleteNodeAction = ({
 };
 
 export const DeleteNodeModal = () => {
-  const { graphName, selectedAction, onCancelAction } = useGraph();
+  const { graphName, selectedAction, onClearAction } = useGraph();
   const [deleteEdges, setDeleteEdges] = useState(true);
   const { nodeId, nodeData, deleteNode } = useDeleteNodeAction({
     selectedAction,
@@ -113,20 +77,24 @@ export const DeleteNodeModal = () => {
   }
 
   return (
-    <Modal isOpen onClose={onCancelAction}>
+    <Modal isOpen onClose={onClearAction}>
       <ModalHeader>Delete Node: {nodeId}?</ModalHeader>
       <ModalBody>
-        <AttributesInfo attributes={nodeData} />
-        <Checkbox
-          isChecked={deleteEdges}
-          onChange={() => {
-            setDeleteEdges(deleteEdges => !deleteEdges);
-          }}
-        />
+        <Stack spacing="4">
+          <AttributesInfo attributes={nodeData} />
+          <Checkbox
+            isChecked={deleteEdges}
+            onChange={() => {
+              setDeleteEdges(deleteEdges => !deleteEdges);
+            }}
+          >
+            Delete connected edges too
+          </Checkbox>
+        </Stack>
       </ModalBody>
       <ModalFooter>
         <HStack>
-          <Button onClick={onCancelAction}>Cancel</Button>
+          <Button onClick={onClearAction}>Cancel</Button>
           <Button
             colorScheme="red"
             onClick={() => {

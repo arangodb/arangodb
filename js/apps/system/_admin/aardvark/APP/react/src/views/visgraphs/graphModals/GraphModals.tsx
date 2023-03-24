@@ -2,6 +2,7 @@ import React from "react";
 import { useGraph } from "../GraphContext";
 import { DeleteEdgeModal } from "./DeleteEdgeModal";
 import { DeleteNodeModal } from "./DeleteNodeModal";
+import { EditNodeModal } from "./EditNodeModal";
 
 export const GraphModals = () => {
   const { selectedAction } = useGraph();
@@ -19,7 +20,7 @@ export const GraphModals = () => {
       return <DeleteNodeModal />;
     }
     if (selectedAction?.action === "edit") {
-      return <DeleteNodeModal />;
+      return <EditNodeModal />;
     }
   }
 

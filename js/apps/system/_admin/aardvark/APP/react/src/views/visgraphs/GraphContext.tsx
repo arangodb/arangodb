@@ -33,7 +33,7 @@ type GraphContextType = {
   setNetwork: (network: Network) => void;
   toggleSettings: () => void;
   onCloseSettings: () => void;
-  onCancelAction: () => void;
+  onClearAction: () => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -84,7 +84,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [selectedAction, setSelectedAction] = useState<
     SelectedActionType | undefined
   >();
-  const onCancelAction = () => {
+  const onClearAction = () => {
     setSelectedAction(undefined);
   };
   return (
@@ -99,7 +99,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         onCloseSettings,
         selectedAction,
         setSelectedAction,
-        onCancelAction,
+        onClearAction,
         isSettingsOpen,
         isGraphLoading,
         selectedEntity,

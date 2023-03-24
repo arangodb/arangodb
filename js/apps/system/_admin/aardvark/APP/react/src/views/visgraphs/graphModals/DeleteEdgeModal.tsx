@@ -64,7 +64,7 @@ const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
   return { edgeId, edgeData, deleteEdge };
 };
 export const DeleteEdgeModal = () => {
-  const { selectedAction, onCancelAction } = useGraph();
+  const { selectedAction, onClearAction } = useGraph();
   const { edgeId, edgeData, deleteEdge } = useDeleteEdgeAction(selectedAction);
 
   if (!edgeId) {
@@ -72,14 +72,14 @@ export const DeleteEdgeModal = () => {
   }
 
   return (
-    <Modal isOpen onClose={onCancelAction}>
+    <Modal isOpen onClose={onClearAction}>
       <ModalHeader>Delete Edge: {edgeId}?</ModalHeader>
       <ModalBody>
         <AttributesInfo attributes={edgeData} />
       </ModalBody>
       <ModalFooter>
         <HStack>
-          <Button onClick={onCancelAction}>Cancel</Button>
+          <Button onClick={onClearAction}>Cancel</Button>
           <Button
             colorScheme="red"
             onClick={() => {
