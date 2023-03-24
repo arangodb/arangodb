@@ -82,7 +82,7 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
     return std::visit(
         overload{
             [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
-              LOG_CTX("f9226", DEBUG, logContext) << "Fetching next batch";
+              LOG_CTX("f9226", DEBUG, logContext) << "Reading next batch";
               ongoing.builder.clear();
               if (data.shards.empty()) {
                 auto batch = SnapshotBatch{.snapshotId = getId(),
