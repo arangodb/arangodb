@@ -91,8 +91,8 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
     _counter.fetch_add(1);
     auto pids = _monitoredProcesses;
     lock.unlock();
-    // if someone erase from _monitoredProcesses after _monitoredProcesses
-    // he want to wait when we stop using pids
+    // if someone erase from _monitoredProcesses after _monitoredProcesses was
+    // copied to pids, it want to wait when we stop using pids
     absl::Cleanup increment = [&] { _counter.fetch_add(1); };
     for (auto const& pid : pids) {
       func(pid);
