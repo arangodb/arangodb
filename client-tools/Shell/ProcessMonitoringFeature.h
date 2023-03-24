@@ -111,7 +111,6 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
 
   std::vector<ExternalId> _monitoredProcesses;
   std::unique_ptr<ProcessMonitorThread> _monitorThread;
-  std::atomic<uint64_t> _counter{0};
 
   bool _enabled;
 };
