@@ -97,6 +97,12 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("aggregators", x.aggregators));
 }
 
+struct Store {};
+template<typename Inspector>
+auto inspect(Inspector& f, Store& x) {
+  return f.object(x).fields();
+}
+
 struct ProduceResults {
   bool withID;
 };
@@ -121,9 +127,9 @@ auto inspect(Inspector& f, PregelMessage& x) {
 
 struct WorkerMessages
     : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                   PregelMessage, ProduceResults> {
+                   Store, PregelMessage, ProduceResults> {
   using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                     PregelMessage, ProduceResults>::variant;
+                     Store, PregelMessage, ProduceResults>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
@@ -133,6 +139,7 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<LoadGraph>("LoadGraph"),
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<PregelMessage>("PregelMessage"),
+      arangodb::inspection::type<Store>("Store"),
       arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 
