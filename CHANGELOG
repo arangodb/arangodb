@@ -22,7 +22,7 @@ devel
   statistics from a deployment. The API is accessible via the endpoint
   `/_admin/telemetrics`. The API is enabled by default in release builds, but
   disabled by default in maintainer mode. It can be explicitly turned on/off 
-  with the server startup parameter `--server.enable-telemetrics-api`. 
+  with the server startup parameter `--server.telemetrics-api`. 
   The required access privileges to access the telemetrics API can be 
   configured via the server startup option `--server.support-info-api`.
   The telemetrics API is used by the arangosh: every time the arangosh is 
