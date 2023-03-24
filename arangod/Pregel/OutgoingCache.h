@@ -23,11 +23,12 @@
 
 #pragma once
 
+#include "Actor/ActorPID.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
+#include "Pregel/Worker/Messages.h"
 #include "VocBase/voc-types.h"
 
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
 #include "Pregel/Worker/WorkerConfig.h"
@@ -59,13 +60,12 @@ class OutCache {
   InCache<M>* _localCacheNextGSS = nullptr;
   std::string _baseUrl;
   uint32_t _batchSize = 1000;
-  bool _sendToNextGSS = false;
 
   /// @brief current number of vertices stored
   size_t _containedMessages = 0;
   size_t _sendCount = 0;
-  size_t _sendCountNextGSS = 0;
   virtual void _removeContainedMessages() = 0;
+  virtual auto _clearSendCountPerActor() -> void{};
 
  public:
   OutCache(std::shared_ptr<WorkerConfig const> state,
@@ -73,29 +73,29 @@ class OutCache {
   virtual ~OutCache() = default;
 
   size_t sendCount() const { return _sendCount; }
-  size_t sendCountNextGSS() const { return _sendCountNextGSS; }
   uint32_t batchSize() const { return _batchSize; }
   void setBatchSize(uint32_t bs) { _batchSize = bs; }
   inline void setLocalCache(InCache<M>* cache) { _localCache = cache; }
-  inline void setLocalCacheNextGSS(InCache<M>* cache) {
-    _localCacheNextGSS = cache;
-  }
-
-  void sendToNextGSS(bool np) {
-    if (np != _sendToNextGSS) {
-      flushMessages();
-      _sendToNextGSS = np;
-    }
-  }
 
   void clear() {
     _sendCount = 0;
-    _sendCountNextGSS = 0;
     _removeContainedMessages();
+    _clearSendCountPerActor();
   }
+
+  virtual void setDispatch(
+      std::function<void(actor::ActorPID receiver,
+                         worker::message::PregelMessage message)>
+          dispatch){};
+  virtual void setResponsibleActorPerShard(
+      std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard){};
   virtual void appendMessage(PregelShard shard, std::string_view const& key,
                              M const& data) = 0;
   virtual void flushMessages() = 0;
+  virtual auto sendCountPerActor() const
+      -> std::unordered_map<actor::ActorPID, uint64_t> {
+    return {};
+  }
 };
 
 template<typename M>
@@ -104,8 +104,12 @@ class ArrayOutCache : public OutCache<M> {
   std::unordered_map<PregelShard,
                      std::unordered_map<std::string, std::vector<M>>>
       _shardMap;
+  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
 
   void _removeContainedMessages() override;
+  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
+                           messagesForVertices)
+      -> std::tuple<size_t, VPackBuilder>;
 
  public:
   ArrayOutCache(std::shared_ptr<WorkerConfig const> state,
@@ -115,9 +119,6 @@ class ArrayOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
-  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
-                           messagesForVertices)
-      -> std::tuple<size_t, VPackBuilder>;
   void flushMessages() override;
 };
 
@@ -128,7 +129,12 @@ class CombiningOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
   std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
       _shardMap;
+  std::unordered_map<ShardID, uint64_t> _sendCountPerShard;
+
   void _removeContainedMessages() override;
+  auto messagesToVPack(
+      std::unordered_map<std::string_view, M> const& messagesForVertices)
+      -> VPackBuilder;
 
  public:
   CombiningOutCache(std::shared_ptr<WorkerConfig const> state,
@@ -138,10 +144,101 @@ class CombiningOutCache : public OutCache<M> {
 
   void appendMessage(PregelShard shard, std::string_view const& key,
                      M const& data) override;
+  void flushMessages() override;
+};
+
+template<typename M>
+class ArrayOutActorCache : public OutCache<M> {
+  std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard;
+  std::function<void(actor::ActorPID receiver,
+                     worker::message::PregelMessage message)>
+      _dispatch;
+
+  /// @brief two stage map: shard -> vertice -> message
+  std::unordered_map<PregelShard,
+                     std::unordered_map<std::string, std::vector<M>>>
+      _shardMap;
+  std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
+
+  void _removeContainedMessages() override;
+
+  auto _clearSendCountPerActor() -> void override {
+    _sendCountPerActor.clear();
+  }
+  auto messagesToVPack(std::unordered_map<std::string, std::vector<M>> const&
+                           messagesForVertices)
+      -> std::tuple<size_t, VPackBuilder>;
+
+ public:
+  ArrayOutActorCache(std::shared_ptr<WorkerConfig const> state,
+                     MessageFormat<M> const* format)
+      : OutCache<M>{std::move(state), format} {};
+  ~ArrayOutActorCache() = default;
+
+  void setDispatch(std::function<void(actor::ActorPID receiver,
+                                      worker::message::PregelMessage message)>
+                       dispatch) override {
+    _dispatch = std::move(dispatch);
+  }
+  void setResponsibleActorPerShard(std::unordered_map<ShardID, actor::ActorPID>
+                                       responsibleActorPerShard) override {
+    _responsibleActorPerShard = std::move(responsibleActorPerShard);
+  }
+  void appendMessage(PregelShard shard, std::string_view const& key,
+                     M const& data) override;
+  void flushMessages() override;
+  auto sendCountPerActor() const
+      -> std::unordered_map<actor::ActorPID, uint64_t> override {
+    return _sendCountPerActor;
+  }
+};
+
+template<typename M>
+class CombiningOutActorCache : public OutCache<M> {
+  MessageCombiner<M> const* _combiner;
+  std::unordered_map<ShardID, actor::ActorPID> _responsibleActorPerShard;
+  std::function<void(actor::ActorPID receiver,
+                     worker::message::PregelMessage message)>
+      _dispatch;
+
+  /// @brief two stage map: shard -> vertice -> message
+  std::unordered_map<PregelShard, std::unordered_map<std::string_view, M>>
+      _shardMap;
+  std::unordered_map<actor::ActorPID, uint64_t> _sendCountPerActor;
+
+  void _removeContainedMessages() override;
+
+  auto _clearSendCountPerActor() -> void override {
+    _sendCountPerActor.clear();
+  }
   auto messagesToVPack(
       std::unordered_map<std::string_view, M> const& messagesForVertices)
       -> VPackBuilder;
+
+ public:
+  CombiningOutActorCache(std::shared_ptr<WorkerConfig const> state,
+                         MessageFormat<M> const* format,
+                         MessageCombiner<M> const* combiner)
+      : OutCache<M>(state, format), _combiner(combiner){};
+  ~CombiningOutActorCache();
+
+  void setDispatch(std::function<void(actor::ActorPID receiver,
+                                      worker::message::PregelMessage message)>
+                       dispatch) override {
+    _dispatch = std::move(dispatch);
+  }
+  void setResponsibleActorPerShard(std::unordered_map<ShardID, actor::ActorPID>
+                                       responsibleActorPerShard) override {
+    _responsibleActorPerShard = std::move(responsibleActorPerShard);
+  }
+  void appendMessage(PregelShard shard, std::string_view const& key,
+                     M const& data) override;
   void flushMessages() override;
+  auto sendCountPerActor() const
+      -> std::unordered_map<actor::ActorPID, uint64_t> override {
+    return _sendCountPerActor;
+  }
 };
+
 }  // namespace pregel
 }  // namespace arangodb

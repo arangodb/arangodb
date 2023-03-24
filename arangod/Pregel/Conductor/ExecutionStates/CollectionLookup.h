@@ -24,8 +24,10 @@
 
 #include <string>
 #include <map>
+#include <unordered_map>
+#include <vector>
 
-#include "Cluster/ClusterTypes.h"
+#include "Pregel/DatabaseTypes.h"
 
 namespace arangodb::pregel::conductor {
 

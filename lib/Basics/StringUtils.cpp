@@ -2063,6 +2063,26 @@ std::string headersToString(
   return headersForLogging;
 }
 
+std::string getEndpointFromUrl(std::string const& url) {
+  char const* p = url.c_str();
+  char const* e = p + url.size();
+  size_t slashes = 0;
+
+  while (p < e) {
+    if (*p == '?') {
+      // http(s)://example.com?foo=bar
+      return url.substr(0, p - url.c_str());
+    } else if (*p == '/') {
+      if (++slashes == 3) {
+        return url.substr(0, p - url.c_str());
+      }
+    }
+    ++p;
+  }
+
+  return url;
+}
+
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb

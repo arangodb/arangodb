@@ -27,14 +27,14 @@ const jwtSecret = 'abc';
 
 if (getOptions === true) {
   return {
-    'server.enable-telemetrics-api': 'false',
+    'server.telemetrics-api': 'false',
     'server.authentication': 'true',
     'server.jwt-secret': jwtSecret,
   };
 }
 
-let jsunity = require('jsunity');
-let internal = require('internal');
+const jsunity = require('jsunity');
+const internal = require('internal');
 
 function getTelemetricsResult() {
   let res;
@@ -52,9 +52,7 @@ function getTelemetricsResult() {
 }
 
 function telemetricsOnShellTestsuite() {
-
   return {
-
     testTelemetricsShellRequestByUserNotEnabled: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();
@@ -69,9 +67,7 @@ function telemetricsOnShellTestsuite() {
 }
 
 function telemetricsApiUsageTestsuite() {
-
   return {
-
     testTelemetricsApiRequestByUserNotEnabled: function () {
       arango.disableAutomaticallySendTelemetricsToEndpoint();
       arango.startTelemetrics();

@@ -94,6 +94,7 @@ class PregelFeature final : public ArangodFeature {
 
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
+  [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -166,6 +167,8 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
+
+  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
 };
 
 }  // namespace arangodb::pregel
