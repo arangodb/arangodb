@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { Network } from "vis-network";
 import { isEqual } from "lodash";
 import { ProgressBar } from "./ProgressBar";
-import { Box, Center, Progress } from '@chakra-ui/react';
+import { Alert, AlertIcon, Button, Box, Center, Progress, Stack, Text } from '@chakra-ui/react';
 
 const StyledContextComponent = styled.div`
 	position: absolute;
@@ -19,10 +19,19 @@ const StyledContextComponent = styled.div`
 	padding: 10px 0;
 `;
 
+const StyledEditModeInfoComponent = styled.div`
+	position: absolute;
+	left: ${(props) => props.left};
+	top: ${(props) => props.top};
+	z-index: 99999;
+`;
+
 const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
 	const [contextMenu, toggleContextMenu] = useState("");
 	const [position, setPosition] = useState({ x: 10, y:10 });
+	const [infoPosition, setInfoPosition] = useState({ x: 10, y:10 });
+	const [showInfo, setShowInfo] = useState(false);
 	const [contextMenuNodeID, setContextMenuNodeID] = useState();
 	const [contextMenuEdgeID, setContextMenuEdgeID] = useState();
 	const [networkData, setNetworkData] = useState();
@@ -39,7 +48,13 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 		if(networkData) {
 			if(editEdgeMode) {
 				networkData.addEdgeMode();
+				const canvasOffset = document.getElementById("visnetworkdiv");
+				if (canvasOffset) {
+					setInfoPosition({ left: `${canvasOffset.offsetLeft}px`, top: `${canvasOffset.offsetTop}px` });
+				}
+				setShowInfo(true);
 			} else {
+				setShowInfo(false);
 				networkData.disableEditMode();
 			}
 		}
@@ -220,6 +235,18 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 				</li>
 			</ul>
 		</StyledContextComponent>
+		}
+		{
+		showInfo &&
+		<StyledEditModeInfoComponent {...infoPosition}>
+			<Alert status='warning'>
+				<AlertIcon />
+				<Stack spacing={4} direction='row' align='center'>
+					<Text fontSize='md'>&quot;Add edge mode&quot; is on: Click a node and drag the edge to the end node</Text>
+					<Button onClick={() => setEditEdgeMode(false)} colorScheme='blue'>Turn off</Button>
+				</Stack>
+			</Alert>
+		</StyledEditModeInfoComponent>
 		}
 		<ProgressBar />
 		<div id="visnetworkdiv" ref={visJsRef} style={{ height: '90vh', width: '97%', background: '#fff', margin: 'auto' }} />
