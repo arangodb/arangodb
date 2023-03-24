@@ -9,8 +9,9 @@ export const GraphContextMenu = ({
 }: {
   visJsRef: MutableRefObject<HTMLElement | null>;
 }) => {
+  const { onDeleteEdge } = useGraph();
   const [position, setPosition] = useState({ left: "0", top: "0" });
-  const [menuData, setMenuData] = useState<
+  const [selectedItem, setSelectedItem] = useState<
     | {
         type: string;
         nodeId?: IdType;
@@ -41,18 +42,18 @@ export const GraphContextMenu = ({
       const nodeId = network.getNodeAt(args.pointer.DOM);
       const edgeId = network.getEdgeAt(args.pointer.DOM);
       if (nodeId) {
-        setMenuData({ type: "node", nodeId });
+        setSelectedItem({ type: "node", nodeId });
         network.selectNodes([nodeId]);
       } else if (edgeId) {
-        setMenuData({ type: "edge", edgeId });
+        setSelectedItem({ type: "edge", edgeId });
         network.selectEdges([edgeId]);
       } else {
-        setMenuData({ type: "canvas" });
+        setSelectedItem({ type: "canvas" });
       }
     });
   }, [network, visJsRef]);
   const renderMenu = (ref: MutableRefObject<HTMLDivElement>) => {
-    if (menuData && menuData.type === "canvas") {
+    if (selectedItem && selectedItem.type === "canvas") {
       return (
         <MenuList ref={ref}>
           <MenuItem>Add node to database</MenuItem>
@@ -60,22 +61,28 @@ export const GraphContextMenu = ({
         </MenuList>
       );
     }
-    if (menuData && menuData.type === "edge") {
+    if (selectedItem && selectedItem.type === "edge") {
       return (
-        <MenuOptionGroup title={(menuData && `Edge: ${menuData.edgeId}`) || ""}>
+        <MenuOptionGroup
+          title={(selectedItem && `Edge: ${selectedItem.edgeId}`) || ""}
+        >
           <MenuList ref={ref}>
-            <MenuItem>Delete Edge</MenuItem>
+            <MenuItem onClick={() => onDeleteEdge(edgeId)}>
+              Delete Edge
+            </MenuItem>
             <MenuItem>Edit Edge</MenuItem>
           </MenuList>
         </MenuOptionGroup>
       );
     }
-    if (!menuData) {
+    if (!selectedItem) {
       return null;
     }
     return (
       <MenuList ref={ref}>
-        <MenuOptionGroup title={(menuData && `Node: ${menuData.nodeId}`) || ""}>
+        <MenuOptionGroup
+          title={(selectedItem && `Node: ${selectedItem.nodeId}`) || ""}
+        >
           <MenuItem>Delete Node</MenuItem>
           <MenuItem>Edit Node</MenuItem>
           <MenuItem>Expand Node</MenuItem>
@@ -88,9 +95,9 @@ export const GraphContextMenu = ({
     <ContextMenu
       position={position}
       onClose={() => {
-        setMenuData(undefined);
+        setSelectedItem(undefined);
       }}
-      isOpen={menuData && menuData.type ? true : false}
+      isOpen={selectedItem && selectedItem.type ? true : false}
       renderMenu={renderMenu}
     />
   );

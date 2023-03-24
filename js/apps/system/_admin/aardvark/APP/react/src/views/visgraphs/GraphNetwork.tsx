@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
-import { Network } from "vis-network";
 import { DataSet } from "vis-data";
+import { Network } from "vis-network";
 import { useGraph } from "./GraphContext";
 import { GraphContextMenu } from "./GraphContextMenu";
 
@@ -13,7 +13,6 @@ export const GraphNetwork = () => {
     if (!nodes || !edges || network) {
       return;
     }
-    console.log("setup network!");
     const nodesDataSet = new DataSet(nodes);
     const edgesDataSet = new DataSet(edges);
     const newNetwork =
@@ -38,9 +37,6 @@ export const GraphNetwork = () => {
     network && network.setData({ nodes: nodesDataSet, edges: edgesDataSet });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes, edges]);
-  if (!graphData) {
-    return null;
-  }
   return (
     <div>
       <GraphContextMenu visJsRef={visJsRef} />

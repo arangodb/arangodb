@@ -14,10 +14,15 @@ type GraphContextType = {
   onApplySettings: () => void;
   network?: Network;
   isSettingsOpen?: boolean;
+  isGraphLoading?: boolean;
+  deleteEdgeModalData?: { edgeId: string };
   setNetwork: (network: Network) => void;
   toggleSettings: () => void;
   onCloseSettings: () => void;
+  onDeleteEdge: (edgeId: string) => void;
+  onCancelDelete: () => void;
 };
+
 const GraphContext = createContext<GraphContextType>({
   graphName: ""
 } as GraphContextType);
@@ -43,7 +48,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
 
   const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
   const [params, setParams] = useState(URLPARAMETERS);
-  const { data, isValidating } = useSWRImmutable<ArangojsResponse>(
+  const { data, isLoading: isGraphLoading } = useSWRImmutable<ArangojsResponse>(
     ["visData", graphName, params],
     () => fetchVisData({ graphName, params }),
     {
@@ -61,8 +66,15 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const toggleSettings = () => {
     isSettingsOpen ? onCloseSettings() : onOpenSettings();
   };
-  console.log({ data, body: data && data.body, isValidating });
-
+  const [deleteEdgeModalData, setDeleteEdgeModalData] = useState<
+    { edgeId: string } | undefined
+  >();
+  const onDeleteEdge = (edgeId: string) => {
+    setDeleteEdgeModalData({ edgeId });
+  };
+  const onCancelDelete = () => {
+    setDeleteEdgeModalData(undefined);
+  };
   return (
     <GraphContext.Provider
       value={{
@@ -73,7 +85,11 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         graphName,
         toggleSettings,
         onCloseSettings,
-        isSettingsOpen
+        onDeleteEdge,
+        onCancelDelete,
+        deleteEdgeModalData,
+        isSettingsOpen,
+        isGraphLoading
       }}
     >
       <UrlParametersContext.Provider
