@@ -10,6 +10,7 @@ import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { DeleteNodeModal } from './DeleteNodeModal';
 import { DeleteEdgeModal } from './DeleteEdgeModal';
+import { FetchFullGraphModal } from './FetchFullGraphModal';
 import { DocumentInfo } from './DocumentInfo';
 import URLPARAMETERS from "./UrlParameters";
 import { omit, pick, uniqBy } from "lodash";
@@ -551,6 +552,20 @@ const VisJsGraph = () => {
         >
           <strong>Delete edge: {edgeToDelete}</strong>
         </DeleteEdgeModal>
+        <FetchFullGraphModal
+          shouldShow={showFetchFullGraphModal}
+          onRequestClose={() => {
+            setShowFetchFullGraphModal(false);
+          }}
+          onFullGraphLoaded={(newGraphData, responseTimesObject) => {
+            setResponseTimes(responseTimesObject);
+            setVisGraphData(newGraphData);}
+          }
+          graphName={graphName}
+        >
+          <strong>Fetch full graph</strong>
+          <p><span class="text-error">Caution:</span> Really load full graph? If no limit is set, your result set could be too big.</p>
+        </FetchFullGraphModal>
         <DeleteNodeModal
           shouldShow={showDeleteNodeModal}
           onRequestClose={() => {
@@ -676,7 +691,9 @@ const VisJsGraph = () => {
           onClickNode={(nodeId) => lookUpDocumentForVis(nodeId)}
           onClickEdge={(edgeId) => lookUpDocumentForVis(edgeId)}
           onDeleteNode={(nodeId) => openDeleteNodeModal(nodeId)}
-          onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
+          onLoadFullGraph={() => {
+            setShowFetchFullGraphModal(true);
+          }}
           onGraphDataLoaded={({newGraphData, responseTimesObject}) => {
             setVisGraphData(newGraphData);
             setResponseTimes(responseTimesObject);

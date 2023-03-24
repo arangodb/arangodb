@@ -26,7 +26,11 @@ export class GraphView extends React.Component {
           this.props.onChangeGraphData(newGraphData);
         }}
         onGraphDataLoaded={(newGraphData, responseTimesObject) => {
-          this.props.onGraphDataLoaded({newGraphData, responseTimesObject})}}
+          this.props.onGraphDataLoaded({newGraphData, responseTimesObject})
+        }}
+        onLoadFullGraph={() => {
+          this.props.onLoadFullGraph()
+        }}
       />
 
       <VisNetwork

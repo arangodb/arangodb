@@ -25,11 +25,9 @@ import { IconButton } from "../../components/arango/buttons";
 import {
   Box,
   Flex,
-  Spacer,
-  Input,
   Center } from '@chakra-ui/react';
 
-export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onGraphDataLoaded, onIsLoadingData, onLoadFullGraph }) => {
   
   const [isLoadingData, setIsLoadingData] = useState(false);
 
@@ -152,6 +150,23 @@ export const Headerinfo = ({ graphName, responseDuration, onChangeGraphData, onG
                     'background': '#fff',
                     'border': 0
                   }}><i class="fa fa-arrows-alt" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
+                </button>
+              </ToolTip>
+            </Box>
+
+            <Box mr='3'>
+              <ToolTip
+                title={"Fetch full graph - use with caution"}
+                setArrow={true}
+              >
+                <button
+                  onClick={() => {
+                    onLoadFullGraph();
+                  }}
+                  style={{
+                    'background': '#fff',
+                    'border': 0
+                  }}><i class="fa fa-share-alt" style={{ 'fontSize': '18px', 'marginTop': '6px', 'color': '#555' }}></i>
                 </button>
               </ToolTip>
             </Box>
