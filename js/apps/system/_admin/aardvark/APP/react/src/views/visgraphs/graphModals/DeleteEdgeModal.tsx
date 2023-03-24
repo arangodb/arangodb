@@ -1,6 +1,5 @@
 import { Box, Button, HStack, Tag } from "@chakra-ui/react";
-import { pick } from "lodash";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Modal,
   ModalBody,
@@ -9,39 +8,11 @@ import {
 } from "../../../components/modal";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import { SelectedActionType, useGraph } from "../GraphContext";
+import { useEdgeData } from "./useEdgeData";
 
 const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
   const { edgeId } = selectedAction?.entity || {};
-  const [edgeData, setEdgeData] = useState<{ [key: string]: string }>();
-  const fetchEdgeData = (edgeId: string) => {
-    const slashPos = edgeId.indexOf("/");
-    const edgeDataObject = {
-      keys: [edgeId.substring(slashPos + 1)],
-      collection: edgeId.substring(0, slashPos)
-    };
-    getApiRouteForCurrentDB()
-      .put("/simple/lookup-by-keys", edgeDataObject)
-      .then(data => {
-        const basicData = pick(data.body.documents[0], [
-          "_id",
-          "_key",
-          "_rev",
-          "_from",
-          "_to"
-        ]);
-        setEdgeData(basicData);
-      })
-      .catch(err => {
-        window.arangoHelper.arangoError(
-          "Graph",
-          "Could not look up this edge."
-        );
-        console.log(err);
-      });
-  };
-  useEffect(() => {
-    edgeId && fetchEdgeData(edgeId);
-  }, [edgeId]);
+  const { edgeData } = useEdgeData({ edgeId });
 
   const deleteEdge = (edgeId: string) => {
     const slashPos = edgeId.indexOf("/");
