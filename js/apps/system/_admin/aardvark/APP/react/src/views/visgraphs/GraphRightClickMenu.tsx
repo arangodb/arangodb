@@ -79,9 +79,7 @@ const EdgeContextMenu = forwardRef((_props, ref: LegacyRef<HTMLDivElement>) => {
   }
   return (
     <MenuList ref={ref}>
-      <MenuOptionGroup
-        title={(selectedEntity && `Edge: ${selectedEntity.edgeId}`) || ""}
-      >
+      <MenuOptionGroup title={`Edge: ${selectedEntity.edgeId}` || ""}>
         <MenuItem
           onClick={() =>
             setSelectedAction({
@@ -146,9 +144,23 @@ const NodeContextMenu = forwardRef(
 
 const CanvasContextMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
+    const { setSelectedAction, selectedEntity } = useGraph();
+    if (!selectedEntity) {
+      return null;
+    }
     return (
       <MenuList ref={ref}>
-        <MenuItem>Add node to database</MenuItem>
+        <MenuItem
+          onClick={() => {
+            setSelectedAction({
+              action: "add",
+              entityType: "node",
+              entity: selectedEntity
+            });
+          }}
+        >
+          Add node to database
+        </MenuItem>
         <MenuItem>Add edge to database</MenuItem>
       </MenuList>
     );

@@ -15,7 +15,8 @@ type SelectedEntityType = {
 };
 
 export type SelectedActionType = {
-  action: "delete" | "edit";
+  action: "delete" | "edit" | "add";
+  entityType?: "node" | "edge";
   entity: SelectedEntityType;
 };
 
