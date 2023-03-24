@@ -98,7 +98,7 @@ using namespace arangodb;
 namespace {
 
 #ifdef _WIN32
-HANDLE getProcessHandle(pid) {
+HANDLE getProcessHandle(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(
@@ -1199,13 +1199,13 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
     {
       char windowsErrorBuf[256];
       bool wantGetExitCode = wait;
+      HANDLE process = getProcessHandle(pid._pid);
       if (wait) {
         DWORD result;
         DWORD waitFor = INFINITE;
         if (timeout != 0) {
           waitFor = timeout;
         }
-        HANDLE process = getProcessHandle(pid);
         if (process == INVALID_HANDLE_VALUE) {
           return *status;
         }
