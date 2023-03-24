@@ -23,10 +23,10 @@
 #pragma once
 
 #include "Actor/ActorPID.h"
-#include "Cluster/ClusterTypes.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 #include "Pregel/PregelOptions.h"
@@ -73,10 +73,13 @@ auto inspect(Inspector& f, WorkerStart& x) {
   return f.object(x).fields();
 }
 
-struct LoadGraph {};
+struct LoadGraph {
+  std::unordered_map<ShardID, actor::ActorPID> responsibleActorPerShard;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, LoadGraph& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field("responsibleActorPerShard", x.responsibleActorPerShard));
 }
 
 struct RunGlobalSuperStep {
@@ -92,6 +95,12 @@ auto inspect(Inspector& f, RunGlobalSuperStep& x) {
       f.field("globalSuperStep", x.gss), f.field("vertexCount", x.vertexCount),
       f.field("edgeCount", x.edgeCount), f.field("sendCount", x.sendCount),
       f.field("aggregators", x.aggregators));
+}
+
+struct Store {};
+template<typename Inspector>
+auto inspect(Inspector& f, Store& x) {
+  return f.object(x).fields();
 }
 
 struct ProduceResults {
@@ -118,9 +127,9 @@ auto inspect(Inspector& f, PregelMessage& x) {
 
 struct WorkerMessages
     : std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                   PregelMessage, ProduceResults> {
+                   Store, PregelMessage, ProduceResults> {
   using std::variant<WorkerStart, CreateWorker, LoadGraph, RunGlobalSuperStep,
-                     PregelMessage, ProduceResults>::variant;
+                     Store, PregelMessage, ProduceResults>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, WorkerMessages& x) {
@@ -130,6 +139,7 @@ auto inspect(Inspector& f, WorkerMessages& x) {
       arangodb::inspection::type<LoadGraph>("LoadGraph"),
       arangodb::inspection::type<RunGlobalSuperStep>("RunGlobalSuperStep"),
       arangodb::inspection::type<PregelMessage>("PregelMessage"),
+      arangodb::inspection::type<Store>("Store"),
       arangodb::inspection::type<ProduceResults>("ProduceResults"));
 }
 

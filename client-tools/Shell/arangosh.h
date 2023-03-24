@@ -40,7 +40,7 @@ class FileSystemFeature;
 class ShellConsoleFeature;
 class TempFeature;
 class EncryptionFeature;
-
+class ProcessMonitoringFeature;
 using ArangoshFeaturesList = TypeList<
     // Phases
     BasicFeaturePhaseClient, CommunicationFeaturePhase, GreetingsFeaturePhase,
@@ -53,7 +53,7 @@ using ArangoshFeaturesList = TypeList<
     OptionsCheckFeature, FileSystemFeature, RandomFeature, ShellColorsFeature,
     ShutdownFeature, SslFeature, V8ShellFeaturePhase, ShellFeature,
     V8PlatformFeature, V8ShellFeature, LanguageFeature, V8SecurityFeature,
-    TempFeature>;
+    ProcessMonitoringFeature, TempFeature>;
 struct ArangoshFeatures : ArangoshFeaturesList {};
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;

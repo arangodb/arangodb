@@ -854,9 +854,9 @@ Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
 `scripts/unittest` is only a wrapper for the most part, the backend
-functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
-`process-utils.js`, `test-utils.js`). The actual testsuites are located in the
-`testsuites` subfolder.
+functionality lives in `js/client/modules/@arangodb/testutils`.
+The actual testsuites are located in the
+`js/client/modules/@arangodb/testsuites` folder.
 
 #### Passing Options
 
@@ -937,9 +937,23 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
+Specifying a `--test `-Filter containing `-cluster` will implicitely set `--cluster true` and launch a cluster test.
+
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
 This failed filter should work for all jsunity and mocha tests.
+
+#### Running several Suites in one go
+
+Several testsuites can be launched consequently in one run by specifying them as coma separated list.
+They all share the specified commandline arguments. Individual arguments can be passed as a JSON array.
+The JSON Array has to contain the same number of elements as testsuites specified. The specified individual
+parameters will overrule global and default values.
+
+Running the same testsuite twice with different and shared parameters would look like this:
+
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"vst":true,"suffix":"vst"}]'
+
 
 #### Running Foxx Tests with a Fake Foxx Repo
 

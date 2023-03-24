@@ -139,7 +139,14 @@ class DatabaseFeature : public ArangodFeature {
   VocbasePtr useDatabase(std::string_view name) const;
   VocbasePtr useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string_view name) const;
+  bool existsDatabase(std::string_view name) const;
+
+  // look up a database by name. note: the caller must make sure that the
+  // returned vocbase pointer remains valid (i.e. vocbase is not deleted
+  // concurrently while the returned pointer is used).
+  // this is a potentially unsafe API. if in doubt, prefer using
+  // `useDatabase(...)`, which is safe.
+  [[deprecated]] TRI_vocbase_t* lookupDatabase(std::string_view name) const;
   void enumerateDatabases(
       std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string_view dbName,
