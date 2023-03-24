@@ -88,8 +88,8 @@ class ProcessMonitoringFeature final : public ArangoshFeature {
   /// @brief enlist external process to become monitored
   ////////////////////////////////////////////////////////////////////////////////
 
-  arangodb::Mutex _MonitoredExternalProcessesLock;
-  std::map<TRI_pid_t, ExternalProcessStatus> _ExitedExternalProcessStatus;
+  arangodb::Mutex _monitoredExternalProcessesLock;
+  std::map<TRI_pid_t, ExternalProcessStatus> _exitedExternalProcessStatus;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief external process being monitored

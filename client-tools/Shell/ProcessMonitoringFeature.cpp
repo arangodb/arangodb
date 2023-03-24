@@ -45,7 +45,7 @@ using namespace arangodb;
 namespace arangodb {
 
 void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
   _monitoredProcesses.push_back(pid);
 }
 
@@ -61,19 +61,19 @@ void ProcessMonitoringFeature::removeMonitorPIDNoLock(ExternalId const& pid) {
 
 void ProcessMonitoringFeature::moveMonitoringPIDToAttic(
     ExternalId const& pid, ExternalProcessStatus const& exitStatus) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
   removeMonitorPIDNoLock(pid);
-  _ExitedExternalProcessStatus[pid._pid] = exitStatus;
+  _exitedExternalProcessStatus[pid._pid] = exitStatus;
 }
 
 std::vector<ExternalId> ProcessMonitoringFeature::getMonitoringVector() {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
   return _monitoredProcesses;
 }
 
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
   {
-    MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+    MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
     removeMonitorPIDNoLock(pid);
   }
   // make sure its really not monitored anymore once we exit:
@@ -82,9 +82,9 @@ void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
 
 std::optional<ExternalProcessStatus>
 ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
-  auto it = _ExitedExternalProcessStatus.find(pid);
-  if (it == _ExitedExternalProcessStatus.end()) {
+  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+  auto it = _exitedExternalProcessStatus.find(pid);
+  if (it == _exitedExternalProcessStatus.end()) {
     return std::nullopt;
   }
   return std::optional<ExternalProcessStatus>{it->second};
