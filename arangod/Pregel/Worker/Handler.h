@@ -346,6 +346,28 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
+  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("980d9", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is storing", this->self);
+
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+
+    // TODO GORDO-1546
+    // _graphStore->storeResults(&_config, _makeStatusCallback());
+
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+
+    this->finish();
+
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, ResultT<conductor::message::Stored>::success(
+                                    conductor::message::Stored{}));
+
+    return std::move(this->state);
+  }
+
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     std::string tmp;

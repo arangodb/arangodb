@@ -66,6 +66,23 @@ jobs:
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
 
+  eslint:
+    docker:
+      - image: alpine:3.17
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install eslint
+          command: |
+            apk add --no-cache npm
+            npm -g install eslint
+      - run:
+          name: Run eslint
+          command: |
+            utils/eslint.sh
+
   compile-linux:
     parameters:
       preset:
@@ -221,6 +238,10 @@ workflows:
             - minimal-checkout
       - clang-format:
           name: clang-format
+          requires:
+            - minimal-checkout
+      - eslint:
+          name: eslint
           requires:
             - minimal-checkout
   community-pr:
