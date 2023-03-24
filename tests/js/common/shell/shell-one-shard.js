@@ -174,8 +174,8 @@ function OneShardPropertiesSuite () {
           db._create("test", {distributeShardsLike: "leading"});
           fail();
         } catch (err) {
-          // We cannot create the collection, as the leader is not allowed!
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          // We cannot create the collection, as the leader is not allowed! We will have a chain of distributeShardsLike
+          assertEqual(ERRORS.ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE.code, err.errorNum);
         }
 
         // It should be allowed to create a collection following the OneShard leader (_graphs for every non _system db)
