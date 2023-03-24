@@ -1,5 +1,8 @@
 devel
 -----
+* Marked all memory-mapping options for Pregel as obsolete;
+  The memory mapping code was removed as it did not provide any advantages
+  over spilling into system-provided swap space.
 
 * FE-139 adds new search view type (search-alias).
 

@@ -118,7 +118,6 @@ class PregelFeature final : public ArangodFeature {
   size_t parallelism(VPackSlice params) const noexcept;
 
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
@@ -133,17 +132,6 @@ class PregelFeature final : public ArangodFeature {
 
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
-
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
 
   mutable Mutex _mutex;
 

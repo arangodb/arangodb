@@ -475,7 +475,6 @@ ErrorCode Conductor::_initializeWorkers() {
         .algorithm = std::string{_algorithm->name()},
         .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
-        .useMemoryMaps = _specifications.useMemoryMaps,
         .parallelism = _specifications.parallelism,
         .edgeCollectionRestrictions =
             _specifications.edgeCollectionRestrictions,
@@ -738,7 +737,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
-  result.add("useMemoryMaps", VPackValue(_specifications.useMemoryMaps));
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
