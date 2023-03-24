@@ -1,6 +1,14 @@
 devel
 -----
 
+* FE-139 adds new search view type (search-alias).
+
+* Fixed BTS-902 (clicking on the search icon in the analyzers filter input used
+  to take the user to the collections view).
+
+* Ran automated migrations on all .scss files to remove deprecated division
+  operator usage.
+
 * Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
   DELETE /_api/document/{collection} using _key or _id values as document 
   selectors, the INBOUND and OUTBOUND entries of the SmartEdges could diverge.
@@ -22,7 +30,7 @@ devel
   statistics from a deployment. The API is accessible via the endpoint
   `/_admin/telemetrics`. The API is enabled by default in release builds, but
   disabled by default in maintainer mode. It can be explicitly turned on/off 
-  with the server startup parameter `--server.enable-telemetrics-api`. 
+  with the server startup parameter `--server.telemetrics-api`. 
   The required access privileges to access the telemetrics API can be 
   configured via the server startup option `--server.support-info-api`.
   The telemetrics API is used by the arangosh: every time the arangosh is 
@@ -59,7 +67,7 @@ devel
 * Changed path were test scripts locate configuration files from `etc/relative`
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
   from `etc/relative` in test environment. 
-  
+
 * Made the return code configurable that is delivered if a write fails because
   the write concern is not fulfilled (not enough in-sync replicas available).
   Previously (and now by default), a code of HTTP 403 is returned and the
