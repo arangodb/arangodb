@@ -1,9 +1,8 @@
 import { get, without } from "lodash";
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
-import MultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/MultiSelect";
+import MultiSelect from "../../../../components/select/MultiSelect";
+import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { LinkProperties, ViewContext } from "../../constants";
 
@@ -71,13 +70,6 @@ export const AnalyzersDropdown = ({
       options={options}
       noOptionsMessage={() => "Analyzer does not exist."}
       placeholder={"Start typing for suggestions."}
-      styles={{
-        option: baseStyles => ({
-          ...baseStyles,
-          overflow: "hidden",
-          textOverflow: "ellipsis"
-        })
-      }}
       isDisabled={isDisabled}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
