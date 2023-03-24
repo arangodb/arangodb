@@ -142,3 +142,17 @@ void TermIndexMapping::append(TermIndexMapping const& other) noexcept {
     insert(range, term);
   }
 }
+
+auto TermIndexMapping::getIndexRange() const noexcept -> LogRange {
+  if (_mapping.empty()) {
+    return LogRange{};
+  } else {
+    auto from = _mapping.begin()->second.from;
+    auto to = _mapping.rbegin()->second.to;
+    return LogRange{from, to};
+  }
+}
+
+auto TermIndexMapping::empty() const noexcept -> bool {
+  return _mapping.empty();
+}
