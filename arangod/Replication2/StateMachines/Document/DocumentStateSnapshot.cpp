@@ -83,11 +83,14 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
         overload{
             [&](state::Ongoing& ongoing) -> ResultT<SnapshotBatch> {
               LOG_CTX("f9226", DEBUG, logContext) << "Reading next batch";
+
               ongoing.builder.clear();
               if (data.shards.empty()) {
                 auto batch = SnapshotBatch{.snapshotId = getId(),
                                            .shardId = std::nullopt,
                                            .hasMore = false};
+                LOG_CTX("ca1cb", DEBUG, logContext)
+                    << "No more shards to read from. Returning empty batch.";
                 return ResultT<SnapshotBatch>::success(std::move(batch));
               }
 
@@ -107,8 +110,22 @@ auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
               data.statistics.lastBatchSent = data.statistics.lastUpdated =
                   std::chrono::system_clock::now();
 
-              if (!readerHasMore && data.shards.size() > 1) {
+              LOG_CTX("9d1b4", DEBUG, logContext)
+                  << "Read " << batch.payload.length() << " documents from "
+                  << batch.shardId.value() << " in batch "
+                  << data.statistics.batchesSent << " with "
+                  << batch.payload.byteSize() << " bytes. There is "
+                  << (readerHasMore ? "more" : "no more")
+                  << " data to read from this shard.";
+
+              if (!readerHasMore) {
                 data.shards.pop_back();
+                LOG_CTX("c00b1", DEBUG, logContext)
+                    << "Reading from shard " << batch.shardId.value()
+                    << " completed. " << data.shards.size() << " shards to go."
+                    << (data.shards.empty()
+                            ? ""
+                            : " Next shard is " + data.shards.back().first);
               }
               return ResultT<SnapshotBatch>::success(std::move(batch));
             },
