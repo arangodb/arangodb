@@ -1,4 +1,4 @@
-/* global arangoHelper, _, frontendConfig, slicePath, icon, Joi, wheelnav, sigma, Backbone, templateEngine, $, JSONEditor */
+/* global arangoHelper, frontendConfig, slicePath, icon, Joi, wheelnav, sigma, templateEngine, JSONEditor */
 (function () {
   'use strict';
 

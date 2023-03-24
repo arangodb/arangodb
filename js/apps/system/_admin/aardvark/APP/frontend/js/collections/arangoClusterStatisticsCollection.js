@@ -1,4 +1,3 @@
-/* global Backbone */
 window.ClusterStatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
 

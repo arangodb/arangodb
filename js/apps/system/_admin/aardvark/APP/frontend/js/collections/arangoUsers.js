@@ -1,4 +1,4 @@
-/* global Backbone, $,_, frontendConfig, arangoHelper */
+/* global frontendConfig, arangoHelper */
 
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,

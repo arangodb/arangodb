@@ -1,4 +1,4 @@
-/* global  Backbone, arangoHelper, _ */
+/* global arangoHelper */
 
 window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {

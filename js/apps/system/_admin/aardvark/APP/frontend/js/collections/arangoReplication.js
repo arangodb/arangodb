@@ -1,4 +1,4 @@
-/* global  Backbone, $, arangoHelper */
+/* global arangoHelper */
 
 window.ArangoReplication = Backbone.Collection.extend({
   model: window.Replication,

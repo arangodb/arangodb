@@ -1,4 +1,4 @@
-/* global Backbone, $, Joi, _, arangoHelper */
+/* global Joi, arangoHelper */
 /* global templateEngine */
 
 (function () {

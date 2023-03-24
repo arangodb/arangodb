@@ -1,4 +1,4 @@
-/* global Backbone, templateEngine, $ */
+/* global templateEngine */
 (function () {
   'use strict';
   window.StatisticBarView = Backbone.View.extend({

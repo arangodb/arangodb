@@ -1,5 +1,5 @@
-/* global Backbone, $, arangoHelper, moment, nv, d3, prettyBytes */
-/* global frontendConfig, Dygraph, _,templateEngine */
+/* global arangoHelper, moment, nv, d3, prettyBytes */
+/* global frontendConfig, Dygraph,templateEngine */
 
 (function () {
   'use strict';

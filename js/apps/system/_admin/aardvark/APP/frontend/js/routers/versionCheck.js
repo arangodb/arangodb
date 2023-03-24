@@ -1,4 +1,4 @@
-/* global $, _, arangoHelper */
+/* global arangoHelper */
 (function () {
   'use strict';
 

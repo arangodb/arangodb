@@ -1,4 +1,4 @@
-/* global Backbone, arangoCollectionModel, $, arangoHelper, _ */
+/* global arangoCollectionModel, arangoHelper */
 (function () {
   'use strict';
 

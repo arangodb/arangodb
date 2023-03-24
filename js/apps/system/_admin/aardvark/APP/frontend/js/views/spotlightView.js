@@ -1,4 +1,3 @@
-/* global Backbone, $, _ */
 /* global arangoHelper, templateEngine */
 
 (function () {

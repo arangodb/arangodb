@@ -1,4 +1,3 @@
-/* global Backbone */
 window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,
   url: '/_admin/statistics-description',

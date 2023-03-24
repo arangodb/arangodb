@@ -1,4 +1,4 @@
-/* global Backbone, templateEngine, arangoHelper, $, frontendConfig */
+/* global templateEngine, arangoHelper, frontendConfig */
 (function () {
   'use strict';
 

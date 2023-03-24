@@ -1,5 +1,3 @@
-/* global Backbone */
-
 window.Replication = Backbone.Model.extend({
   defaults: {
     state: {},

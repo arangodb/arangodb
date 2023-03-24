@@ -1,4 +1,4 @@
-/* global CryptoJS, _, arangoHelper, Backbone, $ */
+/* global CryptoJS, arangoHelper */
 
 (function () {
   'use strict';

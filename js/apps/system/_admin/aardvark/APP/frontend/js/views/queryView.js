@@ -1,4 +1,4 @@
-/* global Backbone, $, L, ace, _ */
+/* global L, ace */
 /* global frontendConfig, arangoHelper, numeral, templateEngine, Joi, Noty */
 
 (function () {

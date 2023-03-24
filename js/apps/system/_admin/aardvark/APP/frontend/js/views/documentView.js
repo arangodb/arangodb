@@ -1,4 +1,4 @@
-/* global Backbone, $, arangoHelper, templateEngine, JSONEditor, _ */
+/* global arangoHelper, templateEngine, JSONEditor */
 
 (function () {
   'use strict';

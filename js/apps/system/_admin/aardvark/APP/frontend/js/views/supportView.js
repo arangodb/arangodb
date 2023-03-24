@@ -1,4 +1,4 @@
-/* global _, Backbone, templateEngine, $ */
+/* global templateEngine */
 (function () {
   'use strict';
 

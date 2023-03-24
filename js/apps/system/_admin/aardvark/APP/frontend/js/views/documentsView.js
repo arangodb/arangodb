@@ -1,4 +1,4 @@
-/* global frontendConfig, arangoHelper, _, $, arangoHelper, templateEngine, Joi, JSONEditor, numeral */
+/* global frontendConfig, arangoHelper, templateEngine, Joi, JSONEditor, numeral */
 
 (function () {
   'use strict';

@@ -1,4 +1,4 @@
-/* global templateEngine, Backbone, $, arangoHelper */
+/* global templateEngine, arangoHelper */
 (function () {
   'use strict';
   window.DBSelectionView = Backbone.View.extend({

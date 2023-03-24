@@ -1,4 +1,4 @@
-/* global  Backbone, arangoHelper */
+/* global arangoHelper */
 
 window.DatabaseModel = Backbone.Model.extend({
   idAttribute: 'name',

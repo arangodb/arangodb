@@ -1,5 +1,3 @@
-/* global Backbone, $ */
-
 (function () {
   'use strict';
   window.PaginationView = Backbone.View.extend({

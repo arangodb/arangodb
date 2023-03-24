@@ -1,4 +1,3 @@
-/* global Backbone, $ */
 /* global templateEngine */
 
 (function () {

@@ -1,4 +1,4 @@
-/* global Noty, Joi, sigma, $, tippy, _, arangoHelper, frontendConfig */
+/* global Noty, Joi, sigma, tippy, arangoHelper, frontendConfig */
 
 (function () {
   'use strict';

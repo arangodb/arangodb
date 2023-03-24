@@ -1,4 +1,4 @@
-/* global  Backbone, arangoHelper, $, frontendConfig */
+/* global arangoHelper, frontendConfig */
 (function () {
   'use strict';
   window.QueryManagementActive = Backbone.Collection.extend({

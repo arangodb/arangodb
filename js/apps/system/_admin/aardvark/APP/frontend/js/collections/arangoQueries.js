@@ -1,4 +1,4 @@
-/* global Backbone, _, frontendConfig, ArangoQuery, $, arangoHelper */
+/* global frontendConfig, ArangoQuery, arangoHelper */
 (function () {
   'use strict';
 

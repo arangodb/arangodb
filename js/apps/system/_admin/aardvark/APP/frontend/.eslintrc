@@ -1,3 +1,13 @@
 ---
   env:
     browser: true
+
+  globals:
+    "Backbone": readonly
+    "_": readonly
+    "$": readonly
+  
+  ignorePatterns: ["lib/*.js"]
+
+  rules:
+    no-unused-vars: error
