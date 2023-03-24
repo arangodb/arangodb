@@ -1064,6 +1064,11 @@ VocbasePtr DatabaseFeature::useDatabase(TRI_voc_tick_t id) const {
   return nullptr;
 }
 
+bool DatabaseFeature::existsDatabase(std::string_view name) const {
+  auto databases = _databases.load();
+  return databases->contains(name);
+}
+
 /// @brief lookup a database by its name, not increasing its reference count
 TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string_view name) const {
   if (name.empty()) {

@@ -24,6 +24,7 @@
 
 #include <set>
 #include <unordered_map>
+#include "Actor/ActorPID.h"
 #include "Pregel/Conductor/State.h"
 
 namespace arangodb::pregel::conductor {
@@ -49,20 +50,24 @@ struct CreateWorkers : ExecutionState {
     function that needs to be used instead of the message function of the state
     interface.
    */
+  auto messagesToServers()
+      -> std::unordered_map<ServerID, worker::message::CreateWorker>;
   auto messages()
-      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
-  auto message() -> worker::message::WorkerMessages override {
-    return worker::message::WorkerMessages{};
-  };
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> override;
 
   ConductorState& conductor;
+  std::unordered_map<ShardID, actor::ActorPID> actorForShard;
   std::set<ServerID> sentServers;
   std::set<ServerID> respondedServers;
   uint64_t responseCount = 0;
-  auto _workerSpecifications() const
-      -> std::unordered_map<ServerID, worker::message::CreateNewWorker>;
+
+ private:
+  auto _updateResponsibleActorPerShard(actor::ActorPID actor) -> void;
 };
 
 }  // namespace arangodb::pregel::conductor

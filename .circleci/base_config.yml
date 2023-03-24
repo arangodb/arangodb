@@ -66,6 +66,23 @@ jobs:
       - store_artifacts:
           path: /tmp/clang_format_outcome.txt
 
+  eslint:
+    docker:
+      - image: alpine:3.17
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install eslint
+          command: |
+            apk add --no-cache npm
+            npm -g install eslint
+      - run:
+          name: Run eslint
+          command: |
+            utils/eslint.sh
+
   compile-linux:
     parameters:
       preset:
@@ -78,7 +95,7 @@ jobs:
       - image: arangodb/build-alpine-x86_64:3.16-gcc11.2-openssl3.0.8
     resource_class: xlarge
     environment:
-      GIT_SSH_COMMAND: ssh -v
+      GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
     steps:
@@ -96,12 +113,14 @@ jobs:
             if [ << parameters.enterprise >> == true ]; then
               ssh-keyscan github.com >> ~/.ssh/known_hosts
               if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
+                set +e
                 git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
                 if [ "$?" == "0" ] ; then
                   ENTERPRISE_BRANCH=$CIRCLE_BRANCH
                 else
                   ENTERPRISE_BRANCH=devel
                 fi
+                set -e
               else
                 ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
               fi
@@ -219,6 +238,10 @@ workflows:
             - minimal-checkout
       - clang-format:
           name: clang-format
+          requires:
+            - minimal-checkout
+      - eslint:
+          name: eslint
           requires:
             - minimal-checkout
   community-pr:

@@ -100,18 +100,21 @@ struct ExternalId {
 
 struct ExternalProcess : public ExternalId {
   std::string _executable;
-  size_t _numberArguments;
-  char** _arguments;
+  size_t _numberArguments = 0;
+  char** _arguments = nullptr;
 
 #ifdef _WIN32
-  HANDLE _process;
+  HANDLE _process = nullptr;
 #endif
 
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
 
+  ExternalProcess(ExternalProcess const& other) = delete;
+  ExternalProcess& operator=(ExternalProcess const& other) = delete;
+
+  ExternalProcess() = default;
   ~ExternalProcess();
-  ExternalProcess();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,11 +128,9 @@ extern std::vector<ExternalProcess*> ExternalProcesses;
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalProcessStatus {
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
   std::string _errorMessage;
-
-  ExternalProcessStatus();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +145,7 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-ProcessInfo TRI_ProcessInfoSelf(void);
+ProcessInfo TRI_ProcessInfoSelf();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process

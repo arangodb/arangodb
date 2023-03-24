@@ -747,14 +747,14 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
     return found;
   };
 
-  TRI_vocbase_t* vocbase{};
+  VocbasePtr vocbase;
 
   // check analyzer database
 
   if (server.hasFeature<DatabaseFeature>()) {
-    vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(dbName);
+    vocbase = server.getFeature<DatabaseFeature>().useDatabase(dbName);
 
-    if (checkDatabase(vocbase)) {
+    if (vocbase != nullptr && checkDatabase(vocbase.get())) {
       return true;
     }
   }
@@ -763,7 +763,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
   if (server.hasFeature<SystemDatabaseFeature>()) {
     auto sysVocbase = server.getFeature<SystemDatabaseFeature>().use();
 
-    if (sysVocbase.get() != vocbase && checkDatabase(sysVocbase.get())) {
+    if (sysVocbase.get() != vocbase.get() && checkDatabase(sysVocbase.get())) {
       return true;
     }
   }
@@ -1960,7 +1960,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {};  // database might not have come up yet
@@ -2130,7 +2130,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(database);
 
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto vocbase = dbFeature.useDatabase(database);
 
     if (!vocbase) {
       if (engine.inRecovery()) {

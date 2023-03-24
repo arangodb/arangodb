@@ -36,7 +36,10 @@
 #include "Pregel/Aggregator.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/GraphLoader.h"
+#include "Pregel/GraphStore/GraphStorer.h"
+#include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/Worker.h"
 #include "Pregel/IncomingCache.h"
@@ -80,12 +83,14 @@ using namespace arangodb::pregel;
 
 template<typename V, typename E, typename M>
 Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
-                        CreateWorker const& parameters, PregelFeature& feature)
+                        worker::message::CreateWorker const& parameters,
+                        PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
-      _algorithm(algo) {
-  _config->updateConfig(_feature, parameters);
+      _algorithm(algo),
+      _quiver(nullptr) {
+  _config->updateConfig(parameters);
 
   MUTEX_LOCKER(guard, _commandMutex);
 
@@ -95,8 +100,8 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                           parameters.userParameters.slice()));
   _messageFormat.reset(algo->messageFormat());
   _messageCombiner.reset(algo->messageCombiner());
-  _graphStore = std::make_unique<GraphStore<V, E>>(
-      _feature, vocbase, _config->executionNumber(), _algorithm->inputFormat());
+  _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
+  _workerAggregators = std::make_unique<AggregatorHandler>(algo);
 
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
@@ -161,11 +166,10 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
-    auto graphLoaded =
-        GraphLoaded{.executionNumber = _config->_executionNumber,
-                    .sender = ServerState::instance()->getId(),
-                    .vertexCount = _graphStore->localVertexCount(),
-                    .edgeCount = _graphStore->localEdgeCount()};
+    auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
+                                   .sender = ServerState::instance()->getId(),
+                                   .vertexCount = _quiver->numberOfVertices(),
+                                   .edgeCount = _quiver->numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -185,23 +189,25 @@ void Worker<V, E, M>::setupWorker() {
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [this, self = shared_from_this(),
-                    statusUpdateCallback = std::move(_makeStatusCallback()),
-                    finishedCallback = std::move(finishedCallback)] {
-                     try {
-                       _graphStore->loadShards(_config, statusUpdateCallback,
-                                               finishedCallback);
-                     } catch (std::exception const& ex) {
-                       LOG_PREGEL("a47c4", WARN)
-                           << "caught exception in loadShards: " << ex.what();
-                       throw;
-                     } catch (...) {
-                       LOG_PREGEL("e932d", WARN)
-                           << "caught unknown exception in loadShards";
-                       throw;
-                     }
-                   });
+  scheduler->queue(
+      RequestLane::INTERNAL_LOW,
+      [this, self = shared_from_this(),
+       statusUpdateCallback = std::move(_makeStatusCallback()),
+       finishedCallback = std::move(finishedCallback)] {
+        try {
+          auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
+                                          statusUpdateCallback);
+          _quiver = loader.load();
+        } catch (std::exception const& ex) {
+          LOG_PREGEL("a47c4", WARN)
+              << "caught exception in loadShards: " << ex.what();
+          throw;
+        } catch (...) {
+          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
+          throw;
+        }
+        finishedCallback();
+      });
 }
 
 template<typename V, typename E, typename M>
@@ -258,13 +264,14 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
-                                 .vertexCount = _graphStore->localVertexCount(),
-                                 .edgeCount = _graphStore->localEdgeCount(),
+                                 .vertexCount = _quiver->numberOfVertices(),
+                                 .edgeCount = _quiver->numberOfEdges(),
                                  .aggregators = aggregators};
 }
 
 template<typename V, typename E, typename M>
-void Worker<V, E, M>::receivedMessages(PregelMessage const& data) {
+void Worker<V, E, M>::receivedMessages(
+    worker::message::PregelMessage const& data) {
   if (data.gss == _config->_globalSuperstep) {
     {  // make sure the pointer is not changed while
       // parsing messages
@@ -346,7 +353,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_graphStore = _graphStore.get();
+  ctx->_quiver = _quiver;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
@@ -371,7 +378,7 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& vertexEntry : _graphStore->quiver()) {
+  for (auto& vertexEntry : *_quiver) {
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
     _currentGssObservables.messagesReceived += messages.size();
@@ -473,7 +480,7 @@ void Worker<V, E, M>::_finishedProcessing() {
   uint64_t tn = _config->parallelism();
   uint64_t s = _messageStats.sendCount / tn / 2UL;
   _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
-  _messageStats.resetTracking();
+  _messageStats.reset();
   LOG_PREGEL("13dbf", DEBUG) << "Message batch size: " << _messageBatchSize;
 }
 
@@ -511,10 +518,29 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
   _state = WorkerState::DONE;
   if (msg.store) {
     LOG_PREGEL("91264", DEBUG) << "Storing results";
-    // tell graphstore to remove read locks
-    _graphStore->storeResults(_config, std::move(cleanup),
-                              _makeStatusCallback());
     _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(
+        RequestLane::INTERNAL_LOW,
+        [this, self = shared_from_this(),
+         statusUpdateCallback = std::move(_makeStatusCallback()),
+         cleanup = std::move(cleanup)] {
+          try {
+            auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
+                                            _config->globalShardIDs(),
+                                            std::move(statusUpdateCallback));
+            _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+            storer.store(_quiver);
+          } catch (std::exception const& ex) {
+            LOG_PREGEL("a4774", WARN)
+                << "caught exception in store: " << ex.what();
+            throw;
+          } catch (...) {
+            LOG_PREGEL("e932e", WARN) << "caught unknown exception in store";
+            throw;
+          }
+          cleanup();
+        });
   } else {
     LOG_PREGEL("b3f35", WARN) << "Discarding results";
     cleanup();
@@ -523,50 +549,17 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
 
 template<typename V, typename E, typename M>
 auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
-  MUTEX_LOCKER(guard, _commandMutex);
+  auto storer =
+      GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
+                                    std::move(_makeStatusCallback()));
 
-  std::string tmp;
-
-  VPackBuilder results;
-  results.openArray(/*unindexed*/ true);
-  for (auto& vertex : _graphStore->quiver()) {
-    TRI_ASSERT(vertex.shard().value < _config->globalShardIDs().size());
-    ShardID const& shardId = _config->globalShardID(vertex.shard());
-
-    results.openObject(/*unindexed*/ true);
-
-    if (withId) {
-      std::string const& cname = _config->shardIDToCollectionName(shardId);
-      if (!cname.empty()) {
-        tmp.clear();
-        tmp.append(cname);
-        tmp.push_back('/');
-        tmp.append(vertex.key().data(), vertex.key().size());
-        results.add(StaticStrings::IdString, VPackValue(tmp));
-      }
-    }
-
-    results.add(StaticStrings::KeyString,
-                VPackValuePair(vertex.key().data(), vertex.key().size(),
-                               VPackValueType::String));
-
-    V const& data = vertex.data();
-    if (auto res =
-            _graphStore->graphFormat()->buildVertexDocument(results, &data);
-        !res) {
-      LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Failed to build vertex document");
-    }
-    results.close();
-  }
-  results.close();
-  return PregelResults{results};
+  storer.store(_quiver);
+  return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path,
-                                     VPackBuilder const& message) {
+                                     VPackBuilder const& message) const {
   if (!ServerState::instance()->isRunningInCluster()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
@@ -597,21 +590,21 @@ void Worker<V, E, M>::_callConductor(std::string const& path,
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_observeStatus() -> Status const {
+auto Worker<V, E, M>::_observeStatus() const -> Status const {
   auto currentGss = _currentGssObservables.observe();
   auto fullGssStatus = _allGssStatus.copy();
 
   if (!currentGss.isDefault()) {
     fullGssStatus.gss.emplace_back(currentGss);
   }
-  return Status{.graphStoreStatus = _graphStore->status(),
+  return Status{.graphStoreStatus = {},  // TODO: GORDO-1583
                 .allGssStatus = fullGssStatus.gss.size() > 0
                                     ? std::optional{fullGssStatus}
                                     : std::nullopt};
 }
 
 template<typename V, typename E, typename M>
-auto Worker<V, E, M>::_makeStatusCallback() -> std::function<void()> {
+auto Worker<V, E, M>::_makeStatusCallback() const -> std::function<void()> {
   return [self = shared_from_this(), this] {
     auto update = StatusUpdated{.executionNumber = _config->_executionNumber,
                                 .sender = ServerState::instance()->getId(),
