@@ -1104,8 +1104,10 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
 
 void DumpFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      MUTEX_LOCKER(lock, _workerErrorLock);
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }

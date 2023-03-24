@@ -43,11 +43,12 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedFollowerState<S>::EntryIterator;
 
-  explicit EmptyFollowerType(std::unique_ptr<MyCoreType> core)
+  using CoreType =
+      typename replicated_state::IReplicatedFollowerState<S>::CoreType;
+  explicit EmptyFollowerType(std::unique_ptr<CoreType> core)
       : _core(std::move(core)) {}
 
-  [[nodiscard]] auto resign() && noexcept
-      -> std::unique_ptr<MyCoreType> override;
+  [[nodiscard]] auto resign() && noexcept -> std::unique_ptr<CoreType> override;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator>) noexcept
@@ -59,11 +60,11 @@ struct EmptyFollowerType : replicated_state::IReplicatedFollowerState<S> {
     return futures::Future<Result>{std::in_place};
   }
 
-  std::unique_ptr<MyCoreType> _core;
+  std::unique_ptr<CoreType> _core;
 };
 
 template<typename S>
-auto EmptyFollowerType<S>::resign() && noexcept -> std::unique_ptr<MyCoreType> {
+auto EmptyFollowerType<S>::resign() && noexcept -> std::unique_ptr<CoreType> {
   return std::move(_core);
 }
 
@@ -144,6 +145,11 @@ template<typename S>
 struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
   using EntryIterator =
       typename replicated_state::IReplicatedLeaderState<S>::EntryIterator;
+  using CoreType =
+      typename replicated_state::IReplicatedLeaderState<S>::CoreType;
+
+  explicit FakeLeaderType(std::unique_ptr<CoreType> core)
+      : _core(std::move(core)) {}
 
   [[nodiscard]] auto hasReceivedRecovery() const noexcept -> bool {
     return recovery.wasTriggered();
@@ -157,11 +163,18 @@ struct FakeLeaderType : replicated_state::IReplicatedLeaderState<S> {
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> recovery;
 
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<CoreType> override {
+    return std::move(_core);
+  }
+
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> iter)
       -> futures::Future<Result> override {
     return recovery.trigger(std::move(iter));
   }
+
+  std::unique_ptr<CoreType> _core;
 };
 
 template<typename S>
@@ -177,6 +190,8 @@ struct FakeFollowerType : replicated_state::IReplicatedFollowerState<S> {
 
   AsyncOperationMarker<std::unique_ptr<EntryIterator>, Result> apply;
   AsyncOperationMarker<std::pair<ParticipantId, LogIndex>, Result> acquire;
+
+  using replicated_state::IReplicatedFollowerState<S>::getStream;
 
  protected:
   auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept

@@ -26,7 +26,7 @@ function collectionComputedValuesClusterSuite() {
         numberOfShards: 1, replicationFactor: 2, computedValues: [{
           name: "randValue",
           expression: "RETURN TO_STRING(RAND())",
-          override: false
+          overwrite: false
         }]
       });
       let docs = [];

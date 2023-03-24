@@ -59,6 +59,7 @@ auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
 auto constexpr Participant = std::string_view{"participant"};
 auto constexpr Owner = std::string_view{"owner"};
 auto constexpr AssumedWriteConcern = std::string_view{"assumedWriteConcern"};
+auto constexpr AssumedWaitForSync = std::string_view{"assumedWaitForSync"};
 }  // namespace static_strings
 
 template<class Inspector>
@@ -236,6 +237,7 @@ auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
       f.field(static_strings::AssumedWriteConcern, x.assumedWriteConcern)
           .fallback(static_cast<size_t>(1)),
+      f.field(static_strings::AssumedWaitForSync, x.assumedWaitForSync),
       f.field(static_strings::TargetVersion, x.targetVersion),
       f.field(static_strings::StatusReport, x.statusReport),
       f.field(static_strings::LastTimeModified, x.lastTimeModified)

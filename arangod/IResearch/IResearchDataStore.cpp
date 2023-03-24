@@ -1414,7 +1414,10 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
-    auto lock = _asyncSelf->lock();
+    auto linkLock = _asyncSelf->lock();
+    if (!linkLock) {
+      return {TRI_ERROR_INTERNAL};
+    }
     auto ctx = _dataStore._writer->documents();
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       auto res = insertImpl(ctx);  // we need insert to succeed, so  we have
@@ -1659,7 +1662,7 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   dataPath /= "databases";
   dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= StaticStrings::ViewType;
+  dataPath /= StaticStrings::ViewArangoSearchType;
   dataPath += "-";
   // has to be 'id' since this can be a per-shard collection
   dataPath += std::to_string(link.collection().id().id());

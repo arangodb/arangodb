@@ -375,6 +375,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // KEYS is an alias for ATTRIBUTES
   addAlias("KEYS", "ATTRIBUTES");
   add({"VALUES", ".|.", flags, &functions::Values});
+  add({"VALUE", ".,.", flags, &functions::Value});
   add({"MERGE", ".|+", flags, &functions::Merge});
   add({"MERGE_RECURSIVE", ".|+", flags, &functions::MergeRecursive});
   add({"MATCHES", ".,.|.", flags, &functions::Matches});

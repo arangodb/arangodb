@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_state_follower_acquire_snapshot_rt
+introducedIn: "3.10.0"
+help: |
+  Histogram of the duration of acquireSnapshot calls in microseconds.
+unit: us
+type: histogram
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Histogram of the duration of acquireSnapshot calls in microseconds. This measures the time
+  a new follower takes to acquire a snapshot from the leader.

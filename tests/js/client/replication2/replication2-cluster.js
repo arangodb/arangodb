@@ -180,6 +180,7 @@ function ddlSuite() {
 
     testCreateDatabaseWithNewReplication: function () {
       const dbName = 'replv2db';
+
       db._createDatabase(dbName, {replicationVersion: "2"});
       try {
         runInDb(dbName, () => {

@@ -169,13 +169,14 @@ void ShardLocking::addNode(ExecutionNode const* baseNode, size_t snippetId,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unable to cast node to ViewNode");
       }
-      for (aql::Collection const& col : viewNode->collections()) {
+      // TODO Enumerate for indexes, not collection?
+      for (auto const& [collection, _] : viewNode->collections()) {
         std::unordered_set<std::string> restrictedShards;
         if (useRestrictedShard) {
-          addRestrictedShard(&col, restrictedShards);
+          addRestrictedShard(&(collection.get()), restrictedShards);
         }
-        updateLocking(&col, AccessMode::Type::READ, snippetId, restrictedShards,
-                      false);
+        updateLocking(&(collection.get()), AccessMode::Type::READ, snippetId,
+                      restrictedShards, false);
       }
 
       break;

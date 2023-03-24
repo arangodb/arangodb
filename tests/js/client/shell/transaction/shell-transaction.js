@@ -1,5 +1,4 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertTrue, assertFalse, assertEqual, assertNotUndefined, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief ArangoTransaction sTests
@@ -29,18 +28,26 @@
 // tests for streaming transactions
 
 const jsunity = require('jsunity');
+const {
+  fail,
+  assertTrue,
+  assertFalse,
+  assertEqual,
+  assertIdentical,
+  assertNotUndefined,
+} = jsunity.jsUnity.assertions;
 const internal = require('internal');
+const arango = internal.arango;
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').Helper;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const analyzers = require("@arangodb/analyzers");
+const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
-const _ = require('lodash');
 
-var compareStringIds = function (l, r) {
+const compareStringIds = function (l, r) {
   'use strict';
   var i;
   if (l.length !== r.length) {
@@ -57,7 +64,7 @@ var compareStringIds = function (l, r) {
   return 0;
 };
 
-var sortedKeys = function (col) {
+const sortedKeys = function (col) {
   'use strict';
   var keys = [ ];
 
@@ -2118,7 +2125,7 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(0, c1.count());
       assertEqual([ ], sortedKeys(c1));
     },
-
+    
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test: trx with truncate operation
     // //////////////////////////////////////////////////////////////////////////////
@@ -2223,7 +2230,43 @@ function transactionOperationsSuite (dbParams) {
       assertEqual(1, c1.count());
       let doc = c1.document("1");
       assertEqual(doc.updated, 1);
-    }
+    },
+
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test: trx with truncate operation
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testTruncateAbort: function () {
+      c1 = db._create(cn1, {numberOfShards: 4, replicationFactor: 2});
+
+      for (let i = 0; i < 100; ++i) {
+        c1.save({ a: i });
+      }
+
+      let obj = {
+        collections: {
+          write: [ cn1 ]
+        }
+      };
+      
+      let trx;
+      try {
+        trx = db._createTransaction(obj);
+        let tc1 = trx.collection(c1.name());
+        
+        tc1.truncate({ compact: false });
+
+      } catch(err) {
+        fail("Transaction failed with: " + JSON.stringify(err));
+      } finally {
+        if (trx) {
+          trx.abort();
+        }
+      }
+
+      assertEqual(100, c1.count());
+    },
+
 
   };
 }
@@ -4820,105 +4863,6 @@ function transactionDatabaseSuite() {
   };
 }
 
-/**
- * This test suite checks the correctness of replicated operations with respect to replicated log contents.
- */
-function transactionReplication2ReplicateOperation() {
-  'use strict';
-  const dbn = 'UnitTestsTransactionDatabase';
-  var cn = 'UnitTestsTransaction';
-  var c = null;
-
-  return {
-    setUpAll: function () {
-      db._createDatabase(dbn, {replicationVersion: "2"});
-      db._useDatabase(dbn);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(dbn);
-    },
-
-    setUp: function () {
-      db._drop(cn);
-      c = db._create(cn, {numberOfShards: 4});
-    },
-
-    tearDown: function () {
-      if (c !== null) {
-        c.drop();
-      }
-
-      c = null;
-    },
-
-    testTransactionAbortLogEntry: function () {
-      let trx = db._createTransaction({
-        collections: { write: c.name()  }
-      });
-      let tc = trx.collection(c.name());
-      tc.insert({ _key: 'test2', value: 2 });
-      trx.abort();
-
-      let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-      for (const log of logs) {
-        let entries = log.head(1000);
-        let abortFound = false;
-        for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Abort") {
-            abortFound = true;
-            break;
-          }
-        }
-        assertTrue(abortFound, `Could not find Abort operation in log ${log.id()}! Log entries: ${entries}`);
-      }
-    },
-
-    testTransactionCommitLogEntry: function () {
-      let obj = {
-        collections: {
-          write: [ cn ]
-        }
-      };
-
-      let trx;
-      try {
-        trx = db._createTransaction(obj);
-        let tc = trx.collection(cn);
-
-        tc.save({ _key: 'foo' });
-        tc.save({ _key: 'bar' });
-
-      } catch(err) {
-        fail("Transaction failed with: " + JSON.stringify(err));
-      } finally {
-        if (trx) {
-          trx.commit();
-        }
-      }
-
-      let shards = c.shards();
-      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
-
-      for (const log of logs) {
-        let entries = log.head(1000);
-        let commitFound = false;
-        for (const entry of entries) {
-          if (entry.hasOwnProperty("payload") && entry.payload[1].operation === "Commit") {
-            commitFound = true;
-            break;
-          }
-        }
-        assertTrue(commitFound, `Could not find Commit operation in log ${log.id()}! Log entries: ${entries}`);
-      }
-    },
-  };
-}
-
-
 function makeTestSuites(testSuite) {
   let suiteV1 = {};
   let suiteV2 = {};
@@ -4999,7 +4943,6 @@ if (isReplication2Enabled) {
     transactionTTLStreamSuiteV2,
     transactionIteratorSuiteV2,
     transactionOverlapSuiteV2,
-    transactionReplication2ReplicateOperation,
   ];
 
   for (const suite of suites) {

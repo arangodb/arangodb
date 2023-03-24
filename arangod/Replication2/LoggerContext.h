@@ -62,6 +62,8 @@ struct LogNameValuePair : LoggableValue {
 
 struct LoggerContext {
   explicit LoggerContext(LogTopic const& topic) : topic(topic) {}
+  LoggerContext(LoggerContext const&) = default;
+  LoggerContext(LoggerContext&&) noexcept = default;
 
   template<const char N[], typename T>
   auto with(T&& t) const -> LoggerContext {

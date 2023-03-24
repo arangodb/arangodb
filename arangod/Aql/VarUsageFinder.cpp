@@ -114,7 +114,7 @@ void VarUsageFinderT<T>::after(T* en) {
   // Add variables set here to _valid:
   for (auto const& v : en->getVariablesSetHere()) {
     _varsValidStack.back().emplace(v);
-    _varSetBy->insert({v->id, en});
+    _varSetBy->emplace(v->id, en);
   }
 
   en->setVarsValid(_varsValidStack);

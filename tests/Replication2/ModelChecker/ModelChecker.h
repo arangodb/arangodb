@@ -587,6 +587,7 @@ struct RandomEnumerator {
     threads.reserve(numThreads);
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
     auto iterationsLeftToDistribute = randomParameters.iterations;
+    RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     for (std::size_t thrIdx = 0; thrIdx < numThreads; ++thrIdx) {
       // Note that with a fixed `randomParameters.seed`, the pairs (thrIdx,
       // threadSeed) given here are deterministic.
@@ -594,8 +595,6 @@ struct RandomEnumerator {
       iterationsLeftToDistribute -= iters;
       threads.emplace_back([&driver, initialObserver, initialState, iters,
                             threadSeed = gen(), result = &results[thrIdx]] {
-        // the random device is thread_local
-        RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
         // use an additional PRNG, so we can report the seed that can be
         // used to create the failed path
         auto gen = std::mt19937(threadSeed);

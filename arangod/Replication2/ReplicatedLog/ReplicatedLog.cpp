@@ -79,7 +79,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
   auto [leader, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm > newTerm) {
+        currentTerm && *currentTerm >= newTerm) {
       LOG_CTX("b8bf7", INFO, _logContext)
           << "tried to become leader with term " << newTerm
           << ", but current term is " << *currentTerm;
@@ -106,7 +106,7 @@ auto replicated_log::ReplicatedLog::becomeFollower(
   auto [follower, deferred] = std::invoke([&] {
     std::unique_lock guard(_mutex);
     if (auto currentTerm = _participant->getTerm();
-        currentTerm && *currentTerm > term) {
+        currentTerm && *currentTerm >= term) {
       LOG_CTX("c97e9", INFO, _logContext)
           << "tried to become follower with term " << term
           << ", but current term is " << *currentTerm;

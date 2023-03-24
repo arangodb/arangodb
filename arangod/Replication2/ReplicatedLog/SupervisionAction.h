@@ -311,6 +311,30 @@ auto inspect(Inspector& f, UpdateEffectiveAndAssumedWriteConcernAction& x) {
       f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
 }
 
+struct UpdateWaitForSyncAction {
+  static constexpr std::string_view name = "UpdateWaitForSyncAction";
+  bool newWaitForSync;
+  bool newAssumedWaitForSync;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.config.waitForSync = newWaitForSync;
+      plan.participantsConfig.generation += 1;
+    });
+    ctx.modify<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWaitForSync = newAssumedWaitForSync;
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateWaitForSyncAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack), f.field("newWaitForSync", x.newWaitForSync),
+      f.field("newAssumedWaitForSync", x.newAssumedWaitForSync));
+}
+
 struct SetAssumedWriteConcernAction {
   static constexpr std::string_view name = "SetAssumedWriteConcernAction";
   size_t newAssumedWriteConcern;
@@ -328,6 +352,25 @@ auto inspect(Inspector& f, SetAssumedWriteConcernAction& x) {
   return f.object(x).fields(
       f.field("type", hack),
       f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
+}
+
+struct SetAssumedWaitForSyncAction {
+  static constexpr std::string_view name = "SetAssumedWaitForSyncAction";
+  bool newAssumedWaitForSync;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWaitForSync = newAssumedWaitForSync;
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SetAssumedWaitForSyncAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack),
+      f.field("newAssumedWriteConcern", x.newAssumedWaitForSync));
 }
 
 struct ConvergedToTargetAction {
@@ -360,7 +403,8 @@ using Action =
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,
                  RemoveParticipantFromPlanAction, UpdateLogConfigAction,
                  UpdateEffectiveAndAssumedWriteConcernAction,
-                 SetAssumedWriteConcernAction, ConvergedToTargetAction>;
+                 SetAssumedWriteConcernAction, UpdateWaitForSyncAction,
+                 SetAssumedWaitForSyncAction, ConvergedToTargetAction>;
 
 auto executeAction(Log log, Action& action) -> ActionContext;
 }  // namespace arangodb::replication2::replicated_log

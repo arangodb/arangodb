@@ -100,6 +100,13 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
+    err << "database = " << tmp_database.has_value() << " ";
+    err << "collection = " << tmp_collection.has_value() << " ";
+    err << "from = " << tmp_from.has_value() << " ";
+    err << "to = " << tmp_to.has_value() << " ";
+    err << "shard = " << tmp_shard.has_value() << " ";
+    err << "creator = " << tmp_creator.has_value() << " ";
+    err << "isLeader = " << tmp_isLeader.has_value() << " ";
     LOG_TOPIC("cfbc3", ERR, Logger::SUPERVISION) << err.str();
     moveShardFinish(false, false, err.str());
     _status = FAILED;

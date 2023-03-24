@@ -146,15 +146,11 @@ struct Job {
   ///        excluding "exclude" vector
   static std::string randomIdleAvailableServer(
       Node const& snap, std::vector<std::string> const& exclude);
-  static std::string randomIdleAvailableServer(
-      Node const& snap, velocypack::Slice const& exclude);
 
   static size_t countGoodOrBadServersInList(
       Node const& snap, velocypack::Slice const& serverList);
   static size_t countGoodOrBadServersInList(
       Node const& snap, std::vector<std::string> const& serverList);
-  static size_t countGoodOrBadServersInList(
-      Node const& snap, std::unordered_set<std::string> const& serverList);
 
   static bool isInServerList(Node const& snap, std::string const& prefix,
                              std::string const& server, bool isArray);

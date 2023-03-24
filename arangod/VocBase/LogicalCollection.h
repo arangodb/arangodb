@@ -248,8 +248,6 @@ class LogicalCollection : public LogicalDataSource {
           replication2::replicated_state::document::DocumentState>>;
   auto getDocumentStateLeader() -> std::shared_ptr<
       replication2::replicated_state::document::DocumentLeaderState>;
-  auto waitForDocumentStateLeader() -> std::shared_ptr<
-      replication2::replicated_state::document::DocumentLeaderState>;
   auto getDocumentStateFollower() -> std::shared_ptr<
       replication2::replicated_state::document::DocumentFollowerState>;
 
@@ -258,16 +256,6 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
-
-  /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
-  /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating,
-                                    TransactionId tid = TransactionId::none());
-
-  /// @brief flushes the current index selectivity estimates
-  void flushClusterIndexEstimates();
 
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
@@ -286,7 +274,7 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  virtual void setStatus(TRI_vocbase_col_status_e);
+  void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -327,7 +315,7 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
   bool dropIndex(IndexId iid);
 

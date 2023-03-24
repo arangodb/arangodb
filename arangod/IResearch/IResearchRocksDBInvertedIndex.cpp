@@ -136,7 +136,7 @@ Result IResearchRocksDBInvertedIndexFactory::normalize(
   TRI_ASSERT(normalized.isOpenObject());
 
   auto res = IndexFactory::validateFieldsDefinition(
-      definition, arangodb::StaticStrings::IndexFields, 1, SIZE_MAX, true);
+      definition, arangodb::StaticStrings::IndexFields, 0, SIZE_MAX, true);
   if (res.fail()) {
     return res;
   }

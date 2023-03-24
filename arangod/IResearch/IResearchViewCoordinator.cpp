@@ -72,9 +72,9 @@ bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
-struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
+struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                VPackSlice definition, bool isUserRequest) const override {
+                VPackSlice definition, bool isUserRequest) const final {
     auto& server = vocbase.server();
     if (!server.hasFeature<ClusterFeature>()) {
       return {TRI_ERROR_INTERNAL,
@@ -94,10 +94,11 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       return r;
     }
     LogicalView::ptr impl;
-    r = cluster_helper::construct(impl, vocbase, definition);
+    r = cluster_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       return r;
     }
+    TRI_ASSERT(impl);
     // create links on a best-effort basis
     // link creation failure does not cause view creation failure
     try {
@@ -129,6 +130,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
     }
     // refresh view from Agency
     view = ci.getView(vocbase.name(), std::to_string(impl->id().id()));
+    TRI_ASSERT(view);
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView
@@ -138,7 +140,8 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     velocypack::Slice definition) const override {
+                     velocypack::Slice definition,
+                     bool /*isUserRequest*/) const final {
     std::string error;
     // TODO make_shared instead of new
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
@@ -295,7 +298,7 @@ bool IResearchViewCoordinator::visitCollections(
     CollectionVisitor const& visitor) const {
   std::shared_lock lock{_mutex};
   for (auto& entry : _collections) {
-    if (!visitor(entry.first)) {
+    if (!visitor(entry.first, nullptr)) {
       return false;
     }
   }
@@ -354,7 +357,7 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
       IResearchViewMeta oldMeta{IResearchViewMeta::PartialTag{},
                                 std::move(_meta)};
       _meta.storePartial(std::move(meta));  // update meta for persistence
-      r = cluster_helper::properties(*this);
+      r = cluster_helper::properties(*this, false);
       _meta.storePartial(std::move(oldMeta));  // restore meta
       if (!r.ok()) {
         return r;
@@ -411,7 +414,7 @@ Result IResearchViewCoordinator::dropImpl() {
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
   std::unordered_set<DataSourceId> currentCids;
-  visitCollections([&currentCids](DataSourceId cid) {
+  visitCollections([&](DataSourceId cid, LogicalView::Indexes*) {
     currentCids.emplace(cid);
     return true;
   });

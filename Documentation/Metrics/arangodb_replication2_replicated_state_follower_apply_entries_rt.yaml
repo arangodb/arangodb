@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_state_follower_apply_entries_rt
+introducedIn: "3.10.0"
+help: |
+  Histogram of the duration of applyEntries calls in microseconds.
+unit: us
+type: histogram
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Histogram of the duration of applyEntries calls in microseconds. This measures the time
+  a follower takes to apply log entries to its local state after they have been committed.

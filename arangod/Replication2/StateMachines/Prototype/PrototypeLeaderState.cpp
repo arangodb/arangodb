@@ -25,7 +25,9 @@
 #include "PrototypeLeaderState.h"
 #include "PrototypeStateMachine.h"
 
+#include "Basics/application-exit.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -265,6 +267,22 @@ void PrototypeLeaderState::handlePollResult(
         resolvePromises.fire();
 
         self->handlePollResult(self->pollNewEntries());
+      })
+      .thenFinal([](futures::Try<futures::Unit> tryResult) {
+        if (tryResult.hasException()) {
+          // Note that this means that this state silently stops working.
+          // Production-grade implementations should probably find a better way
+          // of handling this, but this is just for tests and experiments.
+          try {
+            std::rethrow_exception(tryResult.exception());
+          } catch (basics::Exception const& e) {
+            LOG_TOPIC("0e2b8", ERR, Logger::REPLICATED_STATE)
+                << "PrototypeLeaderState stops due to: [" << e.code() << "] "
+                << e.message();
+          } catch (...) {
+            FATAL_ERROR_ABORT();
+          }
+        }
       });
 }
 
@@ -307,8 +325,14 @@ auto PrototypeLeaderState::GuardedData::waitForApplied(LogIndex index)
   return f;
 }
 
-void PrototypeLeaderState::onSnapshotCompleted() {
+void PrototypeLeaderState::onSnapshotCompleted() noexcept try {
   handlePollResult(pollNewEntries());
+} catch (replicated_log::ParticipantResignedException const&) {
+  // We're obsolete now, so just ignore this exception.
+  LOG_TOPIC("5375a", TRACE, Logger::REPLICATED_STATE)
+      << ARANGODB_PRETTY_FUNCTION
+      << ": Caught ParticipantResignedException, will stop working.";
+  return;
 }
 
 auto PrototypeLeaderState::waitForApplied(LogIndex waitForIndex)

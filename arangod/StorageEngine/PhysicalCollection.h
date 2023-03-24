@@ -39,6 +39,8 @@
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
+#include <boost/container/flat_set.hpp>
+
 namespace arangodb {
 
 class LocalDocumentId;
@@ -115,7 +117,7 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(IndexId idxId) const;
 
   /// @brief Find index by name
-  std::shared_ptr<Index> lookupIndex(std::string const& idxName) const;
+  std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
   /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;

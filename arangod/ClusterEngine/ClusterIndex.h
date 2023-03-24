@@ -40,6 +40,9 @@ class ClusterIndex : public Index {
                ClusterEngineType engineType, Index::IndexType type,
                arangodb::velocypack::Slice info);
 
+  ClusterIndex(ClusterIndex const&) = delete;
+  ClusterIndex& operator=(ClusterIndex const&) = delete;
+
   ~ClusterIndex();
 
   void toVelocyPackFigures(velocypack::Builder& builder) const override;

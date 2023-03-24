@@ -271,6 +271,14 @@ class instanceManager {
     }
   }
   launchInstance() {
+
+    if (this.options.hasOwnProperty('server')) {
+      print("external server configured - not testing readyness! " + this.options.server);
+      return;
+    }
+
+    internal.env['INSTANCEINFO'] = JSON.stringify(this.getStructure());
+
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
@@ -705,6 +713,27 @@ class instanceManager {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
+    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    if (timeoutReached) {
+      print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      this.arangods.forEach(arangod => { arangod.serverCrashedLocal = true;});
+      forceTerminate = true;
+    }
+    try {
+      return this._shutdownInstance(forceTerminate);
+    }
+    catch (e) {
+      if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
+        let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+        if (timeoutReached) {
+          print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
+        }
+        return this._shutdownInstance(true);
+      }
+    }
+  }
+
+  _shutdownInstance (forceTerminate) {
     let shutdownSuccess = !forceTerminate;
 
     // we need to find the leading server
@@ -718,7 +747,7 @@ class instanceManager {
       }
     }
 
-    if (!this.checkInstanceAlive()) {
+    if (!forceTerminate && !this.checkInstanceAlive()) {
       print(Date() + ' Server already dead, doing nothing. This shouldn\'t happen?');
     }
 
@@ -911,7 +940,7 @@ class instanceManager {
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
       headers: {'content-type': 'application/json' }
     };
-    let count = 10;
+    let count = 20;
     while (count > 0) {
       let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
@@ -1093,6 +1122,11 @@ class instanceManager {
       }
       this.endpoint = d.endpoint;
       this.url = d.url;
+    }
+
+    if (this.options.hasOwnProperty('server')) {
+      arango.reconnect(this.endpoint, '_system', 'root', '');
+      return true;
     }
 
     try {

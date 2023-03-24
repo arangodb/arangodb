@@ -58,6 +58,8 @@ struct ReplicatedStateMetrics;
 struct IReplicatedLeaderStateBase;
 struct IReplicatedFollowerStateBase;
 
+struct IStateManagerBase {};
+
 /**
  * Common base class for all ReplicatedStates, hiding the type information.
  */
@@ -68,7 +70,7 @@ struct ReplicatedStateBase {
   virtual void start(
       std::unique_ptr<ReplicatedStateToken> token,
       std::optional<velocypack::SharedSlice> const& coreParameter) = 0;
-  virtual void forceRebuild() = 0;
+  virtual void rebuildMe(IStateManagerBase const* caller) noexcept = 0;
   [[nodiscard]] virtual auto getStatus() -> std::optional<StateStatus> = 0;
   [[nodiscard]] auto getLeader()
       -> std::shared_ptr<IReplicatedLeaderStateBase> {
@@ -124,11 +126,11 @@ struct ReplicatedState final
   [[nodiscard]] auto getStatus() -> std::optional<StateStatus> final;
 
   /**
-   * Rebuilds the managers. Called when the managers participant is gone.
+   * Rebuilds the managers. Called by the manager when its participant is gone.
    */
-  void forceRebuild() override;
+  void rebuildMe(IStateManagerBase const* caller) noexcept override;
 
-  struct IStateManager {
+  struct IStateManager : IStateManagerBase {
     virtual ~IStateManager() = default;
     virtual void run() = 0;
 
@@ -155,24 +157,25 @@ struct ReplicatedState final
   std::shared_ptr<replicated_log::ReplicatedLog> const log{};
 
   struct GuardedData {
-    auto forceRebuild() -> DeferredAction;
+    auto rebuildMe(IStateManagerBase const* caller) noexcept -> DeferredAction;
 
     auto runLeader(std::shared_ptr<replicated_log::ILogLeader> logLeader,
                    std::unique_ptr<CoreType>,
-                   std::unique_ptr<ReplicatedStateToken> token)
+                   std::unique_ptr<ReplicatedStateToken> token) noexcept
         -> DeferredAction;
     auto runFollower(std::shared_ptr<replicated_log::ILogFollower> logFollower,
                      std::unique_ptr<CoreType>,
-                     std::unique_ptr<ReplicatedStateToken> token)
+                     std::unique_ptr<ReplicatedStateToken> token) noexcept
         -> DeferredAction;
     auto runUnconfigured(
         std::shared_ptr<replicated_log::LogUnconfiguredParticipant>
             unconfiguredParticipant,
         std::unique_ptr<CoreType> core,
-        std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
+        std::unique_ptr<ReplicatedStateToken> token) noexcept -> DeferredAction;
 
     auto rebuild(std::unique_ptr<CoreType> core,
-                 std::unique_ptr<ReplicatedStateToken> token) -> DeferredAction;
+                 std::unique_ptr<ReplicatedStateToken> token) noexcept
+        -> DeferredAction;
 
     auto flush(StateGeneration planGeneration) -> DeferredAction;
 

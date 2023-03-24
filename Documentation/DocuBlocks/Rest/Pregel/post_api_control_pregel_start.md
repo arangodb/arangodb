@@ -116,7 +116,7 @@ the results in the vertices as attribute `component`:
       internal.sleep(0.5);
     }
   }
-~ examples.dropGraph("connectedComponentsGraph");
+  examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 

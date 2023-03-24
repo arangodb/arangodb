@@ -16,74 +16,10 @@ received messages.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 will be returned in case the job execution id was valid and the state is
+HTTP 200 is returned in case the job execution ID was valid and the state is
 returned along with the response.
 
-@RESTREPLYBODY{id,string,required,string}
-An id of the Pregel job, as a string.
-
-@RESTREPLYBODY{algorithm,string,required,string}
-An algorithm used by the job.
-
-@RESTREPLYBODY{created,string,required,string}
-A date and time when the job was created.
-
-@RESTREPLYBODY{expires,string,optional,string}
-A date and time when the job results expire. The expiration date is only
-meaningful for jobs that were completed, canceled or resulted in an error. Such jobs
-are cleaned up by the garbage collection when they reach their expiration date/time.
-
-@RESTREPLYBODY{ttl,number,required,float}
-A TTL (time to live) value for the job results, specified in seconds.
-The TTL is used to calculate the expiration date for the job's results.
-
-@RESTREPLYBODY{state,string,required,string}
-State of the execution. The following values can be returned:
-- `"running"`: Algorithm is executing normally.
-- `"storing"`: The algorithm finished, but the results are still being written
-  back into the collections. Occurs only if the store parameter is set to true.
-- `"done"`: The execution is done. In version 3.7.1 and later, this means that
-  storing is also done. In earlier versions, the results may not be written back
-  into the collections yet. This event is announced in the server log (requires
-  at least info log level for the `pregel` log topic).
-- `"canceled"`: The execution was permanently canceled, either by the user or by
-  an error.
-- `"fatal error"`: The execution has failed and cannot recover.
-- `"in error"` (currently unused): The execution is in an error state. This can be
-  caused by DB-Servers being not reachable or being non responsive. The execution
-  might recover later, or switch to `"canceled"` if it was not able to recover
-  successfully. 
-- `"recovering"` (currently unused): The execution is actively recovering, will
-  switch back to `running` if the recovery was successful.
-
-@RESTREPLYBODY{gss,number,required,int64}
-The number of global supersteps executed.
-
-@RESTREPLYBODY{totalRuntime,number,required,float}
-Total runtime of the execution up to now (if the execution is still ongoing).
-
-@RESTREPLYBODY{startupTime,number,required,float}
-Startup runtime of the execution.
-The startup time includes the data loading time and can be substantial.
-The startup time will be reported as 0 if the startup is still ongoing.
-
-@RESTREPLYBODY{computationTime,number,required,float}
-Algorithm execution time. The computation time will be reported as 0 if the 
-computation still ongoing.
-
-@RESTREPLYBODY{storageTime,number,optional,float}
-Time for storing the results if the job includes results storage.
-The storage time be reported as 0 if storing the results is still ongoing.
-
-@RESTREPLYBODY{reports,object,optional,get_api_control_pregel_reports}
-Statistics about the Pregel execution. The value will only be populated once
-the algorithm has finished.
-
-@RESTSTRUCT{vertexCount,get_api_control_pregel_reports,integer,optional,int64}
-Total number of vertices processed.
-
-@RESTSTRUCT{edgeCount,get_api_control_pregel_reports,integer,optional,int64}
-Total number of edges processed.
+@RESTREPLYBODY{,object,required,get_api_control_pregel}
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
@@ -111,7 +47,7 @@ Get the execution status of a Pregel job:
   var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);
-    if (["done", "canceled", "fatal error"].includes(status.state)) {
+    if (status.error || ["done", "canceled", "fatal error"].includes(status.state)) {
       assert(status.state == "done");
       break;
     } else {
@@ -124,7 +60,7 @@ Get the execution status of a Pregel job:
   assert(response.code === 200);
 
   logJsonResponse(response);
-~ examples.dropGraph("connectedComponentsGraph");
+  examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 

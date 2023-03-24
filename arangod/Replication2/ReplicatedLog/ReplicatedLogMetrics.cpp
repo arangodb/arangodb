@@ -114,24 +114,6 @@ ReplicatedLogMetrics::ReplicatedLogMetrics(MFP metricsFeature)
 #endif
 }
 
-MeasureTimeGuard::MeasureTimeGuard(
-    std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-        histogram) noexcept
-    : _start(std::chrono::steady_clock::now()),
-      _histogram(std::move(histogram)) {}
-
-void MeasureTimeGuard::fire() {
-  if (_histogram) {
-    auto const endTime = std::chrono::steady_clock::now();
-    auto const duration =
-        std::chrono::duration_cast<std::chrono::microseconds>(endTime - _start);
-    _histogram->count(duration.count());
-    _histogram.reset();
-  }
-}
-
-MeasureTimeGuard::~MeasureTimeGuard() { fire(); }
-
 template arangodb::replication2::replicated_log::ReplicatedLogMetrics::
     ReplicatedLogMetrics(arangodb::metrics::MetricsFeature*);
 #ifdef ARANGODB_USE_GOOGLE_TESTS

@@ -36,7 +36,7 @@ const internal = require("internal");
 const wait = internal.wait;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const {deriveTestSuite, getEndpointById} = require('@arangodb/test-helper');
 const errors = internal.errors;
 const request = require('@arangodb/request');
 
@@ -54,21 +54,6 @@ function getDBServers() {
 
 var servers = getDBServers();
 
-function getEndpointById(id) {
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const endpoint = ArangoClusterInfo.getServerEndpoint(id);
-  return endpointToURL(endpoint);
-}
 
 /// @brief set failure point
 function debugSetFailAt(endpoint, failAt) {

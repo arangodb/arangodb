@@ -876,16 +876,15 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = i.second;
 
     if (value.isObject() && value.hasKey("op")) {
-      Slice const op = value.get("op");
+      std::string_view const op = value.get("op").stringView();
 
-      if (op.isEqualString("delete") || op.isEqualString("replace") ||
-          op.isEqualString("erase")) {
+      if (op == "delete" || op == "replace" || op == "erase") {
         if (!_node.has(abskeys.at(i.first))) {
           continue;
         }
       }
       auto uri = Store::normalize(abskeys.at(i.first));
-      if (op.isEqualString("observe")) {
+      if (op == "observe") {
         bool found = false;
         if (value.get("url").isString()) {
           auto url = value.get("url").copyString();
@@ -903,7 +902,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
                 std::pair<std::string, std::string>(uri, url));
           }
         }
-      } else if (op.isEqualString("unobserve")) {
+      } else if (op == "unobserve") {
         if (value.get("url").isString()) {
           auto url = value.get("url").copyString();
           auto ret = _observerTable.equal_range(url);
@@ -925,6 +924,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).applyOp(value);
         success &= ret.ok();
       }
+
+      // check for triggers here
+      callTriggers(abskeys.at(i.first), op, value);
     } else {
       success &= _node.hasAsWritableNode(abskeys.at(i.first)).applies(value);
     }
@@ -1135,4 +1137,26 @@ std::vector<std::string> Store::split(std::string const& str) {
  */
 Node const* Store::nodePtr(std::string const& path) const {
   return &_node.get(path).value().get();
+}
+
+void Store::callTriggers(std::string_view key, std::string_view op,
+                         VPackSlice trx) {
+  std::unique_lock guard(_triggersMutex);
+  // search for all keys that are a prefix of key
+  auto iter = _triggers.upper_bound(key);
+
+  while (iter != _triggers.begin()) {
+    iter--;
+    if (key.starts_with(iter->first)) {
+      // call trigger
+      iter->second.callback(key, trx);
+    }
+  }
+}
+
+void Store::registerPrefixTrigger(std::string prefix,
+                                  AgencyTriggerCallback cb) {
+  std::unique_lock guard(_triggersMutex);
+  auto normalized = normalize(prefix);
+  _triggers.emplace(std::move(normalized), AgencyTrigger(std::move(cb)));
 }

@@ -25,6 +25,7 @@
 // / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const _ = require('lodash');
 const time = require('internal').time;
 const fs = require('fs');
@@ -34,17 +35,18 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 
-const toArgv = require('internal').toArgv;
-const executeScript = require('internal').executeScript;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
+const toArgv = internal.toArgv;
+const executeScript = internal.executeScript;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const ArangoError = require('@arangodb').ArangoError;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const BLUE = internal.COLORS.COLOR_BLUE;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const GREEN = internal.COLORS.COLOR_GREEN;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
@@ -129,7 +131,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               throw new Error("setup of test failed");
             }
           } catch (ex) {
-            shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
+            if (ex instanceof ArangoError &&
+                ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+              forceTerminate = true;
+            }
+            shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate);                               // stop
             this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
@@ -137,9 +143,9 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               shutdown: shutdownStatus
             };
             this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-            return;
+            return this.results;
           }
-          if (this.instanceManager.shutdownInstance(false)) {                                                     // stop
+          if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
             this.instanceManager.arangods.forEach(function(arangod) {
               arangod.pid = null;
             });
@@ -155,6 +161,10 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               }
               this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
             } catch (ex) {
+              if (ex instanceof ArangoError &&
+                  ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+                forceTerminate = true;
+              }
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
                   ex.message + " - " +

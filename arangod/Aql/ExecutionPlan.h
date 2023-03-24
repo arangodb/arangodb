@@ -410,7 +410,7 @@ class ExecutionPlan {
   ExecutionNode* _root;
 
   /// @brief get the node where a variable is introduced.
-  std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _varSetBy;
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
@@ -448,7 +448,7 @@ class ExecutionPlan {
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
-  std::unordered_map<VariableId, ExecutionNode*> _subqueries;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _subqueries;
 
   /// @brief these nodes will be excluded from building scatter/gather
   /// "diamonds" later

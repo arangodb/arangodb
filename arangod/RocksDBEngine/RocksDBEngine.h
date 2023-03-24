@@ -467,6 +467,8 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+  void verifySstFiles(rocksdb::Options const& options) const;
+
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -586,6 +588,9 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
+
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
 
   /// @brief activate generation of SHA256 files to parallel .sst files
   bool _createShaFiles;

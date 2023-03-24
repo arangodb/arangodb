@@ -21,16 +21,16 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "DocumentCore.h"
-#include "DocumentFollowerState.h"
-#include "DocumentLeaderState.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
-#include "Logger/LogContextKeys.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
+#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -41,14 +41,13 @@ auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
 }
 
 DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
-    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
-    : _agencyReader(std::move(agencyReader)),
-      _shardHandler(std::move(shardHandler)){};
+    std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory)
+    : _handlersFactory(std::move(handlersFactory)){};
 
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
-  return std::make_shared<DocumentFollowerState>(std::move(core));
+  return std::make_shared<DocumentFollowerState>(std::move(core),
+                                                 _handlersFactory);
 }
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
@@ -66,19 +65,9 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
           .with<logContextKeyCollectionId>(coreParameters.collectionId)
           .with<logContextKeyLogId>(gid.id);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), getAgencyReader(),
-      getShardHandler(), std::move(logContext));
+      std::move(gid), std::move(coreParameters), _handlersFactory,
+      std::move(logContext));
 }
-
-auto DocumentFactory::getAgencyReader()
-    -> std::shared_ptr<IDocumentStateAgencyHandler> {
-  return _agencyReader;
-};
-
-auto DocumentFactory::getShardHandler()
-    -> std::shared_ptr<IDocumentStateShardHandler> {
-  return _shardHandler;
-};
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 

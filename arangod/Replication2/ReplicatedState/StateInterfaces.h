@@ -75,7 +75,8 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
   virtual auto recoverEntries(std::unique_ptr<EntryIterator>)
       -> futures::Future<Result> = 0;
 
-  auto getStream() const -> std::shared_ptr<Stream> const&;
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
 
   [[nodiscard]] virtual auto resign() && noexcept
       -> std::unique_ptr<CoreType> = 0;
@@ -85,9 +86,13 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
    * state has been updated. The underlying stream is guaranteed to have been
    * initialized.
    */
-  virtual void onSnapshotCompleted(){};
+  virtual void onSnapshotCompleted() noexcept {};
 
-  // TODO make private
+  void setStream(std::shared_ptr<Stream> stream) noexcept {
+    _stream = std::move(stream);
+  }
+
+ private:
   std::shared_ptr<Stream> _stream;
 };
 
@@ -138,7 +143,8 @@ struct IReplicatedFollowerState : IReplicatedFollowerStateBase {
       -> std::unique_ptr<CoreType> = 0;
 
  protected:
-  [[nodiscard]] auto getStream() const -> std::shared_ptr<Stream> const&;
+  [[nodiscard]] auto getStream() const noexcept
+      -> std::shared_ptr<Stream> const&;
 
  private:
   friend struct FollowerStateManager<S>;

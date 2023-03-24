@@ -316,7 +316,8 @@ void QueryRegistryFeature::collectOptions(
                      new DoubleParameter(&_slowStreamingQueryThreshold));
 
   options->addOption("--query.cache-mode",
-                     "mode for the AQL query result cache (on, off, demand)",
+                     "Mode for the AQL query result cache. Can be \"on\", "
+                     "\"off\", or \"demand\".",
                      new StringParameter(&_queryCacheMode));
 
   options->addOption(

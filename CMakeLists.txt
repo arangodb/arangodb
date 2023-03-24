@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -25,13 +25,6 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -97,7 +90,7 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "10")
+set(ARANGODB_VERSION_MINOR "11")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -362,11 +355,7 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-if (${CMAKE_MAJOR_VERSION} EQUAL 2)
-  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
-else ()
-  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-endif ()
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -598,6 +587,14 @@ set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ fl
 set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
+include(CheckCompilerVersion)
+
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  1932 # MSVC
+)
+
 if (MSVC)
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
@@ -611,6 +608,7 @@ if (MSVC)
   endif()
 endif ()
 
+# FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
     message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
@@ -720,6 +718,7 @@ endif ()
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
+set(BUILDING_FOR_ARM64 OFF)
 if (NOT WINDOWS)
   include(TargetArch)
 
@@ -734,6 +733,12 @@ if (NOT WINDOWS)
     set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
   endif ()
 
+  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_TARGET_ARCHITECTURE_CODE)
+    # Probably we are cross-compiling or CMAKE_SYSTEM_PROCESSOR is an empty string.
+    message(WARNING "Changing CMAKE_SYSTEM_PROCESSOR from ${CMAKE_SYSTEM_PROCESSOR} to ${CMAKE_TARGET_ARCHITECTURE_CODE}")
+    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_TARGET_ARCHITECTURE_CODE}")
+  endif()
+
   include(VcMacros)
 
   # Detect target architecture properties. This honors
@@ -747,6 +752,14 @@ if (NOT WINDOWS)
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 

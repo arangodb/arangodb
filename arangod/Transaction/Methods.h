@@ -206,20 +206,23 @@ class Methods {
   Result begin();
 
   /// @deprecated use async variant
-  Result commit();
+  [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
+      -> Result;
   /// @brief commit / finish the transaction
-  Future<Result> commitAsync();
+  [[nodiscard]] auto commitAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result abort();
+  [[nodiscard, deprecated("use async variant")]] auto abort() noexcept
+      -> Result;
   /// @brief abort the transaction
-  Future<Result> abortAsync();
+  [[nodiscard]] auto abortAsync() noexcept -> Future<Result>;
 
   /// @deprecated use async variant
-  Result finish(Result const& res);
+  [[nodiscard, deprecated("use async variant")]] auto finish(
+      Result const& res) noexcept -> Result;
 
   /// @brief finish a transaction (commit or abort), based on the previous state
-  Future<Result> finishAsync(Result const& res);
+  [[nodiscard]] auto finishAsync(Result const& res) noexcept -> Future<Result>;
 
   /// @brief return the transaction id
   TransactionId tid() const;
@@ -503,9 +506,10 @@ class Methods {
   // The internal methods distinguish between the synchronous and asynchronous
   // APIs via an additional parameter, so `skipScheduler` can be set for network
   // requests.
-  auto commitInternal(MethodsApi api) -> Future<Result>;
-  auto abortInternal(MethodsApi api) -> Future<Result>;
-  auto finishInternal(Result const& res, MethodsApi api) -> Future<Result>;
+  [[nodiscard]] auto commitInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto abortInternal(MethodsApi api) noexcept -> Future<Result>;
+  [[nodiscard]] auto finishInternal(Result const& res, MethodsApi api) noexcept
+      -> Future<Result>;
   // is virtual for IgnoreNoAccessMethods
   ENTERPRISE_VIRT auto documentInternal(std::string const& collectionName,
                                         VPackSlice value,
@@ -570,7 +574,7 @@ class Methods {
   bool _mainTransaction;
 
   Future<Result> replicateOperations(
-      std::shared_ptr<LogicalCollection> collection,
+      TransactionCollection& collection,
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,

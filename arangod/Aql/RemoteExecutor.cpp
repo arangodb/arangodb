@@ -454,18 +454,15 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
                            fuerte::Response* response) {
   TRI_ASSERT(err != fuerte::Error::NoError || response->statusCode() >= 400);
 
+  constexpr std::string_view prefix("Error message received from ");
   std::string msg;
-  if (spec.shardId.empty()) {
-    msg.append("Error message received from cluster node '")
-        .append(spec.serverId)
-        .append("': ");
-  } else {
-    msg.append("Error message received from shard '")
-        .append(spec.shardId)
-        .append("' on cluster node '")
-        .append(spec.serverId)
-        .append("': ");
+  // avoid a few reallocations for building the error message string
+  msg.reserve(128);
+  msg.append(prefix);
+  if (!spec.shardId.empty()) {
+    msg.append("shard '").append(spec.shardId).append("' on ");
   }
+  msg.append("cluster node '").append(spec.serverId).append("': ");
 
   auto res = TRI_ERROR_INTERNAL;
   if (err != fuerte::Error::NoError) {
@@ -481,6 +478,16 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         std::string_view ref = VelocyPackHelper::getStringView(
             slice, StaticStrings::ErrorMessage,
             std::string_view("(no valid error in response)"));
+
+        if (ref.starts_with(prefix)) {
+          // error message already starts with "Error message received from ".
+          // this can happen if an error is received by a DB server sending a
+          // request to a coordinator, and then sending the coordinator's
+          // error back to the original calling snippet on the coordinator.
+          // in this case, we simply keep the original (first) error.
+          msg.clear();
+        }
+
         msg.append(ref.data(), ref.size());
       }
     }

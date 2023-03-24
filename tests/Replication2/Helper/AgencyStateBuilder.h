@@ -26,18 +26,16 @@
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
-using namespace arangodb;
-using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
 namespace RSA = arangodb::replication2::replicated_state::agency;
+namespace RS = arangodb::replication2::replicated_state;
 
 namespace arangodb::test {
 
 struct AgencyStateBuilder {
   AgencyStateBuilder() = default;
 
-  auto setId(LogId id) -> AgencyStateBuilder& {
+  auto setId(replication2::LogId id) -> AgencyStateBuilder& {
     _state.target.id = id;
     if (_state.plan) {
       _state.plan->id = id;
@@ -45,7 +43,8 @@ struct AgencyStateBuilder {
     return *this;
   }
 
-  auto setTargetParticipant(ParticipantId const& id) -> AgencyStateBuilder& {
+  auto setTargetParticipant(replication2::ParticipantId const& id)
+      -> AgencyStateBuilder& {
     _state.target.participants[id];
     return *this;
   }
@@ -60,7 +59,7 @@ struct AgencyStateBuilder {
     return *this;
   }
 
-  auto setTargetLeader(std::optional<ParticipantId> leader)
+  auto setTargetLeader(std::optional<replication2::ParticipantId> leader)
       -> AgencyStateBuilder& {
     _state.target.leader = std::move(leader);
     return *this;
@@ -78,17 +77,18 @@ struct AgencyStateBuilder {
     return *this;
   }
 
-  auto setPlanGeneration(StateGeneration gen) -> AgencyStateBuilder& {
+  auto setPlanGeneration(RS::StateGeneration gen) -> AgencyStateBuilder& {
     makePlan().generation = gen;
     return *this;
   }
 
-  auto setPlanParticipant(ParticipantId const& name, StateGeneration gen)
-      -> AgencyStateBuilder& {
+  auto setPlanParticipant(replication2::ParticipantId const& name,
+                          RS::StateGeneration gen) -> AgencyStateBuilder& {
     makePlan().participants[name].generation = gen;
     return *this;
   }
-  auto setPlanParticipant(ParticipantId const& name) -> AgencyStateBuilder& {
+  auto setPlanParticipant(replication2::ParticipantId const& name)
+      -> AgencyStateBuilder& {
     makePlan().participants[name].generation = makePlan().generation;
     return *this;
   }
@@ -97,7 +97,8 @@ struct AgencyStateBuilder {
     (setPlanParticipant(std::forward<Vs>(vs)), ...);
     return *this;
   }
-  auto addPlanParticipant(ParticipantId const& name) -> AgencyStateBuilder& {
+  auto addPlanParticipant(replication2::ParticipantId const& name)
+      -> AgencyStateBuilder& {
     makePlan().participants[name].generation = ++makePlan().generation;
     return *this;
   }
@@ -113,7 +114,7 @@ struct AgencyStateBuilder {
     if (!_state.plan.has_value()) {
       _state.plan.emplace();
       _state.plan->id = _state.target.id;
-      _state.plan->generation = StateGeneration{1};
+      _state.plan->generation = RS::StateGeneration{1};
     }
     return _state.plan.value();
   }
@@ -122,8 +123,8 @@ struct AgencyStateBuilder {
   auto setSnapshotCompleteFor(Vs&&... id) -> AgencyStateBuilder& {
     ((makeCurrent().participants[id] =
           {_state.plan.value().participants.at(id).generation,
-           SnapshotInfo{SnapshotStatus::kCompleted, SnapshotInfo::clock::now(),
-                        std::nullopt}}),
+           RS::SnapshotInfo{RS::SnapshotStatus::kCompleted,
+                            RS::SnapshotInfo::clock::now(), std::nullopt}}),
      ...);
     return *this;
   }

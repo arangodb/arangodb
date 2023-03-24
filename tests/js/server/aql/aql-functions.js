@@ -3036,6 +3036,116 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test VALUE function
+////////////////////////////////////////////////////////////////////////////////
+    testValueFunction : function () {
+      let obj = { foo : { bar : { baz : [ 1, 2, { foobar: 42 }, { foobar : 'bar' } ] } } };
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', 1 ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertEqual(2, res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'invalid', 'bar', 'baz', 1 ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, 'foo')", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, ['foo'])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertEqual({ bar : { baz : [ 1, 2, { foobar: 42 }, { foobar : 'bar' } ] } }, res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', true ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE('foo', [ 'foo' ])");
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', null ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', {}])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', [1]])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', 42 ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 1 ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+      {
+        let res = getQueryResults("RETURN VALUE(@obj, [ 'foo', 'bar', 'baz', 2, 'foobar', '1' ])", { "obj" : obj });
+        assertEqual(1, res.length);
+        assertNull(res[0]);
+      }
+
+       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VALUE()"); 
+       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VALUE(@obj)"); 
+       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN VALUE(@obj, ['foo'], ['foo'])"); 
+
+       const cn = "testValueFunctionCollection";
+       try {
+         try {
+             db._drop(cn);
+         } catch (e) { }
+         db._create(cn);
+         db[cn].save({ _key:"foo" });
+         {
+             let res = getQueryResults("RETURN VALUE(DOCUMENT('testValueFunctionCollection/foo'), [ '_id' ])");
+             assertEqual(1, res.length);
+             assertEqual("testValueFunctionCollection/foo", res[0]);
+         }
+         {
+             let res = getQueryResults("RETURN VALUE(DOCUMENT('testValueFunctionCollection/foo'), [ '_id', 'foo' ])");
+             assertEqual(1, res.length);
+             assertNull(res[0]);
+         }
+       } finally {
+         db._drop(cn);
+       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test non-existing functions
 ////////////////////////////////////////////////////////////////////////////////
 

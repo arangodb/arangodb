@@ -24,11 +24,13 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/exitcodes.h"
 
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb {
-namespace options {
+#include <string>
+
+namespace arangodb::options {
 
 class ArgumentParser {
  public:
@@ -150,8 +152,9 @@ class ArgumentParser {
 
     // we got some previous option, but no value was specified for it
     if (!lastOption.empty()) {
-      return _options->fail("no value specified for option '--" + lastOption +
-                            "'");
+      _options->fail(TRI_EXIT_INVALID_OPTION_VALUE,
+                     "no value specified for option '--" + lastOption + "'");
+      return false;
     }
 
     // all is well
@@ -162,5 +165,5 @@ class ArgumentParser {
  private:
   ProgramOptions* _options;
 };
-}  // namespace options
-}  // namespace arangodb
+
+}  // namespace arangodb::options

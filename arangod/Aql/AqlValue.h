@@ -149,6 +149,7 @@ struct AqlValue final {
                     VPACK_INLINE_INT64, VPACK_INLINE_INT48>(),
                 "Values are not adjacent");
 
+  // clang-format off
   /// @brief Holds the actual data for this AqlValue
   /// The last byte of this union (_data.internal[15]) will be used to identify
   /// the type of the contained data:
@@ -178,16 +179,14 @@ struct AqlValue final {
   /// ML - managed slice length
   /// ID - isDocument flag
   /// XX - unused
-  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14
-  /// | 15 |   Bytes | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD
-  /// | PD | PD | PD | PD |   VPACK_SLICE_POINTER | AT | MO | ML | ML | ML | ML
-  /// | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
-  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD
-  /// | PD |   RANGE | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD
-  /// | SD | SD | SD | SD |   VPACK_INLINE | AT | ST | SD | SD | SD | SD | SD |
-  /// SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT | AT
-  /// | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD
-  /// |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
+  /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 | Bytes
+  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_SLICE_POINTER
+  /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD | VPACK_MANAGED_SLICE
+  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD | RANGE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_INLINE
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND | VPACK_48BIT_INLINE_INT
+  /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD | VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
+  // clang-format on
  private:
   union {
     uint8_t aqlValueType;

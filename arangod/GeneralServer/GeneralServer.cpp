@@ -51,15 +51,21 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 
 GeneralServer::GeneralServer(GeneralServerFeature& feature,
-                             uint64_t numIoThreads)
-    : _feature(feature) {
+                             uint64_t numIoThreads, bool allowEarlyConnections)
+    : _feature(feature), _allowEarlyConnections(allowEarlyConnections) {
   auto& server = feature.server();
+
+  _contexts.reserve(numIoThreads);
   for (size_t i = 0; i < numIoThreads; ++i) {
     _contexts.emplace_back(server);
   }
 }
 
 GeneralServer::~GeneralServer() = default;
+
+bool GeneralServer::allowEarlyConnections() const noexcept {
+  return _allowEarlyConnections;
+}
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   if (_feature.server().isStopping()) {

@@ -116,6 +116,14 @@ function KeyGeneratorSuite() {
       }
 
       db._createDatabase(cn, {sharding: "single"});
+      // this test will connect to all coordinators in the cluster a 
+      // few lines further down. the createDatabase call will return
+      // once the current coordinator is aware of the new database. it
+      // is not guaranteed that all other coordinators are aware of the
+      // new database yet, so we better give them some time to catch up.
+      // the 4 second wait time is a guesstimate.
+      require("internal").sleep(4);
+
       try {
         db._useDatabase(cn);
 
@@ -152,7 +160,16 @@ function KeyGeneratorSuite() {
       if (!isEnterprise) {
         return;
       }
+      
       db._createDatabase(cn, {sharding: "single"});
+      // this test will connect to all coordinators in the cluster a 
+      // few lines further down. the createDatabase call will return
+      // once the current coordinator is aware of the new database. it
+      // is not guaranteed that all other coordinators are aware of the
+      // new database yet, so we better give them some time to catch up.
+      // the 4 second wait time is a guesstimate.
+      require("internal").sleep(4);
+
       try {
         db._useDatabase(cn);
         for (let i = 1; i < 4; ++i) {

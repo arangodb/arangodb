@@ -109,6 +109,17 @@ class ImportHelper {
                   std::string const& fileName, bool assumeLinewise);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief imports a file with JSON objects
+  /// each line must contain a complete JSON object
+  /// Has the option to rewrite the JSON documents on
+  /// client side (e.g. remove attributes) but is less perfromant then
+  /// importJson
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool importJsonWithRewrite(std::string const& collectionName,
+                             std::string const& fileName, bool assumeLinewise);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the action to carry out on duplicate _key
   //////////////////////////////////////////////////////////////////////////////
 

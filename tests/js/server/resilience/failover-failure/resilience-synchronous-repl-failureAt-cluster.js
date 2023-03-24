@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo, arango */
+/*global assertTrue, assertFalse, assertEqual, fail, instanceManager, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -33,18 +33,16 @@ const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
 const wait = require("internal").wait;
+const instanceRoledbServer = 'dbserver';
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
-let { getEndpointById,
-      getEndpointsByType,
-      getServersByType,
-      debugCanUseFailAt,
-      debugRemoveFailAt,
-      debugSetFailAt,
-      debugClearFailAt,
-      reconnectRetry,
-      getDBServers
-    } = require('@arangodb/test-helper');
+const {
+  debugRemoveFailAt,
+  debugSetFailAt,
+  debugClearFailAt,
+  getEndpointById,
+  getServersByType,
+} = require('@arangodb/test-helper');
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,17 +117,16 @@ function SynchronousReplicationSuite() {
 
   function failFollower(failAt = null, follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
-    var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
-
-    // Now look for instanceInfo:
-    var pos = _.findIndex(global.instanceInfo.arangods,
-      x => x.endpoint === endpoint);
+    var endpoint = getEndpointById(follower);
+    // Now look for instanceManager:
+    var pos = _.findIndex(global.instanceManager.arangods,
+                          x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have added failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
+      assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
       console.info("Have failed follower", follower);
     }
     failedState.follower = { failAt: (failAt ? failAt : null), failedServer: follower };
@@ -142,15 +139,15 @@ function SynchronousReplicationSuite() {
   function healFollower(failAt = null, follower = null) {
     if (follower == null) follower = cinfo.shards[shards[0]][1];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(follower);
-    // Now look for instanceInfo:
-    var pos = _.findIndex(global.instanceInfo.arangods,
+    // Now look for instanceManager:
+    var pos = _.findIndex(global.instanceManager.arangods,
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in follower", follower, " at ", failAt);
     } else {
-      assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
+      assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
       console.info("Have healed follower", follower);
     }
     failedState.follower = null;
@@ -163,15 +160,15 @@ function SynchronousReplicationSuite() {
   function failLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceInfo:
-    var pos = _.findIndex(global.instanceInfo.arangods,
+    // Now look for instanceManager:
+    var pos = _.findIndex(global.instanceManager.arangods,
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have failed leader", leader, " at ", failAt);
     } else {
-      assertTrue(suspendExternal(global.instanceInfo.arangods[pos].pid));
+      assertTrue(suspendExternal(global.instanceManager.arangods[pos].pid));
       console.info("Have failed leader", leader);
     }
     failedState.leader = { failAt: (failAt ? failAt : null), failedServer: leader };
@@ -185,15 +182,15 @@ function SynchronousReplicationSuite() {
   function healLeader(failAt = null, leader = null) {
     if (leader == null) leader = cinfo.shards[shards[0]][0];
     var endpoint = global.ArangoClusterInfo.getServerEndpoint(leader);
-    // Now look for instanceInfo:
-    var pos = _.findIndex(global.instanceInfo.arangods,
+    // Now look for instanceManager:
+    var pos = _.findIndex(global.instanceManager.arangods,
       x => x.endpoint === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
       debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
       console.info("Have removed failure in leader", leader, " at ", failAt);
     } else {
-      assertTrue(continueExternal(global.instanceInfo.arangods[pos].pid));
+      assertTrue(continueExternal(global.instanceManager.arangods[pos].pid));
       console.info("Have healed leader", leader);
     }
     failedState.leader = null;
@@ -352,7 +349,7 @@ function SynchronousReplicationSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      var servers = global.ArangoClusterInfo.getDBServers();
+      var servers = getServersByType(instanceRoledbServer);
       servers.forEach(s => {
         let endpoint = global.ArangoClusterInfo.getServerEndpoint(s.serverId);
         debugClearFailAt(endpoint.replace('tcp://', 'http://'));
@@ -364,10 +361,10 @@ function SynchronousReplicationSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief check whether we have access to global.instanceInfo
+    /// @brief check whether we have access to global.instanceManager
     ////////////////////////////////////////////////////////////////////////////////
     testCheckInstanceInfo: function () {
-      assertTrue(global.instanceInfo !== undefined);
+      assertTrue(global.instanceManager !== undefined);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -376,7 +373,7 @@ function SynchronousReplicationSuite() {
 
     testSetup: function () {
       for (var count = 0; count < 120; ++count) {
-        let dbservers = getDBServers();
+        let dbservers = getServersByType(instanceRoledbServer);
         if (dbservers.length === 5) {
           assertTrue(waitForSynchronousReplication("_system"));
           return;

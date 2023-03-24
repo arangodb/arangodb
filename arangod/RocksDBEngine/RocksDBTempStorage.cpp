@@ -129,13 +129,16 @@ RocksDBTempStorage::RocksDBTempStorage(std::string const& basePath,
                                        bool allowHWAcceleration)
     : _basePath(basePath),
       _usageTracker(usageTracker),
+#ifdef USE_ENTERPRISE
       _useEncryption(useEncryption),
       _allowHWAcceleration(allowHWAcceleration),
+#endif
       _nextId(0),
       _db(nullptr),
-      _comparator(std::make_unique<::KeysComparator>()) {}
+      _comparator(std::make_unique<::KeysComparator>()) {
+}
 
-RocksDBTempStorage::~RocksDBTempStorage() = default;
+RocksDBTempStorage::~RocksDBTempStorage() { close(); }
 
 Result RocksDBTempStorage::init() {
   // path for temporary files, not managed by RocksDB, but by us.
@@ -258,8 +261,16 @@ Result RocksDBTempStorage::init() {
 }
 
 void RocksDBTempStorage::close() {
-  TRI_ASSERT(_db != nullptr);
-  _db->Close();
+  if (_db != nullptr) {
+    for (auto* handle : _cfHandles) {
+      _db->DestroyColumnFamilyHandle(handle);
+    }
+
+    _db->Close();
+
+    delete _db;
+    _db = nullptr;
+  }
 }
 
 std::unique_ptr<RocksDBSortedRowsStorageContext>

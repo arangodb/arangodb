@@ -1541,7 +1541,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_static) {
   ASSERT_NE(nullptr, analyzer.get());
   auto* term = irs::get<irs::term_attribute>(*analyzer);
   ASSERT_NE(nullptr, term);
-  EXPECT_FALSE(analyzer->next());
   EXPECT_TRUE(analyzer->reset("abc def ghi"));
   EXPECT_TRUE(analyzer->next());
   EXPECT_EQ(irs::ref_cast<irs::byte_type>(irs::string_ref("abc def ghi")),
@@ -1831,7 +1830,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": null}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     std::map<std::string, std::pair<irs::string_ref, irs::string_ref>>
@@ -1888,7 +1888,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": {\"args\":\"abc\"} }")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -1948,7 +1949,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
                      "\"properties\": { \"a\": 7, \"b\": \"c\" }}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
@@ -2028,7 +2030,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
                                        "\"identity\", \"properties\": {}}")
                      ->slice(),
                  options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     {
@@ -2167,7 +2170,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
           collection, arangodb::AccessMode::Type::WRITE);
       trx.begin();
       trx.truncate(collection, options);
-      trx.commit();
+      auto res = trx.commit();
+      EXPECT_TRUE(res.ok());
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

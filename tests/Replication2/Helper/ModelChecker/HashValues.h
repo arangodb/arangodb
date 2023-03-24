@@ -130,9 +130,16 @@ static inline std::size_t hash_value(LogCurrentLocalState const& s) {
   return seed;
 }
 
-static inline std::size_t hash_value(LogCurrent const& s) {
+static inline std::size_t hash_value(LogCurrentSupervision const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.targetVersion);
+  boost::hash_combine(seed, s.assumedWriteConcern);
+  return seed;
+}
+
+static inline std::size_t hash_value(LogCurrent const& s) {
+  std::size_t seed = 0;
+  boost::hash_combine(seed, s.supervision);
   boost::hash_combine(seed, s.localState);
   boost::hash_combine(seed, s.leader);
   return seed;

@@ -192,4 +192,15 @@ static inline auto isAssumedWriteConcernLessThanWriteConcernUsedForCommit() {
   });
 }
 
+static inline auto isPlannedWriteConcern(bool concern) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return state.replicatedLog->plan->participantsConfig.config.waitForSync ==
+             concern;
+    }
+    return false;
+  });
+}
+
 }  // namespace arangodb::test::mcpreds

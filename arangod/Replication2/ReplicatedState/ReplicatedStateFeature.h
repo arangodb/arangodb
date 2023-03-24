@@ -54,7 +54,7 @@ struct ReplicatedStateFeature {
     static_assert(std::is_constructible_v<Factory, Args...>);
     auto factory = std::make_shared<InternalFactory<S, Factory>>(
         std::in_place, std::forward<Args>(args)...);
-    auto metrics = createMetricsObject(name);
+    auto metrics = createMetricsObjectIndirect(name);
     auto [iter, wasInserted] = implementations.try_emplace(
         std::move(name),
         StateImplementation{std::move(factory), std::move(metrics)});
@@ -88,6 +88,19 @@ struct ReplicatedStateFeature {
   virtual ~ReplicatedStateFeature() = default;
 
  protected:
+  /*
+   * This stunt is here to work around an internal compiler error that is
+   * triggered when using GCC 11 on ARM, with LTO.
+   */
+#if (defined(__GNUC__) && !defined(__clang__))
+#define ABD_CREATE_METRICS_OBJECT_NO_INLINE __attribute__((noinline))
+#else
+#define ABD_CREATE_METRICS_OBJECT_NO_INLINE
+#endif
+  auto ABD_CREATE_METRICS_OBJECT_NO_INLINE createMetricsObjectIndirect(
+      std::string_view impl) -> std::shared_ptr<ReplicatedStateMetrics> {
+    return createMetricsObject(impl);
+  }
   virtual auto createMetricsObject(std::string_view impl)
       -> std::shared_ptr<ReplicatedStateMetrics>;
 

@@ -238,6 +238,9 @@ const replicatedLogSuite = function () {
           createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
+      // This important to make sure that all followers have responded to all append entries messages
+      // upto now. Otherwise, the insert below doesn't work as expect.
+      waitFor(lpreds.replicatedLogReplicationCompleted(database, logId));
       // now stop one server
       stopServer(followers[0]);
 

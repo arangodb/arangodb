@@ -24,12 +24,12 @@
 
 #pragma once
 
-#include "IResearchViewSort.h"
+#include "IResearch/IResearchViewSort.h"
+
 #include "index/comparer.hpp"
 #include "utils/string.hpp"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 template<typename Sort>
 class VPackComparer final : public irs::comparer {
@@ -37,10 +37,10 @@ class VPackComparer final : public irs::comparer {
   VPackComparer();
 
   explicit VPackComparer(Sort const& sort) noexcept
-      : _sort(&sort), _size(sort.size()) {}
+      : _sort{&sort}, _size{sort.size()} {}
 
   VPackComparer(Sort const& sort, size_t size) noexcept
-      : _sort(&sort), _size(std::min(sort.size(), size)) {}
+      : _sort{&sort}, _size{std::min(sort.size(), size)} {}
 
   void reset(Sort const& sort) noexcept {
     _sort = &sort;
@@ -49,13 +49,11 @@ class VPackComparer final : public irs::comparer {
 
   bool empty() const noexcept { return 0 == _size; }
 
- protected:
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const override;
-
  private:
+  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const final;
+
   Sort const* _sort;
   size_t _size;  // number of buckets to compare
-};               // VPackComparer
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

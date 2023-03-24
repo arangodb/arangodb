@@ -231,7 +231,7 @@ function invalidStartVertexSuite() {
       });
     },
 
-    testKShortestsPathNumberStartVertex: function () {
+    testKShortestPathsNumberStartVertex: function () {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
@@ -294,6 +294,88 @@ function invalidStartVertexSuite() {
       let directions = ["INBOUND", "OUTBOUND", "ANY"];
       directions.forEach(function (direction) {
         let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} K_SHORTEST_PATHS '' TO '' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testAllShortestPathsNullStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS null TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testAllShortestPathsNumberStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS -123 TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testAllShortestPathsEmptyStartVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS '' TO '${vn + 'v1'}/1' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testAllShortestPathsEmptyEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS '${vn + 'v1'}/1' TO '' ${gn + 'e'} RETURN v`;
+        let res = AQL_EXECUTE(q);
+        assertEqual([], res.json);
+        assertTrue(res.warnings.length > 0);
+      });
+    },
+
+    testAllShortestPathsNullEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS '${vn + 'v1'}/1' TO null ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testAllShortestPathsNumberEndVertex: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS '${vn + 'v1'}/1' TO -123 ${gn + 'e'} RETURN v`;
+        try {
+          AQL_EXECUTE(q);
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      });
+    },
+
+    testAllShortestPathsBothEmpty: function () {
+      let directions = ["INBOUND", "OUTBOUND", "ANY"];
+      directions.forEach(function (direction) {
+        let q = `WITH ${gn + 'v1'} ${gn + 'v2'} FOR v IN ${direction} ALL_SHORTEST_PATHS '' TO '' ${gn + 'e'} RETURN v`;
         let res = AQL_EXECUTE(q);
         assertEqual([], res.json);
         assertTrue(res.warnings.length > 0);

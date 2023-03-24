@@ -238,7 +238,6 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
   builder.add("RebootId",
               VPackValue{ServerState::instance()->getRebootId().value()});
   builder.add("Version", VPackValue{version + 1});
-  builder.add(VPackValue{"Data"});
   metrics.toVelocyPack(builder);
   builder.close();
   auto data = std::make_shared<Data>(std::move(metrics));
@@ -347,7 +346,7 @@ ClusterMetricsFeature::Data::fromVPack(VPackSlice slice) {
 }
 
 void ClusterMetricsFeature::Metrics::toVelocyPack(VPackBuilder& builder) const {
-  builder.openArray();
+  builder.add("Data", velocypack::ValueType::Array);
   for (auto const& [key, value] : values) {
     builder.add(VPackValue{key.name});
     builder.add(VPackValue{key.labels});

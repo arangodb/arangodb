@@ -50,12 +50,11 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
-  static FieldMeta::Analyzer defaultAnalyzer =
-      FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
-  return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
-             std::string_view ex) -> FieldMeta::Analyzer const& {
+  static FieldMeta::Analyzer const defaultAnalyzer{
+      IResearchAnalyzerFeature::identity()};
+  return [&meta](std::string_view fieldPath) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
-      if (field.toString() == ex) {
+      if (field.path() == fieldPath) {
         return field.analyzer();
       }
     }
@@ -79,13 +78,14 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx{.ref = reference, .isSearchQuery = false};
+  QueryContext const queryCtx{
+      .ref = reference, .isSearchQuery = false, .isOldMangling = false};
 
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx{
-      .analyzerProvider = provider, .analyzer = analyzer, .fields = metaFields};
+  FilterContext const filterCtx{.fieldAnalyzerProvider = provider,
+                                .contextAnalyzer = emptyAnalyzer(),
+                                .fields = metaFields};
 
   auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
@@ -300,7 +300,8 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     QueryContext const queryCtx{.trx = _trx,
                                 .index = _reader,
                                 .ref = _variable,
-                                .isSearchQuery = false};
+                                .isSearchQuery = false,
+                                .isOldMangling = false};
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
 
@@ -312,10 +313,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         // The analyzer is referenced in the FilterContext and used during the
         // following FilterFactory::::filter() call, so may not be a temporary.
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
         auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
 
         if (rv.fail()) {
@@ -352,10 +353,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           conditionJoiner = &root.add<irs::Or>();
         }
 
-        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-        FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                      .analyzer = analyzer,
-                                      .fields = _index->meta()._fields};
+        FilterContext const filterCtx{
+            .fieldAnalyzerProvider = &analyzerProvider,
+            .contextAnalyzer = emptyAnalyzer(),
+            .fields = _index->meta()._fields};
 
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv =
@@ -397,9 +398,9 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           // The analyzer is referenced in the FilterContext and used during the
           // following ::filter() call, so may not be a temporary.
-          FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-          FilterContext const filterCtx{.analyzerProvider = &analyzerProvider,
-                                        .analyzer = analyzer};
+          FilterContext const filterCtx{
+              .fieldAnalyzerProvider = &analyzerProvider,
+              .contextAnalyzer = emptyAnalyzer()};
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
@@ -844,7 +845,7 @@ bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
     for (size_t i = 0; i < projections.size(); ++i) {
       auto const& nodeAttr = attrs[i];
       size_t index{0};
-      if (iresearch::IResearchViewNode::SortColumnNumber ==
+      if (iresearch::IResearchViewNode::kSortColumnNumber ==
           nodeAttr.afData.columnNumber) {  // found in the sort column
         index = nodeAttr.afData.fieldNumber;
       } else {

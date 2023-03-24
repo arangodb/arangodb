@@ -132,6 +132,7 @@
     "ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM" : { "code" : 1425, "message" : "an invalid term was given" },
     "ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED" : { "code" : 1426, "message" : "log participant unconfigured" },
     "ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND" : { "code" : 1427, "message" : "replicated state {id:} of type {type:} not found" },
+    "ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE" : { "code" : 1428, "message" : "replicated state {id:} of type {type:} is unavailable" },
     "ERROR_CLUSTER_NOT_FOLLOWER"   : { "code" : 1446, "message" : "not a follower" },
     "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },
     "ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED" : { "code" : 1448, "message" : "creating collection failed due to precondition" },

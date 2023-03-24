@@ -922,7 +922,7 @@ bool SynchronizeShard::first() {
           docCount - docCountOnLeader > 10000))) {
       // This could be a larger job, let's reschedule ourselves with
       // priority SLOW_OP_PRIORITY:
-      LOG_TOPIC("25a62", INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("25a62", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeShard action found that leader's and follower's "
              "document count differ by more than 10000, will reschedule with "
              "slow priority, database: "

@@ -29,6 +29,7 @@
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
+#include "Mocks/IResearchInvertedIndexMock.h"
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -329,6 +330,11 @@ class StorageEngineMock : public arangodb::StorageEngine {
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
       arangodb::IndexId id, arangodb::LogicalCollection& collection,
       VPackSlice const& info);
+
+  static std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>
+  buildInvertedIndexMock(arangodb::IndexId id,
+                         arangodb::LogicalCollection& collection,
+                         VPackSlice const& info);
 
   auto createReplicatedLog(TRI_vocbase_t& vocbase,
                            arangodb::replication2::LogId id)

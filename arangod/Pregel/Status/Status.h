@@ -115,7 +115,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, GraphStoreStatus& x) {
   return f.object(x).fields(f.field("verticesLoaded", x.verticesLoaded),
                             f.field("edgesLoaded", x.edgesLoaded),
-                            f.field("memoryUsed", x.memoryBytesUsed),
+                            f.field("memoryBytesUsed", x.memoryBytesUsed),
                             f.field("verticesStored", x.verticesStored));
 }
 

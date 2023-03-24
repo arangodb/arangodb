@@ -56,8 +56,13 @@
 #include "Futures/Promise.h"
 #include "Futures/Unit.h"
 #include "Logger/LogContextKeys.h"
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
@@ -65,14 +70,7 @@
 #include "Replication2/ReplicatedLog/PersistedLog.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogIterator.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
-#include "Metrics/Gauge.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
-#include "Metrics/Counter.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
-#include "immer/detail/iterator_facade.hpp"
-#include "immer/detail/rbts/rrbtree_iterator.hpp"
 
 #if (_MSC_VER >= 1)
 // suppress warnings:

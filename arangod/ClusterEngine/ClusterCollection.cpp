@@ -65,6 +65,13 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection,
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
+  TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine ||
+             _engineType == ClusterEngineType::MockEngine);
+
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
+#endif
+
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return;
   }
@@ -146,9 +153,16 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice,
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
+  // notify all indexes about the properties change for the collection
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto& idx : _indexes) {
-    static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
+    // note: we have to exclude inverted indexes here,
+    // as they are a different class type (no relationship to
+    // ClusterIndex).
+    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
+      static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
+    }
   }
 
   // nothing else to do

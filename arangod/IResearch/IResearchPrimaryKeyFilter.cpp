@@ -58,11 +58,11 @@ FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::sub_reader const&,
 #endif
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::sub_reader const& segment, irs::Order const& /*order*/,
-    irs::ExecutionMode, irs::attribute_provider const* /*ctx*/) const {
+    irs::ExecutionContext const& ctx) const {
   // re-execution of a fiter is not expected to ever
   // occur without a call to prepare(...)
   TRI_ASSERT(!_pkSeen);
+  auto& segment = ctx.segment;
 
   auto* pkField = segment.field(DocumentPrimaryKey::PK());
 
@@ -83,7 +83,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   }
 
   // must not match removed docs
-  auto docs = segment.mask(term->postings(irs::IndexFeatures::NONE));
+  auto docs = ctx.segment.mask(term->postings(irs::IndexFeatures::NONE));
 
   if (!docs->next()) {
     return irs::doc_iterator::empty();

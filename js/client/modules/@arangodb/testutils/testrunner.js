@@ -618,6 +618,9 @@ class testRunner {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
     this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
+    if (!this.results.shutdown) {
+      this.results.status = false;
+    }
 
     this.loadClusterTestStabilityInfo();
 

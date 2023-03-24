@@ -38,16 +38,14 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
-struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
-  auto getCollectionPlan(std::string const& database,
-                         std::string const& collectionId)
+struct MockDocumentStateAgencyHandler : IDocumentStateAgencyHandler {
+  auto getCollectionPlan(std::string const& collectionId)
       -> std::shared_ptr<velocypack::Builder> override {
     return std::make_shared<VPackBuilder>();
   }
 
   auto reportShardInCurrent(
-      std::string const& database, std::string const& collectionId,
-      std::string const& shardId,
+      std::string const& collectionId, std::string const& shardId,
       std::shared_ptr<velocypack::Builder> const& properties)
       -> Result override {
     shards.emplace_back(shardId, collectionId);
@@ -58,11 +56,10 @@ struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
   std::vector<std::pair<std::string, std::string>> shards;
 };
 
-struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
+struct MockDocumentStateShardHandler : IDocumentStateShardHandler {
   MockDocumentStateShardHandler() : shardId{0} {};
 
-  auto createLocalShard(GlobalLogIdentifier const& gid,
-                        std::string const& collectionId,
+  auto createLocalShard(std::string const& collectionId,
                         std::shared_ptr<velocypack::Builder> const& properties)
       -> ResultT<std::string> override {
     ++shardId;
@@ -72,10 +69,103 @@ struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
   int shardId;
 };
 
+struct MockDocumentStateTransaction : IDocumentStateTransaction {
+  explicit MockDocumentStateTransaction(TransactionId tid) : tid(tid) {}
+
+  auto apply(DocumentLogEntry const& entry)
+      -> futures::Future<Result> override {
+    TRI_ASSERT(!applied);
+    applied = true;
+    return Result{};
+  }
+
+  auto commit() -> futures::Future<Result> override {
+    TRI_ASSERT(!committed);
+    committed = true;
+    return Result{};
+  }
+
+  auto abort() -> futures::Future<Result> override {
+    TRI_ASSERT(!aborted);
+    aborted = true;
+    return Result{};
+  }
+
+  TransactionId tid;
+  bool ensured = false;
+  bool applied = false;
+  bool committed = false;
+  bool removed = false;
+  bool aborted = false;
+};
+
+struct MockDocumentStateTransactionHandler : IDocumentStateTransactionHandler {
+  auto ensureTransaction(DocumentLogEntry entry)
+      -> std::shared_ptr<IDocumentStateTransaction> override {
+    if (auto trx = getTransaction(entry.tid)) {
+      return trx;
+    }
+    auto trx = std::make_shared<MockDocumentStateTransaction>(entry.tid);
+    trx->ensured = true;
+    transactions.emplace(entry.tid, trx);
+    return trx;
+  }
+
+  void removeTransaction(TransactionId tid) override {
+    auto trx = getTransaction(tid);
+    trx->removed = true;
+    transactions.erase(tid);
+  }
+
+  auto getTransaction(TransactionId tid)
+      -> std::shared_ptr<MockDocumentStateTransaction> {
+    if (auto trx = transactions.find(tid); trx != transactions.end()) {
+      return trx->second;
+    }
+    return nullptr;
+  }
+
+  std::string database;
+  std::unordered_map<TransactionId,
+                     std::shared_ptr<MockDocumentStateTransaction>>
+      transactions;
+};
+
+struct MockDocumentStateHandlersFactory : IDocumentStateHandlersFactory {
+  MockDocumentStateHandlersFactory(
+      std::shared_ptr<IDocumentStateAgencyHandler> ah,
+      std::shared_ptr<IDocumentStateShardHandler> sh,
+      MockDocumentStateTransactionHandler*& transactionHandler)
+      : agencyHandler(std::move(ah)),
+        shardHandler(std::move(sh)),
+        transactionHandler(transactionHandler) {}
+
+  auto createAgencyHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateAgencyHandler> override {
+    return agencyHandler;
+  }
+
+  auto createShardHandler(GlobalLogIdentifier gid)
+      -> std::shared_ptr<IDocumentStateShardHandler> override {
+    return shardHandler;
+  }
+
+  auto createTransactionHandler(GlobalLogIdentifier gid)
+      -> std::unique_ptr<IDocumentStateTransactionHandler> override {
+    auto th = std::make_unique<MockDocumentStateTransactionHandler>();
+    transactionHandler = th.get();
+    return std::move(th);
+  }
+
+  std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler;
+  std::shared_ptr<IDocumentStateShardHandler> shardHandler;
+  MockDocumentStateTransactionHandler*& transactionHandler;
+};
+
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
     feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
-                                              agencyHandler, shardHandler);
+                                              factory);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
@@ -84,6 +174,10 @@ struct DocumentStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockDocumentStateAgencyHandler>();
   std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
       std::make_shared<MockDocumentStateShardHandler>();
+  MockDocumentStateTransactionHandler* transactionHandler{nullptr};
+  std::shared_ptr<IDocumentStateHandlersFactory> factory =
+      std::make_shared<MockDocumentStateHandlersFactory>(
+          agencyHandler, shardHandler, transactionHandler);
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
@@ -98,7 +192,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   leader->triggerAsyncReplication();
 
   auto parameters =
-      document::DocumentCoreParameters{collectionId}.toSharedSlice();
+      document::DocumentCoreParameters{collectionId, "testDb"}.toSharedSlice();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
@@ -136,14 +230,14 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   VPackBuilder builder;
   {
     VPackObjectBuilder ob(&builder);
-    builder.add("test", "insert");
+    builder.add("testfoo", "testbar");
     ob->close();
 
     auto logIndex = LogIndex{2};
     auto operation = OperationType::kInsert;
-    auto trx = TransactionId{0};
+    auto tid = TransactionId{1};
     auto res = leaderState->replicateOperation(builder.sharedSlice(), operation,
-                                               trx, ReplicationOptions{});
+                                               tid, ReplicationOptions{});
 
     ASSERT_TRUE(res.isReady());
     ASSERT_EQ(res.result().get(), logIndex);
@@ -155,17 +249,26 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
         entry->entry().logPayload()->slice()[1]);
     ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
-    ASSERT_EQ(docEntry.data.get("test").stringView(), "insert");
+    ASSERT_EQ(docEntry.tid, tid);
+    ASSERT_EQ(docEntry.data.get("testfoo").stringView(), "testbar");
+
+    auto trx = transactionHandler->getTransaction(tid);
+    ASSERT_NE(trx, nullptr);
+    ASSERT_TRUE(trx->ensured);
+    ASSERT_TRUE(trx->applied);
+    ASSERT_FALSE(trx->committed);
+    ASSERT_FALSE(trx->aborted);
+    ASSERT_FALSE(trx->removed);
   }
 
   // commit operation
   {
     auto logIndex = LogIndex{3};
     auto operation = OperationType::kCommit;
-    auto trx = TransactionId{1};
+    auto tid = TransactionId{1};
+    auto trx = transactionHandler->getTransaction(tid);
     auto res = leaderState->replicateOperation(
-        velocypack::SharedSlice{}, operation, trx,
+        velocypack::SharedSlice{}, operation, tid,
         ReplicationOptions{.waitForCommit = true});
 
     ASSERT_FALSE(res.isReady());
@@ -180,7 +283,12 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
         entry->entry().logPayload()->slice()[1]);
     ASSERT_EQ(docEntry.shardId, "1");
     ASSERT_EQ(docEntry.operation, operation);
-    ASSERT_EQ(docEntry.trx, trx);
+    ASSERT_EQ(docEntry.tid, tid);
     ASSERT_TRUE(docEntry.data.isNone());
+
+    ASSERT_NE(trx, nullptr);
+    ASSERT_TRUE(trx->committed);
+    ASSERT_TRUE(trx->removed);
+    ASSERT_FALSE(trx->aborted);
   }
 }

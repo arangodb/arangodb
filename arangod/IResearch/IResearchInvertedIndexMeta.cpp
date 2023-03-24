@@ -53,8 +53,6 @@ constexpr std::string_view kExpressionFieldName = "expression";
 constexpr std::string_view kIsArrayFieldName = "isArray";
 constexpr std::string_view kIncludeAllFieldsFieldName = "includeAllFields";
 constexpr std::string_view kTrackListPositionsFieldName = "trackListPositions";
-constexpr std::string_view kDirectionFieldName = "direction";
-constexpr std::string_view kAscFieldName = "asc";
 constexpr std::string_view kFieldName = "field";
 constexpr std::string_view kFieldsFieldName = "fields";
 constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
@@ -342,12 +340,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       }
     }
   }
-  // for index there is no recursive struct and fields array is mandatory
-  auto field = slice.get(kFieldsFieldName);
-  if (!field.isArray() || field.isEmptyArray()) {
-    errorField = kFieldsFieldName;
-    return false;
-  }
   auto& analyzers = server.getFeature<IResearchAnalyzerFeature>();
 
   if (!InvertedIndexField::init(slice, _analyzerDefinitions, _version,
@@ -355,7 +347,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                 true, errorField)) {
     return false;
   }
-
   _hasNested = std::find_if(_fields.begin(), _fields.end(),
                             [](InvertedIndexField const& r) {
                               return !r._fields.empty();
@@ -821,6 +812,10 @@ bool InvertedIndexField::init(
       }
     }
   }
+  if (rootMode && _fields.empty() && !_includeAllFields) {
+    errorField = kFieldsFieldName;
+    return false;
+  }
   return true;
 }
 
@@ -861,20 +856,6 @@ bool InvertedIndexField::isIdentical(
   return false;
 }
 
-size_t IResearchInvertedIndexSort::memory() const noexcept {
-  size_t size = sizeof(*this);
-
-  for (auto& field : _fields) {
-    size += sizeof(basics::AttributeName) * field.size();
-    for (auto& entry : field) {
-      size += entry.name.size();
-    }
-  }
-
-  size += irs::math::math_traits<size_t>::div_ceil(_directions.size(), 8);
-
-  return size;
-}
 bool IResearchInvertedIndexSort::toVelocyPack(
     velocypack::Builder& builder) const {
   if (!builder.isOpenObject()) {
@@ -882,21 +863,7 @@ bool IResearchInvertedIndexSort::toVelocyPack(
   }
   {
     VPackArrayBuilder arrayScope(&builder, kFieldsFieldName);
-    std::string fieldName;
-    auto visitor = [&builder, &fieldName](
-                       std::vector<basics::AttributeName> const& field,
-                       bool direction) {
-      fieldName.clear();
-      basics::TRI_AttributeNamesToString(field, fieldName, true);
-
-      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
-      builder.add(kFieldName, VPackValue(fieldName));
-      builder.add(kAscFieldName, VPackValue(direction));
-
-      return true;
-    };
-
-    if (!visit(visitor)) {
+    if (!IResearchSortBase::toVelocyPack(builder)) {
       return false;
     }
   }
@@ -911,10 +878,10 @@ bool IResearchInvertedIndexSort::toVelocyPack(
   }
   return true;
 }
+
 bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
                                                 std::string& error) {
   clear();
-
   if (!slice.isObject()) {
     return false;
   }
@@ -924,67 +891,31 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     error = kFieldsFieldName;
     return false;
   }
-
-  _fields.reserve(fieldsSlice.length());
-  _directions.reserve(fieldsSlice.length());
-
-  for (auto sortSlice : velocypack::ArrayIterator(fieldsSlice)) {
-    if (!sortSlice.isObject() || sortSlice.length() != 2) {
-      error = "[" + std::to_string(size()) + "]";
-      return false;
-    }
-
-    bool direction;
-
-    auto const directionSlice = sortSlice.get(kDirectionFieldName);
-    if (!directionSlice.isNone()) {
-      if (!parseDirectionString(directionSlice, direction)) {
-        error = "[" + std::to_string(size()) + "]." +
-                std::string(kDirectionFieldName);
-        return false;
-      }
-    } else if (!parseDirectionBool(sortSlice.get(kAscFieldName), direction)) {
-      error = "[" + std::to_string(size()) + "]." + std::string(kAscFieldName);
-      return false;
-    }
-
-    auto const fieldSlice = sortSlice.get(kFieldName);
-
-    if (!fieldSlice.isString()) {
-      error = "[" + std::to_string(size()) + "]." + std::string(kFieldName);
-      return false;
-    }
-
-    std::vector<arangodb::basics::AttributeName> field;
-
-    try {
-      arangodb::basics::TRI_ParseAttributeString(
-          arangodb::iresearch::getStringRef(fieldSlice), field, false);
-    } catch (...) {
-      error = "[" + std::to_string(size()) + "]." + std::string(kFieldName);
-      return false;
-    }
-
-    emplace_back(std::move(field), direction);
+  if (!IResearchSortBase::fromVelocyPack(fieldsSlice, error)) {
+    return false;
   }
 
-  if (slice.hasKey(kSortCompressionFieldName)) {
-    auto const field = slice.get(kSortCompressionFieldName);
-
-    if (!field.isNone() && ((_sortCompression = columnCompressionFromString(
-                                 getStringRef(field))) == nullptr)) {
+  auto const compression = slice.get(kSortCompressionFieldName);
+  if (!compression.isNone()) {
+    if (!compression.isString()) {
       error = kSortCompressionFieldName;
       return false;
     }
+    auto sort = columnCompressionFromString(compression.stringView());
+    if (!sort) {
+      error = kSortCompressionFieldName;
+      return false;
+    }
+    _sortCompression = sort;
   }
 
-  if (slice.hasKey(kLocaleFieldName)) {
-    auto localeSlice = slice.get(kLocaleFieldName);
+  auto localeSlice = slice.get(kLocaleFieldName);
+  if (!localeSlice.isNone()) {
     if (!localeSlice.isString()) {
       error = kLocaleFieldName;
       return false;
     }
-    // intentional string copy here as createCanonical expects null-ternibated
+    // intentional string copy here as createCanonical expects null-terminated
     // string and string_view has no such guarantees
     _locale = icu::Locale::createCanonical(localeSlice.copyString().c_str());
     if (_locale.isBogus()) {

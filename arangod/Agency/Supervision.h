@@ -252,6 +252,8 @@ class Supervision : public arangodb::Thread {
    */
   void reportStatus(std::string const& status);
 
+  void updateDBServerMaintenance();
+
   bool handleJobs();
   void deleteBrokenDatabase(std::string const& database,
                             std::string const& coordinatorID, uint64_t rebootID,
@@ -285,6 +287,7 @@ class Supervision : public arangodb::Thread {
   uint64_t _jobId;
   uint64_t _jobIdMax;
   uint64_t _lastUpdateIndex;
+  bool _shouldRunAgain = false;
 
   bool _haveAborts; /**< @brief We have accumulated pending aborts in a round */
 
@@ -294,6 +297,9 @@ class Supervision : public arangodb::Thread {
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
+
+  // Updated before each supervision run in `updateDBServerMaintenance`:
+  std::unordered_set<std::string> _DBServersInMaintenance;
 
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>& _supervision_runtime_msec;

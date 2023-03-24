@@ -1337,6 +1337,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
         sizeCategory: sizeCategory || '',
         style: {
           fill: calculatedNodeColor,
+          stroke: calculatedNodeColor,
           label: {
             value: nodeLabel
           }

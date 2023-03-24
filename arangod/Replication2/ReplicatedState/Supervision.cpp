@@ -172,6 +172,8 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
     logTarget.owner = "replicated-state";
+    logTarget.leader = state.target.leader;
+    logTarget.version = 1;
 
     for (auto const& [participantId, _] : state.target.participants) {
       logTarget.participants.emplace(participantId, ParticipantFlags{});
@@ -317,7 +319,7 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
   }
 }
 
-auto hasConverged(RSA::State const& state) -> bool {
+auto hasConverged(RSA::State const& state, RLA::Log const& log) -> bool {
   if (!state.plan) {
     return false;
   }
@@ -325,7 +327,15 @@ auto hasConverged(RSA::State const& state) -> bool {
     return false;
   }
 
-  // TODO check that the log has converged
+  if (state.target.leader != log.target.leader) {
+    return false;
+  }
+
+  if (!log.current || !log.current->supervision ||
+      log.current->supervision->targetVersion != log.target.version) {
+    return false;
+  }
+
   for (auto const& [pid, flags] : state.target.participants) {
     if (!state.plan->participants.contains(pid)) {
       return false;
@@ -361,7 +371,7 @@ auto checkConverged(SupervisionContext& ctx, RLA::Log const& log,
   }
 
   // now check if we actually have converged
-  if (hasConverged(state)) {
+  if (hasConverged(state, log)) {
     ctx.createAction<CurrentConvergedAction>(*state.target.version);
   }
 }
@@ -454,12 +464,11 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
       .cond(actx.hasModificationFor<agency::Plan>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(statePlanPath,
-                                  [&](VPackBuilder& builder) {
-                                    velocypack::serialize(
-                                        builder, actx.getValue<agency::Plan>());
-                                  })
-                  .inc(paths::plan()->version()->str());
+                  .inc(paths::plan()->version()->str())
+                  .emplace_object(statePlanPath, [&](VPackBuilder& builder) {
+                    velocypack::serialize(builder,
+                                          actx.getValue<agency::Plan>());
+                  });
             })
       .cond(actx.hasModificationFor<agency::Current::Supervision>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {

@@ -248,11 +248,17 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    if (option == "smartSearchUnified") {
-      eng->smartSearchUnified(body, result);
-    } else {
-      // TODO: Take deprecation path!
-      eng->smartSearch(body, result);
+
+    try {
+      if (option == "smartSearchUnified") {
+        eng->smartSearchUnified(body, result);
+      } else {
+        // TODO: Take deprecation path!
+        eng->smartSearch(body, result);
+      }
+    } catch (arangodb::basics::Exception const& ex) {
+      generateError(ResponseCode::BAD, ex.code(), ex.what());
+      return;
     }
   } else {
     // PATH Info wrong other error

@@ -72,15 +72,16 @@ struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
                                   TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice definition,
-                                  bool) const override {
-    view = vocbase.createView(definition);
+                                  bool isUserRequest) const override {
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -136,7 +137,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
-  auto view = vocbase.createView(viewJson->slice());
+  auto view = vocbase.createView(viewJson->slice(), false);
 
   EXPECT_FALSE(collection->deleted());
   EXPECT_FALSE(view->deleted());

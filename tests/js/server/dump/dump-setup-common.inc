@@ -186,12 +186,12 @@ function createComputedValues() {
     computedValues: [{
       name: "value3",
       expression: "RETURN CONCAT(@doc.value1, '+', @doc.value2)",
-      override: false
+      overwrite: false
     },
     {
       name: "value4",
       expression: "RETURN CONCAT(@doc.value2, ' ', @doc.value1)",
-      override: true
+      overwrite: true
     }]
    });
    let docs = [];

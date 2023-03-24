@@ -67,18 +67,22 @@ auto PrototypeFollowerState::acquireSnapshot(ParticipantId const& destination,
 
 auto PrototypeFollowerState::applyEntries(
     std::unique_ptr<EntryIterator> ptr) noexcept -> futures::Future<Result> {
-  return _guardedData.doUnderLock(
-      [self = shared_from_this(), ptr = std::move(ptr)](auto& core) mutable {
-        if (!core) {
-          return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
-        }
-        core->applyEntries(std::move(ptr));
-        if (core->flush()) {
-          auto stream = self->getStream();
-          stream->release(core->getLastPersistedIndex());
-        }
-        return Result{TRI_ERROR_NO_ERROR};
-      });
+  auto res = basics::catchToResult([&] {
+    return _guardedData.doUnderLock(
+        [self = shared_from_this(), ptr = std::move(ptr)](auto& core) mutable {
+          if (!core) {
+            return Result{TRI_ERROR_CLUSTER_NOT_FOLLOWER};
+          }
+          core->applyEntries(std::move(ptr));
+          if (core->flush()) {
+            auto stream = self->getStream();
+            stream->release(core->getLastPersistedIndex());
+          }
+          return Result{TRI_ERROR_NO_ERROR};
+        });
+  });
+
+  return {res};
 }
 
 auto PrototypeFollowerState::resign() && noexcept

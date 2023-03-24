@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "DocumentCore.h"
-#include "DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentCore.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 #include "Basics/UnshackledMutex.h"
 

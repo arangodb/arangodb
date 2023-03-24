@@ -462,8 +462,8 @@
         assertEqual(p.computedValues.length, 2);
         assertEqual(p.computedValues[0].name, "value3");
         assertEqual(p.computedValues[1].name, "value4");
-        assertFalse(p.computedValues[0].override);
-        assertTrue(p.computedValues[1].override);
+        assertFalse(p.computedValues[0].overwrite);
+        assertTrue(p.computedValues[1].overwrite);
         assertEqual(p.computedValues[0].expression, "RETURN CONCAT(@doc.value1, '+', @doc.value2)");
         assertEqual(p.computedValues[1].expression, "RETURN CONCAT(@doc.value2, ' ', @doc.value1)");
 

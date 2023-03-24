@@ -55,6 +55,28 @@ struct ReplicatedStateMetrics {
   std::shared_ptr<metrics::Gauge<uint64_t>> const replicatedStateNumberLeaders;
   std::shared_ptr<metrics::Gauge<uint64_t>> const
       replicatedStateNumberFollowers;
+
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedStateApplyEntriesRtt;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedStateRecoverEntriesRtt;
+  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>> const
+      replicatedStateAcquireSnapshotRtt;
+
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForSnapshot;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForLeader;
+  std::shared_ptr<metrics::Gauge<uint64_t>> const
+      replicatedStateNumberWaitingForRecovery;
+
+  std::shared_ptr<metrics::Counter> const replicatedStateNumberAppliedEntries;
+  std::shared_ptr<metrics::Counter> const replicatedStateNumberProcessedEntries;
+
+  std::shared_ptr<metrics::Counter> const
+      replicatedStateNumberAcquireSnapshotErrors;
+  std::shared_ptr<metrics::Counter> const
+      replicatedStateNumberApplyEntriesErrors;
 };
 
 }  // namespace arangodb::replication2::replicated_state

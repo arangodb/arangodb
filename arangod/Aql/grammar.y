@@ -341,6 +341,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_SHORTEST_PATH "SHORTEST_PATH keyword"
 %token T_K_SHORTEST_PATHS "K_SHORTEST_PATHS keyword"
 %token T_K_PATHS "K_PATHS keyword"
+%token T_ALL_SHORTEST_PATHS "ALL_SHORTEST_PATHS keyword"
 %token T_DISTINCT "DISTINCT modifier"
 
 %token T_REMOVE "REMOVE command"
@@ -469,6 +470,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> shortest_path_graph_info;
 %type <node> k_shortest_paths_graph_info;
 %type <node> k_paths_graph_info;
+%type <node> all_shortest_paths_graph_info;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> array_element;
@@ -730,6 +732,15 @@ k_paths_graph_info:
     }
   ;
 
+all_shortest_paths_graph_info:
+    graph_direction T_ALL_SHORTEST_PATHS expression T_STRING expression graph_subject options {
+      auto nodeStart = parser->ast()->createNodeValueInt(0);
+      auto nodeEnd = parser->ast()->createNodeValueInt(INT64_MAX-1);
+      auto nodeRange = parser->ast()->createNodeRange(nodeStart, nodeEnd);
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, nodeRange), $3, $5, $6, $7, yyloc);
+    }
+  ;
+
 for_statement:
     T_FOR for_output_variables T_IN expression {
       AstNode* variablesNode = static_cast<AstNode*>($2);
@@ -850,6 +861,18 @@ for_statement:
       TRI_ASSERT(graphInfoNode != nullptr);
       TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
       auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::KPaths, variablesNode, graphInfoNode);
+      parser->ast()->addOperation(node);
+    }
+  | T_FOR for_output_variables T_IN all_shortest_paths_graph_info {
+      // All Shortest Paths
+      auto variableNamesNode = static_cast<AstNode*>($2);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "ALL_SHORTEST_PATHS only has one return variable", yyloc);
+      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
+      auto graphInfoNode = static_cast<AstNode*>($4);
+      TRI_ASSERT(graphInfoNode != nullptr);
+      TRI_ASSERT(graphInfoNode->type == NODE_TYPE_ARRAY);
+      auto node = parser->ast()->createNodeEnumeratePaths(arangodb::graph::PathType::Type::AllShortestPaths, variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
   ;

@@ -857,7 +857,7 @@ suite (in this case `testTokens`):
 
 Testing a single test with the framework via arangosh:
 
-    scripts/unittest single_client --test tests/js/client/shell/shell-transaction.js
+    scripts/unittest single_client --test tests/js/client/shell/transaction/shell-transaction.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 

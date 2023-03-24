@@ -228,6 +228,10 @@ class TestGraph {
     return this.graphName;
   }
 
+  edgeCollectionName() {
+    return this.en;
+  }
+
   weightAttribute() {
     return graphWeightAttribute;
   }

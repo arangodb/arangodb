@@ -122,6 +122,23 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
   return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
 }
 
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key) {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+
+  if (auto* cookie = state.cookie(key); !cookie) {
+    auto filterCookie = std::make_unique<FilterCookie>();
+    auto* p = filterCookie.get();
+    [[maybe_unused]] auto const old =
+        state.cookie(key, std::move(filterCookie));
+    TRI_ASSERT(!old);
+    return *p;
+  } else {
+    return *basics::downCast<FilterCookie>(cookie);
+  }
+}
+
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
   auto& ctx = basics::downCast<ViewSnapshotCookie>(snapshot);
   ctx.clear();
@@ -131,12 +148,6 @@ void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
                                ViewSnapshot::Links&& links) noexcept {
-  if (links.empty()) {
-    // cannot be a const, we can call syncViewSnapshot on it,
-    // that should do nothing but in generally we cannot prove it
-    static ViewSnapshotCookie empty;
-    return &empty;  // TODO(MBkkt) Maybe nullptr?
-  }
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
   TRI_ASSERT(state.cookie(key) == nullptr);

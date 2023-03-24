@@ -167,8 +167,7 @@ function shellServerAql (options) {
     testCases = tu.splitBuckets(options, testCases);
 
     let opts = ensureServers(options, 3);
-    // TODO remove BTS-903 workaround:
-    let rc = new tu.runOnArangodRunner(opts, name, {'log.level':'queries=ERROR'}).run(testCases);
+    let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
     options.cleanup = options.cleanup && opts.cleanup;
     return rc;
   }
@@ -226,11 +225,9 @@ function shellClientTransaction(options) {
   opts = ensureCoordinators(opts, 2);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
-  // We need a different supervision frequency for replication 2, because collection creation takes longer.
   let moreOptions = {
     "agency.supervision-ok-threshold": "15",
     "agency.supervision-grace-period": "30",
-    "agency.supervision-frequency": "0.1"
   };
   let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;

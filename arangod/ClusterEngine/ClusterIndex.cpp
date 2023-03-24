@@ -49,6 +49,11 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _clusterSelectivity(/* default */ 0.1) {
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
+  TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine ||
+             _engineType == ClusterEngineType::MockEngine);
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
+#endif
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     if (_indexType == TRI_IDX_TYPE_EDGE_INDEX) {
@@ -193,6 +198,8 @@ bool ClusterIndex::isSorted() const {
 void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
   VPackBuilder merge;
   merge.openObject();
+
+  TRI_ASSERT(_engineType == ClusterEngineType::RocksDBEngine);
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add(StaticStrings::CacheEnabled,

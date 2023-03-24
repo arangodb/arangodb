@@ -611,17 +611,18 @@ auto QuerySnippet::prepareFirstBranch(
       viewShards.clear();
 
       auto collections = viewNode->collections();
-      for (aql::Collection const& c : collections) {
-        auto const& shards = shardLocking.shardsForSnippet(id(), &c);
-        for (auto const& s : shards) {
-          auto check = shardMapping.find(s);
+      for (auto const& [collection, indexes] : collections) {
+        auto const& shards =
+            shardLocking.shardsForSnippet(id(), &(collection.get()));
+        for (auto const& shard : shards) {
+          auto check = shardMapping.find(shard);
           // If we find a shard here that is not in this mapping,
           // we have 1) a problem with locking before that should have thrown
           // 2) a problem with shardMapping lookup that should have thrown
           // before
           TRI_ASSERT(check != shardMapping.end());
           if (check->second == server) {
-            viewShards.insert(s);
+            viewShards[shard] = indexes;
           }
         }
       }

@@ -502,8 +502,58 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
     ]
    })";
 
+  // empty fields but includeAllFields
+  constexpr std::string_view kDefinition8 = R"(
+  {
+    "fields": [ ],
+    "includeAllFields":true,
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      },
+      {
+        "name":"myAnalyzer",
+        "type":"delimiter",
+        "properties": {
+          "delimiter" : "."
+        },
+        "features": ["frequency"]
+      }
+    ]
+   })";
+
+  // missing fields but includeAllFields
+  constexpr std::string_view kDefinition9 = R"(
+  {
+    "includeAllFields":true,
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      },
+      {
+        "name":"myAnalyzer",
+        "type":"delimiter",
+        "properties": {
+          "delimiter" : "."
+        },
+        "features": ["frequency"]
+      }
+    ]
+   })";
+
   constexpr std::array jsons{kDefinition1, kDefinition2, kDefinition3,
-                             kDefinition6, kDefinition7};
+                             kDefinition6, kDefinition7, kDefinition8,
+                             kDefinition9};
 
   for (auto jsonD : jsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
