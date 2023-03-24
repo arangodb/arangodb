@@ -13,11 +13,13 @@ exposedBy:
 description: |
   Number of times a follower shard needed to be completely rebuilt
   because of too many subsequent shard synchronization failures.
-  If this metric is non-zero, it means that a follower shard could
+  This metric is always zero from version 3.9.3 onwards. In previous
+  releases, a non-zero value indicates that a follower shard could
   not get in sync with the leader even after many attempts. When
-  the metric gets increased, the follower shard is dropped and
+  the metric got increased, the follower shard was dropped and
   completely rebuilt from leader data, in order to increase its
   chances of getting in sync.
 troubleshoot: |
-  Normally, this number will always be 0. If it is not, then something
-  is wrong, please contact ArangoDB customer support in this case.
+  This number will always be 0 from version 3.9.3 onwards. If it is
+  non-zero in previous versions, then something is wrong, please 
+  contact ArangoDB customer support in this case.

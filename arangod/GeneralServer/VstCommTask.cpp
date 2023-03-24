@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #include "VstCommTask.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -330,6 +329,17 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << VstRequest::translateMethod(req->requestType()) << "\",\""
           << url(req.get()) << "\"";
 
+      if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+          Logger::logRequestParameters()) {
+        // Log HTTP headers:
+        this->logRequestHeaders("vst", req->headers());
+
+        std::string_view body = req->rawPayload();
+        if (!body.empty()) {
+          this->logRequestBody("vst", req->contentType(), body);
+        }
+      }
+
       // TODO use different token if authentication header is present
       CommTask::Flow cont = this->prepareExecution(_authToken, *req, mode);
       if (cont == CommTask::Flow::Continue) {
@@ -411,6 +421,19 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << static_cast<int>(response.responseCode()) << ","
         << this->_connectionInfo.clientAddress << "\"," << stat.timingsCsv();
+  }
+
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    this->logResponseHeaders("vst", response.headers());
+
+    auto& payload = response.payload();
+    std::string_view body{reinterpret_cast<char const*>(payload.data()),
+                          payload.size()};
+    if (!body.empty()) {
+      this->logRequestBody("vst", response.contentType(), body,
+                           true /* isResponse */);
+    }
   }
 
   // and give some request information
@@ -498,15 +521,14 @@ void VstCommTask<T>::doWrite() {
   asio_ns::async_write(
       this->_protocol->socket, buffers,
       withLogContext([self(CommTask::shared_from_this()), rsp(std::move(item))](
-                         asio_ns::error_code const& ec, size_t) {
+                         asio_ns::error_code const& ec, size_t nwrite) {
         DTraceVstCommTaskAfterAsyncWrite((size_t)self.get());
 
         auto& me = static_cast<VstCommTask<T>&>(*self);
         me._writing = false;
 
         rsp->stat.SET_WRITE_END();
-        rsp->stat.ADD_SENT_BYTES(rsp->buffers[0].size() +
-                                 rsp->buffers[1].size());
+        rsp->stat.ADD_SENT_BYTES(nwrite);
         if (ec) {
           me.close(ec);
         } else {

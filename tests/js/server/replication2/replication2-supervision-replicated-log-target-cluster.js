@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertTrue, assertEqual*/
+/*global assertTrue, assertEqual, print*/
 "use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,6 +234,9 @@ const replicatedLogSuite = function () {
 
     // This test stops the leader and a follower, then waits for a failover to happen
     testCheckSimpleFailover: function () {
+      // This is supposed to be a map logIndex => document
+      // It will be filled alongside insert operations below.
+      const expectedDocumentsInserted = {};
       const {logId, followers, leader, term} =
           createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
@@ -241,21 +244,39 @@ const replicatedLogSuite = function () {
       // This important to make sure that all followers have responded to all append entries messages
       // upto now. Otherwise, the insert below doesn't work as expect.
       waitFor(lpreds.replicatedLogReplicationCompleted(database, logId));
+
+
+      // Note: We need to access the log BEFORE we stop the
+      // follower, otherwise this API will block and wait.
+      // this will give the replication protocol time to
+      // do a failover, before we actually start the test here,
+      // which would make all assumptions below invalid
+      // and will cause race conditions in who sees which
+      // entries.
+      let log = db._replicatedLog(logId);
+
       // now stop one server
       stopServer(followers[0]);
 
       // we should still be able to write
       {
-        let log = db._replicatedLog(logId);
         // we have to insert two log entries here, reason:
         // Even though followers[0] is stopped, it will receive the AppendEntries message for log index 1.
         // It will stay in its tcp input queue. So when the server is continued below it will process
         // this message. However, the leader sees this message as still in flight and thus will never
         // send any updates again. By inserting yet another log entry, we can make sure that servers[2]
         // is the only server that has received log index 2.
-        log.insert({foo: "bar"});
-        let quorum = log.insert({foo: "bar"});
-        assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
+        {
+          const firstDoc = {foo: "bar1"};
+          let quorum = log.insert(firstDoc);
+          expectedDocumentsInserted[quorum.index] = firstDoc;
+        }
+        {
+          const secondDoc = {foo: "bar2"};
+          let quorum = log.insert(secondDoc);
+          expectedDocumentsInserted[quorum.index] = secondDoc;
+          assertTrue(quorum.result.quorum.quorum.indexOf(followers[0]) === -1);
+        }
       }
 
       // now stop the leader
@@ -285,15 +306,39 @@ const replicatedLogSuite = function () {
       // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
       waitFor(
-          replicatedLogIsReady(
+          replicatedLogLeaderEstablished(
               database,
               logId,
               term + 2,
-              [followers[0], followers[1]],
-              followers[1]
+              [followers[0], followers[1]]
           )
       );
 
+     {
+        const {current} = readReplicatedLogAgency(database, logId);
+        const {localStatus, leader} = current;
+        const {serverId} = leader;
+        assertTrue([followers[0], followers[1]].find(f => f === serverId) !== undefined,
+          `Leader has to be one of ${JSON.stringify([followers[0], followers[1]])}, but is ${serverId}`);
+
+      }
+      // All docments inserted into the log still have to be readable!
+      for (const [index, expected] of Object.entries(expectedDocumentsInserted)) {
+        assertEqual(log.at(index).payload, expected);
+      }
+      {
+        // Now that we have a new leader, we need to be able to write again
+        const thirdDoc = {foo: "bar3"};
+        let quorum = log.insert(thirdDoc);
+        expectedDocumentsInserted[quorum.index] = thirdDoc;
+        // But the old leader cannot be part of the quorum (it still sleeps)
+        assertTrue(quorum.result.quorum.quorum.indexOf(leader) === -1);
+      }
+
+      // All docments inserted into the log still have to be readable!
+      for (const [index, expected] of Object.entries(expectedDocumentsInserted)) {
+        assertEqual(log.at(index).payload, expected);
+      }
       replicatedLogDeleteTarget(database, logId);
 
       continueServer(leader);
@@ -996,6 +1041,32 @@ const replicatedLogSuite = function () {
       };
       assertEqual(counts, expected);
       */
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    // This test first sets a new leader and waits for the leader exchange to take place.
+    // Then the new leader is stopped, thus an election is triggered.
+    // Although the now failed ex-leader remains in target, the election is expected to succeed.
+    testMoveLeadershipBackToFailedServer: function () {
+      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      // force leader in target
+      setReplicatedLogLeaderTarget(database, logId, leader);
+
+      // Stop current leader and wait for the leader to be changed
+      stopServer(leader);
+
+      // Supervision should notice that the target leader is failed and should not try to set it.
+      const errorCode = "TargetLeaderFailed";
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+
+      waitFor(lpreds.replicatedLogLeaderPlanChanged(database, logId, leader));
+      let {newLeader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      waitFor(replicatedLogIsReady(database, logId, term + 2, followers, newLeader));
+
+      continueServer(leader);
+      // if we continue the server, we expect the old leader to come back
+      waitFor(replicatedLogIsReady(database, logId, term + 3, servers, leader));
       replicatedLogDeleteTarget(database, logId);
     },
   };

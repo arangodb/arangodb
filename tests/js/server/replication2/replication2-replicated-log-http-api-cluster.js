@@ -38,13 +38,12 @@ const logFunctions = require("@arangodb/testutils/replicated-logs-http-helper");
 
 const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
 
-const readFollowerLogs = function () {
+const readFollowerLogsSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
     waitForSync: false,
   };
-
 
   const setupReplicatedLog = function () {
     const log = db._createReplicatedLog({config: targetConfig});
@@ -121,7 +120,7 @@ const readFollowerLogs = function () {
   };
 };
 
-const getLogInfo = function () {
+const logInfoSuite = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
@@ -153,6 +152,6 @@ const getLogInfo = function () {
   };
 };
 
-jsunity.run(readFollowerLogs);
-jsunity.run(getLogInfo);
+jsunity.run(readFollowerLogsSuite);
+jsunity.run(logInfoSuite);
 return jsunity.done();

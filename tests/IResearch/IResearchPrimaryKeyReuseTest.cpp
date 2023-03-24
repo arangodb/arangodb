@@ -55,8 +55,7 @@ class IResearchPrimaryKeyReuse : public IResearchQueryTest {};
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
   std::shared_ptr<arangodb::LogicalCollection> collection;
@@ -74,7 +73,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -182,8 +181,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
 }
 
 TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   std::vector<arangodb::velocypack::Builder> extraDocs;
   arangodb::LogicalView* view;
@@ -202,7 +200,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -345,8 +343,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
 }
 
 TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
   std::shared_ptr<arangodb::LogicalCollection> collection;
@@ -364,7 +361,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();

@@ -418,6 +418,12 @@
     delete global.SYS_IS_ENTERPRISE;
   }
 
+
+  if (global.ENCRYPTION_KEY_RELOAD) {
+    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
+    delete global.ENCRYPTION_KEY_RELOAD;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief createQueue
   // //////////////////////////////////////////////////////////////////////////////

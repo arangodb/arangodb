@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,17 +33,19 @@
 
 using namespace arangodb::aql;
 
-size_t QueryOptions::defaultMemoryLimit = 0;
-size_t QueryOptions::defaultMaxNumberOfPlans = 128;
+size_t QueryOptions::defaultMemoryLimit = 0U;
+size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
 #ifdef __APPLE__
 // On OSX the default stack size for worker threads (non-main thread) is 512kb
 // which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 150U;
 #else
-size_t QueryOptions::defaultMaxNodesPerCallstack = 250;
+size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
 #endif
-size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000;
-size_t QueryOptions::defaultSpillOverThresholdMemoryUsage = 128 * 1024 * 1024;
+size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
+size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
+    134217728ULL;                                                // 128 MB
+size_t QueryOptions::defaultMaxDNFConditionMembers = 786432ULL;  // 768K
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
 bool QueryOptions::defaultFailOnWarning = false;
@@ -57,6 +59,7 @@ QueryOptions::QueryOptions()
       spillOverThresholdNumRows(QueryOptions::defaultSpillOverThresholdNumRows),
       spillOverThresholdMemoryUsage(
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
+      maxDNFConditionMembers(QueryOptions::defaultMaxDNFConditionMembers),
       maxRuntime(0.0),
       satelliteSyncWait(60.0),
       ttl(QueryOptions::defaultTtl),  // get global default ttl
@@ -66,6 +69,7 @@ QueryOptions::QueryOptions()
       verbosePlans(false),
       explainInternals(true),
       stream(false),
+      retriable(false),
       silent(false),
       failOnWarning(
           QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
@@ -99,8 +103,7 @@ QueryOptions::QueryOptions()
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
-QueryOptions::QueryOptions(arangodb::velocypack::Slice const slice)
-    : QueryOptions() {
+QueryOptions::QueryOptions(velocypack::Slice slice) : QueryOptions() {
   this->fromVelocyPack(slice);
 }
 
@@ -120,12 +123,15 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
+    if (allowMemoryLimitOverride) {
+      memoryLimit = v;
+    } else if (v > 0 && v < memoryLimit) {
       // only allow increasing the memory limit if the respective startup option
-      // is set. and if it is set, only allow decreasing the memory limit
+      // is set. and if it is not set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }
+
   value = slice.get("maxNumberOfPlans");
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
@@ -152,6 +158,11 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("spillOverThresholdMemoryUsage");
   if (value.isNumber()) {
     spillOverThresholdMemoryUsage = value.getNumber<size_t>();
+  }
+
+  value = slice.get("maxDNFConditionMembers");
+  if (value.isNumber()) {
+    maxDNFConditionMembers = value.getNumber<size_t>();
   }
 
   value = slice.get("maxRuntime");
@@ -198,6 +209,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (value = slice.get("stream"); value.isBool()) {
     stream = value.getBool();
   }
+  if (value = slice.get("allowRetry"); value.isBool()) {
+    retriable = value.isTrue();
+  }
   if (value = slice.get("silent"); value.isBool()) {
     silent = value.getBool();
   }
@@ -221,7 +235,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+      value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
@@ -278,6 +293,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdNumRows));
   builder.add("spillOverThresholdMemoryUsage",
               VPackValue(spillOverThresholdMemoryUsage));
+  builder.add("maxDNFConditionMembers", VPackValue(maxDNFConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
@@ -288,13 +304,14 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("verbosePlans", VPackValue(verbosePlans));
   builder.add("explainInternals", VPackValue(explainInternals));
   builder.add("stream", VPackValue(stream));
+  builder.add("allowRetry", VPackValue(retriable));
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue",
+    builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
   }
 

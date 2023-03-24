@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -69,8 +70,8 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 }  // namespace
 
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
-                                             VPackSlice const& info)
-    : PhysicalCollection(collection, info),
+                                             velocypack::Slice info)
+    : PhysicalCollection(collection),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -86,10 +87,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
       .engine<RocksDBEngine>()
       .addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                             _logicalCollection.id());
-}
-
-std::string const& RocksDBMetaCollection::path() const {
-  return StaticStrings::Empty;  // we do not have any path
 }
 
 void RocksDBMetaCollection::deferDropCollection(
@@ -226,9 +223,19 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     TRI_ASSERT(it->key().compare(upper) < 0);
     ++count;
 
-    if (count % 4096 == 0 && server.isStopping()) {
-      // check for server shutdown
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    if (count % 4096 == 0) {
+      if (server.isStopping()) {
+        // server shutdown
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      }
     }
   }
 
@@ -403,20 +410,7 @@ std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
 }
 
 std::unique_ptr<containers::RevisionTree> RocksDBMetaCollection::revisionTree(
-    uint64_t batchId) {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
-  RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx =
-      batchId == 0 ? nullptr : manager->find(batchId);
-  if (!ctx) {
-    return nullptr;
-  }
-  auto guard =
-      scopeGuard([manager, ctx]() noexcept -> void { manager->release(ctx); });
-  rocksdb::SequenceNumber trxSeq = ctx->snapshotTick();
+    rocksdb::SequenceNumber trxSeq) {
   TRI_ASSERT(trxSeq != 0);
 
   return revisionTree(
@@ -827,7 +821,16 @@ RocksDBMetaCollection::buildTreeFromIterator(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
     it.next();
@@ -1058,7 +1061,16 @@ void RocksDBMetaCollection::rebuildRevisionTree(
       revisions.clear();
 
       if (_logicalCollection.vocbase().server().isStopping()) {
+        // server shutdown
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      if (_logicalCollection.vocbase().isDropped()) {
+        // database dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      if (_logicalCollection.deleted()) {
+        // collection dropped
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       }
     }
   }
@@ -1182,7 +1194,16 @@ uint64_t RocksDBMetaCollection::placeRevisionTreeBlocker(
     }
 
     if (_logicalCollection.vocbase().server().isStopping()) {
+      // server shutdown
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    if (_logicalCollection.vocbase().isDropped()) {
+      // database dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+    if (_logicalCollection.deleted()) {
+      // collection dropped
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     std::this_thread::yield();
@@ -1224,7 +1245,7 @@ void RocksDBMetaCollection::bufferUpdates(
   }
 
   LOG_TOPIC("bafcf", TRACE, Logger::ENGINES)
-      << "buffering " << inserts.size() << "inserts and " << removals.size()
+      << "buffering " << inserts.size() << " inserts and " << removals.size()
       << " removals "
       << "for collection " << _logicalCollection.name();
 
@@ -1591,12 +1612,30 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 
       // apply inserts
       if (inserts) {
-        tree.insert(*inserts);
+        try {
+          tree.insert(*inserts);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("7a4d5", ERR, Logger::ENGINES)
+              << "unable to apply revision tree inserts for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
 
       // apply removals
       if (removals) {
-        tree.remove(*removals);
+        try {
+          tree.remove(*removals);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("f37b2", ERR, Logger::ENGINES)
+              << "unable to apply revision tree removals for "
+              << _logicalCollection.vocbase().name() << "/"
+              << _logicalCollection.name() << " for commit seq " << commitSeq
+              << ": " << ex.what();
+          throw;
+        }
       }
     }
   });

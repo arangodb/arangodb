@@ -1,21 +1,26 @@
-# -*- mode: CMAKE; -*-
+add_library(arango_cluster_engine STATIC
+  ClusterCollection.cpp
+  ClusterEngine.cpp
+  ClusterIndex.cpp
+  ClusterIndexFactory.cpp
+  ClusterRestCollectionHandler.cpp
+  ClusterRestHandlers.cpp
+  ClusterRestReplicationHandler.cpp
+  ClusterRestWalHandler.cpp
+  ClusterSelectivityEstimates.cpp
+  ClusterTransactionCollection.cpp
+  ClusterTransactionState.cpp
+  ClusterV8Functions.cpp)
 
+target_link_libraries(arango_cluster_engine
+  arango_health
+  arango_indexes
+  boost_boost
+  arango_v8
+  arango_v8_no_deadline)
 
-
-# add sources for cluster engine
-set(CLUSTER_ENGINE_SOURCES
-  ClusterEngine/ClusterCollection.cpp
-  ClusterEngine/ClusterEngine.cpp
-  ClusterEngine/ClusterIndex.cpp
-  ClusterEngine/ClusterIndexFactory.cpp
-  ClusterEngine/ClusterRestCollectionHandler.cpp
-  ClusterEngine/ClusterRestHandlers.cpp
-  ClusterEngine/ClusterRestReplicationHandler.cpp
-  ClusterEngine/ClusterRestWalHandler.cpp
-  ClusterEngine/ClusterSelectivityEstimates.cpp
-  ClusterEngine/ClusterTransactionCollection.cpp
-  ClusterEngine/ClusterTransactionState.cpp
-  ClusterEngine/ClusterV8Functions.cpp
-  ClusterEngine/RocksDBMethods.cpp
-)
-set(CLUSTER_ENGINE_SOURCES ${CLUSTER_ENGINE_SOURCES} PARENT_SCOPE)
+target_include_directories(arango_cluster_engine PUBLIC
+  ${IRESEARCH_INCLUDE})
+target_include_directories(arango_cluster_engine PRIVATE
+  "${PROJECT_SOURCE_DIR}/arangod"
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")

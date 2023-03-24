@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 #include "Basics/fpconv.h"
-#include "Zip/zip.h"
 
 /// @brief append a character without check
 static inline void AppendChar(TRI_string_buffer_t* self, char chr) {
@@ -704,47 +703,4 @@ std::ostream& operator<<(std::ostream& stream,
                          arangodb::basics::StringBuffer const& buffer) {
   stream.write(buffer.begin(), buffer.length());
   return stream;
-}
-
-ErrorCode arangodb::basics::StringBuffer::deflate() {
-  arangodb::basics::StringBuffer deflated;
-
-  ErrorCode code = arangodb::encoding::gzipDeflate(
-      reinterpret_cast<uint8_t const*>(data()), size(), deflated);
-
-  if (code == TRI_ERROR_NO_ERROR) {
-    swap(&deflated);
-  }
-  return code;
-}
-
-/// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-ErrorCode arangodb::basics::StringBuffer::inflate(
-    arangodb::basics::StringBuffer& out, size_t skip) {
-  uint8_t const* p = reinterpret_cast<uint8_t const*>(data());
-  size_t length = size();
-
-  if (length < skip) {
-    length = 0;
-  } else {
-    p += skip;
-    length -= skip;
-  }
-
-  /* TODO: figure out if the following code needs to be re-enabled
-  // nginx seems to skip the header - which is wrong according to the
-  // RFC. The following is a hack to find out, if a header is present.
-  // There is a 1 in 31 chance that this will not work.
-  if (2 <= len) {
-    uint32_t first = (((uint32_t)start[0]) << 8) | ((uint32_t)start[1]);
-
-    if (first % 31 == 0) {
-      raw = false;
-    }
-  }
-
-  int res = raw ? inflateInit2(&strm, -15) : inflateInit(&strm);
-  */
-
-  return arangodb::encoding::gzipInflate(p, length, out);
 }

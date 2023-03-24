@@ -230,6 +230,7 @@ start() {
       --log.level $LOG_LEVEL_CLUSTER
       --server.descriptors-minimum 0
       --javascript.allow-admin-execute true
+      --http.trusted-origin all
 EOM
 
     SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
@@ -282,6 +283,10 @@ done
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
+
+if [[ -d "$PWD/enterprise" ]]; then
+    "${BUILD}"/bin/arangosh --server.endpoint "$TRANSPORT://[::1]:$CO_BASE" --javascript.execute "enterprise/scripts/startLocalCluster.js"
+fi
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do

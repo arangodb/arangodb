@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +23,12 @@
 
 #include "MutexExecutor.h"
 
-#include "Aql/AqlItemBlockManager.h"
-#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/IdExecutor.h"
 #include "Aql/MutexNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SharedQueryState.h"
-#include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
-
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <utility>

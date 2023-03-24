@@ -269,7 +269,7 @@ function Run (testsuite) {
       var test = { name: key, fn: definition[key]};
 
       tests.push(test);
-    } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll') {
+    } else if (key !== 'tearDown' && key !== 'setUp' && key !== 'tearDownAll' && key !== 'setUpAll' && key !== 'internal') {
       console.error('unknown function: %s', key);
     }
   }

@@ -79,7 +79,7 @@ class FifoQueueTest : public ::testing::Test {
 
 TEST_F(FifoQueueTest, it_should_be_empty_if_new_queue_initialized) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  ASSERT_EQ(queue.size(), 0);
+  ASSERT_EQ(queue.size(), 0U);
   ASSERT_TRUE(queue.isEmpty());
 }
 
@@ -87,7 +87,7 @@ TEST_F(FifoQueueTest, it_should_contain_element_after_insertion) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   auto step = Step{1, 1, false};
   queue.append(step);
-  ASSERT_EQ(queue.size(), 1);
+  ASSERT_EQ(queue.size(), 1U);
   ASSERT_FALSE(queue.isEmpty());
 }
 
@@ -97,7 +97,7 @@ TEST_F(FifoQueueTest, it_should_contain_zero_elements_after_clear) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
   queue.append(Step{4, 1, true});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   queue.clear();
   ASSERT_TRUE(queue.isEmpty());
 }
@@ -108,7 +108,7 @@ TEST_F(FifoQueueTest, it_should_contain_processable_elements) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
   queue.append(Step{4, 1, true});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
@@ -118,7 +118,7 @@ TEST_F(FifoQueueTest, it_should_not_contain_processable_elements) {
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -128,12 +128,12 @@ TEST_F(FifoQueueTest, it_should_pop_first_element_if_processable) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
   while (queue.hasProcessableElement()) {
     std::ignore = queue.pop();
   }
-  ASSERT_EQ(queue.size(), 2);
+  ASSERT_EQ(queue.size(), 2U);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -143,7 +143,7 @@ TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
   queue.append(Step{2, 1, false});
   queue.append(Step{3, 1, false});
   queue.append(Step{4, 1, false});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
   size_t id = 1;
   while (queue.hasProcessableElement()) {
@@ -151,7 +151,7 @@ TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
     ASSERT_EQ(id, myStep.id());
     id++;
   }
-  ASSERT_EQ(queue.size(), 0);
+  ASSERT_EQ(queue.size(), 0U);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -161,11 +161,11 @@ TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
   queue.append(Step{2, 1, true});
   queue.append(Step{3, 1, true});
   queue.append(Step{4, 1, true});
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
 
   std::vector<Step*> myStepReferences = queue.getLooseEnds();
-  ASSERT_EQ(myStepReferences.size(), 4);
+  ASSERT_EQ(myStepReferences.size(), 4U);
 
   size_t id = 1;
   for (auto stepReference : myStepReferences) {
@@ -173,7 +173,7 @@ TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
     id++;
   }
 
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
@@ -188,7 +188,7 @@ TEST_F(FifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
   queue.setStartContent(std::move(input));
   // Account for all 4 added steps.
   EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
 
   size_t id = 1;
@@ -197,7 +197,7 @@ TEST_F(FifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
     ASSERT_EQ(step.id(), id);
     id++;
   }
-  ASSERT_EQ(queue.size(), 0);
+  ASSERT_EQ(queue.size(), 0U);
   // Memory is reduced fully again
   EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
 }
@@ -214,7 +214,7 @@ TEST_F(FifoQueueTest,
   queue.setStartContent(std::move(input));
   // Account for all 4 added steps.
   EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
-  ASSERT_EQ(queue.size(), 4);
+  ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
 
   size_t id = 1;
@@ -236,13 +236,13 @@ TEST_F(FifoQueueTest,
   }
   // Ids are increasing in order of FIFO sorting.
   // so lets now pull everything from queue in expected order
-  ASSERT_EQ(queue.size(), 6);
+  ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
     ASSERT_EQ(step.id(), id);
     id++;
   }
-  ASSERT_EQ(queue.size(), 0);
+  ASSERT_EQ(queue.size(), 0U);
   // Memory is reduced fully again
   EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
 }

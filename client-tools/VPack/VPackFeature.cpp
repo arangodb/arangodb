@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 #include <velocypack/Dumper.h>
@@ -133,36 +133,37 @@ void VPackFeature::collectOptions(
 
   options->addOption("--input-file",
 #ifdef __linux__
-                     "input filename (leave empty or use \"-\" for stdin)",
+                     "The input file (leave empty or use \"-\" for stdin).",
 #else
-                     "input filename",
+                     "The input file.",
 #endif
                      new StringParameter(&_inputFile));
 
   options->addOption("--output-file",
 #ifdef __linux__
-                     "output filename (leave empty or use \"+\" for stdout)",
+                     "The output file (leave empty or use \"+\" for stdout).",
 #else
-                     "output filename",
+                     "The output file.",
 #endif
                      new StringParameter(&_outputFile));
 
   options
       ->addOption(
-          "--input-type", "type of input",
+          "--input-type", "The input format.",
           new DiscreteValuesParameter<StringParameter>(&_inputType, inputTypes))
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--output-type", "type of output",
+      ->addOption("--output-type", "The output format.",
                   new DiscreteValuesParameter<StringParameter>(&_outputType,
                                                                outputTypes))
       .setIntroducedIn(30800);
 
   options
-      ->addOption("--fail-on-non-json",
-                  "fail when trying to emit non-JSON types to JSON output",
-                  new BooleanParameter(&_failOnNonJson))
+      ->addOption(
+          "--fail-on-non-json",
+          "Raise an error when trying to emit non-JSON types to JSON output.",
+          new BooleanParameter(&_failOnNonJson))
       .setIntroducedIn(30800);
 }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,16 +24,9 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
-#include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
-#include "Pregel/WorkerConfig.h"
-
-struct TRI_vocbase_t;
-
-namespace arangodb {
-class LogicalCollection;
-namespace pregel {
+namespace arangodb::pregel {
 
 class Utils {
   Utils() = delete;
@@ -52,13 +45,8 @@ class Utils {
   static std::string const startGSSPath;
   static std::string const finishedWorkerStepPath;
   static std::string const finishedWorkerFinalizationPath;
-  static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
-  static std::string const startRecoveryPath;
-  static std::string const continueRecoveryPath;
-  static std::string const finishedRecoveryPath;
-  static std::string const finalizeRecoveryPath;
   static std::string const storeCheckpointPath;
   static std::string const aqlResultsPath;
 
@@ -71,10 +59,8 @@ class Utils {
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
-  static std::string const asyncModeKey;
   static std::string const useMemoryMapsKey;
   static std::string const parallelismKey;
-  static std::string const activateAllKey;
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
@@ -96,9 +82,6 @@ class Utils {
   static std::string const senderKey;
   static std::string const payloadKey;
 
-  /// Recovery method name
-  static std::string const recoveryMethodKey;
-
   /// Tells workers to store the result into the collections
   /// otherwise dicard results
   static std::string const storeResultsKey;
@@ -113,6 +96,14 @@ class Utils {
   /// every GSS
   static std::string const masterToWorkerMessagesKey;
 
+  /// Used for input in ColorPropagation
+  static std::string const equivalenceClass;
+  static std::string const inputColorsFieldName;
+  static std::string const outputColorsFieldName;
+  static std::string const numColors;
+  /// Used for message passing in ColorPropagation
+  static std::string const colors;
+
   /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
 
@@ -124,9 +115,10 @@ class Utils {
   /// superstep (bookkeeping)
   static std::string const sendCountKey;
 
-  /// Used to communicate to enter the next phase
-  /// only send by the conductor
-  static std::string const enterNextGSSKey;
+  /// Algorithms parameters
+  static std::string const maxGSS;
+  static std::string const maxNumIterations;
+  static std::string const threshold;
 
   static std::string const compensate;
   static std::string const rollback;
@@ -137,15 +129,6 @@ class Utils {
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);
-
-  static int64_t countDocuments(TRI_vocbase_t* vocbase,
-                                std::string const& collection);
-
-  static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                                std::string const& collectionName,
-                                std::string const& shardKey,
-                                std::string_view vertexKey,
-                                std::string& responsibleShard);
 };
-}  // namespace pregel
-}  // namespace arangodb
+
+}  // namespace arangodb::pregel

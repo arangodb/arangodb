@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,12 @@
 #include <algorithm>
 #include <cstddef>
 #include "Basics/Common.h"
-#include "Pregel/Graph.h"
-#include "Pregel/GraphStore.h"
+#include "Pregel/GraphStore/Graph.h"
+#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/Iterators.h"
+#include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/OutgoingCache.h"
-#include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -44,15 +44,15 @@ template<typename V, typename E, typename M>
 class VertexContext {
   friend class Worker<V, E, M>;
 
+ public:
   uint64_t _gss = 0;
   uint64_t _lss = 0;
   WorkerContext* _context = nullptr;
-  GraphStore<V, E>* _graphStore = nullptr;
+  std::shared_ptr<Quiver<V, E>> _quiver = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
   Vertex<V, E>* _vertexEntry = nullptr;
 
- public:
   virtual ~VertexContext() = default;
 
   template<typename T>
@@ -88,18 +88,7 @@ class VertexContext {
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
-  RangeIterator<Edge<E>> getEdges() const {
-    return _graphStore->edgeIterator(_vertexEntry);
-  }
-
-  void setVertexData(V const& val) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
-  }
-
-  /// store data, will potentially move the data around
-  void setVertexData(void const* ptr, size_t size) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
-  }
+  std::vector<Edge<E>>& getEdges() const { return _vertexEntry->getEdges(); }
 
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
@@ -114,51 +103,35 @@ class VertexContext {
 
   PregelShard shard() const { return _vertexEntry->shard(); }
   std::string_view key() const { return _vertexEntry->key(); }
-  PregelID pregelId() const { return _vertexEntry->pregelId(); }
+  VertexID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
 template<typename V, typename E, typename M>
 class VertexComputation : public VertexContext<V, E, M> {
   friend class Worker<V, E, M>;
-  OutCache<M>* _cache = nullptr;
-  bool _enterNextGSS = false;
-  ReportManager _reports;
 
  public:
+  OutCache<M>* _cache = nullptr;
+
   virtual ~VertexComputation() = default;
 
-  void sendMessage(Edge<E> const* edge, M const& data) {
-    _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+  void sendMessage(Edge<E> const& edge, M const& data) {
+    _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
   }
 
-  void sendMessage(PregelID const& pid, M const& data) {
+  void sendMessage(VertexID const& pid, M const& data) {
     _cache->appendMessage(pid.shard, std::string_view(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours
   /// TODO Multi-receiver messages
   void sendMessageToAllNeighbours(M const& data) {
-    RangeIterator<Edge<E>> edges = this->getEdges();
-    for (; edges.hasMore(); ++edges) {
-      Edge<E> const* edge = *edges;
-      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
-    }
-  }
-
-  /// Causes messages to be available in GSS+1.
-  /// Only valid in async mode, a no-op otherwise
-  void enterNextGlobalSuperstep() {
-    // _enterNextGSS is true when we are not in async mode
-    // making this a no-op
-    if (!_enterNextGSS) {
-      _enterNextGSS = true;
-      _cache->sendToNextGSS(true);
+    for (auto& edge : this->getEdges()) {
+      _cache->appendMessage(edge.targetShard(), edge.toKey(), data);
     }
   }
 
   virtual void compute(MessageIterator<M> const& messages) = 0;
-
-  ReportManager& getReportManager() { return _reports; }
 };
 
 template<typename V, typename E, typename M>

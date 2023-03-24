@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -172,7 +172,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
                      int flags) {
   while (length > 0) {
-    ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
+    auto written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
       status = ::genericError(path, flags);
       break;

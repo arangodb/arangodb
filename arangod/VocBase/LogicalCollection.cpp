@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -47,12 +49,11 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -69,18 +70,6 @@ using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
 
 namespace {
-
-static std::string translateStatus(TRI_vocbase_col_status_e status) {
-  switch (status) {
-    case TRI_VOC_COL_STATUS_LOADED:
-      return "loaded";
-    case TRI_VOC_COL_STATUS_DELETED:
-      return "deleted";
-    case TRI_VOC_COL_STATUS_CORRUPTED:
-    default:
-      return "unknown";
-  }
-}
 
 std::string readGloballyUniqueId(velocypack::Slice info) {
   auto guid = basics::VelocyPackHelper::getStringValue(
@@ -147,8 +136,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
           info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
-      _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
-          info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isDisjoint(
@@ -159,10 +146,10 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 #endif
       _allowUserKeys(
           Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
-      _waitForSync(Helper::getBooleanValue(
-          info, StaticStrings::WaitForSyncString, false)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _waitForSync(Helper::getBooleanValue(
+          info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
       _physical(vocbase.server()
@@ -171,7 +158,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
                     .createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
-    _usesRevisionsAsDocumentIds.store(false);
+    _usesRevisionsAsDocumentIds = false;
     _syncByRevision.store(false);
   }
 
@@ -206,9 +193,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesBefore(info);
+
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-  initializeSmartAttributes(info);
+  // TODO: THIS NEEDS CLEANUP (Naming & Structural issue)
+  initializeSmartAttributesAfter(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -241,7 +232,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 LogicalCollection::~LogicalCollection() = default;
 
 #ifndef USE_ENTERPRISE
-void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
+void LogicalCollection::initializeSmartAttributesBefore(
+    velocypack::Slice info) {
+  // nothing to do in community edition
+}
+void LogicalCollection::initializeSmartAttributesAfter(velocypack::Slice info) {
   // nothing to do in community edition
 }
 #endif
@@ -277,16 +272,17 @@ Result LogicalCollection::updateSchema(VPackSlice schema) {
 }
 
 Result LogicalCollection::updateComputedValues(VPackSlice computedValues) {
-  auto result =
-      ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
+  if (!computedValues.isNone()) {
+    auto result =
+        ComputedValues::buildInstance(vocbase(), shardKeys(), computedValues);
 
-  if (result.fail()) {
-    return result.result();
+    if (result.fail()) {
+      return result.result();
+    }
+
+    std::atomic_store_explicit(&_computedValues, result.get(),
+                               std::memory_order_release);
   }
-
-  std::atomic_store_explicit(&_computedValues, result.get(),
-                             std::memory_order_release);
-
   return {};
 }
 
@@ -302,6 +298,29 @@ RevisionId LogicalCollection::newRevisionId() const {
 ShardingInfo* LogicalCollection::shardingInfo() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding.get();
+}
+
+UserInputCollectionProperties LogicalCollection::getCollectionProperties()
+    const noexcept {
+  UserInputCollectionProperties props;
+  // NOTE: This implementation is NOT complete.
+  // It only contains what was absolute necessary to get distributeShardsLike
+  // to work.
+  // Longterm-Plan: A logical collection should have those properties as a
+  // member and just return a reference to them.
+  props.name = name();
+  props.id = id();
+  props.numberOfShards = numberOfShards();
+  props.writeConcern = writeConcern();
+  props.replicationFactor = replicationFactor();
+  auto distLike = distributeShardsLike();
+  if (!distLike.empty()) {
+    props.distributeShardsLikeCid = std::move(distLike);
+  }
+  props.shardKeys = shardKeys();
+  props.shardingStrategy = shardingInfo()->shardingStrategyName();
+  props.waitForSync = waitForSync();
+  return props;
 }
 
 size_t LogicalCollection::numberOfShards() const noexcept {
@@ -459,31 +478,10 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   return numberOfShards() != 1;
 }
 
-uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
-
-TRI_col_type_e LogicalCollection::type() const { return _type; }
-
-TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
-
-TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _statusLock);
-  return _status;
-}
-
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
   WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
-}
-
-TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _statusLock);
-  if (locker.isLocked()) {
-    didFetch = true;
-    return _status;
-  }
-  didFetch = false;
-  return TRI_VOC_COL_STATUS_CORRUPTED;
 }
 
 // SECTION: Properties
@@ -510,7 +508,7 @@ void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
 #endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
-  return _usesRevisionsAsDocumentIds.load(std::memory_order_relaxed);
+  return _usesRevisionsAsDocumentIds;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
@@ -534,15 +532,6 @@ bool LogicalCollection::determineSyncByRevision() const {
     }
   }
   return false;
-}
-
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
-                                                     TransactionId tid) {
-  return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
-}
-
-void LogicalCollection::flushClusterIndexEstimates() {
-  getPhysical()->flushClusterIndexEstimates();
 }
 
 std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
@@ -584,20 +573,12 @@ Result LogicalCollection::rename(std::string&& newName) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while renaming collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
-  // Check for illegal states.
-  if (_status != TRI_VOC_COL_STATUS_LOADED) {
-    if (_status == TRI_VOC_COL_STATUS_CORRUPTED) {
-      return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
-    } else if (_status == TRI_VOC_COL_STATUS_DELETED) {
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    }
-    // Unknown status
-    return TRI_ERROR_INTERNAL;
+  // Check for illegal state.
+  if (deleted()) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  auto doSync = databaseFeature.forceSyncProperties();
   std::string oldName = name();
 
   // Okay we can finally rename safely
@@ -605,7 +586,8 @@ Result LogicalCollection::rename(std::string&& newName) {
     StorageEngine& engine =
         vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this, doSync);
+    engine.changeCollection(vocbase(), *this);
+    ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
@@ -618,31 +600,20 @@ Result LogicalCollection::rename(std::string&& newName) {
     return {TRI_ERROR_INTERNAL};
   }
 
-  // CHECK if this ordering is okay. Before change the version was increased
-  // after swapping in vocbase mapping.
-  increaseV8Version();
   return {};
 }
 
-ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
+void LogicalCollection::close() { getPhysical()->close(); }
 
 Result LogicalCollection::drop() {
   // make sure collection has been closed
   this->close();
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  deleted(true);
+  setDeleted();
   _physical->drop();
 
   return {};
-}
-
-void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
-  _status = status;
-
-  if (status == TRI_VOC_COL_STATUS_LOADED) {
-    increaseV8Version();
-  }
 }
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
@@ -656,7 +627,7 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags(Index::Serialize::Basics);
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden();
     }
   });
@@ -718,12 +689,12 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
       default:
-        flags = Index::makeFlags();
+        flags = Index::makeFlags(Index::Serialize::Inventory);
         return !idx->isHidden() && !idx->inProgress();
     }
   });
-  result.add("planVersion",
-             VPackValue(1));  // planVersion is hard-coded to 1 since 3.8
+  // planVersion is hard-coded to 1 since 3.8
+  result.add("planVersion", VPackValue(1));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -741,8 +712,17 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::DataSourceCid,
             VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
-  build.add("status", VPackValue(_status));
-  build.add("statusString", VPackValue(::translateStatus(_status)));
+
+  // there are no collection statuses anymore, but we need to keep
+  // API-compatibility. so the following attributes' values are hard-coded.
+  if (deleted()) {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+    build.add("statusString", VPackValue("deleted"));
+  } else {
+    build.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+    build.add("statusString", VPackValue("loaded"));
+  }
+
   build.add(StaticStrings::Version,
             VPackValue(static_cast<uint32_t>(_version)));
   // Collection Flags
@@ -756,7 +736,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   // TODO is this still releveant or redundant in keyGenerator?
   build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
 
-  // keyoptions
+  // keyOptions
   build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
   keyGenerator().toVelocyPack(build);
   build.close();
@@ -841,8 +821,6 @@ void LogicalCollection::includeVelocyPackEnterprise(
 }
 #endif
 
-void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
-
 Result LogicalCollection::properties(velocypack::Slice slice) {
   TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
@@ -858,7 +836,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         TRI_ERROR_INTERNAL,
         "failed to find feature 'Database' while updating collection");
   }
-  auto& databaseFeature = vocbase().server().getFeature<DatabaseFeature>();
 
   if (!vocbase().server().hasFeature<EngineSelectorFeature>() ||
       !vocbase().server().getFeature<EngineSelectorFeature>().selected()) {
@@ -900,9 +877,12 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                       "bad value for replicationFactor");
       }
 
+      auto& cf = vocbase().server().getFeature<ClusterFeature>();
       replicationFactor = replicationFactorSlice.getNumber<size_t>();
       if ((!isSatellite() && replicationFactor == 0) ||
-          replicationFactor > 10) {
+          (ServerState::instance()->isCoordinator() &&
+           (replicationFactor < cf.minReplicationFactor() ||
+            replicationFactor > cf.maxReplicationFactor()))) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for replicationFactor");
       }
@@ -925,9 +905,10 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         }
       }
     } else if (replicationFactorSlice.isString()) {
-      if (replicationFactorSlice.compareString(StaticStrings::Satellite) != 0) {
+      if (replicationFactorSlice.stringView() != StaticStrings::Satellite) {
         // only the string "satellite" is allowed here
-        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for replicationFactor. expecting 'satellite'");
       }
       // we got the string "satellite"...
 #ifdef USE_ENTERPRISE
@@ -987,11 +968,9 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                (writeConcern == 0 && isSatellite()));
   }
 
-  auto doSync = !engine.inRecovery() && databaseFeature.forceSyncProperties();
-
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  res = getPhysical()->updateProperties(slice, doSync);
+  res = getPhysical()->updateProperties(slice);
   if (!res.ok()) {
     return res;
   }
@@ -1042,7 +1021,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
         vocbase().name(), std::to_string(id().id()), this);
   }
 
-  engine.changeCollection(vocbase(), *this, doSync);
+  engine.changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
   if (df.versionTracker() != nullptr) {
@@ -1090,24 +1069,21 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 }
 
 /// @brief drops an index, including index file removal and replication
-bool LogicalCollection::dropIndex(IndexId iid) {
+Result LogicalCollection::dropIndex(IndexId iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-#if USE_PLAN_CACHE
-  aql::PlanCache::instance()->invalidate(_vocbase);
-#endif
 
   aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
-  bool result = _physical->dropIndex(iid);
+  Result res = _physical->dropIndex(iid);
 
-  if (result) {
+  if (res.ok()) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {
       df.versionTracker()->track("drop index");
     }
   }
 
-  return result;
+  return res;
 }
 
 /// @brief Persist the connected physical collection.
@@ -1137,17 +1113,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief processes a truncate operation (note: currently this only clears
-/// the read-cache
+/// @brief processes a truncate operation
 ////////////////////////////////////////////////////////////////////////////////
 
 Result LogicalCollection::truncate(transaction::Methods& trx,
-                                   OperationOptions& options) {
-  TRI_IF_FAILURE("LogicalCollection::truncate") {
-    return Result(TRI_ERROR_DEBUG);
-  }
-
-  return getPhysical()->truncate(trx, options);
+                                   OperationOptions& options,
+                                   bool& usedRangeDelete) {
+  TRI_IF_FAILURE("LogicalCollection::truncate") { return {TRI_ERROR_DEBUG}; }
+  return getPhysical()->truncate(trx, options, usedRangeDelete);
 }
 
 /// @brief compact-data operation
@@ -1269,9 +1242,20 @@ auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
   using namespace replication2::replicated_state;
+  auto maybeState = vocbase().getReplicatedStateById(shardIdToStateId(name()));
+  // Note that while we assert this for now, I am not sure that we can rely on
+  // it. I don't know of any mechanism (I also haven't checked thoroughly) that
+  // would prevent the state of a collection being deleted while this function
+  // is called.
+  // TODO Check whether this assert is sensible, or whether we might have to
+  //      either return a nullptr or throw an exception instead.
+  // TODO If we have to remove the assert, we must make sure that the caller (or
+  //      callers) are prepared for that (they currently aren't).
+  ADB_PROD_ASSERT(maybeState.ok())
+      << "Missing document state in shard " << name();
   auto stateMachine =
-      std::dynamic_pointer_cast<ReplicatedState<document::DocumentState>>(
-          vocbase().getReplicatedStateById(shardIdToStateId(name())));
+      basics::downCast<ReplicatedState<document::DocumentState>>(
+          std::move(maybeState).get());
   ADB_PROD_ASSERT(stateMachine != nullptr)
       << "Missing document state in shard " << name();
   return stateMachine;
@@ -1303,7 +1287,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
                      shardIdToStateId(name()), vocbase().name(), name(),
-                     *status);
+                     fmt::streamed(*status));
   }
 
   auto leader = stateMachine->getLeader();
@@ -1312,7 +1296,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
                      "Replicated state {} is not available as leader, accessed "
                      "from {}/{}. Status is {}.",
                      shardIdToStateId(name()), vocbase().name(), name(),
-                     to_string(leaderStatus->managerState.state));
+                     /* to_string(leaderStatus->managerState.state) */ "n/a");
   }
 
   return leader;

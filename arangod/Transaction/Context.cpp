@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,7 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase)
     : _vocbase(vocbase),
       _customTypeHandler(),
-      _options(arangodb::velocypack::Options::Defaults),
+      _options(velocypack::Options::Defaults),
       _transaction{TransactionId::none(), false, false} {}
 
 /// @brief destroy the context

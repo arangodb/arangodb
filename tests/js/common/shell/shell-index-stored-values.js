@@ -677,7 +677,7 @@ function indexStoredValuesResultsSuite() {
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
-      assertEqual(["value"], nodes[1].projections.sort());
+      assertEqual([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]], nodes[1].projections.sort());
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();
@@ -700,8 +700,8 @@ function indexStoredValuesResultsSuite() {
       let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual(["value"], nodes[1].projections);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual([["value", "sub1"], ["value", "sub2"], ["value", "sub3"], ["value", "sub4"]], nodes[1].projections.sort());
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();
@@ -724,8 +724,8 @@ function indexStoredValuesResultsSuite() {
       let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual(["value"], nodes[1].projections);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual([["value", "a"], ["value", "sub1", "a"], ["value", "sub1", "sub2", "sub3"]], nodes[1].projections);
       
       for (let i = 0; i < 10; ++i) {
         let result = db._query(query, { value: i }).toArray();

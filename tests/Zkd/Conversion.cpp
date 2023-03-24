@@ -151,9 +151,9 @@ TEST(Zkd_byte_string_conversion, bit_reader_test) {
 
   BitReader r(s);
   auto v = r.read_big_endian_bits(4);
-  EXPECT_EQ(0b1110, v);
+  EXPECT_EQ(0b1110u, v);
   auto v2 = r.read_big_endian_bits(5);
-  EXPECT_EQ(0b10101, v2);
+  EXPECT_EQ(0b10101u, v2);
 }
 
 TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
@@ -162,12 +162,12 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
   {
     BitReader r(s);
     auto v = r.read_big_endian_bits(1);
-    EXPECT_EQ(1, v);
+    EXPECT_EQ(1u, v);
   }
   {
     BitReader r(s);
     auto v = r.read_big_endian_bits(8);
-    EXPECT_EQ(1 << 7, v);
+    EXPECT_EQ(1u << 7, v);
   }
   {
     BitReader r(s);

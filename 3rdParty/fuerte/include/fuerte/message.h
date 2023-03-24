@@ -49,7 +49,6 @@ struct MessageHeader {
   short version() const { return _version; }
   void setVersion(short v) { _version = v; }
 
- public:
   // Header metadata helpers#
   template <typename K, typename V>
   void addMeta(K&& key, V&& value) {
@@ -89,7 +88,7 @@ struct MessageHeader {
 
  protected:
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
-  short _version;
+  short _version = 0; // vst protocol version. only used by vst
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
   ContentEncoding _contentEncoding = ContentEncoding::Identity;
@@ -108,7 +107,6 @@ struct RequestHeader final : public MessageHeader {
   /// HTTP method
   RestVerb restVerb = RestVerb::Illegal;
 
- public:
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,9 +78,6 @@ class BenchmarkThread : public arangodb::Thread {
         _warningCount(0),
         _operationsCounter(operationsCounter),
         _client(client),
-        _databaseName(client.databaseName()),
-        _username(client.username()),
-        _password(client.password()),
         _keepAlive(keepAlive),
         _async(async),
         _useVelocyPack(_batchSize == 0),
@@ -165,9 +162,6 @@ class BenchmarkThread : public arangodb::Thread {
       FATAL_ERROR_EXIT();
     }
 
-    _httpClient->params().setLocationRewriter(this, &rewriteLocation);
-
-    _httpClient->params().setUserNamePassword("/", _username, _password);
     _httpClient->params().setKeepAlive(_keepAlive);
 
     // test the connection
@@ -240,27 +234,6 @@ class BenchmarkThread : public arangodb::Thread {
   }
 
  private:
-  /// @brief request location rewriter (injects database name)
-  static std::string rewriteLocation(void* data, std::string const& location) {
-    auto t = static_cast<arangobench::BenchmarkThread*>(data);
-
-    TRI_ASSERT(t != nullptr);
-
-    if (location.compare(0, 5, "/_db/") == 0) {
-      // location already contains /_db/
-      return location;
-    }
-
-    if (location[0] == '/') {
-      return std::string("/_db/" +
-                         basics::StringUtils::urlEncode(t->_databaseName) +
-                         location);
-    }
-    return std::string("/_db/" +
-                       basics::StringUtils::urlEncode(t->_databaseName) + "/" +
-                       location);
-  }
-
   /// @brief execute a batch request with numOperations parts
   void executeBatchRequest(uint64_t numOperations) {
     TRI_ASSERT(!_useVelocyPack);
@@ -383,7 +356,7 @@ class BenchmarkThread : public arangodb::Thread {
             if (++_warningCount < maxWarnings) {
               LOG_TOPIC("b1db5", WARN, arangodb::Logger::BENCH)
                   << type
-                  << " operation sServer side warning count: " << errorCount;
+                  << " operation server side warning count: " << errorCount;
             }
           }
         }
@@ -444,15 +417,6 @@ class BenchmarkThread : public arangodb::Thread {
 
   /// @brief extra request headers
   std::unordered_map<std::string, std::string> _headers;
-
-  /// @brief database name
-  std::string const _databaseName;
-
-  /// @brief HTTP username
-  std::string const _username;
-
-  /// @brief HTTP password
-  std::string const _password;
 
   /// @brief use HTTP keep-alive
   bool _keepAlive;

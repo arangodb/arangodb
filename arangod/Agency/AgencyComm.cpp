@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,22 +27,18 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
 #include "RestServer/ServerFeature.h"
@@ -602,8 +598,6 @@ void AgencyCommHelper::initialize(std::string const& prefix) {
   PREFIX = prefix;
 }
 
-void AgencyCommHelper::shutdown() {}
-
 std::string const& AgencyCommHelper::path() noexcept { return PREFIX; }
 
 std::string AgencyCommHelper::path(std::string const& p1) {
@@ -976,46 +970,6 @@ AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
   return sendTransactionWithFailover(transaction);
 }
 
-bool AgencyComm::lockRead(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::lockWrite(std::string const& key, double ttl, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return lock(key, ttl, timeout, builder.slice());
-}
-
-bool AgencyComm::unlockRead(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("READ"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
-bool AgencyComm::unlockWrite(std::string const& key, double timeout) {
-  VPackBuilder builder;
-  try {
-    builder.add(VPackValue("WRITE"));
-  } catch (...) {
-    return false;
-  }
-  return unlock(key, builder.slice(), timeout);
-}
-
 AgencyCommResult AgencyComm::sendTransactionWithFailover(
     AgencyTransaction const& transaction, double timeout) {
   std::string url = AgencyComm::AGENCY_URL_PREFIX + transaction.path();
@@ -1343,6 +1297,10 @@ bool AgencyComm::tryInitializeStructure() {
           VPackObjectBuilder d2(&builder);
           builder.add("name", VPackValue("_system"));
           builder.add("id", VPackValue("1"));
+          builder.add("replicationVersion",
+                      arangodb::replication::versionToString(
+                          _server.getFeature<DatabaseFeature>()
+                              .defaultReplicationVersion()));
         }
       }
       builder.add("Lock", VPackValue("UNLOCKED"));

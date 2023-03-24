@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +73,7 @@ FortuneFeature::FortuneFeature(Server& server)
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
-      "fortune", "show fortune cookie on startup",
+      "--fortune", "Show a fortune cookie on startup.",
       new BooleanParameter(&_fortune),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }

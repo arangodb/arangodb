@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
@@ -85,7 +85,8 @@ CollectNode::CollectNode(
 CollectNode::~CollectNode() = default;
 
 /// @brief doToVelocyPack, for CollectNode
-void CollectNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void CollectNode::doToVelocyPack(VPackBuilder& nodes,
+                                 unsigned /*flags*/) const {
   // group variables
   nodes.add(VPackValue("groups"));
   {
@@ -265,6 +266,9 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
+      RegisterId expressionRegister{RegisterId::maxRegisterId};
+      calcExpressionRegister(expressionRegister, readableInputRegisters);
+
       // calculate the group registers
       std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
       calcGroupRegisters(groupRegisters, readableInputRegisters,
@@ -288,9 +292,13 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
                      [](auto const& it) { return it.type; });
       TRI_ASSERT(aggregateTypes.size() == _aggregateVariables.size());
 
+      // calculate the input variable names
+      auto inputVariables = calcInputVariableNames();
+
       auto executorInfos = HashedCollectExecutorInfos(
-          std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-          std::move(aggregateRegisters),
+          std::move(groupRegisters), collectRegister, expressionRegister,
+          _expressionVariable, std::move(aggregateTypes),
+          std::move(inputVariables), std::move(aggregateRegisters),
           &_plan->getAst()->query().vpackOptions(),
           _plan->getAst()->query().resourceMonitor());
 
@@ -482,6 +490,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -526,6 +535,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;
@@ -570,6 +580,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
+    case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
       return false;

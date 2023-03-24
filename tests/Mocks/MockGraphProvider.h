@@ -49,6 +49,10 @@ namespace aql {
 class QueryContext;
 }
 
+namespace graph {
+struct EdgeDocumentToken;
+}
+
 namespace velocypack {
 class Builder;
 class HashedStringRef;
@@ -56,6 +60,9 @@ class HashedStringRef;
 
 namespace tests {
 namespace graph {
+
+using WeightCallback = std::function<double(double originalWeight,
+                                            arangodb::velocypack::Slice edge)>;
 
 class MockGraphProviderOptions {
  public:
@@ -68,6 +75,12 @@ class MockGraphProviderOptions {
   LooseEndBehaviour looseEnds() const { return _looseEnds; }
   MockGraph const& data() const { return _data; }
   bool reverse() const { return _reverse; }
+  void setWeightEdgeCallback(WeightCallback callback) {
+    _weightCallback = std::move(callback);
+  }
+
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 
  private:
   MockGraph const& _data;
@@ -87,6 +100,7 @@ class MockGraphProvider {
   class Step : public arangodb::graph::BaseStep<Step> {
    public:
     using EdgeType = arangodb::velocypack::HashedStringRef;
+    using VertexType = arangodb::velocypack::HashedStringRef;
 
     class Vertex {
      public:
@@ -171,8 +185,12 @@ class MockGraphProvider {
     Step(VertexType v, bool isProcessable);
     Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable);
     Step(size_t prev, VertexType v, bool isProcessable, size_t depth);
+    Step(size_t prev, VertexType v, bool isProcessable, size_t depth,
+         double weight);
     Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
          size_t depth);
+    Step(size_t prev, VertexType v, MockEdgeType e, bool isProcessable,
+         size_t depth, double weight);
     ~Step() = default;
 
     bool operator<(Step const& other) const noexcept {
@@ -287,6 +305,12 @@ class MockGraphProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  arangodb::graph::EdgeDocumentToken getEdgeDocumentToken(
+      typename Step::Edge const& edge);
+
   void addEdgeIDToBuilder(Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToLookupMap(typename Step::Edge const& edge,
@@ -295,8 +319,8 @@ class MockGraphProvider {
   std::string getEdgeId(Step::Edge const& edge);
   velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 
-  void prepareIndexExpressions(aql::Ast* ast);
-  void prepareContext(aql::InputAqlItemRow input);
+  void prepareIndexExpressions(arangodb::aql::Ast* ast);
+  void prepareContext(arangodb::aql::InputAqlItemRow input);
   void unPrepareContext();
   bool isResponsible(Step const& step) const;
 
@@ -305,7 +329,11 @@ class MockGraphProvider {
   [[nodiscard]] transaction::Methods* trx();
   [[nodiscard]] TRI_vocbase_t const& vocbase() const;
 
-  aql::TraversalStats stealStats();
+  arangodb::aql::TraversalStats stealStats();
+
+  void setWeightEdgeCallback(WeightCallback callback) {
+    _weightCallback = std::move(callback);
+  }
 
  private:
   auto decideProcessable() const -> bool;
@@ -317,6 +345,8 @@ class MockGraphProvider {
   bool _reverse;
   LooseEndBehaviour _looseEnds;
   arangodb::aql::TraversalStats _stats;
+  // Optional callback to compute the weight of an edge.
+  std::optional<WeightCallback> _weightCallback;
 };
 }  // namespace graph
 }  // namespace tests

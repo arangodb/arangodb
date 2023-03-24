@@ -49,6 +49,7 @@ const download = internal.download;
 const time = internal.time;
 const wait = internal.wait;
 const sleep = internal.sleep;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -425,22 +426,19 @@ function setupBinaries (builddir, buildType, configDir) {
     ARANGOSH_BIN
   ];
 
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      isEnterpriseClient = true;
-      checkFiles.push(ARANGOBACKUP_BIN);
-    }
-    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS";
-      let fileName = san + "_arangodb_suppressions.txt";
-      if (!process.env.hasOwnProperty(envName) &&
-          fs.exists(fileName)) {
-        // print('preparing ' + san + ' environment');
-        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-      }
-    });
+  if (isEnterprise()) {
+    isEnterpriseClient = true;
+    checkFiles.push(ARANGOBACKUP_BIN);
   }
+  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+    let envName = san.toUpperCase() + "_OPTIONS";
+    let fileName = san + "_arangodb_suppressions.txt";
+    if (!process.env.hasOwnProperty(envName) &&
+        fs.exists(fileName)) {
+      // print('preparing ' + san + ' environment');
+      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+    }
+  });
 
   for (let b = 0; b < checkFiles.length; ++b) {
     if (!fs.isFile(checkFiles[b])) {
@@ -460,17 +458,20 @@ function killRemainingProcesses(results) {
   let i = 0;
   for (i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
     if (timeoutReached) {
       print(RED + Date() + ' external deadline reached!' + RESET);
     }
     let status = internal.statusExternal(running[i].pid, false);
     if (status.status === "TERMINATED") {
-      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+      print(RED + Date() + " process exited without us joining it (marking crashy): " +
+            JSON.stringify(running[i]) + JSON.stringify(status) + RESET);
     }
     else {
-      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(RED + Date() + " Killing remaining process & marking crashy: " + JSON.stringify(running[i]) + RESET);
       print(killExternal(running[i].pid, abortSignal));
     }
+    print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^');
     results.crashed = true;
   }
 }
@@ -693,7 +694,7 @@ function endpointToURL (endpoint) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = false, timeout = 0, instanceInfo = {}) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -732,12 +733,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     };
   }
 
-  let instanceInfo = {
-    rootDir: rootDir,
-    pid: 0,
-    exitStatus: {},
-    getStructure: function() { return {}; }
-  };
+  if (!instanceInfo.hasOwnProperty('rootDir')) {
+    instanceInfo = {
+      rootDir: rootDir,
+      pid: 0,
+      exitStatus: {},
+      getStructure: function() { return {}; }
+    };
+  }
 
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {

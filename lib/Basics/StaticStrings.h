@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,6 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
-  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -68,6 +67,7 @@ class StaticStrings {
   static std::string const SkipDocumentValidation;
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
+  static std::string const RefillIndexCachesString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
@@ -97,9 +97,8 @@ class StaticStrings {
   static std::string const JobsCollection;
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
-  static std::string const ModulesCollection;
-  static std::string const FishbowlCollection;
   static std::string const FrontendCollection;
+  static std::string const PregelCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -133,7 +132,7 @@ class StaticStrings {
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
   static std::string const IndexInBackground;  // index in background
-  static std::string_view constexpr IndexParallelism = "parallelism";
+  static std::string_view constexpr IndexParallelism{"parallelism"};
   static std::string const IndexIsBuilding;      // index build in-process
   static std::string const IndexName;            // index name
   static std::string const IndexSparse;          // index sparsity marker
@@ -142,6 +141,7 @@ class StaticStrings {
   static std::string const IndexUnique;          // index uniqueness marker
   static std::string const IndexEstimates;       // index estimates flag
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
+  static std::string_view constexpr IndexLookahead{"lookahead"};
 
   // static index names
   static std::string const IndexNameEdge;
@@ -163,6 +163,7 @@ class StaticStrings {
   static std::string const ReadOwnWrites;
   static std::string const UseCache;
   static std::string const Parallelism;
+  static std::string const ForceOneShardAttributeValue;
 
   // HTTP headers
   static std::string const Accept;
@@ -212,10 +213,15 @@ class StaticStrings {
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
+  static std::string const UserAgent;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
   static std::string const XArangoQueueTimeSeconds;
+  static std::string const ContentSecurityPolicy;
+  static std::string const Pragma;
+  static std::string const Expires;
+  static std::string const HSTS;
 
   // mime types
   static std::string const MimeTypeDump;
@@ -229,6 +235,7 @@ class StaticStrings {
   // encodings
   static std::string const EncodingIdentity;
   static std::string const EncodingDeflate;
+  static std::string const EncodingGzip;
 
   // arangosh result body
   static std::string const Body;
@@ -328,6 +335,7 @@ class StaticStrings {
   static std::string const GraphQueryPath;
   static std::string const GraphQueryGlobal;
   static std::string const GraphQueryNone;
+  static std::string const GraphQueryWeight;
   static std::string const GraphQueryWeights;
   static std::string const GraphQueryOrder;
   static std::string const GraphQueryOrderBFS;
@@ -346,7 +354,10 @@ class StaticStrings {
   static std::string const RevisionTreeRangeMin;
   static std::string const RevisionTreeInitialRangeMin;
   static std::string const RevisionTreeRanges;
+  // deprecated
   static std::string const RevisionTreeResume;
+
+  static std::string const RevisionTreeResumeHLC;
   static std::string const RevisionTreeVersion;
   static std::string const FollowingTermId;
 
@@ -368,6 +379,15 @@ class StaticStrings {
   static std::string const ReleaseIndex;
   static std::string const LowestIndexToKeep;
   static std::string const Outcome;
+  constexpr static std::string_view MessageId = "messageId";
+
+  // Replication 2.0 API Strings
+  constexpr static std::string_view ApiLogInternal = "/_api/log-internal";
+  constexpr static std::string_view ApiLogExternal = "/_api/log";
+  constexpr static std::string_view ApiDocumentStateExternal =
+      "/_api/document-state";
+  constexpr static std::string_view ApiUpdateSnapshotStatus =
+      "update-snapshot-status";
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -422,11 +442,6 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
-
-  // API Strings
-  static std::string_view const ApiLogInternal;
-  static std::string_view const ApiLogExternal;
-  static std::string_view const ApiReplicatedStateExternal;
 
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;

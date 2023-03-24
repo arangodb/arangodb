@@ -53,8 +53,6 @@ std::string const stateToString(MainQueryState state) {
 template<typename Range>
 class InputRangeTest : public AqlExecutorTestCase<> {
  protected:
-  // Used to holdData for InputMatrixTests
-  AqlItemMatrix _matrix{1};
   // Picked a random number of dependencies for MultiInputRanges
   size_t _numberDependencies{3};
 

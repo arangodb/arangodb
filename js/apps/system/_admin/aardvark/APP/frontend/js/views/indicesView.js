@@ -201,27 +201,6 @@
             name: name
           };
           break;
-        case 'Hash':
-          fields = $('#newHashFields').val();
-          unique = self.checkboxToValue('#newHashUnique');
-          sparse = self.checkboxToValue('#newHashSparse');
-          deduplicate = self.checkboxToValue('#newHashDeduplicate');
-          estimates = self.checkboxToValue('#newHashEstimates');
-          cacheEnabled = self.checkboxToValue('#newHashCacheEnabled');
-          background = self.checkboxToValue('#newHashBackground');
-          name = $('#newHashName').val();
-          postParameter = {
-            type: 'hash',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse,
-            deduplicate: deduplicate,
-            estimates: estimates,
-            cacheEnabled: cacheEnabled,
-            inBackground: background,
-            name: name
-          };
-          break;
         case 'Fulltext':
           fields = $('#newFulltextFields').val();
           var minLength = parseInt($('#newFulltextMinLength').val(), 10) || 0;
@@ -231,27 +210,6 @@
             type: 'fulltext',
             fields: self.stringToArray(fields),
             minLength: minLength,
-            inBackground: background,
-            name: name
-          };
-          break;
-        case 'Skiplist':
-          fields = $('#newSkiplistFields').val();
-          unique = self.checkboxToValue('#newSkiplistUnique');
-          sparse = self.checkboxToValue('#newSkiplistSparse');
-          deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
-          estimates = self.checkboxToValue('#newSkiplistEstimates');
-          cacheEnabled = self.checkboxToValue('#newSkiplistCacheEnabled');
-          background = self.checkboxToValue('#newSkiplistBackground');
-          name = $('#newSkiplistName').val();
-          postParameter = {
-            type: 'skiplist',
-            fields: self.stringToArray(fields),
-            unique: unique,
-            sparse: sparse,
-            deduplicate: deduplicate,
-            estimates: estimates,
-            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -283,27 +241,32 @@
       this.unbindIndexEvents();
       var self = this;
 
-      $('#indexEditView #addIndex').bind('click', function () {
-        self.toggleNewIndexView();
-
-        $('#cancelIndex').unbind('click');
-        $('#cancelIndex').bind('click', function () {
+      arangoHelper.checkDatabasePermissions(function () {
+        $('#indexEditView #addIndex').hide();
+        $('.deleteIndex').hide();
+      }, function () {
+        $('#indexEditView #addIndex').bind('click', function () {
           self.toggleNewIndexView();
-          self.render();
+
+          $('#cancelIndex').unbind('click');
+          $('#cancelIndex').bind('click', function () {
+            self.toggleNewIndexView();
+            self.render();
+          });
+
+          $('#createIndex').unbind('click');
+          $('#createIndex').bind('click', function () {
+            self.createIndex();
+          });
         });
 
-        $('#createIndex').unbind('click');
-        $('#createIndex').bind('click', function () {
-          self.createIndex();
+        $('.deleteIndex').bind('click', function (e) {
+          self.prepDeleteIndex(e);
         });
       });
 
       $('#newIndexType').bind('change', function () {
         self.selectIndexType();
-      });
-
-      $('.deleteIndex').bind('click', function (e) {
-        self.prepDeleteIndex(e);
       });
 
       $('#infoTab a').bind('click', function (e) {
@@ -455,9 +418,13 @@
             actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
               'data-original-title="Delete index" title="Delete index"></span>';
           }
-          
+
           if (v.storedValues !== undefined) {
-            storedValuesString = v.storedValues.join(', ');
+            if (v.type === 'inverted') {
+              storedValuesString = JSON.stringify(v.storedValues.map((v) => v.fields));
+            } else {
+              storedValuesString = v.storedValues.join(', ');
+            }
           } else {
             storedValuesString = '';
           }

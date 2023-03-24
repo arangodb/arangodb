@@ -277,7 +277,15 @@ function printRules(rules, stats) {
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
@@ -298,7 +306,7 @@ function printWarnings(warnings) {
 }
 
 /* print stats */
-function printStats(stats) {
+function printStats(stats, isCoord) {
   'use strict';
   if (!stats) {
     return;
@@ -311,11 +319,12 @@ function printStats(stats) {
   var maxSILen = String('Scan Index').length;
   var maxCHMLen = String('Cache Hits/Misses').length;
   var maxFLen = String('Filtered').length;
+  var maxRLen = String('Requests').length;
   var maxMem = String('Peak Mem [b]').length;
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + 
+    header('Scan Index') + '   ' + header('Cache Hits/Misses') + '   ' + header('Filtered') + '   ' + (isCoord ? header('Requests') + '   ' : '') + 
     header('Peak Mem [b]') + '   ' + header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
@@ -324,6 +333,7 @@ function printStats(stats) {
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + '   ' +
     pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + '   ' +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + '   ' : '') +
     pad(1 + maxMem - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + '   ' +
     pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
@@ -389,7 +399,11 @@ function printIndexes(indexes) {
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
-      l = (index.storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = index.storedValues || [];
+      if (index.type === 'inverted') {
+        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+      }
+      l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxStoredValuesLen) {
         maxStoredValuesLen = l;
       }
@@ -418,8 +432,12 @@ function printIndexes(indexes) {
       var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var storedValues = '[ ' + (indexes[i].storedValues || []).map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var storedValuesLen = (indexes[i].storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = indexes[i].storedValues || [];
+      if (indexes[i].type === 'inverted') {
+        storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
+      }
+      var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -632,10 +650,10 @@ function printTraversalDetails(traversals) {
     }
     // else do not add a cell in 4
     if (node.hasOwnProperty('ConditionStr')) {
-      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+      outTable.addCell(5, keyword('FILTER ') + node.ConditionStr);
     }
     if (node.hasOwnProperty('PruneConditionStr')) {
-      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
+      outTable.addCell(5, keyword('PRUNE ') + node.PruneConditionStr);
     }
   });
   outTable.print(stringBuilder);
@@ -909,7 +927,50 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
+  var unfoldRawData = function (value) {
+    let node = {};
+    if (Array.isArray(value)) {
+      node.type = 'array';
+      node.subNodes = [];
+      value.forEach((v) => {
+        node.subNodes.push(unfoldRawData(v));
+      });
+    } else if (typeof value === 'object' && value !== null) {
+      node.type = 'object';
+      node.subNodes = [];
+      Object.keys(value).forEach((k) => {
+        node.subNodes.push({
+          type: 'object element',
+          name: k,
+          subNodes: [ unfoldRawData(value[k]) ]
+        });
+      });
+    } else {
+      node.type = 'value';
+      node.value = value;
+    }
+    return node;
+  };
+
+  var checkRawData = function (node) {
+    if (node.hasOwnProperty('raw')) {
+      node = unfoldRawData(node.raw);
+    } else {
+      if (Array.isArray(node.subNodes)) {
+        let s = [];
+        node.subNodes.forEach((v) => {
+          s.push(checkRawData(v));
+        });
+        node.subNodes = s;
+      }
+    }
+    return node;
+  };
+
   var buildExpression = function (node) {
+    // replace "raw" value with proper subNodes
+    node = checkRawData(node);
+
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
         // make it a keyword
@@ -1177,7 +1238,9 @@ function processQuery(query, explain, planIndex) {
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
       if (node.indexCoversProjections) {
         what += ', index only';
-      } 
+      } else {
+        what += ', index scan + document lookup';
+      }
     } else {
       what += ', scan only';
     }
@@ -1312,7 +1375,7 @@ function processQuery(query, explain, planIndex) {
            
         }
         let viewAnnotation = '/* view query';
-        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+        if (node.hasOwnProperty('outNmDocId')) {
           viewAnnotation += ' with late materialization';
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
@@ -2008,6 +2071,9 @@ function processQuery(query, explain, planIndex) {
 
       case 'MaterializeNode':
         return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+      case 'OffsetMaterializeNode':
+        return keyword('LET ') + variableName(node.outVariable) + ' = ' +
+               func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
       case 'MutexNode':
         return keyword('MUTEX') + '   ' + annotation('/* end async execution */');
       case 'AsyncNode':
@@ -2021,7 +2087,12 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           window += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              let aggregateString = variableName(node.outVariable) + ' = ' + func(node.type) + '(';
+              if (node.inVariable !== undefined) {
+                aggregateString += variableName(node.inVariable);
+              }
+              aggregateString += ')';
+              return aggregateString;
             }).join(', ');
         }
         return window;
@@ -2058,7 +2129,6 @@ function processQuery(query, explain, planIndex) {
     if (['EnumerateCollectionNode',
       'EnumerateListNode',
       'EnumerateViewNode',
-      'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
       'SubqueryStartNode',
@@ -2196,7 +2266,7 @@ function processQuery(query, explain, planIndex) {
   printRules(plan.rules, explain.stats);
   printModificationFlags(modificationFlags);
   if (profileMode) {
-    printStats(explain.stats);
+    printStats(explain.stats, isCoord);
     printProfile(explain.profile);
   }
   printWarnings(explain.warnings);
@@ -2302,11 +2372,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},
@@ -2606,8 +2680,8 @@ function explainQuerysRegisters(plan) {
    *     type: string,
    *     unusedRegsStack: Array<number[]>,
    *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
-   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
-   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsSetHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
    *   }
    * }
    */

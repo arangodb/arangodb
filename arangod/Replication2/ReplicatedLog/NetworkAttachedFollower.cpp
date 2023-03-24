@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -75,4 +76,39 @@ auto NetworkAttachedFollower::appendEntries(AppendEntriesRequest request)
         return AppendEntriesResult::fromVelocyPack(
             result.slice().get("result"));
       });
+}
+
+NetworkLeaderCommunicator::NetworkLeaderCommunicator(
+    network::ConnectionPool* pool, ParticipantId leader, DatabaseID database,
+    LogId logId)
+    : pool(pool),
+      leader(std::move(leader)),
+      database(std::move(database)),
+      logId(logId) {}
+
+auto NetworkLeaderCommunicator::getParticipantId() const noexcept
+    -> ParticipantId const& {
+  return leader;
+}
+
+auto NetworkLeaderCommunicator::reportSnapshotAvailable(MessageId mid) noexcept
+    -> futures::Future<Result> {
+  auto path =
+      basics::StringUtils::joinT("/", StaticStrings::ApiLogInternal, logId,
+                                 StaticStrings::ApiUpdateSnapshotStatus);
+  network::RequestOptions opts;
+  opts.database = database;
+  opts.parameters["follower"] = ServerState::instance()->getId();
+  auto payload = velocypack::Buffer<uint8_t>();
+  {
+    auto const message = SnapshotAvailableReport{.messageId = mid};
+    auto builder = velocypack::Builder(payload);
+    velocypack::serialize(builder, message);
+  }
+  auto f = network::sendRequest(pool, "server:" + leader,
+                                arangodb::fuerte::RestVerb::Post, path,
+                                std::move(payload), opts);
+
+  return std::move(f).thenValue(
+      [](network::Response result) { return result.combinedResult(); });
 }

@@ -26,16 +26,16 @@
 
 #include <fmt/core.h>
 
+#include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/Helper/AgencyLogBuilder.h"
 
-#include "velocypack/Parser.h"
 #include "Inspection/VPack.h"
+#include "velocypack/Parser.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -46,35 +46,46 @@ using namespace arangodb::test;
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, false, LogTerm{1});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::OK);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           false, false, LogTerm{1});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      false, false, LogTerm{1});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, false, LogTerm{3});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, false, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED);
   }
 
   {
-    auto r = computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}),
-                           true, true, LogTerm{3});
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, true),
+                      true, true, LogTerm{3});
     EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED);
+  }
+
+  {
+    auto r =
+        computeReason(LogCurrentLocalState(LogTerm{1}, TermIndexPair{}, false),
+                      true, false, LogTerm{1});
+    EXPECT_EQ(r, LogCurrentSupervisionElection::ErrorCode::SNAPSHOT_MISSING);
   }
 }
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -90,8 +101,8 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
-  EXPECT_EQ(campaign.participantsAvailable, 3);  // TODO: Fixme
-                                                 // << campaign;
+  EXPECT_EQ(campaign.participantsAvailable, 3U);  // TODO: Fixme
+                                                  // << campaign;
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
   // TODO: FIXME<< campaign;
 
@@ -105,9 +116,9 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_allElectible) {
 
 TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"B", {LogTerm{2}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{2}, TermIndexPair{LogTerm{2}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = false}},
@@ -123,7 +134,7 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{2});
 
-  EXPECT_EQ(campaign.participantsAvailable, 1);
+  EXPECT_EQ(campaign.participantsAvailable, 1U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{2}, LogIndex{1}}));
 
   auto expectedElectible = std::set<ParticipantId>{"C"};
@@ -139,9 +150,9 @@ TEST_F(LeaderElectionCampaignTest,
   // all servers have reported, but A has the longest log. However,
   // it is not in plan and should therefore not be elected.
   auto localStates = LogCurrentLocalStates{
-      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}}},
-      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
-      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}, true}},
+      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}},
+      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}, true}}};
 
   auto health = ParticipantsHealth{._health{
       {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
@@ -156,7 +167,7 @@ TEST_F(LeaderElectionCampaignTest,
 
   auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
 
-  EXPECT_EQ(campaign.participantsAvailable, 2);
+  EXPECT_EQ(campaign.participantsAvailable, 2U);
   EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
 
   auto expectedElectible = std::set<ParticipantId>{"B", "C"};
@@ -221,7 +232,7 @@ struct LogSupervisionTest : ::testing::Test {
 
 TEST_F(LogSupervisionTest, test_leader_not_failed) {
   // Leader is not failed and the reboot id is as expected
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = true}}}};
@@ -231,7 +242,7 @@ TEST_F(LogSupervisionTest, test_leader_not_failed) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_failed) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{1},
                                           .notIsFailed = false}}}};
@@ -241,7 +252,7 @@ TEST_F(LogSupervisionTest, test_leader_failed) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"A", ParticipantHealth{.rebootId = RebootId{15},
                                           .notIsFailed = false}}}};
@@ -251,7 +262,7 @@ TEST_F(LogSupervisionTest, test_leader_wrong_reboot_id) {
 }
 
 TEST_F(LogSupervisionTest, test_leader_not_known_in_health) {
-  auto const leader = LogPlanTermSpecification::Leader{"A", RebootId{1}};
+  auto const leader = ServerInstanceReference{"A", RebootId{1}};
   auto const health = ParticipantsHealth{
       ._health = {{"B", ParticipantHealth{.rebootId = RebootId{15},
                                           .notIsFailed = false}}}};
@@ -302,8 +313,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -373,8 +384,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
@@ -416,7 +427,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   auto const& r = ctx.getReport();
 
-  EXPECT_EQ(r.size(), 1);
+  EXPECT_EQ(r.size(), 1U);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
@@ -449,8 +460,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{1},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -514,8 +525,8 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
 
   auto const& plan = LogPlanSpecification(
       logId,
-      LogPlanTermSpecification(
-          LogTerm{2}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+      LogPlanTermSpecification(LogTerm{2},
+                               ServerInstanceReference{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
@@ -533,14 +544,14 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
   current.localState = {
-      {"A", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
-      {"B", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))},
-      {"C", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(3), LogIndex(44)))},
-      {"D", LogCurrentLocalState(LogTerm(2),
-                                 TermIndexPair(LogTerm(1), LogIndex(44)))}};
+      {"A", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
+      {"B", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)},
+      {"C", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(3), LogIndex(44)), true)},
+      {"D", LogCurrentLocalState(
+                LogTerm(2), TermIndexPair(LogTerm(1), LogIndex(44)), true)}};
   current.supervision.emplace(LogCurrentSupervision{});
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
@@ -587,7 +598,7 @@ TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 3);
+  ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
 TEST_F(LogSupervisionTest,
@@ -608,7 +619,7 @@ TEST_F(LogSupervisionTest,
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 3);
+  ASSERT_EQ(effectiveWriteConcern, 3U);
 }
 
 TEST_F(LogSupervisionTest,
@@ -629,7 +640,7 @@ TEST_F(LogSupervisionTest,
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 2);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
 TEST_F(
@@ -650,7 +661,7 @@ TEST_F(
 
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
-  ASSERT_EQ(effectiveWriteConcern, 2);
+  ASSERT_EQ(effectiveWriteConcern, 2U);
 }
 
 TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
@@ -691,5 +702,59 @@ TEST_F(LogSupervisionTest, test_convergence_no_leader_established) {
     EXPECT_TRUE(ctx.hasAction());
     auto const& r = ctx.getAction();
     EXPECT_TRUE(std::holds_alternative<ConvergedToTargetAction>(r));
+  }
+}
+
+TEST_F(LogSupervisionTest, test_leader_election_sets_write_concern) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig{2, 3, true})
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetParticipant("D", defaultFlags)
+      .setTargetVersion(1);
+
+  log.setPlanParticipant("A", defaultFlags)
+      .setPlanParticipant("B", defaultFlags)
+      .setPlanParticipant("C", defaultFlags)
+      .setPlanParticipant("D", defaultFlags);
+  log.setPlanLeader("A").setPlanConfig(defaultPlanConfig);
+
+  log.establishLeadership();
+  log.setEmptyTerm();
+
+  log.acknowledgeTerm("A")
+      .acknowledgeTerm("B")
+      .acknowledgeTerm("C")
+      .acknowledgeTerm("D")
+      .allSnapshotsTrue();
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = false});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "D", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  {
+    SupervisionContext ctx;
+    checkReplicatedLog(ctx, log.get(), health);
+    EXPECT_TRUE(ctx.hasAction());
+
+    auto const& r = ctx.getAction();
+    EXPECT_TRUE(std::holds_alternative<LeaderElectionAction>(r))
+        << fmt::format("{}", r);
+
+    auto const& elec = std::get<LeaderElectionAction>(r);
+    EXPECT_EQ(elec._assumedWriteConcern, 2U);
+    EXPECT_EQ(elec._effectiveWriteConcern, 3U);
   }
 }

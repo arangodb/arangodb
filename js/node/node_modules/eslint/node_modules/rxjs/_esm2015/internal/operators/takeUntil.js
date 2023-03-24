@@ -1,5 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { innerSubscribe, SimpleInnerSubscriber, SimpleOuterSubscriber } from '../innerSubscribe';
 export function takeUntil(notifier) {
     return (source) => source.lift(new TakeUntilOperator(notifier));
 }
@@ -9,7 +8,7 @@ class TakeUntilOperator {
     }
     call(subscriber, source) {
         const takeUntilSubscriber = new TakeUntilSubscriber(subscriber);
-        const notifierSubscription = subscribeToResult(takeUntilSubscriber, this.notifier);
+        const notifierSubscription = innerSubscribe(this.notifier, new SimpleInnerSubscriber(takeUntilSubscriber));
         if (notifierSubscription && !takeUntilSubscriber.seenValue) {
             takeUntilSubscriber.add(notifierSubscription);
             return source.subscribe(takeUntilSubscriber);
@@ -17,12 +16,12 @@ class TakeUntilOperator {
         return takeUntilSubscriber;
     }
 }
-class TakeUntilSubscriber extends OuterSubscriber {
+class TakeUntilSubscriber extends SimpleOuterSubscriber {
     constructor(destination) {
         super(destination);
         this.seenValue = false;
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext() {
         this.seenValue = true;
         this.complete();
     }

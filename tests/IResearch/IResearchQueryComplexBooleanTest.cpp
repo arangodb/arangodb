@@ -261,12 +261,12 @@ class QueryComplexBool : public QueryTest {
 
 class QueryComplexBoolView : public QueryComplexBool {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryComplexBoolSearch : public QueryComplexBool {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryComplexBoolView, Test) {

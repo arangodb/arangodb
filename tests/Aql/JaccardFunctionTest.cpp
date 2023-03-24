@@ -48,7 +48,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
-      .AlwaysDo([](ErrorCode, char const*) {});
+      .AlwaysDo([](ErrorCode, std::string_view) {});
 
   VPackOptions options;
   fakeit::Mock<transaction::Context> trxCtxMock;

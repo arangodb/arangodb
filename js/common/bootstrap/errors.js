@@ -1,5 +1,4 @@
 /*jshint maxlen: 240 */
-/*global require */
 
 /// auto-generated file generated from errors.dat
 
@@ -44,6 +43,7 @@
     "ERROR_DISABLED"               : { "code" : 36, "message" : "disabled" },
     "ERROR_MALFORMED_JSON"         : { "code" : 37, "message" : "malformed json" },
     "ERROR_STARTING_UP"            : { "code" : 38, "message" : "startup ongoing" },
+    "ERROR_DESERIALIZE"            : { "code" : 39, "message" : "error during deserialization" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -54,6 +54,7 @@
     "ERROR_HTTP_CONFLICT"          : { "code" : 409, "message" : "conflict" },
     "ERROR_HTTP_GONE"              : { "code" : 410, "message" : "content permanently deleted" },
     "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
+    "ERROR_HTTP_ENHANCE_YOUR_CALM" : { "code" : 420, "message" : "enhance your calm" },
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
     "ERROR_HTTP_NOT_IMPLEMENTED"   : { "code" : 501, "message" : "not implemented" },
     "ERROR_HTTP_SERVICE_UNAVAILABLE" : { "code" : 503, "message" : "service unavailable" },
@@ -133,6 +134,7 @@
     "ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED" : { "code" : 1426, "message" : "log participant unconfigured" },
     "ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND" : { "code" : 1427, "message" : "replicated state {id:} of type {type:} not found" },
     "ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE" : { "code" : 1428, "message" : "replicated state {id:} of type {type:} is unavailable" },
+    "ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED" : { "code" : 1429, "message" : "not enough replicas for the configured write-concern are present" },
     "ERROR_CLUSTER_NOT_FOLLOWER"   : { "code" : 1446, "message" : "not a follower" },
     "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },
     "ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED" : { "code" : 1448, "message" : "creating collection failed due to precondition" },
@@ -159,7 +161,7 @@
     "ERROR_CLUSTER_AQL_COMMUNICATION" : { "code" : 1474, "message" : "error in cluster internal communication for AQL" },
     "ERROR_CLUSTER_ONLY_ON_DBSERVER" : { "code" : 1477, "message" : "this operation is only valid on a DBserver in a cluster" },
     "ERROR_CLUSTER_BACKEND_UNAVAILABLE" : { "code" : 1478, "message" : "A cluster backend which was required for the operation could not be reached" },
-    "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection is out of sync" },
+    "ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC" : { "code" : 1481, "message" : "collection/view is out of sync" },
     "ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN" : { "code" : 1482, "message" : "could not create index in plan" },
     "ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN" : { "code" : 1483, "message" : "could not drop index in plan" },
     "ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE" : { "code" : 1484, "message" : "chain of distributeShardsLike references" },
@@ -208,6 +210,7 @@
     "ERROR_QUERY_MULTI_MODIFY"     : { "code" : 1573, "message" : "multi-modify query" },
     "ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION" : { "code" : 1574, "message" : "invalid aggregate expression" },
     "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
+    "ERROR_QUERY_DNF_COMPLEXITY"   : { "code" : 1576, "message" : "FILTER/PRUNE condition complexity is too high" },
     "ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE" : { "code" : 1577, "message" : "could not use forced index hint" },
     "ERROR_QUERY_DISALLOWED_DYNAMIC_CALL" : { "code" : 1578, "message" : "disallowed dynamic call to '%s'" },
     "ERROR_QUERY_ACCESS_AFTER_MODIFICATION" : { "code" : 1579, "message" : "access after data-modification by %s" },
@@ -351,7 +354,6 @@
     "ERROR_HOT_BACKUP_CONFLICT"    : { "code" : 7011, "message" : "hot backup conflict" },
     "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
     "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" },
-    "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" },
     "ERROR_LICENSE_EXPIRED_OR_INVALID" : { "code" : 9001, "message" : "license has expired or is invalid" },
     "ERROR_LICENSE_SIGNATURE_VERIFICATION" : { "code" : 9002, "message" : "license verification failed" },
     "ERROR_LICENSE_NON_MATCHING_ID" : { "code" : 9003, "message" : "non-matching license id" },

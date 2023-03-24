@@ -68,7 +68,7 @@ class QueryInRange : public QueryTest {
       auto collection = _vocbase.createCollection(createJson->slice());
       ASSERT_TRUE(collection);
 
-      irs::utf8_path resource;
+      std::filesystem::path resource;
       resource /= std::string_view{testResourceDir};
       resource /= std::string_view{"simple_sequential.json"};
 
@@ -847,12 +847,12 @@ class QueryInRange : public QueryTest {
 
 class QueryInRangeView : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryInRangeSearch : public QueryInRange {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryInRangeView, Test) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,17 +32,25 @@
 #include <string>
 #include <vector>
 
-#include <openssl/evp.h>
-
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
-#include "Enterprise/Encryption/EncryptionFeature.h"
+namespace arangodb {
+class EncryptionFeature;
+}
 #endif
 
 struct stat;
+
+#ifdef __linux__
+// whether or not the splice system call should be used for file-copying.
+// by default, splice() will be used for file-copying on Linux, but there are
+// filesystems that don't support it. for those, we can turn the usage of
+// splice() off calling this function with a value of false.
+void TRI_SetCanUseSplice(bool value) noexcept;
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -446,5 +454,5 @@ struct TRI_SHA256Functor {
 
   std::string finalize();
 
-  EVP_MD_CTX* _context;
+  void* _context;
 };  // struct TRI_SHA256Functor

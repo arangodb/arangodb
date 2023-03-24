@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,7 +176,6 @@ void LocalTaskQueue::dispatchAndWait() {
           // dispatching the task has failed.
           // count down _dispatched again
           std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);
-          ;
           TRI_ASSERT(old > 0);
 
           if (_status.ok()) {

@@ -47,6 +47,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 const internalMembers = [
+  'crashreport',
   'code',
   'error',
   'status',
@@ -230,7 +231,9 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-
+  function stripAnsiColors(s) {
+    return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  }
   function buildXml () {
     let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
@@ -278,13 +281,19 @@ function saveToJunitXML(options, results) {
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
-
+      let msg = "";
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        msg = testSuite.message;
+        errors = 1;
+      }
       state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+        errors: errors,
+        failures: msg,
         tests: total,
         name: state.xmlName,
-        time: 0 + testSuite.duration
+        // time is in seconds
+        time: testSuite.duration / 1000
       });
       
     },
@@ -293,13 +302,14 @@ function saveToJunitXML(options, results) {
 
       state.xml.elem('testcase', {
         name: prefix + testCaseName,
-        time: 0 + testCase.duration
+        // time is in seconds
+        time: testCase.duration / 1000
       }, success);      
 
       state.seenTestCases = true;
       if (!success) {
         state.xml.elem('failure');
-        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        state.xml.text('<![CDATA[' + stripAnsiColors(testCase.message) + ']]>\n');
         state.xml.elem('/failure');
         state.xml.elem('/testcase');
       }
@@ -320,15 +330,16 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        fn = fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
+          fn = '\\\\?\\' + fn;
+        }
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
@@ -498,7 +509,7 @@ function unitTestPrettyPrintResults (options, results) {
     color = RED;
     statusMessage = 'Fail';
   }
-  if (results.crashed === true) {
+  if (results.crashed === true || cu.GDB_OUTPUT !== '') {
     color = RED;
     for (let failed in failedRuns) {
       crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -991,19 +1002,22 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
 
 }
 
 function writeReports(options, results) {
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
 }
 
 function dumpAllResults(options, results) {
   let j;
 
   try {
+    if (cu.GDB_OUTPUT !== '') {
+      results['crashreport'] = cu.GDB_OUTPUT;
+    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);

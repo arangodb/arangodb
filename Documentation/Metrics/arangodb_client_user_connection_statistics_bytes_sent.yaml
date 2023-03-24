@@ -1,0 +1,16 @@
+name: arangodb_client_user_connection_statistics_bytes_sent
+introducedIn: "3.10.2"
+help: |
+  Bytes sent for responses, only user traffic.
+unit: bytes
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Histogram of the sent response sizes in bytes, only user traffic, i.e.
+  traffic that has been authenticated with a real user (or role).

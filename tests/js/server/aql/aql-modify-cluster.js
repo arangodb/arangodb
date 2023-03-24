@@ -2,10 +2,6 @@
 /*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,46 +24,26 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getModifyQueryResults = helper.getModifyQueryResults;
-var assertQueryError = helper.assertQueryError;
-
-var sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  return stats;
-};
+const internal = require("internal");
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getModifyQueryResults = helper.getModifyQueryResults;
+const assertQueryError = helper.assertQueryError;
+const sanitizeStats = helper.sanitizeStats;
+const errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  const errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlModify1";
   const cn2 = "UnitTestsAhuacatlModify2";
 
   let c1, c2;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn1);
@@ -79,10 +55,6 @@ function ahuacatlModifySuite () {
       }
       c1.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn1);
@@ -170,7 +142,6 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlRemoveSuite () {
-  const errors = internal.errors;
   const cn1 = "UnitTestsAhuacatlRemove1";
   const cn2 = "UnitTestsAhuacatlRemove2";
   let c1;
@@ -515,7 +486,6 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlInsertSuite () {
-  var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlInsert1";
   var cn2 = "UnitTestsAhuacatlInsert2";
   var cn3 = "UnitTestsAhuacatlInsert3";
@@ -1220,7 +1190,6 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlUpdateSuite () {
-  var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlUpdate1";
   var cn2 = "UnitTestsAhuacatlUpdate2";
   var cn3 = "UnitTestsAhuacatlUpdate3";
@@ -1950,10 +1919,6 @@ false
 
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlRemoveSuite);

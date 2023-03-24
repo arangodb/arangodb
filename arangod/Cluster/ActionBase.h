@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,15 +75,15 @@ class ActionBase {
   virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runnable() const { return READY == _state; }
+  bool runnable() const noexcept { return READY == _state; }
 
   /// @brief did initialization have issues?
-  bool ok() const { return FAILED != _state; }
+  bool ok() const noexcept { return FAILED != _state; }
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
-  ActionState state() const { return _state; }
+  ActionState state() const noexcept { return _state; }
 
-  bool fastTrack() const;
+  bool fastTrack() const noexcept;
 
   void notify();
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -40,6 +42,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -48,7 +51,7 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {
+    : TransactionState(vocbase, tid, options), _numIntermediateCommits(0) {
   TRI_ASSERT(isCoordinator());
   // we have to read revisions here as validateAndOptimize is executed before
   // transaction is started and during validateAndOptimize some simple
@@ -107,11 +110,26 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
-      auto shardIds = c.collection()->shardIds();
-      for (auto const& pair : *shardIds) {
-        std::vector<arangodb::ShardID> const& servers = pair.second;
-        if (!servers.empty()) {
-          leaders.emplace(servers[0]);
+      if (c.collection()->isSmartEdgeCollection()) {
+        CollectionNameResolver resolver{_vocbase};
+        for (auto const& real : c.collection()->realNames()) {
+          auto realCol = resolver.getCollection(real);
+          TRI_ASSERT(realCol != nullptr);
+          auto shardIds = realCol->shardIds();
+          for (auto const& pair : *shardIds) {
+            std::vector<arangodb::ShardID> const& servers = pair.second;
+            if (!servers.empty()) {
+              leaders.emplace(servers[0]);
+            }
+          }
+        }
+      } else {
+        auto shardIds = c.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          std::vector<arangodb::ShardID> const& servers = pair.second;
+          if (!servers.empty()) {
+            leaders.emplace(servers[0]);
+          }
         }
       }
       return true;  // continue
@@ -136,6 +154,8 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  TRI_ASSERT(_beforeCommitCallbacks.empty());
+  TRI_ASSERT(_afterCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
@@ -169,17 +189,32 @@ Result ClusterTransactionState::abortTransaction(
   return {};
 }
 
-Result ClusterTransactionState::performIntermediateCommitIfRequired(
-    DataSourceId cid) {
+arangodb::Result ClusterTransactionState::triggerIntermediateCommit() {
+  ADB_PROD_ASSERT(false) << "triggerIntermediateCommit is not supported in "
+                            "ClusterTransactionState";
+  return arangodb::Result{TRI_ERROR_INTERNAL};
+}
+
+futures::Future<Result>
+ClusterTransactionState::performIntermediateCommitIfRequired(DataSourceId cid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unexpected intermediate commit");
 }
 
 /// @brief return number of commits
-uint64_t ClusterTransactionState::numCommits() const {
+uint64_t ClusterTransactionState::numCommits() const noexcept {
   // there are no intermediate commits for a cluster transaction, so we can
   // return 1 for a committed transaction and 0 otherwise
   return _status == transaction::Status::COMMITTED ? 1 : 0;
+}
+
+uint64_t ClusterTransactionState::numIntermediateCommits() const noexcept {
+  // the return value here is hard-coded to 0, so never rely on it.
+  // the only place that currently reports the number of intermediate commits
+  // is the statistics gathering part of an AQL query. that will however
+  // collect the individual numIntermediateCommits results from DB servers,
+  // and not from here.
+  return _numIntermediateCommits;
 }
 
 TRI_voc_tick_t ClusterTransactionState::lastOperationTick() const noexcept {

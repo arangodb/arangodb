@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,8 +55,14 @@ class ManagerFeature;
 class Hints;
 struct Options;
 
+struct IManager {
+  virtual ~IManager() = default;
+  virtual Result abortManagedTrx(TransactionId,
+                                 std::string const& database) = 0;
+};
+
 /// @brief Tracks TransasctionState instances
-class Manager final {
+class Manager final : public IManager {
   static constexpr size_t numBuckets = 16;
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
@@ -176,7 +182,7 @@ class Manager final {
                                           std::string const& database) const;
 
   Result commitManagedTrx(TransactionId, std::string const& database);
-  Result abortManagedTrx(TransactionId, std::string const& database);
+  Result abortManagedTrx(TransactionId, std::string const& database) override;
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -271,6 +277,7 @@ class Manager final {
   static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
 
   bool transactionIdExists(TransactionId const& tid) const;
+
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);

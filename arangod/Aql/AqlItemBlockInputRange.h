@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,10 @@ class AqlItemBlockInputRange {
 
   size_t skipAllRemainingDataRows();
 
-  size_t skipAllShadowRowsOfDepth(size_t depth);
+  // depthOffset is added to depth, except it won't underflow.
+  template<int depthOffset>
+  requires(depthOffset == 0 || depthOffset == -1) size_t
+      skipAllShadowRowsOfDepth(size_t depth);
 
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.

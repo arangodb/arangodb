@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
-#include "Basics/tri-strings.h"
 
 namespace {
 std::unordered_map<std::string, std::string> environment;
@@ -41,7 +40,7 @@ void arangodb::options::DefineEnvironment(std::string const& keyValues) {
     std::string key;
     std::string value;
 
-    size_t const delim = keyValue.find_first_of('=');
+    size_t const delim = keyValue.find('=');
 
     if (delim == std::string::npos) {
       key = keyValue;

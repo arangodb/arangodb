@@ -41,17 +41,8 @@ auto FakeFollower::release(arangodb::replication2::LogIndex doneWithIdx)
   return {};  // return ok
 }
 
-auto FakeFollower::getLeader() const noexcept
-    -> std::optional<ParticipantId> const& {
-  return leaderId;
-}
-
 auto FakeFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return id;
-}
-
-auto FakeFollower::getCommitIndex() const noexcept -> LogIndex {
-  return guarded.getLockedGuard()->commitIndex;
 }
 
 auto FakeFollower::resign() && -> std::tuple<
@@ -76,6 +67,8 @@ auto FakeFollower::getStatus() const -> replicated_log::LogStatus {
       .leader = leaderId,
       .term = term,
       .lowestIndexToKeep = LogIndex{0},
+      .compactionStatus = {},
+      .snapshotAvailable = {},
   }};
 }
 
@@ -92,10 +85,6 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
       }},
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
-}
-
-auto FakeFollower::waitForLeaderAcked() -> WaitForFuture {
-  return waitForLeaderAckedQueue.waitFor({});
 }
 
 auto FakeFollower::addEntry(LogPayload payload) -> LogIndex {
@@ -129,10 +118,6 @@ auto FakeFollower::waitForIterator(LogIndex index)
         auto guard = guarded.getLockedGuard();
         return guard->log.getIteratorRange(index, guard->commitIndex + 1);
       });
-}
-
-auto FakeFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return waitForResignQueue.addWaitFor();
 }
 
 void FakeFollower::updateCommitIndex(LogIndex index) {

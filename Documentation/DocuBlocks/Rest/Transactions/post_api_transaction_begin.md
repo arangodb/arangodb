@@ -101,7 +101,7 @@ Executing a transaction on a single collection
     assert(response.code === 201);
     logJsonResponse(response);
 
-    url = "/_api/transaction/" + JSON.parse(response.body).result.id;
+    url = "/_api/transaction/" + response.parsedBody.result.id;
     db._connection.DELETE(url);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN

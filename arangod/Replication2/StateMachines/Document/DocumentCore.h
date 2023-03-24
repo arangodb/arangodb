@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,14 @@
 
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateStrategy.h"
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateAgencyHandler;
+struct IDocumentStateShardHandler;
 
 struct DocumentCore {
   explicit DocumentCore(
@@ -42,6 +44,8 @@ struct DocumentCore {
 
   auto getShardId() -> std::string_view;
   auto getGid() -> GlobalLogIdentifier;
+
+  void drop();
 
  private:
   GlobalLogIdentifier _gid;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,21 +24,23 @@
 #include "ProgramOptions/Parameters.h"
 
 #include <regex>
+#include <string>
 
-namespace {
-std::regex const removeComments("#.*$", std::regex::ECMAScript);
-std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-}  // namespace
+namespace arangodb::options {
 
-namespace arangodb {
-namespace options {
+std::string removeWhitespaceAndComments(std::string const& value) {
+  // note:
+  // this function is already called during static initialization.
+  // the following regex objects are function-local statics, because
+  // we cannot have them statically initialized on the TU level.
+  static std::regex const removeComments("#.*$", std::regex::ECMAScript);
+  static std::regex const removeTabs("^[ \t\r\n]+|[ \t\r\n]+$",
+                                     std::regex::ECMAScript);
 
-std::string removeCommentsFromNumber(std::string const& value) {
   // replace trailing comments
-  auto noComment = std::regex_replace(value, ::removeComments, "");
+  auto noComment = std::regex_replace(value, removeComments, "");
   // replace leading spaces, replace trailing spaces
-  return std::regex_replace(noComment, ::removeTabs, "");
+  return std::regex_replace(noComment, removeTabs, "");
 }
 
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options

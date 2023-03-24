@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,10 +58,10 @@ irs::encryption::stream::ptr RocksDBEncryptionProvider::create_stream(
 }
 }  // namespace arangodb::iresearch
 
-namespace iresearch {
+namespace irs {
 // use base irs::encryption type for ancestors
 template<>
 struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<encryption> {
 };
 
-}  // namespace iresearch
+}  // namespace irs

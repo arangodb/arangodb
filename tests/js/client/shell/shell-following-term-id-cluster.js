@@ -32,16 +32,21 @@ let arangodb = require('@arangodb');
 let db = arangodb.db;
 let { getMetric, debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt, waitForShardsInSync } = require('@arangodb/test-helper');
 
-function createCollectionWithKnownLeaderAndFollower(cn) {
-  db._create(cn, {numberOfShards:1, replicationFactor:2});
-  // Get dbserver names first:
-  let health = arango.GET("/_admin/cluster/health").Health;
-  let endpointMap = {};
-  let idMap = {};
+function getEndpointAndIdMap() {
+  const health = arango.GET("/_admin/cluster/health").Health;
+  const endpointMap = {};
+  const idMap = {};
   for (let sid in health) {
     endpointMap[health[sid].ShortName] = health[sid].Endpoint;
     idMap[health[sid].ShortName] = sid;
   }
+  return {endpointMap, idMap};
+}
+
+function createCollectionWithKnownLeaderAndFollower(cn) {
+  db._create(cn, {numberOfShards:1, replicationFactor:2});
+  // Get dbserver names first:
+  let { endpointMap, idMap } = getEndpointAndIdMap();
   let plan = arango.GET("/_admin/cluster/shardDistribution").results[cn].Plan;
   let shard = Object.keys(plan)[0];
   let coordinator = "Coordinator0001";
@@ -66,15 +71,15 @@ function followingTermIdSuite() {
   'use strict';
   const cn = 'UnitTestsFollowingTermId';
 
+  const { endpointMap } = getEndpointAndIdMap();
+  const setupTeardown = function () {
+    switchConnectionToCoordinator({  endpointMap, coordinator: "Coordinator0001" });
+    db._drop(cn);
+  };
+
   return {
-
-    setUp: function () {
-      db._drop(cn);
-    },
-
-    tearDown: function () {
-      db._drop(cn);
-    },
+    setUp: setupTeardown,
+    tearDown: setupTeardown,
     
     testFollowingTermIdHandling: function() {
       let collInfo = createCollectionWithKnownLeaderAndFollower(cn);
@@ -234,5 +239,7 @@ function followingTermIdSuite() {
   };
 }
 
-jsunity.run(followingTermIdSuite);
+if (db._properties().replicationVersion !== "2") {
+  jsunity.run(followingTermIdSuite);
+}
 return jsunity.done();

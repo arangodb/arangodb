@@ -97,57 +97,6 @@ static inline auto serverIsLeader(std::string_view id) {
   });
 }
 
-static inline auto nonExcludedServerHasSnapshot() {
-  return MC_BOOL_PRED2([](auto const& global) {
-    auto const& agency = global.state;
-    if (!agency.replicatedLog || !agency.replicatedState) {
-      return true;
-    }
-    auto const& log = *agency.replicatedLog;
-    auto const& state = *agency.replicatedState;
-    if (!log.plan) {
-      return true;
-    }
-
-    for (auto const& [pid, flags] : log.plan->participantsConfig.participants) {
-      if (flags.allowedAsLeader || flags.allowedInQuorum) {
-        // check is the snapshot is available
-        if (!state.plan) {
-          return false;
-        }
-
-        auto planIter = state.plan->participants.find(pid);
-        if (planIter == state.plan->participants.end()) {
-          return false;
-        }
-
-        auto wantedGeneration = planIter->second.generation;
-        if (wantedGeneration ==
-            replication2::replicated_state::StateGeneration{1}) {
-          continue;
-        }
-
-        if (!state.current) {
-          return false;
-        }
-
-        if (auto iter = state.current->participants.find(pid);
-            iter == state.current->participants.end()) {
-          return false;
-        } else if (iter->second.generation != wantedGeneration ||
-                   iter->second.snapshot.status !=
-                       replication2::replicated_state::SnapshotStatus::
-                           kCompleted) {
-          std::cout << wantedGeneration << " " << iter->second.generation;
-          return false;
-        }
-      }
-    }
-
-    return true;
-  });
-}
-
 static inline auto
 isAssumedWriteConcernLessThanOrEqualToEffectiveWriteConcern() {
   return MC_BOOL_PRED(global, {
@@ -200,6 +149,20 @@ static inline auto isPlannedWriteConcern(bool concern) {
              concern;
     }
     return false;
+  });
+}
+
+static inline auto isAssumedWaitForSyncFalse() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->current &&
+        state.replicatedLog->current->supervision) {
+      return false ==
+             state.replicatedLog->current->supervision->assumedWaitForSync;
+    }
+    // This is intentional as it's ok for current to not exist, and we
+    // want to make sure that assumedWaitForSync is never *set* to *true*
+    return true;
   });
 }
 

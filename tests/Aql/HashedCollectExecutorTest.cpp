@@ -117,10 +117,15 @@ class HashedCollectExecutorTest
       std::vector<std::string> aggregateTypes = {},
       std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
-    return HashedCollectExecutorInfos{
-        std::move(groupRegisters), RegisterPlan::MaxRegisterId,
-        std::move(aggregateTypes), std::move(aggregateRegisters),
-        &VPackOptions::Defaults,   monitor};
+    return HashedCollectExecutorInfos{std::move(groupRegisters),
+                                      RegisterPlan::MaxRegisterId,
+                                      RegisterPlan::MaxRegisterId,
+                                      nullptr,
+                                      std::move(aggregateTypes),
+                                      {},
+                                      std::move(aggregateRegisters),
+                                      &VPackOptions::Defaults,
+                                      monitor};
   };
 };
 
@@ -605,8 +610,9 @@ class HashedCollectExecutorTestAggregate
         {3, agg.inReg}};
 
     auto infos = HashedCollectExecutorInfos(
-        std::move(groupRegisters), collectRegister, std::move(aggregateTypes),
-        std::move(aggregateRegisters), &VPackOptions::Defaults, monitor);
+        std::move(groupRegisters), collectRegister, RegisterPlan::MaxRegisterId,
+        nullptr, std::move(aggregateTypes), {}, std::move(aggregateRegisters),
+        &VPackOptions::Defaults, monitor);
     return infos;
   };
 };

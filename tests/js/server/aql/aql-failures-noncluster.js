@@ -149,8 +149,8 @@ function ahuacatlFailureSuite () {
 
     testSortedAggregateBlock1 : function () {
       internal.debugSetFailAt("CollectGroup::addValues");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,15 +159,15 @@ function ahuacatlFailureSuite () {
 
     testSortedAggregateBlock2 : function () {
       internal.debugSetFailAt("SortedCollectBlock::getOrSkipSome");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
 
       internal.debugClearFailAt();
       internal.debugSetFailAt("SortedCollectBlock::getOrSkipSomeOuter");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,9 +176,9 @@ function ahuacatlFailureSuite () {
 
     testSortedAggregateBlock3 : function () {
       internal.debugSetFailAt("SortedCollectBlock::hasMore");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
-      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
+      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g OPTIONS { method: 'sorted' } RETURN [ key, g ]");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -412,12 +412,6 @@ function ahuacatlFailureSuite () {
     testConditionFinder4 : function () {
       internal.debugSetFailAt("ConditionFinder::variableDefinition");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i._key == 'test' RETURN i");
-    },
-
-    testIndexNodeSkiplist1 : function () {
-      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
-      internal.debugSetFailAt("SkiplistIndex::noSortIterator");
-      assertFailingQuery("FOR i IN " + c.name() + " SORT i.value RETURN i");
     },
 
     testIndexNodeSkiplist2 : function () {

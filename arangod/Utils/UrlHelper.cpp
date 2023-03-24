@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,18 +38,20 @@ std::ostream& Query::toStream(std::ostream& ostream) const {
   struct output {
     std::ostream& ostream;
 
-    std::ostream& operator()(QueryString const& queryString) {
-      return ostream << queryString.value();
+    void operator()(QueryString const& queryString) {
+      ostream << queryString.value();
     }
-    std::ostream& operator()(QueryParameters const& queryParameters) {
-      return ostream << queryParameters;
+    void operator()(QueryParameters const& queryParameters) {
+      ostream << queryParameters;
     }
   };
-  return std::visit(output{ostream}, _content);
+  std::visit(output{ostream}, _content);
+  return ostream;
 }
 
-Query::Query(QueryString queryString) : _content(queryString) {}
-Query::Query(QueryParameters queryParameters) : _content(queryParameters) {}
+Query::Query(QueryString queryString) : _content(std::move(queryString)) {}
+Query::Query(QueryParameters queryParameters)
+    : _content(std::move(queryParameters)) {}
 
 bool Query::empty() const noexcept {
   struct output {

@@ -137,10 +137,16 @@
     handleError: function (err, dbname) {
       if (err.status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + _.escape(dbname) + ' already exists.');
-      } else if (err.status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + _.escape(err.responseJSON.errorMessage));
-      } else if (err.status === 403) {
-        arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
+      } else {
+        // catch-all error reason
+        var prefix = 'Error during database creation';
+        // more specific reasons to follow
+        if (err.status === 400) {
+          prefix = 'Invalid parameters';
+        } else if (err.status === 403) {
+          prefix = 'Insufficient rights';
+        }
+        arangoHelper.arangoError('DB', prefix + ': ' + _.escape(err.responseJSON.errorMessage));
       }
     },
 
@@ -303,14 +309,44 @@
       return str.substring(0, index);
     },
 
+    getDatabaseSettings: function(dbName) {
+      return $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/database/current', _.escape(dbName)),
+        contentType: 'application/json',
+        processData: false,
+        async: false,
+        success: function (data) {
+        },
+        error: function (ignore) {
+          arangoHelper.arangoError('DB', 'Could not get database properties for database ' + _.escape(dbName));
+        }
+      });
+    },
+
     createEditDatabaseModal: function (dbName, isDeletable) {
       var buttons = [];
       var tableContent = [];
 
-      tableContent.push(
-        window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
-      );
-      
+      $.when(this.getDatabaseSettings(dbName)).done(function(response){
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('id_name', 'Name', _.escape(dbName), '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('replication_factor', 'Replication factor', response.result.replicationFactor, '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('write_concern', 'Write concern', response.result.writeConcern, '')
+        );
+  
+        tableContent.push(
+          window.modalView.createReadOnlyEntry('sharding', 'Sharding', response.result.sharding, '')
+        );
+      });
+
       if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(

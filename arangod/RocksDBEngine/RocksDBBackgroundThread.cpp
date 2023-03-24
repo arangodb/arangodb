@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -34,13 +37,21 @@
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Utils/CursorRepository.h"
 
+#include <atomic>
+
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng,
+DECLARE_GAUGE(rocksdb_wal_released_tick_replication, uint64_t,
+              "Released tick for RocksDB WAL deletion (replication-induced)");
+
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& engine,
                                                  double interval)
-    : Thread(eng.server(), "RocksDBThread"),
-      _engine(eng),
-      _interval(interval) {}
+    : Thread(engine.server(), "RocksDBThread"),
+      _engine(engine),
+      _interval(interval),
+      _metricsWalReleasedTickReplication(
+          engine.server().getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_replication{})) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -92,6 +103,8 @@ void RocksDBBackgroundThread::run() {
             forceSync = true;
           }
 
+          TRI_IF_FAILURE("BuilderIndex::purgeWal") { forceSync = true; }
+
           LOG_TOPIC("34a21", TRACE, Logger::ENGINES)
               << "running " << (forceSync ? "forced " : "")
               << "background settings sync";
@@ -139,29 +152,64 @@ void RocksDBBackgroundThread::run() {
         }
       }
 
-      uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
-      auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
+      uint64_t const latestSeqNo = _engine.db()->GetLatestSequenceNumber();
+      auto const earliestSeqNeeded =
+          _engine.settingsManager()->earliestSeqNeeded();
 
-      if (cmTick < minTick) {
-        minTick = cmTick;
+      uint64_t minTick = latestSeqNo;
+
+      if (earliestSeqNeeded < minTick) {
+        minTick = earliestSeqNeeded;
       }
 
+      uint64_t minTickForReplication = latestSeqNo;
       if (_engine.server().hasFeature<DatabaseFeature>()) {
         _engine.server().getFeature<DatabaseFeature>().enumerateDatabases(
-            [&minTick](TRI_vocbase_t& vocbase) -> void {
+            [&minTickForReplication, minTick](TRI_vocbase_t& vocbase) -> void {
               // lowestServedValue will return the lowest of the lastServedTick
               // values stored, or UINT64_MAX if no clients are registered
-              minTick = std::min(
-                  minTick, vocbase.replicationClients().lowestServedValue());
+              TRI_voc_tick_t lowestServedValue =
+                  vocbase.replicationClients().lowestServedValue();
+
+              if (lowestServedValue != UINT64_MAX) {
+                // only log noteworthy things
+                LOG_TOPIC("e979f", DEBUG, Logger::ENGINES)
+                    << "lowest served tick for database '" << vocbase.name()
+                    << "': " << lowestServedValue << ", minTick: " << minTick
+                    << ", minTickForReplication: " << minTickForReplication;
+              }
+
+              minTickForReplication =
+                  std::min(minTickForReplication, lowestServedValue);
             });
+
+        minTick = std::min(minTick, minTickForReplication);
+      }
+      _metricsWalReleasedTickReplication.store(minTickForReplication,
+                                               std::memory_order_relaxed);
+
+      LOG_TOPIC("cfe65", DEBUG, Logger::ENGINES)
+          << "latest seq number: " << latestSeqNo
+          << ", earliest seq needed: " << earliestSeqNeeded
+          << ", min tick for replication: " << minTickForReplication;
+
+      try {
+        _engine.flushOpenFilesIfRequired();
+      } catch (...) {
+        // whatever happens here, we don't want it to block/skip any of
+        // the following operations
       }
 
+      bool canPrune =
+          TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial();
+      TRI_IF_FAILURE("BuilderIndex::purgeWal") { canPrune = true; }
+
       // only start pruning of obsolete WAL files a few minutes after
-      // server start. if we start pruning too early, replication slaves
-      // will not have a chance to reconnect to a restarted master in
-      // time so the master may purge WAL files that replication slaves
+      // server start. if we start pruning too early, replication followers
+      // will not have a chance to reconnect to a restarted leader in
+      // time so the leader may purge WAL files that replication followers
       // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial()) {
+      if (canPrune) {
         // determine which WAL files can be pruned
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired

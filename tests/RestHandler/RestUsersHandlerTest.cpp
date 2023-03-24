@@ -95,14 +95,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -216,7 +217,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -265,7 +266,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -322,7 +323,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -340,7 +341,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
-          vocbase->dropCollection(ptr->id(), false, 0);
+          vocbase->dropCollection(ptr->id(), false);
         });
     ASSERT_FALSE(!logicalCollection);
 
@@ -369,7 +370,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -392,7 +393,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
-          vocbase->dropCollection(ptr->id(), false, 0);
+          vocbase->dropCollection(ptr->id(), false);
         });
     ASSERT_FALSE(!logicalCollection);
 
@@ -426,7 +427,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -442,7 +443,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
         });
     ASSERT_NE(nullptr, userPtr);
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });
@@ -483,7 +484,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -504,7 +505,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                      // User::collectionAuthLevel(...) returns
                                      // database auth::Level
     auto logicalView = std::shared_ptr<arangodb::LogicalView>(
-        vocbase->createView(viewJson->slice()).get(),
+        vocbase->createView(viewJson->slice(), false).get(),
         [vocbase](arangodb::LogicalView* ptr) -> void {
           vocbase->dropView(ptr->id(), false);
         });
@@ -546,7 +547,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -564,7 +565,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
-          vocbase->dropCollection(ptr->id(), false, 0);
+          vocbase->dropCollection(ptr->id(), false);
         });
     ASSERT_FALSE(!logicalCollection);
 
@@ -594,7 +595,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
         system->createCollection(usersJson->slice()).get(),
         [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true, 0.0);
+          system->dropCollection(ptr->id(), true);
         });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
@@ -617,7 +618,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
     auto logicalCollection = std::shared_ptr<arangodb::LogicalCollection>(
         vocbase->createCollection(collectionJson->slice()).get(),
         [vocbase](arangodb::LogicalCollection* ptr) -> void {
-          vocbase->dropCollection(ptr->id(), false, 0);
+          vocbase->dropCollection(ptr->id(), false);
         });
     ASSERT_FALSE(!logicalCollection);
 

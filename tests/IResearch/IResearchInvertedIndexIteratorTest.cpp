@@ -23,6 +23,7 @@
 #include "common.h"
 #include "gtest/gtest.h"
 #include "IResearch/common.h"
+#include "IResearch/SearchDoc.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"
@@ -30,6 +31,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Aql/Projections.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
@@ -102,7 +105,8 @@ class IResearchInvertedIndexIteratorTestBase
   arangodb::tests::mocks::MockAqlServer _server{false};
   std::shared_ptr<arangodb::LogicalCollection> _analyzers;
   std::shared_ptr<arangodb::LogicalCollection> _collection;
-  std::shared_ptr<arangodb::iresearch::IResearchInvertedIndex> _index;
+  arangodb::iresearch::IResearchInvertedIndex* _index{nullptr};
+  std::shared_ptr<arangodb::Index> _inverted;
   TRI_vocbase_t* _vocbase{nullptr};
 
  protected:
@@ -126,18 +130,15 @@ class IResearchInvertedIndexIteratorTestBase
     arangodb::IndexId id(1);
     auto storedFields = Provider::storedFields();
     auto sortedFields = Provider::sortFields();
-    _index = std::make_shared<arangodb::iresearch::IResearchInvertedIndex>(
-        id, *_collection);
-    EXPECT_TRUE(_index);
-    bool pathExists = false;
-    EXPECT_TRUE(
-        _index
-            ->init(getInvertedIndexPropertiesSlice(id, Provider::indexFields(),
-                                                   &storedFields, &sortedFields)
-                       .slice(),
-                   pathExists)
-            .ok());
-    EXPECT_FALSE(pathExists);
+    auto builder = getInvertedIndexPropertiesSlice(id, Provider::indexFields(),
+                                                   &storedFields, &sortedFields,
+                                                   "unique_name");
+    bool created = false;
+    _inverted = _collection->createIndex(builder.slice(), created);
+    EXPECT_TRUE(created);
+    EXPECT_TRUE(_inverted);
+    _index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
+        _inverted.get());
 
     // now populate the docs
     static std::vector<std::string> const EMPTY;
@@ -155,7 +156,7 @@ class IResearchInvertedIndexIteratorTestBase
                                 arangodb::iresearch::
                                     IResearchInvertedIndexMetaIndexingContext>(
                            trx, doc->first, doc->second->slice(),
-                           *_index->meta()._indexingContext)
+                           *_index->meta()._indexingContext, nullptr)
                        .ok();
         EXPECT_TRUE(res);
         ++doc;
@@ -175,7 +176,7 @@ class IResearchInvertedIndexIteratorTestBase
                               arangodb::iresearch::
                                   IResearchInvertedIndexMetaIndexingContext>(
                          trx, doc->first, doc->second->slice(),
-                         *_index->meta()._indexingContext)
+                         *_index->meta()._indexingContext, nullptr)
                      .ok();
       EXPECT_TRUE(res);
       ++doc;
@@ -184,12 +185,20 @@ class IResearchInvertedIndexIteratorTestBase
     EXPECT_TRUE(_index->commit(true).ok());
   }
 
+  ~IResearchInvertedIndexIteratorTestBase() override {
+    if (_inverted) {
+      _index = nullptr;
+      EXPECT_TRUE(_inverted->drop().ok());
+      _inverted = nullptr;
+    }
+  }
+
   void executeIteratorTest(
       std::string_view queryString,
       std::function<void(arangodb::IndexIterator* it)> const& test,
       std::string_view refName = "d",
       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-      int mutableConditionIdx = -1) {
+      int mutableConditionIdx = -1, bool forLateMaterialization = false) {
     SCOPED_TRACE(testing::Message("ExecuteIteratorTest failed for query ")
                  << queryString);
     auto ctx =
@@ -231,10 +240,13 @@ class IResearchInvertedIndexIteratorTestBase
       }
     }
     ASSERT_TRUE(ref);
+    arangodb::ResourceMonitor monitor(
+        arangodb::GlobalResourceMonitor::instance());
     arangodb::IndexIteratorOptions opts;
+    opts.forLateMaterialization = forLateMaterialization;
     arangodb::SingleCollectionTransaction trx(ctx, collection(),
                                               arangodb::AccessMode::Type::READ);
-    auto iterator = index().iteratorForCondition(&collection(), &trx,
+    auto iterator = index().iteratorForCondition(monitor, &collection(), &trx,
                                                  filterNode->getMember(0), ref,
                                                  opts, mutableConditionIdx);
     test(iterator.get());
@@ -242,9 +254,9 @@ class IResearchInvertedIndexIteratorTestBase
 
   arangodb::LogicalCollection& collection() { return *_collection; }
   TRI_vocbase_t& vocbase() { return *_vocbase; }
-  arangodb::iresearch::IResearchInvertedIndex& index() { return *_index.get(); }
+  arangodb::iresearch::IResearchInvertedIndex& index() { return *_index; }
   auto const& data() const { return _docs; }
-};  // IResearchFilterSetup
+};
 
 using IResearchInvertedIndexIteratorTest =
     IResearchInvertedIndexIteratorTestBase<SimpleDataSetProvider>;
@@ -391,6 +403,57 @@ TEST_F(IResearchInvertedIndexIteratorTest, test_skip_nextCovering) {
     ASSERT_FALSE(iterator->hasMore());
   };
   executeIteratorTest(queryString, test);
+}
+
+TEST_F(IResearchInvertedIndexIteratorTest,
+       test_skip_nextCovering_LateMaterialized) {
+  std::string queryString{
+      R"(FOR d IN col FILTER d.a == "1" OR d.b == "2" RETURN d)"};
+  auto test = [this](arangodb::IndexIterator* iterator) {
+    arangodb::aql::Projections projections(
+        std::vector<arangodb::aql::AttributeNamePath>(
+            {std::string("a"), std::string("b")}));
+    ASSERT_TRUE(index().covers(projections));
+
+    ASSERT_NE(iterator, nullptr);
+    ASSERT_TRUE(iterator->hasMore());
+    uint64_t skipped{0};
+    iterator->skip(1, skipped);
+    ASSERT_EQ(1, skipped);
+    ASSERT_TRUE(iterator->hasMore());
+    unsigned docs{0};
+
+    auto docCallback = [&docs](arangodb::aql::AqlValue&& token,
+                               arangodb::IndexIteratorCoveringData& data) {
+      ++docs;
+      auto searchDoc =
+          arangodb::iresearch::SearchDoc::decode(token.slice().stringView());
+      token.destroy();
+      EXPECT_TRUE(searchDoc.isValid());
+      EXPECT_TRUE(data.isArray());
+      auto invalid = data.at(5);
+      EXPECT_TRUE(invalid.isNone());
+      {
+        auto slice0 = data.at(0);
+        EXPECT_TRUE(slice0.isString());
+        auto slice1 = data.at(1);
+        EXPECT_TRUE(slice1.isString());
+      }
+      {
+        auto slice2 = data.at(2);
+        EXPECT_TRUE(slice2.isString());
+      }
+      {
+        auto slice3 = data.at(3);
+        EXPECT_TRUE(slice3.isString());
+      }
+      return true;
+    };
+    ASSERT_FALSE(iterator->nextCovering(docCallback, 1000));
+    ASSERT_EQ(docs, 2);
+    ASSERT_FALSE(iterator->hasMore());
+  };
+  executeIteratorTest(queryString, test, "d", nullptr, -1, true);
 }
 
 TEST_F(IResearchInvertedIndexIteratorTest, test_next_array) {

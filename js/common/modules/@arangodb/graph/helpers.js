@@ -729,6 +729,46 @@ let runTraversalRestrictEdgeCollectionTests = function (vn, en, gn, checkOptimiz
   });
 };
 
+const vn = 'UnitTestVertexCollection';
+const en = 'UnitTestEdgeCollection';
+var vertex = {};
+var edge = {};
+var vc;
+var ec;
+
+var cleanup = function () {
+  db._drop(vn);
+  db._drop(en);
+  vertex = {};
+  edge = {};
+};
+
+var createBaseGraph = function () {
+  vc = db._create(vn, {numberOfShards: 4});
+  ec = db._createEdgeCollection(en, {numberOfShards: 4});
+  vertex.A = vc.save({_key: 'A'})._id;
+  vertex.B = vc.save({_key: 'B'})._id;
+  vertex.C = vc.save({_key: 'C'})._id;
+  vertex.D = vc.save({_key: 'D'})._id;
+  vertex.E = vc.save({_key: 'E'})._id;
+  vertex.F = vc.save({_key: 'F'})._id;
+
+  edge.AB = ec.save(vertex.A, vertex.B, {})._id;
+  edge.BC = ec.save(vertex.B, vertex.C, {})._id;
+  edge.CD = ec.save(vertex.C, vertex.D, {})._id;
+  edge.CF = ec.save(vertex.C, vertex.F, {})._id;
+  edge.EB = ec.save(vertex.E, vertex.B, {})._id;
+  edge.FE = ec.save(vertex.F, vertex.E, {})._id;
+};
+
+Object.defineProperty(exports, 'vc', {get: () => vc});
+Object.defineProperty(exports, 'ec', {get: () => ec});
+Object.defineProperty(exports, 'vertex', {get: () => vertex});
+Object.defineProperty(exports, 'edge', {get: () => edge});
+exports.vn = vn;
+exports.en = en;
+exports.cleanup = cleanup;
+exports.createBaseGraph = createBaseGraph;
 exports.makeTree = makeTree;
 exports.PoorMansRandom = PoorMansRandom;
 exports.makeClusteredGraph = makeClusteredGraph;

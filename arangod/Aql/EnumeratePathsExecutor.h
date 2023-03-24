@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Graph/KShortestPathsFinder.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
 
@@ -40,13 +40,6 @@ class Result;
 namespace velocypack {
 class Slice;
 }
-
-namespace graph {
-class KShortestPathsFinder;
-class ShortestPathFinder;
-class ShortestPathResult;
-class TraverserCache;
-}  // namespace graph
 
 namespace aql {
 
@@ -103,8 +96,6 @@ class EnumeratePathsExecutorInfos {
    * @brief get the output register for the given type
    */
   [[nodiscard]] auto getOutputRegister() const -> RegisterId;
-
-  [[nodiscard]] auto cache() const -> graph::TraverserCache*;
 
   [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
@@ -186,7 +177,6 @@ class EnumeratePathsExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
- private:
   Infos& _infos;
   transaction::Methods _trx;
   InputAqlItemRow _inputRow;

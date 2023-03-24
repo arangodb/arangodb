@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
+#include <string_view>
+
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -49,15 +51,15 @@ arangodb::Result existsCollection(arangodb::ArangodServer& server,
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
-  static const std::string wildcard("*");
+  static constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature.lookupDatabase(database);
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -224,10 +226,9 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
         [&](TRI_vocbase_t& vocbase) -> void {
           if (full) {
             auto lvl = user.configuredDBAuthLevel(vocbase.name());
-            std::string str = convertFromAuthLevel(lvl);
             velocypack::ObjectBuilder b(&data, vocbase.name(), true);
 
-            data.add("permission", VPackValue(str));
+            data.add("permission", VPackValue(convertFromAuthLevel(lvl)));
 
             velocypack::ObjectBuilder b2(&data, "collections", true);
 
@@ -285,6 +286,8 @@ static Result StoreUser(auth::UserManager* um, int mode,
   if (mode == 0 || mode == 1) {
     r = um->storeUser(mode == 1, user, passwd, active, extra);
   } else if (mode == 2) {
+    VPackBuilder doc = um->serializeUser(user);
+    VPackSlice u = doc.slice();
     r = um->updateUser(user, [&](auth::User& entry) {
       if (json.isObject()) {
         if (json.get("passwd").isString()) {
@@ -294,7 +297,14 @@ static Result StoreUser(auth::UserManager* um, int mode,
           entry.setActive(active);
         }
       }
-      if (extra.isObject() && !extra.isEmptyObject()) {
+
+      VPackSlice oldExtra = u.get("extra");
+      if (extra.isObject() && oldExtra.isObject()) {
+        // Both `extra` and `oldExtra` are objects, so perform a deep merge.
+        entry.setUserData(VPackCollection::merge(oldExtra, extra, true, false));
+      } else if (!extra.isNone()) {
+        // `extra` or `oldExtra` is not an object, so a deep merge is not
+        // possible. Just overwrite the old value.
         entry.setUserData(VPackBuilder(extra));
       }
       return TRI_ERROR_NO_ERROR;

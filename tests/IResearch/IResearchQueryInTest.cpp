@@ -229,7 +229,7 @@ class QueryIn : public QueryTest {
                            _insertedDocs[13].slice(), resolved, true));
           ++i;
         }
-        EXPECT_EQ(i, 2);
+        EXPECT_EQ(i, 2U);
       }
     }
 
@@ -487,12 +487,12 @@ class QueryIn : public QueryTest {
 
 class QueryInView : public QueryIn {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryInSearch : public QueryIn {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryInView, Test) {

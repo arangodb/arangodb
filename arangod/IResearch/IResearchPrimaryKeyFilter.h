@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,40 +41,36 @@ namespace iresearch {
 class PrimaryKeyFilter final : public irs::filter,
                                public irs::filter::prepared {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilter";
   }
 
-  static irs::type_info type(StorageEngine& engine);
+  PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept;
 
-  PrimaryKeyFilter(StorageEngine& engine,
-                   arangodb::LocalDocumentId const& value, bool nested) noexcept
-      : irs::filter(PrimaryKeyFilter::type(engine)),
-        _pk(DocumentPrimaryKey::encode(value)),
-        _pkSeen(false),
-        _nested(nested) {}
+  irs::doc_iterator::ptr execute(
+      irs::ExecutionContext const& ctx) const override;
 
-  virtual irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment, irs::Order const& /*order*/,
-      irs::ExecutionMode,
-      irs::attribute_provider const* /*ctx*/) const override;
-
-  virtual size_t hash() const noexcept override;
+  size_t hash() const noexcept override;
 
   using irs::filter::prepare;
-  virtual filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::Order const& /*ord*/,
+  filter::prepared::ptr prepare(
+      irs::IndexReader const& index, irs::Order const& /*ord*/,
       irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
+
+  void visit(irs::SubReader const&, irs::PreparedStateVisitor&,
+             irs::score_t) const override {
+    // NOOP
+  }
 
  protected:
   bool equals(filter const& rhs) const noexcept override;
 
  private:
-  struct PrimaryKeyIterator final : public irs::doc_iterator {
+  struct PrimaryKeyIterator : public irs::doc_iterator {
     PrimaryKeyIterator() = default;
 
-    virtual bool next() noexcept override {
+    bool next() noexcept final {
       if (_count != 0) {
         ++_doc.value;
         --_count;
@@ -85,7 +81,7 @@ class PrimaryKeyFilter final : public irs::filter,
       return false;
     }
 
-    virtual irs::doc_id_t seek(irs::doc_id_t) noexcept override {
+    irs::doc_id_t seek(irs::doc_id_t) noexcept final {
       TRI_ASSERT(false);
       // We don't expect this is ever called for removals.
       _count = 0;
@@ -93,10 +89,9 @@ class PrimaryKeyFilter final : public irs::filter,
       return irs::doc_limits::eof();
     }
 
-    virtual irs::doc_id_t value() const noexcept override { return _doc.value; }
+    irs::doc_id_t value() const noexcept final { return _doc.value; }
 
-    virtual irs::attribute* get_mutable(
-        irs::type_info::type_id id) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
       return irs::type<irs::document>::id() == id ? &_doc : nullptr;
     }
 
@@ -110,16 +105,19 @@ class PrimaryKeyFilter final : public irs::filter,
       }
     }
 
+    void reset() noexcept {
+      _doc.value = irs::doc_limits::eof();
+      _count = 0;
+    }
+
     // We intentionally violate iresearch iterator specification
     // to keep memory footprint as small as possible.
     irs::document _doc;
-    irs::doc_id_t _count;
+    irs::doc_id_t _count{0};
   };
 
   mutable LocalDocumentId::BaseType _pk;
   mutable PrimaryKeyIterator _pkIterator;
-  // true == do not perform further execution (first-match optimization)
-  mutable bool _pkSeen;
   bool _nested;
 };
 
@@ -129,7 +127,7 @@ class PrimaryKeyFilter final : public irs::filter,
 ///////////////////////////////////////////////////////////////////////////////
 class PrimaryKeyFilterContainer final : public irs::filter {
  public:
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::PrimaryKeyFilterContainer";
   }
 
@@ -138,24 +136,21 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
-  PrimaryKeyFilter& emplace(StorageEngine& engine,
-                            arangodb::LocalDocumentId value, bool nested) {
-    _filters.emplace_back(engine, value, nested);
-
-    return _filters.back();
+  PrimaryKeyFilter& emplace(LocalDocumentId value, bool nested) {
+    return _filters.emplace_back(value, nested);
   }
 
   bool empty() const noexcept { return _filters.empty(); }
 
   void clear() noexcept { _filters.clear(); }
 
-  virtual filter::prepared::ptr prepare(
-      irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
+  filter::prepared::ptr prepare(
+      irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
       irs::attribute_provider const* ctx) const override;
 
  private:
   std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid
-};                                        // PrimaryKeyFilterContainer
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

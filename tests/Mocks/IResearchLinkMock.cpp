@@ -24,6 +24,8 @@
 
 #include "IResearchLinkMock.h"
 
+#include "Mocks/StorageEngineMock.h"
+#include "Basics/DownCast.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -35,13 +37,11 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-IResearchLinkMock::IResearchLinkMock(IndexId iid,
-                                     arangodb::LogicalCollection& collection)
-    : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()),
-      IResearchLink(iid, collection) {
+IResearchLinkMock::IResearchLinkMock(IndexId iid, LogicalCollection& collection)
+    : Index{iid, collection, IResearchLinkHelper::emptyIndexSlice(0).slice()},
+      IResearchLink{collection.vocbase().server()} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
   _sparse = true;   // always sparse
@@ -81,5 +81,16 @@ void IResearchLinkMock::toVelocyPack(
 }
 
 std::function<irs::directory_attributes()> IResearchLinkMock::InitCallback;
-}  // namespace iresearch
-}  // namespace arangodb
+
+Result IResearchLinkMock::remove(transaction::Methods& trx,
+                                 LocalDocumentId documentId, bool nested,
+                                 uint64_t const* recoveryTick) {
+  if (recoveryTick == nullptr) {
+    auto* state = basics::downCast<::TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
+  }
+  return IResearchDataStore::remove(trx, documentId, nested, recoveryTick);
+}
+
+}  // namespace arangodb::iresearch

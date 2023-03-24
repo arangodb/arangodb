@@ -83,10 +83,10 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test) {
   EXPECT_FALSE(result.failed) << *result.failed;
 
   auto stats = result.stats;
-  EXPECT_EQ(stats.eliminatedStates, 0);
-  EXPECT_EQ(stats.discoveredStates, 10);
-  EXPECT_EQ(stats.uniqueStates, 10);
-  EXPECT_EQ(stats.finalStates, 1);
+  EXPECT_EQ(stats.eliminatedStates, 0U);
+  EXPECT_EQ(stats.discoveredStates, 10U);
+  EXPECT_EQ(stats.uniqueStates, 10U);
+  EXPECT_EQ(stats.finalStates, 1U);
 }
 
 TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_fail) {
@@ -127,10 +127,10 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually) {
   if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
                                             MyState, MyTransition>>) {
     auto stats = result.stats;
-    EXPECT_EQ(stats.eliminatedStates, 0);
-    EXPECT_EQ(stats.discoveredStates, 10);
-    EXPECT_EQ(stats.uniqueStates, 10);
-    EXPECT_EQ(stats.finalStates, 1);
+    EXPECT_EQ(stats.eliminatedStates, 0U);
+    EXPECT_EQ(stats.discoveredStates, 10U);
+    EXPECT_EQ(stats.uniqueStates, 10U);
+    EXPECT_EQ(stats.finalStates, 1U);
   }
 }
 
@@ -155,10 +155,10 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always) {
   if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
                                             MyState, MyTransition>>) {
     auto stats = result.stats;
-    EXPECT_EQ(stats.eliminatedStates, 0);
-    EXPECT_EQ(stats.discoveredStates, 10);
-    EXPECT_EQ(stats.uniqueStates, 10);
-    EXPECT_EQ(stats.finalStates, 1);
+    EXPECT_EQ(stats.eliminatedStates, 0U);
+    EXPECT_EQ(stats.discoveredStates, 10U);
+    EXPECT_EQ(stats.uniqueStates, 10U);
+    EXPECT_EQ(stats.finalStates, 1U);
   }
 }
 
@@ -200,7 +200,7 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
   ASSERT_TRUE(result.failed->cycle.has_value());
   auto& cycle = *result.failed->cycle;
   EXPECT_EQ(cycle.size(),
-            4);  // 0 -> 1 -> 2 -> 3 -> 4 -> 1 => Cycle of length 4
+            4U);  // 0 -> 1 -> 2 -> 3 -> 4 -> 1 => Cycle of length 4
   EXPECT_EQ(1, cycle[0].first->state.x);
   EXPECT_EQ(2, cycle[1].first->state.x);
   EXPECT_EQ(3, cycle[2].first->state.x);
@@ -228,7 +228,7 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_loop_detector) {
   ASSERT_TRUE(result.failed->cycle.has_value());
   auto& cycle = *result.failed->cycle;
   EXPECT_EQ(cycle.size(),
-            1);  // 0 -> 1 -> 2 -> 3 -> 4 -> 4 => Cycle of length 1
+            1U);  // 0 -> 1 -> 2 -> 3 -> 4 -> 4 => Cycle of length 1
   EXPECT_EQ(4, cycle[0].first->state.x);
 }
 

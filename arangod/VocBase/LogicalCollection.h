@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,22 +38,23 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 namespace arangodb {
 
+namespace velocypack {
+class Builder;
+class Slice;
+}  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
+struct UserInputCollectionProperties;
 class ComputedValues;
 class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
 class LocalDocumentId;
-class ManagedDocumentResult;
 struct OperationOptions;
 class PhysicalCollection;
 class Result;
@@ -63,7 +64,12 @@ namespace transaction {
 class Methods;
 }
 
-namespace replication2::replicated_state {
+namespace replication {
+enum class Version;
+}
+namespace replication2 {
+class LogId;
+namespace replicated_state {
 template<typename S>
 struct ReplicatedState;
 namespace document {
@@ -71,7 +77,8 @@ struct DocumentState;
 struct DocumentLeaderState;
 struct DocumentFollowerState;
 }  // namespace document
-}  // namespace replication2::replicated_state
+}  // namespace replicated_state
+}  // namespace replication2
 
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
@@ -129,13 +136,13 @@ class LogicalCollection : public LogicalDataSource {
       std::string_view shardId);
 
   // SECTION: Meta Information
-  Version version() const { return _version; }
+  Version version() const noexcept { return _version; }
 
-  void setVersion(Version version) { _version = version; }
+  void setVersion(Version version) noexcept { _version = version; }
 
-  uint32_t v8CacheVersion() const;
+  uint32_t v8CacheVersion() const noexcept { return _v8CacheVersion; }
 
-  TRI_col_type_e type() const;
+  TRI_col_type_e type() const noexcept { return _type; }
 
   // For normal collections the realNames is just a vector of length 1
   // with its name. For smart edge collections (Enterprise Edition only)
@@ -150,16 +157,7 @@ class LogicalCollection : public LogicalDataSource {
 
   RevisionId newRevisionId() const;
 
-  TRI_vocbase_col_status_e status() const;
-  TRI_vocbase_col_status_e getStatusLocked();
-
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-
-  /// @brief try to fetch the collection status under a lock
-  /// the boolean value will be set to true if the lock could be acquired
-  /// if the boolean is false, the return value is always
-  /// TRI_VOC_COL_STATUS_CORRUPTED
-  TRI_vocbase_col_status_e tryFetchStatus(bool&);
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -217,6 +215,8 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
+  UserInputCollectionProperties getCollectionProperties() const noexcept;
+
   // proxy methods that will use the sharding info in the background
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
@@ -257,16 +257,6 @@ class LogicalCollection : public LogicalDataSource {
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
-  /// @brief fetches current index selectivity estimates
-  /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-  /// to fetch current values!
-  /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating,
-                                    TransactionId tid = TransactionId::none());
-
-  /// @brief flushes the current index selectivity estimates
-  void flushClusterIndexEstimates();
-
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
@@ -284,7 +274,6 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Modification Functions
   Result drop() override;
   Result rename(std::string&& name) override;
-  virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
@@ -311,7 +300,7 @@ class LogicalCollection : public LogicalDataSource {
       bool details, OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  ErrorCode close();
+  void close();
 
   // SECTION: Indexes
 
@@ -327,12 +316,11 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view) const;
 
-  bool dropIndex(IndexId iid);
-
-  // SECTION: Index access (local only)
+  Result dropIndex(IndexId iid);
 
   /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
+  Result truncate(transaction::Methods& trx, OperationOptions& options,
+                  bool& usedRangeDelete);
 
   /// @brief compact-data operation
   void compact();
@@ -393,12 +381,16 @@ class LogicalCollection : public LogicalDataSource {
 
   uint64_t getInternalValidatorTypes() const noexcept;
 
+#ifdef USE_ENTERPRISE
+  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties);
+#endif
+
  private:
-  void initializeSmartAttributes(velocypack::Slice info);
+  void initializeSmartAttributesBefore(velocypack::Slice info);
+  void initializeSmartAttributesAfter(velocypack::Slice info);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
-
-  void increaseV8Version();
 
   bool determineSyncByRevision() const;
 
@@ -431,9 +423,6 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Collection type
   TRI_col_type_e const _type;
 
-  // @brief Current state of this colletion
-  std::atomic<TRI_vocbase_col_status_e> _status;
-
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
@@ -450,10 +439,10 @@ class LogicalCollection : public LogicalDataSource {
 
   bool const _allowUserKeys;
 
+  bool _usesRevisionsAsDocumentIds;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 

@@ -65,7 +65,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -104,7 +104,7 @@ TEST_F(ReplicationMaintenanceTest,
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 0);
+  ASSERT_EQ(actions.size(), 0U);
   EXPECT_TRUE(dirtyset.find(database) == dirtyset.end());
   EXPECT_FALSE(callNotify);
 }
@@ -143,7 +143,7 @@ TEST_F(ReplicationMaintenanceTest,
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -185,7 +185,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -229,7 +229,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -284,7 +284,7 @@ TEST_F(ReplicationMaintenanceTest,
   diffReplicatedLogs(database, localLogs, planLogs, "leader", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);
@@ -301,7 +301,7 @@ TEST_F(ReplicationMaintenanceTest,
 
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
-  EXPECT_EQ(actions.size(), 1);
+  EXPECT_EQ(actions.size(), 1U);
   EXPECT_TRUE(dirtyset.find(database) != dirtyset.end());
   EXPECT_TRUE(callNotify);
 }
@@ -319,7 +319,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_no_longer_in_plan) {
   diffReplicatedLogs(database, localLogs, planLogs, "A", errors, dirtyset,
                      callNotify, actions);
 
-  ASSERT_EQ(actions.size(), 1);
+  ASSERT_EQ(actions.size(), 1U);
   auto const& action = actions.front();
   EXPECT_EQ(action->get(NAME), UPDATE_REPLICATED_LOG);
   EXPECT_EQ(action->get(DATABASE), database);

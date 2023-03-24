@@ -59,7 +59,7 @@ yet.
     [forcing communication to use plain-text JSON](#forcing-downgrade-from-vpack-to-json)
   - [Evaluating previous testruns](#evaluating-json-test-reports-from-previous-testruns)
     sorting by setup time etc.
-- [what to test where and how](tests/README.md)
+- [What to test where and how](tests/README.md)
 
 ## Source Code
 
@@ -72,7 +72,7 @@ in the ArangoDB source tree:
 
 ### Style Guide
 
-We use `clang-format` to enfore consistent code formatting. Check 
+We use `clang-format` to enforce consistent code formatting. Check 
 [STYLEGUIDE.md](STYLEGUIDE.md) for a comprehensive description of ArangoDB's 
 Coding Guidelines.
 
@@ -125,6 +125,58 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding startup options
+
+Startup option example with explanations:
+
+```cpp
+options->
+    addOption("--section.option-name",
+              "A brief description of the startup option, maybe over multiple "
+              "lines, with an upper-case first letter and ending with a .",
+              // for numeric options, you may need to indicate the unit like "timeout (in seconds)"
+                new XyzParameter(&_xyzVariable),
+                arangodb::options::makeFlags(
+                    arangodb::options::Flags::DefaultNoComponents,
+                    arangodb::options::Flags::OnCoordinator, // in a cluster, it only has an effect on Coordinators
+                    arangodb::options::Flags::OnSingle,      // supported in single server mode, too
+                    arangodb::options::Flags::Enterprise,    // only available in the Enterprise Edition
+                    arangodb::options::Flags::Uncommon))     // don't show with --help but only --help-all or --help-<section>
+    .setIntroducedIn(30906) // format XYYZZ, X = major, YY = minor, ZZ = bugfix version
+    .setIntroducedIn(31002) // list all versions the feature is added in but exclude versions that are implied, e.g. 31100
+    .setLongDescription(R"(You can optionally add details here. They are only
+shown in the online documentation (and --dump-options). 
+
+The _text_ is interpreted as **Markdown**, allowing formatting like
+`inline code`, fenced code blocks, and even tables.)");
+```
+
+
+
+See [`lib/ProgramOptions/Option.h`](lib/ProgramOptions/Option.h) for details.
+
+For a feature that is added to v3.9.6, v3.10.2, and devel, you only need to set
+`.setIntroducedIn()` for 3.9 and 3.10 but not 3.11 (in devel) because all later
+versions (after v3.10.2) can reasonably be expected to include the feature, too.
+Leaving v3.10.2 out would be unclear, however, because users may assume to find
+the feature in v3.10.0 and v3.10.1 if it was added to v3.9.6.
+
+In the 3.9 branch, you should only set the versions up to 3.9 but not 3.10,
+pretending no later version exists to avoid additional maintenance burdens.
+
+In 3.9:
+
+```cpp
+    .setIntroducedIn(30906)
+```
+
+In 3.10 and later:
+
+```cpp
+    .setIntroducedIn(30906)
+    .setIntroducedIn(31002)
+```
+
 ### Adding metrics
 
 As of 3.8 we have enforced documentation for metrics. This works as
@@ -148,14 +200,17 @@ Then there is a helper script `utils/generateAllMetricsDocumentation.py`
 which needs `python3` with the `yaml` module. It will check and do the
 following things:
 
-- every declared metric in some `.cpp` file in the source has a
+- Every declared metric in some `.cpp` file in the source has a
   corresponding documentation snippet in `Documentation/Metrics`
   under the name of the metric with `.yaml` appended
-- each such file is a YAML file of a certain format (see template
+- Each such file is a YAML file of a certain format (see template
   under `Documentation/Metrics/template.yaml`)
-- many of the componentes are required, so please provide adequate
+- Many of the components are required, so please provide adequate
   information about your metric
-- the script can also assemble all these YAML documentation snippets
+- Make sure to set `introducedIn` to the version the metric is added to the
+  current branch's version (e.g. `"3.9.6"` in the 3.9 branch, `"3.10.2"` in
+  the 3.10 and devel branches)
+- The script can also assemble all these YAML documentation snippets
   into a single file under `Documentation/Metrics/allMetrics.yaml`,
   the format is again a structured YAML file which can easily be
   processed by the documentation tools, this is only needed when
@@ -182,7 +237,7 @@ Note: Make sure that your source path does not contain spaces otherwise the buil
 ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
 Please refer to the documentation of Oskar for details.
 
-Optimizations and limit of architecture (list of possible CPU instuctions) are set using this `cmake` option
+Optimizations and limit of architecture (list of possible CPU instructions) are set using this `cmake` option
 in addition to the other options:
 
 ```
@@ -232,7 +287,7 @@ favorite browser and open the web interface.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
-### Cross Orogin Policy (CORS) ERROR
+### Cross Origin Policy (CORS) ERROR
 
 Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
 we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
@@ -280,10 +335,16 @@ exposing _all_ dependencies of _all_ modules to ArangoDB users.
 Finally add the module's licensing information to
 `LICENSES-OTHER-COMPONENTS.md`.
 
-When updating dependencies make sure that any mocked dependencies (like `glob`
-for `mocha`) match the versions required by the updated module and delete any
-duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`) to
-make sure the global (mocked) version is used instead.
+If you need to make adjustments/modifications to dependencies or replace
+transitive dependencies with mocks, make sure to run `npx patch-package $dependencyName`
+in the `js/node` folder and commit the resulting patch file in `js/node/patches`.
+This will ensure the changes are persisted if the dependency is overwritten by `npm`
+in the future.
+
+For example to commit a patch for the transitive dependency `is-wsl` of the dependency
+`node-netstat`, make your changes in `js/node/node_modules/node-netstat/node_modules/is-wsl`
+and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
+patch file in `js/node/patches`.
 
 ---
 
@@ -356,7 +417,7 @@ You now will get log entries with the contents being passed between the blocks.
 
 ### Crashes
 
-The Linux builds of the arangod execuable contain a built-in crash handler
+The Linux builds of the arangod executable contain a built-in crash handler
 (introduced in v3.7.0).
 The crash handler is supposed to log basic crash information to the ArangoDB logfile in
 case the arangod process receives one of the signals SIGSEGV, SIGBUS, SIGILL, SIGFPE or
@@ -366,7 +427,7 @@ SIGABRT. SIGKILL signals, which the operating system can send to a process in ca
 In case the crash handler receives one of the mentioned interceptable signals, it will
 write basic crash information to the logfile and a backtrace of the call site.
 The backtrace can be provided to the ArangoDB support for further inspection. Note that
-backtaces are only usable if debug symbols for ArangoDB have been installed as well.
+backtraces are only usable if debug symbols for ArangoDB have been installed as well.
 
 After logging the crash information, the crash handler will execute the default action for
 the signal it has caught. If core dumps are enabled, the default action for these signals
@@ -728,8 +789,8 @@ There are several major places where unittests live:
 | `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
 | `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
 | `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools                                                                   |
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage                                               |
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
 | `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
 | `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
@@ -743,6 +804,9 @@ or skipped depending on parameters:
 | :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
 | `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
+| `-noasan`        | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                           |
+|  `-noinstr`      | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
+|  `-nocov`        | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                              | 
 | `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
 | `-spec`         | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
 | `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
@@ -789,20 +853,15 @@ Controlling the place where the test-data is stored:
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
 
-Run all tests:
-
-    scripts/unittest all
-
 `scripts/unittest` is only a wrapper for the most part, the backend
-functionality lives in `js/client/modules/@arangodb/` (`testing.js`,
-`process-utils.js`, `test-utils.js`). The actual testsuites are located in the
-`testsuites` subfolder.
+functionality lives in `js/client/modules/@arangodb/testutils`.
+The actual testsuites are located in the
+`js/client/modules/@arangodb/testsuites` folder.
 
 #### Passing Options
 
 The first parameter chooses the facility to execute. Available choices include:
 
-- **all**: This target is utilized by most of the Jenkins builds invoking unit tests (calls multiple)
 - **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 - **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
 
@@ -821,12 +880,14 @@ using valgrind could look like this. Options are passed as regular long values
 in the syntax --option value --sub:option value. Using Valgrind could look like
 this:
 
-    ./scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js \
+    ./scripts/unittest shell_client --test tests/js/server/aql/aql-escaping.js \
+      --cluster true \
       --extraArgs:server.threads 1 \
       --extraArgs:scheduler.threads 1 \
       --extraArgs:javascript.gc-frequency 1000000 \
       --extraArgs:javascript.gc-interval 65536 \
-      --extraArgs:log.level debug \
+      --extraArgs:agent.log.level trace \
+      --extraArgs:log.level request=debug \
       --extraArgs:log.force-direct true \
       --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
@@ -836,9 +897,18 @@ this:
 - We specify some arangod arguments via --extraArgs which increase the server performance
 - We specify to run using valgrind (this is supported by all facilities)
 - We specify some valgrind commandline arguments
-- We set the log level to debug
+- We set the log levels for agents to `trace` (the Instance type can be specified by:
+  - `single`
+  - `agent`
+  - `dbserver`
+  - `coordinator`
+  - `activefailover`
+  )
+- We set the `requests` log level to debug on all instances
 - We force the logging not to happen asynchronous
 - Eventually you may still add temporary `console.log()` statements to tests you debug.
+
+
 
 #### Running a Single Unittest Suite
 
@@ -867,9 +937,23 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
+Specifying a `--test `-Filter containing `-cluster` will implicitely set `--cluster true` and launch a cluster test.
+
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
 This failed filter should work for all jsunity and mocha tests.
+
+#### Running several Suites in one go
+
+Several testsuites can be launched consequently in one run by specifying them as coma separated list.
+They all share the specified commandline arguments. Individual arguments can be passed as a JSON array.
+The JSON Array has to contain the same number of elements as testsuites specified. The specified individual
+parameters will overrule global and default values.
+
+Running the same testsuite twice with different and shared parameters would look like this:
+
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"vst":true,"suffix":"vst"}]'
+
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
@@ -966,7 +1050,7 @@ The `rta_makedata` testsuite can be invoked with:
 
 - `--cluster false` - to be ran on a single server setup.
 - `--activefailover true` to be ran on an active failover setup.
-- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resillience with 2 remaining dbservers.
+- `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
 Invoke it like this:
 
@@ -989,7 +1073,7 @@ Once this is completed, you may run it like this:
     ./scripts/unittest go_driver --gosource ../go-driver/ --testCase View --goOptions:timeout 180m --cluster true
 
 This will invoke the test with a filter to only execute tests that have `View` in their name.
-As an aditional parameter we pass `-timeout 100m` to the driver test.
+As an additional parameter we pass `-timeout 100m` to the driver test.
 
 The driver integration also features JWT pass in. It will launch a cluster with 3 DB-Servers, as
 the tests expect to have at least 3 DB-Servers.
@@ -1046,7 +1130,7 @@ At the time being phpunit version 6.5 is supported. Install it like this:
 
 Once this is completed, you may run it like this:
 
-    ./scipts/unittest php_driver --phpsource ../arangodb-php/ \
+    ./scripts/unittest php_driver --phpsource ../arangodb-php/ \
         --testCase testSaveVerticesAndEdgeBetweenThemAndRemoveOneByOne \
         --cluster true \
         --phpkeepalive false
@@ -1069,7 +1153,7 @@ All required data is passed as parameters:
 - driverOptions options to be passed on to the driver works in the form of
   `--driverOptions.argname value` evaluating to `--argname` `value`
 - `--test testcase` evaluates to `--testsuite testcase`
-- `--testCase testcaseExp` evalates to `--filter testcaseExp`
+- `--testCase testcaseExp` evaluates to `--filter testcaseExp`
 
 Statically provided options (with sample values):
 
@@ -1146,7 +1230,7 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniff true \
       --cleanup false \
       --sniffDevice 1 \
-      --sniffProgram 'c:/Programm Files/wireshark/tshark.exe' \
+      --sniffProgram 'c:/Program Files/wireshark/tshark.exe' \
       --forceJson true
 
 You can later on use Wireshark to inspect the capture files.
@@ -1168,7 +1252,7 @@ Currently available Analyzers are:
 - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
 
   - `duration` - the time spent in the complete testfile
-  - `status` - sucess/fail
+  - `status` - success/fail
   - `failed` - fail?
   - `total` - the time spent in the testcase
   - `totalSetUp` - the time spent in setup summarized

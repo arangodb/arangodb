@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -47,10 +47,10 @@
     },
     toDocuVersion: function (v) {
       var version;
-      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+      if (v.toLowerCase().indexOf('devel') !== -1 || v.toLowerCase().indexOf('rc') >= 0) {
         version = 'devel';
       } else {
-        version = v.substring(0, 3);
+        version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
     }
@@ -159,7 +159,7 @@
               if (!jwtParts[1]) {
                 throw "invalid token!";
               }
-              var payload = JSON.parse(atob(jwtParts[1]));
+              var payload = JSON.parse(window.atob(jwtParts[1]));
               if (payload.preferred_username === currentUser) {
                 self.setCurrentJwt(data.jwt, currentUser);
                 updated = true;
@@ -279,10 +279,9 @@
 
     calculateCenterDivHeight: function () {
       var navigation = $('.navbar').height();
-      var footer = $('.footer').height();
       var windowHeight = $(window).height();
 
-      return windowHeight - footer - navigation - 110;
+      return windowHeight - navigation - 110;
     },
 
     createTooltips: function (selector, position) {
@@ -993,8 +992,8 @@
       // timezone can see that it is UTC time
     },
 
-    escapeHtml: function (val) {
-      if (typeof val !== 'string') {
+    escapeHtml: function (val, stringify = true) {
+      if (typeof val !== 'string' && stringify) {
         val = JSON.stringify(val, null, 2);
       }
 
@@ -1187,7 +1186,7 @@
 
     checkCollectionPermissions: function (collectionID, roCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
+        encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db) + '/' + encodeURIComponent(collectionID));
 
       // FETCH COMPLETE DB LIST
@@ -1209,7 +1208,7 @@
 
     checkDatabasePermissions: function (roCallback, rwCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
-        encodeURIComponent(window.App.userCollection.activeUser) +
+        encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db));
 
       // FETCH COMPLETE DB LIST

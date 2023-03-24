@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,6 +164,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    OFFSET_INFO_MATERIALIZE = 35,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -211,8 +212,10 @@ class ExecutionNode {
                   "invalid type passed into ExecutionNode::castTo");
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(node != nullptr);
     T result = dynamic_cast<T>(node);
-    TRI_ASSERT(result != nullptr);
+    TRI_ASSERT(result != nullptr)
+        << "input node type " << node->getTypeString();
     return result;
 #else
     // At least GraphNode is virtually inherited by its subclasses. We have to
@@ -373,13 +376,13 @@ class ExecutionNode {
   static constexpr unsigned SERIALIZE_REGISTER_INFORMATION = 1 << 4;
 
   /// @brief serialize this ExecutionNode to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+  void toVelocyPack(velocypack::Builder&, unsigned flags) const;
 
   /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
   /// This function implicitly creates an array and serializes all nodes
   /// top-down, i.e., the upmost dependency will be the first, and this node
   /// will be the last in the array.
-  void allToVelocyPack(arangodb::velocypack::Builder&, unsigned flags) const;
+  void allToVelocyPack(velocypack::Builder&, unsigned flags) const;
 
   /** Variables used and set are disjunct!
    *   Variables that are read from must be returned by the
@@ -464,7 +467,7 @@ class ExecutionNode {
   RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const;
+  bool isVarUsedLater(Variable const* variable) const noexcept;
 
   /// @brief whether or not the node is in an inner loop
   bool isInInnerLoop() const;
@@ -501,8 +504,7 @@ class ExecutionNode {
   /// @brief serialize this ExecutionNode to VelocyPack.
   /// This function is called as part of `toVelocyPack` and must be overriden in
   /// order to serialize type specific information.
-  virtual void doToVelocyPack(arangodb::velocypack::Builder&,
-                              unsigned flags) const = 0;
+  virtual void doToVelocyPack(velocypack::Builder&, unsigned flags) const = 0;
 
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
@@ -868,11 +870,9 @@ class CalculationNode : public ExecutionNode {
 };
 
 /// @brief class SubqueryNode
-/// in 3.8, SubqueryNodes are only used during query planning and optimization,
-/// but will finally be replaced with SubqueryStartNode and SubqueryEndNode
-/// nodes by the splice-subqueries optimizer rule. In addition, any query
-/// execution plan from 3.7 may contain this node type. We can clean this up
-/// in 3.9.
+/// From 3.8 onwards, SubqueryNodes are only used during query planning and
+/// optimization, but will finally be replaced with SubqueryStartNode and
+/// SubqueryEndNode nodes by the splice-subqueries optimizer rule.
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
@@ -1159,18 +1159,16 @@ class MaterializeNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
+
+  aql::Variable const& docIdVariable() const noexcept {
+    return *_inNonMaterializedDocId;
   }
 
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
-
-  template<typename T>
-  auto getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) const
-      -> RegIdSet;
 
  protected:
   /// @brief input variable non-materialized document ids
@@ -1180,20 +1178,9 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-template<typename T>
-auto MaterializeNode::getReadableInputRegisters(
-    T const collectionSource, RegisterId const inNmDocId) const -> RegIdSet {
-  if constexpr (std::is_same_v<T, RegisterId>) {
-    return RegIdSet{collectionSource, inNmDocId};
-  } else {
-    return RegIdSet{inNmDocId};
-  }
-}
-
 class MaterializeMultiNode : public MaterializeNode {
  public:
   MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inColPtr,
                        aql::Variable const& inDocId,
                        aql::Variable const& outVariable);
 
@@ -1210,19 +1197,13 @@ class MaterializeMultiNode : public MaterializeNode {
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
 
-  /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override final;
-
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
-
- private:
-  /// @brief input variable non-materialized collection ids
-  aql::Variable const* _inNonMaterializedColPtr;
 };
 
+template<bool localDocumentId>
 class MaterializeSingleNode : public MaterializeNode,
                               public CollectionAccessingNode {
  public:
@@ -1251,7 +1232,7 @@ class MaterializeSingleNode : public MaterializeNode,
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base);
+                                       arangodb::velocypack::Slice const base);
 
 }  // namespace materialize
 }  // namespace aql

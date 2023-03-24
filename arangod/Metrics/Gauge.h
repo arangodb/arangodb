@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,6 +99,13 @@ class Gauge final : public Metric {
                                      std::memory_order_relaxed)) {
     }
     return tmp;
+  }
+
+  bool compare_exchange_weak(
+      T& expected, T desired,
+      std::memory_order success = std::memory_order_relaxed,
+      std::memory_order fail = std::memory_order_relaxed) noexcept {
+    return _g.compare_exchange_weak(expected, desired, success, fail);
   }
 
   /// DEPRECATED

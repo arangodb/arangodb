@@ -82,9 +82,7 @@ Valid request for next batch
     };
     var response = logCurlRequest('POST', url, body);
 
-    var body = response.body.replace(/\\/g, '');
-    var _id = JSON.parse(body).id;
-    response = logCurlRequest('PUT', url + '/' + _id, '');
+    response = logCurlRequest('PUT', url + '/' + response.parsedBody.id, '');
     assert(response.code === 200);
 
     logJsonResponse(response);

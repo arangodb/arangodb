@@ -36,7 +36,7 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
@@ -117,14 +117,15 @@ struct ViewFactory : public arangodb::ViewFactory {
                                   arangodb::velocypack::Slice definition,
                                   bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
-    view = vocbase.createView(definition);
+    view = vocbase.createView(definition, false);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -195,8 +196,7 @@ class V8ViewsTest
 TEST_F(V8ViewsTest, test_auth) {
   // test create
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -346,9 +346,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -487,9 +486,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -626,9 +624,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -823,9 +820,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1038,9 +1034,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1197,9 +1192,8 @@ TEST_F(V8ViewsTest, test_auth) {
   {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView = vocbase.createView(createViewJson->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView = vocbase.createView(createViewJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     v8::Isolate::CreateParams isolateParams;
@@ -1373,11 +1367,10 @@ TEST_F(V8ViewsTest, test_auth) {
         "{ \"name\": \"testView1\", \"type\": \"testViewType\" }");
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    auto logicalView1 = vocbase.createView(createView1Json->slice());
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
+    auto logicalView1 = vocbase.createView(createView1Json->slice(), false);
     ASSERT_FALSE(!logicalView1);
-    auto logicalView2 = vocbase.createView(createView2Json->slice());
+    auto logicalView2 = vocbase.createView(createView2Json->slice(), false);
     ASSERT_FALSE(!logicalView2);
 
     v8::Isolate::CreateParams isolateParams;

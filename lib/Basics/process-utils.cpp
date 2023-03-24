@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Esteban Lombeyda
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
@@ -34,6 +35,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "signals.h"
 #include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
@@ -64,7 +66,6 @@
 #ifdef _WIN32
 #include <Psapi.h>
 #include <TlHelp32.h>
-#include <unicode/unistr.h>
 #include "Basics/socket-utils.h"
 #include "Basics/win-utils.h"
 #endif
@@ -170,17 +171,8 @@ ExternalId::ExternalId()
 }
 #endif
 
-ExternalProcess::ExternalProcess()
-    : _numberArguments(0),
-      _arguments(nullptr),
-#ifdef _WIN32
-      _process(nullptr),
-#endif
-      _status(TRI_EXT_NOT_STARTED),
-      _exitStatus(0) {
-}
-
 ExternalProcess::~ExternalProcess() {
+  TRI_ASSERT(_numberArguments == 0 || _arguments != nullptr);
   for (size_t i = 0; i < _numberArguments; i++) {
     if (_arguments[i] != nullptr) {
       TRI_Free(_arguments[i]);
@@ -207,9 +199,6 @@ ExternalProcess::~ExternalProcess() {
   }
 #endif
 }
-
-ExternalProcessStatus::ExternalProcessStatus()
-    : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
@@ -251,9 +240,9 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartExternalProcess(
-    ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv) {
+static void StartExternalProcess(ExternalProcess* external, bool usePipes,
+                                 std::vector<std::string> const& additionalEnv,
+                                 std::string const& fileForStdErr) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -287,17 +276,31 @@ static void StartExternalProcess(
     } else {
       {  // "close" stdin, but avoid fd 0 being reused!
         int fd = open("/dev/null", O_RDONLY);
-        dup2(fd, 0);
-        close(fd);
+        if (fd >= 0) {
+          dup2(fd, 0);
+          close(fd);
+        }
       }
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
+    }
+    if (!fileForStdErr.empty()) {
+      // Redirect stderr:
+      int fd = open(fileForStdErr.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0644);
+      if (fd >= 0) {
+        dup2(fd, 2);  // note that 2 was open before, so fd is not equal to 2,
+                      // and the previous 2 is now silently being closed!
+                      // Furthermore, if this fails, we stay on the other one.
+        close(fd);    // need to get rid of the second file descriptor.
+      }
     }
 
     // add environment variables
     for (auto const& it : additionalEnv) {
       putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
+
+    arangodb::signals::unmaskAllSignals();
 
     // execute worker
     execvp(external->_executable.c_str(), external->_arguments);
@@ -481,18 +484,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  icu::UnicodeString uwargs(external->_executable.c_str());
+  auto uwargs = arangodb::basics::toWString(external->_executable);
 
-  err = wAppendQuotedArg(
-      res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+  err = wAppendQuotedArg(res, uwargs.data());
   if (err != TRI_ERROR_NO_ERROR) {
     return L"";
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
-    uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(
-        res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
+    uwargs = arangodb::basics::toWString(external->_arguments[i]);
+    err = wAppendQuotedArg(res, uwargs.data());
     if (err != TRI_ERROR_NO_ERROR) {
       return L"";
     }
@@ -554,7 +555,8 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 
 static void StartExternalProcess(
     ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv) {
+    std::vector<std::string> const& additionalEnv,
+    std::string const& /* fileForStdErr ignored for now on Windows */) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -837,7 +839,7 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   if (fd >= 0) {
     memset(&str, 0, sizeof(str));
 
-    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
+    auto n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {
@@ -910,7 +912,8 @@ void TRI_SetProcessTitle(char const* title) {
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
                                std::vector<std::string> const& additionalEnv,
-                               bool usePipes, ExternalId* pid) {
+                               bool usePipes, ExternalId* pid,
+                               std::string const& fileForStdErr) {
   size_t const n = arguments.size();
   // create the external structure
   auto external = std::make_unique<ExternalProcess>();
@@ -948,7 +951,7 @@ void TRI_CreateExternalProcess(char const* executable,
   external->_arguments[n + 1] = nullptr;
   external->_status = TRI_EXT_NOT_STARTED;
 
-  StartExternalProcess(external.get(), usePipes, additionalEnv);
+  StartExternalProcess(external.get(), usePipes, additionalEnv, fileForStdErr);
 
   if (external->_status != TRI_EXT_RUNNING) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -1049,7 +1052,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
                                                uint32_t timeout) {
   ExternalProcessStatus status;
   status._status = TRI_EXT_NOT_FOUND;
-  status._exitStatus = 0;
 
   auto external = TRI_LookupSpawnedProcess(pid._pid);
 
@@ -1057,7 +1059,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
     status._errorMessage =
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
-    status._status = TRI_EXT_NOT_FOUND;
     LOG_TOPIC("f5f99", WARN, arangodb::Logger::FIXME)
         << "checkExternal: pid not found: " << pid._pid;
 

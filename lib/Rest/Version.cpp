@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -139,12 +139,11 @@ void Version::initialize() {
 
   Values["architecture"] =
       (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   Values["arm"] = "true";
 #else
   Values["arm"] = "false";
 #endif
-  Values["asm-crc32"] = (ENABLE_ASM_CRC32) ? "true" : "false";
   Values["boost-version"] = getBoostVersion();
   Values["build-date"] = getBuildDate();
   Values["compiler"] = getCompiler();
@@ -162,6 +161,11 @@ void Version::initialize() {
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
+#endif
+#ifdef USE_COVERAGE
+  Values["coverage"] = "true";
+#else
+  Values["coverage"] = "false";
 #endif
 #ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,6 @@
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
 
-#include "Transaction/Methods.h"
 #include "Graph/Steps/ClusterProviderStep.h"
 
 #include <vector>
@@ -55,6 +54,9 @@ class Builder;
 class HashedStringRef;
 }  // namespace velocypack
 
+namespace transaction {
+class Methods;
+}
 namespace graph {
 
 // TODO: we need to control from the outside if and which parts of the vertex -
@@ -92,6 +94,11 @@ class ClusterProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  // [GraphRefactor] TODO: Temporary method - will be needed until we've
+  // finished the full graph refactor.
+  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
+
   VPackSlice readEdge(EdgeType const& edgeID);
 
   void addEdgeIDToBuilder(typename Step::Edge const& edge,

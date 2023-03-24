@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +25,11 @@
 
 #include <velocypack/Iterator.h>
 
-#include <Basics/StringUtils.h>
-#include <Network/Methods.h>
-#include <Network/NetworkFeature.h>
-#include <Cluster/ClusterFeature.h>
+#include "Basics/StringUtils.h"
+#include "Futures/Future.h"
 #include "Inspection/VPack.h"
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
-#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
 using namespace arangodb;

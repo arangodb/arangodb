@@ -36,8 +36,8 @@ export class RaceSubscriber extends OuterSubscriber {
         }
         else {
             for (let i = 0; i < len && !this.hasFirst; i++) {
-                let observable = observables[i];
-                let subscription = subscribeToResult(this, observable, observable, i);
+                const observable = observables[i];
+                const subscription = subscribeToResult(this, observable, undefined, i);
                 if (this.subscriptions) {
                     this.subscriptions.push(subscription);
                 }
@@ -46,7 +46,7 @@ export class RaceSubscriber extends OuterSubscriber {
             this.observables = null;
         }
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(_outerValue, innerValue, outerIndex) {
         if (!this.hasFirst) {
             this.hasFirst = true;
             for (let i = 0; i < this.subscriptions.length; i++) {

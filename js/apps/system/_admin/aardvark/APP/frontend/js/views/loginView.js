@@ -6,8 +6,6 @@
   'use strict';
   window.LoginView = Backbone.View.extend({
     el: '#content',
-    el2: '.header',
-    el3: '.footer',
     loggedIn: false,
     loginCounter: 0,
 
@@ -23,21 +21,43 @@
     template: templateEngine.createTemplate('loginView.ejs'),
 
     render: function (loggedIn) {
-      var self = this;
       $(this.el).html(this.template.render({}));
-      $(this.el2).hide();
-      $(this.el3).hide();
 
-      var continueRender = function (user, errCallback, debug) {
-        var url;
+      if (frontendConfig.isEnterprise) {
+        $('#ArangoDBLogoVersion').text('Enterprise Edition');
+        $('#ArangoDBLogoVersion').removeClass('enterprise');
+      } else {
+        $('#ArangoDBLogoVersion').text('Community Edition');
+        $('#ArangoDBLogoVersion').removeClass('community');
+      }
 
-        if (!user) {
-          url = arangoHelper.databaseUrl('/_api/database/user');
-        } else {
-          url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database', '_system');
+      let user = arangoHelper.getCurrentJwtUsername();
+      if (!user || user === "undefined") user = null;
+      if (frontendConfig.authenticationEnabled && !loggedIn && user === null) {
+        $('.bodyWrapper').show();
+        setTimeout(() => {
+          $('#loginUsername').focus();
+        }, 300);
+      } else {
+        let errCallback = () => {
+          // existing jwt login is not valid anymore => reload
+          arangoHelper.setCurrentJwt(null, null);
+          location.reload(true);
+        };
+        if (frontendConfig.authenticationEnabled && !loggedIn) {
+          // try if existent jwt is valid
+          errCallback = () => {
+            this.collection.logout();
+            $('.bodyWrapper').show();
+            setTimeout(() => {
+              $('#loginUsername').focus();
+            }, 300);
+          };
+        } else if (!frontendConfig.authenticationEnabled || !loggedIn) {
+          user = null;
         }
 
-        if (frontendConfig.authenticationEnabled === false) {
+        if (!frontendConfig.authenticationEnabled) {
           $('#logout').hide();
           $('.login-window #databases').css('height', '90px');
         }
@@ -47,73 +67,37 @@
 
         $.ajax({
           type: "GET",
-          url: url,
-          success: function (permissions) {
-            // enable db select and login button
-            self.renderDatabasesDropdown(permissions.result);
-            self.renderDBS();
-          },
-          error: function (e) {
-            if (errCallback) {
-              errCallback();
-            } else {
-              // existing jwt login is not valid anymore => reload
-              arangoHelper.setCurrentJwt(null, null);
-              location.reload(true);
+          url: user
+            ? arangoHelper.databaseUrl(`/_api/user/${encodeURIComponent(user)}/database`, '_system')
+            : arangoHelper.databaseUrl('/_api/database/user'),
+          success: (permissions) => {
+            let dbs = permissions.result;
+            if (user) {
+              // key, value tuples of database name and permission
+              dbs = Object.keys(dbs);
             }
+            // enable db select and login button
+            this.renderDatabasesDropdown(dbs);
+            this.renderDBS();
+            $('.bodyWrapper').show();
+          },
+          error: (e) => {
+            errCallback();
           }
         });
-      };
-
-      if (frontendConfig.authenticationEnabled && loggedIn !== true) {
-        var usr = arangoHelper.getCurrentJwtUsername();
-        if (usr !== null && usr !== 'undefined' && usr !== undefined) {
-          // try if existent jwt is valid
-          var errCallback = function () {
-            self.collection.logout();
-            window.setTimeout(function () {
-              $('#loginUsername').focus();
-            }, 300);
-          };
-          continueRender(arangoHelper.getCurrentJwtUsername(), errCallback);
-        } else {
-          window.setTimeout(function () {
-            $('#loginUsername').focus();
-          }, 300);
-        }
-      } else if (frontendConfig.authenticationEnabled && loggedIn) {
-        continueRender(arangoHelper.getCurrentJwtUsername(), null, 4);
-      } else {
-        continueRender(null, null, 3);
       }
-
-      $('.bodyWrapper').show();
-      this.setVersion();
 
       return this;
     },
 
-    setVersion: function () {
-      if (window.frontendConfig && window.frontendConfig.isEnterprise) {
-        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-enterprise-edition-Web-UI.png');
-      } else {
-        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-community-edition-Web-UI.png');
-      }
-    },
-
     sortDatabases: function (obj) {
-      var sorted;
-
       if (frontendConfig.authenticationEnabled) {
         // key, value tuples of database name and permission
-        sorted = _.pairs(obj);
-        sorted = _.sortBy(sorted, function (i) { return i[0].toLowerCase(); });
-        sorted = _.object(sorted);
+        obj = Object.keys(obj);
       } else {
         // array contained only the database names
-        sorted = _.sortBy(obj, function (i) { return i.toLowerCase(); });
       }
-      return sorted;
+      return _.sortBy(obj, (value) => value.toLowerCase());
     },
 
     clear: function () {
@@ -121,12 +105,12 @@
       $('.wrong-credentials').hide();
     },
 
-    keyPress: function (e) {
-      if (e.ctrlKey && e.keyCode === 13) {
-        e.preventDefault();
+    keyPress: function (evt) {
+      if (evt.ctrlKey && evt.keyCode === 13) {
+        evt.preventDefault();
         this.validate();
-      } else if (e.metaKey && e.keyCode === 13) {
-        e.preventDefault();
+      } else if (evt.metaKey && evt.keyCode === 13) {
+        evt.preventDefault();
         this.validate();
       }
     },
@@ -135,61 +119,59 @@
       event.preventDefault();
       this.clear();
 
-      var username = $('#loginUsername').val();
-      var password = $('#loginPassword').val();
+      const username = $('#loginUsername').val();
+      const password = $('#loginPassword').val();
 
       if (!username) {
         // do not send unneccessary requests if no user is given
         return;
       }
 
-      this.collection.login(username, password, this.loginCallback.bind(this, username, password));
+      this.collection.login(username, password, () => this.loginCallback(username, password));
     },
 
     loginCallback: function (username, password, error) {
-      var self = this;
-
       if (error) {
-        if (self.loginCounter === 0) {
-          self.loginCounter++;
-          self.collection.login(username, password, this.loginCallback.bind(this, username));
+        if (this.loginCounter === 0) {
+          this.loginCounter++;
+          this.collection.login(username, password, () => this.loginCallback(username));
           return;
         }
-        self.loginCounter = 0;
+        this.loginCounter = 0;
         $('.wrong-credentials').show();
         $('#loginDatabase').html('');
         $('#loginDatabase').append(
           '<option>_system</option>'
         );
       } else {
-        self.renderDBSelection(username);
+        this.renderDBSelection(username);
       }
     },
 
     renderDBSelection: function (username) {
-      var self = this;
-      var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(username) + '/database', '_system');
-
-      if (frontendConfig.authenticationEnabled === false) {
-        url = arangoHelper.databaseUrl('/_api/database/user');
-      }
-
       $('.wrong-credentials').hide();
-      self.loggedIn = true;
+      this.loggedIn = true;
 
       // get list of allowed dbs
       $.ajax({
         type: "GET",
-        url: url,
-        success: function (permissions) {
+        url: frontendConfig.authenticationEnabled
+          ? arangoHelper.databaseUrl(`/_api/user/${encodeURIComponent(username)}/database`, '_system')
+          : arangoHelper.databaseUrl('/_api/database/user'),
+        success: (permissions) => {
           $('#loginForm').hide();
           $('.login-window #databases').show();
 
           // enable db select and login button
-          self.renderDatabasesDropdown(permissions.result);
-          self.renderDBS();
+          let dbs = permissions.result;
+          if (frontendConfig.authenticationEnabled) {
+            // key, value tuples of database name and permission
+            dbs = Object.keys(dbs);
+          }
+          this.renderDatabasesDropdown(dbs);
+          this.renderDBS();
         },
-        error: function () {
+        error: () => {
           $('.wrong-credentials').show();
         }
       });
@@ -198,22 +180,15 @@
     renderDatabasesDropdown: function (dbs) {
       $('#loginDatabase').html('');
 
-      if (Object.keys(dbs).length > 0) {
+      if (dbs.length > 0) {
         // show select, remove input
         $('#databaseInputName').remove();
 
-        var sortedObj = this.sortDatabases(dbs);
-        _.each(sortedObj, function (rule, db) {
-          var v;
-          if (frontendConfig.authenticationEnabled) {
-            v = db;
-          } else {
-            v = rule;
-          }
+        for (const db of _.sortBy(dbs, (db) => db.toLowerCase())) {
           $('#loginDatabase').append(
-            '<option value="' + _.escape(v) + '"><pre>' + _.escape(v) + '</pre></option>'
+            '<option value="' + _.escape(db) + '"><pre>' + _.escape(db) + '</pre></option>'
           );
-        });
+        }
             
         $('#loginDatabase').show();
         $('.fa-database').show();
@@ -221,13 +196,13 @@
         $('#loginDatabase').hide();
         $('.fa-database').hide();
         $('#loginDatabase').after(
-            '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
+          '<input id="databaseInputName" class="databaseInput login-input" placeholder="_system" value="_system"></input>'
         );
       }
     },
 
     renderDBS: function () {
-      var message = 'Select DB: ';
+      let message = 'Select DB: ';
 
       $('#noAccess').hide();
       if ($('#loginDatabase').children().length === 0) {
@@ -256,10 +231,10 @@
       this.collection.logout();
     },
 
-    goTo: function (e) {
-      e.preventDefault();
-      var username = $('#loginUsername').val();
-      var database;
+    goTo: function (evt) {
+      evt.preventDefault();
+      const username = $('#loginUsername').val();
+      let database;
 
       if ($('#databaseInputName').is(':visible')) {
         database = $('#databaseInputName').val();
@@ -267,38 +242,30 @@
         database = $('#loginDatabase').val();
       }
 
-      var callback2 = function (error) {
-        if (error) {
-          arangoHelper.arangoError('User', 'Could not fetch user settings');
-        }
-      };
-
-      var path = window.location.protocol + '//' + window.location.host +
+      let path = window.location.protocol + '//' + window.location.host +
         frontendConfig.basePath + '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
       if (frontendConfig.react) {
         path = window.location.protocol + '//' + window.location.host +
           '/_db/' + encodeURIComponent(database) + '/_admin/aardvark/index.html';
       }
 
-      var continueFunction = function () {
-        window.location.href = path;
-
-        // show hidden divs
-        $(this.el2).show();
-        $(this.el3).show();
-        $('.bodyWrapper').show();
-        $('.navbar').show();
-
-        $('#currentUser').text(username);
-        this.collection.loadUserSettings(callback2);
-      }.bind(this);
-
       $.ajax({
         url: path,
-        success: function (data) {
-          continueFunction();
+        success: (data) => {
+          window.location.href = path;
+  
+          // show hidden divs
+          $('.bodyWrapper').show();
+          $('.navbar').show();
+  
+          $('#currentUser').text(username);
+          this.collection.loadUserSettings((error) => {
+            if (error) {
+              arangoHelper.arangoError('User', 'Could not fetch user settings');
+            }
+          });
         },
-        error: function (data) {
+        error: (data) => {
           if (data.responseJSON && data.responseJSON.errorMessage) {
             $('#noAccess').html('Error (DB: ' + _.escape(database) + '): ' + _.escape(data.responseJSON.errorMessage));
           } else {

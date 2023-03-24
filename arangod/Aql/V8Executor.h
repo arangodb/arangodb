@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,19 +27,11 @@
 
 #include <v8.h>
 
-namespace arangodb {
-namespace basics {
-class StringBuffer;
-}
-
-namespace aql {
+namespace arangodb::aql {
 class V8Executor {
  public:
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
-  static void HandleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&,
-                            arangodb::basics::StringBuffer*,
-                            bool duringCompile);
+  static void handleV8Error(v8::TryCatch&, v8::Handle<v8::Value>&);
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

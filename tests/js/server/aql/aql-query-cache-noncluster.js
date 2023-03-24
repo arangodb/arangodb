@@ -32,6 +32,8 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var internal = require("internal");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
 function ahuacatlQueryCacheTestSuite () {
   var cacheProperties;
@@ -916,7 +918,7 @@ function ahuacatlQueryCacheTestSuite () {
 
     testTransactionRollback : function () {
       AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      
+
       var query = "FOR doc IN @@collection RETURN doc.value";
       
       try {
@@ -928,7 +930,7 @@ function ahuacatlQueryCacheTestSuite () {
             assertEqual([ ], result.json);
             
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
-            assertTrue(result.cached);
+            assertFalse(result.cached);
             assertEqual([ ], result.json);
 
             var db = require("@arangodb").db;
@@ -939,7 +941,7 @@ function ahuacatlQueryCacheTestSuite () {
             assertEqual([ "foo" ], result.json);
             
             result = AQL_EXECUTE(query, { "@collection": c1.name() });
-            assertTrue(result.cached);
+            assertFalse(result.cached);
             assertEqual([ "foo" ], result.json);
 
             throw "peng!";
@@ -954,18 +956,22 @@ function ahuacatlQueryCacheTestSuite () {
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });
       assertFalse(result.cached);
       assertEqual([ ], result.json);
+
+      result = AQL_EXECUTE(query, { "@collection": c1.name() });
+      assertTrue(result.cached);
+      assertEqual([ ], result.json);
     }
 
   };
 }
 
-function ahuacatlQueryCacheViewTestSuite () {
+function ahuacatlQueryCacheViewTestSuite(isSearchAlias) {
   var cacheProperties;
   var c1, c2, v;
 
   return {
 
-    setUp : function () {
+    setUp: function () {
       cacheProperties = AQL_QUERY_CACHE_PROPERTIES();
       AQL_QUERY_CACHE_INVALIDATE();
 
@@ -976,8 +982,11 @@ function ahuacatlQueryCacheViewTestSuite () {
 
       c1 = db._create("UnitTestsAhuacatlQueryCache1");
       c2 = db._create("UnitTestsAhuacatlQueryCache2");
-
-      v = db._createView("UnitTestsView", "arangosearch", {});
+      if (isSearchAlias) {
+        v = db._createView("UnitTestsView", "search-alias", {});
+      } else {
+        v = db._createView("UnitTestsView", "arangosearch", {});
+      }
     },
 
     tearDown : function () {
@@ -991,38 +1000,83 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
 
     testQueryOnView : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
-      
-      c1.insert({ value: 1 }, { waitForSync: true });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      c1.insert({value: 1}, {waitForSync: true});
+      c1.insert({"value_nested": [{ "nested_1": [{ "nested_2": "dog" }] }]}, {waitForSync: true});
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      let result1 = AQL_EXECUTE(query, {"@view": v.name()});
       assertFalse(result1.cached);
-      assertEqual(1, result1.json.length);
+      assertEqual(2, result1.json.length);
 
       let result2 = AQL_EXECUTE(query, { "@view": v.name() });
       assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
+      assertEqual(2, result2.json.length);
       assertEqual(result1.json, result2.json);
     },
 
     testRenameView : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
-      
-      c1.insert({ value: 1 }, { waitForSync: true });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      c1.insert({value: 1}, {waitForSync: true});
+      c1.insert({"value_nested": [{ "nested_1": [{ "nested_2": "chpok" }] }]}, {waitForSync: true});
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      let result1 = AQL_EXECUTE(query, {"@view": v.name()});
       assertFalse(result1.cached);
-      assertEqual(1, result1.json.length);
+      assertEqual(2, result1.json.length);
 
       let result2 = AQL_EXECUTE(query, { "@view": v.name() });
       assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
+      assertEqual(2, result2.json.length);
       assertEqual(result1.json, result2.json);
 
       v.rename("UnitTestsViewRenamed");
@@ -1044,52 +1098,120 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
     
     testPropertyChangeView : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
-      
-      c1.insert({ value: 1 }, { waitForSync: true });
+      let i;
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      c1.insert({value: 1}, {waitForSync: true});
+      c1.insert({"value_nested": [{ "nested_1": [{ "nested_2": "dog" }] }]}, {waitForSync: true});
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
-      assertFalse(result1.cached);
-      assertEqual(1, result1.json.length);
-
-      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
-      assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
-      assertEqual(result1.json, result2.json);
-
-      meta = { links: { "UnitTestsAhuacatlQueryCache1" : null, "UnitTestsAhuacatlQueryCache2" : { includeAllFields: true } } };
-      v.properties(meta);
-
-      c2.insert({ value: 1 }, { waitForSync: false });
-      c2.insert({ value: 2 }, { waitForSync: true });
-      
-      result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      let result1 = AQL_EXECUTE(query, {"@view": v.name()});
       assertFalse(result1.cached);
       assertEqual(2, result1.json.length);
 
-      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      let result2 = AQL_EXECUTE(query, {"@view": v.name()});
       assertTrue(result2.cached);
       assertEqual(2, result2.json.length);
+      assertEqual(result1.json, result2.json);
+
+      if (isSearchAlias) {
+        let i2 = db.UnitTestsAhuacatlQueryCache2.ensureIndex(indexMeta);
+        viewMeta = {
+          indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name, operation: "del"},
+            {collection: "UnitTestsAhuacatlQueryCache2", index: i2.name}]
+        };
+      } else {
+        if (isEnterprise) {
+          viewMeta = {
+            links: {
+              "UnitTestsAhuacatlQueryCache1": null,
+              "UnitTestsAhuacatlQueryCache2": {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}
+            }
+          };
+        } else {
+          viewMeta = {
+            links: {
+              "UnitTestsAhuacatlQueryCache1": null,
+              "UnitTestsAhuacatlQueryCache2": {includeAllFields: true}
+            }
+          };
+        }
+      }
+      v.properties(viewMeta);
+
+      c2.insert({value: 1}, {waitForSync: false});
+      c2.insert({value: 2}, {waitForSync: true});
+      c2.insert({"value_nested": [{ "nested_1": [{ "nested_2": "dog" }] }]}, {waitForSync: true});
+
+      result1 = AQL_EXECUTE(query, {"@view": v.name()});
+      assertFalse(result1.cached);
+      assertEqual(3, result1.json.length);
+
+      result2 = AQL_EXECUTE(query, {"@view": v.name()});
+      assertTrue(result2.cached);
+      assertEqual(3, result2.json.length);
     },
 
     testDropView : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
-      
-      c1.insert({ value: 1 }, { waitForSync: true });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      c1.insert({value: 1}, {waitForSync: true});
+      c1.insert({"value_nested": [{ "nested_1": [{ "nested_2": "frog" }] }]}, {waitForSync: true});
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      let result1 = AQL_EXECUTE(query, {"@view": v.name()});
       assertFalse(result1.cached);
-      assertEqual(1, result1.json.length);
+      assertEqual(2, result1.json.length);
 
       let result2 = AQL_EXECUTE(query, { "@view": v.name() });
       assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
+      assertEqual(2, result2.json.length);
       assertEqual(result1.json, result2.json);
 
       v.drop();
@@ -1103,52 +1225,99 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
 
     testDropAndRecreateView : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
-      
-      c1.insert({ value: 1 }, { waitForSync: true });
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
+
+      c1.insert({value: 1}, {waitForSync: true});
+      c1.insert({"value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: true});
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } RETURN doc.value";
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
-      let result1 = AQL_EXECUTE(query, { "@view": v.name() });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
+      let result1 = AQL_EXECUTE(query, {"@view": v.name()});
       assertFalse(result1.cached);
-      assertEqual(1, result1.json.length);
+      assertEqual(2, result1.json.length);
 
-      let result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      let result2 = AQL_EXECUTE(query, {"@view": v.name()});
       assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
+      assertEqual(2, result2.json.length);
       assertEqual(result1.json, result2.json);
 
       v.drop();
-      
-      v = db._createView("UnitTestsView", "arangosearch", {});
-      v.properties(meta);
-      
-      result2 = AQL_EXECUTE(query, { "@view": v.name() });
-      assertFalse(result2.cached);
-      assertEqual(1, result2.json.length);
 
-      result2 = AQL_EXECUTE(query, { "@view": v.name() });
+      if (isSearchAlias) {
+        v = db._createView("UnitTestsView", "search-alias", {});
+      } else {
+        v = db._createView("UnitTestsView", "arangosearch", {});
+      }
+      v.properties(viewMeta);
+
+      result2 = AQL_EXECUTE(query, {"@view": v.name()});
+      assertFalse(result2.cached);
+      assertEqual(2, result2.json.length);
+
+      result2 = AQL_EXECUTE(query, {"@view": v.name()});
       assertTrue(result2.cached);
-      assertEqual(1, result2.json.length);
+      assertEqual(2, result2.json.length);
     },
     
     testViewInvalidationAfterAqlInsertNoSync : function () {
       if (!internal.debugCanUseFailAt()) {
         return;
       }
-
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
+      let indexMeta = {};
+      let viewMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+        
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
 
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({ value: i }, { waitForSync: i === 5 });
+        c1.insert({value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
-
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
       result = AQL_EXECUTE("FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value", { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -1192,17 +1361,39 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
     
     testViewInvalidationAfterAqlInsert : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({ value: i }, { waitForSync: i === 5 });
+        c1.insert({value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -1223,17 +1414,39 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
     
     testViewInvalidationAfterAqlUpdate : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
+      let viewMeta  = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({ _key: "test" + i, value: i }, { waitForSync: i === 5 });
+        c1.insert({_key: "test" + i, value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -1254,17 +1467,39 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
     
     testViewInvalidationAfterAqlRemove : function () {
-      let meta = { links: { "UnitTestsAhuacatlQueryCache1" : { includeAllFields: true } } };
-      v.properties(meta);
+      let viewMeta = {};
+      let indexMeta = {};
+      if (isSearchAlias) {
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          indexMeta = {type: "inverted", includeAllFields: true, fields:[
+            {"name": "value_nested[*]"}
+          ]};
+        }
+
+        let i = db.UnitTestsAhuacatlQueryCache1.ensureIndex(indexMeta);
+        viewMeta = {indexes: [{collection: "UnitTestsAhuacatlQueryCache1", index: i.name}]};
+      } else {
+        if (isEnterprise) {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": 
+          {includeAllFields: true, "fields": { "value_nested": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {"UnitTestsAhuacatlQueryCache1": {includeAllFields: true}}};
+        }
+      }
+      v.properties(viewMeta);
 
       let query = "FOR doc IN @@view OPTIONS { waitForSync: true } SORT doc.value RETURN doc.value";
       let result;
 
       for (let i = 1; i <= 5; ++i) {
-        c1.insert({ _key: "test" + i, value: i }, { waitForSync: i === 5 });
+        c1.insert({_key: "test" + i, value: i, "value_nested": [{ "nested_1": [{ "nested_2": "bat" }] }]}, {waitForSync: i === 5});
       }
 
-      AQL_QUERY_CACHE_PROPERTIES({ mode: "on" });
+      AQL_QUERY_CACHE_PROPERTIES({mode: "on"});
       result = AQL_EXECUTE(query, { "@view": v.name() });
       assertFalse(result.cached);
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
@@ -1292,6 +1527,28 @@ function ahuacatlQueryCacheViewTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlQueryCacheTestSuite);
-jsunity.run(ahuacatlQueryCacheViewTestSuite);
+
+function ahuacatlQueryCacheArangoSearchTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    ahuacatlQueryCacheViewTestSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function ahuacatlQueryCacheSearchAliasTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    ahuacatlQueryCacheViewTestSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(ahuacatlQueryCacheArangoSearchTestSuite);
+jsunity.run(ahuacatlQueryCacheSearchAliasTestSuite);
 
 return jsunity.done();

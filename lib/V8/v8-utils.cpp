@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,7 +62,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
@@ -583,28 +583,86 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief helper function for internal.download()
-////////////////////////////////////////////////////////////////////////////////
+auto getEndpoint(std::vector<std::string> const& endpoints, std::string& url,
+                 std::string const& lastEndpoint)
+    -> std::tuple<std::string, std::string, std::string> {
+  // returns endpoint, relative, error
+  std::string relative;
+  std::string endpoint;
 
-static std::string GetEndpointFromUrl(std::string const& url) {
-  char const* p = url.c_str();
-  char const* e = p + url.size();
-  size_t slashes = 0;
-
-  while (p < e) {
-    if (*p == '?') {
-      // http(s)://example.com?foo=bar
-      return url.substr(0, p - url.c_str());
-    } else if (*p == '/') {
-      if (++slashes == 3) {
-        return url.substr(0, p - url.c_str());
-      }
+  auto checkProto = [&relative, &endpoint](
+                        std::string const& url, std::string_view prefix,
+                        std::string_view proto, int port) -> bool {
+    if (!url.starts_with(prefix)) {
+      return false;
     }
-    ++p;
-  }
+    endpoint =
+        basics::StringUtils::getEndpointFromUrl(url).substr(prefix.size());
+    relative = url.substr(prefix.size() + endpoint.size());
 
-  return url;
+    if (relative.empty() || relative[0] != '/') {
+      relative = "/" + relative;
+    }
+    if (endpoint.find(':') == std::string::npos) {
+      endpoint.push_back(':');
+      endpoint.append(std::to_string(port));
+    }
+    endpoint = std::string{proto} + endpoint;
+    return true;
+  };
+
+  if (checkProto(url, "http://", "tcp://", 80) ||
+      checkProto(url, "https://", "ssl://", 443) ||
+      checkProto(url, "h2://", "tcp://", 80) ||
+      checkProto(url, "h2s://", "ssl://", 443)) {
+    TRI_ASSERT(!endpoint.empty());
+    TRI_ASSERT(!relative.empty());
+
+  } else if (url.starts_with("srv://")) {
+    size_t found = url.find('/', 6);
+
+    relative = "/";
+    if (found != std::string::npos) {
+      relative.append(url.substr(found + 1));
+      endpoint = url.substr(6, found - 6);
+    } else {
+      endpoint = url.substr(6);
+    }
+    endpoint = "srv://" + endpoint;
+  } else if (url.starts_with("unix://")) {
+    // Can only have arrived here if endpoints is non empty
+    if (endpoints.empty()) {
+      return {"", "", std::move("unsupported URL specified")};
+    }
+    endpoint = endpoints.front();
+    relative = url.substr(endpoint.size());
+  } else if (!url.empty() && url[0] == '/') {
+    size_t found;
+    // relative URL. prefix it with last endpoint
+    relative = url;
+    url = lastEndpoint + url;
+    endpoint = lastEndpoint;
+    if (endpoint.starts_with("http:")) {
+      endpoint = endpoint.substr(5);
+      found = endpoint.find(":");
+      if (found == std::string::npos) {
+        endpoint = endpoint + ":80";
+      }
+      endpoint = "tcp:" + endpoint;
+    } else if (endpoint.starts_with("https:")) {
+      endpoint = endpoint.substr(6);
+      found = endpoint.find(":");
+      if (found == std::string::npos) {
+        endpoint = endpoint + ":443";
+      }
+      endpoint = "ssl:" + endpoint;
+    }
+  } else {
+    std::string msg("unsupported URL specified: '");
+    msg.append(url).append("'");
+    return {"", "", std::move(msg)};
+  }
+  return {std::move(endpoint), std::move(relative), ""};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -648,106 +706,6 @@ static std::string GetEndpointFromUrl(std::string const& url) {
 /// `process-utils.js` depends on simple http client error messages.
 ///   this needs to be adjusted if this is ever changed!
 ////////////////////////////////////////////////////////////////////////////////
-namespace {
-
-auto getEndpoint(v8::Isolate* isolate,
-                 std::vector<std::string> const& endpoints, std::string& url,
-                 std::string& lastEndpoint)
-    -> std::tuple<std::string, std::string, std::string> {
-  // returns endpoint, relative, error
-  std::string relative;
-  std::string endpoint;
-  if (url.substr(0, 7) == "http://") {
-    endpoint = GetEndpointFromUrl(url).substr(7);
-    relative = url.substr(7 + endpoint.length());
-
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":80");
-    }
-    endpoint = "tcp://" + endpoint;
-  } else if (url.substr(0, 8) == "https://") {
-    endpoint = GetEndpointFromUrl(url).substr(8);
-    relative = url.substr(8 + endpoint.length());
-
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":443");
-    }
-    endpoint = "ssl://" + endpoint;
-  } else if (url.substr(0, 5) == "h2://") {
-    endpoint = GetEndpointFromUrl(url).substr(5);
-    relative = url.substr(5 + endpoint.length());
-
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":80");
-    }
-    endpoint = "tcp://" + endpoint;
-  } else if (url.substr(0, 6) == "h2s://") {
-    endpoint = GetEndpointFromUrl(url).substr(6);
-    relative = url.substr(6 + endpoint.length());
-
-    if (relative.empty() || relative[0] != '/') {
-      relative = "/" + relative;
-    }
-    if (endpoint.find(':') == std::string::npos) {
-      endpoint.append(":443");
-    }
-    endpoint = "ssl://" + endpoint;
-  } else if (url.substr(0, 6) == "srv://") {
-    size_t found = url.find('/', 6);
-
-    relative = "/";
-    if (found != std::string::npos) {
-      relative.append(url.substr(found + 1));
-      endpoint = url.substr(6, found - 6);
-    } else {
-      endpoint = url.substr(6);
-    }
-    endpoint = "srv://" + endpoint;
-  } else if (url.substr(0, 7) == "unix://") {
-    // Can only have arrived here if endpoints is non empty
-    if (endpoints.empty()) {
-      return {"", "", std::move("unsupported URL specified")};
-    }
-    endpoint = endpoints.front();
-    relative = url.substr(endpoint.size());
-  } else if (!url.empty() && url[0] == '/') {
-    size_t found;
-    // relative URL. prefix it with last endpoint
-    relative = url;
-    url = lastEndpoint + url;
-    endpoint = lastEndpoint;
-    if (endpoint.substr(0, 5) == "http:") {
-      endpoint = endpoint.substr(5);
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":80";
-      }
-      endpoint = "tcp:" + endpoint;
-    } else if (endpoint.substr(0, 6) == "https:") {
-      endpoint = endpoint.substr(6);
-      found = endpoint.find(":");
-      if (found == std::string::npos) {
-        endpoint = endpoint + ":443";
-      }
-      endpoint = "ssl:" + endpoint;
-    }
-  } else {
-    std::string msg("unsupported URL specified: '");
-    msg.append(url).append("'");
-    return {"", "", std::move(msg)};
-  }
-  return {std::move(endpoint), std::move(relative), ""};
-}
-}  // namespace
 
 void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -772,7 +730,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool isLocalUrl = false;
 
-  if (!url.empty() && url[0] == '/') {
+  if (url.starts_with('/')) {
     // check if we are a server
     isLocalUrl = true;
     endpoints = v8g->_endpoints.httpEndpoints();
@@ -805,7 +763,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  std::string lastEndpoint = GetEndpointFromUrl(url);
+  std::string lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
 
   std::string body;
   if (args.Length() > 1) {
@@ -831,6 +789,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::unordered_map<std::string, std::string> headerFields;
   double timeout = 10.0;
+  bool addContentLength = true;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
   rest::RequestType method = rest::RequestType::GET;
@@ -906,6 +865,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     }
     timeout = correctTimeoutToExecutionDeadlineS(timeout);
+
+    // insert content-length when not provided?
+    if (TRI_HasProperty(context, isolate, options, "addContentLength")) {
+      addContentLength = TRI_ObjectToBoolean(
+          isolate,
+          TRI_GetProperty(context, isolate, options, "addContentLength"));
+    }
 
     // return body as a buffer?
     if (TRI_HasProperty(context, isolate, options, "returnBodyAsBuffer")) {
@@ -987,7 +953,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   while (numRedirects < maxRedirects) {
     auto [endpoint, relative, error] =
-        getEndpoint(isolate, endpoints, url, lastEndpoint);
+        getEndpoint(endpoints, url, lastEndpoint);
     if (!error.empty()) {
       TRI_V8_THROW_SYNTAX_ERROR(error.c_str());
     }
@@ -1024,7 +990,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    SimpleHttpClientParams params(timeout, false);
+    SimpleHttpClientParams params(timeout, false, addContentLength);
     params.setSupportDeflate(false);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
@@ -1077,11 +1043,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         numRedirects++;
 
         isLocalUrl = false;
-        if (!url.empty() && url[0] == '/') {
+        if (url.starts_with('/')) {
           isLocalUrl = true;
         }
-        if (url.substr(0, 5) == "http:" || url.substr(0, 6) == "https:") {
-          lastEndpoint = GetEndpointFromUrl(url);
+        if (url.starts_with("http:") || url.starts_with("https:")) {
+          lastEndpoint = basics::StringUtils::getEndpointFromUrl(url);
         }
         continue;
       }
@@ -2335,7 +2301,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       uint32_t pos = 0;
 
-      for (auto level : levels) {
+      for (auto const& level : levels) {
         std::string output =
             level.first + "=" + Logger::translateLogLevel(level.second);
         v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
@@ -2381,17 +2347,12 @@ static void JS_Md5(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create md5
-  char hash[17];
-  char* p = &hash[0];
-  size_t length;
-
-  SslInterface::sslMD5(*str, str.length(), p, length);
+  char hash[16];
+  SslInterface::sslMD5(*str, str.length(), &hash[0]);
 
   // as hex
-  char hex[33];
-  p = &hex[0];
-
-  SslInterface::sslHEX(hash, 16, p, length);
+  char hex[32];
+  SslInterface::sslHEX(hash, 16, &hex[0]);
 
   // and return
   v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 32);
@@ -2898,7 +2859,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = TRI_WRITE(STDOUT_FILENO, ptr, static_cast<TRI_write_t>(len));
+      auto n = TRI_WRITE(STDOUT_FILENO, ptr, static_cast<TRI_write_t>(len));
 
       if (n < 0) {
         break;
@@ -2965,6 +2926,14 @@ static void ProcessStatisticsToV8(
   }
 
   auto context = TRI_IGETC;
+  auto userTime = (double)info._userTime;
+  auto systemTime = (double)info._systemTime;
+
+  if (info._scClkTck != 0) {
+    userTime = userTime / (double)info._scClkTck;
+    systemTime = systemTime / (double)info._scClkTck;
+  }
+
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
             v8::Number::New(isolate, (double)info._minorPageFaults))
@@ -2975,13 +2944,11 @@ static void ProcessStatisticsToV8(
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "userTime"),
-            v8::Number::New(isolate,
-                            (double)info._userTime / (double)info._scClkTck))
+            v8::Number::New(isolate, userTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "systemTime"),
-            v8::Number::New(isolate,
-                            (double)info._systemTime / (double)info._scClkTck))
+            v8::Number::New(isolate, systemTime))
       .FromMaybe(false);
   result
       ->Set(context, TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
@@ -3177,9 +3144,9 @@ static void JS_ReadPipe(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   char content[1024];
   size_t length = sizeof(content) - 1;
-  auto read_len = TRI_ReadPipe(proc, content, length);
+  auto readLen = TRI_ReadPipe(proc, content, length);
 
-  auto result = TRI_V8_PAIR_STRING(isolate, content, read_len);
+  auto result = TRI_V8_PAIR_STRING(isolate, content, readLen);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -3924,24 +3891,15 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha512
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA512(key.c_str(), key.size(), hash, hashLen);
+  char hash[64];
+  SslInterface::sslSHA512(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[128];
+  SslInterface::sslHEX(hash, 64, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 128);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -3967,24 +3925,15 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha384
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA384(key.c_str(), key.size(), hash, hashLen);
+  char hash[48];
+  SslInterface::sslSHA384(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[96];
+  SslInterface::sslHEX(hash, 48, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 96);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4010,24 +3959,15 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha256
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA256(key.c_str(), key.size(), hash, hashLen);
+  char hash[32];
+  SslInterface::sslSHA256(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[64];
+  SslInterface::sslHEX(hash, 32, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 64);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4053,24 +3993,15 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha224
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA224(key.c_str(), key.size(), hash, hashLen);
+  char hash[28];
+  SslInterface::sslSHA224(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[56];
+  SslInterface::sslHEX(hash, 28, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 56);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4096,24 +4027,15 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(isolate, args[0]);
 
   // create sha1
-  char* hash = nullptr;
-  size_t hashLen;
-
-  SslInterface::sslSHA1(key.c_str(), key.size(), hash, hashLen);
+  char hash[20];
+  SslInterface::sslSHA1(key.c_str(), key.size(), &hash[0]);
 
   // as hex
-  char* hex = nullptr;
-  size_t hexLen;
-
-  SslInterface::sslHEX(hash, hashLen, hex, hexLen);
-
-  delete[] hash;
+  char hex[40];
+  SslInterface::sslHEX(hash, 20, &hex[0]);
 
   // and return
-  v8::Handle<v8::String> hashStr =
-      TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
-
-  delete[] hex;
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 40);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -4150,7 +4072,7 @@ static void JS_RsaPrivSign(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::String> signStr =
-      TRI_V8_PAIR_STRING(isolate, sign.c_str(), (int)sign.size());
+      TRI_V8_PAIR_STRING(isolate, sign.c_str(), sign.size());
 
   TRI_V8_RETURN(signStr);
   TRI_V8_TRY_CATCH_END
@@ -4776,9 +4698,10 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (isExecutionDeadlineReached(isolate)) {
     return;
   }
-  ExternalId pid;
 
+  ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
+
   bool wait = false;
   if (args.Length() >= 2) {
     wait = TRI_ObjectToBoolean(isolate, args[1]);
@@ -4790,8 +4713,13 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   timeoutms = correctTimeoutToExecutionDeadline(timeoutms);
 
-  ExternalProcessStatus external =
-      TRI_CheckExternalProcess(pid, wait, timeoutms);
+  ExternalProcessStatus external;
+  auto historicStatus = getHistoricStatus(pid._pid, v8g->_server);
+  if (historicStatus.has_value()) {
+    external = *historicStatus;
+  } else {
+    external = TRI_CheckExternalProcess(pid, wait, timeoutms);
+  }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto context = TRI_IGETC;
@@ -4815,7 +4743,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                static_cast<int32_t>(external._exitStatus)))
         .FromMaybe(false);
   }
-  if (external._errorMessage.length() > 0) {
+  if (!external._errorMessage.empty()) {
     result
         ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
               TRI_V8_STD_STRING(isolate, external._errorMessage))
@@ -5284,6 +5212,7 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (0 < args.Length() && args[0]->IsObject()) {
     TRI_GET_GLOBAL_STRING(CodeKey);
     TRI_GET_GLOBAL_STRING(ErrorMessageKey);
+    TRI_GET_GLOBAL_STRING(OriginalKey);
 
     v8::Handle<v8::Object> data = TRI_ToObject(context, args[0]);
 
@@ -5310,6 +5239,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
                 TRI_GetProperty(context, isolate, data, ErrorMessageKey))
           .FromMaybe(false);
     }
+
+    self->Set(context, OriginalKey, data).FromMaybe(false);
   }
 
   {
@@ -6201,14 +6132,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
       TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
-
-#ifdef COVERAGE
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::True(isolate));
-#else
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::False(isolate));
-#endif
 
   TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "VERSION"),
                                TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));

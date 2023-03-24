@@ -34,10 +34,10 @@ A JSON object to set options for creating collections within this
 edge definition.
 
 @RESTSTRUCT{satellites,post_api_edgedef_create_opts,array,optional,string}
-An array of collection names that will be used to create SatelliteCollections
-for a Hybrid (Disjoint) SmartGraph (Enterprise Edition only). Each array element
-must be a string and a valid collection name. The collection type cannot be
-modified later.
+An array of collection names that is used to create SatelliteCollections
+for a (Disjoint) SmartGraph using SatelliteCollections (Enterprise Edition only).
+Each array element must be a string and a valid collection name.
+The collection type cannot be modified later.
 
 @RESTRETURNCODES
 
@@ -74,7 +74,7 @@ The information about the modified graph.
 @RESTRETURNCODE{400}
 Returned if the definition could not be added.
 This could be because it is ill-formed, or
-if the definition is used in an other graph with a different signature.
+if the definition is used in another graph with a different signature.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).

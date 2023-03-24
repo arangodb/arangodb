@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,9 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Expression.h"
+#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -37,7 +39,11 @@ PruneExpressionEvaluator::PruneExpressionEvaluator(
     size_t pathVarIdx, Expression* expr)
     : _pruneExpression(expr),
       _ctx(trx, query, cache, std::move(vars), std::move(regs), vertexVarIdx,
-           edgeVarIdx, pathVarIdx) {}
+           edgeVarIdx, pathVarIdx) {
+  TRI_ASSERT(_pruneExpression == nullptr ||
+             !ServerState::instance()->isRunningInCluster() ||
+             _pruneExpression->canRunOnDBServer(_ctx.vocbase().isOneShard()));
+}
 
 PruneExpressionEvaluator::~PruneExpressionEvaluator() = default;
 

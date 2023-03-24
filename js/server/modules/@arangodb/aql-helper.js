@@ -341,6 +341,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;
     delete results[i].stats.peakMemoryUsage;
+    delete results[i].stats.intermediateCommits;
     delete results[i].stats.fullCount;
 
     if (debug) {
@@ -392,6 +393,54 @@ function removeCost (obj) {
   }
 }
 
+function unpackRawExpression (node, transform = false) {
+  if (node.type === 'array') {
+    if (node.hasOwnProperty('raw')) {
+      node.subNodes = [];
+      node.raw.forEach((n) => {
+        node.subNodes.push(unpackRawExpression(n, true));
+      });
+      delete node.raw;
+    } else {
+      node.subNodes.map((s) => unpackRawExpression(s, false));
+    }
+  } else if (node.type === 'object') {
+    if (node.hasOwnProperty('raw')) {
+      node.subNodes = [];
+      let keys = Object.keys(node.raw);
+      keys.forEach((k) => {
+        node.subNodes.push({ type: "object element", name: k, subNodes: [unpackRawExpression(node.raw[k], true)] });
+      });
+      delete node.raw;
+    } else {
+      node.subNodes.map((s) => unpackRawExpression(s, false));
+    }
+  } else if (node.hasOwnProperty('subNodes') && node.subNodes.length) {
+    node.subNodes.map((s) => unpackRawExpression(s, false));
+  } else if (transform) {
+    return { type: 'value', value: node };
+  }
+  return node;
+}
+
+function sanitizeStats (stats) {
+  // remove these members from the stats because they don't matter
+  // for the comparisons
+  delete stats.scannedFull;
+  delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
+  delete stats.filtered;
+  delete stats.executionTime;
+  delete stats.httpRequests;
+  delete stats.fullCount;
+  delete stats.peakMemoryUsage;
+  delete stats.intermediateCommits;
+  return stats;
+}
+
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
@@ -410,3 +459,5 @@ exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
+exports.unpackRawExpression = unpackRawExpression;
+exports.sanitizeStats = sanitizeStats;

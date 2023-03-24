@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using namespace arangodb::transaction;
 using namespace arangodb::traverser;
 using VPackHelper = arangodb::basics::VelocyPackHelper;
 
@@ -381,7 +380,8 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression.reset(new aql::Expression(query.ast(), read));
+    _baseVertexExpression =
+        std::make_unique<aql::Expression>(query.ast(), read);
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);
@@ -392,7 +392,7 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
 }
 
 TraverserOptions::TraverserOptions(TraverserOptions const& other,
-                                   bool const allowAlreadyBuiltCopy)
+                                   bool allowAlreadyBuiltCopy)
     : BaseOptions(static_cast<BaseOptions const&>(other),
                   allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
@@ -417,21 +417,17 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     TRI_ASSERT(other._baseVertexExpression == nullptr);
   }
 
-  if (other.refactor()) {
-    // TODO: [GraphRefactor] Clean this up as soon as we get rid of all the old
-    // code
-    if (other._baseVertexExpression != nullptr) {
-      auto baseVertexExpression = other._baseVertexExpression->clone(
-          other._baseVertexExpression->ast());
-      _baseVertexExpression = std::move(baseVertexExpression);
-    }
-    if (!other._vertexExpressions.empty()) {
-      for (auto const& vertexExpressionPerDepth : other._vertexExpressions) {
-        auto depth = vertexExpressionPerDepth.first;
-        auto expression = vertexExpressionPerDepth.second->clone(
-            vertexExpressionPerDepth.second->ast());
-        _vertexExpressions.insert({depth, std::move(expression)});
-      }
+  if (other._baseVertexExpression != nullptr) {
+    auto baseVertexExpression =
+        other._baseVertexExpression->clone(other._baseVertexExpression->ast());
+    _baseVertexExpression = std::move(baseVertexExpression);
+  }
+  if (!other._vertexExpressions.empty()) {
+    for (auto const& vertexExpressionPerDepth : other._vertexExpressions) {
+      auto depth = vertexExpressionPerDepth.first;
+      auto expression = vertexExpressionPerDepth.second->clone(
+          vertexExpressionPerDepth.second->ast());
+      _vertexExpressions.insert({depth, std::move(expression)});
     }
   }
 
@@ -551,7 +547,6 @@ void TraverserOptions::buildEngineInfo(VPackBuilder& result) const {
   result.add("minDepth", VPackValue(minDepth));
   result.add("maxDepth", VPackValue(maxDepth));
   result.add("parallelism", VPackValue(_parallelism));
-  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
   result.add("neighbors", VPackValue(useNeighbors));
 
   result.add(VPackValue("uniqueVertices"));
@@ -716,14 +711,14 @@ auto TraverserOptions::explicitDepthLookupAt() const
     -> std::unordered_set<std::size_t> {
   std::unordered_set<std::size_t> result;
 
-  for (auto&& pair : _depthLookupInfo) {
+  for (auto const& pair : _depthLookupInfo) {
     result.insert(pair.first);
   }
   return result;
 }
 
 #ifndef USE_ENTERPRISE
-auto TraverserOptions::setDisjoint() -> void { return; }
+auto TraverserOptions::setDisjoint() -> void {}
 
 auto TraverserOptions::isDisjoint() const -> bool { return false; }
 
@@ -736,8 +731,7 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 #endif
 
 void TraverserOptions::initializeIndexConditions(
-    aql::Ast* ast,
-    std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
+    aql::Ast* ast, aql::VarInfoMap const& varInfo,
     aql::Variable const* indexVariable) {
   BaseOptions::initializeIndexConditions(ast, varInfo, indexVariable);
   for (auto& [unused, infos] : _depthLookupInfo) {

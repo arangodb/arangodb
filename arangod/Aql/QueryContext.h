@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,9 @@ class QueryContext {
 
   virtual ~QueryContext();
 
-  arangodb::ResourceMonitor& resourceMonitor() noexcept {
+  ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
+
+  ResourceMonitor const& resourceMonitor() const noexcept {
     return _resourceMonitor;
   }
 
@@ -100,6 +102,12 @@ class QueryContext {
   TRI_voc_tick_t id() const { return _queryId; }
 
   aql::Ast* ast();
+
+  /// @brief Acquire a lock_guard on the mutex to serialize concurrent snippet
+  /// execution
+  std::lock_guard<std::mutex> acquireLockGuard() {
+    return std::lock_guard{_mutex};
+  }
 
   void incHttpRequests(unsigned i) {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
@@ -148,7 +156,7 @@ class QueryContext {
 
  protected:
   /// @brief current resources and limits used by query
-  arangodb::ResourceMonitor _resourceMonitor;
+  ResourceMonitor _resourceMonitor;
 
   TRI_voc_tick_t const _queryId;
 
@@ -178,6 +186,12 @@ class QueryContext {
   std::unique_ptr<Ast> _ast;
 
   std::atomic<unsigned> _numRequests;
+
+  /// @brief this mutex is used to serialize execution of potentially concurrent
+  /// snippets as a result of using parallel gather.
+  /// In the future we might want to consider using an rwlock instead so that
+  /// read-only snippets can actually run concurrently.
+  std::mutex _mutex;
 };
 
 }  // namespace aql

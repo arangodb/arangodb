@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,8 +155,11 @@ void RestTransactionHandler::executeBegin() {
 
   if (found) {
     if (!ServerState::isDBServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
+      // it is not expected that the user sends a transaction ID to begin
+      // a transaction
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          "unexpected transaction ID received in begin transaction request");
       return;
     }
     // figure out the transaction ID
@@ -180,8 +183,9 @@ void RestTransactionHandler::executeBegin() {
   } else {
     if (!ServerState::isCoordinator(role) &&
         !ServerState::isSingleServer(role)) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
-                    "Not supported on this server type");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          "missing transaction ID in internal transaction begin request");
       return;
     }
 
@@ -403,6 +407,15 @@ RestTransactionHandler::forwardingTarget() {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
+    // do not forward if we don't have a transaction suffix. the
+    // number of suffixes validation will still be performed for PUT
+    // and DELETE requests later, so not returning an error from here
+    // is ok.
+    return {std::make_pair(StaticStrings::Empty, false)};
+  }
+
+  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "write") {
+    // no request forwarding for stopping write transactions
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
@@ -410,8 +423,18 @@ RestTransactionHandler::forwardingTarget() {
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
   if (sourceServer == ServerState::instance()->getShortId()) {
+    // we need to handle the request ourselves, because we own the
+    // id used in the request.
     return {std::make_pair(StaticStrings::Empty, false)};
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+
+  if (coordinatorId.empty()) {
+    return ResultT<std::pair<std::string, bool>>::error(
+        TRI_ERROR_TRANSACTION_NOT_FOUND,
+        "cannot find target server for transaction id");
+  }
+
+  return {std::make_pair(std::move(coordinatorId), false)};
 }

@@ -28,10 +28,10 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

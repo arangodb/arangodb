@@ -40,6 +40,7 @@
   load(`${startupPath}/common/bootstrap/scaffolding.js`);
   load(`${startupPath}/common/bootstrap/modules/internal.js`); // deps: -
   load(`${startupPath}/common/bootstrap/errors.js`); // deps: internal
+  load(`${startupPath}/common/bootstrap/exitcodes.js`); // deps: internal
   load(`${startupPath}/common/bootstrap/modules/console.js`); // deps: internal
   load(`${startupPath}/common/bootstrap/modules/assert.js`); // deps: -
   load(`${startupPath}/common/bootstrap/modules/buffer.js`); // deps: internal

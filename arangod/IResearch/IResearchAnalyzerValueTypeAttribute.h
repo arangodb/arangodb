@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,7 @@ enum class AnalyzerValueType : uint64_t {
 ENABLE_BITMASK_ENUM(AnalyzerValueType);
 
 struct AnalyzerValueTypeAttribute final : irs::attribute {
-  static constexpr irs::string_ref type_name() noexcept {
+  static constexpr std::string_view type_name() noexcept {
     return "value_type_attribute";
   }
   explicit AnalyzerValueTypeAttribute(

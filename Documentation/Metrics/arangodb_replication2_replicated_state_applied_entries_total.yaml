@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_state_applied_entries_total
-introducedIn: "3.10.0"
+introducedIn: "3.11.0"
 help: |
   Number of log entries applied to the internal state.
 unit: number

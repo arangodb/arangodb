@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,6 +68,16 @@ class GeneralCommTask : public CommTask {
 
   bool _reading;
   bool _writing;
+
+  void logRequestHeaders(
+      std::string_view protocol,
+      std::unordered_map<std::string, std::string> const& headers) const;
+  void logRequestBody(std::string_view protocol,
+                      arangodb::rest::ContentType contentType,
+                      std::string_view body, bool isResponse = false) const;
+  void logResponseHeaders(
+      std::string_view protocol,
+      std::unordered_map<std::string, std::string> const& headers) const;
 
  private:
   std::atomic<bool> _stopped;

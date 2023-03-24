@@ -25,25 +25,52 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
               <tr className="figuresHeader">
                 <ArangoTH seq={0} style={{ width: "100%" }}>
                   <ul className={'breadcrumb'}>
-                    <li>
+                    <li style={{
+                      textShadow: 'none',
+                      textDecoration: 'underline'
+                    }}>
                       <Link to={'/'}>Links</Link>
                       <span className="divider">
-                        <i className={'fa fa-long-arrow-right'}/>
+                        <i className={'fa fa-angle-double-right'}/>
                       </span>
                     </li>
                     {
                       fragments.slice(0, fragments.length - 1).map((fragment, idx) => {
                         const path = fragments.slice(0, idx + 1).join('/');
 
-                        return <li key={`${idx}-${fragment}`}>
-                          <Link to={`/${path}`}>{fragment}</Link>
+                        return <li key={`${idx}-${fragment}`} style={{
+                          textShadow: 'none',
+                          textDecoration: 'underline',
+                          display: 'inline-flex'
+                        }}>
+                          <Link
+                            style={{
+                              maxWidth: "200px",
+                              whiteSpace: 'nowrap',
+                              textOverflow: 'ellipsis',
+                              overflow: 'hidden',
+                              display: 'inline-block'
+                            }} 
+                            to={`/${path}`}
+                            title={fragment}>
+                              {fragment}
+                            </Link>
                           <span className="divider">
-                            <i className={'fa fa-long-arrow-right'}/>
+                            <i className={'fa fa-angle-double-right'}/>
                           </span>
                         </li>;
                       })
                     }
-                    <li className={'active'}>{fragments[fragments.length - 1]}</li>
+                    <li style={{
+                      textShadow: 'none',
+                      maxWidth: "200px",
+                      whiteSpace: 'nowrap',
+                      textOverflow: 'ellipsis',
+                      overflow: 'hidden',
+                      verticalAlign: 'middle'
+                    }}
+                    title={fragments[fragments.length - 1]}
+                    >{fragments[fragments.length - 1]}</li>
                   </ul>
                 </ArangoTH>
               </tr>

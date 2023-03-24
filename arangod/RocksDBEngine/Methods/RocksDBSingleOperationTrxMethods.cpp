@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,8 +35,9 @@
 using namespace arangodb;
 
 RocksDBSingleOperationTrxMethods::RocksDBSingleOperationTrxMethods(
-    RocksDBTransactionState* state, rocksdb::TransactionDB* db)
-    : RocksDBTrxBaseMethods(state, db) {
+    RocksDBTransactionState* state, IRocksDBTransactionCallback& callback,
+    rocksdb::TransactionDB* db)
+    : RocksDBTrxBaseMethods(state, callback, db) {
   TRI_ASSERT(_state->isSingleOperation());
   TRI_ASSERT(!_state->hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS));
 }

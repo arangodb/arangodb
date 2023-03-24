@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,6 +67,8 @@ struct ValidatorBase {
   std::string const& specialProperties() const;
   void setLevel(ValidationLevel level) noexcept { _level = level; }
   ValidationLevel level() { return _level; }
+
+  static bool isSame(VPackSlice validator1, VPackSlice validator2);
 
  protected:
   virtual void toVelocyPackDerived(VPackBuilder&) const = 0;

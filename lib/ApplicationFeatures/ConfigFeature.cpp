@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,23 +48,26 @@ using namespace arangodb::options;
 namespace arangodb {
 
 void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--configuration,-c", "the configuration file or 'none'",
+  options->addOption("--configuration,-c",
+                     "The configuration file or \"none\".",
                      new StringParameter(&_file));
 
   // add --config as an alias for --configuration. both point to the same
   // variable!
   options->addOption(
-      "--config", "the configuration file or 'none'",
+      "--config", "The configuration file or \"none\".",
       new StringParameter(&_file),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--define,-D", "define key=value for a @key@ entry in config file",
+      "--define,-D",
+      "Define a value for a `@key@` entry in the configuration file using the "
+      "syntax `\"key=value\"`.",
       new VectorParameter<StringParameter>(&_defines),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
-      "--check-configuration", "check the configuration and exit",
+      "--check-configuration", "Check the configuration and exit.",
       new BooleanParameter(&_checkConfiguration),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
@@ -143,7 +146,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
   std::string basename = progname;
   bool checkArangoImp = (progname == "arangoimport");
 
-  if (!StringUtils::isSuffix(basename, ".conf")) {
+  if (!basename.ends_with(".conf")) {
     basename += ".conf";
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@ inline constexpr char logContextKeyLeaderId[] = "leader-id";
 inline constexpr char logContextKeyLogComponent[] = "log-component";
 inline constexpr char logContextKeyStateComponent[] = "state-component";
 inline constexpr char logContextKeyStateImpl[] = "state-impl";
+inline constexpr char logContextKeyStateRole[] = "state-role";
 inline constexpr char logContextKeyMessageId[] = "message-id";
 inline constexpr char logContextKeyPrevLogIdx[] = "prev-log-idx";
 inline constexpr char logContextKeyPrevLogTerm[] = "prev-log-term";

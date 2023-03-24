@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <string_view>
 #include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
@@ -108,8 +109,8 @@ std::string makeIdFromParts(CollectionNameResolver const* resolver,
 
 /// @brief new object for insert, value must have _key set correctly.
 Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
-                          velocypack::Slice value, RevisionId& revisionId,
-                          velocypack::Builder& builder,
+                          std::string_view key, velocypack::Slice value,
+                          RevisionId& revisionId, velocypack::Builder& builder,
                           OperationOptions const& options,
                           transaction::BatchOptions& batchOptions);
 
@@ -156,7 +157,17 @@ class BuilderLeaser {
  public:
   explicit BuilderLeaser(transaction::Context*);
   explicit BuilderLeaser(transaction::Methods*);
+
+  BuilderLeaser(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser const&) = delete;
+  BuilderLeaser& operator=(BuilderLeaser&&) = delete;
+
+  BuilderLeaser(BuilderLeaser&& source)
+      : _transactionContext(source._transactionContext),
+        _builder(source.steal()) {}
+
   ~BuilderLeaser();
+
   inline arangodb::velocypack::Builder* builder() const noexcept {
     return _builder;
   }

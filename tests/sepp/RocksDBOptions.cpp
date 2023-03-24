@@ -149,6 +149,8 @@ RocksDBOptions::RocksDBOptions()
           .numThreadsLow = 1,
           .numThreadsHigh = 1,
 
+          .periodicCompactionTtl = 0,
+
           .maxTotalWalSize = 80 << 20,
           .allowFAllocate = true,
 
@@ -441,6 +443,9 @@ uint32_t RocksDBOptions::numThreadsHigh() const noexcept {
 }
 uint32_t RocksDBOptions::numThreadsLow() const noexcept {
   return _options.numThreadsLow;
+}
+uint64_t RocksDBOptions::periodicCompactionTtl() const noexcept {
+  return _options.periodicCompactionTtl;
 }
 
 }  // namespace arangodb::sepp
