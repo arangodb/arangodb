@@ -3,6 +3,13 @@ devel
 
 * FE-196: Add canvas interactions to Graph Viewer.
 
+* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+  disk after database is dropped.
+
+* Marked all memory-mapping options for Pregel as obsolete;
+  The memory mapping code was removed as it did not provide any advantages
+  over spilling into system-provided swap space.
+
 * FE-139 adds new search view type (search-alias).
 
 * Fixed BTS-902 (clicking on the search icon in the analyzers filter input used

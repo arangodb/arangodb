@@ -1352,7 +1352,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
           TRI_ASSERT(false);
           dbName = "n/a";
         }
-        Result res = databaseFeature.dropDatabase(id, true);
+        Result res = databaseFeature.dropDatabase(id);
         events::DropDatabase(dbName, res, ExecContext::current());
       }
     }
