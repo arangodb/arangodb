@@ -40,7 +40,15 @@ const LinkPropertiesInput = ({
   const hideInBackgroundField = disabled || basePath.includes(".fields");
 
   return (
-    <Grid templateColumns="1fr 1fr" columnGap="10">
+    <Grid
+      templateColumns="1fr 1fr"
+      columnGap="10"
+      border="2px solid"
+      borderColor="gray.300"
+      paddingX="4"
+      paddingY="2"
+      background="gray.200"
+    >
       <Stack spacing="4">
         <Stack>
           <FormLabel margin="0">Analyzers</FormLabel>

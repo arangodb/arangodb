@@ -49,9 +49,7 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) => {
           </Text>
         </HStack>
       </Box>
-      <Box paddingX="4" paddingY="2" background="gray.100">
-        {children}
-      </Box>
+      {children}
     </Box>
   );
 };
