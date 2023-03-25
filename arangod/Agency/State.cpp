@@ -680,21 +680,16 @@ int State::checkLog(index_t index, term_t term) const {
   std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // If index above highest entry
-  if (_log.size() > 0 && index > _log.back().index) {
+  if (!_log.empty() && index > _log.back().index) {
     return -1;
   }
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return 0;
   }
 
-  try {
-    return _log.at(index - _cur).term == term ? 1 : -1;
-  } catch (...) {
-  }
-
-  return 0;
+  return _log[index - _cur].term == term ? 1 : -1;
 }
 
 /// Have log with specified index and term
@@ -702,16 +697,11 @@ bool State::has(index_t index, term_t term) const {
   std::lock_guard mutexLocker{_logLock};  // Cannot be read lock (Compaction)
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return false;
   }
 
-  try {
-    return _log.at(index - _cur).term == term;
-  } catch (...) {
-  }
-
-  return false;
+  return _log[index - _cur].term == term;
 }
 
 /// Get vector of past transaction from 'start' to 'end'
@@ -1245,10 +1235,10 @@ bool State::loadRemaining(index_t cind) {
 /// Find entry by index and term
 bool State::find(index_t prevIndex, term_t prevTerm) {
   std::lock_guard mutexLocker{_logLock};
-  if (prevIndex > _log.size()) {
+  if (prevIndex >= _log.size()) {
     return false;
   }
-  return _log.at(prevIndex).term == prevTerm;
+  return _log[prevIndex].term == prevTerm;
 }
 
 index_t State::lastCompactionAt() const { return _lastCompactionAt; }

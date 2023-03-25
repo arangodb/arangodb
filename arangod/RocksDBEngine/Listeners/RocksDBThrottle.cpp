@@ -65,6 +65,7 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
                                  uint64_t lowerBoundBps)
     : _internalRocksDB(nullptr),
       _throttleState(ThrottleState::NotStarted),
+      _throttleData(std::make_unique<std::vector<ThrottleData_t>>(numSlots)),
       _replaceIdx(2),
       _throttleBps(0),
       _firstThrottle(true),
@@ -76,8 +77,6 @@ RocksDBThrottle::RocksDBThrottle(uint64_t numSlots, uint64_t frequency,
       _slowdownWritesTrigger(slowdownWritesTrigger),
       _lowerBoundThrottleBps(lowerBoundBps) {
   TRI_ASSERT(_scalingFactor != 0);
-  _throttleData = std::make_unique<std::vector<ThrottleData_t>>();
-  _throttleData->resize(numSlots);
 }
 
 // Shutdown the background thread only if it was ever started

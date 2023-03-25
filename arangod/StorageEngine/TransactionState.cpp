@@ -493,7 +493,9 @@ char const* TransactionState::actorName() const noexcept {
 }
 
 void TransactionState::coordinatorRerollTransactionId() {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isRunning());
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
@@ -546,7 +548,9 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   containers::FlatHashSet<ShardID> shards;
   shards.emplace(shard);
   chooseReplicasNolock(shards);
+  // cppcheck-suppress nullPointerRedundantCheck
   auto it = _chosenReplicas->find(shard);
+  // cppcheck-suppress nullPointerRedundantCheck
   TRI_ASSERT(it != _chosenReplicas->end());
   return it->second;
 }

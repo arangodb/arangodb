@@ -118,7 +118,7 @@ class MaintenanceFeature : public ArangodFeature {
   virtual void beginShutdown() override;
 
   // stop the feature
-  virtual void stop() override;
+  void stop() final;
 
   void initializeMetrics();
   //

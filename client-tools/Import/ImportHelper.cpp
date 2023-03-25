@@ -256,7 +256,7 @@ bool ImportHelper::readHeadersFile(std::string const& headersFile,
 
   std::string fileName(TRI_Basename(headersFile.c_str()));
   std::unique_ptr<arangodb::ManagedDirectory::File> fd =
-      directory.readableFile(fileName.c_str(), 0);
+      directory.readableFile(fileName, 0);
   if (!fd) {
     _errorMessages.push_back(TRI_LAST_ERROR_STR);
     return false;
@@ -398,7 +398,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -489,7 +489,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -631,7 +631,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   } else {
     // read filesize
     totalLength = TRI_SizeFile(pathName.c_str());
-    fd = directory.readableFile(fileName.c_str(), 0);
+    fd = directory.readableFile(fileName, 0);
 
     if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
@@ -933,7 +933,7 @@ std::vector<ImportHelper::Step> ImportHelper::tokenizeInput(
       }
       std::string inputSubstr = input.substr(pos1 + 1, pos2 - pos1 - 1);
       verifyMergeAttributesSyntax(inputSubstr);
-      verifyNestedAttributes(std::move(inputSubstr), key);
+      verifyNestedAttributes(inputSubstr, key);
       steps.emplace_back(std::move(inputSubstr), false);
       pos = pos2 + 1;
     } else {
