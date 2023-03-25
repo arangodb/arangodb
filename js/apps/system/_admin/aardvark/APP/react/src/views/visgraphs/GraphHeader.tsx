@@ -100,7 +100,7 @@ const SwitchToOld = () => {
       <IconButton
         size="sm"
         onClick={() => {
-          window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+          window.App.navigate(`#graph/${graphName}`, { trigger: true });
         }}
         icon={<RepeatClockIcon />}
         aria-label={"Switch to the old graph viewer"}
