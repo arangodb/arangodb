@@ -6,7 +6,7 @@ import { DeleteNodeModal } from "./DeleteNodeModal";
 import { EditEdgeModal } from "./EditEdgeModal";
 import { EditNodeModal } from "./EditNodeModal";
 import { AddEdgeHandler } from "./AddEdgeHandler";
-import { FetchFullGraphModal } from "../FetchFullGraphModal";
+import { LoadFullGraphModal } from "./LoadFullGraphModal";
 
 export const GraphModals = () => {
   const { selectedAction, loadFullGraph } = useGraph();
@@ -37,7 +37,7 @@ export const GraphModals = () => {
   }
 
   if (loadFullGraph) {
-    return <FetchFullGraphModal />;
+    return <LoadFullGraphModal />;
   }
 
   return null;

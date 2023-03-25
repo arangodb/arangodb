@@ -5,11 +5,11 @@ import {
   ModalBody,
   ModalFooter,
   ModalHeader
-} from "../../components/modal";
-import { useGraph } from "./GraphContext";
-import { UrlParametersContext } from "./url-parameters-context";
+} from "../../../components/modal";
+import { useGraph } from "../GraphContext";
+import { UrlParametersContext } from "../url-parameters-context";
 
-export const FetchFullGraphModal = () => {
+export const LoadFullGraphModal = () => {
   const { onClearAction, onApplySettings, setLoadFullGraph } = useGraph();
   const [_, setUrlParameters] = useContext(UrlParametersContext) || [];
 
