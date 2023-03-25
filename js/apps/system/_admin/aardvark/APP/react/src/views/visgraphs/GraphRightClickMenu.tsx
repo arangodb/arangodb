@@ -186,7 +186,7 @@ const NodeContextMenu = forwardRef(
               if (!rightClickedEntity.nodeId) {
                 return;
               }
-              onApplySettings({ startNode: rightClickedEntity.nodeId });
+              onApplySettings({ nodeStart: rightClickedEntity.nodeId });
             }}
           >
             Set as Start Node
