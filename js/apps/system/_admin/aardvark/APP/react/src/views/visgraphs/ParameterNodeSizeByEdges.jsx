@@ -1,7 +1,6 @@
-import { FormLabel } from "@chakra-ui/react";
+import { Checkbox, FormLabel } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
-import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterNodeSizeByEdges = () => {
@@ -24,10 +23,8 @@ const ParameterNodeSizeByEdges = () => {
       <FormLabel htmlFor="nodeSizeByEdges">Size by connections</FormLabel>
       <Checkbox
         id="nodeSizeByEdges"
-        inline
         checked={nodeSizeByEdges}
         onChange={handleChange}
-        template={"graphviewer"}
       />
       <InfoTooltip
         label={

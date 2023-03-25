@@ -1,7 +1,6 @@
-import { FormLabel } from "@chakra-ui/react";
+import { Checkbox, FormLabel } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
-import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterNodeColorByCollection = () => {
@@ -26,10 +25,8 @@ const ParameterNodeColorByCollection = () => {
       </FormLabel>
       <Checkbox
         id="nodeColorByCollection"
-        inline
         checked={nodeColorByCollection}
         onChange={handleChange}
-        template={"graphviewer"}
       />
       <InfoTooltip
         label={

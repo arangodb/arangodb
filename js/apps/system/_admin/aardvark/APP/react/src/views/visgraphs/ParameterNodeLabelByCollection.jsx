@@ -1,7 +1,6 @@
-import { FormLabel } from "@chakra-ui/react";
+import { Checkbox, FormLabel } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
-import Checkbox from "./components/pure-css/form/Checkbox.tsx";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
@@ -26,10 +25,8 @@ const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
       </FormLabel>
       <Checkbox
         id="nodeLabelByCollection"
-        inline
         checked={nodeLabelByCollection}
         onChange={handleChange}
-        template={"graphviewer"}
       />
       <InfoTooltip label={"Adds a collection name to the node label."} />
     </>
