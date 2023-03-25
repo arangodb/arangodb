@@ -72,6 +72,7 @@ export const GraphNetwork = () => {
     <>
       <GraphRightClickMenu visJsRef={visJsRef} />
       <div
+        id="graphNetworkDiv"
         ref={visJsRef}
         style={{
           height: "90vh",
