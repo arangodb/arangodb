@@ -3,7 +3,7 @@ import { Box, HStack, Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import React from "react";
 import { CloudDownload, Fullscreen } from "styled-icons/material";
 import { useGraph } from "./GraphContext";
-import { GraphSettings } from "./GraphSettings";
+import { GraphSettings } from "./graphSettings/GraphSettings";
 
 export const GraphHeader = () => {
   const { graphName } = useGraph();

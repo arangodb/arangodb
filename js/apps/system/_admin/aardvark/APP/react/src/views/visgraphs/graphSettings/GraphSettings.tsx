@@ -18,7 +18,7 @@ import React, { ReactNode } from "react";
 import { AccordionEdgesContent } from "./AccordionEdgesContent";
 import { AccordionGraphContent } from "./AccordionGraphContent";
 import { AccordionNodesContent } from "./AccordionNodesContent";
-import { useGraph } from "./GraphContext";
+import { useGraph } from "../GraphContext";
 
 export const GraphSettings = () => {
   return (

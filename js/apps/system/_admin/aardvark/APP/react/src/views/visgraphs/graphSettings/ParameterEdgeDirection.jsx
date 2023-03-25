@@ -1,8 +1,8 @@
 import { Checkbox, FormLabel } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
+import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 
-import { UrlParametersContext } from "./url-parameters-context";
+import { UrlParametersContext } from "../url-parameters-context";
 
 const ParameterEdgeDirection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);

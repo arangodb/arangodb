@@ -1,7 +1,7 @@
 import { FormLabel, Select } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "./url-parameters-context";
+import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
+import { UrlParametersContext } from "../url-parameters-context";
 
 const GraphLayoutSelector = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);

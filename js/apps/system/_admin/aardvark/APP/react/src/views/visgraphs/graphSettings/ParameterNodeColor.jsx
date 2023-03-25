@@ -1,6 +1,6 @@
 import { FormLabel, Input, Spacer } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "./url-parameters-context";
+import { UrlParametersContext } from "../url-parameters-context";
 
 const ParameterNodeColor = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
