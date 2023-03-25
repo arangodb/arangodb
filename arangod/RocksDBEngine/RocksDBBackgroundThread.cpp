@@ -72,8 +72,9 @@ void RocksDBBackgroundThread::run() {
   while (!isStopping()) {
     {
       std::unique_lock guard{_condition.mutex};
-      _condition.cv.wait_for(
-          guard, std::chrono::seconds{static_cast<uint64_t>(_interval)});
+      _condition.cv.wait_for(guard,
+                             std::chrono::microseconds{
+                                 static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
     if (_engine.inRecovery()) {

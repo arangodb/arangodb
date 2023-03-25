@@ -118,9 +118,8 @@ void RocksDBSyncThread::run() {
         auto const end = _lastSyncTime + _interval;
         if (end > now) {
           _condition.cv.wait_for(
-              guard, std::chrono::microseconds(
-                         std::chrono::duration_cast<std::chrono::microseconds>(
-                             end - now)));
+              guard,
+              std::chrono::duration_cast<std::chrono::microseconds>(end - now));
         }
 
         if (_lastSyncTime > previousLastSyncTime) {

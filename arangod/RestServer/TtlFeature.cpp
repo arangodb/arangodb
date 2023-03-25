@@ -214,9 +214,8 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
         // wait for our start...
         _condition.cv.wait_for(
-            guard, std::chrono::microseconds(
-                       std::chrono::duration_cast<std::chrono::microseconds>(
-                           _nextStart - now)));
+            guard, std::chrono::duration_cast<std::chrono::microseconds>(
+                       _nextStart - now));
       }
 
       // properties may have changed... update them

@@ -960,7 +960,6 @@ void Supervision::reportStatus(std::string const& status) {
   bool persist = false;
 
   {  // Do I have to report to agency under
-
     if (auto modeString = snapshot().hasAsString("/Supervision/State/Mode");
         !modeString || modeString.value() != status) {
       // This includes the case that the mode is not set, since status

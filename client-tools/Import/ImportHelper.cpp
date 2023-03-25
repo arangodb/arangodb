@@ -1520,7 +1520,7 @@ SenderThread* ImportHelper::findIdleSender() {
     }
 
     std::unique_lock guard{_threadsCondition.mutex};
-    _threadsCondition.cv.wait_for(guard, std::chrono::microseconds{10000});
+    _threadsCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
   return nullptr;
 }
