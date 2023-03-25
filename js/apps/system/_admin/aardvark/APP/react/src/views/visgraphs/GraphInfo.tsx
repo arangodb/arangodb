@@ -18,9 +18,11 @@ export const GraphInfo = () => {
       <Tag size={"md"} background="gray.800" color="white">
         {`Response time: ${fetchDuration} ms`}
       </Tag>
-      <Tag size={"md"} background="gray.800" color="white">
-        {selectedEntity && `_id: ${selectedEntity}`}
-      </Tag>
+      {selectedEntity && (
+        <Tag size={"md"} background="gray.800" color="white">
+          {`_id: ${selectedEntity}`}
+        </Tag>
+      )}
     </HStack>
   );
 };
