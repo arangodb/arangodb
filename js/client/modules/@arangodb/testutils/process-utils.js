@@ -463,7 +463,7 @@ function killRemainingProcesses(results) {
     }
     internal.removePidFromMonitor(running[i].pid);
   }
-  time.sleep(1);
+  sleep(1);
   for (let i = 0; i < running.length; i++) {
     let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
     print('VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV');
