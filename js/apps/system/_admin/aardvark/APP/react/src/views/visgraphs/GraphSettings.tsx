@@ -104,7 +104,7 @@ const GraphAccordionItem = ({
 const ApplyButton = () => {
   const { onApplySettings } = useGraph();
   return (
-    <Button colorScheme="green" onClick={onApplySettings}>
+    <Button colorScheme="green" onClick={() => onApplySettings()}>
       Apply
     </Button>
   );

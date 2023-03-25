@@ -3,11 +3,13 @@ import React, {
   forwardRef,
   LegacyRef,
   MutableRefObject,
+  useContext,
   useEffect,
   useState
 } from "react";
 import { ContextMenu } from "../../components/contextMenu/ContextMenu";
-import { useGraph } from "./GraphContext";
+import { fetchVisData, useGraph } from "./GraphContext";
+import { UrlParametersContext } from "./url-parameters-context";
 
 export const GraphRightClickMenu = ({
   visJsRef
@@ -107,8 +109,15 @@ const EdgeContextMenu = forwardRef((_props, ref: LegacyRef<HTMLDivElement>) => {
 
 const NodeContextMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
-    const { selectedEntity, setSelectedAction } = useGraph();
-    if (!selectedEntity) {
+    const {
+      selectedEntity,
+      setSelectedAction,
+      onApplySettings,
+      graphName,
+      datasets
+    } = useGraph();
+    const [urlParameters] = useContext(UrlParametersContext) || [];
+    if (!selectedEntity || !selectedEntity.nodeId) {
       return null;
     }
     return (
@@ -134,8 +143,54 @@ const NodeContextMenu = forwardRef(
           >
             Edit Node
           </MenuItem>
-          <MenuItem>Expand Node</MenuItem>
-          <MenuItem>Set as Start Node</MenuItem>
+          <MenuItem
+            onClick={async () => {
+              if (!selectedEntity.nodeId) {
+                return;
+              }
+              const params = {
+                ...(urlParameters as any),
+                query:
+                  "FOR v, e, p IN 1..1 ANY '" +
+                  selectedEntity.nodeId +
+                  "' GRAPH '" +
+                  graphName +
+                  "' RETURN p"
+              };
+              const newData = await fetchVisData({
+                graphName,
+                params
+              });
+              const foundNode = datasets?.nodes.get(selectedEntity.nodeId);
+              const newLabel = foundNode?.label
+                ? `${foundNode.label} (expanded)`
+                : `(expanded)`;
+              datasets?.nodes.updateOnly({
+                id: selectedEntity.nodeId,
+                label: newLabel
+              });
+              const newNodes = newData.nodes.filter((node: any) => {
+                return !datasets?.nodes.get(node.id);
+              });
+              const newEdges = newData.edges.filter((edge: any) => {
+                return !datasets?.edges.get(edge.id);
+              });
+              datasets?.nodes.add(newNodes);
+              datasets?.edges.add(newEdges);
+            }}
+          >
+            Expand Node
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              if (!selectedEntity.nodeId) {
+                return;
+              }
+              onApplySettings({ startNode: selectedEntity.nodeId });
+            }}
+          >
+            Set as Start Node
+          </MenuItem>
         </MenuOptionGroup>
       </MenuList>
     );

@@ -11,8 +11,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 
 export const FetchFullGraphModal = () => {
   const { onClearAction, onApplySettings, setLoadFullGraph } = useGraph();
-  const [urlParameters, setUrlParameters] =
-    useContext(UrlParametersContext) || [];
+  const [_, setUrlParameters] = useContext(UrlParametersContext) || [];
 
   return (
     <Modal isOpen onClose={onClearAction}>
@@ -30,7 +29,7 @@ export const FetchFullGraphModal = () => {
               (setUrlParameters as any)?.((urlParameters: any) => {
                 return { ...urlParameters, mode: "all" };
               });
-              onApplySettings({ ...(urlParameters as any), mode: "all" });
+              onApplySettings({ mode: "all" });
               setLoadFullGraph(false);
             }}
           >

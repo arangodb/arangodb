@@ -1,5 +1,4 @@
 import { useDisclosure } from "@chakra-ui/react";
-import { ArangojsResponse } from "arangojs/lib/request.node";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import useSWR from "swr";
 import { DataSet, Network } from "vis-network";
@@ -35,7 +34,7 @@ type DatasetsType = {
 type GraphContextType = {
   graphData: VisGraphData | undefined;
   graphName: string;
-  onApplySettings: (urlParameters?: any) => void;
+  onApplySettings: (updatedParams?: { [key: string]: string }) => void;
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
@@ -58,18 +57,18 @@ const GraphContext = createContext<GraphContextType>({
   graphName: ""
 } as GraphContextType);
 
-const fetchVisData = ({
+export const fetchVisData = async ({
   graphName,
   params
 }: {
   graphName: string;
   params: typeof URLPARAMETERS;
 }) => {
-  return getRouteForDB(window.frontendConfig.db, "_admin")
-    .get(`/aardvark/visgraph/${graphName}`, params)
-    .then(data => {
-      return data;
-    });
+  const data = await getRouteForDB(window.frontendConfig.db, "_admin").get(
+    `/aardvark/visgraph/${graphName}`,
+    params
+  );
+  return data.body;
 };
 
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
@@ -82,7 +81,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
 
   const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
   const [params, setParams] = useState(URLPARAMETERS);
-  const { data, isLoading: isGraphLoading } = useSWR<ArangojsResponse>(
+  const { data: graphData, isLoading: isGraphLoading } = useSWR<VisGraphData>(
     ["visData", graphName, params],
     () => fetchVisData({ graphName, params }),
     {
@@ -90,13 +89,14 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       revalidateIfStale: true
     }
   );
-  const graphData = data && (data.body as VisGraphData);
-  const onApplySettings = (params?: any) => {
-    let { nodeStart } = params || urlParameters;
+
+  const onApplySettings = (updatedParams?: { [key: string]: string }) => {
+    const newParams = { ...urlParameters, ...updatedParams };
+    let { nodeStart } = newParams;
     if (!nodeStart) {
       nodeStart = graphData?.settings.startVertex._id || nodeStart;
     }
-    setParams({ ...(params || urlParameters), nodeStart });
+    setParams({ ...newParams, nodeStart });
   };
   const {
     onOpen: onOpenSettings,
