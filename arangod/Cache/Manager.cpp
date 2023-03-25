@@ -208,7 +208,7 @@ void Manager::shutdown() {
 
     while (globalProcessRunning()) {
       // wait for rebalancer and migration tasks to complete
-      cpu_relax()
+      cpu_relax();
     }
 
     while (!_caches.empty()) {

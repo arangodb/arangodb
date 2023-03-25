@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <random>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::pregel;

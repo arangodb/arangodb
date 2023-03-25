@@ -27,6 +27,8 @@
 
 #include "RestServer/arangod.h"
 
+#include <mutex>
+
 namespace arangodb {
 
 class CpuUsageFeature final : public ArangodFeature {

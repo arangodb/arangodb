@@ -33,6 +33,7 @@
 #include "RestServer/arangod.h"
 
 #include <list>
+#include <mutex>
 
 struct TRI_vocbase_t;
 

@@ -37,6 +37,8 @@
 #include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
+#include <mutex>
+
 namespace arangodb {
 
 namespace velocypack {

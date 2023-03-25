@@ -825,9 +825,9 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     }
 
     do {
-      cpu_relax()
+      cpu_relax();
 
-          work = checkAllQueues(maxCheckedQueue);
+      work = checkAllQueues(maxCheckedQueue);
       if (work != nullptr) {
         return std::unique_ptr<WorkItemBase>(work);
       }

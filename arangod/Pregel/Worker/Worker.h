@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
 #include "Basics/Guarded.h"

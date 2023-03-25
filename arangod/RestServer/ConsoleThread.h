@@ -27,6 +27,8 @@
 #include "V8Server/V8Context.h"
 #include "RestServer/arangod.h"
 
+#include <mutex>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {

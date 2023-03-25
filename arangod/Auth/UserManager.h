@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Auth/Common.h"
 #include "Auth/User.h"
 

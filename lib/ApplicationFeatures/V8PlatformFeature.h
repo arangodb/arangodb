@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>

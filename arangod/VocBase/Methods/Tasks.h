@@ -26,6 +26,7 @@
 #pragma once
 
 #include <chrono>
+#include <mutex>
 
 #include <v8.h>
 #include <velocypack/Builder.h>

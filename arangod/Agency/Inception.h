@@ -24,6 +24,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 
 #include "Agency/AgencyCommon.h"
 #include "Basics/Common.h"

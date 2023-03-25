@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include <mutex>
 
 namespace arangodb {
 namespace velocypack {

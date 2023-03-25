@@ -24,6 +24,7 @@
 #pragma once
 
 #include <atomic>
+#include <mutex>
 #include <vector>
 
 #include "Basics/Common.h"

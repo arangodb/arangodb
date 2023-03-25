@@ -32,6 +32,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <thread>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>

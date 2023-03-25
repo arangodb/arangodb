@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/Common.h"

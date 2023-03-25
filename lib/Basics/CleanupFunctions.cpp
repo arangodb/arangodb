@@ -23,6 +23,8 @@
 
 #include "CleanupFunctions.h"
 
+#include <mutex>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

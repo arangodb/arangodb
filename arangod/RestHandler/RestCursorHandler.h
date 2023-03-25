@@ -32,6 +32,8 @@
 
 #include "Scheduler/Scheduler.h"
 
+#include <mutex>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;

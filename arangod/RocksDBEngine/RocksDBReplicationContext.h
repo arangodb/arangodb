@@ -49,6 +49,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <mutex>
 
 namespace rocksdb {
 class Comparator;

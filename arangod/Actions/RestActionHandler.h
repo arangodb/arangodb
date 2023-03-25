@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include "Actions/actions.h"

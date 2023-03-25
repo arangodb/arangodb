@@ -28,6 +28,7 @@
 #include "V8Server/GlobalContextMethods.h"
 
 #include <atomic>
+#include <mutex>
 #include <string_view>
 
 #include <v8.h>

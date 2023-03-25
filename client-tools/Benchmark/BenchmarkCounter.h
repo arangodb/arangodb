@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <mutex>
+
 namespace arangodb {
 namespace arangobench {
 

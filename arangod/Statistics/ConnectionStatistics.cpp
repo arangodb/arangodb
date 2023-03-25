@@ -25,6 +25,7 @@
 
 #include "Rest/CommonDefines.h"
 
+#include <mutex>
 #include <thread>
 #include <vector>
 

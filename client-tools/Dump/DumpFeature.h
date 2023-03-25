@@ -34,6 +34,7 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 

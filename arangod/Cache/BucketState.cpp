@@ -67,7 +67,7 @@ bool BucketState::lock(std::uint64_t maxTries) noexcept {
       }
     }
     attempt++;
-    cpu_relax()
+    cpu_relax();
     // TODO: exponential back-off for failure?
   }
 

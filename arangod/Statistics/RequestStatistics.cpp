@@ -24,6 +24,7 @@
 #include "RequestStatistics.h"
 
 #include <iomanip>
+#include <mutex>
 #include <thread>
 #include <vector>
 
