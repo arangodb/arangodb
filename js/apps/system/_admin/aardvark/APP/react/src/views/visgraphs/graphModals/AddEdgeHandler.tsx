@@ -20,7 +20,7 @@ export const AddEdgeHandler = () => {
 
   return (
     <>
-      <Alert status="info" position="absolute" top="10">
+      <Alert status="info" position="absolute" top="10" width="auto">
         <AlertIcon />
         <Stack spacing={4} direction="row" align="center">
           <Text fontSize="md">
