@@ -3,7 +3,7 @@ import React, { useContext, useState } from "react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
 import { UrlParametersContext } from "./url-parameters-context";
 
-const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
+const ParameterNodeLabelByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeLabelByCollection, setNodeLabelByCollection] = useState(
     urlParameters.nodeLabelByCollection
