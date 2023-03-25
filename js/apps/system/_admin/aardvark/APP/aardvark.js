@@ -1067,14 +1067,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
     });
   });
 
-  let vertexCollections = graph._vertexCollections();
-  if (!vertexCollections || vertexCollections.length === 0) {
+  var graphVertexCollections = graph._vertexCollections();
+  if (!graphVertexCollections || graphVertexCollections.length === 0) {
     res.throw('404 NOT FOUND', 'no vertex collections found for graph');
   }
 
-  vertexCollections = [];
+  var vertexCollections = [];
 
-  _.each(graph._vertexCollections(), function (vertex) {
+  _.each(graphVertexCollections, function (vertex) {
     vertexCollections.push({
       name: vertex.name(),
       id: vertex._id
