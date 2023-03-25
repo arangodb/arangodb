@@ -2,11 +2,11 @@ import { useDisclosure } from "@chakra-ui/react";
 import { ArangojsResponse } from "arangojs/lib/request.node";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import useSWR from "swr";
-import { Network } from "vis-network";
+import { DataSet, Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
-import { VisGraphData } from "./VisGraphData.types";
+import { EdgeDataType, NodeDataType, VisGraphData } from "./VisGraphData.types";
 
 type SelectedEntityType = {
   type: string;
@@ -19,6 +19,7 @@ export type SelectedActionType = {
   entityType?: "node" | "edge";
   from?: string;
   to?: string;
+  callback?: any;
   entity: SelectedEntityType;
 };
 
@@ -27,6 +28,10 @@ type AddEdgeArgs = {
   callback: any;
 };
 
+type DatasetsType = {
+  nodes: DataSet<NodeDataType>;
+  edges: DataSet<EdgeDataType>;
+};
 type GraphContextType = {
   graphData: VisGraphData | undefined;
   graphName: string;
@@ -34,6 +39,8 @@ type GraphContextType = {
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
+  datasets?: DatasetsType;
+  setDatasets: (datasets: DatasetsType) => void;
   selectedEntity?: SelectedEntityType;
   setSelectedEntity: (selectedEntity: SelectedEntityType | undefined) => void;
   selectedAction?: SelectedActionType;
@@ -67,6 +74,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
   let [network, setNetwork] = useState<Network>();
+  const [datasets, setDatasets] = useState<DatasetsType>();
   let [selectedEntity, setSelectedEntity] = useState<SelectedEntityType>();
 
   const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
@@ -101,12 +109,12 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const onClearAction = () => {
     setSelectedAction(undefined);
   };
-  const onAddEdge = ({ data }: AddEdgeArgs) => {
+  const onAddEdge = ({ data, callback }: AddEdgeArgs) => {
     setSelectedAction(action => {
       if (!action) {
         return;
       }
-      return { ...action, from: data.from, to: data.to };
+      return { ...action, from: data.from, to: data.to, callback };
     });
   };
   return (
@@ -126,7 +134,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         isGraphLoading,
         selectedEntity,
         setSelectedEntity,
-        onAddEdge
+        onAddEdge,
+        datasets,
+        setDatasets
       }}
     >
       <UrlParametersContext.Provider

@@ -1,6 +1,6 @@
 import { ArangojsResponse } from "arangojs/lib/request.node";
 
-type NodeType = {
+export type NodeDataType = {
   id: string;
   label: string;
   size: number;
@@ -23,7 +23,7 @@ type NodeType = {
     y: number;
   };
 };
-type EdgeType = {
+export type EdgeDataType = {
   id: string;
   source: string;
   from: string;
@@ -112,8 +112,8 @@ type SettingsType = {
   connectionsMinMax: (number | null)[];
 };
 export type VisGraphData = {
-  nodes: NodeType[];
-  edges: EdgeType[];
+  nodes: NodeDataType[];
+  edges: EdgeDataType[];
   settings: SettingsType;
 };
 export interface VisDataResponse extends ArangojsResponse {

@@ -6,24 +6,16 @@ import {
   ModalFooter,
   ModalHeader
 } from "../../../components/modal";
-import {
-  getCurrentDB
-} from "../../../utils/arangoClient";
-import { SelectedActionType, useGraph } from "../GraphContext";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { useGraph } from "../GraphContext";
 import { AttributesInfo } from "./AttributesInfo";
 import { useNodeData } from "./useNodeData";
 
-const useDeleteNodeAction = ({
-  selectedAction,
-  deleteEdges,
-  graphName
-}: {
-  selectedAction?: SelectedActionType;
-  deleteEdges: boolean;
-  graphName: string;
-}) => {
+const useDeleteNodeAction = ({ deleteEdges }: { deleteEdges: boolean }) => {
+  const { datasets, graphName, selectedAction, onClearAction } = useGraph();
   const { nodeId } = selectedAction?.entity || {};
   const { nodeData } = useNodeData({ nodeId });
+
   const deleteNode = async (nodeId: string) => {
     const slashPos = nodeId.indexOf("/");
     const collection = nodeId.substring(0, slashPos);
@@ -40,6 +32,8 @@ const useDeleteNodeAction = ({
         window.arangoHelper.arangoNotification(
           `The node ${nodeId} and connected edges were successfully deleted`
         );
+        datasets?.nodes.remove(nodeId);
+        onClearAction();
       } catch (e) {
         console.log("Error: ", e);
         window.arangoHelper.arangoError("Graph", "Could not delete node.");
@@ -53,6 +47,8 @@ const useDeleteNodeAction = ({
         window.arangoHelper.arangoNotification(
           `The node ${nodeId} was successfully deleted`
         );
+        datasets?.nodes.remove(nodeId);
+        onClearAction();
       } catch (e) {
         console.log("Error: ", e);
         window.arangoHelper.arangoError("Graph", "Could not delete node.");
@@ -64,12 +60,10 @@ const useDeleteNodeAction = ({
 };
 
 export const DeleteNodeModal = () => {
-  const { graphName, selectedAction, onClearAction } = useGraph();
+  const { onClearAction } = useGraph();
   const [deleteEdges, setDeleteEdges] = useState(true);
   const { nodeId, nodeData, deleteNode } = useDeleteNodeAction({
-    selectedAction,
-    deleteEdges,
-    graphName
+    deleteEdges
   });
 
   if (!nodeId) {

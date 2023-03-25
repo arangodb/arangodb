@@ -36,16 +36,16 @@ function registerNetwork(newNetwork: Network) {
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
-  const { graphData, setNetwork, onAddEdge } = useGraph();
+  const { graphData, setNetwork, setDatasets, onAddEdge } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
-
   useEffect(() => {
     if (!nodes || !edges || !visJsRef.current) {
       return;
     }
     const nodesDataSet = new DataSet(nodes);
     const edgesDataSet = new DataSet(edges);
+    setDatasets({ nodes: nodesDataSet, edges: edgesDataSet });
     const newOptions = {
       ...options,
       manipulation: {
@@ -65,6 +65,7 @@ export const GraphNetwork = () => {
     );
     setNetwork(newNetwork);
     registerNetwork(newNetwork);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
 
   return (

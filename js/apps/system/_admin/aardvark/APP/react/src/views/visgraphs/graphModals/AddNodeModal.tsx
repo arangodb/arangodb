@@ -6,6 +6,7 @@ import {
   Select,
   Stack
 } from "@chakra-ui/react";
+import { DocumentMetadata } from "arangojs/documents";
 import { JsonEditor } from "jsoneditor-react";
 import React, { useState } from "react";
 import {
@@ -17,6 +18,11 @@ import {
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useGraph } from "../GraphContext";
+import { NodeDataType } from "../VisGraphData.types";
+
+type AddNodeResponse = DocumentMetadata & {
+  new?: { _key: string; _id: string; _rev: string };
+};
 
 const useAddNodeAction = ({
   graphName,
@@ -24,7 +30,7 @@ const useAddNodeAction = ({
   onFailure
 }: {
   graphName: string;
-  onSuccess: () => void;
+  onSuccess: (response: AddNodeResponse) => void;
   onFailure: () => void;
 }) => {
   const addNode = async ({
@@ -37,11 +43,11 @@ const useAddNodeAction = ({
     const db = getCurrentDB();
     const graphCollection = db.graph(graphName).vertexCollection(collection);
     try {
-      const resonse = await graphCollection.save(data, { returnNew: true });
+      const response = await graphCollection.save(data, { returnNew: true });
       window.arangoHelper.arangoNotification(
-        `The node ${resonse.new._id} was successfully created`
+        `The node ${response.new._id} was successfully created`
       );
-      onSuccess();
+      onSuccess(response);
     } catch (error) {
       console.log("Error adding this node: ", error);
       window.arangoHelper.arangoError("Graph", "Could not add node.");
@@ -52,11 +58,20 @@ const useAddNodeAction = ({
 };
 
 export const AddNodeModal = () => {
-  const { graphName, onClearAction, graphData } = useGraph();
+  const { graphName, onClearAction, datasets, graphData } = useGraph();
   const { vertexCollections } = graphData?.settings || {};
   const { addNode } = useAddNodeAction({
     graphName,
-    onSuccess: onClearAction,
+    onSuccess: response => {
+      const { _id: id, _key: label } = response.new || {};
+      const nodeModel = {
+        id,
+        label,
+        shape: "dot"
+      };
+      datasets?.nodes.add(nodeModel as NodeDataType);
+      onClearAction();
+    },
     onFailure: onClearAction
   });
 

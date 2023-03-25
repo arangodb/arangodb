@@ -13,6 +13,7 @@ import { useEdgeData } from "./useEdgeData";
 const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
   const { edgeId } = selectedAction?.entity || {};
   const { edgeData } = useEdgeData({ edgeId });
+  const { datasets, onClearAction } = useGraph();
 
   const deleteEdge = (edgeId: string) => {
     const slashPos = edgeId.indexOf("/");
@@ -27,6 +28,8 @@ const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
         window.arangoHelper.arangoNotification(
           `The edge ${edgeId} was successfully deleted`
         );
+        datasets?.edges.remove(edgeId);
+        onClearAction();
       })
       .catch(() => {
         console.log("ERROR: Could not delete edge");

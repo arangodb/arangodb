@@ -7,6 +7,7 @@ import {
   Select,
   Stack
 } from "@chakra-ui/react";
+import { DocumentMetadata } from "arangojs/documents";
 import { JsonEditor } from "jsoneditor-react";
 import React, { useState } from "react";
 import {
@@ -19,13 +20,16 @@ import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useGraph } from "../GraphContext";
 
+type SaveEdgeResponse = DocumentMetadata & {
+  new: { _id: string; _key: string; _to: string; _from: string };
+};
 const useAddEdgeAction = ({
   graphName,
   onSuccess,
   onFailure
 }: {
   graphName: string;
-  onSuccess: () => void;
+  onSuccess: (response: SaveEdgeResponse) => void;
   onFailure: () => void;
 }) => {
   const addEdge = async ({
@@ -38,11 +42,13 @@ const useAddEdgeAction = ({
     const db = getCurrentDB();
     const graphCollection = db.graph(graphName).edgeCollection(collection);
     try {
-      const resonse = await graphCollection.save(data, { returnNew: true });
+      const response = (await graphCollection.save(data, {
+        returnNew: true
+      })) as SaveEdgeResponse;
       window.arangoHelper.arangoNotification(
-        `The edge ${resonse.new._id} was successfully created`
+        `The edge ${response.new._id} was successfully created`
       );
-      onSuccess();
+      onSuccess(response);
     } catch (error) {
       console.log("Error creating this edge: ", error);
       window.arangoHelper.arangoError("Graph", "Could not create edge.");
@@ -55,9 +61,21 @@ const useAddEdgeAction = ({
 export const AddEdgeModal = () => {
   const { graphName, onClearAction, graphData, selectedAction } = useGraph();
   const { edgesCollections } = graphData?.settings || {};
+  const { from, to } = selectedAction || {};
   const { addEdge } = useAddEdgeAction({
     graphName,
-    onSuccess: onClearAction,
+    onSuccess: response => {
+      const { _id: id, _key: label, _from: from, _to: to } = response.new;
+      const edgeModel = {
+        id,
+        label,
+        from,
+        to
+      };
+      // this adds the edge to the graph
+      selectedAction?.callback(edgeModel);
+      onClearAction();
+    },
     onFailure: onClearAction
   });
 
@@ -66,7 +84,6 @@ export const AddEdgeModal = () => {
   const [collection, setCollection] = useState(
     edgesCollections?.[0].name || ""
   );
-  const { from, to } = selectedAction || {};
   return (
     <Modal isOpen onClose={onClearAction}>
       <ModalHeader>
