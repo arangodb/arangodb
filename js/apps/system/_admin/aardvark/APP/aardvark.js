@@ -1690,6 +1690,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
       switch (config.layout) {
         case 'forceAtlas2':
           layoutObject = forceAtlas2BasedOptions;
+          break;
         case 'barnesHut':
           layoutObject = barnesHutOptions;
           break;

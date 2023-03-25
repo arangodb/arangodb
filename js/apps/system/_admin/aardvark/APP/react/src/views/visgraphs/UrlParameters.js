@@ -20,6 +20,7 @@ const URLPARAMETERS = {
   nodeStart: "",
   barnesHutOptimize: false,
   query: "",
+  layout: "forceAtlas2"
 };
 
 export default URLPARAMETERS;
