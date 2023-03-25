@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
-#include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
@@ -47,9 +46,10 @@ void Compactor::run() {
   while (true) {
     bool falseAlarm = true;
     {
-      CONDITION_LOCKER(guard, _cv);
+      std::unique_lock guard{_cv.mutex};
       if (!_wakeupCompactor) {
-        _cv.wait(5000000);  // just in case we miss a wakeup call!
+        _cv.cv.wait_for(guard, std::chrono::seconds{5});
+        // just in case we miss a wakeup call!
       }
       if (_wakeupCompactor) {
         falseAlarm = false;
@@ -74,9 +74,9 @@ void Compactor::run() {
 
 // @brief Wake up compaction
 void Compactor::wakeUp() {
-  CONDITION_LOCKER(guard, _cv);
+  std::lock_guard guard{_cv.mutex};
   _wakeupCompactor = true;
-  _cv.signal();
+  _cv.cv.notify_one();
 }
 
 // @brief Begin shutdown

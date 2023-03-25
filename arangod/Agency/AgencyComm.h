@@ -36,7 +36,6 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
-#include "Basics/Mutex.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
@@ -661,8 +660,7 @@ class AgencyComm {
   ArangodServer& _server;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
-}  // namespace arangodb
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
-}
+std::ostream& operator<<(std::ostream& o, AgencyCommResult const& a);
+
+}  // namespace arangodb

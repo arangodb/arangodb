@@ -27,7 +27,6 @@
 #include "Auth/User.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
@@ -172,7 +171,7 @@ class UserManager {
 
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
-  Mutex _loadFromDBLock;
+  std::mutex _loadFromDBLock;
 
   /// Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;

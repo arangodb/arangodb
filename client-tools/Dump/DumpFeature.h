@@ -27,7 +27,6 @@
 #include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
@@ -153,7 +152,7 @@ class DumpFeature final : public ArangoDumpFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex _workerErrorLock;
+  std::mutex _workerErrorLock;
   std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 

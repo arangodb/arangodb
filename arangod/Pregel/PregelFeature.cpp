@@ -29,7 +29,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -443,7 +442,7 @@ void PregelFeature::scheduleGarbageCollection() {
                                           }
                                         });
 
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   _gcHandle = std::move(handle);
 }
 
@@ -619,7 +618,7 @@ void PregelFeature::start() {
 void PregelFeature::beginShutdown() {
   TRI_ASSERT(isStopping());
 
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   _gcHandle.reset();
 
   // cancel all conductors and workers
@@ -635,7 +634,7 @@ void PregelFeature::beginShutdown() {
 void PregelFeature::unprepare() {
   garbageCollectConductors();
 
-  MUTEX_LOCKER(guard, _mutex);
+  std::unique_lock guard{_mutex};
   decltype(_conductors) cs = std::move(_conductors);
   decltype(_workers) ws = std::move(_workers);
   guard.unlock();
@@ -690,7 +689,7 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
   }
 
   std::string user = ExecContext::current().user();
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   _conductors.try_emplace(
       executionNumber,
       ConductorEntry{std::move(user), std::chrono::steady_clock::time_point{},
@@ -699,7 +698,7 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
 
 std::shared_ptr<Conductor> PregelFeature::conductor(
     ExecutionNumber executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   auto it = _conductors.find(executionNumber);
   return (it != _conductors.end() && ::authorized(it->second.user))
              ? it->second.conductor
@@ -713,7 +712,7 @@ void PregelFeature::garbageCollectConductors() try {
 
   // copy out shared-ptrs of Conductors under the mutex
   {
-    MUTEX_LOCKER(guard, _mutex);
+    std::lock_guard guard{_mutex};
     for (auto const& it : _conductors) {
       if (it.second.conductor->canBeGarbageCollected()) {
         if (conductors.empty()) {
@@ -730,7 +729,7 @@ void PregelFeature::garbageCollectConductors() try {
     c->cancel();
   }
 
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   for (auto& c : conductors) {
     ExecutionNumber executionNumber = c->executionNumber();
 
@@ -747,13 +746,13 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w,
   }
 
   std::string user = ExecContext::current().user();
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   _workers.try_emplace(executionNumber, std::move(user), std::move(w));
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(
     ExecutionNumber executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   auto it = _workers.find(executionNumber);
   return (it != _workers.end() && ::authorized(it->second.first))
              ? it->second.second
@@ -782,7 +781,7 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
 }
 
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   _conductors.erase(executionNumber);
   _workers.erase(executionNumber);
 }
@@ -792,7 +791,7 @@ void PregelFeature::cleanupWorker(ExecutionNumber executionNumber) {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this, executionNumber] {
-    MUTEX_LOCKER(guard, _mutex);
+    std::lock_guard guard{_mutex};
     _workers.erase(executionNumber);
   });
 }
@@ -999,7 +998,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
 }
 
 uint64_t PregelFeature::numberOfActiveConductors() const {
-  MUTEX_LOCKER(guard, _mutex);
+  std::lock_guard guard{_mutex};
   uint64_t nr{0};
   for (auto const& p : _conductors) {
     std::shared_ptr<Conductor> const& c = p.second.conductor;
@@ -1023,7 +1022,7 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
 
   // make a copy of all conductor shared-ptrs under the mutex
   {
-    MUTEX_LOCKER(guard, _mutex);
+    std::lock_guard guard{_mutex};
     conductors.reserve(_conductors.size());
 
     for (auto const& p : _conductors) {

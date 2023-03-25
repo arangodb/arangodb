@@ -45,7 +45,7 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
 
  public:
   static arangodb::V8LineEditor* serverConsole;
-  static arangodb::Mutex serverConsoleMutex;
+  static std::mutex serverConsoleMutex;
 
  public:
   ConsoleThread(Server&, TRI_vocbase_t*);

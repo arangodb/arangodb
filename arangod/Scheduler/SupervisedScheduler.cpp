@@ -28,13 +28,14 @@
 
 #include <velocypack/Value.h>
 
+#include <boost/fiber/detail/cpu_relax.hpp>
+
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -824,9 +825,9 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     }
 
     do {
-      cpu_relax();
+      cpu_relax()
 
-      work = checkAllQueues(maxCheckedQueue);
+          work = checkAllQueues(maxCheckedQueue);
       if (work != nullptr) {
         return std::unique_ptr<WorkItemBase>(work);
       }

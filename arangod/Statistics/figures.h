@@ -27,8 +27,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 
 namespace arangodb {
 namespace statistics {
@@ -70,8 +68,8 @@ struct Distribution {
   }
 
   Distribution& operator=(Distribution& other) {
-    MUTEX_LOCKER(l1, _mutex);
-    MUTEX_LOCKER(l2, other._mutex);
+    std::lock_guard l1{_mutex};
+    std::lock_guard l2{other._mutex};
 
     _count = other._count;
     _total = other._total;
@@ -83,7 +81,7 @@ struct Distribution {
 
   void addFigure(double value) {
     TRI_ASSERT(!_counts.empty());
-    MUTEX_LOCKER(lock, _mutex);
+    std::lock_guard lock{_mutex};
 
     ++_count;
     _total += value;
@@ -102,8 +100,8 @@ struct Distribution {
   }
 
   void add(Distribution& other) {
-    MUTEX_LOCKER(lock, _mutex);
-    MUTEX_LOCKER(lock2, other._mutex);
+    std::lock_guard lock{_mutex};
+    std::lock_guard lock2{other._mutex};
     TRI_ASSERT(_counts.size() == other._counts.size() &&
                _cuts.size() == other._cuts.size());
     _count += other._count;
@@ -120,7 +118,7 @@ struct Distribution {
   std::vector<uint64_t> _counts;
 
  private:
-  Mutex _mutex;
+  std::mutex _mutex;
 };
 }  // namespace statistics
 }  // namespace arangodb

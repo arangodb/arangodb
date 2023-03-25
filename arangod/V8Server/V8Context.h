@@ -25,7 +25,6 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "V8Server/GlobalContextMethods.h"
 
 #include <atomic>
@@ -82,7 +81,7 @@ class V8Context {
   double _acquired;
   double const _creationStamp;
 
-  Mutex _globalMethodsLock;
+  std::mutex _globalMethodsLock;
   std::vector<GlobalContextMethods::MethodType> _globalMethods;
 };
 

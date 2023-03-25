@@ -24,9 +24,10 @@
 #include <atomic>
 #include <cstdint>
 
+#include <boost/fiber/detail/cpu_relax.hpp>
+
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
-#include "Basics/cpu-relax.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::cache {
@@ -66,7 +67,7 @@ bool BucketState::lock(std::uint64_t maxTries) noexcept {
       }
     }
     attempt++;
-    basics::cpu_relax();
+    cpu_relax()
     // TODO: exponential back-off for failure?
   }
 

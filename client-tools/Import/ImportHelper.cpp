@@ -24,8 +24,6 @@
 
 #include "ImportHelper.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
@@ -210,8 +208,8 @@ ImportHelper::ImportHelper(EncryptionFeature* encryption,
     auto http = client.createHttpClient(endpoint, params);
     _senderThreads.emplace_back(
         new SenderThread(client.server(), std::move(http), &_stats, [this]() {
-          CONDITION_LOCKER(guard, _threadsCondition);
-          guard.signal();
+          std::lock_guard guard{_threadsCondition.mutex};
+          _threadsCondition.cv.notify_one();
         }));
     _senderThreads.back()->start();
   }
@@ -590,7 +588,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   waitForSenders();
   reportProgress(totalLength, fd->offset(), nextProgress);
 
-  MUTEX_LOCKER(guard, _stats._mutex);
+  std::lock_guard guard{_stats._mutex};
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
   _numberLines = _stats._numberErrors + _stats._numberCreated +
@@ -813,7 +811,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
         } catch (...) {
           {
             // Count the error
-            MUTEX_LOCKER(guard, _stats._mutex);
+            std::lock_guard guard{_stats._mutex};
             _stats._numberErrors++;
           }
           // Produce a log message
@@ -836,7 +834,7 @@ bool ImportHelper::importJsonWithRewrite(std::string const& collectionName,
   }
   reportProgress(totalLength, fd->offset(), nextProgress);
 
-  MUTEX_LOCKER(guard, _stats._mutex);
+  std::lock_guard guard{_stats._mutex};
   // this is an approximation only. _numberLines is more meaningful for CSV
   // imports
   _numberLines = _stats._numberErrors + _stats._numberCreated +
@@ -986,7 +984,7 @@ void ImportHelper::beginLine(size_t row) {
   _fieldsLookUpTable.clear();
   if (_lineBuffer.length() > 0) {
     // error
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
     _lineBuffer.clear();
   }
@@ -1287,7 +1285,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     return;
   } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
     _lineBuffer.reset();
     return;
@@ -1303,7 +1301,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     _outputBuffer.appendText(_lineBuffer);
     _lineBuffer.reset();
   } else {
-    MUTEX_LOCKER(guard, _stats._mutex);
+    std::lock_guard guard{_stats._mutex};
     ++_stats._numberErrors;
   }
 
@@ -1521,8 +1519,8 @@ SenderThread* ImportHelper::findIdleSender() {
       }
     }
 
-    CONDITION_LOCKER(guard, _threadsCondition);
-    guard.wait(10000);
+    std::unique_lock guard{_threadsCondition.mutex};
+    _threadsCondition.cv.wait_for(guard, std::chrono::microseconds{10000});
   }
   return nullptr;
 }

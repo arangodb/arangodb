@@ -24,7 +24,7 @@
 
 #include "ReadWriteSpinLock.h"
 
-#include "Basics/cpu-relax.h"
+#include <boost/fiber/detail/cpu_relax.hpp>
 #include "Basics/debugging.h"
 
 namespace {
@@ -104,8 +104,7 @@ void ReadWriteSpinLock::lockWrite() noexcept {
         return;
       }
     }
-    cpu_relax();
-    state = _state.load(std::memory_order_relaxed);
+    cpu_relax() state = _state.load(std::memory_order_relaxed);
   }
 }
 
@@ -134,8 +133,7 @@ bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
         return false;
       }
     }
-    cpu_relax();
-    state = _state.load(std::memory_order_relaxed);
+    cpu_relax() state = _state.load(std::memory_order_relaxed);
   }
 
   // Undo the counting of us as queued writer:
@@ -162,7 +160,7 @@ void ReadWriteSpinLock::lockRead() noexcept {
     if (tryLockRead()) {
       return;
     }
-    cpu_relax();
+    cpu_relax()
   }
 }
 
@@ -172,7 +170,7 @@ bool ReadWriteSpinLock::lockRead(std::size_t maxAttempts) noexcept {
     if (tryLockRead()) {
       return true;
     }
-    cpu_relax();
+    cpu_relax()
   }
   return false;
 }

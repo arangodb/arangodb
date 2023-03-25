@@ -23,8 +23,6 @@
 
 #include "ConnectionStatistics.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Rest/CommonDefines.h"
 
 #include <thread>
@@ -43,7 +41,7 @@ namespace {
 constexpr size_t kInitialQueueSize = 32;
 
 // protects statisticsItems
-Mutex statisticsMutex;
+std::mutex statisticsMutex;
 
 // a container of ConnectionStatistics objects. the vector is populated
 // initially with kInitialQueueSize items. It can grow at runtime. The addresses
@@ -96,7 +94,7 @@ void ConnectionStatistics::Item::SET_HTTP() {
 }
 
 void ConnectionStatistics::initialize() {
-  MUTEX_LOCKER(guard, ::statisticsMutex);
+  std::lock_guard guard{::statisticsMutex};
 
   ::freeList.reserve(kInitialQueueSize * 2);
 
@@ -126,7 +124,7 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() noexcept {
       // store pointer for just-created item
       statistics = cs.get();
 
-      MUTEX_LOCKER(guard, ::statisticsMutex);
+      std::lock_guard guard{::statisticsMutex};
       ::statisticsItems.emplace_back(std::move(cs));
     } catch (...) {
       statistics = nullptr;

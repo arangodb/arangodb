@@ -28,12 +28,12 @@
 #include <set>
 #include <thread>
 #include <utility>
+#include <boost/fiber/detail/cpu_relax.hpp>
 
 #include "Cache/Manager.h"
 
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
-#include "Basics/cpu-relax.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"
@@ -208,7 +208,7 @@ void Manager::shutdown() {
 
     while (globalProcessRunning()) {
       // wait for rebalancer and migration tasks to complete
-      basics::cpu_relax();
+      cpu_relax()
     }
 
     while (!_caches.empty()) {

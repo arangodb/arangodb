@@ -43,7 +43,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -130,7 +129,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   };
   std::atomic<ThrottleState> _throttleState;
 
-  Mutex _threadMutex;
+  std::mutex _threadMutex;
   basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.

@@ -75,8 +75,6 @@
 #include <unistd.h>
 #endif
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
 #include "Basics/StringBuffer.h"
@@ -145,7 +143,7 @@ T readEntry(char const*& p, char const* e) {
 std::vector<ExternalProcess*> ExternalProcesses;
 
 /// @brief lock for protected access to vector ExternalProcesses
-static arangodb::Mutex ExternalProcessesLock;
+static std::mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
     : _minorPageFaults(0),
@@ -202,7 +200,7 @@ ExternalProcess::~ExternalProcess() {
 
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    std::lock_guard mutexLocker{ExternalProcessesLock};
     auto found = std::find_if(
         ExternalProcesses.begin(), ExternalProcesses.end(),
         [pid](const ExternalProcess* m) -> bool { return m->_pid == pid; });
@@ -968,7 +966,7 @@ void TRI_CreateExternalProcess(char const* executable,
   pid->_readPipe = external->_readPipe;
   pid->_writePipe = external->_writePipe;
 
-  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  std::lock_guard mutexLocker{ExternalProcessesLock};
 
   try {
     ExternalProcesses.push_back(external.get());
@@ -1280,7 +1278,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
   if (external->_status != TRI_EXT_RUNNING &&
       external->_status != TRI_EXT_STOPPED &&
       external->_status != TRI_EXT_TIMEOUT) {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    std::lock_guard mutexLocker{ExternalProcessesLock};
 
     for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
          ++it) {
@@ -1380,7 +1378,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
 
   ExternalProcess* external = nullptr;
   {
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    std::lock_guard mutexLocker{ExternalProcessesLock};
 
     for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
          ++it) {
@@ -1409,7 +1407,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
 
     // ok, we didn't spawn it, but now we claim the
     // ownership.
-    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+    std::lock_guard mutexLocker{ExternalProcessesLock};
 
     try {
       ExternalProcesses.push_back(external);
@@ -1439,7 +1437,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
           (status._status == TRI_EXT_ABORTED) ||
           (status._status == TRI_EXT_NOT_FOUND)) {
         // Its dead and gone - good.
-        MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+        std::lock_guard mutexLocker{ExternalProcessesLock};
         for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
              ++it) {
           if (*it == external) {
@@ -1537,7 +1535,7 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownProcess() {
-  MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+  std::lock_guard mutexLocker{ExternalProcessesLock};
   for (auto* external : ExternalProcesses) {
     delete external;
   }

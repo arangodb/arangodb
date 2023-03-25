@@ -24,10 +24,9 @@
 #pragma once
 
 #include <map>
+#include <mutex>
 #include <string>
 #include <vector>
-
-#include "Basics/Mutex.h"
 
 namespace arangodb {
 
@@ -100,6 +99,6 @@ class ScriptLoader {
   /// @brief mutex for _scripts
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _lock;
+  std::mutex _lock;
 };
 }  // namespace arangodb

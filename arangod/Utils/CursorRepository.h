@@ -26,7 +26,6 @@
 #include <unordered_map>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"
 
@@ -132,7 +131,7 @@ class CursorRepository {
   /// @brief mutex for the cursors repository
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _lock;
+  std::mutex _lock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of current cursors

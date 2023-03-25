@@ -47,7 +47,6 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"

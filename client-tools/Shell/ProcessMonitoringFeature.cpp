@@ -23,8 +23,6 @@
 
 #include <chrono>
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/application-exit.h"
 
 #include "Logger/LogMacros.h"
@@ -45,13 +43,13 @@ using namespace arangodb;
 namespace arangodb {
 
 void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  std::lock_guard mutexLocker{_MonitoredExternalProcessesLock};
   _monitoredProcesses.push_back(pid);
 }
 
 void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
   {
-    MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+    std::lock_guard mutexLocker{_MonitoredExternalProcessesLock};
     for (auto it = _monitoredProcesses.begin(); it != _monitoredProcesses.end();
          ++it) {
       if (it->_pid == pid._pid) {
@@ -66,7 +64,7 @@ void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
 
 std::optional<ExternalProcessStatus>
 ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
-  MUTEX_LOCKER(mutexLocker, _MonitoredExternalProcessesLock);
+  std::lock_guard mutexLocker{_MonitoredExternalProcessesLock};
   auto it = _ExitedExternalProcessStatus.find(pid);
   if (it == _ExitedExternalProcessStatus.end()) {
     return std::nullopt;
@@ -116,8 +114,8 @@ void ProcessMonitorThread::run() {  // override
   while (!isStopping()) {
     try {
       {
-        MUTEX_LOCKER(mutexLocker,
-                     _processMonitorFeature._MonitoredExternalProcessesLock);
+        std::lock_guard mutexLocker{
+            _processMonitorFeature._MonitoredExternalProcessesLock};
         mp = _processMonitorFeature._monitoredProcesses;
       }
       for (auto const& pid : mp) {
@@ -128,9 +126,8 @@ void ProcessMonitorThread::run() {  // override
           // Its dead and gone - good
           _processMonitorFeature.removeMonitorPID(pid);
           {
-            MUTEX_LOCKER(
-                mutexLocker,
-                _processMonitorFeature._MonitoredExternalProcessesLock);
+            std::lock_guard mutexLocker{
+                _processMonitorFeature._MonitoredExternalProcessesLock};
             _processMonitorFeature._ExitedExternalProcessStatus[pid._pid] =
                 status;
           }

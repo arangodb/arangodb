@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
@@ -72,7 +71,7 @@ class FollowerInfo {
   // 1.) _agencyMutex
   // 2.) _canWriteLock
   // 3.) _dataLock
-  mutable Mutex _agencyMutex;
+  mutable std::mutex _agencyMutex;
   mutable arangodb::basics::ReadWriteLock _canWriteLock;
   mutable arangodb::basics::ReadWriteLock _dataLock;
 
