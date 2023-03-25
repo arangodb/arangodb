@@ -4527,7 +4527,7 @@ static void JS_GetExternalSpawned(
   }
 
   MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-  
+
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 
