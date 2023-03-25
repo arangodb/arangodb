@@ -6,7 +6,13 @@ import { GraphRightClickMenu } from "./GraphRightClickMenu";
 
 let timer: number;
 let hasDrawnOnce = false;
-function registerNetwork(newNetwork: Network) {
+function registerNetwork({
+  newNetwork,
+  onSelectEntity
+}: {
+  newNetwork: Network;
+  onSelectEntity: (id: string) => void;
+}) {
   newNetwork.on("stabilizationIterationsDone", function() {
     newNetwork.fit();
     newNetwork.setOptions({
@@ -32,11 +38,29 @@ function registerNetwork(newNetwork: Network) {
       });
     }, 1000);
   });
+
+  newNetwork.on("selectNode", event => {
+    if (event.nodes.length === 1) {
+      onSelectEntity(event.nodes[0]);
+    }
+  });
+
+  newNetwork.on("selectEdge", event => {
+    if (event.edges.length === 1) {
+      onSelectEntity(event.edges[0]);
+    }
+  });
 }
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
-  const { graphData, setNetwork, setDatasets, onAddEdge } = useGraph();
+  const {
+    graphData,
+    setNetwork,
+    setDatasets,
+    onAddEdge,
+    onSelectEntity
+  } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
   useEffect(() => {
@@ -64,7 +88,7 @@ export const GraphNetwork = () => {
       newOptions
     );
     setNetwork(newNetwork);
-    registerNetwork(newNetwork);
+    registerNetwork({ newNetwork, onSelectEntity });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
 

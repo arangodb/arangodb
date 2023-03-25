@@ -17,7 +17,7 @@ export const GraphRightClickMenu = ({
   visJsRef: MutableRefObject<HTMLElement | null>;
 }) => {
   const [position, setPosition] = useState({ left: "0", top: "0" });
-  const { network, selectedEntity, setSelectedEntity } = useGraph();
+  const { network, rightClickedEntity, setRightClickedEntity } = useGraph();
   useEffect(() => {
     if (!network) {
       return;
@@ -40,24 +40,24 @@ export const GraphRightClickMenu = ({
       const nodeId = network.getNodeAt(args.pointer.DOM) as string;
       const edgeId = network.getEdgeAt(args.pointer.DOM) as string;
       if (nodeId) {
-        setSelectedEntity({ type: "node", nodeId });
+        setRightClickedEntity({ type: "node", nodeId });
         network.selectNodes([nodeId]);
       } else if (edgeId) {
-        setSelectedEntity({ type: "edge", edgeId });
+        setRightClickedEntity({ type: "edge", edgeId });
         network.selectEdges([edgeId]);
       } else {
-        setSelectedEntity({ type: "canvas" });
+        setRightClickedEntity({ type: "canvas" });
       }
     });
-  }, [network, visJsRef, setSelectedEntity]);
+  }, [network, visJsRef, setRightClickedEntity]);
   const renderMenu = (ref: MutableRefObject<HTMLDivElement>) => {
-    if (selectedEntity && selectedEntity.type === "canvas") {
+    if (rightClickedEntity && rightClickedEntity.type === "canvas") {
       return <CanvasContextMenu ref={ref} />;
     }
-    if (selectedEntity && selectedEntity.type === "edge") {
+    if (rightClickedEntity && rightClickedEntity.type === "edge") {
       return <EdgeContextMenu ref={ref} />;
     }
-    if (selectedEntity && selectedEntity.type === "node") {
+    if (rightClickedEntity && rightClickedEntity.type === "node") {
       return <NodeContextMenu ref={ref} />;
     }
     return null;
@@ -66,27 +66,27 @@ export const GraphRightClickMenu = ({
     <ContextMenu
       position={position}
       onClose={() => {
-        setSelectedEntity(undefined);
+        setRightClickedEntity(undefined);
       }}
-      isOpen={selectedEntity && selectedEntity.type ? true : false}
+      isOpen={rightClickedEntity && rightClickedEntity.type ? true : false}
       renderMenu={renderMenu}
     />
   );
 };
 
 const EdgeContextMenu = forwardRef((_props, ref: LegacyRef<HTMLDivElement>) => {
-  const { setSelectedAction, selectedEntity } = useGraph();
-  if (!selectedEntity) {
+  const { setSelectedAction, rightClickedEntity } = useGraph();
+  if (!rightClickedEntity) {
     return null;
   }
   return (
     <MenuList ref={ref}>
-      <MenuOptionGroup title={`Edge: ${selectedEntity.edgeId}` || ""}>
+      <MenuOptionGroup title={`Edge: ${rightClickedEntity.edgeId}` || ""}>
         <MenuItem
           onClick={() =>
             setSelectedAction({
               action: "delete",
-              entity: selectedEntity
+              entity: rightClickedEntity
             })
           }
         >
@@ -96,7 +96,7 @@ const EdgeContextMenu = forwardRef((_props, ref: LegacyRef<HTMLDivElement>) => {
           onClick={() =>
             setSelectedAction({
               action: "edit",
-              entity: selectedEntity
+              entity: rightClickedEntity
             })
           }
         >
@@ -110,24 +110,24 @@ const EdgeContextMenu = forwardRef((_props, ref: LegacyRef<HTMLDivElement>) => {
 const NodeContextMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
     const {
-      selectedEntity,
+      rightClickedEntity,
       setSelectedAction,
       onApplySettings,
       graphName,
       datasets
     } = useGraph();
     const [urlParameters] = useContext(UrlParametersContext) || [];
-    if (!selectedEntity || !selectedEntity.nodeId) {
+    if (!rightClickedEntity || !rightClickedEntity.nodeId) {
       return null;
     }
     return (
       <MenuList ref={ref}>
-        <MenuOptionGroup title={`Node: ${selectedEntity.nodeId}`}>
+        <MenuOptionGroup title={`Node: ${rightClickedEntity.nodeId}`}>
           <MenuItem
             onClick={() => {
               setSelectedAction({
                 action: "delete",
-                entity: selectedEntity
+                entity: rightClickedEntity
               });
             }}
           >
@@ -137,7 +137,7 @@ const NodeContextMenu = forwardRef(
             onClick={() =>
               setSelectedAction({
                 action: "edit",
-                entity: selectedEntity
+                entity: rightClickedEntity
               })
             }
           >
@@ -145,14 +145,14 @@ const NodeContextMenu = forwardRef(
           </MenuItem>
           <MenuItem
             onClick={async () => {
-              if (!selectedEntity.nodeId) {
+              if (!rightClickedEntity.nodeId) {
                 return;
               }
               const params = {
                 ...(urlParameters as any),
                 query:
                   "FOR v, e, p IN 1..1 ANY '" +
-                  selectedEntity.nodeId +
+                  rightClickedEntity.nodeId +
                   "' GRAPH '" +
                   graphName +
                   "' RETURN p"
@@ -161,12 +161,12 @@ const NodeContextMenu = forwardRef(
                 graphName,
                 params
               });
-              const foundNode = datasets?.nodes.get(selectedEntity.nodeId);
+              const foundNode = datasets?.nodes.get(rightClickedEntity.nodeId);
               const newLabel = foundNode?.label
                 ? `${foundNode.label} (expanded)`
                 : `(expanded)`;
               datasets?.nodes.updateOnly({
-                id: selectedEntity.nodeId,
+                id: rightClickedEntity.nodeId,
                 label: newLabel
               });
               const newNodes = newData.nodes.filter((node: any) => {
@@ -183,10 +183,10 @@ const NodeContextMenu = forwardRef(
           </MenuItem>
           <MenuItem
             onClick={() => {
-              if (!selectedEntity.nodeId) {
+              if (!rightClickedEntity.nodeId) {
                 return;
               }
-              onApplySettings({ startNode: selectedEntity.nodeId });
+              onApplySettings({ startNode: rightClickedEntity.nodeId });
             }}
           >
             Set as Start Node
@@ -199,8 +199,8 @@ const NodeContextMenu = forwardRef(
 
 const CanvasContextMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
-    const { setSelectedAction, selectedEntity } = useGraph();
-    if (!selectedEntity) {
+    const { setSelectedAction, rightClickedEntity } = useGraph();
+    if (!rightClickedEntity) {
       return null;
     }
     return (
@@ -210,7 +210,7 @@ const CanvasContextMenu = forwardRef(
             setSelectedAction({
               action: "add",
               entityType: "node",
-              entity: selectedEntity
+              entity: rightClickedEntity
             });
           }}
         >
@@ -221,7 +221,7 @@ const CanvasContextMenu = forwardRef(
             setSelectedAction({
               action: "add",
               entityType: "edge",
-              entity: selectedEntity
+              entity: rightClickedEntity
             });
           }}
         >

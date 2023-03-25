@@ -39,11 +39,14 @@ type GraphContextType = {
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
   loadFullGraph: boolean;
+  fetchDuration?: number;
   setLoadFullGraph: (load: boolean) => void;
   datasets?: DatasetsType;
   setDatasets: (datasets: DatasetsType) => void;
-  selectedEntity?: SelectedEntityType;
-  setSelectedEntity: (selectedEntity: SelectedEntityType | undefined) => void;
+  rightClickedEntity?: SelectedEntityType;
+  setRightClickedEntity: (
+    rightClickedEntity: SelectedEntityType | undefined
+  ) => void;
   selectedAction?: SelectedActionType;
   setSelectedAction: (selectedAction: SelectedActionType | undefined) => void;
   setNetwork: (network: Network) => void;
@@ -51,6 +54,8 @@ type GraphContextType = {
   onCloseSettings: () => void;
   onClearAction: () => void;
   onAddEdge: (args: AddEdgeArgs) => void;
+  selectedEntity: string;
+  onSelectEntity: (edgeId: string) => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -77,13 +82,24 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   let [loadFullGraph, setLoadFullGraph] = useState(false);
   let [network, setNetwork] = useState<Network>();
   const [datasets, setDatasets] = useState<DatasetsType>();
-  let [selectedEntity, setSelectedEntity] = useState<SelectedEntityType>();
+  const [fetchDuration, setFetchDuration] = useState<number>();
+  let [rightClickedEntity, setRightClickedEntity] = useState<
+    SelectedEntityType
+  >();
 
   const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
   const [params, setParams] = useState(URLPARAMETERS);
   const { data: graphData, isLoading: isGraphLoading } = useSWR<VisGraphData>(
     ["visData", graphName, params],
-    () => fetchVisData({ graphName, params }),
+    async () => {
+      const fetchStarted = new Date();
+      const data = await fetchVisData({ graphName, params });
+      const fetchDuration = Math.abs(
+        new Date().getTime() - fetchStarted.getTime()
+      );
+      setFetchDuration(fetchDuration);
+      return data;
+    },
     {
       keepPreviousData: true,
       revalidateIfStale: true
@@ -120,6 +136,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       return { ...action, from: data.from, to: data.to, callback };
     });
   };
+  const [selectedEntity, onSelectEntity] = useState("");
+
   return (
     <GraphContext.Provider
       value={{
@@ -135,13 +153,16 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         onClearAction,
         isSettingsOpen,
         isGraphLoading,
-        selectedEntity,
-        setSelectedEntity,
+        rightClickedEntity,
+        setRightClickedEntity,
         onAddEdge,
         datasets,
         setDatasets,
         setLoadFullGraph,
-        loadFullGraph
+        loadFullGraph,
+        fetchDuration,
+        selectedEntity,
+        onSelectEntity
       }}
     >
       <UrlParametersContext.Provider
