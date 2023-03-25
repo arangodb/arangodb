@@ -41,9 +41,9 @@ const LinkPropertiesInput = ({
 
   return (
     <Grid templateColumns="1fr 1fr" columnGap="10">
-      <Stack>
+      <Stack spacing="4">
         <Stack>
-          <label>Analyzers</label>
+          <FormLabel margin="0">Analyzers</FormLabel>
           <AnalyzersDropdown
             basePath={basePath}
             isDisabled={!!disabled}
@@ -52,7 +52,12 @@ const LinkPropertiesInput = ({
         </Stack>
 
         <Stack>
-          <label>Fields</label>
+          <HStack alignItems="center">
+            <FormLabel margin="0" position="relative" top="1">
+              Fields
+            </FormLabel>
+            <InfoTooltip label="Add field names that you want to be indexed here. Click a field name to set field details" />
+          </HStack>
           <FieldsDropdown
             basePath={basePath}
             isDisabled={!!disabled}
