@@ -1,6 +1,5 @@
-import { FormLabel, Spacer } from "@chakra-ui/react";
+import { FormLabel, Input, Spacer } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import Textinput from "./components/pure-css/form/Textinput.tsx";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterEdgeColor = () => {
@@ -23,13 +22,14 @@ const ParameterEdgeColor = () => {
   return (
     <>
       <FormLabel htmlFor="edgeColor">Default edge color</FormLabel>
-      <Textinput
+      <Input
         id="edgeColor"
-        type={"color"}
+        type="color"
         value={calculatedEdgeColor}
-        template={"graphviewer"}
-        width={"60px"}
-        height={"30px"}
+        style={{
+          width: "60px",
+          height: "30px"
+        }}
         onChange={handleChange}
         disabled={urlParameters.edgeColorByCollection}
       />

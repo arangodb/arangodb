@@ -1,6 +1,5 @@
-import { FormLabel, Spacer } from "@chakra-ui/react";
+import { FormLabel, Input, Spacer } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import Textinput from "./components/pure-css/form/Textinput.tsx";
 import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterNodeColor = () => {
@@ -24,13 +23,14 @@ const ParameterNodeColor = () => {
   return (
     <>
       <FormLabel htmlFor="nodeColor">Default node color </FormLabel>
-      <Textinput
+      <Input
         id="nodeColor"
-        type={"color"}
+        type="color"
         value={calculatedNodeColor}
-        template={"graphviewer"}
-        width={"60px"}
-        height={"30px"}
+        style={{
+          width: "60px",
+          height: "30px"
+        }}
         onChange={handleChange}
         disabled={urlParameters.nodeColorByCollection}
       />
