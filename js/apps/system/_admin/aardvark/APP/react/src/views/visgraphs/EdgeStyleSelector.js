@@ -28,7 +28,7 @@ const EdgeStyleSelector = () => {
   return (
     <>
       <FormLabel htmlFor="edgeType">Type</FormLabel>
-      <Select id="edgeType" value={type} onChange={handleChange}>
+      <Select size="sm" id="edgeType" value={type} onChange={handleChange}>
         {styles.map(style => {
           const { type } = style;
           return (

@@ -25,7 +25,7 @@ const GraphLayoutSelector = () => {
   return (
     <>
       <FormLabel htmlFor="layout">Layout</FormLabel>
-      <Select id="layout" value={layout} onChange={handleChange}>
+      <Select size="sm" id="layout" value={layout} onChange={handleChange}>
         {layouts.map(style => {
           const { layout } = style;
           return (
