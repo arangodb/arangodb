@@ -1,8 +1,7 @@
+import { FormLabel, Input } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "./url-parameters-context";
-import ToolTip from "../../components/arango/tootip";
-import { Box, Flex, Spacer, Input, Center, FormLabel } from "@chakra-ui/react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
+import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterDepth = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);

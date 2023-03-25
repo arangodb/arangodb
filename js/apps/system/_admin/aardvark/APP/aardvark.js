@@ -1009,7 +1009,6 @@ authRouter.get('/graph/:name', function (req, res) {
 
 authRouter.get('/visgraph/:name', function (req, res) {
   var name = req.pathParams.name;
-  console.log({name});
   var gm;
   if (isEnterprise) {
     gm = require('@arangodb/smart-graph');

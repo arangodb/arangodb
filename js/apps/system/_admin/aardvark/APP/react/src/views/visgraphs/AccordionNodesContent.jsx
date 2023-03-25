@@ -1,5 +1,5 @@
 import React from "react";
-import { Grid, Stack } from "@chakra-ui/react";
+import { Grid } from "@chakra-ui/react";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";

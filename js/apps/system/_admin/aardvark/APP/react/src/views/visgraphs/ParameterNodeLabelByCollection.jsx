@@ -1,9 +1,8 @@
+import { FormLabel } from "@chakra-ui/react";
 import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "./url-parameters-context";
-import Checkbox from "./components/pure-css/form/Checkbox.tsx";
-import ToolTip from "../../components/arango/tootip";
-import { Box, Flex, Center, FormLabel } from "@chakra-ui/react";
 import { InfoTooltip } from "../../components/tooltip/InfoTooltip";
+import Checkbox from "./components/pure-css/form/Checkbox.tsx";
+import { UrlParametersContext } from "./url-parameters-context";
 
 const ParameterNodeLabelByCollection = ({ onAddCollectionNameChange }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
