@@ -1,7 +1,7 @@
-import { DownloadIcon } from "@chakra-ui/icons";
-import { Box, HStack, Icon, IconButton } from "@chakra-ui/react";
+import { DownloadIcon, RepeatClockIcon } from "@chakra-ui/icons";
+import { Box, HStack, Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import React from "react";
-import { CloudDownload, Fullscreen, Undo } from "styled-icons/material";
+import { CloudDownload, Fullscreen } from "styled-icons/material";
 import { useGraph } from "./GraphContext";
 import { GraphSettings } from "./GraphSettings";
 
@@ -50,12 +50,14 @@ const downloadCanvas = (graphName: string) => {
 const DownloadButton = () => {
   const { graphName } = useGraph();
   return (
-    <IconButton
-      onClick={() => downloadCanvas(graphName)}
-      size="sm"
-      icon={<DownloadIcon />}
-      aria-label={"Download screenshot"}
-    />
+    <Tooltip hasArrow label={"Download screenshot"} placement="bottom">
+      <IconButton
+        onClick={() => downloadCanvas(graphName)}
+        size="sm"
+        icon={<DownloadIcon />}
+        aria-label={"Download screenshot"}
+      />
+    </Tooltip>
   );
 };
 
@@ -73,42 +75,56 @@ const enterFullscreen = (element: any) => {
 
 const FullscreenButton = () => {
   return (
-    <IconButton
-      size="sm"
-      onClick={() => {
-        const elem = document.getElementById("graphNetworkDiv");
-        enterFullscreen(elem);
-      }}
-      icon={<Icon width="5" height="5" as={Fullscreen} />}
-      aria-label={"Enter fullscreen"}
-    />
+    <Tooltip hasArrow label={"Enter fullscreen"} placement="bottom">
+      <IconButton
+        size="sm"
+        onClick={() => {
+          const elem = document.getElementById("graphNetworkDiv");
+          enterFullscreen(elem);
+        }}
+        icon={<Icon width="5" height="5" as={Fullscreen} />}
+        aria-label={"Enter fullscreen"}
+      />
+    </Tooltip>
   );
 };
 
 const SwitchToOld = () => {
   const { graphName } = useGraph();
   return (
-    <IconButton
-      size="sm"
-      onClick={() => {
-        window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
-      }}
-      icon={<Icon width="5" height="5" as={Undo} />}
-      aria-label={"Enter fullscreen"}
-    />
+    <Tooltip
+      hasArrow
+      label={"Switch to the old graph viewer"}
+      placement="bottom"
+    >
+      <IconButton
+        size="sm"
+        onClick={() => {
+          window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+        }}
+        icon={<RepeatClockIcon />}
+        aria-label={"Switch to the old graph viewer"}
+      />
+    </Tooltip>
   );
 };
 
 const LoadFullGraph = () => {
   const { setLoadFullGraph } = useGraph();
   return (
-    <IconButton
-      size="sm"
-      onClick={() => {
-        setLoadFullGraph(true);
-      }}
-      icon={<Icon width="5" height="5" as={CloudDownload} />}
-      aria-label={"Load full graph"}
-    />
+    <Tooltip
+      hasArrow
+      label={"Load full graph - use with caution"}
+      placement="bottom"
+    >
+      <IconButton
+        size="sm"
+        onClick={() => {
+          setLoadFullGraph(true);
+        }}
+        icon={<Icon width="5" height="5" as={CloudDownload} />}
+        aria-label={"Load full graph"}
+      />
+    </Tooltip>
   );
 };
