@@ -71,8 +71,13 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       revalidateIfStale: true
     }
   );
+  const graphData = data && (data.body as VisGraphData);
   const onApplySettings = () => {
-    setParams(urlParameters);
+    let { nodeStart } = urlParameters;
+    if (!nodeStart) {
+      nodeStart = graphData?.settings.startVertex._id || nodeStart;
+    }
+    setParams({ ...urlParameters, nodeStart });
   };
   const {
     onOpen: onOpenSettings,
@@ -94,7 +99,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         network,
         onApplySettings,
         setNetwork,
-        graphData: data && (data.body as VisGraphData),
+        graphData,
         graphName,
         toggleSettings,
         onCloseSettings,
