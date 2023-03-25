@@ -17,7 +17,14 @@ type SelectedEntityType = {
 export type SelectedActionType = {
   action: "delete" | "edit" | "add";
   entityType?: "node" | "edge";
+  from?: string;
+  to?: string;
   entity: SelectedEntityType;
+};
+
+type AddEdgeArgs = {
+  data: { from: string; to: string };
+  callback: any;
 };
 
 type GraphContextType = {
@@ -35,6 +42,7 @@ type GraphContextType = {
   toggleSettings: () => void;
   onCloseSettings: () => void;
   onClearAction: () => void;
+  onAddEdge: (args: AddEdgeArgs) => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -93,6 +101,14 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const onClearAction = () => {
     setSelectedAction(undefined);
   };
+  const onAddEdge = ({ data }: AddEdgeArgs) => {
+    setSelectedAction(action => {
+      if (!action) {
+        return;
+      }
+      return { ...action, from: data.from, to: data.to };
+    });
+  };
   return (
     <GraphContext.Provider
       value={{
@@ -109,7 +125,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         isSettingsOpen,
         isGraphLoading,
         selectedEntity,
-        setSelectedEntity
+        setSelectedEntity,
+        onAddEdge
       }}
     >
       <UrlParametersContext.Provider

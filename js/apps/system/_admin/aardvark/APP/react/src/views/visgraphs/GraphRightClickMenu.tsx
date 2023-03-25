@@ -161,7 +161,17 @@ const CanvasContextMenu = forwardRef(
         >
           Add node to database
         </MenuItem>
-        <MenuItem>Add edge to database</MenuItem>
+        <MenuItem
+          onClick={() => {
+            setSelectedAction({
+              action: "add",
+              entityType: "edge",
+              entity: selectedEntity
+            });
+          }}
+        >
+          Add edge to database
+        </MenuItem>
       </MenuList>
     );
   }

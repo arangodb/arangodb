@@ -5,6 +5,7 @@ import { DeleteEdgeModal } from "./DeleteEdgeModal";
 import { DeleteNodeModal } from "./DeleteNodeModal";
 import { EditEdgeModal } from "./EditEdgeModal";
 import { EditNodeModal } from "./EditNodeModal";
+import { AddEdgeHandler } from "./AddEdgeHandler";
 
 export const GraphModals = () => {
   const { selectedAction } = useGraph();
@@ -30,7 +31,7 @@ export const GraphModals = () => {
       return <AddNodeModal />;
     }
     if (selectedAction.entityType === "edge") {
-      return <AddNodeModal />;
+      return <AddEdgeHandler />;
     }
   }
 

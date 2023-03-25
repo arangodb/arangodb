@@ -36,22 +36,32 @@ function registerNetwork(newNetwork: Network) {
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
-  const { graphData, setNetwork } = useGraph();
+  const { graphData, setNetwork, onAddEdge } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
+
   useEffect(() => {
     if (!nodes || !edges || !visJsRef.current) {
       return;
     }
     const nodesDataSet = new DataSet(nodes);
     const edgesDataSet = new DataSet(edges);
+    const newOptions = {
+      ...options,
+      manipulation: {
+        enabled: false,
+        addEdge: function(data: { from: string; to: string }, callback: any) {
+          onAddEdge({ data, callback });
+        }
+      }
+    };
     const newNetwork = new Network(
       visJsRef.current,
       {
         nodes: nodesDataSet,
         edges: edgesDataSet
       },
-      options
+      newOptions
     );
     setNetwork(newNetwork);
     registerNetwork(newNetwork);
