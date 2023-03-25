@@ -54,7 +54,6 @@ const useAddNodeAction = ({
 export const AddNodeModal = () => {
   const { graphName, onClearAction, graphData } = useGraph();
   const { vertexCollections } = graphData?.settings || {};
-  console.log({ vertexCollections });
   const { addNode } = useAddNodeAction({
     graphName,
     onSuccess: onClearAction,
