@@ -1,16 +1,12 @@
 import { Checkbox, FormLabel } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeLabelByCollection = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [nodeLabelByCollection, setNodeLabelByCollection] = useState(
-    urlParams.nodeLabelByCollection
-  );
 
-  const handleChange = event => {
-    setNodeLabelByCollection(event.target.checked);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
       nodeLabelByCollection: event.target.checked
@@ -25,7 +21,7 @@ const ParameterNodeLabelByCollection = () => {
       </FormLabel>
       <Checkbox
         id="nodeLabelByCollection"
-        checked={nodeLabelByCollection}
+        isChecked={urlParams.nodeLabelByCollection}
         onChange={handleChange}
       />
       <InfoTooltip label={"Adds a collection name to the node label."} />

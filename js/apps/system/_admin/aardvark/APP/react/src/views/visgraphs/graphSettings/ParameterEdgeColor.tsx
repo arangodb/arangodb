@@ -1,22 +1,20 @@
 import { FormLabel, Input, Spacer } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterEdgeColor = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [edgeColor, setEdgeColor] = useState(urlParams.edgeColor);
 
-  const handleChange = event => {
-    setEdgeColor(event.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
       edgeColor: event.target.value.replace("#", "")
     };
     setUrlParams(newUrlParameters);
   };
-  let calculatedEdgeColor = edgeColor;
-  if (!edgeColor.startsWith("#")) {
-    calculatedEdgeColor = "#" + edgeColor;
+  let calculatedEdgeColor = urlParams.edgeColor;
+  if (!calculatedEdgeColor.startsWith("#")) {
+    calculatedEdgeColor = "#" + calculatedEdgeColor;
   }
 
   return (

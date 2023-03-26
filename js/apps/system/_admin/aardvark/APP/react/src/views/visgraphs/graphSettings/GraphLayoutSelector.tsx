@@ -1,13 +1,12 @@
 import { FormLabel, Select } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { useUrlParameterContext } from "../UrlParametersContext";
+import { LayoutType, useUrlParameterContext } from "../UrlParametersContext";
 
 const GraphLayoutSelector = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [layout, setLayout] = useState(urlParams.layout);
 
-  const layouts = [
+  const layouts: Array<{ layout: LayoutType }> = [
     {
       layout: "forceAtlas2"
     },
@@ -16,16 +15,23 @@ const GraphLayoutSelector = () => {
     }
   ];
 
-  const handleChange = event => {
-    setLayout(event.target.value);
-    const newUrlParameters = { ...urlParams, layout: event.target.value };
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const newUrlParameters = {
+      ...urlParams,
+      layout: event.target.value as LayoutType
+    };
     setUrlParams(newUrlParameters);
   };
 
   return (
     <>
       <FormLabel htmlFor="layout">Layout</FormLabel>
-      <Select size="sm" id="layout" value={layout} onChange={handleChange}>
+      <Select
+        size="sm"
+        id="layout"
+        value={urlParams.layout}
+        onChange={handleChange}
+      >
         {layouts.map(style => {
           const { layout } = style;
           return (
@@ -35,7 +41,9 @@ const GraphLayoutSelector = () => {
           );
         })}
       </Select>
-      <InfoTooltip />
+      <InfoTooltip
+        label={"Graph layouts are the algorithms arranging the node positions."}
+      />
     </>
   );
 };

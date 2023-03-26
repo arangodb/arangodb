@@ -1,16 +1,12 @@
 import { Checkbox, FormLabel } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeSizeByEdges = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [nodeSizeByEdges, setNodeSizeByEdges] = useState(
-    urlParams.nodeSizeByEdges
-  );
 
-  const handleChange = event => {
-    setNodeSizeByEdges(event.target.checked);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
       nodeSizeByEdges: event.target.checked
@@ -23,7 +19,7 @@ const ParameterNodeSizeByEdges = () => {
       <FormLabel htmlFor="nodeSizeByEdges">Size by connections</FormLabel>
       <Checkbox
         id="nodeSizeByEdges"
-        checked={nodeSizeByEdges}
+        isChecked={urlParams.nodeSizeByEdges}
         onChange={handleChange}
       />
       <InfoTooltip

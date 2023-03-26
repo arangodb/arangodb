@@ -1,5 +1,5 @@
 import { Checkbox, FormLabel } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent, useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
@@ -9,7 +9,7 @@ const ParameterEdgeLabelByCollection = () => {
     urlParams.edgeLabelByCollection
   );
 
-  const handleChange = event => {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     setEdgeLabelByCollection(event.target.checked);
     const newUrlParameters = {
       ...urlParams,
@@ -25,7 +25,7 @@ const ParameterEdgeLabelByCollection = () => {
       </FormLabel>
       <Checkbox
         id="edgeLabelByCollection"
-        checked={edgeLabelByCollection}
+        isChecked={edgeLabelByCollection}
         onChange={handleChange}
       />
       <InfoTooltip label={"Adds a collection name to the edge label."} />

@@ -25,7 +25,7 @@ export const DEFAULT_URL_PARAMETERS = {
   layout: "forceAtlas2" as LayoutType
 };
 
-type LayoutType = "forceAtlas2" | "hierarchical";
+export type LayoutType = "forceAtlas2" | "hierarchical";
 
 export type UrlParametersType = {
   depth: number;

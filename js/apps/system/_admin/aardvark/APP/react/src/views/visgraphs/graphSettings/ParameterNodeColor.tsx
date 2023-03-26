@@ -1,13 +1,11 @@
 import { FormLabel, Input, Spacer } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeColor = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [nodeColor, setNodeColor] = useState(urlParams.nodeColor);
 
-  const handleChange = event => {
-    setNodeColor(event.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
       nodeColor: event.target.value.replace("#", "")
@@ -15,9 +13,9 @@ const ParameterNodeColor = () => {
     setUrlParams(newUrlParameters);
   };
 
-  let calculatedNodeColor = nodeColor;
-  if (!nodeColor.startsWith("#")) {
-    calculatedNodeColor = "#" + nodeColor;
+  let calculatedNodeColor = urlParams.nodeColor;
+  if (!calculatedNodeColor.startsWith("#")) {
+    calculatedNodeColor = "#" + calculatedNodeColor;
   }
 
   return (

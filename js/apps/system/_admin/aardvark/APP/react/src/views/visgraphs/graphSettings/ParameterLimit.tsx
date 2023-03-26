@@ -1,15 +1,16 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterLimit = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [limit, setLimit] = useState(urlParams.limit);
 
-  const handleChange = event => {
-    setLimit(event.target.value);
-    const newUrlParameters = { ...urlParams, limit: event.target.value };
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const newUrlParameters = {
+      ...urlParams,
+      limit: Number(event.target.value)
+    };
     setUrlParams(newUrlParameters);
   };
 
@@ -21,7 +22,8 @@ const ParameterLimit = () => {
         width="60px"
         min={1}
         required={true}
-        value={limit}
+        value={urlParams.limit}
+        type="number"
         size="sm"
         onChange={handleChange}
       />

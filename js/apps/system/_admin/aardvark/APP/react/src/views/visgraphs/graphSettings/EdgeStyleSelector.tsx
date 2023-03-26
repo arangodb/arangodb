@@ -1,11 +1,10 @@
 import { FormLabel, Select } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const EdgeStyleSelector = () => {
-  const { urlParameters, setUrlParameters } = useUrlParameterContext();
-  const [type, setType] = useState(urlParameters.edgeType);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
 
   const styles = [
     {
@@ -19,16 +18,20 @@ const EdgeStyleSelector = () => {
     }
   ];
 
-  const handleChange = event => {
-    setType(event.target.value);
-    const newUrlParameters = { ...urlParameters, edgeType: event.target.value };
-    setUrlParameters(newUrlParameters);
+  const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const newUrlParameters = { ...urlParams, edgeType: event.target.value };
+    setUrlParams(newUrlParameters);
   };
 
   return (
     <>
       <FormLabel htmlFor="edgeType">Type</FormLabel>
-      <Select size="sm" id="edgeType" value={type} onChange={handleChange}>
+      <Select
+        size="sm"
+        id="edgeType"
+        value={urlParams.edgeType}
+        onChange={handleChange}
+      >
         {styles.map(style => {
           const { type } = style;
           return (

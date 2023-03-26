@@ -1,37 +1,36 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
-const ParameterNodeLabel = () => {
+const ParameterDepth = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-  const [nodeLabel, setNodeLabel] = useState(urlParams.nodeLabel);
 
-  const handleChange = event => {
-    setNodeLabel(event.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
-      nodeLabel: event.target.value
+      depth: Number(event.target.value)
     };
     setUrlParams(newUrlParameters);
   };
 
   return (
     <>
-      <FormLabel htmlFor="nodeLabel">Node label</FormLabel>
+      <FormLabel htmlFor="depth">Depth</FormLabel>
       <Input
-        id="nodeLabel"
+        id="depth"
+        width="200px"
         min={1}
         required={true}
-        value={nodeLabel}
+        value={urlParams.depth}
         size="sm"
+        type="number"
         onChange={handleChange}
       />
-      <InfoTooltip
-        label={"Enter a valid node attribute to be used as a node label."}
-      />
+
+      <InfoTooltip label={"Search depth, starting from your start node."} />
     </>
   );
 };
 
-export default ParameterNodeLabel;
+export default ParameterDepth;

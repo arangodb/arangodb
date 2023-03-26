@@ -1,17 +1,11 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeColorAttribute = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-
-  const [nodeColorAttribute, setNodeColorAttribute] = useState(
-    urlParams.nodeColorAttribute
-  );
-
-  const handleChange = event => {
-    setNodeColorAttribute(event.target.value);
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     const newUrlParameters = {
       ...urlParams,
       nodeColorAttribute: event.target.value
@@ -26,8 +20,8 @@ const ParameterNodeColorAttribute = () => {
         id="nodeColorAttribute"
         width="200px"
         min={1}
-        required={true}
-        value={nodeColorAttribute}
+        required
+        value={urlParams.nodeColorAttribute}
         size="sm"
         onChange={handleChange}
         disabled={urlParams.nodeColorByCollection}
