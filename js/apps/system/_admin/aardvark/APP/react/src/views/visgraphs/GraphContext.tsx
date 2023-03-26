@@ -164,7 +164,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       keepPreviousData: true,
-      revalidateIfStale: true
+      revalidateIfStale: true,
+      revalidateOnFocus: false
     }
   );
 
