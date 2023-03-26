@@ -242,7 +242,7 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 			<Alert status='warning'>
 				<AlertIcon />
 				<Stack spacing={4} direction='row' align='center'>
-					<Text fontSize='md'>&quot;Add edge mode&quot; is on: Click a node and drag the edge to the end node</Text>
+					<Text fontSize='md'>&quot;Add edge mode&quot; is on: To add an edge, draw it on the canvas between the required nodes.</Text>
 					<Button onClick={() => setEditEdgeMode(false)} colorScheme='blue'>Turn off</Button>
 				</Stack>
 			</Alert>
