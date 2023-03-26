@@ -1,21 +1,21 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterEdgeColorAttribute = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(
-    urlParameters.edgeColorAttribute
+    urlParams.edgeColorAttribute
   );
 
   const handleChange = event => {
     setEdgeColorAttribute(event.target.value);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       edgeColorAttribute: event.target.value
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
 
   return (
@@ -27,10 +27,9 @@ const ParameterEdgeColorAttribute = () => {
         width="200px"
         min={1}
         value={edgeColorAttribute}
-        background="#ffffff"
         size="sm"
         onChange={handleChange}
-        disabled={urlParameters.edgeColorByCollection}
+        disabled={urlParams.edgeColorByCollection}
       />
       <InfoTooltip
         label={

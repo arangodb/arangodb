@@ -1,19 +1,19 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterEdgeLabel = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [edgeLabel, setEdgeLabel] = useState(urlParameters.edgeLabel);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const [edgeLabel, setEdgeLabel] = useState(urlParams.edgeLabel);
 
   const handleChange = event => {
     setEdgeLabel(event.target.value);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       edgeLabel: event.target.value
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
 
   return (

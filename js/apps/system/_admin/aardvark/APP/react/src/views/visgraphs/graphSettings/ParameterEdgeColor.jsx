@@ -1,18 +1,18 @@
 import { FormLabel, Input, Spacer } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "../url-parameters-context";
+import React, { useState } from "react";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterEdgeColor = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [edgeColor, setEdgeColor] = useState(urlParameters.edgeColor);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const [edgeColor, setEdgeColor] = useState(urlParams.edgeColor);
 
   const handleChange = event => {
     setEdgeColor(event.target.value);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       edgeColor: event.target.value.replace("#", "")
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
   let calculatedEdgeColor = edgeColor;
   if (!edgeColor.startsWith("#")) {
@@ -31,7 +31,7 @@ const ParameterEdgeColor = () => {
           height: "30px"
         }}
         onChange={handleChange}
-        disabled={urlParameters.edgeColorByCollection}
+        disabled={urlParams.edgeColorByCollection}
       />
       <Spacer />
     </>

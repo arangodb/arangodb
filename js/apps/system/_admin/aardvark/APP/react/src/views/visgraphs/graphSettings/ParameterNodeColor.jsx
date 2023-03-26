@@ -1,18 +1,18 @@
 import { FormLabel, Input, Spacer } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
-import { UrlParametersContext } from "../url-parameters-context";
+import React, { useState } from "react";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeColor = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [nodeColor, setNodeColor] = useState(urlParameters.nodeColor);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const [nodeColor, setNodeColor] = useState(urlParams.nodeColor);
 
   const handleChange = event => {
     setNodeColor(event.target.value);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       nodeColor: event.target.value.replace("#", "")
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
 
   let calculatedNodeColor = nodeColor;
@@ -32,7 +32,7 @@ const ParameterNodeColor = () => {
           height: "30px"
         }}
         onChange={handleChange}
-        disabled={urlParameters.nodeColorByCollection}
+        disabled={urlParams.nodeColorByCollection}
       />
       <Spacer />
     </>

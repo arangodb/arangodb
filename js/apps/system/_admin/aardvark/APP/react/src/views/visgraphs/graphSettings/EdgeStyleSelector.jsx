@@ -1,10 +1,10 @@
 import { FormLabel, Select } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const EdgeStyleSelector = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const { urlParameters, setUrlParameters } = useUrlParameterContext();
   const [type, setType] = useState(urlParameters.edgeType);
 
   const styles = [

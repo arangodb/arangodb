@@ -1,11 +1,11 @@
 import { FormLabel, Select } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const GraphLayoutSelector = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [layout, setLayout] = useState(urlParameters.layout);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const [layout, setLayout] = useState(urlParams.layout);
 
   const layouts = [
     {
@@ -18,8 +18,8 @@ const GraphLayoutSelector = () => {
 
   const handleChange = event => {
     setLayout(event.target.value);
-    const newUrlParameters = { ...urlParameters, layout: event.target.value };
-    setUrlParameters(newUrlParameters);
+    const newUrlParameters = { ...urlParams, layout: event.target.value };
+    setUrlParams(newUrlParameters);
   };
 
   return (

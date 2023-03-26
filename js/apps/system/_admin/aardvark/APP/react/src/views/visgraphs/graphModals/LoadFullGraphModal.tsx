@@ -1,5 +1,5 @@
 import { Button, HStack, Text } from "@chakra-ui/react";
-import React, { useContext } from "react";
+import React from "react";
 import {
   Modal,
   ModalBody,
@@ -7,15 +7,15 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { useGraph } from "../GraphContext";
-import { UrlParametersContext } from "../url-parameters-context";
-import URLPARAMETERS from "../UrlParameters";
+import {
+  DEFAULT_URL_PARAMETERS,
+  useUrlParameterContext
+} from "../UrlParametersContext";
 
 export const LoadFullGraphModal = () => {
   const { onClearAction, onApplySettings, setSelectedAction } = useGraph();
-  const [urlParameters, setUrlParameters] =
-    useContext(UrlParametersContext) || [];
-  const curentLimit = Number((urlParameters as any).limit);
-  console.log({ curentLimit });
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const curentLimit = Number(urlParams.limit);
   return (
     <Modal isOpen onClose={onClearAction}>
       <ModalHeader>Load full graph?</ModalHeader>
@@ -24,10 +24,11 @@ export const LoadFullGraphModal = () => {
           Caution: Really load the full graph?
         </Text>
         <Text>If no limit is set, your result set could be too big.</Text>
-        <Text>The default limit is set to {URLPARAMETERS.limit} nodes.</Text>
         <Text>
-          Current limit:{" "}
-          {curentLimit ? `${(urlParameters as any).limit} nodes` : "Not set"}
+          The default limit is set to {DEFAULT_URL_PARAMETERS.limit} nodes.
+        </Text>
+        <Text>
+          Current limit: {curentLimit ? `${urlParams.limit} nodes` : "Not set"}
         </Text>
       </ModalBody>
       <ModalFooter>
@@ -36,8 +37,8 @@ export const LoadFullGraphModal = () => {
           <Button
             colorScheme="green"
             onClick={() => {
-              (setUrlParameters as any)?.((urlParameters: any) => {
-                return { ...urlParameters, mode: "all" };
+              setUrlParams?.(urlParams => {
+                return { ...urlParams, mode: "all" };
               });
               onApplySettings({ mode: "all" });
               setSelectedAction(undefined);

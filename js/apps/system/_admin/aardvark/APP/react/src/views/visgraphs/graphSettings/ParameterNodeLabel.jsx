@@ -1,19 +1,19 @@
 import { FormLabel, Input } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterNodeLabel = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
-  const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const [nodeLabel, setNodeLabel] = useState(urlParams.nodeLabel);
 
   const handleChange = event => {
     setNodeLabel(event.target.value);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       nodeLabel: event.target.value
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
 
   return (
@@ -24,7 +24,6 @@ const ParameterNodeLabel = () => {
         min={1}
         required={true}
         value={nodeLabel}
-        background="#ffffff"
         size="sm"
         onChange={handleChange}
       />

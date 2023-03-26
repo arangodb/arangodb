@@ -1,21 +1,21 @@
 import { Checkbox, FormLabel } from "@chakra-ui/react";
-import React, { useContext, useState } from "react";
+import React, { useState } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
-import { UrlParametersContext } from "../url-parameters-context";
+import { useUrlParameterContext } from "../UrlParametersContext";
 
 const ParameterEdgeColorByCollection = () => {
-  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const { urlParams, setUrlParams } = useUrlParameterContext();
   const [edgeColorByCollection, setEdgeColorByCollection] = useState(
-    urlParameters.edgeColorByCollection
+    urlParams.edgeColorByCollection
   );
 
   const handleChange = event => {
     setEdgeColorByCollection(event.target.checked);
     const newUrlParameters = {
-      ...urlParameters,
+      ...urlParams,
       edgeColorByCollection: event.target.checked
     };
-    setUrlParameters(newUrlParameters);
+    setUrlParams(newUrlParameters);
   };
 
   return (

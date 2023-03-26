@@ -9,8 +9,11 @@ import React, {
 import useSWR from "swr";
 import { DataSet, Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
-import { UrlParametersContext } from "./url-parameters-context";
-import URLPARAMETERS from "./UrlParameters";
+import {
+  DEFAULT_URL_PARAMETERS,
+  UrlParametersContext,
+  UrlParametersType
+} from "./UrlParametersContext";
 import { EdgeDataType, NodeDataType, VisGraphData } from "./VisGraphData.types";
 
 type SelectedEntityType = {
@@ -71,7 +74,7 @@ export const fetchVisData = async ({
   params
 }: {
   graphName: string;
-  params: typeof URLPARAMETERS | undefined;
+  params: UrlParametersType | undefined;
 }) => {
   if (!params) {
     return Promise.resolve();
@@ -118,19 +121,22 @@ export const putUserConfig = async ({
 };
 
 const useSetupParams = ({ graphName }: { graphName: string }) => {
-  const [urlParameters, setUrlParameters] = useState<typeof URLPARAMETERS>();
-  const [params, setParams] = useState<typeof URLPARAMETERS>();
+  const [urlParams, setUrlParams] = useState<UrlParametersType>(
+    DEFAULT_URL_PARAMETERS
+  );
+  const [params, setParams] = useState<UrlParametersType>();
   useEffect(() => {
     async function fetchData() {
       const config = await fetchUserConfig();
       const paramKey = `${window.frontendConfig.db}_${graphName}`;
-      const graphParams = config.result.visgraphs?.[paramKey] || URLPARAMETERS;
-      setUrlParameters(graphParams);
+      const graphParams =
+        config.result.visgraphs?.[paramKey] || DEFAULT_URL_PARAMETERS;
+      setUrlParams(graphParams);
       setParams(graphParams);
     }
     fetchData();
   }, [graphName]);
-  return { urlParameters, setUrlParameters, params, setParams };
+  return { urlParams, setUrlParams, params, setParams };
 };
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
@@ -142,12 +148,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     SelectedEntityType
   >();
 
-  const {
-    setUrlParameters,
-    setParams,
-    params,
-    urlParameters
-  } = useSetupParams({ graphName });
+  const { setUrlParams, setParams, params, urlParams } = useSetupParams({
+    graphName
+  });
   const { data: graphData, isLoading: isGraphLoading } = useSWR<VisGraphData>(
     ["visData", graphName, params],
     async () => {
@@ -167,9 +170,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
 
   const onApplySettings = async (updatedParams?: { [key: string]: string }) => {
     const newParams = {
-      ...urlParameters,
+      ...urlParams,
       ...(updatedParams ? updatedParams : {})
-    } as typeof URLPARAMETERS;
+    } as UrlParametersType;
     let { nodeStart } = newParams;
     if (!nodeStart) {
       nodeStart = graphData?.settings.startVertex._id || nodeStart;
@@ -228,9 +231,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         onSelectEntity
       }}
     >
-      <UrlParametersContext.Provider
-        value={[urlParameters, setUrlParameters] as any}
-      >
+      <UrlParametersContext.Provider value={{ urlParams, setUrlParams }}>
         {children}
       </UrlParametersContext.Provider>
     </GraphContext.Provider>

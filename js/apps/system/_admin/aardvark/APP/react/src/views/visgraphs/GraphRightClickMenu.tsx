@@ -3,13 +3,12 @@ import React, {
   forwardRef,
   LegacyRef,
   MutableRefObject,
-  useContext,
   useEffect,
   useState
 } from "react";
 import { ContextMenu } from "../../components/contextMenu/ContextMenu";
 import { fetchVisData, useGraph } from "./GraphContext";
-import { UrlParametersContext } from "./url-parameters-context";
+import { useUrlParameterContext } from "./UrlParametersContext";
 
 export const GraphRightClickMenu = ({
   visJsRef
@@ -116,7 +115,7 @@ const NodeContextMenu = forwardRef(
       graphName,
       datasets
     } = useGraph();
-    const [urlParameters] = useContext(UrlParametersContext) || [];
+    const { urlParams, setUrlParams } = useUrlParameterContext();
     if (!rightClickedEntity || !rightClickedEntity.nodeId) {
       return null;
     }
@@ -149,7 +148,7 @@ const NodeContextMenu = forwardRef(
                 return;
               }
               const params = {
-                ...(urlParameters as any),
+                ...urlParams,
                 query:
                   "FOR v, e, p IN 1..1 ANY '" +
                   rightClickedEntity.nodeId +
@@ -186,6 +185,10 @@ const NodeContextMenu = forwardRef(
               if (!rightClickedEntity.nodeId) {
                 return;
               }
+              setUrlParams({
+                ...urlParams,
+                nodeStart: rightClickedEntity.nodeId
+              });
               onApplySettings({ nodeStart: rightClickedEntity.nodeId });
             }}
           >
