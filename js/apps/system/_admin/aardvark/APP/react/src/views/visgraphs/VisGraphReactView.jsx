@@ -1,11 +1,10 @@
 /* global */
 
 import React from "react";
-import "./graph.css";
+import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
 import { useDisableNavBar } from "../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
-import { ChakraProvider } from "@chakra-ui/react";
-import { theme } from "../../theme/theme";
+import "./graph.css";
 import { GraphDisplay } from "./GraphDisplay.tsx";
 
 const VisGraphReactView = () => {
@@ -14,9 +13,9 @@ const VisGraphReactView = () => {
 
   return (
     <div className="graphReactViewContainer">
-      <ChakraProvider theme={theme}>
+      <ChakraCustomProvider>
         <GraphDisplay />
-      </ChakraProvider>
+      </ChakraCustomProvider>
     </div>
   );
 };
