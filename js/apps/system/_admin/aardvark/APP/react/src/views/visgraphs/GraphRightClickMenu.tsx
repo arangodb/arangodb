@@ -116,7 +116,10 @@ const NodeContextMenu = forwardRef(
       datasets
     } = useGraph();
     const { urlParams, setUrlParams } = useUrlParameterContext();
-    if (!rightClickedEntity || !rightClickedEntity.nodeId) {
+    const foundNode =
+      rightClickedEntity?.nodeId &&
+      datasets?.nodes.get(rightClickedEntity.nodeId);
+    if (!rightClickedEntity || !rightClickedEntity.nodeId || !foundNode) {
       return null;
     }
     return (
@@ -160,7 +163,6 @@ const NodeContextMenu = forwardRef(
                 graphName,
                 params
               });
-              const foundNode = datasets?.nodes.get(rightClickedEntity.nodeId);
               const newLabel = foundNode?.label
                 ? `${foundNode.label} (expanded)`
                 : `(expanded)`;
@@ -193,6 +195,35 @@ const NodeContextMenu = forwardRef(
             }}
           >
             Set as Start Node
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              if (!rightClickedEntity.nodeId) {
+                return;
+              }
+              if (foundNode.fixed) {
+                const newLabel =
+                  foundNode.label && foundNode.label.includes(" (fixed)")
+                    ? foundNode.label.replace(" (fixed)", "")
+                    : foundNode.label;
+                datasets?.nodes.updateOnly({
+                  id: rightClickedEntity.nodeId,
+                  label: newLabel,
+                  fixed: false
+                });
+                return;
+              }
+              const newLabel = foundNode?.label
+                ? `${foundNode.label} (fixed)`
+                : `(fixed)`;
+              datasets?.nodes.updateOnly({
+                id: rightClickedEntity.nodeId,
+                label: newLabel,
+                fixed: true
+              });
+            }}
+          >
+            {foundNode?.fixed ? "Unpin node" : "Pin node"}
           </MenuItem>
         </MenuOptionGroup>
       </MenuList>
