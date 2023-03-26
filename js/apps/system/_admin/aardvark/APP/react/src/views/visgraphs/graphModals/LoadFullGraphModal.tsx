@@ -14,7 +14,7 @@ import {
 
 export const LoadFullGraphModal = () => {
   const { onClearAction, onApplySettings, setSelectedAction } = useGraph();
-  const { urlParams, setUrlParams } = useUrlParameterContext();
+  const { urlParams } = useUrlParameterContext();
   const curentLimit = Number(urlParams.limit);
   return (
     <Modal isOpen onClose={onClearAction}>
@@ -37,9 +37,6 @@ export const LoadFullGraphModal = () => {
           <Button
             colorScheme="green"
             onClick={() => {
-              setUrlParams?.(urlParams => {
-                return { ...urlParams, mode: "all" };
-              });
               onApplySettings({ mode: "all" });
               setSelectedAction(undefined);
             }}
