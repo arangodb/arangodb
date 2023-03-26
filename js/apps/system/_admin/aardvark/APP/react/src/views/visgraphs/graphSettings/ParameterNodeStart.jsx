@@ -16,9 +16,9 @@ const ParameterNodeStart = () => {
 
   return (
     <>
-      <FormLabel htmlFor="startNode"> Start node</FormLabel>
+      <FormLabel htmlFor="nodeStart"> Start node</FormLabel>
       <Input
-        id="startNode"
+        id="nodeStart"
         width="200px"
         min={1}
         required={true}
