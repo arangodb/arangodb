@@ -1551,6 +1551,9 @@ authRouter.get('/visgraph/:name', function (req, res) {
             x: 0,
             y: 0
           };
+          node.shapeProperties = {
+            borderDashes: [10, 15]
+          };
         }
       } else {
         // mark the one starting node
@@ -1562,6 +1565,9 @@ authRouter.get('/visgraph/:name', function (req, res) {
             size: 16,
             x: 0,
             y: 0
+          };
+          node.shapeProperties = {
+            borderDashes: [10, 15]
           };
         }
       }
