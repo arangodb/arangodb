@@ -1,5 +1,11 @@
 import { useDisclosure } from "@chakra-ui/react";
-import React, { createContext, ReactNode, useContext, useState } from "react";
+import React, {
+  createContext,
+  ReactNode,
+  useContext,
+  useEffect,
+  useState
+} from "react";
 import useSWR from "swr";
 import { DataSet, Network } from "vis-network";
 import { getRouteForDB } from "../../utils/arangoClient";
@@ -65,8 +71,11 @@ export const fetchVisData = async ({
   params
 }: {
   graphName: string;
-  params: typeof URLPARAMETERS;
+  params: typeof URLPARAMETERS | undefined;
 }) => {
+  if (!params) {
+    return Promise.resolve();
+  }
   const data = await getRouteForDB(window.frontendConfig.db, "_admin").get(
     `/aardvark/visgraph/${graphName}`,
     params
@@ -74,6 +83,55 @@ export const fetchVisData = async ({
   return data.body;
 };
 
+export const fetchUserConfig = async () => {
+  const username = window.App.currentUser || "root";
+
+  const data = await getRouteForDB(window.frontendConfig.db, "_api").get(
+    `/user/${username}/config`
+  );
+  return data.body;
+};
+
+export const putUserConfig = async ({
+  params,
+  fullConfig,
+  graphName
+}: {
+  params: any;
+  fullConfig: any;
+  graphName: string;
+}) => {
+  const username = window.App.currentUser || "root";
+  const paramKey = `${window.frontendConfig.db}_${graphName}`;
+
+  const finalConfig = {
+    ...fullConfig,
+    [paramKey]: {
+      ...params
+    }
+  };
+  const data = await getRouteForDB(
+    window.frontendConfig.db,
+    "_api"
+  ).put(`/user/${username}/config/visgraphs`, { value: finalConfig });
+  return data.body;
+};
+
+const useSetupParams = ({ graphName }: { graphName: string }) => {
+  const [urlParameters, setUrlParameters] = useState<typeof URLPARAMETERS>();
+  const [params, setParams] = useState<typeof URLPARAMETERS>();
+  useEffect(() => {
+    async function fetchData() {
+      const config = await fetchUserConfig();
+      const paramKey = `${window.frontendConfig.db}_${graphName}`;
+      const graphParams = config.result.visgraphs?.[paramKey] || URLPARAMETERS;
+      setUrlParameters(graphParams);
+      setParams(graphParams);
+    }
+    fetchData();
+  }, [graphName]);
+  return { urlParameters, setUrlParameters, params, setParams };
+};
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
@@ -84,8 +142,12 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     SelectedEntityType
   >();
 
-  const [urlParameters, setUrlParameters] = useState(URLPARAMETERS);
-  const [params, setParams] = useState(URLPARAMETERS);
+  const {
+    setUrlParameters,
+    setParams,
+    params,
+    urlParameters
+  } = useSetupParams({ graphName });
   const { data: graphData, isLoading: isGraphLoading } = useSWR<VisGraphData>(
     ["visData", graphName, params],
     async () => {
@@ -103,13 +165,19 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const onApplySettings = (updatedParams?: { [key: string]: string }) => {
-    const newParams = { ...urlParameters, ...updatedParams };
+  const onApplySettings = async (updatedParams?: { [key: string]: string }) => {
+    const newParams = {
+      ...urlParameters,
+      ...(updatedParams ? updatedParams : {})
+    } as typeof URLPARAMETERS;
     let { nodeStart } = newParams;
     if (!nodeStart) {
       nodeStart = graphData?.settings.startVertex._id || nodeStart;
     }
-    setParams({ ...newParams, nodeStart });
+    const fullConfig = await fetchUserConfig();
+    await putUserConfig({ params: newParams, fullConfig, graphName });
+    const finalParams = { ...newParams, nodeStart };
+    setParams(finalParams);
   };
   const {
     onOpen: onOpenSettings,
