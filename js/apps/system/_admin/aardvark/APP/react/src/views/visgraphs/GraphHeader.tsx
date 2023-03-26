@@ -4,6 +4,7 @@ import React from "react";
 import { CloudDownload, Fullscreen } from "styled-icons/material";
 import { useGraph } from "./GraphContext";
 import { GraphSettings } from "./graphSettings/GraphSettings";
+import { SearchButton } from "./SearchButton";
 
 export const GraphHeader = () => {
   const { graphName } = useGraph();
@@ -23,6 +24,7 @@ export const GraphHeader = () => {
         <FullscreenButton />
         <LoadFullGraph />
         <SwitchToOld />
+        <SearchButton />
         <GraphSettings />
       </HStack>
     </Box>
