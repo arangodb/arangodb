@@ -10,7 +10,7 @@ import { useGraph } from "../GraphContext";
 import { UrlParametersContext } from "../url-parameters-context";
 
 export const LoadFullGraphModal = () => {
-  const { onClearAction, onApplySettings, setLoadFullGraph } = useGraph();
+  const { onClearAction, onApplySettings, setSelectedAction } = useGraph();
   const [_, setUrlParameters] = useContext(UrlParametersContext) || [];
 
   return (
@@ -30,7 +30,7 @@ export const LoadFullGraphModal = () => {
                 return { ...urlParameters, mode: "all" };
               });
               onApplySettings({ mode: "all" });
-              setLoadFullGraph(false);
+              setSelectedAction(undefined);
             }}
           >
             Load Full Graph

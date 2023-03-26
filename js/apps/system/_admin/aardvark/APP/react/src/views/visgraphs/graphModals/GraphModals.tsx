@@ -9,8 +9,8 @@ import { AddEdgeHandler } from "./AddEdgeHandler";
 import { LoadFullGraphModal } from "./LoadFullGraphModal";
 
 export const GraphModals = () => {
-  const { selectedAction, loadFullGraph } = useGraph();
-  if (selectedAction?.entity.edgeId) {
+  const { selectedAction } = useGraph();
+  if (selectedAction?.entity?.edgeId) {
     if (selectedAction?.action === "delete") {
       return <DeleteEdgeModal />;
     }
@@ -19,7 +19,7 @@ export const GraphModals = () => {
     }
   }
 
-  if (selectedAction?.entity.nodeId) {
+  if (selectedAction?.entity?.nodeId) {
     if (selectedAction?.action === "delete") {
       return <DeleteNodeModal />;
     }
@@ -27,6 +27,7 @@ export const GraphModals = () => {
       return <EditNodeModal />;
     }
   }
+
   if (selectedAction?.action === "add") {
     if (selectedAction.entityType === "node") {
       return <AddNodeModal />;
@@ -36,7 +37,7 @@ export const GraphModals = () => {
     }
   }
 
-  if (loadFullGraph) {
+  if (selectedAction?.action === "loadFullGraph") {
     return <LoadFullGraphModal />;
   }
 

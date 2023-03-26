@@ -14,12 +14,12 @@ type SelectedEntityType = {
 };
 
 export type SelectedActionType = {
-  action: "delete" | "edit" | "add";
+  action: "delete" | "edit" | "add" | "loadFullGraph";
   entityType?: "node" | "edge";
   from?: string;
   to?: string;
   callback?: any;
-  entity: SelectedEntityType;
+  entity?: SelectedEntityType;
 };
 
 type AddEdgeArgs = {
@@ -38,9 +38,7 @@ type GraphContextType = {
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
-  loadFullGraph: boolean;
   fetchDuration?: number;
-  setLoadFullGraph: (load: boolean) => void;
   datasets?: DatasetsType;
   setDatasets: (datasets: DatasetsType) => void;
   rightClickedEntity?: SelectedEntityType;
@@ -79,7 +77,6 @@ export const fetchVisData = async ({
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-  let [loadFullGraph, setLoadFullGraph] = useState(false);
   let [network, setNetwork] = useState<Network>();
   const [datasets, setDatasets] = useState<DatasetsType>();
   const [fetchDuration, setFetchDuration] = useState<number>();
@@ -158,8 +155,6 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         onAddEdge,
         datasets,
         setDatasets,
-        setLoadFullGraph,
-        loadFullGraph,
         fetchDuration,
         selectedEntity,
         onSelectEntity

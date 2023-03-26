@@ -110,7 +110,7 @@ const SwitchToOld = () => {
 };
 
 const LoadFullGraph = () => {
-  const { setLoadFullGraph } = useGraph();
+  const { setSelectedAction } = useGraph();
   return (
     <Tooltip
       hasArrow
@@ -120,7 +120,7 @@ const LoadFullGraph = () => {
       <IconButton
         size="sm"
         onClick={() => {
-          setLoadFullGraph(true);
+          setSelectedAction({ action: "loadFullGraph" });
         }}
         icon={<Icon width="5" height="5" as={CloudDownload} />}
         aria-label={"Load full graph"}
