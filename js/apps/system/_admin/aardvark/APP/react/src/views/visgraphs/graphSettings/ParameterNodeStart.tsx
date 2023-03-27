@@ -20,8 +20,6 @@ const ParameterNodeStart = () => {
       <Input
         id="nodeStart"
         width="200px"
-        min={1}
-        required={true}
         value={urlParams.nodeStart}
         size="sm"
         onChange={handleChange}

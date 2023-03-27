@@ -20,8 +20,6 @@ const ParameterLimit = () => {
       <Input
         id="limit"
         width="60px"
-        min={1}
-        required={true}
         value={urlParams.limit}
         type="number"
         size="sm"

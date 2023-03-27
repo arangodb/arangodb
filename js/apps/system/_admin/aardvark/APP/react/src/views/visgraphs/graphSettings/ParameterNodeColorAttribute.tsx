@@ -19,8 +19,6 @@ const ParameterNodeColorAttribute = () => {
       <Input
         id="nodeColorAttribute"
         width="200px"
-        min={1}
-        required
         value={urlParams.nodeColorAttribute}
         size="sm"
         onChange={handleChange}

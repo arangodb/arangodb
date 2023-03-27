@@ -19,8 +19,6 @@ const ParameterNodeLabel = () => {
       <FormLabel htmlFor="nodeLabel">Node label</FormLabel>
       <Input
         id="nodeLabel"
-        min={1}
-        required
         value={urlParams.nodeLabel}
         size="sm"
         onChange={handleChange}

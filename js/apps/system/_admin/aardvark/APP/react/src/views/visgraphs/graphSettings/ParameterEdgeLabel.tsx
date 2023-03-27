@@ -19,8 +19,6 @@ const ParameterEdgeLabel = () => {
       <FormLabel htmlFor="edgeLabel">Edge label</FormLabel>
       <Input
         id="edgeLabel"
-        min={1}
-        required
         value={urlParams.edgeLabel}
         size="sm"
         onChange={handleChange}

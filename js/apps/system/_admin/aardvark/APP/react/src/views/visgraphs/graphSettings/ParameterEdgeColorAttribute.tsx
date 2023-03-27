@@ -21,7 +21,6 @@ const ParameterEdgeColorAttribute = () => {
       <Input
         id="edgeColorAttribute"
         width="200px"
-        min={1}
         value={urlParams.edgeColorAttribute}
         size="sm"
         onChange={handleChange}

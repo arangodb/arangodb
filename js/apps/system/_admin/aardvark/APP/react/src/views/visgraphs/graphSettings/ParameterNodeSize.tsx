@@ -17,8 +17,6 @@ const ParameterNodeSize = () => {
       <Input
         id="nodeSize"
         width="200px"
-        min={1}
-        required={true}
         value={urlParams.nodeSize}
         size="sm"
         onChange={handleChange}

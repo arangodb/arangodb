@@ -20,8 +20,6 @@ const ParameterDepth = () => {
       <Input
         id="depth"
         width="200px"
-        min={1}
-        required={true}
         value={urlParams.depth}
         size="sm"
         type="number"
