@@ -420,6 +420,7 @@ const VisJsGraph = () => {
       edgeColor: `#${urlParameters.edgeColor}`,
       edgeColorAttribute: `${urlParameters.edgeColorAttribute}`,
       edgeColorByCollection: `${urlParameters.edgeColorByCollection}`,
+      layout: `${urlParameters.layout}`,
       nodeLabel: `${urlParameters.nodeLabel}`,
       edgeLabel: `${urlParameters.edgeLabel}`,
       nodeSize: `${urlParameters.nodeSize}`,
