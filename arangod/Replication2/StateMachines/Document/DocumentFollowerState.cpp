@@ -81,6 +81,10 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
+        auto result = data.core->getTransactionHandler()->applyEntry(
+            ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+        ADB_PROD_ASSERT(result.ok()) << result;
+
         auto const& shardHandler = data.core->getShardHandler();
         if (auto dropAllRes = shardHandler->dropAllShards();
             dropAllRes.fail()) {
