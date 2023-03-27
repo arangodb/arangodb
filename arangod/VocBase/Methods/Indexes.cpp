@@ -491,8 +491,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
                        velocypack::Value{absl::StrCat(
                            collection->name(), TRI_INDEX_HANDLE_SEPARATOR_STR,
                            value.value.stringView())});
-          } else if (key !=
-                     iresearch::StaticStrings::AnalyzerDefinitionsField) {
+          } else if (key != "analyzerDefinitions") {
             output.add(key, value.value);
           }
         }
