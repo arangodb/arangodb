@@ -1,7 +1,7 @@
-import { DownloadIcon, RepeatClockIcon } from "@chakra-ui/icons";
+import { RepeatClockIcon } from "@chakra-ui/icons";
 import { Box, HStack, Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import React from "react";
-import { CloudDownload, Fullscreen } from "styled-icons/material";
+import { AddAPhoto, CloudDownload, Fullscreen } from "styled-icons/material";
 import { useGraph } from "./GraphContext";
 import { GraphSettings } from "./graphSettings/GraphSettings";
 import { SearchButton } from "./SearchButton";
@@ -52,12 +52,12 @@ const downloadCanvas = (graphName: string) => {
 const DownloadButton = () => {
   const { graphName } = useGraph();
   return (
-    <Tooltip hasArrow label={"Download screenshot"} placement="bottom">
+    <Tooltip hasArrow label={"Take a screenshot"} placement="bottom">
       <IconButton
         onClick={() => downloadCanvas(graphName)}
         size="sm"
-        icon={<DownloadIcon />}
-        aria-label={"Download screenshot"}
+        icon={<Icon width="5" height="5" as={AddAPhoto} />}
+        aria-label={"Take a screenshot"}
       />
     </Tooltip>
   );
