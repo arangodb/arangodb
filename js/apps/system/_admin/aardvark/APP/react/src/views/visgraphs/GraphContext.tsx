@@ -92,7 +92,8 @@ export const fetchUserConfig = async () => {
   const data = await getRouteForDB(window.frontendConfig.db, "_api").get(
     `/user/${username}/config`
   );
-  return data.body;
+  console.log({data});
+  return data.body.result.visgraphs;
 };
 
 export const putUserConfig = async ({
@@ -108,7 +109,7 @@ export const putUserConfig = async ({
   const paramKey = `${window.frontendConfig.db}_${graphName}`;
 
   const finalConfig = {
-    ...fullConfig,
+    ...fullConfig[paramKey],
     [paramKey]: {
       ...params
     }
@@ -130,7 +131,7 @@ const useSetupParams = ({ graphName }: { graphName: string }) => {
       const config = await fetchUserConfig();
       const paramKey = `${window.frontendConfig.db}_${graphName}`;
       const graphParams =
-        config.result.visgraphs?.[paramKey] || DEFAULT_URL_PARAMETERS;
+        config?.[paramKey] || DEFAULT_URL_PARAMETERS;
       setUrlParams(graphParams);
       setParams(graphParams);
     }
