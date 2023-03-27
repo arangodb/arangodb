@@ -26,6 +26,11 @@
 #include <memory>
 #include <cstdint>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Logger/LogMacros.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
 #include "Pregel/Algos/DMID/DMIDValue.h"
@@ -36,21 +41,14 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
-
 #include "Pregel/Worker/WorkerConfig.h"
-
-#include "Cluster/ServerState.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Logger/LogMacros.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -140,6 +138,9 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
     }
   }
+  // TODO GORDO-1584 and when using actors: send message to status actor instead
+  // currently if statusUpdateCallback captures WorkerHandler by reference, this
+  // can lead to to a bad alloc
   SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                      statusUpdateCallback);
   return result;
@@ -167,8 +168,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
 
   // tell the formatter the number of docs we are about to load
   LogicalCollection* coll = cursor->collection();
-  uint64_t numVertices =
-      coll->numberDocuments(&trx, transaction::CountType::Normal);
+  uint64_t numVertices = coll->getPhysical()->numberDocuments(&trx);
 
   requestVertexIds(numVertices);
   LOG_PREGEL("7c31f", DEBUG)

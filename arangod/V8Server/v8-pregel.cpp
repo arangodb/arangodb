@@ -39,6 +39,8 @@
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
+#include "Utils/OperationResult.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Iterator.h>
@@ -263,6 +265,144 @@ static void JS_PregelAQLResult(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto handlePregelHistoryV8Result =
+      [&](ResultT<OperationResult> const& result) -> void {
+    if (result.fail()) {
+      // check outer ResultT
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (result.get().fail()) {
+      // check inner OperationResult
+      std::string message = std::string{result.get().errorMessage()};
+      if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // For reasons, not all OperationResults deliver the expected message.
+        // Therefore, we need set up the message properly and manually here.
+        message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
+    }
+    if (result.get().hasSlice()) {
+      if (result->slice().isNone()) {
+        // Truncate does not deliver a proper slice in a Cluster.
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+      } else {
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+      }
+    } else {
+      // Should always have a slice, doing this check to be sure.
+      // (e.g. a truncate might not return a Slice)
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+    }
+  };
+
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
+  }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength == 0) {
+    // Read all pregel history entries
+    auto result = pregel.handleHistoryRequest(
+        vocbase, arangodb::rest::RequestType::GET, std::nullopt);
+    handlePregelHistoryV8Result(result);
+    return;
+  }
+
+  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistory(<executionNum>]");
+  }
+
+  // Read single history entry
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      TRI_ObjectToUInt64(isolate, args[0], true)};
+
+  auto result = pregel.handleHistoryRequest(
+      vocbase, arangodb::rest::RequestType::GET, executionNumber);
+  handlePregelHistoryV8Result(result);
+  return;
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_PregelHistoryRemove(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto handlePregelHistoryV8Result =
+      [&](ResultT<OperationResult> const& result) -> void {
+    if (result.fail()) {
+      // check outer ResultT
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (result.get().fail()) {
+      // check inner OperationResult
+      std::string message = std::string{result.get().errorMessage()};
+      if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // For reasons, not all OperationResults deliver the expected message.
+        // Therefore, we need set up the message properly and manually here.
+        message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
+    }
+
+    if (result.get().hasSlice()) {
+      if (result->slice().isNone()) {
+        // Truncate does not deliver a proper slice in a Cluster.
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+      } else {
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+      }
+    } else {
+      // Should always have a slice, doing this check to be sure.
+      // (e.g. a truncate might not return a Slice)
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+    }
+  };
+
+  auto& vocbase = GetContextVocBase(isolate);
+  if (!vocbase.server().hasFeature<arangodb::pregel::PregelFeature>()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
+  }
+  auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+
+  // check the arguments
+  uint32_t const argLength = args.Length();
+  if (argLength == 0) {
+    // Read all pregel history entries
+    auto result = pregel.handleHistoryRequest(
+        vocbase, arangodb::rest::RequestType::DELETE_REQ, std::nullopt);
+    handlePregelHistoryV8Result(result);
+    return;
+  }
+
+  if (argLength != 1 || (!args[0]->IsNumber() && !args[0]->IsString())) {
+    // TODO extend this for named graphs, use the Graph class
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistoryRemove(<executionNum>]");
+  }
+
+  // Read single history entry
+  auto executionNumber = arangodb::pregel::ExecutionNumber{
+      TRI_ObjectToUInt64(isolate, args[0], true)};
+
+  auto result = pregel.handleHistoryRequest(
+      vocbase, arangodb::rest::RequestType::DELETE_REQ, executionNumber);
+  handlePregelHistoryV8Result(result);
+  return;
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8Pregel(v8::Isolate* isolate,
                       v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
@@ -277,4 +417,10 @@ void TRI_InitV8Pregel(v8::Isolate* isolate,
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_pregelAqlResult"),
                        JS_PregelAQLResult);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                       TRI_V8_ASCII_STRING(isolate, "_pregelHistory"),
+                       JS_PregelHistory);
+  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                       TRI_V8_ASCII_STRING(isolate, "_pregelHistoryRemove"),
+                       JS_PregelHistoryRemove);
 }
