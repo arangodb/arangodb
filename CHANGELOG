@@ -1,5 +1,9 @@
 devel
 -----
+
+* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+  disk after database is dropped.
+
 * Marked all memory-mapping options for Pregel as obsolete;
   The memory mapping code was removed as it did not provide any advantages
   over spilling into system-provided swap space.

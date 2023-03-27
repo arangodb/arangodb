@@ -41,7 +41,7 @@ namespace methods {
 
 /// Common code for the db._database(),
 struct Databases {
-  static std::string normalizeName(std::string const& name);
+  static std::string normalizeName(std::string_view name);
 
   static std::vector<std::string> list(ArangodServer& server,
                                        std::string const& user = "");

@@ -429,28 +429,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
     transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
 }
-// @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
-                                            transaction::CountType type) {
-  // detailed results should have been handled in the levels above us
-  TRI_ASSERT(type != transaction::CountType::Detailed);
-
-  uint64_t documents = transaction::CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = _countCache.get();
-  } else if (type == transaction::CountType::TryCache) {
-    // get data from cache, but only if not expired
-    documents = _countCache.getWithTtl();
-  }
-  if (documents == transaction::CountCache::NotPopulated) {
-    // cache was not populated before or cache value has expired
-    documents = getPhysical()->numberDocuments(trx);
-    _countCache.store(documents);
-  }
-  TRI_ASSERT(documents != transaction::CountCache::NotPopulated);
-  return documents;
-}
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
   return usesRevisionsAsDocumentIds() && isSmartChild();
