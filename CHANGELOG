@@ -1,6 +1,19 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Fix issues with deferred database creation:
+
+  When a database has made it into the Plan part of the agency with some
+  settings, e.g. `replicationFactor` that would violate the current settings for
+  databases (e.g. `--cluster.min-replication-factor` and
+  `--cluster.max-replication-factor`), and then a new DB server is added, it
+  will try to create the database locally with the settings from the Plan.
+  As these settings however violate the min/max replication factor values, the
+  database is not created on the new DB server and an error is written into
+  Current instead.
+  This can cause follow-up errors and the PlanSyncer complaining about missing
+  databases for analyzers etc.
+
 * Fix potential memory under-accounting on cache shutdown for in-memory caches
   for edge indexes.
 
