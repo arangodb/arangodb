@@ -261,7 +261,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
           TRI_ERROR_INTERNAL, "invalid iterator in RocksDBAnyIndexIterator");
     }
 
-    _total = collection->numberDocuments(trx, transaction::CountType::Normal);
+    _total = collection->getPhysical()->numberDocuments(trx);
     reset();  // initial seek
   }
 

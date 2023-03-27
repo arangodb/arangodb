@@ -564,12 +564,11 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
     if (StaticStrings::EncodingDeflate == value) {
       // FXIME: cannot use substring search, Java driver chokes on deflated
       // response
-      // if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
       _acceptEncoding = EncodingType::DEFLATE;
+    } else if (StaticStrings::EncodingGzip == value) {
+      _acceptEncoding = EncodingType::GZIP;
     }
-  }
-
-  if (key == "cookie") {
+  } else if (key == "cookie") {
     parseCookies(value.c_str(), value.size());
     return;
   }
@@ -724,11 +723,14 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 
   if (k == StaticStrings::Accept && v == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (k == StaticStrings::AcceptEncoding &&
-             v == StaticStrings::EncodingDeflate) {
+  } else if (k == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
-    _acceptEncoding = EncodingType::DEFLATE;
+    if (v == StaticStrings::EncodingDeflate) {
+      _acceptEncoding = EncodingType::DEFLATE;
+    } else if (v == StaticStrings::EncodingGzip) {
+      _acceptEncoding = EncodingType::GZIP;
+    }
   } else if (_contentType == ContentType::UNSET &&
              k == StaticStrings::ContentTypeHeader) {
     if (v == StaticStrings::MimeTypeVPack) {
@@ -741,9 +743,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       // don't insert this header!!
       return;
     }
-  }
-
-  if (k == "cookie") {
+  } else if (k == "cookie") {
     parseCookies(value, valueLength);
     return;
   }

@@ -136,7 +136,6 @@ struct ExecutionSpecifications {
   /// and used in MasterContext::postGlobalSuperstep which returns whether to
   /// continue.
   uint64_t maxSuperstep;
-  bool useMemoryMaps;
   bool storeResults;
   TTL ttl;
   size_t parallelism;
@@ -151,7 +150,6 @@ auto inspect(Inspector& f, ExecutionSpecifications& x) {
       f.field("edgeCollections", x.edgeCollections),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
       f.field("maxSuperstep", x.maxSuperstep),
-      f.field("useMemoryMaps", x.useMemoryMaps),
       f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism),
       f.field("userParamters", x.userParameters));

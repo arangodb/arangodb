@@ -65,7 +65,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-std::string Databases::normalizeName(std::string const& name) {
+std::string Databases::normalizeName(std::string_view name) {
   return normalizeUtf8ToNFC(name);
 }
 
@@ -480,7 +480,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
@@ -510,7 +510,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       auto& df = server.getFeature<DatabaseFeature>();
       res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
     }
   }
 
