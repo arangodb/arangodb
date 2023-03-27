@@ -28,7 +28,6 @@ auto workerSpecification(
             .algorithm = std::string{specifications.algorithm},
             .userParameters = specifications.userParameters,
             .coordinatorId = "",
-            .useMemoryMaps = specifications.useMemoryMaps,
             .parallelism = specifications.parallelism,
             .edgeCollectionRestrictions =
                 specifications.edgeCollectionRestrictions,

@@ -62,7 +62,7 @@ void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
   _shardingPrototype = type;
 }
 
-Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
+Result CreateDatabaseInfo::load(std::string_view name, uint64_t id) {
   _name = methods::Databases::normalizeName(name);
   _id = id;
 
@@ -88,7 +88,7 @@ Result CreateDatabaseInfo::load(VPackSlice options, VPackSlice users) {
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name, VPackSlice options,
+Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
                                 VPackSlice users) {
   _name = methods::Databases::normalizeName(name);
 
@@ -107,7 +107,7 @@ Result CreateDatabaseInfo::load(std::string const& name, VPackSlice options,
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
+Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
                                 VPackSlice options, VPackSlice users) {
   _name = methods::Databases::normalizeName(name);
   _id = id;
