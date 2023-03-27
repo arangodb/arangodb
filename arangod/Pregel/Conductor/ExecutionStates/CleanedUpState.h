@@ -28,16 +28,18 @@ namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct Done : ExecutionState {
-  Done(ConductorState& conductor);
-  auto name() const -> std::string override { return "done"; }
+struct CleanedUp : ExecutionState {
+  CleanedUp() = default;
+  auto name() const -> std::string override { return "cleaned up"; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override;
+                            worker::message::WorkerMessages> override {
+    return {};
+  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
-
-  ConductorState& conductor;
+      -> std::optional<std::unique_ptr<ExecutionState>> override {
+    return std::nullopt;
+  }
 };
 
 }  // namespace arangodb::pregel::conductor
