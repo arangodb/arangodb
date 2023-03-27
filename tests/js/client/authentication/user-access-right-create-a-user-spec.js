@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, arangodb */
+/* global describe, before, after, it, arangodb */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
