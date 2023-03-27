@@ -421,14 +421,16 @@ class testRunner {
   }
 
   restartSniff(testCase) {
-    this.instanceManager.stopTcpDump();
-    if (this.options.sniffFilter && (testCase.search(this.options.sniffFilter) >= 0)){
-      let split = testCase.split(fs.pathSeparator);
-      let fn = testCase;
-      if (split.length > 0) {
-        fn = split[split.length - 1];
+    if (this.options.sniffFilter) {
+      this.instanceManager.stopTcpDump();
+      if (testCase.search(this.options.sniffFilter) >= 0){
+        let split = testCase.split(fs.pathSeparator);
+        let fn = testCase;
+        if (split.length > 0) {
+          fn = split[split.length - 1];
+        }
+        this.instanceManager.launchTcpDump(fn + "_");
       }
-      this.instanceManager.launchTcpDump(fn + "_");
     }
   }
 
