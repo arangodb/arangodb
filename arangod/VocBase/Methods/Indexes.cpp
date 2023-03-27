@@ -500,6 +500,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
 
         // the cluster won't set a proper id value
         // we don't need analyzer revision here
+        TRI_ASSERT(output.isEmpty());
         output.openObject();
         for (auto value : velocypack::ObjectIterator{tmp.slice()}) {
           TRI_ASSERT(value.key.isString());
