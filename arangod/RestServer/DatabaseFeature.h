@@ -181,8 +181,14 @@ class DatabaseFeature final : public ArangodFeature {
     _extendedNamesForCollections = value;
   }
 
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesForViews() const noexcept { return false; }
+  /// @brief whether or not extended names for views
+  bool extendedNamesForViews() const noexcept { return _extendedNamesForViews; }
+  /// @brief will be called only during startup when reading stored value from
+  /// storage engine
+  void extendedNamesForViews(bool value) noexcept {
+    _extendedNamesForViews = value;
+  }
+
   /// @brief currently always false, until feature is implemented
   bool extendedNamesForAnalyzers() const noexcept { return false; }
 
@@ -219,6 +225,8 @@ class DatabaseFeature final : public ArangodFeature {
   bool _extendedNamesForDatabases{false};
   // allow extended names for collections and indexes
   bool _extendedNamesForCollections{false};
+  // allow extended names for views
+  bool _extendedNamesForViews{false};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 

@@ -302,6 +302,17 @@ void DatabaseFeature::collectOptions(
       .setIntroducedIn(31100);
 
   options
+      ->addOption("--database.extended-names-views",
+                  "Allow most UTF-8 characters in view names. "
+                  "Once in use, "
+                  "this option cannot be turned off again.",
+                  new BooleanParameter(&_extendedNamesForViews),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
+
+  options
       ->addOption("--database.io-heartbeat",
                   "Perform I/O heartbeat to test the underlying volume.",
                   new options::BooleanParameter(&_performIOHeartbeat),
@@ -372,6 +383,9 @@ void DatabaseFeature::start() {
   if (_extendedNamesForCollections) {
     what.push_back("collections");
     what.push_back("indexes");
+  }
+  if (_extendedNamesForViews) {
+    what.push_back("views");
   }
 
   if (!what.empty()) {

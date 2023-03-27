@@ -71,6 +71,7 @@ std::regex const uuidRegex(
 constexpr std::string_view extendedNamesDatabasesKey = "extendedNamesDatabases";
 constexpr std::string_view extendedNamesCollectionsKey =
     "extendedNamesCollections";
+constexpr std::string_view extendedNamesViewsKey = "extendedNamesViews";
 
 constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -784,6 +785,12 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
       // settings mismatch
       return false;
     }
+    // --database.extended-names-views
+    if (!checkSetting(servers, "database.extended-names-views",
+                      ::extendedNamesViewsKey, df.extendedNamesForViews())) {
+      // settings mismatch
+      return false;
+    }
   }
 
   // all settings fine
@@ -1045,6 +1052,12 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
         // for the rationale behind this see above
         builder.add(::extendedNamesCollectionsKey,
                     VPackValue(df.extendedNamesForCollections()));
+      }
+      if (df.extendedNamesForViews()) {
+        // we only store the value of this config variable when activated.
+        // for the rationale behind this see above
+        builder.add(::extendedNamesViewsKey,
+                    VPackValue(df.extendedNamesForViews()));
       }
 
       builder.add(

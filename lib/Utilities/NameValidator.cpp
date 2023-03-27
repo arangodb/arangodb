@@ -169,8 +169,11 @@ bool CollectionNameValidator::isAllowedName(bool allowSystem,
 
 /// @brief checks if a view name is valid
 /// returns true if the name is allowed and false otherwise
-bool ViewNameValidator::isAllowedName(bool allowSystem, bool extendedNames,
+bool ViewNameValidator::isAllowedName(bool extendedNames,
                                       std::string_view name) noexcept {
+  // always false. there is currently no reason to create a system view
+  constexpr bool allowSystem = false;
+
   std::size_t length = 0;
 
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {

@@ -234,12 +234,17 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
   auto& df = server.getFeature<DatabaseFeature>();
 
   // --database.extended-names-databases
-  checkSetting(RocksDBSettingsType::ExtendedDatabaseNames,
+  checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
                "extended-names-databases", df.extendedNamesForDatabases(),
                [&df](bool value) { df.extendedNamesForDatabases(value); });
 
   // --database.extended-names-collections
-  checkSetting(RocksDBSettingsType::ExtendedCollectionNames,
+  checkSetting(RocksDBSettingsType::ExtendedNamesCollections,
                "extended-names-collections", df.extendedNamesForCollections(),
                [&df](bool value) { df.extendedNamesForCollections(value); });
+
+  // --database.extended-names-views
+  checkSetting(RocksDBSettingsType::ExtendedNamesViews, "extended-names-views",
+               df.extendedNamesForViews(),
+               [&df](bool value) { df.extendedNamesForViews(value); });
 }

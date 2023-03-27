@@ -85,8 +85,7 @@ struct ViewNameValidator {
 
   /// @brief checks if a view name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            std::string_view name) noexcept;
+  static bool isAllowedName(bool extendedNames, std::string_view name) noexcept;
 };
 
 struct IndexNameValidator {
