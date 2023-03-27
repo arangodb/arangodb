@@ -70,6 +70,9 @@ export class GraphView extends React.Component {
           edgeData.id = id;
           this.props.onAddEdgeToDb(edgeData);
         }}
+        onAddIcon={() => {
+          this.props.onAddIcon();
+        }}
       />
 
       <GraphInfo>

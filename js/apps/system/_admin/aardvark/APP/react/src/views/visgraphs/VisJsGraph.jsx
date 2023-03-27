@@ -10,6 +10,7 @@ import { EditNodeModal } from './EditNodeModal';
 import { EditEdgeModal } from './EditEdgeModal';
 import { DeleteNodeModal } from './DeleteNodeModal';
 import { DeleteEdgeModal } from './DeleteEdgeModal';
+import { AddIconModal } from './AddIconModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
 import { DocumentInfo } from './DocumentInfo';
 import URLPARAMETERS from "./UrlParameters";
@@ -96,6 +97,7 @@ const VisJsGraph = () => {
   const [isNewNodeToEdit, setIsNewNodeToEdit] = useState(false);
   const [showNodeToAddModal, setShowNodeToAddModal] = useState();
   const [showEdgeToAddModal, setShowEdgeToAddModal] = useState();
+  const [showAddIconModal, setShowAddIconModal] = useState();
 
   const fetchVisData = useCallback(() => {
     let newResponseTimesObject = {...responseTimesObject, fetchStarted: new Date()};
@@ -129,6 +131,10 @@ const VisJsGraph = () => {
   const openAddNodeModal = () => {
     setNodeToAdd({});
     setShowNodeToAddModal(true);
+  }
+
+  const onAddIcon = () => {
+    setShowAddIconModal(true);
   }
 
   const updateVisGraphDataWithNode = (newNode) => {
@@ -603,6 +609,21 @@ const VisJsGraph = () => {
         >
           <strong>Add node</strong>
         </AddNodeModal>
+        <AddIconModal
+          shouldShow={showAddIconModal}
+          onRequestClose={() => {
+            setShowAddIconModal(false);
+          }}
+          vertexCollections={vertexCollections}
+          onAddIcon={() => {
+            setShowNodeToAddModal(false);
+          }}
+          onIconAdded={
+            console.log("onIconAdded")
+          }
+        >
+          <strong>Add icon to vertex collections</strong>
+        </AddIconModal>
         <AddEdgeModal
           edgeModelToAdd={edgeModelToAdd}
           shouldShow={showEdgeToAddModal}
@@ -681,6 +702,7 @@ const VisJsGraph = () => {
           onEditEdge={(edgeId) => openEditEdgeModal(edgeId)}
           onDeleteEdge={(edgeId) => openDeleteEdgeModal(edgeId)}
           onAddNodeToDb={() => openAddNodeModal()}
+          onAddIcon={() => onAddIcon()}
           onExpandNode={(nodeId) => expandNode(nodeId)}
           onSetStartnode={(nodeId) => setStartnode(nodeId)}
           onGraphSending={(drawnGraph) => receiveDrawnGraph(drawnGraph)}

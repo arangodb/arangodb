@@ -26,7 +26,7 @@ const StyledEditModeInfoComponent = styled.div`
 	z-index: 99999;
 `;
 
-const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onExpandNode, onAddNodeToDb, onAddEdge}) => {
+const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, onSelectEdge, onDeleteNode, onDeleteEdge, onEditNode, onEditEdge, onSetStartnode, onAddIcon, onExpandNode, onAddNodeToDb, onAddEdge}) => {
 	const [layoutOptions, setLayoutOptions] = useState(options);
 	const [contextMenu, toggleContextMenu] = useState("");
 	const [position, setPosition] = useState({ x: 10, y:10 });
@@ -190,6 +190,13 @@ const VisNetwork = ({graphData, graphName, options, selectedNode, onSelectNode, 
 						toggleContextMenu("");
 					}}>
 					Set as startnode
+				</li>
+				<li title='addIcon'
+					onClick={() => {
+						onAddIcon();
+						toggleContextMenu("");
+					}}>
+					Add icon
 				</li>
 			</ul>
 		</StyledContextComponent>
