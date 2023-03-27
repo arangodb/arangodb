@@ -1169,6 +1169,14 @@ void ClusterInfo::loadPlan() {
 
       // create a local database object...
       arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
+      // validation of the database creation parameters should have happened
+      // already when we get here. whenever we get here, we have a database
+      // in the plan with whatever settings.
+      // we should not make the validation fail here, because that can lead
+      // to all sorts of problems later on if _new_ servers join the cluster
+      // that validate _existing_ databases. this must not fail.
+      info.strictValidation(false);
+
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
       if (res.fail()) {
@@ -1632,7 +1640,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;

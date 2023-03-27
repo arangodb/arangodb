@@ -29,6 +29,7 @@
 
 #include "Shell/arangosh.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 
@@ -80,31 +81,38 @@ class ClientFeature final : public HttpEndpointProvider {
   void start() override final;
   void stop() override final;
 
-  std::string const& databaseName() const { return _databaseName; }
-  void setDatabaseName(std::string const& databaseName);
-  bool authentication() const noexcept { return _authentication; }
+  std::string databaseName() const;
+  void setDatabaseName(std::string_view databaseName);
+
+  bool authentication() const noexcept;
+
   // get single endpoint. used by client tools that can handle only one endpoint
-  std::string const& endpoint() const { return _endpoints[0]; }
+  std::string endpoint() const;
   // set single endpoint
-  void setEndpoint(std::string const& value) { _endpoints[0] = value; }
-  std::string const& username() const { return _username; }
-  void setUsername(std::string const& value) { _username = value; }
-  std::string const& password() const { return _password; }
-  void setPassword(std::string const& value) { _password = value; }
-  std::string const& jwtSecret() const { return _jwtSecret; }
-  void setJwtSecret(std::string_view jwtSecret) { _jwtSecret = jwtSecret; }
-  double connectionTimeout() const noexcept { return _connectionTimeout; }
-  double requestTimeout() const noexcept { return _requestTimeout; }
-  void requestTimeout(double value) noexcept { _requestTimeout = value; }
-  uint64_t maxPacketSize() const noexcept { return _maxPacketSize; }
-  uint64_t sslProtocol() const noexcept { return _sslProtocol; }
-  bool forceJson() const noexcept { return _forceJson; }
-  void setForceJson(bool value) noexcept { _forceJson = value; }
-  void setRetries(size_t retries) noexcept { _retries = retries; }
-  void setWarn(bool warn) noexcept { _warn = warn; }
-  bool getWarn() const noexcept { return _warn; }
-  void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
-  bool getWarnConnect() const noexcept { return _warnConnect; }
+  void setEndpoint(std::string_view value);
+
+  std::string username() const;
+  void setUsername(std::string_view value);
+
+  std::string password() const;
+  void setPassword(std::string_view value);
+
+  std::string jwtSecret() const;
+  void setJwtSecret(std::string_view jwtSecret);
+
+  double connectionTimeout() const noexcept;
+  double requestTimeout() const noexcept;
+  void requestTimeout(double value) noexcept;
+  uint64_t maxPacketSize() const noexcept;
+  uint64_t sslProtocol() const noexcept;
+  bool askJwtSecret() const noexcept;
+  bool forceJson() const noexcept;
+  void setForceJson(bool value) noexcept;
+  void setRetries(size_t retries) noexcept;
+  void setWarn(bool warn) noexcept;
+  bool getWarn() const noexcept;
+  void setWarnConnect(bool warnConnect) noexcept;
+  bool getWarnConnect() const noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -143,9 +151,14 @@ class ClientFeature final : public HttpEndpointProvider {
 
   CommunicationFeaturePhase& _comm;
   ShellConsoleFeature* _console;
-  std::string _databaseName;
+
+  // protects most settings except codepage
+  basics::ReadWriteLock mutable _settingsLock;
+
   std::vector<std::string> _endpoints;
-  size_t _maxNumEndpoints;
+  size_t const _maxNumEndpoints;
+
+  std::string _databaseName;
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
@@ -153,8 +166,8 @@ class ClientFeature final : public HttpEndpointProvider {
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;
+  // only set at startup
   uint64_t _sslProtocol;
-
   size_t _retries;
 
 #if _WIN32
@@ -165,6 +178,7 @@ class ClientFeature final : public HttpEndpointProvider {
   bool const _allowJwtSecret;
   bool _authentication;
   bool _askJwtSecret;
+
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
