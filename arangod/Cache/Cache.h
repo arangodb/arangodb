@@ -72,6 +72,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   static constexpr std::uint64_t triesGuarantee =
       std::numeric_limits<std::uint64_t>::max();
+  static constexpr std::uint64_t triesFast = 200;
+  static constexpr std::uint64_t triesSlow = 10000;
 
  public:
   Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
@@ -143,7 +145,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Check whether the cache has begun the process of shutting down.
   //////////////////////////////////////////////////////////////////////////////
-  inline bool isShutdown() const { return _shutdown.load(); }
+  bool isShutdown() const noexcept { return _shutdown.load(); }
 
   struct Inserter {
     Inserter(Cache& cache, void const* key, std::size_t keySize,
@@ -151,51 +153,6 @@ class Cache : public std::enable_shared_from_this<Cache> {
              std::function<bool(Result const&)> retry);
     Result status;
   };
-
- protected:
-  static constexpr std::uint64_t triesFast = 200;
-  static constexpr std::uint64_t triesSlow = 10000;
-
-  basics::ReadWriteSpinLock _taskLock;
-  std::atomic<bool> _shutdown;
-
-  static std::uint64_t _findStatsCapacity;
-  bool _enableWindowedStats;
-  std::unique_ptr<StatBuffer> _findStats;
-  mutable basics::SharedCounter<64> _findHits;
-  mutable basics::SharedCounter<64> _findMisses;
-
-  // allow communication with manager
-  Manager* _manager;
-  std::uint64_t _id;
-  Metadata _metadata;
-
- private:
-  // manage the actual table - note: MUST be used only with atomic_load and
-  // atomic_store!
-  std::shared_ptr<Table> _table;
-
-  Table::BucketClearer _bucketClearer;
-  std::size_t _slotsPerBucket;
-
-  // manage eviction rate
-  basics::SharedCounter<64> _insertsTotal;
-  basics::SharedCounter<64> _insertEvictions;
-  static constexpr std::uint64_t _evictionMask =
-      4095;  // check roughly every 4096 insertions
-  static constexpr double _evictionRateThreshold =
-      0.01;  // if more than 1%
-             // evictions in past 4096
-             // inserts, migrate
-
-  // times to wait until requesting is allowed again
-  std::atomic<Manager::time_point::rep> _migrateRequestTime;
-  std::atomic<Manager::time_point::rep> _resizeRequestTime;
-
-  // friend class manager and tasks
-  friend class FreeMemoryTask;
-  friend class Manager;
-  friend class MigrateTask;
 
  protected:
   // shutdown cache and let its memory be reclaimed
@@ -225,6 +182,50 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual void migrateBucket(void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
+
+  basics::ReadWriteSpinLock _taskLock;
+  std::atomic<bool> _shutdown;
+
+  static std::uint64_t _findStatsCapacity;
+  bool _enableWindowedStats;
+  std::unique_ptr<StatBuffer> _findStats;
+  mutable basics::SharedCounter<64> _findHits;
+  mutable basics::SharedCounter<64> _findMisses;
+
+  // allow communication with manager
+  Manager* _manager;
+  std::uint64_t _id;
+  Metadata _metadata;
+
+ private:
+  // manage the actual table - note: MUST be used only with atomic_load and
+  // atomic_store!
+  std::shared_ptr<Table> _table;
+
+  Table::BucketClearer _bucketClearer;
+  std::size_t _slotsPerBucket;
+
+  // manage eviction rate
+  basics::SharedCounter<64> _insertsTotal;
+  basics::SharedCounter<64> _insertEvictions;
+
+  // times to wait until requesting is allowed again
+  std::atomic<Manager::time_point::rep> _migrateRequestTime;
+  std::atomic<Manager::time_point::rep> _resizeRequestTime;
+
+  basics::ReadWriteSpinLock _shutdownLock;
+
+  static constexpr std::uint64_t _evictionMask =
+      4095;  // check roughly every 4096 insertions
+  static constexpr double _evictionRateThreshold =
+      0.01;  // if more than 1%
+             // evictions in past 4096
+             // inserts, migrate
+
+  // friend class manager and tasks
+  friend class FreeMemoryTask;
+  friend class Manager;
+  friend class MigrateTask;
 };
 
 };  // end namespace cache
