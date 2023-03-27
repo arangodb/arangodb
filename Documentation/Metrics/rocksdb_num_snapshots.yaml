@@ -11,5 +11,5 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "rocksdb-num-snapshots".
+  This metric exhibits the RocksDB metric `rocksdb-num-snapshots`.
   It shows the number of unreleased snapshots of the database.
