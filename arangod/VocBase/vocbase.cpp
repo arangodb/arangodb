@@ -1373,7 +1373,8 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   }
 
   bool extendedNames = databaseFeature.extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(extendedNames, newName)) {
+  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
+                                        newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1586,7 +1587,8 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
 
     bool extendedNames =
         server().getFeature<DatabaseFeature>().extendedNamesForViews();
-    valid &= ViewNameValidator::isAllowedName(extendedNames, name);
+    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
+                                              extendedNames, name);
   }
 
   if (!valid) {

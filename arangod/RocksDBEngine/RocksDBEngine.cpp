@@ -2902,6 +2902,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
             res.reset(TRI_ERROR_INTERNAL);
           }
 
+          if (!res.ok()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+
+          TRI_ASSERT(view);
+
           StorageEngine::registerView(*vocbase, view);
           view->open();
         } catch (basics::Exception const& ex) {

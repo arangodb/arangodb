@@ -1,9 +1,7 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, fail */
+/* global getOptions, assertEqual, assertTrue, assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server parameters
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -23,59 +21,70 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
-    'database.extended-names-databases': "true",
+    'database.extended-names-views': "false",
   };
 }
 const jsunity = require('jsunity');
-const db = require('internal').db;
-const errors = require('internal').errors;
-
 const traditionalName = "UnitTestsDatabase";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
-
-const invalidNames = [
-  "\u212b", // Angstrom, not normalized;
-  "\u0041\u030a", // Angstrom, NFD-normalized;
-  "\u0073\u0323\u0307", // s with two combining marks, NFD-normalized;
-  "\u006e\u0303\u00f1", // non-normalized sequence;
-];
+const db = require('internal').db;
+const errors = require('@arangodb').errors;
+const ArangoView = require("@arangodb").ArangoView;
 
 function testSuite() {
   return {
     tearDown: function() {
       try {
-        db._dropDatabase(traditionalName);
+        db._dropView(traditionalName);
       } catch (err) {}
       try {
-        db._dropDatabase(extendedName);
+        db._dropView(extendedName);
       } catch (err) {}
     },
 
-    testTraditionalName: function() {
-      let res = db._createDatabase(traditionalName);
+    testArangosearchTraditionalName: function() {
+      let res = db._createView(traditionalName, "arangosearch", {});
       assertTrue(res);
+
+      let view = db._view(traditionalName);
+      assertTrue(view instanceof ArangoView);
     },
     
-    testExtendedName: function() {
-      let res = db._createDatabase(extendedName);
-      assertTrue(res);
-      db._dropDatabase(extendedName);
+    testArangosearchExtendedName: function() {
+      try {
+        db._createView(extendedName, "arangosearch", {});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+      
+      let v = db._view(extendedName);
+      assertNull(v);
     },
     
-    testInvalidUtf8Names: function() {
-      invalidNames.forEach((name) => {
-        try {
-          db._createDatabase(name);
-          fail();
-        } catch (err) {
-          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
-        }
-      });
+    testSearchAliasTraditionalName: function() {
+      let res = db._createView(traditionalName, "search-alias", {});
+      assertTrue(res);
+
+      let view = db._view(traditionalName);
+      assertTrue(view instanceof ArangoView);
+    },
+    
+    testSearchAliasExtendedName: function() {
+      try {
+        db._createView(extendedName, "search-alias", {});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+      
+      let v = db._view(extendedName);
+      assertNull(v);
     },
   };
 }
