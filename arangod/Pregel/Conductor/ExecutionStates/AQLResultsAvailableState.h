@@ -36,19 +36,16 @@ struct ConductorState;
   PregelFeature::getResults returns these results.
  */
 struct AQLResultsAvailable : ExecutionState {
-  AQLResultsAvailable() = default;
+  AQLResultsAvailable(ConductorState& conductor);
   auto name() const -> std::string override { return "done"; }
+  auto aqlResultsAvailable() const -> bool override { return true; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  }
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
 
-  auto aqlResultsAvailable() const -> bool override { return true; }
+  ConductorState& conductor;
 };
 
 }  // namespace arangodb::pregel::conductor
