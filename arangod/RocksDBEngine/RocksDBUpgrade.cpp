@@ -186,8 +186,7 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
             // names. this is unsupported
             LOG_TOPIC("1d4f6", FATAL, Logger::ENGINES)
                 << "It is unsupported to change the value of the startup "
-                   "option "
-                   "`--"
+                   "option `--"
                 << optionName << "`"
                 << " back to `false` after it was set to `true` before. "
                 << "Please remove the setting "
@@ -235,16 +234,18 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
 
   // --database.extended-names-databases
   checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
-               "extended-names-databases", df.extendedNamesForDatabases(),
+               "database.extended-names-databases",
+               df.extendedNamesForDatabases(),
                [&df](bool value) { df.extendedNamesForDatabases(value); });
 
   // --database.extended-names-collections
   checkSetting(RocksDBSettingsType::ExtendedNamesCollections,
-               "extended-names-collections", df.extendedNamesForCollections(),
+               "database.extended-names-collections",
+               df.extendedNamesForCollections(),
                [&df](bool value) { df.extendedNamesForCollections(value); });
 
   // --database.extended-names-views
-  checkSetting(RocksDBSettingsType::ExtendedNamesViews, "extended-names-views",
-               df.extendedNamesForViews(),
+  checkSetting(RocksDBSettingsType::ExtendedNamesViews,
+               "database.extended-names-views", df.extendedNamesForViews(),
                [&df](bool value) { df.extendedNamesForViews(value); });
 }
