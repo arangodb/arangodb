@@ -1497,6 +1497,13 @@ class instanceManager {
     }
     this.launchFinalize(startTime);
   }
+  getStrayDirectories() {
+    let ret = [];
+    this.arangods.forEach(arangod => {
+      ret += arangod.checkStraySubDirs();
+    });
+    return ret;
+  }
 }
 
 exports.instanceManager = instanceManager;

@@ -1168,6 +1168,15 @@ class instance {
     }
     this.memProfCounter ++;
   }
+  checkStraySubDirs() {
+    let viewsDir = fs.join(this.dataDir, 'databases');
+    let list = fs.list(viewsDir);
+    let ret = [];
+    list.forEach(subDir => {
+      ret.push(fs.join(viewsDir, subDir));
+    });
+    return ret;
+  }
 }
 
 
