@@ -20,8 +20,8 @@ the provided ttl value.
 
 If the batch's ttl can be extended successfully, the response is empty.
 
-**Note**: on a Coordinator, this request must have the query parameter
-*DBserver* which must be an ID of a DB-Server.
+**Note**: on a Coordinator, this request must have a `DBserver`
+query parameter which must be an ID of a DB-Server.
 The very same request is forwarded synchronously to that DB-Server.
 It is an error if this attribute is not bound in the Coordinator case.
 

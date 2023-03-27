@@ -13,7 +13,7 @@ exposedBy:
 description: |
   During initial replication the existing data from the leader is copied asynchronously
   over to new shards. Whenever there is a communication issue between the follower and
-  the leader of the shard it will be counted here for the follower. This communication
+  the leader of the shard, it is counted here for the follower. This communication
   issues cover failed connections or http errors, but they also cover invalid or
   unexpected data formats received on the follower.
 threshold: |
@@ -30,10 +30,10 @@ troubleshoot: |
   * First thing to check: Network connectivity, make sure all servers are online
     and the machines can communicate to one-another.
   * Second: Check ArangoDB logs of this server for more details, most likely
-    you will see WARN or ERROR messages in "replication" log topic. If you contact
-    ArangoDB support for this issue, it will help to include this servers logs as well.
+    you see `WARN` or `ERROR` messages in the `replication` log topic. If you contact
+    ArangoDB support for this issue, it helps to include these servers logs as well.
   * Third: (Unlikely) If the logs contain unexpected format or value entries
-    please check if you are running all ArangoDB Database servers within the same
+    please check if you are running all ArangoDB DB-Servers within the same
     version of ArangoDB. Only upgrades of one minor version at a time are supported
     in general, so if you are running one server with a much newer / older version
     please upgrade all servers to the newest version.
