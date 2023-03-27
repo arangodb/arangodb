@@ -688,16 +688,11 @@ int State::checkLog(index_t index, term_t term) const {
   }
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return 0;
   }
 
-  try {
-    return _log.at(index - _cur).term == term ? 1 : -1;
-  } catch (...) {
-  }
-
-  return 0;
+  return _log[index - _cur].term == term ? 1 : -1;
 }
 
 /// Have log with specified index and term
@@ -705,16 +700,11 @@ bool State::has(index_t index, term_t term) const {
   MUTEX_LOCKER(mutexLocker, _logLock);  // Cannot be read lock (Compaction)
 
   // Catch exceptions and avoid overflow:
-  if (index < _cur || index - _cur > _log.size()) {
+  if (index < _cur || index - _cur >= _log.size()) {
     return false;
   }
 
-  try {
-    return _log.at(index - _cur).term == term;
-  } catch (...) {
-  }
-
-  return false;
+  return _log[index - _cur].term == term;
 }
 
 /// Get vector of past transaction from 'start' to 'end'
