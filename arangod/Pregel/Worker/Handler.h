@@ -31,6 +31,7 @@
 #include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ResultMessages.h"
+#include "Pregel/SpawnMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -423,6 +424,21 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
         this->state->conductor, pregel::conductor::message::ResultCreated{
                                     .results = {PregelResults{results}}});
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Cleanup msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("664f5", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is cleaned", this->self);
+
+    this->finish();
+
+    this->template dispatch<pregel::message::SpawnMessages>(
+        this->state->spawnActor, pregel::message::SpawnCleanup{});
+    this->template dispatch<pregel::conductor::message::ConductorMessages>(
+        this->state->conductor, pregel::conductor::message::CleanupFinished{});
 
     return std::move(this->state);
   }

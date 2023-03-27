@@ -44,7 +44,8 @@ struct WorkerState {
               std::unique_ptr<MessageFormat<M>> messageFormat,
               std::unique_ptr<MessageCombiner<M>> messageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
-              TRI_vocbase_t& vocbase, actor::ActorPID resultActor)
+              TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
+              actor::ActorPID resultActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageFormat{std::move(messageFormat)},
@@ -52,6 +53,7 @@ struct WorkerState {
         conductor{std::move(conductor)},
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase},
+        spawnActor(spawnActor),
         resultActor(resultActor) {
     config->updateConfig(specifications);
 
@@ -110,6 +112,7 @@ struct WorkerState {
   actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
+  const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
   // TODO GOROD-1546 add graph store when it is not dependent any more on
   // feature: std::unique_ptr<GraphStore> graphStore;
