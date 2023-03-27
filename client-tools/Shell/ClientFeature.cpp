@@ -27,8 +27,10 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
@@ -59,12 +61,10 @@ ClientFeature::ClientFeature(ApplicationServer& server,
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
-      _databaseName(StaticStrings::SystemDatabase),
       _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
       _maxNumEndpoints(maxNumEndpoints),
+      _databaseName(StaticStrings::SystemDatabase),
       _username("root"),
-      _password(""),
-      _jwtSecret(""),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
@@ -317,7 +317,7 @@ void ClientFeature::readPassword() {
   }
 
   std::cout << "Please specify a password: " << std::flush;
-  _password = ShellConsoleFeature::readPassword();
+  setPassword(ShellConsoleFeature::readPassword());
   std::cout << std::endl << std::flush;
 }
 
@@ -325,12 +325,12 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   if (_console && _console->isEnabled()) {
-    _jwtSecret = _console->readPassword("Please specify the JWT secret: ");
+    setJwtSecret(_console->readPassword("Please specify the JWT secret: "));
     return;
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
-  _jwtSecret = ShellConsoleFeature::readPassword();
+  setJwtSecret(ShellConsoleFeature::readPassword());
   std::cout << std::endl << std::flush;
 }
 
@@ -340,8 +340,8 @@ void ClientFeature::loadJwtSecretFile() {
     // at the end of a file can easily happen. We do not base64-encode,
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
-    _jwtSecret = basics::StringUtils::trim(
-        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r");
+    setJwtSecret(basics::StringUtils::trim(
+        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r"));
   } catch (std::exception const& ex) {
     LOG_TOPIC("aeaec", FATAL, Logger::STARTUP)
         << "unable to read content of jwt-secret file '" << _jwtSecretFile
@@ -353,7 +353,7 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
-  _databaseName = normalizeUtf8ToNFC(_databaseName);
+  setDatabaseName(normalizeUtf8ToNFC(_databaseName));
 
   if (!isEnabled()) {
     return;
@@ -372,13 +372,25 @@ void ClientFeature::prepare() {
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     size_t threadNumber) const {
-  return createHttpClient(_endpoints[threadNumber % _endpoints.size()]);
+  std::string endpoint;
+  {
+    READ_LOCKER(locker, _settingsLock);
+    endpoint = _endpoints[threadNumber % _endpoints.size()];
+  }
+  return createHttpClient(endpoint);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition) const {
+  double requestTimeout;
+  bool warn;
+  {
+    READ_LOCKER(locker, _settingsLock);
+    requestTimeout = _requestTimeout;
+    warn = _warn;
+  }
   return createHttpClient(definition,
-                          SimpleHttpClientParams(_requestTimeout, _warn));
+                          SimpleHttpClientParams(requestTimeout, warn));
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
@@ -392,6 +404,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+
+  READ_LOCKER(locker, _settingsLock);
 
   std::unique_ptr<GeneralClientConnection> connection(
       GeneralClientConnection::factory(_comm, endpoint, _requestTimeout,
@@ -415,6 +429,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
   std::vector<std::string> httpEndpoints;
+
+  READ_LOCKER(locker, _settingsLock);
   std::for_each(_endpoints.begin(), _endpoints.end(),
                 [&httpEndpoints](std::string const& endpoint) {
                   if (std::string http = Endpoint::uriForm(endpoint);
@@ -442,8 +458,126 @@ void ClientFeature::stop() {
 #endif
 }
 
-void ClientFeature::setDatabaseName(std::string const& databaseName) {
+std::string ClientFeature::databaseName() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _databaseName;
+}
+
+void ClientFeature::setDatabaseName(std::string_view databaseName) {
+  WRITE_LOCKER(locker, _settingsLock);
   _databaseName = normalizeUtf8ToNFC(databaseName);
+}
+
+bool ClientFeature::authentication() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _authentication;
+}
+
+// get single endpoint. used by client tools that can handle only one endpoint
+std::string ClientFeature::endpoint() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _endpoints[0];
+}
+
+// set single endpoint
+void ClientFeature::setEndpoint(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _endpoints[0] = value;
+}
+
+std::string ClientFeature::username() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _username;
+}
+
+void ClientFeature::setUsername(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _username = value;
+}
+
+std::string ClientFeature::password() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _password;
+}
+
+void ClientFeature::setPassword(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _password = value;
+}
+
+std::string ClientFeature::jwtSecret() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _jwtSecret;
+}
+
+void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _jwtSecret = jwtSecret;
+}
+
+double ClientFeature::connectionTimeout() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _connectionTimeout;
+}
+
+double ClientFeature::requestTimeout() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _requestTimeout;
+}
+
+void ClientFeature::requestTimeout(double value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _requestTimeout = value;
+}
+
+uint64_t ClientFeature::maxPacketSize() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _maxPacketSize;
+}
+
+uint64_t ClientFeature::sslProtocol() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _sslProtocol;
+}
+
+bool ClientFeature::askJwtSecret() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _askJwtSecret;
+}
+
+bool ClientFeature::forceJson() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _forceJson;
+}
+
+void ClientFeature::setForceJson(bool value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _forceJson = value;
+}
+
+void ClientFeature::setRetries(size_t retries) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _retries = retries;
+}
+
+void ClientFeature::setWarn(bool warn) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _warn = warn;
+}
+
+bool ClientFeature::getWarn() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _warn;
+}
+
+void ClientFeature::setWarnConnect(bool warnConnect) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _warnConnect = warnConnect;
+}
+
+bool ClientFeature::getWarnConnect() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _warnConnect;
 }
 
 ApplicationServer& ClientFeature::server() const noexcept {
