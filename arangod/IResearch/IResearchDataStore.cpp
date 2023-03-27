@@ -57,12 +57,12 @@
 #include <store/store_utils.hpp>
 #include <utils/encryption.hpp>
 #include <utils/singleton.hpp>
-#include <utils/file_utils.hpp>
 #include <chrono>
 #include <string>
 
 #include <absl/cleanup/cleanup.h>
 #include <absl/strings/str_cat.h>
+#include <filesystem>
 
 using namespace std::literals;
 
@@ -1048,13 +1048,14 @@ void IResearchDataStore::shutdownDataStore() noexcept {
 
 Result IResearchDataStore::deleteDataStore() noexcept {
   shutdownDataStore();
-  bool exists;
+  std::error_code error;
+  std::filesystem::remove_all(_dataStore._path, error);
   // remove persisted data store directory if present
-  if (!irs::file_utils::exists_directory(exists, _dataStore._path.c_str()) ||
-      (exists && !irs::file_utils::remove(_dataStore._path.c_str()))) {
-    return {TRI_ERROR_INTERNAL,
-            absl::StrCat("failed to remove ArangoSearch index '",
-                         index().id().id(), "'")};
+  if (error) {
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("failed to remove ArangoSearch index '", index().id().id(),
+                     "' with error code '", error.message(), "'")};
   }
   return {};
 }
@@ -1216,21 +1217,31 @@ Result IResearchDataStore::initDataStore(
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
-  // Must manually ensure that the data store directory exists (since not
-  // using a lockfile)
-  if (!irs::file_utils::exists_directory(pathExists,
-                                         _dataStore._path.c_str()) ||
-      (!pathExists &&
-       !irs::file_utils::mkdir(_dataStore._path.c_str(), true))) {
+  // Must manually ensure that the data store directory exists
+  // (since not using a lockfile)
+  std::error_code error;
+  pathExists = std::filesystem::exists(_dataStore._path, error);
+  auto createResult = [&](std::string_view what) -> Result {
     return {TRI_ERROR_CANNOT_CREATE_DIRECTORY,
-            absl::StrCat("Failed to create data store directory with path '",
+            absl::StrCat(what, " failed for data store directory with path '",
                          _dataStore._path.string(),
                          "' while initializing ArangoSearch index '",
-                         index().id().id(), "'")};
+                         index().id().id(), "' with error '", error.message(),
+                         "'")};
+  };
+  if (error) {
+    pathExists = true;  // we don't want to remove directory in unknown state
+    return createResult("Exists");
+  }
+  if (!pathExists) {
+    std::filesystem::create_directories(_dataStore._path, error);
+    if (error) {
+      return createResult("Create");
+    }
   }
 
   _dataStore._directory = std::make_unique<irs::MMapDirectory>(
-      _dataStore._path.u8string(),
+      _dataStore._path,
       initCallback ? initCallback() : irs::directory_attributes{});
 
   switch (_engine->recoveryState()) {
@@ -1957,17 +1968,13 @@ void IResearchDataStore::finishCreation() {
 ////////////////////////////////////////////////////////////////////////////////
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
                                        IResearchDataStore const& dataStore) {
-  std::filesystem::path dataPath{dbPathFeature.directory()};
-
-  dataPath /= "databases";
   auto& i = dataStore.index();
-  dataPath /= absl::StrCat("database-", i.collection().vocbase().id());
-  dataPath /=
+  auto path = getPersistedPath(dbPathFeature, i.collection().vocbase());
+  path /=
       absl::StrCat(StaticStrings::ViewArangoSearchType, "-",
                    // has to be 'id' since this can be a per-shard collection
                    i.collection().id().id(), "_", i.id().id());
-
-  return dataPath;
+  return path;
 }
 
 template Result

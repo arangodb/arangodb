@@ -18,33 +18,39 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ProduceAQLResultsState.h"
-
+#include "AQLResultsAvailableState.h"
+#include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
-#include "Pregel/Conductor/ExecutionStates/AQLResultsAvailableState.h"
 
-using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::conductor;
 
-ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
+AQLResultsAvailable::AQLResultsAvailable(ConductorState& conductor)
     : conductor{conductor} {}
 
-auto ProduceAQLResults::receive(actor::ActorPID sender,
-                                message::ConductorMessages message)
+auto AQLResultsAvailable::messages()
+    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+  auto messages =
+      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>{};
+  for (auto const& worker : conductor.workers) {
+    messages.emplace(worker, worker::message::Cleanup{});
+  }
+  return messages;
+}
+
+auto AQLResultsAvailable::receive(actor::ActorPID sender,
+                                  message::ConductorMessages message)
     -> std::optional<std::unique_ptr<ExecutionState>> {
-  if (not std::holds_alternative<message::ResultCreated>(message)) {
+  if (not conductor.workers.contains(sender) or
+      not std::holds_alternative<message::CleanupFinished>(message)) {
     return std::make_unique<FatalError>(conductor);
   }
-  responseCount++;
-  respondedWorkers.emplace(sender);
-
-  if (responseCount == conductor.workers.size() and
-      respondedWorkers == conductor.workers) {
-    return std::make_unique<AQLResultsAvailable>(conductor);
+  conductor.workers.erase(sender);
+  if (conductor.workers.empty()) {
+    return std::make_unique<CleanedUp>();
   }
   return std::nullopt;
-}
+};

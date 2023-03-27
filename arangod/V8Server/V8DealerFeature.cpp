@@ -62,6 +62,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "Utilities/NameValidator.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
@@ -798,6 +799,143 @@ void V8DealerFeature::unprepare() {
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
+}
+
+/// @brief return either the name of the database to be used as a folder name,
+/// or its id if its name contains special characters and is not fully supported
+/// in every OS
+[[nodiscard]] static std::string_view getDatabaseDirName(std::string_view name,
+                                                         std::string_view id) {
+  bool const isOldStyleName = DatabaseNameValidator::isAllowedName(
+      /*allowSystem=*/true, /*extendedNames=*/false, name);
+  return (isOldStyleName || id.empty()) ? name : id;
+}
+
+void V8DealerFeature::verifyAppPaths() {
+  if (!_appPath.empty() && !TRI_IsDirectory(_appPath.c_str())) {
+    long systemError;
+    std::string errorMessage;
+    auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), systemError,
+                                            errorMessage);
+
+    if (res == TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC("1bf74", INFO, Logger::FIXME)
+          << "created --javascript.app-path directory '" << _appPath << "'";
+    } else {
+      LOG_TOPIC("52bd5", ERR, Logger::FIXME)
+          << "unable to create --javascript.app-path directory '" << _appPath
+          << "': " << errorMessage;
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  // create subdirectory js/apps/_db if not yet present
+  auto r = createBaseApplicationDirectory(_appPath, "_db");
+
+  if (r != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("610c7", ERR, Logger::FIXME)
+        << "unable to initialize databases: " << TRI_errno_string(r);
+    THROW_ARANGO_EXCEPTION(r);
+  }
+}
+
+ErrorCode V8DealerFeature::createDatabase(std::string_view name,
+                                          std::string_view id,
+                                          bool removeExisting) {
+  // create app directory for database if it does not exist
+  std::string const dirName{getDatabaseDirName(name, id)};
+  return createApplicationDirectory(dirName, _appPath, removeExisting);
+}
+
+void V8DealerFeature::cleanupDatabase(TRI_vocbase_t& database) {
+  if (_appPath.empty()) {
+    return;
+  }
+  std::string const dirName{
+      getDatabaseDirName(database.name(), std::to_string(database.id()))};
+  std::string const path = basics::FileUtils::buildFilename(
+      basics::FileUtils::buildFilename(_appPath, "_db"), dirName);
+
+  if (TRI_IsDirectory(path.c_str())) {
+    LOG_TOPIC("041b1", TRACE, arangodb::Logger::FIXME)
+        << "removing app directory '" << path << "' of database '"
+        << database.name() << "'";
+
+    TRI_RemoveDirectory(path.c_str());
+  }
+}
+
+ErrorCode V8DealerFeature::createApplicationDirectory(
+    std::string const& name, std::string const& basePath, bool removeExisting) {
+  if (basePath.empty()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string const path = basics::FileUtils::buildFilename(
+      basics::FileUtils::buildFilename(basePath, "_db"), name);
+
+  if (TRI_IsDirectory(path.c_str())) {
+    // directory already exists
+    // this can happen if a database is dropped and quickly recreated
+    if (!removeExisting) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    if (!basics::FileUtils::listFiles(path).empty()) {
+      LOG_TOPIC("56fc7", INFO, arangodb::Logger::FIXME)
+          << "forcefully removing existing application directory '" << path
+          << "' for database '" << name << "'";
+      // removing is best effort. if it does not succeed, we can still
+      // go on creating the it
+      TRI_RemoveDirectory(path.c_str());
+    }
+  }
+
+  // directory does not yet exist - this should be the standard case
+  long systemError = 0;
+  std::string errorMessage;
+  auto r =
+      TRI_CreateRecursiveDirectory(path.c_str(), systemError, errorMessage);
+
+  if (r == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("6745a", TRACE, arangodb::Logger::FIXME)
+        << "created application directory '" << path << "' for database '"
+        << name << "'";
+  } else if (r == TRI_ERROR_FILE_EXISTS) {
+    LOG_TOPIC("2a78e", INFO, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+    r = TRI_ERROR_NO_ERROR;
+  } else {
+    LOG_TOPIC("36682", ERR, arangodb::Logger::FIXME)
+        << "unable to create application directory '" << path
+        << "' for database '" << name << "': " << errorMessage;
+  }
+
+  return r;
+}
+
+ErrorCode V8DealerFeature::createBaseApplicationDirectory(
+    std::string const& appPath, std::string const& type) {
+  auto const path = basics::FileUtils::buildFilename(appPath, type);
+  if (TRI_IsDirectory(path.c_str())) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  std::string errorMessage;
+  long systemError = 0;
+  auto r = TRI_CreateDirectory(path.c_str(), systemError, errorMessage);
+  if (r == TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC("e6460", INFO, Logger::FIXME)
+        << "created base application directory '" << path << "'";
+  } else if ((r != TRI_ERROR_FILE_EXISTS) || (!TRI_IsDirectory(path.c_str()))) {
+    LOG_TOPIC("5a0b4", ERR, Logger::FIXME)
+        << "unable to create base application directory " << errorMessage;
+  } else {
+    LOG_TOPIC("0a25f", INFO, Logger::FIXME)
+        << "someone else created base application directory '" << path << "'";
+    r = TRI_ERROR_NO_ERROR;
+  }
+  return r;
 }
 
 bool V8DealerFeature::addGlobalContextMethod(

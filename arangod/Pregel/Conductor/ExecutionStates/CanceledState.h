@@ -18,19 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/ExecutionStates/State.h"
+#include "Pregel/Conductor/State.h"
 
 namespace arangodb::pregel::conductor {
 
 struct ConductorState;
 
-struct Done : ExecutionState {
-  Done(ConductorState& conductor);
-  auto name() const -> std::string override { return "done"; }
+struct Canceled : ExecutionState {
+  Canceled(ConductorState& conductor);
+  ~Canceled() {}
+  auto name() const -> std::string override { return "canceled"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;
