@@ -1500,7 +1500,7 @@ class instanceManager {
   getStrayDirectories() {
     let ret = [];
     this.arangods.forEach(arangod => {
-      ret += arangod.checkStraySubDirs();
+      ret = ret + arangod.checkStraySubDirs();
     });
     return ret;
   }
