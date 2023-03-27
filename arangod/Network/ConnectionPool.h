@@ -102,6 +102,10 @@ class ConnectionPool final {
 
   Config const& config() const;
 
+  uint64_t totalConnectionsInPool() const {
+    return _totalConnectionsInPool.load();
+  }
+
  protected:
   struct Context {
     Context(std::shared_ptr<fuerte::Connection>,

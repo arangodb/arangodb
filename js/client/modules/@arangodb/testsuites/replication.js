@@ -624,7 +624,7 @@ function replicationSync (options) {
     }
   };
 
-  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {"server.authentication": "true"}, startStopHandlers);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

@@ -5,6 +5,56 @@ v3.9.11 (XXXX-XX-XX)
   to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
   from `etc/relative` in test environment.
 
+* Fix issues with deferred database creation:
+
+  When a database has made it into the Plan part of the agency with some
+  settings, e.g. `replicationFactor` that would violate the current settings for
+  databases (e.g. `--cluster.min-replication-factor` and
+  `--cluster.max-replication-factor`), and then a new DB server is added, it
+  will try to create the database locally with the settings from the Plan.
+  As these settings however violate the min/max replication factor values, the
+  database is not created on the new DB server and an error is written into
+  Current instead.
+  This can cause follow-up errors and the PlanSyncer complaining about missing
+  databases for analyzers etc.
+
+* Fix potential memory under-accounting on cache shutdown for in-memory caches
+  for edge indexes.
+
+* Fixed single-to-single replication that used HTTP authentication to
+  authenticate requests on the leader. This could be broken if the collections
+  on the leader were created with 3.8 or later, and thus used the Merkle tree
+  protocol to exchange different document revisions.
+  When using HTTP authentication, the prefetching code for document revisions
+  did not pass on the authentication credentials, so the leader could reject
+  requests with HTTP 401 or HTTP 403, and replication failed.
+  Replication in the cluster and replication using JWT authentication were not
+  affected.
+
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files_size`: cumulated size of alive WAL files (not
+    archived)
+  - `rocksdb_archived_wal_files_size`: cumulated size of archive WAL files
+
+* Set default threshold value for automatic column flushing to 20 live WAL files
+  (previously: 10 files), and retry flushing every 30 minutes (previous
+  interval: every 60 minutes).
+
+* Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
+  DELETE /_api/document/{collection} using _key or _id values as document
+  selectors, the INBOUND and OUTBOUND entries of the SmartEdges could diverge.
+  Using a document like {_key: "xxxx"} as a selector was always correct. Now
+  _key and _id variants are supported as intended.
+
+* Added support to log response bodies as well as HTTP headers (incoming and
+  outgoing), when the requests log topic is set to TRACE.
+
+* BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In some
+  cases where multiple connections to a server are canceled the metric could
+  miss-count, as for now it only counted individually closed connections.
+  The wrong counted situations are: other server crashes, restore of a
+  HotBackup, rotation of JWT secret.
+
 
 v3.9.10 (2023-03-16)
 --------------------

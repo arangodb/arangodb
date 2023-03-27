@@ -683,6 +683,8 @@ class RocksDBEngine final : public StorageEngine {
   Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   Gauge<uint64_t>& _metricsLiveWalFiles;
   Gauge<uint64_t>& _metricsArchivedWalFiles;
+  Gauge<uint64_t>& _metricsLiveWalFilesSize;
+  Gauge<uint64_t>& _metricsArchivedWalFilesSize;
   Gauge<uint64_t>& _metricsPrunableWalFiles;
   Gauge<uint64_t>& _metricsWalPruningActive;
   Gauge<uint64_t>& _metricsTreeMemoryUsage;
