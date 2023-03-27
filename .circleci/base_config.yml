@@ -149,11 +149,15 @@ jobs:
           name: Compile does not change files in repository
           command: |
             mkdir -p /tmp/post-compile-diff/community
-            mkdir -p /tmp/post-compile-diff/enterprise
             scripts/working-directory-clean.sh . /tmp/post-compile-diff/community
             community=$?
-            scripts/working-directory-clean.sh enterprise /tmp/post-compile-diff/enterprise
-            enterprise=$?
+            if [ << parameters.enterprise >> == true ]; then
+              mkdir -p /tmp/post-compile-diff/enterprise
+              scripts/working-directory-clean.sh enterprise /tmp/post-compile-diff/enterprise
+              enterprise=$?
+            else
+              enterprise=0
+            fi;
             if [ $community -ne 0 ] || [ $enterprise -ne 0 ]; then
               exit 1
             fi
