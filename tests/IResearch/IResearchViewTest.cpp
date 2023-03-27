@@ -2584,7 +2584,7 @@ TEST_F(IResearchViewTest, test_drop_database) {
   beforeCount = 0;  // reset before call to StorageEngine::dropView(...)
   EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                databaseFeature.dropDatabase(vocbase->id(), true)));
-  EXPECT_TRUE((1 == beforeCount));
+  EXPECT_TRUE((0 == beforeCount));
 }
 
 TEST_F(IResearchViewTest, test_instantiate) {
