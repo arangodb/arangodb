@@ -1,7 +1,7 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
-* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+* SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
 
 * Fix issues with deferred database creation:
