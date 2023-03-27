@@ -1,7 +1,7 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
-* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+* SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
   
   Fixed SEARCH-459 Fixed reporting ArangoSearch inverted index properties from ensureIndex request.
