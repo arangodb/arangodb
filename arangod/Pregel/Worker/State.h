@@ -25,6 +25,7 @@
 #include "Actor/ActorPID.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/CollectionSpecifications.h"
+#include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/OutgoingCache.h"
 #include "Pregel/PregelOptions.h"
@@ -114,8 +115,7 @@ struct WorkerState {
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
-  // TODO GOROD-1546 add graph store when it is not dependent any more on
-  // feature: std::unique_ptr<GraphStore> graphStore;
+  std::shared_ptr<Quiver<V, E>> quiver = std::make_unique<Quiver<V, E>>();
   MessageStats messageStats;
   GssObservables currentGssObservables;
   AllGssStatus allGssStatus;
