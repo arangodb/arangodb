@@ -178,9 +178,7 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
                       RocksDBColumnFamilyManager::Family::Definitions),
                   extendedNamesKey.string(), &storedValue);
 
-      LOG_DEVEL << "CHECKING VALUE FOR OPTION '" << optionName << "'";
       if (s.ok() && storedValue.size() == 1) {
-        LOG_DEVEL << "=> VALUE WAS PREVIOUSLY SET: " << storedValue[0];
         if (storedValue[0] == '1') {
           if (!localValue && server.options()->processingResult().touched(
                                  std::string{optionName})) {
@@ -201,8 +199,6 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
           }
         }
         // set flag for our local instance
-        LOG_DEVEL << "=> USING LOCAL VALUE FOR " << optionName << ": "
-                  << (storedValue[0] == '1');
         cb(storedValue[0] == '1');
       } else if (!s.IsNotFound()) {
         // arbitrary error. we need to abort
@@ -210,8 +206,6 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
             << "Error reading stored value for --" << optionName
             << " from storage engine";
         FATAL_ERROR_EXIT();
-      } else {
-        LOG_DEVEL << "=> VALUE WAS NOT PREVIOUSLY SET";
       }
     }
 
@@ -220,8 +214,6 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
       // now permanently store value
       constexpr char value = '1';
       static_assert(sizeof(value) == 1);
-
-      LOG_DEVEL << "=> STORING VALUE " << (value) << " FOR " << optionName;
 
       rocksdb::Status s = db->Put(
           rocksdb::WriteOptions(),
