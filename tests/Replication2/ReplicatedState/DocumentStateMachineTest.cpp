@@ -942,7 +942,7 @@ TEST_F(DocumentStateMachineTest,
   // 1 Insert and 1 Commit due to the first batch
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation>(_)))
-      .Times(3);
+      .Times(4);
   EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
