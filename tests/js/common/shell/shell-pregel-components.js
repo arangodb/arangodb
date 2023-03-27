@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, JSON */
+/*global assertEqual, assertTrue */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -68,10 +68,13 @@ function componentsTestSuite() {
         setUpAll: function () {
 
             console.log("Beginning to insert test data with " + (numComponents * n) +
-                " vertices, " + (numComponents * (m + n)) + " edges");
+              " vertices, " + (numComponents * (m + n)) + " edges");
 
             var graph = graph_module._create(graphName);
-            db._create(vColl, {numberOfShards: 4});
+            db._create(vColl, {
+                numberOfShards: 4,
+                replicationFactor: 1
+            });
             graph._addVertexCollection(vColl);
             db._createEdgeCollection(eColl, {
                 numberOfShards: 4,
@@ -249,7 +252,10 @@ function wccRegressionTestSuite() {
     return {
 
         setUp: function () {
-            db._create(vColl, {numberOfShards: 4});
+            db._create(vColl, {
+                numberOfShards: 4,
+                replicationFactor: 1
+            });
             db._createEdgeCollection(eColl, {
                 numberOfShards: 4,
                 replicationFactor: 1,

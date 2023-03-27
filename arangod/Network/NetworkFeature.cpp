@@ -334,7 +334,6 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                         std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
-                      TRI_ASSERT(req != nullptr);
                       cb(err, std::move(req), std::move(res), isFromPool);
                     });
 }

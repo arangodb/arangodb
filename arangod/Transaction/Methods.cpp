@@ -64,7 +64,6 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
-#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -2267,9 +2266,15 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       }
 
       switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
+        case FollowerInfo::WriteState::FORBIDDEN: {
           // We cannot fulfill minimum replication Factor. Reject write.
-          return {TRI_ERROR_ARANGO_READ_ONLY};
+          auto& clusterFeature =
+              vocbase().server().getFeature<ClusterFeature>();
+          if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
+            return {TRI_ERROR_ARANGO_READ_ONLY};
+          }
+          return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
+        }
         case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
@@ -2880,7 +2885,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName, transaction::CountType type,
+    std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
@@ -2895,7 +2900,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this, type);
+  uint64_t num = collection->getPhysical()->numberDocuments(this);
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
@@ -3160,13 +3165,41 @@ Future<Result> Methods::replicateOperations(
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  if (options.refillIndexCaches != RefillIndexCaches::kDefault) {
+
+  // index cache refilling...
+  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+    // index cache refilling opt-out
+    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  } else {
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    bool const refill =
+        engine.autoRefillIndexCachesOnFollowers() &&
+        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+          engine.autoRefillIndexCaches()));
+
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+      if (refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
+    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+      if (!refill) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
     reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  (options.refillIndexCaches == RefillIndexCaches::kRefill)
-                      ? "true"
-                      : "false");
+                  refill ? "true" : "false");
   }
 
   std::string url = "/_api/document/";

@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <map>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -67,7 +68,7 @@ struct MessageStats {
     b.add(Utils::receivedCountKey, VPackValue(receivedCount));
   }
 
-  void resetTracking() {
+  void reset() {
     sendCount = 0;
     receivedCount = 0;
     superstepRuntimeSecs = 0;

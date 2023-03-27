@@ -41,6 +41,10 @@ template<typename T>
                                     size_t compressedLength, T& uncompressed);
 
 template<typename T>
+[[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,
+                                     size_t uncompressedLength, T& compressed);
+
+template<typename T>
 [[nodiscard]] ErrorCode gzipDeflate(uint8_t const* uncompressed,
                                     size_t uncompressedLength, T& compressed);
 

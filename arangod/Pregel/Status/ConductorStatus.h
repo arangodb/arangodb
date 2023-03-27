@@ -81,5 +81,13 @@ struct ConductorStatus {
     return AccumulatedConductorStatus{.status = aggregate, .workers = workers};
   }
 };
-
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorStatus& x) {
+  if constexpr (Inspector::isLoading) {
+    return inspection::Status::Success{};
+  } else {
+    auto v = x.accumulate();
+    return f.apply(v);
+  }
+}
 }  // namespace arangodb::pregel

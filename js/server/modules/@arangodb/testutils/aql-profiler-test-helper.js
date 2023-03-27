@@ -1,5 +1,4 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/* global global */
 
 "use strict";
 
@@ -492,10 +491,16 @@ function assertStatsMatchGenStats(profile, expectedStats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function assertNodesItemsAndCalls (expected, actual, details = {}) {
+  const normalize = (type) => { 
+    // SortLimitNode and SortNode are both SortNodes, so treat them as being
+    // identical here for the comparisons
+    return (type === 'SortLimitNode') ? 'SortNode' : type;
+  };
+
   // assert node types first
   assert.assertEqual(
-    expected.map(node => node.type),
-    actual.map(node => node.type),
+    expected.map(node => normalize(node.type)),
+    actual.map(node => normalize(node.type)),
     details
   );
 

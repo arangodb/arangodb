@@ -31,7 +31,6 @@
 
 #include "Basics/Common.h"
 
-#include "Pregel/Worker/GraphStore.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/MessageCombiner.h"
 #include "Pregel/MessageFormat.h"
@@ -64,7 +63,7 @@ class InCache {
   MessageFormat<M> const* format() const { return _format; }
   uint64_t containedMessageCount() const { return _containedMessageCount; }
 
-  void parseMessages(PregelMessage const& messages);
+  void parseMessages(worker::message::PregelMessage const& messages);
 
   /// @brief Store a single message.
   /// Only ever call when you are sure this is a thread local store
@@ -74,7 +73,7 @@ class InCache {
   void storeMessage(PregelShard shard, std::string_view vertexId,
                     M const& data);
 
-  virtual void mergeCache(WorkerConfig const& config,
+  virtual void mergeCache(std::shared_ptr<WorkerConfig const> config,
                           InCache<M> const* otherCache) = 0;
   /// @brief get messages for vertex id. (Don't use keys from _from or _to
   /// directly, they contain the collection name)
@@ -104,9 +103,10 @@ class ArrayInCache : public InCache<M> {
             M const& data) override;
 
  public:
-  ArrayInCache(WorkerConfig const* config, MessageFormat<M> const* format);
+  ArrayInCache(std::shared_ptr<WorkerConfig const> config,
+               MessageFormat<M> const* format);
 
-  void mergeCache(WorkerConfig const& config,
+  void mergeCache(std::shared_ptr<WorkerConfig const> config,
                   InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(PregelShard shard,
                                  std::string_view const& key) override;
@@ -130,12 +130,13 @@ class CombiningInCache : public InCache<M> {
             M const& data) override;
 
  public:
-  CombiningInCache(WorkerConfig const* config, MessageFormat<M> const* format,
+  CombiningInCache(std::shared_ptr<WorkerConfig const> config,
+                   MessageFormat<M> const* format,
                    MessageCombiner<M> const* combiner);
 
   MessageCombiner<M> const* combiner() const { return _combiner; }
 
-  void mergeCache(WorkerConfig const& config,
+  void mergeCache(std::shared_ptr<WorkerConfig const> config,
                   InCache<M> const* otherCache) override;
   MessageIterator<M> getMessages(PregelShard shard,
                                  std::string_view const& key) override;

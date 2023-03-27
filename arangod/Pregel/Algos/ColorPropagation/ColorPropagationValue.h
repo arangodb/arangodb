@@ -25,6 +25,7 @@
 #include "Inspection/VPack.h"
 #include "Pregel/SenderMessage.h"
 #include "Pregel/SenderMessageFormat.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb::pregel::algos {
 
@@ -64,6 +65,12 @@ struct ColorPropagationValue {
     return result;
   }
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ColorPropagationValue& x) {
+  return f.object(x).fields(
+      f.field(Utils::equivalenceClass, x.equivalenceClass),
+      f.field(Utils::colors, x.colors));
+}
 
 struct ColorPropagationMessageValue {
   CollectionIdType equivalenceClass = 0;

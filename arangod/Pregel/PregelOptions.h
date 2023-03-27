@@ -95,6 +95,9 @@ struct PregelOptions {
   std::string algorithm;
   VPackBuilder userParameters;
   GraphSource graphSource;
+  // A switch between running pregel with or without actors
+  // Can be deleted if we finished refactoring to use only actors
+  bool useActors = false;
 };
 
 struct TTL {
@@ -116,13 +119,13 @@ auto inspect(Inspector& f, TTL& x) {
 
 struct ExecutionSpecifications {
   ExecutionNumber executionNumber;
-  std::string const& algorithm;
-  std::vector<CollectionID> const& vertexCollections;
-  std::vector<CollectionID> const& edgeCollections;
+  std::string algorithm;
+  std::vector<CollectionID> vertexCollections;
+  std::vector<CollectionID> edgeCollections;
   // maps from vertex collection name to a list of edge collections that this
   // vertex collection is restricted to. only use for a collection if there is
   // at least one entry for the collection!
-  std::unordered_map<std::string, std::vector<std::string>> const&
+  std::unordered_map<std::string, std::vector<std::string>>
       edgeCollectionRestrictions;
   /// adjustable maximum gss for some algorithms
   /// some algorithms need several gss per iteration and it is more natural
@@ -133,11 +136,10 @@ struct ExecutionSpecifications {
   /// and used in MasterContext::postGlobalSuperstep which returns whether to
   /// continue.
   uint64_t maxSuperstep;
-  bool useMemoryMaps;
   bool storeResults;
   TTL ttl;
   size_t parallelism;
-  VPackBuilder const& userParameters;
+  VPackBuilder userParameters;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ExecutionSpecifications& x) {
@@ -148,7 +150,6 @@ auto inspect(Inspector& f, ExecutionSpecifications& x) {
       f.field("edgeCollections", x.edgeCollections),
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions),
       f.field("maxSuperstep", x.maxSuperstep),
-      f.field("useMemoryMaps", x.useMemoryMaps),
       f.field("storeResults", x.storeResults), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism),
       f.field("userParamters", x.userParameters));

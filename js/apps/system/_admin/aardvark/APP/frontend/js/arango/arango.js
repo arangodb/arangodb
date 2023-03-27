@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Noty, Blob, window, atob, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -159,7 +159,7 @@
               if (!jwtParts[1]) {
                 throw "invalid token!";
               }
-              var payload = JSON.parse(atob(jwtParts[1]));
+              var payload = JSON.parse(window.atob(jwtParts[1]));
               if (payload.preferred_username === currentUser) {
                 self.setCurrentJwt(data.jwt, currentUser);
                 updated = true;
@@ -279,10 +279,9 @@
 
     calculateCenterDivHeight: function () {
       var navigation = $('.navbar').height();
-      var footer = $('.footer').height();
       var windowHeight = $(window).height();
 
-      return windowHeight - footer - navigation - 110;
+      return windowHeight - navigation - 110;
     },
 
     createTooltips: function (selector, position) {

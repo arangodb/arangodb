@@ -29,26 +29,58 @@
 #include "Pregel/SenderMessageFormat.h"
 
 namespace arangodb::pregel::algos {
+
 /// The idea behind the algorithm is very simple: propagate the smallest
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
+
+struct WCCType {
+  using Vertex = WCCValue;
+  using Edge = uint64_t;
+  using Message = SenderMessage<uint64_t>;
+};
+
 struct WCC
     : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
  public:
-  explicit WCC(application_features::ApplicationServer& server,
-               VPackSlice userParams)
-      : SimpleAlgorithm(server, "wcc", userParams) {}
+  explicit WCC(VPackSlice userParams) : SimpleAlgorithm(userParams) {}
 
-  GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "wcc";
+  };
+
+  std::shared_ptr<GraphFormat<WCCValue, uint64_t> const> inputFormat()
+      const override;
 
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
   }
-  MessageCombiner<SenderMessage<uint64_t>>* messageCombiner() const override {
-    return nullptr;
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override {
+    return std::make_unique<SenderMessageFormat<uint64_t>>();
   }
+
   VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
-  createComputation(WorkerConfig const*) const override;
+      createComputation(std::shared_ptr<WorkerConfig const>) const override;
+
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 };
 }  // namespace arangodb::pregel::algos

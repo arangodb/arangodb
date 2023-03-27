@@ -47,7 +47,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -82,11 +82,13 @@ experimental optimizer rules, which may be shipped in a disabled-by-default
 state.)");
 
   options
-      ->addOption(
+      ->addObsoleteOption(
           "--query.parallelize-gather-writes",
-          "Whether to enable write parallelization for gather nodes.",
-          new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
-      .setIntroducedIn(30600);
+          "Whether to enable write parallelization for gather nodes.", false)
+      .setIntroducedIn(30600)
+      .setLongDescription(
+          "Starting with 3.11 almost all queries support parallelization of "
+          "gather nodes, making this option obsolete.");
 }
 
 void OptimizerRulesFeature::prepare() {

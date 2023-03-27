@@ -231,7 +231,9 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-
+  function stripAnsiColors(s) {
+    return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  }
   function buildXml () {
     let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
@@ -279,10 +281,15 @@ function saveToJunitXML(options, results) {
       if (testSuite.hasOwnProperty('total')) {
         total = testSuite.total;
       }
-
+      let msg = "";
+      let errors = 0;
+      if (!testSuite.status && testSuite.hasOwnProperty('message')) {
+        msg = testSuite.message;
+        errors = 1;
+      }
       state.xml.elem('testsuite', {
-        errors: 0,
-        failures: testSuite.failed,
+        errors: errors,
+        failures: msg,
         tests: total,
         name: state.xmlName,
         // time is in seconds
@@ -302,7 +309,7 @@ function saveToJunitXML(options, results) {
       state.seenTestCases = true;
       if (!success) {
         state.xml.elem('failure');
-        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        state.xml.text('<![CDATA[' + stripAnsiColors(testCase.message) + ']]>\n');
         state.xml.elem('/failure');
         state.xml.elem('/testcase');
       }
@@ -323,15 +330,16 @@ function saveToJunitXML(options, results) {
         }
       }
       state.xml.elem('/testsuite');
+      let fn;
       try {
-        fs.write(fs.join(options.testOutputDirectory,
-                         'UNITTEST_RESULT_' + state.xmlName + '.xml'),
-                 state.xml.join(''));
+        fn = fs.join(options.testOutputDirectory,
+                         'UNITTEST_RESULT_' + state.xmlName + '.xml');
+        if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
+          fn = '\\\\?\\' + fn;
+        }
+        fs.write(fn, state.xml.join(''));
       } catch (x) {
-        print("Failed to write ` " +
-              fs.join(options.testOutputDirectory,
-                      'UNITTEST_RESULT_' + state.xmlName + '.xml') +
-              '`! - ' + x.message);
+        print(`Failed to write '${fn}'! - ${x.message}`);
         throw(x);
       }
 
