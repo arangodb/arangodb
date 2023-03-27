@@ -40,7 +40,7 @@ DocumentCore::DocumentCore(
       loggerContext(std::move(loggerContext)),
       _vocbase(vocbase),
       _params(std::move(coreParameters)),
-      _shardHandler(handlersFactory->createShardHandler(this->gid)),
+      _shardHandler(handlersFactory->createShardHandler(vocbase, this->gid)),
       _transactionHandler(handlersFactory->createTransactionHandler(
           _vocbase, this->gid, _shardHandler)) {}
 
@@ -58,10 +58,6 @@ void DocumentCore::drop() {
 }
 
 auto DocumentCore::getVocbase() -> TRI_vocbase_t& { return _vocbase; }
-
-auto DocumentCore::getVocbase() const -> TRI_vocbase_t const& {
-  return _vocbase;
-}
 
 auto DocumentCore::getTransactionHandler()
     -> std::shared_ptr<IDocumentStateTransactionHandler> {

@@ -613,7 +613,7 @@ const replicatedStateSnapshotTransferSuite = function () {
   let shardsToLogs = null;
   let logs = null;
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd, stopServerWait, continueServerWait} =
       lh.testHelperFunctions(database, {replicationVersion: "2"});
 
   return {
@@ -635,14 +635,16 @@ const replicatedStateSnapshotTransferSuite = function () {
       collection = null;
     }),
 
-    // This is disabled because we currently implement no cleanup for snapshots
-    DISABLED_testDropCollectionOngoingTransfer: function (testName) {
+    testDropCollectionOngoingTransfer: function (testName) {
       collection.insert({_key: testName});
-      let {leader} = lh.getReplicatedLogLeaderPlan(database, logId);
-      let leaderUrl = lh.getServerUrl(leader);
-      let url = `${leaderUrl}/_db/${database}/_api/document-state/${logId}/snapshot/first?waitForIndex=0`;
-      let result = request.get({url: url});
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      let leaderUrl = lh.getServerUrl(participants[0]);
+      const follower = participants.slice(1)[0];
+      const rebootId = lh.getServerRebootId(follower);
+      let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
       lh.checkRequestResult(result);
+      collection.drop();
+      collection = null;
     },
 
     testFollowerSnapshotTransfer: function () {
@@ -714,9 +716,6 @@ const replicatedStateSnapshotTransferSuite = function () {
       // Trigger compaction intentionally.
       log.compact();
 
-      // TODO this is not safe, we might loose already committed log entries.
-      //      either force the leader in the first place, or make sure a leader
-      //      election is done (by deleting the current leader when increasing the term)
       lh.bumpTermOfLogsAndWaitForConfirmation(database, collection);
 
       let checkKeys = documents.map(doc => doc._key);
@@ -728,7 +727,113 @@ const replicatedStateSnapshotTransferSuite = function () {
         assertTrue(keysSet.has(doc._key));
         keysSet.delete(doc._key);
       }
+    },
+
+    testSnapshotDiscardedOnRebootIdChange() {
+      const participants = lhttp.listLogs(coordinator, database).result[logId];
+      let leaderUrl = lh.getServerUrl(participants[0]);
+      const follower = participants.slice(1)[0];
+
+      // Start a new snapshot as one of the followers, and wait for the follower to be marked as failed.
+      let rebootId = lh.getServerRebootId(follower);
+      let result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
+      lh.checkRequestResult(result);
+      stopServerWait(follower);
+
+      // The snapshot should no longer be available.
+      let snapshotId = result.json.result.snapshotId;
+      lh.checkRequestResult(result);
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
+      assertTrue(result.json.error);
+
+      // Pretending again to be the same follower, start a snapshot, but with a lower rebootId
+      continueServerWait(follower);
+      lh.waitFor(() => {
+        if (lh.getServerRebootId(follower) > rebootId) {
+          return true;
+        }
+        return Error('follower rebootId did not increase');
+      });
+      rebootId = lh.getServerRebootId(follower);
+      result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId - 1);
+      lh.checkRequestResult(result);
+
+      // The snapshot should no longer be available.
+      snapshotId = result.json.result.snapshotId;
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
+      assertTrue(result.json.error);
+
+      // Now start a snapshot with the correct rebootId and expect it to be available.
+      rebootId = lh.getServerRebootId(follower);
+      result = dh.startSnapshot(leaderUrl, database, logId, follower, rebootId);
+      lh.checkRequestResult(result);
+      snapshotId = result.json.result.snapshotId;
+      lh.checkRequestResult(result);
+
+      // We should be able to call /next on it
+      result = dh.getNextSnapshotBatch(leaderUrl, database, logId, snapshotId);
+      lh.checkRequestResult(result);
+
+      result = dh.allSnapshotsStatus(leaderUrl, database, logId);
+      lh.checkRequestResult(result);
+      assertEqual(Object.keys(result.json.result.snapshots).length, 1);
+
+      // Also, finish should work
+      result = dh.finishSnapshot(leaderUrl, database, logId, snapshotId);
+      lh.checkRequestResult(result);
+      result = dh.getSnapshotStatus(leaderUrl, database, logId, snapshotId);
+      assertTrue(result.json.error);
+
+      result = dh.allSnapshotsStatus(leaderUrl, database, logId);
+      lh.checkRequestResult(result);
+      internal.print(result.json.result);
+      assertEqual(Object.keys(result.json.result.snapshots).length, 0);
     }
+  };
+};
+
+const replicatedStateDocumentShardsSuite = function () {
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+      lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  const checkCollectionShards = function (collection) {
+    const shards = collection.shards(true);
+    const shardsToLogs = lh.getShardsToLogsMapping(database, collection._id);
+
+    for (const shard in shards) {
+      const servers = shards[shard];
+
+      for (const server of servers) {
+        const assocShards = dh.getAssociatedShards(lh.getServerUrl(server), database, shardsToLogs[shard]);
+        assertTrue(_.includes(assocShards, shard));
+      }
+    }
+  };
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: setUpAnd(() => {
+    }),
+    tearDown: tearDownAnd(() => {
+    }),
+
+    testCreateSingleCollection: function () {
+      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      checkCollectionShards(collection);
+      collection.drop();
+    },
+
+    testCreateMultipleCollections: function () {
+      const collection = db._create(collectionName, {numberOfShards: 4, writeConcern: 2, replicationFactor: 3});
+      checkCollectionShards(collection);
+      const collection2 = db._create("other-collection", {
+        numberOfShards: 4,
+        distributeShardsLike: collectionName,
+      });
+      checkCollectionShards(collection2);
+      collection2.drop();
+      collection.drop();
+    },
   };
 };
 
@@ -744,5 +849,6 @@ jsunity.run(replicatedStateFollowerSuiteV1);
 jsunity.run(replicatedStateFollowerSuiteV2);
 jsunity.run(replicatedStateRecoverySuite);
 jsunity.run(replicatedStateSnapshotTransferSuite);
+jsunity.run(replicatedStateDocumentShardsSuite);
 
 return jsunity.done();

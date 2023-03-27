@@ -387,7 +387,7 @@ function OneShardPropertiesSuite () {
         }
 
         {
-          let col = db._create("overrideCollection1", { writeConcern : 1});
+          let col = db._create("overrideCollection1", {writeConcern: 1});
           let colProperties = col.properties();
           assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
           assertEqual(colProperties.writeConcern, 1);

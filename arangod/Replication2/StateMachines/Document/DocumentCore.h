@@ -46,7 +46,6 @@ struct DocumentCore {
   LoggerContext const loggerContext;
 
   auto getVocbase() -> TRI_vocbase_t&;
-  auto getVocbase() const -> TRI_vocbase_t const&;
   void drop();
   auto getTransactionHandler()
       -> std::shared_ptr<IDocumentStateTransactionHandler>;

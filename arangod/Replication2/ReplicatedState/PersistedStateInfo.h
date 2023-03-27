@@ -82,7 +82,7 @@ struct IStorageEngineMethods {
       -> futures::Future<futures::Unit> = 0;
 
   // waits for all ongoing requests to be done
-  virtual void waitForCompletion() = 0;
+  virtual void waitForCompletion() noexcept = 0;
 };
 
 }  // namespace arangodb::replication2::replicated_state

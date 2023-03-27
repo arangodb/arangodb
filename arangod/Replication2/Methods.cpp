@@ -24,6 +24,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
+#include <absl/strings/str_cat.h>
 
 #include <iterator>
 #include <utility>
@@ -113,25 +114,12 @@ struct ReplicatedLogMethodsDBServer final
         [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
   }
 
-  auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
-    auto entry = vocbase.getReplicatedLogById(id)
-                     ->getParticipant()
-                     ->copyInMemoryLog()
-                     .getEntryByIndex(index);
-    if (entry.has_value()) {
-      return entry->entry();
-    } else {
-      return std::nullopt;
-    }
-  }
-
   auto slice(LogId id, LogIndex start, LogIndex stop) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    return vocbase.getReplicatedLogById(id)
-        ->getParticipant()
-        ->copyInMemoryLog()
-        .getInternalIteratorRange(start, stop);
+    auto iter = vocbase.getReplicatedLogById(id)
+                    ->getParticipant()
+                    ->getInternalLogIterator(LogRange(start, stop));
+    return {std::move(iter)};
   }
 
   auto poll(LogId id, LogIndex index, std::size_t limit) const
@@ -143,26 +131,28 @@ struct ReplicatedLogMethodsDBServer final
         .thenValue([index, limit, leader = std::move(leader),
                     self = shared_from_this()](
                        auto&&) -> std::unique_ptr<PersistedLogIterator> {
-          auto log = leader->copyInMemoryLog();
-          return log.getInternalIteratorRange(index, index + limit);
+          return leader->getInternalLogIterator(LogRange(index, index + limit));
         });
   }
 
   auto tail(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log =
-        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
-    auto stop = log.getNextIndex();
+    auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
+    auto status = participant->getQuickStatus();
+    auto logStats = status.local.value();
+    auto stop = logStats.spearHead.index + 1;
     auto start = stop.saturatedDecrement(limit);
-    return log.getInternalIteratorRange(start, stop);
+    return participant->getInternalLogIterator(LogRange(start, stop));
   }
 
   auto head(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log =
-        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
-    auto start = log.getFirstIndex();
-    return log.getInternalIteratorRange(start, start + limit);
+    auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
+    auto status = participant->getQuickStatus();
+    auto logStats = status.local.value();
+    auto start = logStats.firstIndex;
+    auto bounds = LogRange(start, start + limit);
+    return participant->getInternalLogIterator(bounds);
   }
 
   auto ping(LogId id, std::optional<std::string> message) const
@@ -259,6 +249,37 @@ struct VPackLogIterator final : PersistedLogIterator {
       return PersistingLogEntry::fromVelocyPack(*iter++);
     }
     return std::nullopt;
+  }
+
+ private:
+  std::shared_ptr<velocypack::Buffer<uint8_t>> buffer;
+  VPackArrayIterator iter;
+};
+
+struct VPackLogIterator2 final : LogIterator {
+  explicit VPackLogIterator2(
+      std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
+      : buffer(std::move(buffer_ptr)),
+        iter(VPackSlice(buffer->data()).get("result")) {}
+
+  auto next() -> std::optional<LogEntryView> override {
+    if (iter != std::default_sentinel) {
+      auto slice = *iter++;
+      auto indexSlice = slice.get(StaticStrings::LogIndex);
+      auto payloadSlice = slice.get(StaticStrings::Payload);
+      if (indexSlice.isNone() || payloadSlice.isNone()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            fmt::format("log entry is missing at least one of `{}` or `{}` "
+                        "attributes: {}",
+                        StaticStrings::LogIndex, StaticStrings::Payload,
+                        slice.toJson()));
+      }
+      auto index = indexSlice.getNumber<std::uint64_t>();
+      return LogEntryView(LogIndex(index), payloadSlice);
+    } else {
+      return std::nullopt;
+    }
   }
 
  private:
@@ -474,24 +495,6 @@ struct ReplicatedLogMethodsCoordinator final
     return getGlobalStatus(id, GlobalStatus::SpecificationSource::kRemoteAgency)
         .thenValue([](GlobalStatus&& status) {
           return GenericLogStatus(std::move(status));
-        });
-  }
-
-  auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
-    auto path =
-        basics::StringUtils::joinT("/", "_api/log", id, "entry", index.value);
-    network::RequestOptions opts;
-    opts.database = vocbaseName;
-    return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
-          auto entry =
-              PersistingLogEntry::fromVelocyPack(resp.slice().get("result"));
-          return std::optional<PersistingLogEntry>(std::move(entry));
         });
   }
 

@@ -295,7 +295,7 @@ struct RocksDBLogStorageMethods final
   [[nodiscard]] auto drop() -> Result;
   [[nodiscard]] auto compact() -> Result;
 
-  void waitForCompletion() override;
+  void waitForCompletion() noexcept override;
 
   replication2::LogId const logId;
   std::shared_ptr<IRocksDBAsyncLogWriteBatcher> const batcher;

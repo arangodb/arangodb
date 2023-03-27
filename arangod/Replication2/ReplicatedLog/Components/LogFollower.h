@@ -24,7 +24,6 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
@@ -55,7 +54,7 @@ struct AppendEntriesManager;
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
 
-namespace arangodb::replication2::replicated_log::refactor {
+namespace arangodb::replication2::replicated_log {
 
 struct MethodsProvider;
 struct FollowerManager {
@@ -65,7 +64,7 @@ struct FollowerManager {
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
-      std::shared_ptr<ILeaderCommunicator>);
+      std::shared_ptr<ILeaderCommunicator>, LoggerContext logContext);
   ~FollowerManager();
   auto getStatus() const -> LogStatus;
   auto getQuickStatus() const -> QuickLogStatus;
@@ -101,20 +100,22 @@ struct LogFollowerImpl : ILogFollower {
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
-      std::shared_ptr<ILeaderCommunicator> leaderComm);
+      std::shared_ptr<ILeaderCommunicator> leaderComm,
+      LoggerContext logContext);
 
   auto getStatus() const -> LogStatus override;
 
   auto getQuickStatus() const -> QuickLogStatus override;
 
-  [[nodiscard]] auto resign2() && -> std::tuple<
+  [[nodiscard]] auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> override;
 
   auto waitFor(LogIndex index) -> WaitForFuture override;
   auto waitForIterator(LogIndex index) -> WaitForIteratorFuture override;
 
-  auto copyInMemoryLog() const -> InMemoryLog override;
+  [[nodiscard]] auto getInternalLogIterator(std::optional<LogRange> bounds)
+      const -> std::unique_ptr<PersistedLogIterator> override;
 
   auto release(LogIndex doneWithIdx) -> Result override;
 
@@ -129,4 +130,4 @@ struct LogFollowerImpl : ILogFollower {
   Guarded<FollowerManager> guarded;
 };
 
-}  // namespace arangodb::replication2::replicated_log::refactor
+}  // namespace arangodb::replication2::replicated_log

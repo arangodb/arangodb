@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Replication2/ReplicatedLog/TermIndexMapping.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -33,24 +34,25 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     -> DeferredAction {
   struct ResolveContext {
     WaitForResult result;
-    InMemoryLog log;
     WaitForQueue queue;
   };
 
   auto ctx = std::make_unique<ResolveContext>();
   auto guard = guardedData.getLockedGuard();
-  ctx->log = guard->storage.getCommittedLog();
 
   LOG_CTX("d2083", TRACE, loggerContext)
       << "received update commit index to " << index
       << " old commit index = " << guard->commitIndex
       << " old resolve index = " << guard->resolveIndex;
 
+  auto localSpearhead =
+      guard->storage.getTermIndexMapping().getLastIndex().value_or(
+          TermIndexPair{});
   guard->commitIndex = std::max(guard->commitIndex, index);
-  auto newResolveIndex = std::min(guard->commitIndex, ctx->log.getLastIndex());
+  auto newResolveIndex = std::min(guard->commitIndex, localSpearhead.index);
 
   if (newResolveIndex > guard->resolveIndex) {
-    LOG_CTX("71a8f", DEBUG, loggerContext)
+    LOG_CTX("71a8f", TRACE, loggerContext)
         << "resolving commit index up to " << newResolveIndex;
     guard->resolveIndex = newResolveIndex;
     guard->stateHandle.updateCommitIndex(guard->resolveIndex);
@@ -67,7 +69,7 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     for (auto& it : ctx->queue) {
       if (!it.second.isFulfilled()) {
         // This only throws if promise was fulfilled earlier.
-        it.second.setValue(std::make_pair(ctx->result, ctx->log));
+        it.second.setValue(ctx->result);
       }
     }
   });
@@ -86,21 +88,6 @@ FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {
-  return waitForBoth(index).thenValue([](auto&& pair) { return pair.first; });
-}
-
-auto FollowerCommitManager::waitForIterator(LogIndex index) noexcept
-    -> ILogParticipant::WaitForIteratorFuture {
-  return waitForBoth(index).thenValue(
-      [index](auto&& pair) -> std::unique_ptr<LogRangeIterator> {
-        auto commitIndex = pair.first.currentCommitIndex;
-        auto& log = pair.second;
-        return log.getIteratorRange(index, commitIndex + 1);
-      });
-}
-
-auto FollowerCommitManager::waitForBoth(LogIndex index) noexcept
-    -> futures::Future<std::pair<WaitForResult, InMemoryLog>> {
   auto guard = guardedData.getLockedGuard();
 
   if (guard->isResigned) {
@@ -112,12 +99,26 @@ auto FollowerCommitManager::waitForBoth(LogIndex index) noexcept
 
   if (index <= guard->resolveIndex) {
     // resolve immediately
-    auto result = WaitForResult(guard->commitIndex, nullptr);
-    auto log = guard->storage.getCommittedLog();
-    return std::make_pair(result, log);
+    return WaitForResult(guard->commitIndex, nullptr);
   }
 
   return guard->waitQueue.emplace(index, ResolvePromise{})->second.getFuture();
+}
+
+auto FollowerCommitManager::waitForIterator(LogIndex index) noexcept
+    -> ILogParticipant::WaitForIteratorFuture {
+  return waitFor(index).thenValue(
+      [index,
+       weak = weak_from_this()](auto&&) -> std::unique_ptr<LogRangeIterator> {
+        if (auto self = weak.lock(); self) {
+          auto guard = self->guardedData.getLockedGuard();
+          return guard->storage.getCommittedLogIterator(
+              LogRange{index, guard->resolveIndex + 1});
+        }
+
+        THROW_ARANGO_EXCEPTION(
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+      });
 }
 
 void FollowerCommitManager::resign() noexcept {

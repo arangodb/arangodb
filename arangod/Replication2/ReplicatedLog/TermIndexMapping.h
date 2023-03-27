@@ -38,9 +38,11 @@ struct TermIndexMapping {
   auto getFirstIndexOfTerm(LogTerm term) const noexcept
       -> std::optional<LogIndex>;
   auto getTermRange(LogTerm) const noexcept -> std::optional<LogRange>;
+  auto getIndexRange() const noexcept -> LogRange;
   auto getTermOfIndex(LogIndex) const noexcept -> std::optional<LogTerm>;
   auto getLastIndex() const noexcept -> std::optional<TermIndexPair>;
   auto getFirstIndex() const noexcept -> std::optional<TermIndexPair>;
+  auto empty() const noexcept -> bool;
 
   void removeFront(LogIndex stop) noexcept;
   void removeBack(LogIndex start) noexcept;

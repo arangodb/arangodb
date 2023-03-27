@@ -162,6 +162,12 @@ bool CreateCollection::first() {
         }
         docket.add(key, i.value);
       }
+      if (_description.has(maintenance::REPLICATED_LOG_ID)) {
+        auto logId = replication2::LogId::fromString(
+            _description.get(maintenance::REPLICATED_LOG_ID));
+        TRI_ASSERT(logId.has_value());
+        docket.add("replicatedStateId", VPackValue(*logId));
+      }
       docket.add("planId", VPackValue(collection));
     }
 
@@ -181,15 +187,6 @@ bool CreateCollection::first() {
         col->followers()->takeOverLeadership(noFollowers, nullptr);
       } else {
         col->followers()->setTheLeader(LEADER_NOT_YET_KNOWN);
-      }
-
-      if (_description.has(maintenance::REPLICATED_LOG_ID)) {
-        auto logId = replication2::LogId::fromString(
-            _description.get(maintenance::REPLICATED_LOG_ID));
-        TRI_ASSERT(logId.has_value());
-        col->setDocumentStateId(logId.value());
-      } else {
-        col->setDocumentStateId(col->shardIdToStateId(shard));
       }
     }
 

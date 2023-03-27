@@ -5,6 +5,14 @@ setup: true
 orbs:
   continuation: circleci/continuation@0.3.1
 
+parameters:
+  enterprise-branch:
+    type: string
+    # we use an empty string as default. In this case we check if the enterprise repo
+    # contains a branch with the same name as the arangodb repo. If this is the case
+    # we use it, otherwise we fall back to "devel".
+    default: ""
+
 # our defined job, and its steps
 jobs:
   setup:
@@ -14,6 +22,9 @@ jobs:
     parameters:
       definitions:
         type: string
+      default-enterprise-branch:
+        type: string
+        default: "devel"
     steps:
       - run:
           name: Checkout
@@ -30,6 +41,7 @@ jobs:
 
       - continuation/continue:
           configuration_path: generated_config.yml # use newly generated config to continue
+          parameters: '{"default-enterprise-branch": "<< parameters.default-enterprise-branch >>"}'
 
 # our single workflow, that triggers the setup job defined above
 workflows:
@@ -51,3 +63,4 @@ workflows:
       - setup:
           name: Prepare CINFRA test set
           definitions: "tests/test-definitions-rlog.txt"
+          default-enterprise-branch: "staging/replication-2.0"

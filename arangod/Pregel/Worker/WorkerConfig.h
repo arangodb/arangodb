@@ -26,11 +26,13 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <unordered_set>
 
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
+#include "Basics/StaticStrings.h"
 
-#include "Pregel/Conductor/Messages.h"
+#include "Pregel/Worker/Messages.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/GraphStore/Graph.h"
 
@@ -45,13 +47,13 @@ class Worker;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry common parameters
 ////////////////////////////////////////////////////////////////////////////////
-class WorkerConfig {
+class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   template<typename V, typename E, typename M>
   friend class Worker;
 
  public:
   explicit WorkerConfig(TRI_vocbase_t* vocbase);
-  void updateConfig(PregelFeature& feature, CreateWorker const& updated);
+  void updateConfig(worker::message::CreateWorker const& updated);
 
   ExecutionNumber executionNumber() const { return _executionNumber; }
 
@@ -133,7 +135,7 @@ class WorkerConfig {
       ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
-  VertexID documentIdToPregel(std::string const& documentID) const;
+  VertexID documentIdToPregel(std::string_view documentID) const;
 
  private:
   ExecutionNumber _executionNumber{};

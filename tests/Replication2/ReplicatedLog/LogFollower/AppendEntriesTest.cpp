@@ -81,10 +81,10 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   MessageId lastMessageId{1};
 
   auto makeFollowerManager() {
-    return std::make_shared<refactor::FollowerManager>(
+    return std::make_shared<FollowerManager>(
         storage.getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
-        options, metrics, nullptr);
+        options, metrics, nullptr, LoggerContext{Logger::REPLICATION2});
   }
 };
 

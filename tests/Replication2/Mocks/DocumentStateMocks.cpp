@@ -40,9 +40,10 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
           applyEntry(
               testing::Matcher<replicated_state::document::ReplicatedOperation::
                                    OperationType const&>(testing::_)))
-      .WillByDefault(
-          [this](replicated_state::document::ReplicatedOperation::OperationType
-                     op) { return _real->applyEntry(op); });
+      .WillByDefault([this](replicated_state::document::ReplicatedOperation::
+                                OperationType const& op) {
+        return _real->applyEntry(op);
+      });
   ON_CALL(*this, removeTransaction(testing::_))
       .WillByDefault(
           [this](TransactionId tid) { return _real->removeTransaction(tid); });
@@ -60,14 +61,20 @@ MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
       });
 }
 
+cluster::RebootTracker MockDocumentStateSnapshotHandler::rebootTracker =
+    cluster::RebootTracker{nullptr};
+
 MockDocumentStateSnapshotHandler::MockDocumentStateSnapshotHandler(
     std::shared_ptr<replicated_state::document::IDocumentStateSnapshotHandler>
         real)
     : _real(std::move(real)) {
-  ON_CALL(*this, create(testing::_))
-      .WillByDefault([this](replicated_state::document::ShardMap shards) {
-        return _real->create(std::move(shards));
-      });
+  ON_CALL(*this, create(testing::_, testing::_))
+      .WillByDefault(
+          [this](
+              replicated_state::document::ShardMap shards,
+              replicated_state::document::SnapshotParams::Start const& params) {
+            return _real->create(std::move(shards), params);
+          });
   ON_CALL(*this, find(testing::_))
       .WillByDefault(
           [this](replicated_state::document::SnapshotId const& snapshotId) {
@@ -75,9 +82,17 @@ MockDocumentStateSnapshotHandler::MockDocumentStateSnapshotHandler(
           });
   ON_CALL(*this, status()).WillByDefault([this]() { return _real->status(); });
   ON_CALL(*this, clear()).WillByDefault([this]() { _real->clear(); });
-  ON_CALL(*this, clearInactiveSnapshots()).WillByDefault([this]() {
-    _real->clearInactiveSnapshots();
-  });
+  ON_CALL(*this, finish(testing::_))
+      .WillByDefault([this](replicated_state::document::SnapshotId const& id) {
+        return _real->finish(id);
+      });
+  ON_CALL(*this, abort(testing::_))
+      .WillByDefault([this](replicated_state::document::SnapshotId const& id) {
+        return _real->abort(id);
+      });
+  ON_CALL(*this, giveUpOnShard(testing::_))
+      .WillByDefault(
+          [this](ShardID const& shardId) { _real->giveUpOnShard(shardId); });
 }
 
 MockDatabaseSnapshot::MockDatabaseSnapshot(
@@ -87,6 +102,7 @@ MockDatabaseSnapshot::MockDatabaseSnapshot(
       .WillByDefault([this](std::string_view collectionName) {
         return std::make_unique<MockCollectionReaderDelegator>(_reader);
       });
+  ON_CALL(*this, resetTransaction()).WillByDefault([]() { return Result{}; });
 }
 
 MockDocumentStateHandlersFactory::MockDocumentStateHandlersFactory(
@@ -99,13 +115,17 @@ auto MockDocumentStateHandlersFactory::makeUniqueDatabaseSnapshotFactory()
       databaseSnapshotFactory);
 }
 
-auto MockDocumentStateHandlersFactory::makeRealSnapshotHandler()
+auto MockDocumentStateHandlersFactory::makeRealSnapshotHandler(
+    cluster::RebootTracker* rebootTracker)
     -> std::shared_ptr<MockDocumentStateSnapshotHandler> {
+  if (rebootTracker == nullptr) {
+    rebootTracker = &MockDocumentStateSnapshotHandler::rebootTracker;
+  }
   auto real = std::make_shared<
       replicated_state::document::DocumentStateSnapshotHandler>(
-      makeUniqueDatabaseSnapshotFactory());
+      makeUniqueDatabaseSnapshotFactory(), *rebootTracker);
   return std::make_shared<testing::NiceMock<MockDocumentStateSnapshotHandler>>(
-      real);
+      std::move(real));
 }
 
 auto MockDocumentStateHandlersFactory::makeRealTransactionHandler(

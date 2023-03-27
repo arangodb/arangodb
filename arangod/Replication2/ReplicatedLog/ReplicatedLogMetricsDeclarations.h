@@ -57,6 +57,11 @@ DECLARE_HISTOGRAM(
     arangodb_replication2_replicated_log_follower_append_entries_rt,
     AppendEntriesRttScale, "RT for AppendEntries call [us]");
 
+DECLARE_GAUGE(arangodb_replication2_leader_in_memory_entries, std::uint64_t,
+              "Number of log entries stored on memory");
+DECLARE_GAUGE(arangodb_replication2_leader_in_memory_bytes, std::size_t,
+              "Size of log entries stored on memory");
+
 DECLARE_COUNTER(arangodb_replication2_replicated_log_creation_total,
                 "Number of replicated logs created since server start");
 

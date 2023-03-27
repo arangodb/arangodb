@@ -128,11 +128,12 @@ void FakeFollower::resign() & {
   waitForResignQueue.resolveAll();
 }
 
-replicated_log::InMemoryLog FakeFollower::copyInMemoryLog() const {
+auto FakeFollower::getInternalLogIterator(std::optional<LogRange> bounds) const
+    -> std::unique_ptr<PersistedLogIterator> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-auto FakeFollower::resign2() && -> std::tuple<
+auto FakeFollower::resign() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<replicated_log::IReplicatedStateHandle>, DeferredAction> {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

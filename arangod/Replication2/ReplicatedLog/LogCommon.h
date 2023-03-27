@@ -167,6 +167,7 @@ struct LogRange {
   [[nodiscard]] auto empty() const noexcept -> bool;
   [[nodiscard]] auto count() const noexcept -> std::size_t;
   [[nodiscard]] auto contains(LogIndex idx) const noexcept -> bool;
+  [[nodiscard]] auto contains(LogRange idx) const noexcept -> bool;
 
   friend auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
   friend auto intersect(LogRange a, LogRange b) noexcept -> LogRange;

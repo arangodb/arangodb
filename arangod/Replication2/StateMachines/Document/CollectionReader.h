@@ -93,12 +93,14 @@ struct IDatabaseSnapshot {
   [[nodiscard]] virtual auto createCollectionReader(
       std::string_view collectionName)
       -> std::unique_ptr<ICollectionReader> = 0;
+  virtual auto resetTransaction() -> Result = 0;
 };
 
 struct DatabaseSnapshot : IDatabaseSnapshot {
   explicit DatabaseSnapshot(TRI_vocbase_t& vocbase);
   [[nodiscard]] auto createCollectionReader(std::string_view collectionName)
       -> std::unique_ptr<ICollectionReader> override;
+  auto resetTransaction() -> Result override;
 
  private:
   TRI_vocbase_t& _vocbase;
@@ -121,7 +123,6 @@ class DatabaseSnapshotFactory : public IDatabaseSnapshotFactory {
   auto createSnapshot() -> std::unique_ptr<IDatabaseSnapshot> override;
 
  private:
-  // TODO should we use a database guard here? CINFRA-596
   TRI_vocbase_t& _vocbase;
 };
 

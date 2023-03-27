@@ -13,7 +13,6 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
   ../cmake/activeCodePage.manifest
 )
 
@@ -380,6 +379,7 @@ add_executable(${BIN_ARANGOSH}
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ShellFeature.cpp
+  Shell/TelemetricsHandler.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp

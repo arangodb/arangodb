@@ -20,8 +20,12 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <memory>
+
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb {
 namespace futures {
@@ -47,7 +51,6 @@ inline namespace comp {
 
 struct IStorageTransaction {
   virtual ~IStorageTransaction() = default;
-  [[nodiscard]] virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
   [[nodiscard]] virtual auto getLogBounds() const noexcept -> LogRange = 0;
   virtual auto removeFront(LogIndex stop) noexcept
       -> futures::Future<Result> = 0;
@@ -70,8 +73,8 @@ struct IStorageManager {
   virtual auto transaction() -> std::unique_ptr<IStorageTransaction> = 0;
   [[nodiscard]] virtual auto getTermIndexMapping() const
       -> TermIndexMapping = 0;
-  [[nodiscard]] virtual auto getCommittedLog() const -> InMemoryLog = 0;
-  [[nodiscard]] virtual auto getCommittedLogIterator(LogRange) const
+  [[nodiscard]] virtual auto getCommittedLogIterator(
+      std::optional<LogRange> range = std::nullopt) const
       -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> = 0;
   [[nodiscard]] virtual auto getCommittedMetaInfo() const
       -> replicated_state::PersistedStateInfo = 0;

@@ -47,12 +47,14 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Pregel/AlgoRegistry.h"
+#include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Actor.h"
 #include "Pregel/Conductor/Conductor.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/ResultActor.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker/Messages.h"
@@ -336,12 +338,15 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
   auto ttl = TTL{.duration = std::chrono::seconds(
                      basics::VelocyPackHelper::getNumericValue(
                          options.userParameters.slice(), "ttl", 600))};
+  auto algorithmName = std::move(options.algorithm);
+  std::transform(algorithmName.begin(), algorithmName.end(),
+                 algorithmName.begin(), ::tolower);
 
   auto en = createExecutionNumber();
 
   auto executionSpecifications = ExecutionSpecifications{
       .executionNumber = en,
-      .algorithm = std::move(options.algorithm),
+      .algorithm = std::move(algorithmName),
       .vertexCollections = std::move(vertexCollections),
       .edgeCollections = std::move(edgeColls),
       .edgeCollectionRestrictions =
@@ -365,10 +370,32 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
           vocbase, executionSpecifications.vertexCollections,
           executionSpecifications.edgeCollections);
 
+  auto resultActorID = _actorRuntime->spawn<ResultActor>(
+      vocbase.name(), std::make_unique<ResultState>(),
+      message::ResultMessages{message::ResultStart{}});
+  auto resultActorPID = actor::ActorPID{
+      .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
+  _resultActor.emplace(en, resultActorPID);
+
+  auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+      vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
+      message::SpawnMessages{message::SpawnStart{}});
+  auto spawnActor = actor::ActorPID{
+      .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
+  auto algorithm = AlgoRegistry::createAlgorithmNew(
+      executionSpecifications.algorithm,
+      executionSpecifications.userParameters.slice());
+  if (not algorithm.has_value()) {
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  fmt::format("Unsupported Algorithm: {}",
+                              executionSpecifications.algorithm)};
+  }
   _actorRuntime->spawn<conductor::ConductorActor>(
       vocbase.name(),
-      std::make_unique<conductor::ConductorState>(executionSpecifications,
-                                                  std::move(vocbaseLookupInfo)),
+      std::make_unique<conductor::ConductorState>(
+          std::move(algorithm.value()), executionSpecifications,
+          std::move(vocbaseLookupInfo), std::move(spawnActor),
+          std::move(resultActorPID)),
       conductor::message::ConductorStart{});
 
   return en;
@@ -676,6 +703,7 @@ void PregelFeature::beginShutdown() {
 
   // cancel all conductors and workers
   for (auto& it : _conductors) {
+    it.second.conductor->_shutdown = true;
     it.second.conductor->cancel();
   }
   for (auto it : _workers) {
@@ -827,6 +855,27 @@ std::shared_ptr<IWorker> PregelFeature::worker(
              : nullptr;
 }
 
+ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
+  if (!_resultActor.contains(execNr)) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot locate results for pregel run {}.", execNr)};
+  }
+  auto actorPID = _resultActor.at(execNr);
+  auto state = _actorRuntime->getActorStateByID<ResultActor>(actorPID.id);
+  if (!state.has_value()) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot find results for pregel run {}.", execNr)};
+  }
+  if (state.value().finished) {
+    return state.value().results;
+  }
+  return Result{
+      TRI_ERROR_INTERNAL,
+      fmt::format("Pregel results for run {} are not yet available.", execNr)};
+}
+
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);
@@ -943,8 +992,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
-    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
-        velocypack::SharedSlice({}, body));
+    auto createWorker =
+        inspection::deserializeWithErrorT<worker::message::CreateWorker>(
+            velocypack::SharedSlice({}, body));
     if (!createWorker.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -1001,8 +1051,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     }
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
-    auto message = inspection::deserializeWithErrorT<PregelMessage>(
-        velocypack::SharedSlice({}, body));
+    auto message =
+        inspection::deserializeWithErrorT<worker::message::PregelMessage>(
+            velocypack::SharedSlice({}, body));
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,

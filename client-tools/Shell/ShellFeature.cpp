@@ -23,7 +23,6 @@
 
 #include "ShellFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -31,7 +30,9 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Shell/TelemetricsHandler.h"
 #include "Shell/V8ShellFeature.h"
+#include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -46,6 +47,8 @@ ShellFeature::ShellFeature(Server& server, int* result)
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
 }
+
+ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -146,14 +149,19 @@ void ShellFeature::start() {
   V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
-
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -188,6 +196,45 @@ void ShellFeature::start() {
   if (*_result == EXIT_SUCCESS && !ok) {
     *_result = EXIT_FAILURE;
   }
+}
+
+void ShellFeature::beginShutdown() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+  }
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->getTelemetricsInfo(builder);
+  }
+}
+VPackBuilder ShellFeature::sendTelemetricsToEndpoint(std::string const& url) {
+  if (_telemetricsHandler != nullptr) {
+    return _telemetricsHandler->sendTelemetricsToEndpoint(url);
+  }
+  return VPackBuilder();
+}
+#endif
+
+void ShellFeature::startTelemetrics() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(
+      server(), _automaticallySendTelemetricsToEndpoint);
+#else
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
+#endif
+  _telemetricsHandler->runTelemetrics();
+}
+
+void ShellFeature::restartTelemetrics() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+    _telemetricsHandler.reset();
+  }
+  startTelemetrics();
 }
 
 }  // namespace arangodb

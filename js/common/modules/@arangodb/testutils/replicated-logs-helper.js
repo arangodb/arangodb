@@ -246,6 +246,16 @@ const replicatedLogDeleteTarget = function (database, logId) {
   serverHelper.agency.increaseVersion(`Target/Version`);
 };
 
+const createReconfigureJob = function (database, logId, ops) {
+  const jobId = nextUniqueLogId();
+  serverHelper.agency.set(`Target/ToDo/${jobId}`, {
+    type: "reconfigureReplicatedLog",
+    database, logId, jobId: "" + jobId,
+    operations: ops,
+  });
+  return jobId;
+};
+
 const waitForReplicatedLogAvailable = function (id) {
   while (true) {
     try {
@@ -664,11 +674,22 @@ const getLocalStatus = function (serverId, database, logId) {
 const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
   const url = getServerUrl(_.sample(coordinators));
   const res = request.post(
-    `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+      `${url}/_db/${database}/_api/log/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
   checkRequestResult(res);
   const {json: {result}} = res;
   return result;
+};
+
+const getAgencyJobStatus = function (jobId) {
+  const places = ["ToDo", "Pending", "Failed", "Finished"];
+  for (const p of places) {
+    const job = readAgencyValueAt(`Target/${p}/${jobId}`);
+    if (job !== undefined) {
+      return p;
+    }
+  }
+  return "NotFound";
 };
 
 exports.checkRequestResult = checkRequestResult;
@@ -719,3 +740,5 @@ exports.createReplicatedLogWithState = createReplicatedLogWithState;
 exports.bumpTermOfLogsAndWaitForConfirmation = bumpTermOfLogsAndWaitForConfirmation;
 exports.getShardsToLogsMapping = getShardsToLogsMapping;
 exports.replaceParticipant = replaceParticipant;
+exports.createReconfigureJob = createReconfigureJob;
+exports.getAgencyJobStatus = getAgencyJobStatus;

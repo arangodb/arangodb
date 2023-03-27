@@ -42,7 +42,6 @@ namespace {
 struct StorageManagerMock;
 
 struct StorageTransactionMock : IStorageTransaction {
-  MOCK_METHOD(InMemoryLog, getInMemoryLog, (), (const, noexcept, override));
   MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
   MOCK_METHOD(futures::Future<Result>, removeFront, (LogIndex),
               (noexcept, override));
@@ -55,9 +54,9 @@ struct StorageTransactionMock : IStorageTransaction {
 struct StorageManagerMock : IStorageManager {
   MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
               (override));
-  MOCK_METHOD(InMemoryLog, getCommittedLog, (), (const, override));
   MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
-              getCommittedLogIterator, (LogRange), (const, override));
+              getCommittedLogIterator, (std::optional<LogRange>),
+              (const, override));
   MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
   MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
               (const, override));

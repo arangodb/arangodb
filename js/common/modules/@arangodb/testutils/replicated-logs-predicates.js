@@ -311,6 +311,16 @@ const replicatedLogReplicationCompleted = function (database, logId) {
   };
 };
 
+const agencyJobIn = function (jobId, where) {
+  return function () {
+    const current = LH.getAgencyJobStatus(jobId);
+    if (current !== where) {
+      return Error(`Job ${jobId} expected to be in ${where}, but is in ${current}`);
+    }
+    return true;
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
 exports.replicatedLogIsGone = replicatedLogIsGone;
 exports.replicatedLogIsReady = replicatedLogIsReady;
@@ -325,3 +335,4 @@ exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
 exports.replicatedLogReplicationCompleted = replicatedLogReplicationCompleted;
 exports.serverFailed = serverFailed;
 exports.serverHealthy = serverHealthy;
+exports.agencyJobIn = agencyJobIn;

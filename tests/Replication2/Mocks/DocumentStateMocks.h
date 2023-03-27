@@ -33,6 +33,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
@@ -95,6 +96,8 @@ struct MockDatabaseSnapshot : replicated_state::document::IDatabaseSnapshot {
               createCollectionReader, (std::string_view collectionName),
               (override));
 
+  MOCK_METHOD(Result, resetTransaction, (), (override));
+
  private:
   std::shared_ptr<replicated_state::document::ICollectionReader> _reader;
 };
@@ -108,6 +111,10 @@ struct MockDatabaseSnapshotDelegator
   std::unique_ptr<replicated_state::document::ICollectionReader>
   createCollectionReader(std::string_view collectionName) override {
     return _snapshot->createCollectionReader(collectionName);
+  }
+
+  auto resetTransaction() -> Result override {
+    return _snapshot->resetTransaction();
   }
 
  private:
@@ -144,8 +151,8 @@ struct MockDocumentStateHandlersFactory
 
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>,
-      createShardHandler, (GlobalLogIdentifier), (override));
-  MOCK_METHOD(std::unique_ptr<
+      createShardHandler, (TRI_vocbase_t&, GlobalLogIdentifier), (override));
+  MOCK_METHOD(std::shared_ptr<
                   replicated_state::document::IDocumentStateSnapshotHandler>,
               createSnapshotHandler,
               (TRI_vocbase_t&, GlobalLogIdentifier const&), (override));
@@ -164,10 +171,14 @@ struct MockDocumentStateHandlersFactory
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
       createNetworkHandler, (GlobalLogIdentifier), (override));
+  MOCK_METHOD(
+      std::shared_ptr<replicated_state::document::IMaintenanceActionExecutor>,
+      createMaintenanceActionExecutor, (GlobalLogIdentifier, ServerID),
+      (override));
 
   auto makeUniqueDatabaseSnapshotFactory()
       -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
-  auto makeRealSnapshotHandler()
+  auto makeRealSnapshotHandler(cluster::RebootTracker* rebootTracker = nullptr)
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
   auto makeRealTransactionHandler(
       GlobalLogIdentifier const&,
@@ -221,6 +232,16 @@ struct MockDocumentStateTransactionHandler
       _real;
 };
 
+struct MockMaintenanceActionExecutor
+    : replicated_state::document::IMaintenanceActionExecutor {
+  MOCK_METHOD(Result, executeCreateCollectionAction,
+              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
+              (override));
+  MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
+              (override));
+  MOCK_METHOD(void, addDirty, (), (override));
+};
+
 struct MockDocumentStateShardHandler
     : replicated_state::document::IDocumentStateShardHandler {
   MOCK_METHOD(ResultT<bool>, ensureShard,
@@ -244,14 +265,23 @@ struct MockDocumentStateSnapshotHandler
           real);
 
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
-              create, (replicated_state::document::ShardMap), (override));
+              create,
+              (replicated_state::document::ShardMap,
+               replicated_state::document::SnapshotParams::Start const& params),
+              (override));
   MOCK_METHOD(ResultT<std::weak_ptr<replicated_state::document::Snapshot>>,
               find, (replicated_state::document::SnapshotId const&),
-              (override));
+              (override, noexcept));
   MOCK_METHOD(replicated_state::document::AllSnapshotsStatus, status, (),
               (const, override));
+  MOCK_METHOD(Result, abort, (replicated_state::document::SnapshotId const& id),
+              (override));
+  MOCK_METHOD(Result, finish,
+              (replicated_state::document::SnapshotId const& id), (override));
   MOCK_METHOD(void, clear, (), (override));
-  MOCK_METHOD(void, clearInactiveSnapshots, (), (override));
+  MOCK_METHOD(void, giveUpOnShard, (ShardID const& shardId), (override));
+
+  static cluster::RebootTracker rebootTracker;
 
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateSnapshotHandler>
@@ -262,7 +292,7 @@ struct MockDocumentStateLeaderInterface
     : replicated_state::document::IDocumentStateLeaderInterface {
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotConfig>>,
-      startSnapshot, (LogIndex), (override));
+      startSnapshot, (), (override));
   MOCK_METHOD(
       futures::Future<ResultT<replicated_state::document::SnapshotBatch>>,
       nextSnapshotBatch, (replicated_state::document::SnapshotId), (override));

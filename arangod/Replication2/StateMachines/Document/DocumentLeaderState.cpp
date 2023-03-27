@@ -292,7 +292,7 @@ auto DocumentLeaderState::release(TransactionId tid, LogIndex index) -> Result {
   });
 }
 
-auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
+auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const& params)
     -> ResultT<SnapshotConfig> {
   auto shardMap = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -303,7 +303,7 @@ auto DocumentLeaderState::snapshotStart(SnapshotParams::Start const&)
   });
 
   return executeSnapshotOperation<ResultT<SnapshotConfig>>(
-      [&](auto& handler) { return handler->create(shardMap); },
+      [&](auto& handler) { return handler->create(shardMap, params); },
       [](auto& snapshot) { return snapshot->config(); });
 }
 
@@ -316,9 +316,15 @@ auto DocumentLeaderState::snapshotNext(SnapshotParams::Next const& params)
 
 auto DocumentLeaderState::snapshotFinish(const SnapshotParams::Finish& params)
     -> Result {
-  return executeSnapshotOperation<Result>(
-      [&](auto& handler) { return handler->find(params.id); },
-      [](auto& snapshot) { return snapshot->finish(); });
+  return _snapshotHandler.doUnderLock([&](auto& handler) -> Result {
+    if (handler == nullptr) {
+      return Result{
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+          fmt::format("Could not get snapshot status of {}, state resigned.",
+                      gid)};
+    }
+    return handler->finish(params.id);
+  });
 }
 
 auto DocumentLeaderState::snapshotStatus(SnapshotId id)
@@ -340,6 +346,19 @@ auto DocumentLeaderState::allSnapshotsStatus() -> ResultT<AllSnapshotsStatus> {
                 "Could not get snapshot statuses of {}, state resigned.",
                 to_string(gid))};
       });
+}
+
+auto DocumentLeaderState::getAssociatedShardList() const
+    -> std::vector<ShardID> {
+  auto shardMap =
+      _guardedData.getLockedGuard()->core->getShardHandler()->getShardMap();
+
+  std::vector<ShardID> shardIds;
+  shardIds.reserve(shardMap.size());
+  for (auto const& [id, props] : shardMap) {
+    shardIds.emplace_back(id);
+  }
+  return shardIds;
 }
 
 auto DocumentLeaderState::createShard(ShardID shard, CollectionID collectionId,
@@ -414,10 +433,11 @@ auto DocumentLeaderState::dropShard(ShardID shard, CollectionID collectionId)
         return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
       }
 
-      // TODO we clear snapshot here, to release the shard lock. This is
-      //   very invasive and aborts all snapshot transfers. Maybe there is
-      //   a better solution?
-      self->_snapshotHandler.getLockedGuard().get()->clear();
+      // This will release the shard lock. Currently ongoing snapshot transfers
+      // will not suffer from it, they will simply stop receiving batches for
+      // this shard. Later, when they start applying entries, it is going to be
+      // dropped anyway.
+      self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
       auto transactionHandler = data.core->getTransactionHandler();
       self->_activeTransactions.doUnderLock([&](auto& activeTransactions) {
@@ -462,14 +482,12 @@ auto DocumentLeaderState::executeSnapshotOperation(GetFunc getSnapshot,
   if (snapshotRes.fail()) {
     return snapshotRes.result();
   }
-  if (auto snapshot = snapshotRes.get().lock()) {
+  if (auto snapshot = snapshotRes.get().lock(); snapshot != nullptr) {
     return processSnapshot(snapshot);
   }
-  return Result(
-      TRI_ERROR_INTERNAL,
-      fmt::format("Snapshot not available for {}! Most often this happens "
-                  "because the leader resigned in the meantime!",
-                  gid));
+
+  return Result(TRI_ERROR_INTERNAL,
+                fmt::format("Snapshot not available for {}!", gid));
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

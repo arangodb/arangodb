@@ -40,11 +40,14 @@ struct StorageManager : IStorageManager,
 
   explicit StorageManager(std::unique_ptr<IStorageEngineMethods> core,
                           LoggerContext const& loggerContext);
-  auto resign() -> std::unique_ptr<IStorageEngineMethods>;
+  auto resign() noexcept -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
-  auto getCommittedLog() const -> InMemoryLog override;
-  auto getCommittedLogIterator(LogRange) const
-      -> std::unique_ptr<TypedLogRangeIterator<LogEntryView>> override;
+  auto getCommittedLogIterator(std::optional<LogRange> range) const
+      -> std::unique_ptr<LogRangeIterator> override;
+  auto getPeristedLogIterator(LogIndex first) const
+      -> std::unique_ptr<PersistedLogIterator>;
+  auto getPeristedLogIterator(std::optional<LogRange> range) const
+      -> std::unique_ptr<PersistedLogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
   auto commitMetaInfoTrx(std::unique_ptr<IStateInfoTransaction> ptr)
@@ -62,21 +65,18 @@ struct StorageManager : IStorageManager,
 
   struct StorageRequest {
     std::unique_ptr<StorageOperation> operation;
-    InMemoryLog logResult;
     TermIndexMapping mappingResult;
     futures::Promise<Result> promise;
 
     ~StorageRequest();
     StorageRequest(StorageRequest&&) noexcept = default;
     explicit StorageRequest(std::unique_ptr<StorageOperation> op,
-                            InMemoryLog logResult,
                             TermIndexMapping mappingResult);
   };
 
   struct GuardedData {
     explicit GuardedData(std::unique_ptr<IStorageEngineMethods> methods);
 
-    InMemoryLog onDiskLog, spearheadLog;
     TermIndexMapping onDiskMapping, spearheadMapping;
     std::unique_ptr<IStorageEngineMethods> methods;
     std::deque<StorageRequest> queue;
@@ -87,13 +87,11 @@ struct StorageManager : IStorageManager,
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
 
-  auto scheduleOperation(GuardType&&, InMemoryLog result,
-                         TermIndexMapping mapResult,
+  auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)
       -> futures::Future<Result>;
   template<typename F>
-  auto scheduleOperationLambda(GuardType&&, InMemoryLog result,
-                               TermIndexMapping mapResult, F&&)
+  auto scheduleOperationLambda(GuardType&&, TermIndexMapping mapResult, F&&)
       -> futures::Future<Result>;
   void triggerQueueWorker(GuardType) noexcept;
 };

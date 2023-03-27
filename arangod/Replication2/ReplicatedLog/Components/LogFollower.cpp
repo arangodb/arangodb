@@ -36,20 +36,16 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
-using namespace arangodb::replication2::replicated_log;
-using namespace arangodb::replication2::replicated_log::refactor;
 
-struct refactor::MethodsProvider : IReplicatedLogFollowerMethods {
+namespace arangodb::replication2::replicated_log {
+
+struct MethodsProvider : IReplicatedLogFollowerMethods {
   explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
   auto releaseIndex(LogIndex index) -> void override {
     follower.compaction->updateReleaseIndex(index);
   }
 
-  auto getLogSnapshot() -> InMemoryLog override {
-    return follower.storage->getCommittedLog();
-  }
-
-  auto getLogIterator(LogRange range)
+  auto getCommittedLogIterator(std::optional<LogRange> range)
       -> std::unique_ptr<LogRangeIterator> override {
     return follower.storage->getCommittedLogIterator(range);
   }
@@ -104,8 +100,8 @@ FollowerManager::FollowerManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm)
-    : loggerContext(deriveLoggerContext(*termInfo)),
+    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    : loggerContext(deriveLoggerContext(*termInfo, logContext)),
       options(options),
       metrics(metrics),
       storage(
@@ -135,14 +131,15 @@ FollowerManager::~FollowerManager() {
 
 auto FollowerManager::getStatus() const -> LogStatus {
   auto commitIndex = commit->getCommitIndex();
-  auto log = storage->getCommittedLog();
+  auto mapping = storage->getTermIndexMapping();
   auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   return LogStatus{FollowerStatus{
       .local =
           LogStatistics{
-              .spearHead = log.getLastTermIndexPair(),
+              .spearHead = mapping.getLastIndex().value_or(TermIndexPair{}),
               .commitIndex = commitIndex,
-              .firstIndex = log.getFirstIndex(),
+              .firstIndex =
+                  mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
           },
       .leader = termInfo->leader,
@@ -205,7 +202,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
   // the wrong order could see the snapshot status available from before it was
   // toggled to missing, and then the commit index that was just increased.
   auto const commitIndex = commit->getCommitIndex();
-  auto const log = storage->getCommittedLog();
+  auto const mapping = storage->getTermIndexMapping();
   auto const [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
   bool const snapshotAvailable =
       snapshot->checkSnapshotState() == SnapshotState::AVAILABLE;
@@ -220,9 +217,10 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
       .term = termInfo->term,
       .local =
           LogStatistics{
-              .spearHead = log.getLastTermIndexPair(),
+              .spearHead = mapping.getLastIndex().value_or(TermIndexPair{}),
               .commitIndex = commitIndex,
-              .firstIndex = log.getFirstIndex(),
+              .firstIndex =
+                  mapping.getFirstIndex().value_or(TermIndexPair{}).index,
               .releaseIndex = releaseIndex,
           },
       .leadershipEstablished = commitIndex.value > 0,
@@ -259,7 +257,7 @@ auto LogFollowerImpl::getStatus() const -> LogStatus {
   return guarded.getLockedGuard()->getStatus();
 }
 
-auto LogFollowerImpl::resign2() && -> std::tuple<
+auto LogFollowerImpl::resign() && -> std::tuple<
     std::unique_ptr<replicated_state::IStorageEngineMethods>,
     std::unique_ptr<IReplicatedStateHandle>, DeferredAction> {
   return guarded.getLockedGuard()->resign();
@@ -275,8 +273,9 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
   return guarded.getLockedGuard()->commit->waitForIterator(index);
 }
 
-auto LogFollowerImpl::copyInMemoryLog() const -> InMemoryLog {
-  return guarded.getLockedGuard()->storage->getCommittedLog();
+auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
+    const -> std::unique_ptr<PersistedLogIterator> {
+  return guarded.getLockedGuard()->storage->getPeristedLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
@@ -313,8 +312,10 @@ LogFollowerImpl::LogFollowerImpl(
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm)
+    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
               std::move(termInfo), std::move(options), std::move(metrics),
-              std::move(leaderComm)) {}
+              std::move(leaderComm), logContext) {}
+
+}  // namespace arangodb::replication2::replicated_log

@@ -1,6 +1,114 @@
 devel
 -----
 
+* SEARCH-279 Fix consistency during update/replace operations
+  for arangosearch links and inverted indexes.
+
+* Updated arangosync to v2.16.1-preview-1.
+
+* APM-294: Added telemetrics API that gathers anonymous feature usage
+  statistics from a deployment. The API is accessible via the endpoint
+  `/_admin/telemetrics`. The API is enabled by default in release builds, but
+  disabled by default in maintainer mode. It can be explicitly turned on/off 
+  with the server startup parameter `--server.enable-telemetrics-api`. 
+  The required access privileges to access the telemetrics API can be 
+  configured via the server startup option `--server.support-info-api`.
+  The telemetrics API is used by the arangosh: every time the arangosh is 
+  started, it will send a request to the connected server to gather telemetrics
+  from the `/_admin/telemetrics` endpoint. The telemetrics data are then 
+  sent to an aggregation service that is run by ArangoDB.
+
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files_size`: cumulated size of alive WAL files (not
+    archived)
+  - `rocksdb_archived_wal_files_size`: cumulated size of archive WAL files
+
+* By default, start pruning of archived WAL files 60 seconds after server
+  start. Previously, pruning of WAL files started 180 seconds after server
+  startup.
+
+* Set default threshold value for automatic column flushing to 20 live WAL
+  files (previously: 10 files), and retry flushing every 30 minutes (previous
+  interval: every 60 minutes).
+
+* APM-283: Use parallel gather in almost all queries. The only case where we
+  cannot use parallel gather is when using traversals, although there are some
+  exceptions for disjoint SmartGraphs where the traversal can run completely on
+  the local DB-server. All other queries should now be able to parallelize the
+  gather node. This can not only speed up queries quite significantly, but also
+  overcomes issues with the previous serial processing within gather nodes,
+  which could lead to high memory usage on coordinators caused by buffering of
+  documents other shards, and timeouts on some DB-Servers because query parts
+  were idle for too long.
+
+* Added support to log response bodies as well as HTTP headers (incoming
+  and outgoing), when the requests log topic is set to TRACE.
+
+* Changed path were test scripts locate configuration files from `etc/relative`
+  to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
+  from `etc/relative` in test environment. 
+  
+* Made the return code configurable that is delivered if a write fails because
+  the write concern is not fulfilled (not enough in-sync replicas available).
+  Previously (and now by default), a code of HTTP 403 is returned and the
+  request returns immediately. If the command line option
+    --cluster.failed-write-concern-status-code=503
+  is set, then HTTP 503 is returned. Note that no cluster-internal retry
+  is happening, such that a client is informed right away about the problem.
+  Retry loops have to be organized in the client program.
+
+* Added support for sending gzip-compressed responses from the server.
+  Previously only deflated responses were supported.
+
+* Stabilized resilience tests. The assumption that an AQL query can run
+  without error directly after a leader has been stopped, is wrong.
+
+* Auto-flush RocksDB WAL files and in-memory column family data if the number
+  of live WAL files exceeds a certain threshold. This is to make sure that
+  WAL files are moved to the archive when there are a lot of live WAL files
+  present (e.g. after a restart; in this case RocksDB does not count any
+  previously existing WAL files when calculating the size of WAL files and 
+  comparing it `max_total_wal_size`.
+  The feature can be configured via the following startup options:
+  - `--rocksdb.auto-flush-min-live-wal-files`: minimum number of live WAL
+    files that triggers an auto-flush. Defaults to `10`.
+  - `--rocksdb.auto-flush-check-interval`: interval (in seconds) in which
+    auto-flushes are executed. Defaults to `3600`.
+  Note that an auto-flush is only executed if the number of live WAL files 
+  exceeds the configured threshold and the last auto-flush is longer ago than
+  the configured auto-flush check interval. That way too frequent auto-flushes
+  can be avoided.
+
+* Updated arangosync to v2.16.0-preview-1.
+
+* Added the following metrics for WAL file tracking:
+  - `rocksdb_live_wal_files`: number of alive WAL files (not archived)
+  - `rocksdb_wal_released_tick_flush`: lower bound sequence number from which
+    onwards WAL files will be kept (i.e. not deleted from the archive) because
+    of external flushing needs. Candidates for these are arangosearch links
+    and background index creation.
+  - `rocksdb_wal_released_tick_replication`: lower bound sequence number from
+    which onwards WAL files will be kept because they may be needed by the
+    replication.
+  - `arangodb_flush_subscriptions`: number of currently active flush 
+    subscriptions.
+
+* Updated internal JavaScript dependencies:
+
+  - @xmldom/xmldom: 0.8.0 -> 0.8.6
+  - accepts: 1.3.7 -> 1.3.8
+  - ajv: 8.10.0 -> 8.12.0
+  - ansi_up: 5.0.1 -> 5.1.0
+  - content-disposition: 0.5.3 -> 0.5.4
+  - content-type: 1.0.4 -> 1.0.5
+  - error-stack-parser: 2.0.6 -> 2.1.4
+  - mime-types: 2.1.31 -> 2.1.35
+  - semver: 7.3.5 -> 7.3.8
+
+* FE-135: Add new Graph Viewer with vis.js and change the UI.
+
+* Updated arangosync to v2.15.0.
+
 * FE-19: Updated ArangoDB logo in web interface.
 
 * Make the hashed variant of AQL COLLECT support INTO clauses too.

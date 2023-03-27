@@ -40,7 +40,7 @@ struct FakeFollower final : replicated_log::ILogFollower,
 
   auto getStatus() const -> replicated_log::LogStatus override;
   auto getQuickStatus() const -> replicated_log::QuickLogStatus override;
-  auto resign2() && -> std::tuple<
+  auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<replicated_log::IReplicatedStateHandle>,
       DeferredAction> override;
@@ -62,8 +62,8 @@ struct FakeFollower final : replicated_log::ILogFollower,
   void updateCommitIndex(LogIndex index);
   auto addEntry(LogPayload) -> LogIndex;
   void triggerLeaderAcked();
-
-  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override;
+  auto getInternalLogIterator(std::optional<LogRange> bounds) const
+      -> std::unique_ptr<PersistedLogIterator> override;
 
   template<typename State>
   auto insertMultiplexedValue(typename State::EntryType const& t) -> LogIndex {

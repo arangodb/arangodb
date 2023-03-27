@@ -66,17 +66,13 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   LinkLock _linkLock;  // should be first field to destroy last
   irs::IndexWriter::Transaction _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
-  bool _wasCommit = false;
 
   IResearchTrxState(LinkLock&& linkLock, irs::IndexWriter& writer) noexcept
       : _linkLock{std::move(linkLock)}, _ctx{writer.GetBatch()} {}
 
   ~IResearchTrxState() final {
-    if (!_wasCommit) {
-      _removals.clear();
-      _ctx.Reset();
-    }
-    TRI_ASSERT(_removals.empty());
+    _removals.clear();
+    _ctx.Abort();
   }
 
   void remove(LocalDocumentId value, bool nested) {
@@ -176,6 +172,8 @@ class IResearchDataStore {
   /// @brief give derived class chance to fine-tune iresearch storage
   //////////////////////////////////////////////////////////////////////////////
   virtual void afterCommit() {}
+
+  void finishCreation();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mark the current data store state as the latest valid state
@@ -488,11 +486,10 @@ class IResearchDataStore {
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   bool _hasNestedFields{false};
+  bool _isCreation{true};
 
   // protected by _commitMutex
-  bool _commitStageOne{false};
-  uint64_t _lastCommittedTickOne{0};
-  uint64_t _lastCommittedTickTwo{0};
+  uint64_t _lastCommittedTick{0};
 
   size_t _cleanupIntervalCount{0};
 
@@ -517,15 +514,6 @@ class IResearchDataStore {
   metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
 
   metrics::Guard<Stats>* _metricStats{nullptr};
-
-#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
-  // auxiliary tools to test fail-cases with transactions commit order
-  std::mutex _t3FailureSync;
-  std::vector<uint64_t> _t3Candidates;
-  uint64_t _t3PreCommit{0};
-  uint64_t _t3NumFlushRegistered{0};
-  bool _t3CommitSignal{false};
-#endif
 };
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,

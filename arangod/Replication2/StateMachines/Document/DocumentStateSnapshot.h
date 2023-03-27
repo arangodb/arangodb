@@ -24,16 +24,20 @@
 #pragma once
 
 #include "Basics/Identifier.h"
+#include "Basics/Guarded.h"
+#include "Basics/StaticStrings.h"
 #include "Inspection/Status.h"
 #include "Inspection/Transformers.h"
 #include "Inspection/VPack.h"
 #include "Cluster/ClusterTypes.h"
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include <memory>
 #include <optional>
 #include <variant>
+#include <mutex>
 
 namespace arangodb::replication2::replicated_state::document {
 struct ICollectionReader;
@@ -53,12 +57,28 @@ class SnapshotId : public arangodb::basics::Identifier {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+auto to_string(SnapshotId snapshotId) -> std::string;
+
+// This is serialized as a string because large 64-bit integers may not be
+// represented correctly in JS.
 template<class Inspector>
 auto inspect(Inspector& f, SnapshotId& x) {
-  return f.apply(static_cast<basics::Identifier&>(x));
+  if constexpr (Inspector::isLoading) {
+    auto v = std::string{};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      if (auto r = SnapshotId::fromString(v); r.fail()) {
+        return inspection::Status{std::string{r.result().errorMessage()}};
+      } else {
+        x = r.get();
+      }
+    }
+    return res;
+  } else {
+    return f.apply(to_string(x));
+  }
 }
 
-auto to_string(SnapshotId snapshotId) -> std::string;
 }  // namespace arangodb::replication2::replicated_state::document
 
 template<>
@@ -102,9 +122,14 @@ inline constexpr auto kStringFinished = std::string_view{"finished"};
 struct SnapshotParams {
   // Initiate a new snapshot.
   struct Start {
-    // TODO is this log entry actually needed? Always set to 0 by
-    //   StateHandleManager::acquireSnapshot.
-    LogIndex waitForIndex;
+    ServerID serverId{};
+    RebootId rebootId{0};
+
+    template<class Inspector>
+    inline friend auto inspect(Inspector& f, Start& s) {
+      return f.object(s).fields(f.field(StaticStrings::ServerId, s.serverId),
+                                f.field(StaticStrings::RebootId, s.rebootId));
+    }
   };
 
   // Fetch the next batch of an existing snapshot.
@@ -132,7 +157,7 @@ struct SnapshotParams {
 struct SnapshotBatch {
   SnapshotId snapshotId;
   // optional since we always have to send at least one batch, even though we
-  // might not have a single shard
+  // might not have any shards
   std::optional<ShardID> shardId;
   bool hasMore{false};
   velocypack::SharedSlice payload{};
@@ -156,6 +181,8 @@ struct SnapshotConfig {
                               f.field(kStringShards, s.shards));
   }
 };
+
+std::ostream& operator<<(std::ostream& os, SnapshotConfig const& config);
 
 /*
  * This namespace encloses the different states a snapshot can be in.
@@ -244,9 +271,24 @@ struct SnapshotStatus {
 struct AllSnapshotsStatus {
   std::unordered_map<SnapshotId, SnapshotStatus> snapshots;
 
+  struct SnapshotMapTransformer {
+    using MemoryType = std::unordered_map<SnapshotId, SnapshotStatus>;
+    using SerializedType = std::unordered_map<std::string, SnapshotStatus>;
+
+    static arangodb::inspection::Status toSerialized(MemoryType const& v,
+                                                     SerializedType& result) {
+      for (auto const& [key, value] : v) {
+        result.emplace(to_string(key), value);
+      }
+
+      return {};
+    }
+  };
+
   template<class Inspector>
   inline friend auto inspect(Inspector& f, AllSnapshotsStatus& s) {
-    return f.object(s).fields(f.field(kStringSnapshots, s.snapshots));
+    return f.object(s).fields(f.field(kStringSnapshots, s.snapshots)
+                                  .transformWith(SnapshotMapTransformer{}));
   }
 };
 
@@ -260,7 +302,6 @@ class Snapshot {
 
   explicit Snapshot(SnapshotId id, ShardMap shardsConfig,
                     std::unique_ptr<IDatabaseSnapshot> databaseSnapshot);
-
   Snapshot(Snapshot const&) = delete;
   Snapshot(Snapshot&&) = delete;
   Snapshot const& operator=(Snapshot const&) = delete;
@@ -272,12 +313,24 @@ class Snapshot {
   auto abort() -> Result;
   [[nodiscard]] auto status() const -> SnapshotStatus;
   auto getId() const -> SnapshotId;
+  auto giveUpOnShard(ShardID const& shardId) -> Result;
+  auto isInactive() const -> bool;
+
+  LoggerContext logContext;
 
  private:
-  std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> _shards;
-  std::unique_ptr<IDatabaseSnapshot> _databaseSnapshot;
-  SnapshotConfig _config;
-  SnapshotState _state;
-  SnapshotStatistics _statistics;
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<IDatabaseSnapshot> databaseSnapshot,
+                         ShardMap const& shardsConfig);
+
+    std::unique_ptr<IDatabaseSnapshot> databaseSnapshot;
+    SnapshotState state;
+    SnapshotStatistics statistics;
+    std::vector<std::pair<ShardID, std::unique_ptr<ICollectionReader>>> shards;
+  };
+
+ private:
+  const SnapshotConfig _config;
+  Guarded<GuardedData> _guardedData;
 };
 }  // namespace arangodb::replication2::replicated_state::document

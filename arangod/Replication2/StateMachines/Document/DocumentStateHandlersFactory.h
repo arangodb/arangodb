@@ -22,10 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "RestServer/arangod.h"
 #include "RocksDBEngine/SimpleRocksDBTransactionState.h"
-#include "Transaction/Options.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <string>
@@ -55,14 +52,16 @@ struct IDocumentStateShardHandler;
 struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
+struct IMaintenanceActionExecutor;
 
 struct IDocumentStateHandlersFactory {
   virtual ~IDocumentStateHandlersFactory() = default;
-  virtual auto createShardHandler(GlobalLogIdentifier gid)
+  virtual auto createShardHandler(TRI_vocbase_t& vocbase,
+                                  GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
   virtual auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                                      GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
@@ -73,6 +72,9 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
+  virtual auto createMaintenanceActionExecutor(GlobalLogIdentifier gid,
+                                               ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> = 0;
 };
 
 class DocumentStateHandlersFactory
@@ -81,11 +83,11 @@ class DocumentStateHandlersFactory
  public:
   DocumentStateHandlersFactory(network::ConnectionPool* connectionPool,
                                MaintenanceFeature& maintenanceFeature);
-  auto createShardHandler(GlobalLogIdentifier gid)
+  auto createShardHandler(TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
   auto createSnapshotHandler(TRI_vocbase_t& vocbase,
                              GlobalLogIdentifier const& gid)
-      -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
+      -> std::shared_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(
       TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
@@ -95,6 +97,8 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;
+  auto createMaintenanceActionExecutor(GlobalLogIdentifier gid, ServerID server)
+      -> std::shared_ptr<IMaintenanceActionExecutor> override;
 
  private:
   network::ConnectionPool* _connectionPool;

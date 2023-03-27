@@ -77,7 +77,7 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto getStatus() const -> LogStatus = 0;
   [[nodiscard]] virtual auto getQuickStatus() const -> QuickLogStatus = 0;
   virtual ~ILogParticipant() = default;
-  [[nodiscard]] virtual auto resign2() && -> std::tuple<
+  [[nodiscard]] virtual auto resign() && -> std::tuple<
       std::unique_ptr<replicated_state::IStorageEngineMethods>,
       std::unique_ptr<IReplicatedStateHandle>, DeferredAction> = 0;
 
@@ -91,7 +91,10 @@ struct ILogParticipant {
   [[nodiscard]] virtual auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture = 0;
 
-  [[nodiscard]] virtual auto copyInMemoryLog() const -> InMemoryLog = 0;
+  // Passing no bounds means everything.
+  [[nodiscard]] virtual auto getInternalLogIterator(
+      std::optional<LogRange> bounds = std::nullopt) const
+      -> std::unique_ptr<PersistedLogIterator> = 0;
   [[nodiscard]] virtual auto release(LogIndex doneWithIdx) -> Result = 0;
   [[nodiscard]] virtual auto compact() -> ResultT<CompactionResult> = 0;
 };

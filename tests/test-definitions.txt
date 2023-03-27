@@ -68,14 +68,14 @@ fuerte priority=500 single
 # Cluster Tests
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
-chaos cluster !full -- --dumpAgencyOnError true parallelity=6
+chaos cluster !full -- --dumpAgencyOnError true parallelity=8
 restart priority=1000 size=small sniff cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
 load_balancing_auth priority=500 size=small cluster -- --dumpAgencyOnError true
 
 replication2_client size=small cluster
-replication2_server size=small cluster buckets=3 -- --dumpAgencyOnError true
+replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 
 resilience_analyzers priority=500 size=small cluster -- --dumpAgencyOnError true
 resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOnError true

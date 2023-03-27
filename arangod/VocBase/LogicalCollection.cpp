@@ -54,6 +54,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -231,6 +232,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   if (replicationVersion() == replication::Version::TWO &&
       info.hasKey("groupId")) {
     _groupId = info.get("groupId").getNumericValue<uint64_t>();
+    if (auto stateId = info.get("replicatedStateId"); stateId.isNumber()) {
+      _replicatedStateId =
+          info.get("replicatedStateId").extract<replication2::LogId>();
+    }
+    // We are either a cluster collection, or we need to have a
+    // replicatedStateID.
+    TRI_ASSERT(planId() == id() || _replicatedStateId.has_value());
   }
 }
 
@@ -798,6 +806,9 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   if (replicationVersion() == replication::Version::TWO &&
       _groupId.has_value()) {
     build.add("groupId", VPackValue(_groupId.value()));
+    if (_replicatedStateId) {
+      build.add("replicatedStateId", VPackValue(*_replicatedStateId));
+    }
   }
   // We leave the object open
   return {};
@@ -1248,10 +1259,6 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   return replication2::LogId::fromString(stateId);
 }
 
-void LogicalCollection::setDocumentStateId(replication2::LogId id) {
-  _replicatedStateId = id;
-}
-
 auto LogicalCollection::getDocumentState()
     -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
         replication2::replicated_state::document::DocumentState>> {
@@ -1299,9 +1306,10 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
     // TODO get more information if available (e.g. is the leader resigned or in
     //      recovery?)
     throwUnavailable(ADB_HERE,
-                     "Replicated state {} is not available as leader, accessed "
-                     "from {}/{}.",
-                     *_replicatedStateId, vocbase().name(), name());
+                     "Shard {}/{}/{} is not available as leader, associated "
+                     "replicated log is {}",
+                     vocbase().name(), planId().id(), name(),
+                     *_replicatedStateId);
   }
 
   return leader;
@@ -1328,4 +1336,11 @@ auto LogicalCollection::groupID() const noexcept
   ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
                   _groupId.has_value());
   return arangodb::replication2::agency::CollectionGroupId{_groupId.value()};
+}
+
+auto LogicalCollection::replicatedStateId() const noexcept
+    -> arangodb::replication2::LogId {
+  ADB_PROD_ASSERT(replicationVersion() == replication::Version::TWO &&
+                  _replicatedStateId.has_value());
+  return _replicatedStateId.value();
 }

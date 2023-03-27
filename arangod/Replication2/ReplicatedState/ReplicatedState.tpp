@@ -390,8 +390,7 @@ void LeaderStateManager<S>::recoverEntries() {
 
 template<typename S>
 auto LeaderStateManager<S>::GuardedData::recoverEntries() {
-  auto logSnapshot = _stream->methods()->getLogSnapshot();
-  auto logIter = logSnapshot.getRangeIteratorFrom(LogIndex{0});
+  auto logIter = _stream->methods()->getCommittedLogIterator();
   auto deserializedIter =
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
@@ -572,8 +571,8 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     _applyEntriesIndexInFlight =
         std::min(_commitIndex, _lastAppliedIndex + 1000);
     // get an iterator for the range [last_applied + 1, commitIndex + 1)
-    auto logIter = _stream->methods()->getLogIterator(
-        {_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1});
+    auto logIter = _stream->methods()->getCommittedLogIterator(
+        {{_lastAppliedIndex + 1, *_applyEntriesIndexInFlight + 1}});
     auto deserializedIter = std::make_unique<
         LazyDeserializingIterator<EntryType const&, Deserializer>>(
         std::move(logIter));

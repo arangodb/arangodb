@@ -72,8 +72,8 @@ VPackBuilder parseToBuilder(char const* c) {
   return builder;
 }
 
-std::string const PLAN_COL_PATH = "/Collections/";
-std::string const PLAN_DB_PATH = "/Databases/";
+[[maybe_unused]] std::string const PLAN_COL_PATH = "/Collections/";
+[[maybe_unused]] std::string const PLAN_DB_PATH = "/Databases/";
 
 int countSubstring(std::string const& str, std::string const& sub) {
   if (sub.length() == 0) return 0;
