@@ -1299,9 +1299,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
                        return (m->_pid == pid._pid);
                      });
     if (found != ExternalProcesses.end()) {
-      if (((*found)->_status != TRI_EXT_RUNNING) &&
-          ((*found)->_status != TRI_EXT_STOPPED) &&
-          ((*found)->_status != TRI_EXT_TIMEOUT)) {
+      if ((status->_status != TRI_EXT_RUNNING) &&
+          (status->_status != TRI_EXT_STOPPED) &&
+          (status->_status != TRI_EXT_TIMEOUT)) {
         deleteMe = *found;
         std::swap(*found, ExternalProcesses.back());
         ExternalProcesses.pop_back();
