@@ -1,6 +1,9 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Fix potential memory under-accounting on cache shutdown for in-memory caches
+  for edge indexes.
+
 * Fixed single-to-single replication that used HTTP authentication to
   authenticate requests on the leader. This could be broken if the collections
   on the leader were created with 3.8 or later, and thus used the Merkle tree
