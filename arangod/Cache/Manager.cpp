@@ -28,12 +28,12 @@
 #include <set>
 #include <thread>
 #include <utility>
-#include "Basics/cpu-relax.h"
 
 #include "Cache/Manager.h"
 
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/voc-errors.h"
 #include "Cache/BinaryKeyHasher.h"
 #include "Cache/Cache.h"

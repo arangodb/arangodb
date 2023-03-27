@@ -24,10 +24,9 @@
 #include <atomic>
 #include <cstdint>
 
-#include "Basics/cpu-relax.h"
-
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::cache {

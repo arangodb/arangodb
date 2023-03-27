@@ -104,7 +104,7 @@ void ReadWriteSpinLock::lockWrite() noexcept {
         return;
       }
     }
-    basics::cpu_relax();
+    cpu_relax();
     state = _state.load(std::memory_order_relaxed);
   }
 }
@@ -134,7 +134,7 @@ bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
         return false;
       }
     }
-    basics::cpu_relax();
+    cpu_relax();
     state = _state.load(std::memory_order_relaxed);
   }
 
@@ -162,7 +162,7 @@ void ReadWriteSpinLock::lockRead() noexcept {
     if (tryLockRead()) {
       return;
     }
-    basics::cpu_relax();
+    cpu_relax();
   }
 }
 
@@ -172,7 +172,7 @@ bool ReadWriteSpinLock::lockRead(std::size_t maxAttempts) noexcept {
     if (tryLockRead()) {
       return true;
     }
-    basics::cpu_relax();
+    cpu_relax();
   }
   return false;
 }

@@ -28,14 +28,13 @@
 
 #include <velocypack/Value.h>
 
-#include "Basics/cpu-relax.h"
-
 #include "SupervisedScheduler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"

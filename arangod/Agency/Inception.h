@@ -75,7 +75,7 @@ class Inception : public Thread {
   arangodb::basics::ConditionVariable _cv;  //< @brief For proper shutdown
   std::unordered_map<std::string, size_t>
       _acked;                   //< @brief acknowledged config version
-  mutable std::mutex _ackLock;  //< @brieg Guard _acked
+  mutable std::mutex _ackLock;  //< @brief Guard _acked
 };
 
 }  // namespace consensus

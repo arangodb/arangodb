@@ -1606,7 +1606,7 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  // wait for one minute
+  // wait no more than one minute
   {
     std::unique_lock guard{_contextCondition.mutex};
 
