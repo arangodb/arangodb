@@ -43,7 +43,8 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
 }
 
 auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
-    fromSerialized(SerializedType const& b, MemoryType& result)
+    fromSerialized(SerializedType const& b,
+                   inspection::NonNullOptional<MemoryType>& result)
         -> arangodb::inspection::Status {
   auto v = b.slice();
   if (v.isString() && v.isEqualString(StaticStrings::Satellite)) {
@@ -51,7 +52,7 @@ auto ClusteringMutableProperties::Transformers::ReplicationSatellite::
     return {};
   } else if (v.isNumber()) {
     result = v.getNumber<MemoryType>();
-    if (result != 0) {
+    if (result != 0ull) {
       return {};
     }
   }

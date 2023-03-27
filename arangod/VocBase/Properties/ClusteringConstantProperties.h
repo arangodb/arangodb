@@ -26,6 +26,7 @@
 #include "Inspection/Access.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "VocBase/Properties/UtilityInvariants.h"
+#include "VocBase/Properties/UtilityTransformers.h"
 
 #include <optional>
 #include <cstdint>
@@ -58,8 +59,8 @@ auto inspect(Inspector& f, ClusteringConstantProperties& props) {
       f.field(StaticStrings::NumberOfShards, props.numberOfShards)
           .invariant(UtilityInvariants::isGreaterZeroIfPresent),
       f.field(StaticStrings::DistributeShardsLike, props.distributeShardsLike)
-          .fallback(f.keep())
-          .invariant(UtilityInvariants::isNonEmptyIfPresent),
+          .transformWith(UtilityTransformers::EmptyStringEqualsUnset{})
+          .fallback(f.keep()),
       f.field(StaticStrings::ShardingStrategy, props.shardingStrategy)
           .invariant(UtilityInvariants::isValidShardingStrategyIfPresent),
       f.field(StaticStrings::ShardKeys, props.shardKeys).fallback(f.keep()));

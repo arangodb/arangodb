@@ -459,14 +459,7 @@ struct Access<arangodb::inspection::NonNullOptional<T>> {
       Transformer& transformer) {
     if (isPresent) {
       typename Transformer::SerializedType v{};
-      auto load = [&]() -> Status {
-        T t{};
-        auto res = transformer.fromSerialized(v, t);
-        if (res.ok()) {
-          val = {std::move(t)};
-        }
-        return res;
-      };
+      auto load = [&]() { return transformer.fromSerialized(v, val); };
       return f.apply(v)  //
              | load;     //
     }

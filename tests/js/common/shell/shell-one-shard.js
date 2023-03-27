@@ -116,13 +116,16 @@ function OneShardPropertiesSuite () {
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
 
-        try {
-          // Disallow using a different distributeShardsLike
-          db._create("test", {distributeShardsLike: ""});
-          fail();
-        } catch (err) {
-          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        }
+        // Allow empty distributeShardsLike is it is equal to not setting it.
+        db._create("test", {distributeShardsLike: ""});
+
+        props = db.test.properties();
+        assertEqual(props.distributeShardsLike, "_graphs");
+        assertEqual(props.replicationFactor, 2);
+        assertEqual(props.writeConcern, 2);
+
+        db._drop("test");
+
         try {
           // Disallow using a different numberOfShards
           db._create("test", {numberOfShards: 2});
@@ -322,18 +325,7 @@ function OneShardPropertiesSuite () {
           }
         }
 
-        if (isCluster) {
-          try {
-            // We set distributeShardsLike to an illegal value
-            db._create("overrideOneShardCollection", {distributeShardsLike: ""});
-            fail();
-          } catch (err) {
-            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-          }
-        } else {
-          // Should be allowed on single server
-          db._create("overrideOneShardCollection", {distributeShardsLike: ""});
-        }
+        db._create("overrideOneShardCollection", {distributeShardsLike: ""});
 
         {
           // we want to create a normal collection and have a different replication factor
