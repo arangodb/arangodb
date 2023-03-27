@@ -1167,29 +1167,35 @@ void ClusterInfo::loadPlan() {
     // We create the database object on the coordinator here, because
     // it is used to create LogicalCollection instances further
     // down in this function.
-    if (isCoordinator && !isBuilding) {
-      TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
-      if (vocbase == nullptr) {
-        // database does not yet exist, create it now
+    if (isCoordinator && !isBuilding && !databaseFeature.existsDatabase(name)) {
+      // database does not yet exist, create it now
 
-        // create a local database object...
-        arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
-        Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
+      // create a local database object...
+      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
+      // validation of the database creation parameters should have happened
+      // already when we get here. whenever we get here, we have a database
+      // in the plan with whatever settings.
+      // we should not make the validation fail here, because that can lead
+      // to all sorts of problems later on if _new_ servers join the cluster
+      // that validate _existing_ databases. this must not fail.
+      info.strictValidation(false);
+
+      Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
+
+      if (res.fail()) {
+        LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
+            << "validating data for local database '" << name
+            << "' failed: " << res.errorMessage();
+      } else {
+        std::string dbName = info.getName();
+        TRI_vocbase_t* vocbase = nullptr;
+        res = databaseFeature.createDatabase(std::move(info), vocbase);
+        events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
-          LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
-              << "validating data for local database '" << name
+          LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
+              << "creating local database '" << name
               << "' failed: " << res.errorMessage();
-        } else {
-          std::string dbName = info.getName();
-          res = databaseFeature.createDatabase(std::move(info), vocbase);
-          events::CreateDatabase(dbName, res, ExecContext::current());
-
-          if (res.fail()) {
-            LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
-                << "creating local database '" << name
-                << "' failed: " << res.errorMessage();
-          }
         }
       }
     }
@@ -1238,7 +1244,7 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+      auto vocbase = databaseFeature.useDatabase(databaseName);
 
       if (!vocbase) {
         // No database with this name found.
@@ -1351,7 +1357,7 @@ void ClusterInfo::loadPlan() {
     }
     analyzerSlice = analyzerSlice.get(analyzersPath);
 
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+    auto vocbase = databaseFeature.useDatabase(databaseName);
 
     if (!vocbase) {
       // No database with this name found.
@@ -1463,7 +1469,7 @@ void ClusterInfo::loadPlan() {
 
     collectionsSlice = collectionsSlice.get(collectionsPath);
 
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+    auto vocbase = databaseFeature.useDatabase(databaseName);
 
     if (!vocbase) {
       // No database with this name found.
@@ -1637,7 +1643,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;

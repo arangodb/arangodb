@@ -66,7 +66,7 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   irs::doc_id_t doc{irs::doc_limits::eof()};
   pkField->read_documents(pkRef, {&doc, 1});
 
-  if (irs::doc_limits::eof(doc)) {
+  if (irs::doc_limits::eof(doc) || segment.docs_mask()->contains(doc)) {
     // no such term
     return irs::doc_iterator::empty();
   }

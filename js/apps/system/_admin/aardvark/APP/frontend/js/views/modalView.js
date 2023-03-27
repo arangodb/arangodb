@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, setTimeout, Joi, _, arangoHelper */
+/* global Backbone, $, window, Joi, _, arangoHelper */
 /* global templateEngine */
 
 (function () {

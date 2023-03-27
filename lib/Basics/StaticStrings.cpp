@@ -227,7 +227,8 @@ std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");
 std::string const StaticStrings::TransactionId("x-arango-trx-id");
 
-std::string const StaticStrings::Unlimited = "unlimited";
+std::string const StaticStrings::Unlimited("unlimited");
+std::string const StaticStrings::UserAgent("user-agent");
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
@@ -253,6 +254,7 @@ std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 // accept-encodings
 std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
+std::string const StaticStrings::EncodingGzip("gzip");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");

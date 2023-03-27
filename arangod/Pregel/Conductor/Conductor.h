@@ -49,8 +49,8 @@ enum ExecutionState {
   LOADING,      // load graph into memory
   RUNNING,      // during normal operation
   STORING,      // store results
-  DONE,         // after everyting is done
-  CANCELED,     // after an terminal error or manual canceling
+  DONE,         // after everything is done
+  CANCELED,     // after a terminal error or manual canceling
   FATAL_ERROR,  // execution can not continue because of errors
 };
 extern const char* ExecutionStateNames[9];
@@ -93,11 +93,13 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::chrono::system_clock::time_point _created;
   std::chrono::system_clock::time_point _expires;
   ExecutionTimings _timing;
+  /// Variable to identify whether the graph has been fully loaded.
+  bool _graphLoaded{false};
   /// Variable to identify whether ArangoDB is in shutdown mode.
   bool _shutdown{false};
   // Work in Progress: Move data incrementally into this
-  // struct; sort it into categories and make it (de)serialisable
-  // with the Inspecotr framework
+  // struct; sort it into categories and make it (de)serializable
+  // with the Inspector framework
   ConductorStatus _status;
 
   bool _startGlobalStep();

@@ -128,8 +128,9 @@ struct SimpleHttpClientParams {
   /// @brief allows rewriting locations
   //////////////////////////////////////////////////////////////////////////////
 
-  void setLocationRewriter(void* data,
-                           std::string (*func)(void*, std::string const&)) {
+  void setLocationRewriter(void const* data,
+                           std::string (*func)(void const*,
+                                               std::string const&)) {
     _locationRewriter.data = data;
     _locationRewriter.func = func;
   }
@@ -173,8 +174,8 @@ struct SimpleHttpClientParams {
   //////////////////////////////////////////////////////////////////////////////
 
   struct {
-    void* data;
-    std::string (*func)(void*, std::string const&);
+    void const* data;
+    std::string (*func)(void const*, std::string const&);
   } _locationRewriter;
 
  private:

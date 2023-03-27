@@ -44,9 +44,9 @@ namespace arangodb {
 namespace tests {
 namespace cleanout_server_test {
 
-const std::string PREFIX = "arango";
-const std::string SERVER = "leader";
-const std::string JOBID = "1";
+[[maybe_unused]] const std::string PREFIX = "arango";
+[[maybe_unused]] const std::string SERVER = "leader";
+[[maybe_unused]] const std::string JOBID = "1";
 
 bool aborts = false;
 

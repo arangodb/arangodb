@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertNotEqual, JSON */
+/*global assertEqual, assertTrue, assertNotEqual */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,6 @@ function randomTestSuite() {
       graph._addVertexCollection(vColl);
       db._createEdgeCollection(eColl, {
         numberOfShards: 4,
-        replicationFactor: 1,
         shardKeys: ["vertex"],
         distributeShardsLike: vColl
       });

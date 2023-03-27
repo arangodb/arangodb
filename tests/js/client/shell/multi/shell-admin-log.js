@@ -31,8 +31,7 @@ const _ = require("lodash");
 
 const dbservers = (function () {
   const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+  return global.instanceManager.arangods.filter(isType).map((x) => x.id);
 })();
 
 function adminLogSuite() {
