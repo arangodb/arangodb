@@ -1249,10 +1249,10 @@ bool State::loadRemaining(index_t cind) {
 /// Find entry by index and term
 bool State::find(index_t prevIndex, term_t prevTerm) {
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (prevIndex > _log.size()) {
+  if (prevIndex >= _log.size()) {
     return false;
   }
-  return _log.at(prevIndex).term == prevTerm;
+  return _log[prevIndex].term == prevTerm;
 }
 
 index_t State::lastCompactionAt() const { return _lastCompactionAt; }
