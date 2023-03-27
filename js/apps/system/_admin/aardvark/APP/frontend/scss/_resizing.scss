@@ -1,3 +1,5 @@
+@use "sass:math";
+
 .resizecontainer {
   @extend %clear-float;
   -moz-box-sizing: border-box;
@@ -168,7 +170,7 @@
 
         .dashboard-interior-chart {
           float: left;
-          $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
+          $int-height: (($dashboard-height - 29px) * 0.5) - $tendency-height-corrector;
           //height: $int-height + 10px;
         }
       }
@@ -179,7 +181,7 @@
     }
 
     .dashboard-large-chart {
-      $int-width: ($content-size * 2 / 3) - 4px - 2px;
+      $int-width: math.div($content-size * 2, 3) - 4px - 2px;
       //width: $int-width;
 
       .dashboard-sub-bar {
@@ -201,13 +203,13 @@
     }
 
     .dashboard-medium-chart-outer {
-      $int-width: ($content-size / 2) - 16px - 2px + 10px;
+      $int-width: ($content-size * 0.5) - 16px - 2px + 10px;
       float: left;
       //width: $int-width;
     }
 
     .dashboard-medium-chart {
-      $int-width: ($content-size / 2) - 16px - 2px;
+      $int-width: ($content-size * 0.5) - 16px - 2px;
       width: 100%;
 
       .dashboard-sub-bar {
@@ -236,7 +238,7 @@
     }
 
     .dashboard-small-chart {
-      $int-width: ($content-size / 3) - 8px - 2px;
+      $int-width: math.div($content-size, 3) - 8px - 2px;
       //width: auto;
 
       .dashboard-sub-bar {
@@ -265,29 +267,29 @@
     }
 
     .dashboard-tendency-container {
-      $int-width: ($content-size / 3) - 22px;
+      $int-width: math.div($content-size, 3) - 22px;
 
       .dashboard-tendency-chart {
-        $int-height: (($dashboard-height - 29px) / 2) - $tendency-height-corrector;
+        $int-height: (($dashboard-height - 29px) * 0.5) - $tendency-height-corrector;
         height: $int-height + 5px;
 
         .dashboard-tendency,
         .dashboard-subtitle-bar,
         .dashboard-figure {
-          width: ($int-width / 2) - 19px;
+          width: ($int-width * 0.5) - 19px;
         }
 
         $int-height2: ($int-height - 3px);
 
         .dashboard-subtitle-bar {
-          height: ($int-height2 / 3);
-          line-height: ($int-height2 / 3);
+          height: math.div($int-height2, 3);
+          line-height: math.div($int-height2, 3);
         }
 
         .dashboard-figure {
-          height: ($int-height2 * 2 / 3) - ((((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px) * 2);
-          line-height: ((($int-height - 3px) * 2 / 3 / 2) - 6px);
-          padding-top: (((($int-height2 * 2 / 3) - (($int-height2 * 2 / 3 / 2) - 6px) * 2) / 2) - 1px);
+          height: math.div($int-height2 * 2, 3) - ((((math.div($int-height2 * 2, 3) - ((math.div($int-height2 * 2, 3) * 0.5) - 6px) * 2) * 0.5) - 1px) * 2);
+          line-height: ((math.div(($int-height - 3px) * 2, 3) * 0.5) - 6px);
+          padding-top: (((math.div($int-height2 * 2, 3) - ((math.div($int-height2 * 2, 3) * 0.5) - 6px) * 2) * 0.5) - 1px);
         }
       }
 
@@ -297,8 +299,8 @@
     }
 
     .dashboard-bar-chart-container {
-      $int-width: ($content-size / 3) - 18px - 2px;
-      $int-height: (($dashboard-height - 30px) / 2) - $tendency-height-corrector;
+      $int-width: math.div($content-size, 3) - 18px - 2px;
+      $int-height: (($dashboard-height - 30px) * 0.5) - $tendency-height-corrector;
       $int-height2: ($int-height - 20px);
       height: $int-height + 2px;
 
@@ -307,18 +309,18 @@
         width: 100%;
 
         .dashboard-bar-chart-title {
-          height: (($int-height - 2px) / 3);
-          line-height: (($int-height - 2px) / 3);
+          height: math.div($int-height - 2px, 3);
+          line-height: math.div($int-height - 2px, 3);
 
           .percentage {
-            width: ((($int-width / 2) - 8px) * 1.4);
+            width: ((($int-width * 0.5) - 8px) * 1.4);
           }
 
           .absolut {
             //line-height: ($int-height2 * 2 / 3) - 10px;
             line-height: 40px;
             padding-top: 15px;
-            width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+            width: ($int-width - (($int-width * 0.5) * 1.4)) - 6px;
           }
         }
 
@@ -349,7 +351,7 @@
 
       bottom: 12.1% !important;
       left: 50%;
-      margin-left: -($int-width) / 2;
+      margin-left: -($int-width) * 0.5;
       width: $int-width + 20px !important;
 
       .modal-body {
@@ -375,7 +377,7 @@
 
     .modal-body {
       .dashboard-large-chart {
-        $int-width: ($content-size * 2 / 3) - 9px;
+        $int-width: math.div($content-size * 2, 3) - 9px;
         width: $int-width;
 
         .dashboard-sub-bar {
@@ -390,13 +392,13 @@
       }
 
       .dashboard-medium-chart-outer {
-        $int-width: ($content-size / 2) - 21px - 2px;
+        $int-width: ($content-size * 0.5) - 21px - 2px;
         float: left;
         width: $int-width;
       }
 
       .dashboard-medium-chart {
-        $int-width: ($content-size / 2) - 21px - 2px;
+        $int-width: ($content-size * 0.5) - 21px - 2px;
         width: 100%;
 
         .dashboard-sub-bar {
@@ -413,7 +415,7 @@
       }
 
       .dashboard-small-chart {
-        $int-width: ($content-size / 3) - 13px - 2px;
+        $int-width: math.div($content-size, 3) - 13px - 2px;
         width: auto;
 
         .dashboard-sub-bar {
@@ -431,7 +433,7 @@
       }
 
       .dashboard-tendency-container {
-        $int-width: ($content-size / 3) - 25px;
+        $int-width: math.div($content-size, 3) - 25px;
         box-sizing: border-box;
         width: 100%;
 
@@ -453,18 +455,18 @@
       }
 
       .dashboard-bar-chart-container {
-        $int-width: ($content-size / 3) - 18px - 2px;
+        $int-width: math.div($content-size, 3) - 18px - 2px;
 
         .dashboard-bar-chart {
           width: auto;
 
           .dashboard-bar-chart-title {
             .percentage {
-              width: ((($int-width / 2) - 8px) * 1.4);
+              width: ((($int-width * 0.5) - 8px) * 1.4);
             }
 
             .absolut {
-              width: ($int-width - (($int-width / 2) * 1.4)) - 6px;
+              width: ($int-width - (($int-width * 0.5) * 1.4)) - 6px;
             }
           }
         }
@@ -533,8 +535,8 @@
         display: none;
       }
       font-size: $legend-font;
-      height: $dashboard-height / 2;
-      width: $legend-width / 2;
+      height: $dashboard-height * 0.5;
+      width: $legend-width * 0.5;
     }
 
     .application-detail-view {
