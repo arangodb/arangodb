@@ -159,7 +159,7 @@ T readEntry(char const*& p, char const* e) {
 std::vector<ExternalProcess*> ExternalProcesses;
 
 /// @brief lock for protected access to vector ExternalProcesses
-arangodb::Mutex ExternalProcessesLock;
+std::mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
     : _minorPageFaults(0),
