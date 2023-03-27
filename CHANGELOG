@@ -1,4 +1,4 @@
-v3.8.9 (XXXX-XX-XX)
+v3.8.9 (2023-03-27)
 -------------------
 
 * BTS-1272: Fixed metric `arangodb_connection_pool_connections_current`. In some
