@@ -17,7 +17,7 @@ description: |
   Number of tasks/requests dropped because the client-specified queue time
   requirements, as indicated by client applications in the
   `x-arango-queue-time-seconds` HTTP request header could not be satisfied by
-  the receiving server instance. This happens when the actual time need to
+  the receiving server instance. This happens when the actual time needed to
   queue/dequeue requests on the scheduler queue exceeds the maximum time value
   that the client has specified in the request.
   Whenever this happens, the client application gets an HTTP 412 error 
