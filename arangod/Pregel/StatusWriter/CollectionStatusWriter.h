@@ -25,6 +25,7 @@
 
 #include "StatusWriter.h"
 
+#include "Aql/Query.h"
 #include "Basics/StaticStrings.h"
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
@@ -58,6 +59,17 @@ struct CollectionStatusWriter : StatusWriterInterface {
     _logicalCollection = std::move(logicalCollection);
   };
 
+  CollectionStatusWriter(TRI_vocbase_t& vocbase) : _vocbaseGuard(vocbase) {
+    CollectionNameResolver resolver(_vocbaseGuard.database());
+    auto logicalCollection =
+        resolver.getCollection(StaticStrings::PregelCollection);
+    if (logicalCollection == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                     StaticStrings::PregelCollection);
+    }
+    _logicalCollection = std::move(logicalCollection);
+  };
+
   enum class OperationType {
     CREATE_DOCUMENT,
     READ_DOCUMENT,
@@ -66,20 +78,52 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override {
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::CREATE_DOCUMENT, opData);
   }
-  [[nodiscard]] auto readResult(VPackSlice data) -> OperationResult override {
+  [[nodiscard]] auto readResult() -> OperationResult override {
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::READ_DOCUMENT, opData);
   }
+  [[nodiscard]] auto readAllResults() -> OperationResult override {
+    std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
+    auto query = arangodb::aql::Query::create(
+        ctx(), arangodb::aql::QueryString(queryString), nullptr);
+    query->queryOptions().skipAudit = true;
+    aql::QueryResult queryResult = query->executeSync();
+    if (queryResult.result.fail()) {
+      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
+        return OperationResult(Result(TRI_ERROR_REQUEST_CANCELED), {});
+      }
+      return OperationResult(queryResult.result, {});
+    }
+
+    return OperationResult(Result(TRI_ERROR_NO_ERROR),
+                           queryResult.data->buffer(), {});
+  }
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override {
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value, data);
     return createOperation(OperationType::UPDATE_DOCUMENT, opData);
   }
-  [[nodiscard]] auto deleteResult(VPackSlice data) -> OperationResult override {
+  [[nodiscard]] auto deleteResult() -> OperationResult override {
+    if (_executionNumber.value == 0) {
+      return OperationResult(Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), {});
+    }
     OperationData opData(_executionNumber.value);
     return createOperation(OperationType::DELETE_DOCUMENT, opData);
+  }
+  [[nodiscard]] auto deleteAllResults() -> OperationResult override {
+    return createOperation(OperationType::DELETE_DOCUMENT, std::nullopt);
   }
 
  public:
@@ -95,7 +139,8 @@ struct CollectionStatusWriter : StatusWriterInterface {
 
  private:
   [[nodiscard]] auto createOperation(OperationType operation,
-                                     OperationData data) -> OperationResult {
+                                     std::optional<OperationData> data)
+      -> OperationResult {
     // Helper method: finishes transaction & handle potential errors
     auto handleOperationResult =
         [](SingleCollectionTransaction& trx, OperationOptions& options,
@@ -121,7 +166,15 @@ struct CollectionStatusWriter : StatusWriterInterface {
     // transaction options
     SingleCollectionTransaction trx(ctx(), StaticStrings::PregelCollection,
                                     accessModeType);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    if (operation == OperationType::DELETE_DOCUMENT && !data.has_value()) {
+      // this case potentially handles multiple document reads or
+      // multiple deletes.
+      trx.addHint(transaction::Hints::Hint::NONE);
+    } else {
+      // in every other case we only need a single operation
+      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    }
+
     OperationOptions options(ExecContext::current());
 
     // begin transaction
@@ -131,34 +184,56 @@ struct CollectionStatusWriter : StatusWriterInterface {
     }
 
     // execute transaction
-    auto payload = inspection::serializeWithErrorT(data);
     switch (accessModeType) {
       case AccessMode::Type::WRITE: {
         if (operation == OperationType::UPDATE_DOCUMENT) {
+          if (!data.has_value()) {
+            return OperationResult(Result(TRI_ERROR_HTTP_BAD_PARAMETER),
+                                   options);
+          }
+          auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
               trx, options, transactionResult,
               trx.update(StaticStrings::PregelCollection, payload->slice(),
                          {}));
         } else if (operation == OperationType::CREATE_DOCUMENT) {
+          if (!data.has_value()) {
+            return OperationResult(Result(TRI_ERROR_HTTP_BAD_PARAMETER),
+                                   options);
+          }
+          auto payload = inspection::serializeWithErrorT(data.value());
           return handleOperationResult(
               trx, options, transactionResult,
               trx.insert(StaticStrings::PregelCollection, payload->slice(),
                          {}));
         } else {
-          TRI_ASSERT(operation == OperationType::DELETE_DOCUMENT);
-          return handleOperationResult(
-              trx, options, transactionResult,
-              trx.remove(StaticStrings::PregelCollection, payload->slice(),
-                         {}));
+          if (data.has_value()) {
+            auto payload = inspection::serializeWithErrorT(data.value());
+            TRI_ASSERT(operation == OperationType::DELETE_DOCUMENT);
+            return handleOperationResult(
+                trx, options, transactionResult,
+                trx.remove(StaticStrings::PregelCollection, payload->slice(),
+                           {}));
+          } else {
+            return handleOperationResult(
+                trx, options, transactionResult,
+                trx.truncateAsync(StaticStrings::PregelCollection, options)
+                    .get());
+          }
         }
       }
       case AccessMode::Type::READ: {
         // Note: documentAsync can throw.
-        return handleOperationResult(
-            trx, options, transactionResult,
-            trx.documentAsync(StaticStrings::PregelCollection, payload->slice(),
-                              {})
-                .get());
+        TRI_ASSERT(data.has_value());
+        if (data.has_value()) {
+          auto payload = inspection::serializeWithErrorT(data.value());
+          return handleOperationResult(
+              trx, options, transactionResult,
+              trx.documentAsync(StaticStrings::PregelCollection,
+                                payload->slice(), {})
+                  .get());
+        }
+        TRI_ASSERT(false);
       }
       default: {
         TRI_ASSERT(false);

@@ -50,19 +50,9 @@ UserInputCollectionProperties::applyDefaultsAndValidateDatabaseConfiguration(
   // into ClusteringProperties. Doing it here was the quicker to implement way,
   // so we went with it first DistributeShardsLike has the strongest binding. We
   // have to handle this first
-  if (!config.defaultDistributeShardsLike.empty()) {
-    if (!distributeShardsLike.has_value()) {
-      distributeShardsLike = config.defaultDistributeShardsLike;
-    } else {
-      // NOTE: For the time being only oneShardDBs have a default
-      // distributeShardsLikeValue. So this error message is good enough. If
-      // this should ever change we need to adapt the message here. NOTE: The
-      // assertion is a reminder to update the following error message.
-      TRI_ASSERT(config.isOneShardDB);
-      return {TRI_ERROR_BAD_PARAMETER,
-              "Collection in a 'oneShardDatabase' cannot define "
-              "distributeShardsLike"};
-    }
+  if (!config.defaultDistributeShardsLike.empty() &&
+      !distributeShardsLike.has_value()) {
+    distributeShardsLike = config.defaultDistributeShardsLike;
   }
 
   if (!shardKeys.has_value()) {
