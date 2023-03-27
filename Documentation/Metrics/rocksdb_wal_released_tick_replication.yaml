@@ -1,5 +1,5 @@
 name: rocksdb_wal_released_tick_replication
-introducedIn: "3.9.10"
+introducedIn: "3.10.5"
 help: |
   Lower bound sequence number from which WAL files need to be kept because
   of replication.
