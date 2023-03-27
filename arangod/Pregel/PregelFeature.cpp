@@ -395,7 +395,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
-            std::move(resultActorPID)),
+            std::move(resultActorPID), std::move(statusActorPID)),
         conductor::message::ConductorStart{});
 
     return en;

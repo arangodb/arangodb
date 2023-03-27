@@ -26,6 +26,7 @@
 #include <variant>
 #include "Actor/HandlerBase.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/Conductor/Messages.h"
@@ -65,11 +66,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("17915", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Worker {} was created", this->sender);
-    auto newExecutionState =
+    auto stateChange =
         this->state->executionState->receive(this->sender, std::move(start));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
-      sendMessages();
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
@@ -78,11 +79,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("1791c", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Graph was loaded in worker {}", this->sender);
-    auto newExecutionState =
+    auto stateChange =
         this->state->executionState->receive(this->sender, std::move(start));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
-      sendMessages();
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
@@ -92,11 +93,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Global super step finished on worker {}",
         this->sender);
-    auto newExecutionState =
+    auto stateChange =
         this->state->executionState->receive(this->sender, std::move(message));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
-      sendMessages();
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
@@ -113,11 +114,11 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("de3e3", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Graph was stored in worker {}", this->sender);
-    auto newExecutionState =
+    auto stateChange =
         this->state->executionState->receive(this->sender, std::move(msg));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
-      sendMessages();
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
@@ -127,9 +128,9 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     LOG_TOPIC("e1791", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Received results from {}", this->sender);
 
-    auto state = this->state->executionState->receive(this->sender, msg);
-    if (state.has_value()) {
-      changeState(std::move(state.value()));
+    auto stateChange = this->state->executionState->receive(this->sender, msg);
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
     }
 
     this->template dispatch<pregel::message::ResultMessages>(
@@ -145,10 +146,10 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("02da1", INFO, Logger::PREGEL) << fmt::format(
         "Conductor Actor: Worker {} is cleaned up", this->sender);
-    auto newExecutionState =
+    auto stateChange =
         this->state->executionState->receive(this->sender, std::move(start));
-    if (newExecutionState.has_value()) {
-      changeState(std::move(newExecutionState.value()));
+    if (stateChange.has_value()) {
+      changeState(std::move(stateChange.value()));
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
@@ -185,14 +186,18 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto changeState(std::unique_ptr<ExecutionState> newState) -> void {
-    this->state->executionState = std::move(newState);
+  auto changeState(StateChange stateChange) -> void {
+    if (auto statusMessage = std::move(stateChange.statusMessage);
+        statusMessage.has_value()) {
+      this->dispatch(this->state->statusActor, statusMessage.value());
+    }
+    this->state->executionState = std::move(stateChange.newState);
     LOG_TOPIC("e3b0c", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Execution state changed to {}",
                        this->state->executionState->name());
   }
 
-  auto sendMessages() -> void {
+  auto sendMessagesToWorkers() -> void {
     auto messages = this->state->executionState->messages();
     for (auto const& [worker, message] : messages) {
       this->dispatch(worker, message);

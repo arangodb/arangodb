@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DoneState.h"
+
 #include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/State.h"
@@ -41,14 +42,14 @@ auto Done::messages()
 }
 
 auto Done::receive(actor::ActorPID sender, message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
-    return std::make_unique<CleanedUp>();
+    return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
 };
