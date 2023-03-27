@@ -74,8 +74,12 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   responseCount++;
 
   if (responseCount == sentServers.size() and respondedServers == sentServers) {
-    return StateChange{.newState = std::make_unique<Loading>(
-                           conductor, std::move(actorForShard))};
+    auto newState =
+        std::make_unique<Loading>(conductor, std::move(actorForShard));
+    return StateChange{
+        .statusMessage =
+            pregel::message::LoadingStarted{.state = newState->name()},
+        .newState = std::move(newState)};
   }
   return std::nullopt;
 };
