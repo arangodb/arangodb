@@ -564,7 +564,7 @@ struct DistributedQueryInstanciator final
           _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
       engine->rebootTrackers().reserve(srvrQryId.size());
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
-        TRI_ASSERT(server.substr(0, 7) != "server:");
+        TRI_ASSERT(!server.starts_with("server:"));
         std::string comment = std::string("AQL query from coordinator ") +
                               ServerState::instance()->getId();
 

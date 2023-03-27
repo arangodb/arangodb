@@ -23,7 +23,6 @@
 
 #include "SSSP.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -97,9 +96,8 @@ struct SSSPGraphFormat : public InitGraphFormat<int64_t, int64_t> {
 
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
-                      arangodb::velocypack::Slice /*document*/,
-                      int64_t& targetPtr,
-                      uint64_t& /*vertexIdRange*/) const override {
+                      arangodb::velocypack::Slice document, int64_t& targetPtr,
+                      uint64_t vertexId) const override {
     targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 };

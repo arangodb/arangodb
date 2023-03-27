@@ -5,6 +5,14 @@ setup: true
 orbs:
   continuation: circleci/continuation@0.3.1
 
+parameters:
+  enterprise-branch:
+    type: string
+    # we use an empty string as default. In this case we check if the enterprise repo
+    # contains a branch with the same name as the arangodb repo. If this is the case
+    # we use it, otherwise we fall back to "devel".
+    default: ""
+
 # our defined job, and its steps
 jobs:
   setup:
@@ -33,7 +41,7 @@ workflows:
   setup:
     when:
       or:
-        - equal: [ devel, << pipeline.git.branch >> ]
-        - equal: [ api, << pipeline.trigger_source >> ]
+        - equal: [devel, << pipeline.git.branch >>]
+        - equal: [api, << pipeline.trigger_source >>]
     jobs:
       - setup

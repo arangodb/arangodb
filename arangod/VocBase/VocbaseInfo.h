@@ -78,12 +78,12 @@ struct DBUser {
 class CreateDatabaseInfo {
  public:
   CreateDatabaseInfo(ArangodServer&, ExecContext const&);
-  Result load(std::string const& name, uint64_t id);
+  Result load(std::string_view name, uint64_t id);
 
-  Result load(std::string const& name, VPackSlice options,
+  Result load(std::string_view name, VPackSlice options,
               VPackSlice users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string const& name, uint64_t id, VPackSlice options,
+  Result load(std::string_view name, uint64_t id, VPackSlice options,
               VPackSlice users);
 
   Result load(VPackSlice options, VPackSlice users);

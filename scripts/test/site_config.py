@@ -200,7 +200,7 @@ class SiteConfig:
  - {socket_count} number of currently active tcp sockets
 {san_gcov_msg}"""
         )
-        self.cfgdir = base_source_dir / "etc" / "relative"
+        self.cfgdir = base_source_dir / "etc" / "testing"
         self.bin_dir = bin_dir
         self.base_path = base_source_dir
         self.test_data_dir = base_source_dir

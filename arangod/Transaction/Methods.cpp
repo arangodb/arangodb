@@ -2266,9 +2266,15 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
       }
 
       switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
+        case FollowerInfo::WriteState::FORBIDDEN: {
           // We cannot fulfill minimum replication Factor. Reject write.
-          return {TRI_ERROR_ARANGO_READ_ONLY};
+          auto& clusterFeature =
+              vocbase().server().getFeature<ClusterFeature>();
+          if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
+            return {TRI_ERROR_ARANGO_READ_ONLY};
+          }
+          return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
+        }
         case FollowerInfo::WriteState::UNAVAILABLE:
         case FollowerInfo::WriteState::STARTUP:
           return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE};
@@ -2879,7 +2885,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
 /// @brief count the number of documents in a collection
 OperationResult transaction::Methods::countLocal(
-    std::string const& collectionName, transaction::CountType type,
+    std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
@@ -2894,7 +2900,7 @@ OperationResult transaction::Methods::countLocal(
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
-  uint64_t num = collection->numberDocuments(this, type);
+  uint64_t num = collection->getPhysical()->numberDocuments(this);
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));

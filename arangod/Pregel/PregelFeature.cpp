@@ -54,6 +54,7 @@
 #include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/ResultActor.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Utils.h"
@@ -326,9 +327,6 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
     // set to "infinity"
     maxSuperstep = std::numeric_limits<uint64_t>::max();
   }
-  auto useMemoryMapsVar = basics::VelocyPackHelper::getBooleanValue(
-      options.userParameters.slice(), Utils::useMemoryMapsKey, useMemoryMaps());
-
   auto storeResults = basics::VelocyPackHelper::getBooleanValue(
       options.userParameters.slice(), "store", true);
 
@@ -353,44 +351,55 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
       .edgeCollectionRestrictions =
           std::move(edgeCollectionRestrictionsPerShard),
       .maxSuperstep = maxSuperstep,
-      .useMemoryMaps = useMemoryMapsVar,
       .storeResults = storeResults,
       .ttl = ttl,
       .parallelism = parallelismVar,
       .userParameters = std::move(options.userParameters)};
 
-  // TODO needs to be part of the conductor state
-  auto c = std::make_shared<pregel::Conductor>(executionSpecifications, vocbase,
-                                               *this);
-  addConductor(std::move(c), en);
-  TRI_ASSERT(conductor(en));
-  conductor(en)->start();
+  if (options.useActors) {
+    auto vocbaseLookupInfo =
+        std::make_unique<conductor::DatabaseCollectionLookup>(
+            vocbase, executionSpecifications.vertexCollections,
+            executionSpecifications.edgeCollections);
 
-  auto vocbaseLookupInfo =
-      std::make_unique<conductor::DatabaseCollectionLookup>(
-          vocbase, executionSpecifications.vertexCollections,
-          executionSpecifications.edgeCollections);
-  auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
-      vocbase.name(), std::make_unique<SpawnState>(vocbase),
-      message::SpawnMessages{message::SpawnStart{}});
-  auto spawnActor = actor::ActorPID{
-      .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
-  auto algorithm = AlgoRegistry::createAlgorithmNew(
-      executionSpecifications.algorithm,
-      executionSpecifications.userParameters.slice());
-  if (not algorithm.has_value()) {
-    return Result{TRI_ERROR_BAD_PARAMETER,
-                  fmt::format("Unsupported Algorithm: {}",
-                              executionSpecifications.algorithm)};
+    auto resultActorID = _actorRuntime->spawn<ResultActor>(
+        vocbase.name(), std::make_unique<ResultState>(),
+        message::ResultMessages{message::ResultStart{}});
+    auto resultActorPID = actor::ActorPID{
+        .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
+    _resultActor.emplace(en, resultActorPID);
+
+    auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
+        vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
+        message::SpawnMessages{message::SpawnStart{}});
+    auto spawnActor = actor::ActorPID{
+        .server = ss->getId(), .database = vocbase.name(), .id = spawnActorID};
+    auto algorithm = AlgoRegistry::createAlgorithmNew(
+        executionSpecifications.algorithm,
+        executionSpecifications.userParameters.slice());
+    if (not algorithm.has_value()) {
+      return Result{TRI_ERROR_BAD_PARAMETER,
+                    fmt::format("Unsupported Algorithm: {}",
+                                executionSpecifications.algorithm)};
+    }
+    _actorRuntime->spawn<conductor::ConductorActor>(
+        vocbase.name(),
+        std::make_unique<conductor::ConductorState>(
+            std::move(algorithm.value()), executionSpecifications,
+            std::move(vocbaseLookupInfo), std::move(spawnActor),
+            std::move(resultActorPID)),
+        conductor::message::ConductorStart{});
+
+    return en;
+  } else {
+    // TODO needs to be part of the conductor state
+    auto c = std::make_shared<pregel::Conductor>(executionSpecifications,
+                                                 vocbase, *this);
+    addConductor(std::move(c), en);
+    TRI_ASSERT(conductor(en));
+    conductor(en)->start();
+    return en;
   }
-  _actorRuntime->spawn<conductor::ConductorActor>(
-      vocbase.name(),
-      std::make_unique<conductor::ConductorState>(
-          std::move(algorithm.value()), executionSpecifications,
-          std::move(vocbaseLookupInfo), std::move(spawnActor)),
-      conductor::message::ConductorStart{});
-
-  return en;
 }
 
 ExecutionNumber PregelFeature::createExecutionNumber() {
@@ -402,8 +411,6 @@ PregelFeature::PregelFeature(Server& server)
       _defaultParallelism(::defaultParallelism()),
       _minParallelism(1),
       _maxParallelism(::availableCores()),
-      _tempLocationType("temp-directory"),
-      _useMemoryMaps(true),
       _softShutdownOngoing(false),
       _metrics(std::make_shared<PregelMetrics>(
           server.getFeature<metrics::MetricsFeature>())),
@@ -492,11 +499,10 @@ applies per DB-Server.
 Defaults to the number of available cores.)");
 
   options
-      ->addOption(
+      ->addObsoleteOption(
           "--pregel.memory-mapped-files",
           "Whether to use memory mapped files for storing Pregel "
           "temporary data (as opposed to storing it in RAM) by default.",
-          new BooleanParameter(&_useMemoryMaps),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
@@ -516,14 +522,12 @@ You can override this option for each Pregel job by setting the `useMemoryMaps`
 attribute of the job.)");
 
   options
-      ->addOption("--pregel.memory-mapped-files-location-type",
-                  "The location for Pregel's temporary files.",
-                  new DiscreteValuesParameter<StringParameter>(
-                      &_tempLocationType, ::tempLocationTypes),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
+      ->addObsoleteOption("--pregel.memory-mapped-files-location-type",
+                          "The location for Pregel's temporary files.",
+                          arangodb::options::makeFlags(
+                              arangodb::options::Flags::DefaultNoComponents,
+                              arangodb::options::Flags::OnDBServer,
+                              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(R"(You can configure the location for the
 memory-mapped files written by Pregel with this option. This option is only
@@ -555,36 +559,20 @@ temporary files are stored in there too, it has to provide enough capacity to
 store both the regular database data and the Pregel files.)");
 
   options
-      ->addOption("--pregel.memory-mapped-files-custom-path",
-                  "Custom path for Pregel's temporary files. Only used if "
-                  "`--pregel.memory-mapped-files-location` is \"custom\".",
-                  new StringParameter(&_tempLocationCustomPath),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
+      ->addObsoleteOption(
+          "--pregel.memory-mapped-files-custom-path",
+          "Custom path for Pregel's temporary files. Only used if "
+          "`--pregel.memory-mapped-files-location` is \"custom\".",
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000)
       .setLongDescription(R"(If you use this option, you need to specify the
 storage directory location as an absolute path.)");
 }
 
 void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (!_tempLocationCustomPath.empty() && _tempLocationType != "custom") {
-    LOG_TOPIC("0dd1d", FATAL, Logger::PREGEL)
-        << "invalid settings for Pregel's temporary files: if a custom path is "
-           "provided, "
-        << "`--pregel.memory-mapped-files-location-type` must have a value of "
-           "'custom'";
-    FATAL_ERROR_EXIT();
-  } else if (_tempLocationCustomPath.empty() && _tempLocationType == "custom") {
-    LOG_TOPIC("9b378", FATAL, Logger::PREGEL)
-        << "invalid settings for Pregel's temporary files: if "
-           "`--pregel.memory-mapped-files-location-type` is 'custom', a custom "
-           "directory must be provided via "
-           "`--pregel.memory-mapped-files-custom-path`";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_minParallelism > _maxParallelism ||
       _defaultParallelism < _minParallelism ||
       _defaultParallelism > _maxParallelism || _minParallelism == 0 ||
@@ -603,8 +591,6 @@ void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << ", default: " << _defaultParallelism;
   }
 
-  TRI_ASSERT(::tempLocationTypes.contains(_tempLocationType));
-
   // these assertions should always hold
   TRI_ASSERT(_minParallelism > 0 && _minParallelism <= _maxParallelism);
   TRI_ASSERT(_defaultParallelism > 0 &&
@@ -613,64 +599,9 @@ void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void PregelFeature::start() {
-  std::string tempDirectory = tempPath();
-
-  if (!tempDirectory.empty()) {
-    TRI_ASSERT(_tempLocationType == "custom" ||
-               _tempLocationType == "database-directory");
-
-    // if the target directory for temporary files does not yet exist, create it
-    // on the fly! in case we want the temporary files to be created underneath
-    // the database's data directory, create the directory once. if a custom
-    // temporary directory was given, we can assume it to be reasonably stable
-    // across restarts, so it is fine to create it. if we want to store
-    // temporary files in the temporary directory, we should not create it upon
-    // startup, simply because the temporary directory can change with every
-    // instance start.
-    if (!basics::FileUtils::isDirectory(tempDirectory)) {
-      std::string systemErrorStr;
-      long errorNo;
-
-      auto res = TRI_CreateRecursiveDirectory(tempDirectory.c_str(), errorNo,
-                                              systemErrorStr);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("eb2da", FATAL, arangodb::Logger::PREGEL)
-            << "unable to create directory for Pregel temporary files '"
-            << tempDirectory << "': " << systemErrorStr;
-        FATAL_ERROR_EXIT();
-      }
-    } else {
-      // temp directory already existed at startup.
-      // now, if it is underneath the database path, we own it and can
-      // wipe its contents. if it is not underneath the database path,
-      // we cannot assume ownership for the files in it and better leave
-      // the files alone.
-      if (_tempLocationType == "database-directory") {
-        auto files = basics::FileUtils::listFiles(tempDirectory);
-        for (auto const& f : files) {
-          std::string fqn = basics::FileUtils::buildFilename(tempDirectory, f);
-
-          LOG_TOPIC("876fd", INFO, Logger::PREGEL)
-              << "removing Pregel temporary file '" << fqn << "' at startup";
-
-          ErrorCode res = basics::FileUtils::remove(fqn);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC("cae59", INFO, Logger::PREGEL)
-                << "unable to remove Pregel temporary file '" << fqn
-                << "': " << TRI_last_error();
-          }
-        }
-      }
-    }
-  }
-
   LOG_TOPIC("a0eb6", DEBUG, Logger::PREGEL)
       << "using Pregel default parallelism " << _defaultParallelism
-      << " (min: " << _minParallelism << ", max: " << _maxParallelism << ")"
-      << ", memory mapping: " << (_useMemoryMaps ? "on" : "off")
-      << ", temp path: " << tempDirectory;
+      << " (min: " << _minParallelism << ", max: " << _maxParallelism << ")";
 
   if (!ServerState::instance()->isAgent()) {
     scheduleGarbageCollection();
@@ -728,20 +659,6 @@ bool PregelFeature::isStopping() const noexcept {
   return server().isStopping();
 }
 
-std::string PregelFeature::tempPath() const {
-  if (_tempLocationType == "database-directory") {
-    auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
-    return databasePathFeature.subdirectoryName("pregel");
-  }
-  if (_tempLocationType == "custom") {
-    TRI_ASSERT(!_tempLocationCustomPath.empty());
-    return _tempLocationCustomPath;
-  }
-
-  TRI_ASSERT(_tempLocationType == "temp-directory");
-  return "";
-}
-
 size_t PregelFeature::defaultParallelism() const noexcept {
   return _defaultParallelism;
 }
@@ -767,8 +684,6 @@ size_t PregelFeature::parallelism(VPackSlice params) const noexcept {
   }
   return parallelism;
 }
-
-bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
                                  ExecutionNumber executionNumber) {
@@ -845,6 +760,27 @@ std::shared_ptr<IWorker> PregelFeature::worker(
   return (it != _workers.end() && ::authorized(it->second.first))
              ? it->second.second
              : nullptr;
+}
+
+ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
+  if (!_resultActor.contains(execNr)) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot locate results for pregel run {}.", execNr)};
+  }
+  auto actorPID = _resultActor.at(execNr);
+  auto state = _actorRuntime->getActorStateByID<ResultActor>(actorPID.id);
+  if (!state.has_value()) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot find results for pregel run {}.", execNr)};
+  }
+  if (state.value().finished) {
+    return state.value().results;
+  }
+  return Result{
+      TRI_ERROR_INTERNAL,
+      fmt::format("Pregel results for run {} are not yet available.", execNr)};
 }
 
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
@@ -963,8 +899,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
           TRI_ERROR_INTERNAL,
           "Worker with this execution number already exists.");
     }
-    auto createWorker = inspection::deserializeWithErrorT<CreateWorker>(
-        velocypack::SharedSlice({}, body));
+    auto createWorker =
+        inspection::deserializeWithErrorT<worker::message::CreateWorker>(
+            velocypack::SharedSlice({}, body));
     if (!createWorker.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
@@ -1021,8 +958,9 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
     }
     w->startGlobalStep(message.get());
   } else if (path == Utils::messagesPath) {
-    auto message = inspection::deserializeWithErrorT<PregelMessage>(
-        velocypack::SharedSlice({}, body));
+    auto message =
+        inspection::deserializeWithErrorT<worker::message::PregelMessage>(
+            velocypack::SharedSlice({}, body));
     if (!message.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,

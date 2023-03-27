@@ -30,7 +30,6 @@
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
 #include "Pregel/Algorithm.h"
-#include "Pregel/GraphStore/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
@@ -169,8 +168,8 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
   void copyVertexData(arangodb::velocypack::Options const&,
                       std::string const& documentId,
                       arangodb::velocypack::Slice document, SCCValue& senders,
-                      uint64_t& vertexIdRange) const override {
-    senders.vertexID = vertexIdRange++;
+                      uint64_t vertexId) const override {
+    senders.vertexID = vertexId;
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
