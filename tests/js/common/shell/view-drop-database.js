@@ -43,9 +43,11 @@ function DropDatabase() {
       db._create("c", {numberOfShards: 3});
       db._createView("v", "arangosearch", {});
       db.v.properties({links: {c: {includeAllFields: true}}});
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        db.c.insert({Hallo: i});
+        docs.push({Hallo:i});
       }
+      c.save(docs);
       db._query(`FOR d IN v OPTIONS { waitForSync:true } LIMIT 1 RETURN 1`);
       if (needDrop) {
         db.v.properties({links: {c: null}});
@@ -80,16 +82,40 @@ function DropDatabase() {
       for (let i = 0; i < 5; ++i) {
         dirmaker("d" + i, true);
       }
+      if (!isServer) {
+        let dirs = [];
+        let count = 20;
+        while(count > 0) {
+          dirs = global.instanceManager.getStrayDirectories();
+          if (dirs.length == 0) {
+            break;
+          }
+          count -=1;
+        }
+        assertTrue(dirs.length === 0, `views directories not cleaned up: ${JSON.stringify(dirs)}`);
+      }
     },
     testWithoutDropView: function () {
       for (let i = 0; i < 5; ++i) {
         dirmaker("d" + i, false);
       }
+      if (!isServer) {
+        let dirs = [];
+        let count = 20;
+        while(count > 0) {
+          dirs = global.instanceManager.getStrayDirectories();
+          if (dirs.length == 0) {
+            break;
+          }
+          count -=1;
+        }
+        assertTrue(dirs.length === 0, `views directories not cleaned up: ${JSON.stringify(dirs)}`);
+      }
     },
   };
 }
 
-if (!isCluster && isServer) {
+if (!isServer) {
   jsunity.run(DropDatabase);
 } else {
   // TODO(MBkkt) Add test for cluster, we need to know path to dbserver
