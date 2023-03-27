@@ -1,6 +1,10 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* Changed path where test scripts locate configuration files from `etc/relative`
+  to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
+  from `etc/relative` in test environment.
+
 * Fix issues with deferred database creation:
 
   When a database has made it into the Plan part of the agency with some
