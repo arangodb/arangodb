@@ -483,6 +483,16 @@ bool substituteClusterMultipleDocumentInsertOperations(
     return false;
   }
 
+  auto setterNode = plan->getVarSetBy(enumerateNode->inVariable()->id);
+  if (setterNode == nullptr || setterNode->getType() != EN::CALCULATION) {
+    return false;
+  }
+
+  auto* calcSetterNode =
+      ExecutionNode::castTo<CalculationNode const*>(setterNode);
+  if (!calcSetterNode->expression()->isConstant()) {
+    return false;
+  }
   // deal with dependency of enumerate list needing to be singleton or const
   // calculation
 
