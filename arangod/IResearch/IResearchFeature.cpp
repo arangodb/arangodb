@@ -822,7 +822,7 @@ void cleanupDatabase(TRI_vocbase_t& database) {
   auto const& feature = database.server().getFeature<DatabasePathFeature>();
   irs::utf8_path dataPath(feature.directory());
   dataPath /= "databases";
-  dataPath /= "database-" + std::to_string(link.collection().vocbase().id());
+  dataPath /= "database-" + std::to_string(database.id());
   bool exists = false;
   if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
       (exists && !irs::file_utils::remove(dataPath.c_str()))) {
