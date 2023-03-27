@@ -33,10 +33,6 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const isCluster = require("@arangodb/cluster").isCluster();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerCollectMethodsTestSuite () {
   let c;
 
@@ -45,29 +41,57 @@ function optimizerCollectMethodsTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection", { numberOfShards: 3 });
 
-      for (var i = 0; i < 1500; ++i) {
-        c.save({ group: "test" + (i % 10), value: i, haxe: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 1500; ++i) {
+        docs.push({ group: "test" + (i % 10), value: i, haxe: "test" + i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
       db._drop("UnitTestsCollection");
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of plans
-////////////////////////////////////////////////////////////////////////////////
+    testLargeResult : function () {
+      ["hash", "sorted"].forEach((method) => {
+        const query = "FOR i IN 0..99999 COLLECT group = i % 10000 AGGREGATE min = MIN(i), max = MAX(i) OPTIONS { method: '" + method + "'} SORT group RETURN { group, min, max }";
+        let results = AQL_EXECUTE(query);
+        assertEqual(10000, results.json.length);
+
+        for (let i = 0; i < 10000; ++i) {
+          assertEqual(i, results.json[i].group);
+          assertEqual(i, results.json[i].min);
+          assertEqual(i + 90000, results.json[i].max);
+        }
+
+        let nodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === 'CollectNode');
+        assertEqual(1, nodes.length);
+        assertEqual(method, nodes[0].collectOptions.method);
+      });
+    },
     
-    testHashedNumberOfPlans : function () {
-      var queries = [
-        "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
-        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]"
-      ];
+    testLargeResultWithInto : function () {
+      ["hash", "sorted"].forEach((method) => {
+        const query = "FOR i IN 0..99999 COLLECT group = i % 10000 AGGREGATE min = MIN(i), max = MAX(i) INTO values OPTIONS { method: '" + method + "'} SORT group RETURN { group, min, max, values }";
+        let results = AQL_EXECUTE(query);
+        assertEqual(10000, results.json.length);
 
-      queries.forEach(function(query) {
-        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+        for (let i = 0; i < 10000; ++i) {
+          assertEqual(i, results.json[i].group);
+          assertEqual(i, results.json[i].min);
+          assertEqual(i + 90000, results.json[i].max);
+          assertEqual(10, results.json[i].values.length);
+          results.json[i].values.sort((lhs, rhs) => {
+            return lhs.i - rhs.i;
+          });
+          for (let j = 0; j < 10; ++j) {
+            assertEqual(i + j * 10000, results.json[i].values[j].i);
+          }
+        }
 
-        assertEqual(2, plans.length);
+        let nodes = AQL_EXPLAIN(query).plan.nodes.filter((n) => n.type === 'CollectNode');
+        assertEqual(1, nodes.length);
+        assertEqual(method, nodes[0].collectOptions.method);
       });
     },
 
@@ -75,26 +99,11 @@ function optimizerCollectMethodsTestSuite () {
 /// @brief number of plans
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortedNumberOfPlans : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "value" ] }); 
-      var queries = [
+    testNumberOfPlans : function () {
+      c.ensureIndex({ type: "persistent", fields: [ "value" ] }); 
+      const queries = [
         "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
-        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]"
-      ];
-      
-      queries.forEach(function(query) {
-        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
-
-        assertEqual(2, plans.length);
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief number of plans
-////////////////////////////////////////////////////////////////////////////////
-
-    testNumberOfPlansWithInto : function () {
-      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]",
         "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
         "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g",
         "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
@@ -102,8 +111,43 @@ function optimizerCollectMethodsTestSuite () {
       ];
       
       queries.forEach(function(query) {
-        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+        let plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+        assertEqual(2, plans.length);
+      });
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumberOfPlansWithIntoSorted : function () {
+      const queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'sorted' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe OPTIONS { method: 'sorted' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j OPTIONS { method: 'sorted' } RETURN g"
+      ];
+      
+      queries.forEach(function(query) {
+        let plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+        assertEqual(1, plans.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumberOfPlansWithIntoHash : function () {
+      const queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'hash' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe OPTIONS { method: 'hash' } RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j OPTIONS { method: 'hash' } RETURN g"
+      ];
+      
+      queries.forEach(function(query) {
+        let plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
         assertEqual(1, plans.length);
       });
     },
@@ -112,21 +156,20 @@ function optimizerCollectMethodsTestSuite () {
 /// @brief expect hash COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHashed : function () {
-      var queries = [
+    testDefaultsToHashed : function () {
+      const queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
         [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
-        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500 ]
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500 ],
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let aggregateNodes = 0;
+        let sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
@@ -136,11 +179,11 @@ function optimizerCollectMethodsTestSuite () {
             ++sortNodes;
           }
         });
-        
-        assertEqual(isCluster ? 2 : 1, aggregateNodes);
+       
+        assertEqual(isCluster ? 2 : 1, aggregateNodes, query);
         assertEqual(1, sortNodes);
 
-        var results = AQL_EXECUTE(query[0]);
+        let results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
       });
     },
@@ -149,11 +192,11 @@ function optimizerCollectMethodsTestSuite () {
     /// @brief expect hash COLLECT
     ////////////////////////////////////////////////////////////////////////////////
     
-    testHashedWithNonSortedIndexRocksDB : function () {
+    testHashedWithNonSortedIndex : function () {
       c.ensureIndex({ type: "hash", fields: [ "group" ] });
       c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
       
-      var queries = [
+      const queries = [
                      [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500, false],
                      [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500, false],
                      [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10, true],
@@ -163,10 +206,9 @@ function optimizerCollectMethodsTestSuite () {
                      ];
       
       queries.forEach(function(query) {
-          var plan = AQL_EXPLAIN(query[0]).plan;
-          
-          var aggregateNodes = 0;
-          var sortNodes = 0;
+          let plan = AQL_EXPLAIN(query[0]).plan;
+          let aggregateNodes = 0;
+          let sortNodes = 0;
           plan.nodes.map(function(node) {
             if (node.type === "CollectNode") {
               ++aggregateNodes;
@@ -182,7 +224,7 @@ function optimizerCollectMethodsTestSuite () {
           assertEqual(isCluster ? 2 : 1, aggregateNodes);
           assertEqual(query[2] ? 0 : 1, sortNodes);
           
-          var results = AQL_EXECUTE(query[0]);
+          let results = AQL_EXECUTE(query[0]);
           assertEqual(query[1], results.json.length);
        });
     },
@@ -192,10 +234,10 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortedIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "group" ] });
-      c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "group" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] });
 
-      var queries = [
+      const queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
         [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
@@ -203,10 +245,9 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let aggregateNodes = 0;
+        let sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
@@ -220,15 +261,15 @@ function optimizerCollectMethodsTestSuite () {
         assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(0, sortNodes);
 
-        var results = AQL_EXECUTE(query[0]);
+        let results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
       });
     },
 
     testSortedIndex2 : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] });
+      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] });
 
-      var queries = [
+      const queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = 1 RETURN value", 1 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j RETURN 1", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
@@ -241,7 +282,6 @@ function optimizerCollectMethodsTestSuite () {
 
       queries.forEach(function(query) {
         let plan = AQL_EXPLAIN(query[0]).plan;
-
         let aggregateNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
@@ -261,7 +301,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSortRemoval : function () {
-      var queries = [
+      const queries = [
         [ "FOR j IN " + c.name() + " COLLECT value = j SORT null RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.haxe SORT null RETURN value", 1500 ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group SORT null RETURN value", 10 ],
@@ -271,10 +311,9 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let aggregateNodes = 0;
+        let sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
@@ -288,22 +327,23 @@ function optimizerCollectMethodsTestSuite () {
         assertEqual(isCluster ? 2 : 1, aggregateNodes);
         assertEqual(0, sortNodes);
 
-        var results = AQL_EXECUTE(query[0]);
+        let results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
       });
     },
 
     testSkip : function () {
-      for (var i = 0; i < 10000; ++i) {
-        c.insert({ value: "test" + i });
+      let docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ value: "test" + i });
       }
+      c.insert(docs);
 
-      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value INTO group LIMIT 1, 2 RETURN group"; 
-        
-      var plan = AQL_EXPLAIN(query).plan;
+      const query = "FOR doc IN " + c.name() + " COLLECT v = doc.value INTO group OPTIONS { method: 'sorted' } LIMIT 1, 2 RETURN group"; 
 
-      var aggregateNodes = 0;
-      var sortNodes = 0;
+      let plan = AQL_EXPLAIN(query).plan;
+      let aggregateNodes = 0;
+      let sortNodes = 0;
       plan.nodes.map(function(node) {
         if (node.type === "CollectNode") {
           ++aggregateNodes;
@@ -317,7 +357,7 @@ function optimizerCollectMethodsTestSuite () {
       assertEqual(1, aggregateNodes);
       assertEqual(1, sortNodes);
 
-      var result = AQL_EXECUTE(query).json;
+      let result = AQL_EXECUTE(query).json;
       assertEqual(2, result.length);
       assertTrue(Array.isArray(result[0]));
       assertTrue(Array.isArray(result[1]));
@@ -330,13 +370,13 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOverrideMethodWithHashButHavingIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: [ "group" ] }); 
-      c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] }); 
+      c.ensureIndex({ type: "persistent", fields: [ "group" ] }); 
+      c.ensureIndex({ type: "persistent", fields: [ "group", "value" ] }); 
 
       // the expectation is that the optimizer will still use the 'sorted' method here as there are
       // sorted indexes supporting it
-      var queries = [
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]", "sorted" ],
+      const queries = [
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]", "hash" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]", "sorted" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g RETURN [ value, g ]", "sorted" ],
         [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value", "hash" ],
@@ -357,10 +397,9 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        let aggregateNodes = 0;
+        let sortNodes = 0;
         let hasInto = false;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
@@ -387,7 +426,7 @@ function optimizerCollectMethodsTestSuite () {
     testOverrideMethodSortedUsed : function () {
       // the expectation is that the optimizer will use the 'sorted' method here because we
       // explicitly ask for it
-      var queries = [
+      const queries = [
         "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]",
         "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'sorted' } RETURN value",
         "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'sorted' } RETURN [ value1, value2 ]",
@@ -396,10 +435,9 @@ function optimizerCollectMethodsTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
+        let plan = AQL_EXPLAIN(query).plan;
+        let aggregateNodes = 0;
+        let sortNodes = 0;
         let hasInto = false;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
@@ -425,7 +463,7 @@ function optimizerCollectMethodsTestSuite () {
 
     testMultipleCollectsInSingleQuery : function () {
       // this will tell the optimizer to optimize the cloned plan with this specific rule again
-      var result = AQL_EXECUTE("LET values1 = (FOR i IN 1..4 COLLECT x = i RETURN x)  LET values2 = (FOR i IN 2..6 COLLECT x = i RETURN x) RETURN [ values1, values2 ]").json[0];
+      let result = AQL_EXECUTE("LET values1 = (FOR i IN 1..4 COLLECT x = i RETURN x)  LET values2 = (FOR i IN 2..6 COLLECT x = i RETURN x) RETURN [ values1, values2 ]").json[0];
 
       assertEqual([ 1, 2, 3, 4 ], result[0]);
       assertEqual([ 2, 3, 4, 5, 6 ], result[1]);
@@ -436,7 +474,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollectResultBiggerThanBlocksize : function () {
-      var result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.value INTO g RETURN { id, g }").json;
+      let result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.value INTO g RETURN { id, g }").json;
       assertEqual(1500, result.length);
       
       result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.group INTO g RETURN { id, g }").json;
@@ -450,14 +488,14 @@ function optimizerCollectMethodsTestSuite () {
     testManyCollects : function () {
       c.truncate({ compact: false });
       c.insert({ value: 3 });
-      var q = "", g = [];
-      for (var i = 0; i < 10; ++i) {
+      let q = "", g = [];
+      for (let i = 0; i < 10; ++i) {
         q += "LET q" + i + " = (FOR doc IN " + c.name() + " COLLECT id = doc.value RETURN id) ";
         g.push("q" + i);
       }
       q += "RETURN INTERSECTION(" + g.join(", ") + ")";
       assertTrue(AQL_EXPLAIN(q, null).stats.plansCreated >= 128);
-      var result = AQL_EXECUTE(q).json;
+      let result = AQL_EXECUTE(q).json;
       assertEqual([3], result[0]);
     },
 
@@ -466,14 +504,13 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
  
     testCollectWithOffset : function () {
-      // create a skiplist index so the optimizer can use the sorted collect
-      c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
-      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value OPTIONS { method: 'sorted' } LIMIT 1001, 2 RETURN v";
+      // create a persistent index so the optimizer can use the sorted collect
+      c.ensureIndex({ type: "persistent", fields: [ "value" ] });
+      const query = "FOR doc IN " + c.name() + " COLLECT v = doc.value OPTIONS { method: 'sorted' } LIMIT 1001, 2 RETURN v";
         
-      var plan = AQL_EXPLAIN(query).plan;
-
+      let plan = AQL_EXPLAIN(query).plan;
       // we want a sorted collect!
-      var aggregateNodes = 0;
+      let aggregateNodes = 0;
       let hasInto = false;
       plan.nodes.map(function(node) {
         assertNotEqual("SortNode", node.type);
@@ -488,7 +525,7 @@ function optimizerCollectMethodsTestSuite () {
     
       assertEqual((isCluster && !hasInto) ? 2 : 1, aggregateNodes);
       
-      var result = AQL_EXECUTE(query).json;
+      let result = AQL_EXECUTE(query).json;
       assertEqual([ 1001, 1002 ], result);
     },
   
@@ -564,11 +601,6 @@ function optimizerCollectMethodsTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerCollectMethodsTestSuite);
 
 return jsunity.done();
-

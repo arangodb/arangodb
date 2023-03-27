@@ -98,6 +98,11 @@ class IResearchRocksDBInvertedIndex final : public RocksDBIndex,
     return IResearchInvertedIndex::covers(projections);
   }
 
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const final {
+    return IResearchInvertedIndex::coveredFields();
+  }
+
   Result drop() final /*noexcept*/ { return deleteDataStore(); }
 
   void load() final {}

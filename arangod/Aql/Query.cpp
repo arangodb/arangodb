@@ -36,6 +36,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -1590,7 +1591,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ss != nullptr);
 
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
 
     auto f =
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,

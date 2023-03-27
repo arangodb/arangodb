@@ -24,12 +24,17 @@
 #include "RestPregelHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
 
+#include "Inspection/VPackWithErrorT.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/SpawnActor.h"
 #include "Pregel/Utils.h"
+#include "Pregel/ResultActor.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,7 +64,64 @@ RestStatus RestPregelHandler::execute() {
 
     VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
-    if (suffix.size() != 2) {
+    if (suffix.size() == 1 && suffix[0] == "actor") {
+      auto msg = inspection::deserializeWithErrorT<pregel::NetworkMessage>(
+          velocypack::SharedSlice({}, body));
+      if (!msg.ok()) {
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+            fmt::format(
+                "Received actor network message {} cannot be deserialized",
+                body.toJson()));
+        return RestStatus::DONE;
+      }
+      // ActorID "0" being used here to initially spawn a new actor.
+      if (msg.get().receiver.id == actor::ActorID{0}) {
+        auto spawnMessage =
+            inspection::deserializeWithErrorT<message::SpawnMessages>(
+                velocypack::SharedSlice({}, msg.get().payload.slice()));
+        if (!spawnMessage.ok()) {
+          generateError(
+              rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+              fmt::format(
+                  "Received actor spawn message {} cannot be deserialized",
+                  body.toJson()));
+          return RestStatus::DONE;
+        }
+        if (!std::holds_alternative<message::SpawnWorker>(spawnMessage.get())) {
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                        fmt::format("Received actor spawn message {} does not "
+                                    "include expected spawn worker message",
+                                    inspection::json(spawnMessage.get())));
+          return RestStatus::DONE;
+        }
+
+        auto resultActorID = _pregel._actorRuntime->spawn<ResultActor>(
+            _vocbase.name(), std::make_unique<ResultState>(),
+            message::ResultMessages{message::ResultStart{}});
+        auto resultActorPID =
+            actor::ActorPID{.server = ServerState::instance()->getId(),
+                            .database = _vocbase.name(),
+                            .id = resultActorID};
+        _pregel._resultActor.emplace(
+            std::get<message::SpawnWorker>(spawnMessage.get())
+                .message.executionNumber,
+            resultActorPID);
+
+        _pregel._actorRuntime->spawn<SpawnActor>(
+            _vocbase.name(),
+            std::make_unique<SpawnState>(_vocbase, resultActorPID),
+            spawnMessage.get());
+        generateResult(rest::ResponseCode::OK, VPackBuilder().slice());
+        return RestStatus::DONE;
+      } else {
+        _pregel._actorRuntime->receive(
+            msg.get().sender, msg.get().receiver,
+            velocypack::SharedSlice({}, msg.get().payload.slice()));
+        generateResult(rest::ResponseCode::OK, VPackBuilder().slice());
+        return RestStatus::DONE;
+      }
+    } else if (suffix.size() != 2) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {

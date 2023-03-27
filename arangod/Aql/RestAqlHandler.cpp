@@ -31,6 +31,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -381,6 +382,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   TRI_ASSERT(_engine != nullptr);
   TRI_ASSERT(std::to_string(_engine->engineId()) == idString);
+  auto guard = _engine->getQuery().acquireLockGuard();
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
@@ -547,6 +549,44 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
       break;
     }
     try {
+      TRI_IF_FAILURE("RestAqlHandler::killBeforeOpen") {
+        auto engine = _queryRegistry->openExecutionEngine(qId);
+        TRI_ASSERT(engine != nullptr);
+        auto queryId = engine->getQuery().id();
+        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
+                                     TRI_ERROR_QUERY_KILLED);
+        _queryRegistry->closeEngine(qId);
+        // Here Engine could be gone
+      }
+      TRI_IF_FAILURE("RestAqlHandler::completeFinishBeforeOpen") {
+        auto errorCode = TRI_ERROR_QUERY_KILLED;
+        auto engine = _queryRegistry->openExecutionEngine(qId);
+        TRI_ASSERT(engine != nullptr);
+        auto queryId = engine->getQuery().id();
+        // Unuse the engine, so we can abort properly
+        _queryRegistry->closeEngine(qId);
+
+        auto fut =
+            _queryRegistry->finishQuery(_vocbase.name(), queryId, errorCode);
+        TRI_ASSERT(fut.isReady());
+        auto query = fut.get();
+        _queryRegistry->destroyQuery(_vocbase.name(), queryId, errorCode);
+        TRI_ASSERT(query != nullptr)
+            << "QueryRegistry::destroyQuery does not give us the query pointer";
+        auto f = query->finalizeClusterQuery(errorCode);
+        // Wait for query to be fully finalized, as a finish call would do.
+        f.wait();
+        // Here Engine could be gone
+      }
+      TRI_IF_FAILURE("RestAqlHandler::prematureCommitBeforeOpen") {
+        auto engine = _queryRegistry->openExecutionEngine(qId);
+        TRI_ASSERT(engine != nullptr);
+        auto queryId = engine->getQuery().id();
+        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
+                                     TRI_ERROR_NO_ERROR);
+        _queryRegistry->closeEngine(qId);
+        // Here Engine could be gone
+      }
       q = _queryRegistry->openExecutionEngine(qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
@@ -701,7 +741,15 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     }
 
     if (state == ExecutionState::WAITING) {
+      TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
+        _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
+                                     TRI_ERROR_QUERY_KILLED);
+      }
       return RestStatus::WAITING;
+    }
+    TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
+      _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
+                                   TRI_ERROR_QUERY_KILLED);
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
@@ -756,33 +804,44 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 
   auto errorCode = VelocyPackHelper::getNumericValue<ErrorCode>(
       querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
-  std::shared_ptr<ClusterQuery> query =
-      _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
-  if (!query) {
-    // this may be a race between query garbage collection and the client
-    // shutting down the query. it is debatable whether this is an actual error
-    // if we only want to abort the query...
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
-  }
 
-  auto f = query->finalizeClusterQuery(errorCode);
+  auto f =
+      _queryRegistry->finishQuery(_vocbase.name(), qid, errorCode)
+          .thenValue([self = shared_from_this(), this, qid,
+                      errorCode](std::shared_ptr<ClusterQuery> query) mutable
+                     -> futures::Future<futures::Unit> {
+            if (query == nullptr) {
+              // this may be a race between query garbage collection and
+              // the client  shutting down the query. it is debatable
+              // whether this is an actual error if we only want to abort
+              // the query...
+              generateError(rest::ResponseCode::NOT_FOUND,
+                            TRI_ERROR_HTTP_NOT_FOUND);
+              return {};
+            }
 
-  return waitForFuture(std::move(f).thenValue(
-      [me = shared_from_this(), this, q = std::move(query)](Result res) {
-        VPackBufferUInt8 buffer;
-        VPackBuilder answerBuilder(buffer);
-        answerBuilder.openObject(/*unindexed*/ true);
-        answerBuilder.add(VPackValue("stats"));
-        q->executionStats().toVelocyPack(answerBuilder,
-                                         q->queryOptions().fullCount);
-        q->warnings().toVelocyPack(answerBuilder);
-        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-        answerBuilder.close();
+            _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
+            return query->finalizeClusterQuery(errorCode).thenValue(
+                [self = std::move(self), this,
+                 q = std::move(query)](Result res) {
+                  VPackBufferUInt8 buffer;
+                  VPackBuilder answerBuilder(buffer);
+                  answerBuilder.openObject(/*unindexed*/ true);
+                  answerBuilder.add(VPackValue("stats"));
+                  q->executionStats().toVelocyPack(answerBuilder,
+                                                   q->queryOptions().fullCount);
+                  q->warnings().toVelocyPack(answerBuilder);
+                  answerBuilder.add(StaticStrings::Error,
+                                    VPackValue(res.fail()));
+                  answerBuilder.add(StaticStrings::Code,
+                                    VPackValue(res.errorNumber()));
+                  answerBuilder.close();
 
-        generateResult(rest::ResponseCode::OK, std::move(buffer));
-      }));
+                  generateResult(rest::ResponseCode::OK, std::move(buffer));
+                });
+          });
+
+  return waitForFuture(std::move(f));
 }
 
 RequestLane RestAqlHandler::lane() const {

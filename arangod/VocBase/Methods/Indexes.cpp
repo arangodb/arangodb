@@ -82,7 +82,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
                                std::regex::ECMAScript);
     if (std::regex_match(idSlice.copyString(), re)) {
       id = idSlice.copyString();
-      name = id.substr(id.find_first_of("/") + 1);
+      name = id.substr(id.find('/') + 1);
     } else {
       name = idSlice.copyString();
       id = collection->name() + "/" + name;

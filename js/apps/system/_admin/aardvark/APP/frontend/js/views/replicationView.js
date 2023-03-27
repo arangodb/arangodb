@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, btoa, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
+/* global _, Backbone, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
 (function () {
   'use strict';
 
@@ -106,14 +106,14 @@
 
     goToApplier: function (e) {
       // always system (global applier)
-      var endpoint = btoa($(e.currentTarget).attr('data'));
-      window.App.navigate('#replication/applier/' + endpoint + '/' + btoa('_system'), {trigger: true});
+      var endpoint = window.btoa($(e.currentTarget).attr('data'));
+      window.App.navigate('#replication/applier/' + endpoint + '/' + window.btoa('_system'), {trigger: true});
     },
 
     goToApplierFromTable: function (e) {
       // per db (single applier)
-      var endpoint = btoa(window.location.origin);
-      var db = btoa($(e.currentTarget).find('#applier-database-id').html());
+      var endpoint = window.btoa(window.location.origin);
+      var db = window.btoa($(e.currentTarget).find('#applier-database-id').html());
       var running = $(e.currentTarget).find('#applier-running-id').html();
       if (running === 'true' || running === true) {
         window.App.navigate('#replication/applier/' + endpoint + '/' + db, {trigger: true});

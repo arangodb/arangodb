@@ -688,7 +688,7 @@ Result RestReplicationHandler::testPermissions() {
               std::string dbName = _request->databaseName();
               DatabaseFeature& databaseFeature =
                   _vocbase.server().getFeature<DatabaseFeature>();
-              TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+              auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
               }
@@ -855,11 +855,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   DatabaseFeature& databaseFeature =
       _vocbase.server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
-  if (vocbase) {
-    resultBuilder.add(VPackValue(StaticStrings::Properties));
-    vocbase->toVelocyPack(resultBuilder);
+  auto vocbase = databaseFeature.useDatabase(dbName);
+  if (!vocbase) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return;
   }
+
+  resultBuilder.add(VPackValue(StaticStrings::Properties));
+  vocbase->toVelocyPack(resultBuilder);
+  vocbase.reset();
 
   auto& exec = ExecContext::current();
   ExecContextSuperuserScope escope(exec.isAdminUser());
@@ -867,7 +871,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser() &&
-        !exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -1597,11 +1601,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
-            char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
-
-            documentsToInsert.add(it.key);
-            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            // We simply get rid of the `_rev` attribute here on the
+            // coordinator. We need to create a new value but it has to be
+            // unique in the shard, therefore the shard leader must create the
+            // value. If multiple coordinators would create a timestamp based
+            // _rev value concurrently, we could get a duplicate, which would
+            // lead to a clash on the actual shard leader and can lead to
+            // RocksDB conflicts or even data corruption between primary index
+            // and data in the documents column family.
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);
@@ -2094,7 +2101,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   if (!slice.isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-
     return;
   }
 
@@ -2382,7 +2388,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2450,7 +2456,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shardSlice.copyString());
+  auto col = _vocbase.lookupCollection(shardSlice.stringView());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2633,7 +2639,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2692,7 +2698,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   std::string leaderId = leaderIdSlice.copyString();
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2792,7 +2798,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TransactionId id = ExtractReadlockId(idSlice);
-  auto col = _vocbase.lookupCollection(collection.copyString());
+  auto col = _vocbase.lookupCollection(collection.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -3739,7 +3745,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
-    uint64_t num = col->numberDocuments(&trx, transaction::CountType::Normal);
+    uint64_t num = col->getPhysical()->numberDocuments(&trx);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.

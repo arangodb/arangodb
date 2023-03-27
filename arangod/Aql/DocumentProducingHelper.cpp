@@ -153,7 +153,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(
 }
 
 template<bool checkUniqueness>
-std::function<bool(LocalDocumentId const& token)> aql::getNullCallback(
+IndexIterator::LocalDocumentIdCallback aql::getNullCallback(
     DocumentProducingFunctionContext& context) {
   TRI_ASSERT(!context.hasFilter());
 
@@ -193,8 +193,8 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filterProjections(infos.getFilterProjections()),
       _numScanned(0),
       _numFiltered(0),
-      _outputRegister(infos.getOutputRegisterId()),
       _outputVariable(infos.getOutVariable()),
+      _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(false),
       _produceResult(infos.getProduceResult()),
@@ -234,8 +234,8 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _filterProjections(infos.getFilterProjections()),
       _numScanned(0),
       _numFiltered(0),
-      _outputRegister(infos.getOutputRegisterId()),
       _outputVariable(infos.getOutVariable()),
+      _outputRegister(infos.getOutputRegisterId()),
       _readOwnWrites(infos.canReadOwnWrites()),
       _checkUniqueness(infos.getIndexes().size() > 1 ||
                        infos.hasMultipleExpansions()),
@@ -283,13 +283,13 @@ bool DocumentProducingFunctionContext::getProduceResult() const noexcept {
   return _produceResult;
 }
 
-arangodb::aql::Projections const&
-DocumentProducingFunctionContext::getProjections() const noexcept {
+aql::Projections const& DocumentProducingFunctionContext::getProjections()
+    const noexcept {
   return _projections;
 }
 
-arangodb::aql::Projections const&
-DocumentProducingFunctionContext::getFilterProjections() const noexcept {
+aql::Projections const& DocumentProducingFunctionContext::getFilterProjections()
+    const noexcept {
   return _filterProjections;
 }
 
@@ -303,8 +303,7 @@ PhysicalCollection& DocumentProducingFunctionContext::getPhysical()
   return _physical;
 }
 
-arangodb::velocypack::Builder&
-DocumentProducingFunctionContext::getBuilder() noexcept {
+velocypack::Builder& DocumentProducingFunctionContext::getBuilder() noexcept {
   return _objectBuilder;
 }
 
@@ -435,6 +434,7 @@ IndexIterator::CoveringCallback aql::getCallback(
                     IndexIteratorCoveringData& covering) {
     TRI_ASSERT(context.getAllowCoveringIndexOptimization());
     if constexpr (checkUniqueness) {
+      TRI_ASSERT(token.isSet());
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;

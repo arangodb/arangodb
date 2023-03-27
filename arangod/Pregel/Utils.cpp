@@ -23,12 +23,6 @@
 
 #include "Utils.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
-#include "Pregel/Worker/WorkerConfig.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -60,7 +54,6 @@ std::string const Utils::vertexShardsKey = "vertexShards";
 std::string const Utils::edgeShardsKey = "edgeShards";
 std::string const Utils::globalShardListKey = "globalShardList";
 std::string const Utils::userParametersKey = "userparams";
-std::string const Utils::useMemoryMapsKey = "useMemoryMaps";
 std::string const Utils::parallelismKey = "parallelism";
 
 std::string const Utils::globalSuperstepKey = "gss";
@@ -98,40 +91,4 @@ size_t const Utils::batchOfVerticesProcessedBeforeUpdatingStatus = 1000;
 
 std::string Utils::baseUrl(std::string const& prefix) {
   return Utils::apiPrefix + prefix + "/";
-}
-
-ErrorCode Utils::resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                              std::string const& collectionName,
-                              std::string const& shardKey,
-                              std::string_view vertexKey,
-                              std::string& responsibleShard) {
-  if (!ServerState::instance()->isRunningInCluster()) {
-    responsibleShard = collectionName;
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  auto const& planIDMap = config->collectionPlanIdMap();
-  std::shared_ptr<LogicalCollection> info;
-  auto const& it = planIDMap.find(collectionName);
-  if (it != planIDMap.end()) {
-    info = ci.getCollectionNT(config->database(), it->second);  // might throw
-    if (info == nullptr) {
-      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-    }
-  } else {
-    LOG_TOPIC("67fda", ERR, Logger::PREGEL)
-        << "The collection could not be translated to a planID";
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-
-  TRI_ASSERT(info != nullptr);
-
-  VPackBuilder partial;
-  partial.openObject();
-  partial.add(shardKey, VPackValuePair(vertexKey.data(), vertexKey.size(),
-                                       VPackValueType::String));
-  partial.close();
-  //  LOG_TOPIC("00a5c", INFO, Logger::PREGEL) << "Partial doc: " <<
-  //  partial.toJson();
-  return info->getResponsibleShard(partial.slice(), false, responsibleShard);
 }

@@ -130,11 +130,12 @@ struct DocIdScorer : public irs::sort {
       auto* doc = irs::get<irs::document>(doc_attrs);
       EXPECT_NE(nullptr, doc);
 
-      return {std::make_unique<ScoreCtx>(doc),
-              [](irs::score_ctx* ctx, irs::score_t* res) {
-                auto* state = static_cast<ScoreCtx*>(ctx);
-                *res = static_cast<irs::score_t>(state->_doc->value);
-              }};
+      return irs::ScoreFunction::Make<ScoreCtx>(
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            auto* state = static_cast<ScoreCtx*>(ctx);
+            *res = static_cast<irs::score_t>(state->_doc->value);
+          },
+          doc);
     }
   };
 
@@ -2573,9 +2574,9 @@ TEST_F(IResearchViewTest, test_drop_database) {
   EXPECT_TRUE((1 == beforeCount));  // +1 for StorageEngineMock::createView(...)
 
   beforeCount = 0;  // reset before call to StorageEngine::dropView(...)
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-               databaseFeature.dropDatabase(vocbase->id(), true)));
-  EXPECT_TRUE((1 == beforeCount));
+  EXPECT_TRUE(
+      (TRI_ERROR_NO_ERROR == databaseFeature.dropDatabase(vocbase->id())));
+  EXPECT_TRUE((0 == beforeCount));
 }
 
 TEST_F(IResearchViewTest, test_instantiate) {

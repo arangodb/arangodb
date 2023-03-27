@@ -72,6 +72,11 @@ class IResearchInvertedClusterIndex final : public Index,
     return IResearchInvertedIndex::covers(projections);
   }
 
+  std::vector<std::vector<basics::AttributeName>> const& coveredFields()
+      const final {
+    return IResearchInvertedIndex::coveredFields();
+  }
+
   Result drop() final {
     unload();
     return {};

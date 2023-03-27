@@ -24,21 +24,27 @@
 #pragma once
 
 #include "Pregel/Algorithm.h"
-#include "Pregel/CommonFormats.h"
+#include "Pregel/Algos/DMID/DMIDValue.h"
+#include "Pregel/Algos/DMID/DMIDMessage.h"
 
 namespace arangodb {
 namespace pregel {
 namespace algos {
 
 /// https://github.com/Rofti/DMID
+
+struct DMIDType {
+  using Vertex = DMIDValue;
+  using Edge = float;
+  using Message = DMIDMessage;
+};
+
 struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
   unsigned _maxCommunities = 1;
 
  public:
-  explicit DMID(application_features::ApplicationServer& server,
-                VPackSlice userParams)
-      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(server, "DMID",
-                                                       userParams) {
+  explicit DMID(VPackSlice userParams)
+      : SimpleAlgorithm<DMIDValue, float, DMIDMessage>(userParams) {
     arangodb::velocypack::Slice val = userParams.get("maxCommunities");
     if (val.isInteger()) {
       _maxCommunities = (unsigned)std::min(
@@ -46,13 +52,37 @@ struct DMID : public SimpleAlgorithm<DMIDValue, float, DMIDMessage> {
     }
   }
 
-  GraphFormat<DMIDValue, float>* inputFormat() const override;
+  [[nodiscard]] auto name() const -> std::string_view override {
+    return "DMID";
+  };
+
+  std::shared_ptr<GraphFormat<DMIDValue, float> const> inputFormat()
+      const override;
   MessageFormat<DMIDMessage>* messageFormat() const override;
+  [[nodiscard]] auto messageFormatUnique() const
+      -> std::unique_ptr<message_format> override;
 
   VertexComputation<DMIDValue, float, DMIDMessage>* createComputation(
-      WorkerConfig const*) const override;
+      std::shared_ptr<WorkerConfig const>) const override;
 
-  MasterContext* masterContext(VPackSlice userParams) const override;
+  [[nodiscard]] auto workerContext(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const -> WorkerContext* override;
+  [[nodiscard]] auto workerContextUnique(
+      std::unique_ptr<AggregatorHandler> readAggregators,
+      std::unique_ptr<AggregatorHandler> writeAggregators,
+      velocypack::Slice userParams) const
+      -> std::unique_ptr<WorkerContext> override;
+
+  [[nodiscard]] auto masterContext(
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const -> MasterContext* override;
+  [[nodiscard]] auto masterContextUnique(
+      uint64_t vertexCount, uint64_t edgeCount,
+      std::unique_ptr<AggregatorHandler> aggregators,
+      arangodb::velocypack::Slice userParams) const
+      -> std::unique_ptr<MasterContext> override;
 
   IAggregator* aggregator(std::string const& name) const override;
 };

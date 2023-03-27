@@ -21,12 +21,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Cluster/ClusterFeature.h"
 #include "Pregel/Conductor/Messages.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Utils.h"
+#include "Pregel/ResolveShard.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -41,16 +42,12 @@ WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
-void WorkerConfig::updateConfig(PregelFeature& feature,
-                                CreateWorker const& params) {
+void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _executionNumber = params.executionNumber;
   _coordinatorId = params.coordinatorId;
-  _useMemoryMaps = params.useMemoryMaps;
-  VPackSlice userParams = params.userParameters.slice();
   _globalShardIDs = params.allShards;
 
-  // parallelism
-  _parallelism = WorkerConfig::parallelism(feature, userParams);
+  _parallelism = params.parallelism;
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
@@ -88,22 +85,6 @@ void WorkerConfig::updateConfig(PregelFeature& feature,
   _edgeCollectionRestrictions = params.edgeCollectionRestrictions;
 }
 
-size_t WorkerConfig::parallelism(PregelFeature& feature, VPackSlice params) {
-  // start off with default parallelism
-  size_t parallelism = feature.defaultParallelism();
-  if (params.isObject()) {
-    // then update parallelism value from user config
-    if (VPackSlice parallel = params.get(Utils::parallelismKey);
-        parallel.isInteger()) {
-      // limit parallelism to configured bounds
-      parallelism =
-          std::clamp(parallel.getNumber<size_t>(), feature.minParallelism(),
-                     feature.maxParallelism());
-    }
-  }
-  return parallelism;
-}
-
 std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
     ShardID const& shard) const {
   auto it = _edgeCollectionRestrictions.find(shard);
@@ -113,7 +94,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
   return ::emptyEdgeCollectionRestrictions;
 }
 
-VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
+VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   size_t pos = documentID.find("/");
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -126,8 +107,8 @@ VertexID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   ShardID responsibleShard;
 
   auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  Utils::resolveShard(ci, this, std::string(collPart), StaticStrings::KeyString,
-                      keyPart, responsibleShard);
+  ResolveShard::resolve(ci, this, std::string(collPart),
+                        StaticStrings::KeyString, keyPart, responsibleShard);
 
   PregelShard source = this->shardId(responsibleShard);
   return VertexID(source, std::string(keyPart));

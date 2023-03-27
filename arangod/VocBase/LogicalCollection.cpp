@@ -53,6 +53,7 @@
 #include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/Validators.h"
+#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -299,6 +300,29 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
+UserInputCollectionProperties LogicalCollection::getCollectionProperties()
+    const noexcept {
+  UserInputCollectionProperties props;
+  // NOTE: This implementation is NOT complete.
+  // It only contains what was absolute necessary to get distributeShardsLike
+  // to work.
+  // Longterm-Plan: A logical collection should have those properties as a
+  // member and just return a reference to them.
+  props.name = name();
+  props.id = id();
+  props.numberOfShards = numberOfShards();
+  props.writeConcern = writeConcern();
+  props.replicationFactor = replicationFactor();
+  auto distLike = distributeShardsLike();
+  if (!distLike.empty()) {
+    props.distributeShardsLikeCid = std::move(distLike);
+  }
+  props.shardKeys = shardKeys();
+  props.shardingStrategy = shardingInfo()->shardingStrategyName();
+  props.waitForSync = waitForSync();
+  return props;
+}
+
 size_t LogicalCollection::numberOfShards() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->numberOfShards();
@@ -404,28 +428,6 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
     transaction::Methods* trx) {
   return _physical->getAnyIterator(trx);
-}
-// @brief Return the number of documents in this collection
-uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
-                                            transaction::CountType type) {
-  // detailed results should have been handled in the levels above us
-  TRI_ASSERT(type != transaction::CountType::Detailed);
-
-  uint64_t documents = transaction::CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = _countCache.get();
-  } else if (type == transaction::CountType::TryCache) {
-    // get data from cache, but only if not expired
-    documents = _countCache.getWithTtl();
-  }
-  if (documents == transaction::CountCache::NotPopulated) {
-    // cache was not populated before or cache value has expired
-    documents = getPhysical()->numberDocuments(trx);
-    _countCache.store(documents);
-  }
-  TRI_ASSERT(documents != transaction::CountCache::NotPopulated);
-  return documents;
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {

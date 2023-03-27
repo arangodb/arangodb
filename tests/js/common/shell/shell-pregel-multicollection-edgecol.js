@@ -99,8 +99,6 @@ function multiCollectionTestSuite() {
           const vj = `${vColl}_${j}`;
           const eij = `${eColl}_${i}_${j}`;
           db._createEdgeCollection(eij, {
-            numberOfShards: 4,
-            replicationFactor: 1,
             shardKeys: ["vertex"],
             distributeShardsLike: v0
           });
@@ -217,7 +215,7 @@ function multiCollectionTestSuite() {
 
       assertEqual(stats.vertexCount, numComponents * n, stats);
       assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-      assertFalse(stats.hasOwnProperty("parallelism"));
+      assertTrue(stats.hasOwnProperty("parallelism"));
 
       let allUniquePregelResults = new Set();
       for (let j = 0; j < cn; ++j) {

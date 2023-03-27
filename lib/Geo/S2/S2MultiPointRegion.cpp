@@ -29,23 +29,16 @@
 #include <s2/s2latlng.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2latlng_rect_bounder.h>
-#include <s2/encoded_s2point_vector.h>
 
 namespace arangodb::geo {
 
 S2Point S2MultiPointRegion::GetCentroid() const noexcept {
-  // TODO(MBkkt) was comment "probably broken"
-  //  It's not really broken, it's mathematically correct,
-  //  but I think it can be incorrect because of limited double precision
-  //  For example maybe Kahan summation algorithm for each coordinate
-  //  and then divide on points.size()
-  auto c = S2LatLng::FromDegrees(0.0, 0.0);
-  auto const invNumPoints = 1.0 / static_cast<double>(_impl.size());
+  // copied from s2: S2Point GetCentroid(const S2Shape& shape);
+  S2Point centroid;
   for (auto const& point : _impl) {
-    c = c + invNumPoints * S2LatLng{point};
+    centroid += point;
   }
-  TRI_ASSERT(c.is_valid());
-  return c.ToPoint();
+  return centroid;
 }
 
 S2Region* S2MultiPointRegion::Clone() const {
@@ -61,6 +54,7 @@ S2LatLngRect S2MultiPointRegion::GetRectBound() const {
   for (auto const& point : _impl) {
     bounder.AddPoint(point);
   }
+  // TODO(MBkkt) Maybe cache it?
   return bounder.GetBound();
 }
 
@@ -84,17 +78,28 @@ bool S2MultiPointRegion::Contains(S2Point const& p) const {
   return false;
 }
 
-void S2MultiPointRegion::Encode(Encoder* const encoder,
-                                s2coding::CodingHint hint) const {
-  s2coding::EncodeS2PointVector(_impl, hint, encoder);
+using namespace coding;
+
+void S2MultiPointRegion::Encode(Encoder& encoder, Options options) const {
+  TRI_ASSERT(isOptionsS2(options));
+  TRI_ASSERT(options != Options::kS2PointRegionCompact ||
+             options != Options::kS2PointShapeCompact)
+      << "Not implemented yet.";
+  TRI_ASSERT(encoder.avail() >= sizeof(uint8_t) + Varint::kMax64);
+  encoder.put8(toTag(Type::kMultiPoint, options));
+  encoder.put_varint64(_impl.size());
+  encodeVertices(encoder, _impl);
 }
 
-bool S2MultiPointRegion::Decode(Decoder* const decoder) {
-  s2coding::EncodedS2PointVector impl;
-  if (!impl.Init(decoder)) {
+bool S2MultiPointRegion::Decode(Decoder& decoder, uint8_t tag) {
+  uint64 size = 0;
+  if (!decoder.get_varint64(&size)) {
     return false;
   }
-  _impl = impl.Decode();
+  _impl.resize(size);
+  if (!decodeVertices(decoder, _impl, tag)) {
+    return false;
+  }
   return true;
 }
 

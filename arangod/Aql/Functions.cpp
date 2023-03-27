@@ -49,6 +49,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
@@ -5492,20 +5493,33 @@ AqlValue functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
   auto& server = expressionContext->vocbase().server();
 
   double const sleepValue = value.toDouble();
-  auto now = std::chrono::steady_clock::now();
-  auto const endTime = now + std::chrono::milliseconds(
-                                 static_cast<int64_t>(sleepValue * 1000.0));
 
-  while (now < endTime) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (sleepValue < 0.010) {
+    // less than 10 ms sleep time
+    std::this_thread::sleep_for(std::chrono::duration<double>(sleepValue));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
-    now = std::chrono::steady_clock::now();
+  } else {
+    auto now = std::chrono::steady_clock::now();
+    auto const endTime = now + std::chrono::milliseconds(
+                                   static_cast<int64_t>(sleepValue * 1000.0));
+
+    while (now < endTime) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+      if (expressionContext->killed()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      } else if (server.isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      now = std::chrono::steady_clock::now();
+    }
   }
+
   return AqlValue(AqlValueHintNull());
 }
 
@@ -9158,6 +9172,24 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
+  // TODO: As soon as we switch to the actor framework, we do not need the
+  // differentiation between coordinator <-> dbserver anymore. This can be
+  // removed as well.
+  /*
+     * TODO: Enable this as soon as we do use the actor framework fully when
+     *  executing pregel.
+    auto pregelResults = feature.getResults(execNr);
+    if (!pregelResults.ok()) {
+      registerWarning(expressionContext, AFN, pregelResults.errorNumber());
+      return AqlValue(AqlValueHintEmptyArray());
+    }
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
+    }
+  */
+
+  // TODO: This block can be removed.
   if (ServerState::instance()->isCoordinator()) {
     auto c = feature.conductor(execNr);
     if (!c) {
@@ -9165,7 +9197,6 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder, withId);
-
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
     if (!worker) {
@@ -9178,6 +9209,7 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       builder.add(VPackArrayIterator(results.results.slice()));
     }
   }
+  // TODO: This block can be removed.
 
   if (builder.isEmpty()) {
     return AqlValue(AqlValueHintEmptyArray());
