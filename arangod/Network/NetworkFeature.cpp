@@ -340,7 +340,9 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   } else {
     LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
         << "have leased connection to '" << endpoint
-        << "' came from pool: " << isFromPool;
+        << "' came from pool: " << isFromPool
+        << ", url: " << to_string(req->header.restVerb) << " "
+        << req->header.path << ", request ptr: " << (void*)req.get();
   }
   conn->sendRequest(std::move(req), [this, &pool, isFromPool,
                                      cb = std::move(cb),
@@ -362,13 +364,22 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       LOG_TOPIC("effc0", ERR, Logger::COMMUNICATION)
           << "Request was sent to fuerte, but was never received there, "
              "endpoint:"
-          << endpoint;
+          << endpoint << ", request ptr: " << (void*)req.get()
+          << ", response ptr: " << (void*)res.get()
+          << ", error: " << uint16_t(err);
       TRI_ASSERT(false);  // should never happen
     } else if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
-      LOG_TOPIC("effc1", WARN, Logger::COMMUNICATION)
-          << "Request was queued in fuerte, but the sending never started, "
-             "endpoint:"
-          << endpoint;
+      if (err != fuerte::Error::ConnectionClosed) {
+        // If the connection is already in closed state, we do not even
+        // queue the item, likewise, if the queue is full, but we do want
+        // to see this, if it happens.
+        LOG_TOPIC("effc1", WARN, Logger::COMMUNICATION)
+            << "Request was queued in fuerte, but the sending never started, "
+               "endpoint:"
+            << endpoint << ", request ptr: " << (void*)req.get()
+            << ", response ptr: " << (void*)res.get()
+            << ", error: " << uint16_t(err);
+      }
     } else {
       auto dur = req->timeAsyncWrite() - req->timeReceived();
       if (dur > std::chrono::seconds(1)) {
@@ -376,15 +387,21 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             << "Time to dequeue request to " << endpoint << ": "
             << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                    .count()
-            << " seconds.";
+            << " seconds, endpoint: " << endpoint
+            << ", request ptr: " << (void*)req.get()
+            << ", response ptr: " << (void*)res.get()
+            << ", error: " << uint16_t(err);
       }
       if (req->timeSent().time_since_epoch().count() == 0) {
         LOG_TOPIC("effc3", WARN, Logger::COMMUNICATION)
             << "Time to dequeue request to " << endpoint << ": "
             << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                    .count()
-            << " seconds, however, the sending has not yet finished so far!";
-
+            << " seconds, however, the sending has not yet finished so far"
+            << ", endpoint: " << endpoint
+            << ", request ptr: " << (void*)req.get()
+            << ", response ptr: " << (void*)res.get()
+            << ", error: " << uint16_t(err);
       } else {
         dur = req->timeSent() - req->timeAsyncWrite();
         if (dur > std::chrono::seconds(3)) {
@@ -392,7 +409,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
               << "Time to send request to " << endpoint << ": "
               << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                      .count()
-              << " seconds.";
+              << " seconds, endpoint: " << endpoint
+              << ", request ptr: " << (void*)req.get()
+              << ", response ptr: " << (void*)res.get()
+              << ", error: " << uint16_t(err);
         }
         dur = std::chrono::steady_clock::now() - req->timeSent();
         if (dur > std::chrono::seconds(60)) {
@@ -401,7 +421,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
               << " until now was "
               << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                      .count()
-              << " seconds.";
+              << " seconds, endpoint: " << endpoint
+              << ", request ptr: " << (void*)req.get()
+              << ", response ptr: " << (void*)res.get()
+              << ", error: " << uint16_t(err);
         }
       }
     }
