@@ -124,7 +124,7 @@ struct ExternalProcess : public ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern std::vector<ExternalProcess*> ExternalProcesses;
-extern arangodb::Mutex ExternalProcessesLock;
+extern std::mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status

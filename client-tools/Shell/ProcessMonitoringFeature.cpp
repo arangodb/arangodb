@@ -47,7 +47,7 @@ namespace arangodb {
 static constexpr auto kTimeoutMs = std::chrono::milliseconds(100);
 
 void ProcessMonitoringFeature::addMonitorPID(ExternalId const& pid) {
-  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+  std::lock_guard guard{_monitoredExternalProcessesLock};
   _monitoredProcesses.push_back(pid);
 }
 
@@ -79,7 +79,7 @@ void ProcessMonitoringFeature::removeMonitorPID(ExternalId const& pid) {
 
 std::optional<ExternalProcessStatus>
 ProcessMonitoringFeature::getHistoricStatus(TRI_pid_t pid) {
-  MUTEX_LOCKER(mutexLocker, _monitoredExternalProcessesLock);
+  std::lock_guard guard{_monitoredExternalProcessesLock};
   auto it = _exitedExternalProcessStatus.find(pid);
   if (it == _exitedExternalProcessStatus.end()) {
     return std::nullopt;
