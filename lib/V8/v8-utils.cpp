@@ -80,7 +80,6 @@
 #include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/memory.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
 #include "Basics/socket-utils.h"
