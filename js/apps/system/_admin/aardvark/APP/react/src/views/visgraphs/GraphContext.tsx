@@ -109,7 +109,7 @@ export const putUserConfig = async ({
   const paramKey = `${window.frontendConfig.db}_${graphName}`;
 
   const finalConfig = {
-    ...fullConfig[paramKey],
+    ...fullConfig,
     [paramKey]: {
       ...params
     }
