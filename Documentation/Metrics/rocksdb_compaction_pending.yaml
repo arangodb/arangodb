@@ -11,6 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  This metric exhibits the RocksDB metric "compaction-pending".
+  This metric exhibits the RocksDB metric `compaction-pending`.
   It shows the number of column families for which at least one compaction
   is pending.
