@@ -171,7 +171,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
                        this->state->specifications.executionNumber);
     if (this->state->executionState->canBeCanceled()) {
       changeState(std::make_unique<Canceled>(*this->state));
-      sendMessages();
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
