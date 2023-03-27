@@ -37,6 +37,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <filesystem>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -91,6 +92,11 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
          isOffsetInfo(*static_cast<aql::Function const*>(node.getData()));
 }
 
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database);
+
+void cleanupDatabase(TRI_vocbase_t& database);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,13 +106,13 @@ class IResearchFeature final : public ArangodFeature {
 
   explicit IResearchFeature(Server& server);
 
-  void beginShutdown() override;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
-  void unprepare() override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void beginShutdown() final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void prepare() final;
+  void start() final;
+  void stop() final;
+  void unprepare() final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief report progress during recovery phase

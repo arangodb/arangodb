@@ -27,8 +27,8 @@ The response is a JSON object with the following attributes:
 - *state*: additional leader state information (only present if the
   `state` URL parameter was set to `true` in the request)
 
-**Note**: on a Coordinator, this request must have the query parameter
-*DBserver* which must be an ID of a DB-Server.
+**Note**: on a Coordinator, this request must have a `DBserver`
+query parameter which must be an ID of a DB-Server.
 The very same request is forwarded synchronously to that DB-Server.
 It is an error if this attribute is not bound in the Coordinator case.
 
@@ -38,7 +38,7 @@ It is an error if this attribute is not bound in the Coordinator case.
 is returned if the batch was created successfully.
 
 @RESTRETURNCODE{400}
-is returned if the ttl value is invalid or if *DBserver* attribute
+is returned if the TTL value is invalid or if the `DBserver` attribute
 is not specified or illegal on a Coordinator.
 
 @RESTRETURNCODE{405}

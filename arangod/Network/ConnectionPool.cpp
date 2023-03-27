@@ -237,9 +237,6 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(
       builder.authenticationType(fuerte::AuthenticationType::Jwt);
     }
   }
-  //  builder.onFailure([this](fuerte::Error error,
-  //                           const std::string& errorMessage) {
-  //  });
   return builder.connect(_loop);
 }
 
@@ -250,7 +247,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   milliseconds const ttl(_config.idleConnectionMilli);
 
   auto start = steady_clock::now();
-  isFromPool = true;  // Will revert for new collections
+  isFromPool = true;  // Will revert for new connections
 
   // exclusively lock the bucket
   std::unique_lock<std::mutex> guard(bucket.mutex);

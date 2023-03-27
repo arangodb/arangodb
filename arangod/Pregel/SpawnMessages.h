@@ -34,6 +34,7 @@ template<typename Inspector>
 auto inspect(Inspector& f, SpawnStart& x) {
   return f.object(x).fields();
 }
+
 struct SpawnWorker {
   actor::ServerID destinationServer;
   actor::ActorPID conductor;
@@ -45,14 +46,22 @@ auto inspect(Inspector& f, SpawnWorker& x) {
                             f.field("conductor", x.conductor),
                             f.field("message", x.message));
 }
-struct SpawnMessages : std::variant<SpawnStart, SpawnWorker> {
-  using std::variant<SpawnStart, SpawnWorker>::variant;
+
+struct SpawnCleanup {};
+template<typename Inspector>
+auto inspect(Inspector& f, SpawnCleanup& x) {
+  return f.object(x).fields();
+}
+
+struct SpawnMessages : std::variant<SpawnStart, SpawnWorker, SpawnCleanup> {
+  using std::variant<SpawnStart, SpawnWorker, SpawnCleanup>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<SpawnStart>("Start"),
-      arangodb::inspection::type<SpawnWorker>("SpawnWorker"));
+      arangodb::inspection::type<SpawnWorker>("SpawnWorker"),
+      arangodb::inspection::type<SpawnCleanup>("SpawnCleanup"));
 }
 
 }  // namespace arangodb::pregel::message

@@ -1,47 +1,31 @@
 import React, { useState } from "react";
-import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormState } from "./constants";
 import { pick } from "lodash";
-import { IconButton } from "../../components/arango/buttons";
 import { mutate } from "swr";
-import { useHistory, useLocation } from "react-router-dom";
+import { DeleteViewModal } from "./DeleteViewModal";
+import { CheckIcon, DeleteIcon } from "@chakra-ui/icons";
+import { Button } from "@chakra-ui/react";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
 
-type ButtonProps = {
+type DeleteButtonWrapProps = {
   view: FormState;
+  disabled?: boolean
 };
 
-type NavButtonProps = {
-  disabled?: boolean;
-  arrow?: string;
-  text?: string;
-};
-
-export const NavButton = ({ disabled, arrow = 'up', text = 'Up' }: NavButtonProps) => {
-  const history = useHistory();
-  const location = useLocation();
-
-  const up = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
-
-  return <IconButton icon={`arrow-${arrow}`} onClick={() => history.push(up)} type={"default"}
-                     disabled={disabled}>{text}</IconButton>;
-};
-
-type SaveButtonProps = ButtonProps & {
+type SaveButtonProps = {
+  view: FormState
   disabled?: boolean;
   oldName?: string;
-  menu?: string;
   setChanged: (changed: boolean) => void;
 };
 
-export const SaveButton = ({
+export const SaveButtonWrap = ({
                              disabled,
                              view,
                              oldName,
-                             menu,
                              setChanged
                            }: SaveButtonProps) => {
   const handleSave = async () => {
@@ -95,9 +79,6 @@ export const SaveButton = ({
             await mutate(path);
           } else {
             let newRoute = `#view/${view.name}`;
-            if (menu) {
-              newRoute += `/${menu}`;
-            }
             window.App.navigate(newRoute, {
               trigger: true,
               replace: true
@@ -118,14 +99,21 @@ export const SaveButton = ({
     }
   };
 
-
-  return <IconButton disabled={disabled} icon={"save"} onClick={handleSave} type={"success"}
-    style={{ float: 'right', marginRight: '10px' }}>
-    Save View
-  </IconButton>;
+  return (
+    <Button
+      size="xs"
+      colorScheme="green"
+      leftIcon={<CheckIcon />}
+      onClick={handleSave}
+      isDisabled={disabled}
+      marginRight="3"
+    >
+      Save view
+    </Button>
+  )
 };
 
-export const DeleteButton = ({ view }: ButtonProps) => {
+export const DeleteButtonWrap = ({ view, disabled }: DeleteButtonWrapProps) => {
   const [show, setShow] = useState(false);
 
 
@@ -157,41 +145,21 @@ export const DeleteButton = ({ view }: ButtonProps) => {
 
   return (
     <>
-      <IconButton
-        icon={"trash-o"}
+      <Button
+        size="xs"
+        colorScheme="red"
+        leftIcon={<DeleteIcon />}
         onClick={() => setShow(true)}
-        type={"danger"}
-        style={{
-          float: 'right'
-        }}
+        isDisabled={disabled}
       >
         Delete
-      </IconButton>
-      <Modal
-        show={show}
-        setShow={setShow}
-        cid={`modal-content-delete-${view.name}`}
-      >
-        <ModalHeader title={`Delete View ${view.name}?`}/>
-        <ModalBody>
-          <p>
-            Are you sure? Clicking on the <b>Delete</b> button will permanently
-            delete the View.
-          </p>
-        </ModalBody>
-        <ModalFooter>
-          <button className="button-close" onClick={() => setShow(false)}>
-            Close
-          </button>
-          <button
-            className="button-danger"
-            style={{ float: "right" }}
-            onClick={handleDelete}
-          >
-            Delete
-          </button>
-        </ModalFooter>
-      </Modal>
+      </Button>
+      <DeleteViewModal
+        isOpen={show}
+        onClose={() => setShow(false)}
+        view={view}
+        onDelete={handleDelete}
+      />
     </>
   );
 };

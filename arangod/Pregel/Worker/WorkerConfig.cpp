@@ -45,7 +45,6 @@ std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _executionNumber = params.executionNumber;
   _coordinatorId = params.coordinatorId;
-  _useMemoryMaps = params.useMemoryMaps;
   _globalShardIDs = params.allShards;
 
   _parallelism = params.parallelism;
