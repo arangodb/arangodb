@@ -28,7 +28,7 @@
 #include <set>
 #include <thread>
 #include <utility>
-#include <boost/fiber/detail/cpu_relax.hpp>
+#include "Basics/cpu-relax.h"
 
 #include "Cache/Manager.h"
 
@@ -208,7 +208,7 @@ void Manager::shutdown() {
 
     while (globalProcessRunning()) {
       // wait for rebalancer and migration tasks to complete
-      cpu_relax();
+      basics::cpu_relax();
     }
 
     while (!_caches.empty()) {

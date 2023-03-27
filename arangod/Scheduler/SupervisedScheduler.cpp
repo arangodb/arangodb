@@ -28,7 +28,7 @@
 
 #include <velocypack/Value.h>
 
-#include <boost/fiber/detail/cpu_relax.hpp>
+#include "Basics/cpu-relax.h"
 
 #include "SupervisedScheduler.h"
 
@@ -825,7 +825,7 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     }
 
     do {
-      cpu_relax();
+      basics::cpu_relax();
 
       work = checkAllQueues(maxCheckedQueue);
       if (work != nullptr) {

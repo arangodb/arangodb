@@ -24,7 +24,7 @@
 #include <atomic>
 #include <cstdint>
 
-#include <boost/fiber/detail/cpu_relax.hpp>
+#include "Basics/cpu-relax.h"
 
 #include "Cache/BucketState.h"
 #include "Basics/Common.h"
@@ -67,7 +67,7 @@ bool BucketState::lock(std::uint64_t maxTries) noexcept {
       }
     }
     attempt++;
-    cpu_relax();
+    basics::cpu_relax();
     // TODO: exponential back-off for failure?
   }
 
