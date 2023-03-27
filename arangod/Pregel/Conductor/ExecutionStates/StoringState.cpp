@@ -63,7 +63,7 @@ auto Storing::receive(actor::ActorPID sender,
   respondedWorkers.emplace(sender);
 
   if (respondedWorkers == conductor.workers) {
-    return std::make_unique<Done>();
+    return std::make_unique<Done>(conductor);
   }
 
   return std::nullopt;

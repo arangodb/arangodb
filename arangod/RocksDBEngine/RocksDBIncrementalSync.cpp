@@ -1017,7 +1017,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           documentsFound + stats.numDocsInserted -
           (stats.numDocsRemoved - numberDocumentsRemovedBeforeStart);
       uint64_t numberDocumentsDueToCounter =
-          col->numberDocuments(trx.get(), transaction::CountType::Normal);
+          physical->numberDocuments(trx.get());
       syncer.setProgress(
           std::string("number of remaining documents in collection '") +
           col->name() + "': " + std::to_string(numberDocumentsAfterSync) +

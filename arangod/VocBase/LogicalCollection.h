@@ -159,8 +159,6 @@ class LogicalCollection : public LogicalDataSource {
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
 
-  uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
-
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const noexcept { return _waitForSync; }

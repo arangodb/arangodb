@@ -517,7 +517,7 @@ class IResearchDataStore {
 };
 
 std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
-                                       IResearchDataStore const& link);
+                                       IResearchDataStore const& dataStore);
 
 }  // namespace iresearch
 }  // namespace arangodb
