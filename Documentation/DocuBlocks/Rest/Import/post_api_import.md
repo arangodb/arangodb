@@ -5,12 +5,15 @@
 @RESTHEADER{POST /_api/import,Import JSON data as documents, RestImportHandler}
 
 @RESTDESCRIPTION
-Creates documents in the collection identified by `collection-name`.
+Load JSON data and store it as documents into the specified collection.
 
 The request body can have different JSON formats:
 - One JSON object per line (JSONL)
 - A JSON array of objects
 - One JSON array per line (CSV-like)
+
+If you import documents into edge collections, all documents require a `_from`
+and a `_to` attribute.
 
 @RESTALLBODYPARAM{documents,string,required}
 The body must either be a JSON-encoded array of objects or a string with
@@ -19,13 +22,15 @@ multiple JSON objects separated by newlines.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{collection,string,required}
-The collection name.
+The name of the target collection. The collection needs to exist already.
 
 @RESTQUERYPARAM{type,string,optional}
 Determines how the body of the request is interpreted.
 
 - `documents`: JSON Lines (JSONL) format. Each line is expected to be one
-  JSON object. Example:
+  JSON object.
+
+  Example:
 
   ```json
   {"_key":"john","name":"John Smith","age":35}
@@ -33,7 +38,14 @@ Determines how the body of the request is interpreted.
   ```
 
 - `array` (or `list`): JSON format. The request body is expected to be a
-  JSON array of objects. Example:
+  JSON array of objects. This format requires ArangoDB to parse the complete
+  array and keep it in memory for the duration of the import. This is more
+  resource-intensive than the line-wise JSONL processing.
+  
+  Any whitespace outside of strings is ignored, which means the JSON data can be
+  a single line or be formatted as multiple lines.
+
+  Example:
 
   ```json
   [
@@ -49,7 +61,9 @@ Determines how the body of the request is interpreted.
   
   The first line is an array of strings that defines the attribute keys. The
   subsequent lines are arrays with the attribute values. The keys and values
-  are matched by the order of the array elements. Example:
+  are matched by the order of the array elements.
+  
+  Example:
 
   ```json
   ["_key","name","age"]
@@ -94,13 +108,13 @@ import document in the request contains the `_key` attribute. `update` and
 `replace` may also fail because of secondary unique key constraint violations.
 
 @RESTQUERYPARAM{complete,boolean,optional}
-If set to `true` or `yes`, it will make the whole import fail if any error
-occurs. Otherwise the import will continue even if some documents cannot
-be imported.
+If set to `true`, the whole import fails if any error occurs. Otherwise, the
+import continues even if some documents are invalid and cannot be imported,
+skipping the problematic documents.
 
 @RESTQUERYPARAM{details,boolean,optional}
-If set to `true` or `yes`, the result will include an attribute `details`
-with details about documents that could not be imported.
+If set to `true`, the result includes a `details` attribute with information
+about documents that could not be imported.
 
 @RESTRETURNCODES
 
