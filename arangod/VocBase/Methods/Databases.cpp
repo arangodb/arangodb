@@ -341,6 +341,17 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
     }
 
     CreateDatabaseInfo createInfo(server, exec);
+    if (ServerState::instance()->isDBServer()) {
+      // if we are on a DB server, we are likely called by the maintenance,
+      // and validation of database creation should have happened on the
+      // coordinator already.
+      // we should not make the validation fail on the DB server only,
+      // because that can lead to all sorts of problems later on if _new_
+      // DB servers are added that validate _existing_ databases
+      // differently.
+      createInfo.strictValidation(false);
+    }
+
     res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
