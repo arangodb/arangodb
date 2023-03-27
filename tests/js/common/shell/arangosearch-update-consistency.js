@@ -2,15 +2,10 @@
 /*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
 ///
-/// @file
+/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 ///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Apache License, Version 2.0 (the "License")
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
@@ -22,10 +17,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Valery Mironov, Andrei Lobov
-/// @author Copyright 2023, triAGENS GmbH, Cologne, Germany
+/// @author Valery Mironov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");

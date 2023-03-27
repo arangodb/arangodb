@@ -152,6 +152,7 @@ DECLARE_COUNTER(arangodb_vst_connections_total,
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
+      _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
 #endif
@@ -209,12 +210,40 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("no-server", "server.rest-server");
 
   options
-      ->addOption("--server.enable-telemetrics-api",
+      ->addOption("--server.telemetrics-api",
                   "Whether to enable the telemetrics API.",
                   new options::BooleanParameter(&_enableTelemetrics),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
+
+  options
+      ->addOption(
+          "--server.telemetrics-api-max-requests",
+          "Maximum number of requests from the arangosh that the telemetrics "
+          "API will respond without rate-limiting.",
+          new options::UInt64Parameter(&_telemetricsMaxRequestsPerInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(This option controls the maximum 
+number of requests that the telemetrics API will respond to before
+it rate-limits. Note that only requests from the arangosh to the
+telemetrics API will be rate-limited, but not any other requests
+to the telemetrics API.
+Requests to the telemetrics API will be counted for every 2 hour
+interval, and then resetted. That means after a period of at most
+2 hours, the telemetrics API will become usable again.
+The purpose of this option is to keep a deployment from being
+overwhelmed by too many telemetrics requests, issued by arangosh
+instances that are used for batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
@@ -389,6 +418,11 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
+
+  if (ServerState::instance()->isAgent()) {
+    // telemetrics automatically and always turned off on agents
+    _enableTelemetrics = false;
+  }
 
   if (ServerState::instance()->isDBServer() &&
       !server().options()->processingResult().touched(

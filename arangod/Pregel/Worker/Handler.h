@@ -26,11 +26,15 @@
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Logger/LogMacros.h"
+#include "Pregel/GraphStore/GraphLoader.h"
+#include "Pregel/GraphStore/GraphStorer.h"
+#include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/State.h"
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ResultMessages.h"
+#include "Pregel/SpawnMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -65,42 +69,37 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->outCache->setResponsibleActorPerShard(
         msg.responsibleActorPerShard);
 
-    std::function<void()> statusUpdateCallback =
-        [/*self = shared_from_this(),*/ this] {
-          // TODO
-          this->template dispatch<conductor::message::ConductorMessages>(
-              this->state->conductor,
-              conductor::message::StatusUpdate{
-                  .executionNumber = this->state->config->executionNumber(),
-                  .status = this->state->observeStatus()});
-        };
-
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
-    auto graphLoaded = [/*self = shared_from_this(),*/ this]()
-        -> ResultT<conductor::message::GraphLoaded> {
+    auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
+      std::function<void()> statusUpdateCallback = [] {
+        // TODO GORDO-1584 send update to status actor
+        // this->template dispatch<conductor::message::ConductorMessages>(
+        //     this->state->conductor,
+        //     conductor::message::StatusUpdate{
+        //         .executionNumber = this->state->config->executionNumber(),
+        //         .status = this->state->observeStatus()});
+      };
       try {
-        // TODO GORDO-1546
-        // add graph store to state
-        // this->state->graphStore->loadShards(_config, statusUpdateCallback,
-        // []() {});
+        auto loader = GraphLoader(this->state->config,
+                                  this->state->algorithm->inputFormat(),
+                                  std::move(statusUpdateCallback));
+        this->state->quiver = loader.load();
+
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
-            .vertexCount = 0,  // TODO GORDO-1546
-                               // this->state->graphStore->localVertexCount(),
-            .edgeCount = 0,    // TODO GORDO-1546
-                               // this->state->_graphStore->localEdgeCount()
-        }};
+            .vertexCount = this->state->quiver->numberOfVertices(),
+            .edgeCount = this->state->quiver->numberOfEdges()}};
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_INTERNAL,
-            fmt::format("caught exception in loadShards: {}", ex.what())};
+            fmt::format("caught exception when loading graph: {}", ex.what())};
       } catch (...) {
         return Result{TRI_ERROR_INTERNAL,
-                      "caught unknown exception exception in loadShards"};
+                      "caught unknown exception when loading graph"};
       }
     };
     this->template dispatch<conductor::message::ConductorMessages>(
@@ -138,8 +137,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_gss = this->state->config->globalSuperstep();
     ctx->_lss = this->state->config->localSuperstep();
     ctx->_context = this->state->workerContext.get();
-    // TODO GOROD-1546
-    // ctx->_graphStore = this->state->graphStore.get();
+    ctx->_quiver = this->state->quiver;
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
@@ -162,33 +160,32 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     vertexComputation->_cache = outCache;
 
     size_t activeCount = 0;
-    // TODO GOROD-1546
-    // for (auto& vertexEntry : this->state->graphStore->quiver()) {
-    //   MessageIterator<M> messages = this->state->readCache->getMessages(
-    //       vertexEntry.shard(), vertexEntry.key());
-    //   this->state->currentGssObservables.messagesReceived += messages.size();
-    //   this->state->currentGssObservables.memoryBytesUsedForMessages +=
-    //       messages.size() * sizeof(M);
+    for (auto& vertexEntry : *this->state->quiver) {
+      MessageIterator<M> messages = this->state->readCache->getMessages(
+          vertexEntry.shard(), vertexEntry.key());
+      this->state->currentGssObservables.messagesReceived += messages.size();
+      this->state->currentGssObservables.memoryBytesUsedForMessages +=
+          messages.size() * sizeof(M);
 
-    //   if (messages.size() > 0 || vertexEntry.active()) {
-    //     vertexComputation->_vertexEntry = &vertexEntry;
-    //     vertexComputation->compute(messages);
-    //     if (vertexEntry.active()) {
-    //       activeCount++;
-    //     }
-    //   }
+      if (messages.size() > 0 || vertexEntry.active()) {
+        vertexComputation->_vertexEntry = &vertexEntry;
+        vertexComputation->compute(messages);
+        if (vertexEntry.active()) {
+          activeCount++;
+        }
+      }
 
-    //   ++this->state->currentGssObservables.verticesProcessed;
-    //   if (this->state->currentGssObservables.verticesProcessed %
-    //           Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-    //       0) {
-    //     this->dispatch(
-    //         this->state->conductor,
-    //         conductor::message::StatusUpdate{
-    //             .executionNumber = this->state->config->executionNumber(),
-    //             .status = this->state->observeStatus()});
-    //   }
-    // }
+      ++this->state->currentGssObservables.verticesProcessed;
+      if (this->state->currentGssObservables.verticesProcessed %
+              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+          0) {
+        this->dispatch(
+            this->state->conductor,
+            conductor::message::StatusUpdate{
+                .executionNumber = this->state->config->executionNumber(),
+                .status = this->state->observeStatus()});
+      }
+    }
 
     outCache->flushMessages();
 
@@ -252,8 +249,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->messageStats,
         verticesProcessed.sendCountPerActor,
         verticesProcessed.activeCount,
-        0,  // TODO _graphStore->localVertexCount(),
-        0,  // TODO _graphStore->localEdgeCount(),
+        this->state->quiver->numberOfVertices(),
+        this->state->quiver->numberOfEdges(),
         aggregators};
     LOG_TOPIC("ade5b", DEBUG, Logger::PREGEL)
         << fmt::format("Finished GSS: {}", gssFinishedEvent);
@@ -346,61 +343,99 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   // ------ end computing ----
 
+  auto operator()(message::Store msg) -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("980d9", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is storing", this->self);
+
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
+
+    auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
+      std::function<void()> statusUpdateCallback = [] {
+        // TODO GORDO-1584 send update to status actor
+        // this->template dispatch<conductor::message::ConductorMessages>(
+        //     this->state->conductor,
+        //     conductor::message::StatusUpdate{
+        //         .executionNumber = this->state->config->executionNumber(),
+        //         .status = this->state->observeStatus()});
+      };
+      try {
+        auto storer = GraphStorer<V, E>(this->state->config,
+                                        this->state->algorithm->inputFormat(),
+                                        this->state->config->globalShardIDs(),
+                                        std::move(statusUpdateCallback));
+        storer.store(this->state->quiver);
+        return conductor::message::Stored{};
+      } catch (std::exception const& ex) {
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("caught exception when storing graph: {}", ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when storing graph"};
+      }
+    };
+
+    // TODO GORDO-1510
+    // _feature.metrics()->pregelWorkersStoringNumber->fetch_sub(1);
+
+    this->finish();
+
+    this->template dispatch<conductor::message::ConductorMessages>(
+        this->state->conductor, graphStored());
+
+    return std::move(this->state);
+  }
+
   auto operator()(message::ProduceResults msg)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    std::string tmp;
-
-    VPackBuilder results;
-    results.openArray(/*unindexed*/ true);
-    // TODO: re-enable as soon as we do have access to the config and graphstore
-    //  Ticket: [GORDO-1546] see details here.
-    /*for (auto& vertex : this->state->graphStore->quiver()) {
-      TRI_ASSERT(vertex.shard().value <
-                 this->state->config->globalShardIDs().size());
-      ShardID const& shardId =
-          this->state->config->globalShardID(vertex.shard());
-
-      results.openObject(true);
-
-      if (msg.withID) {
-        std::string const& cname =
-            this->state->config->shardIDToCollectionName(shardId);
-        if (!cname.empty()) {
-          tmp.clear();
-          tmp.append(cname);
-          tmp.push_back('/');
-          tmp.append(vertex.key().data(), vertex.key().size());
-          results.add(StaticStrings::IdString, VPackValue(tmp));
-        }
+    auto getResults = [this, msg]() -> ResultT<PregelResults> {
+      std::function<void()> statusUpdateCallback = [] {
+        // TODO GORDO-1584 send update to status actor
+        // this->template dispatch<conductor::message::ConductorMessages>(
+        //     this->state->conductor,
+        //     conductor::message::StatusUpdate{
+        //         .executionNumber = this->state->config->executionNumber(),
+        //         .status = this->state->observeStatus()});
+      };
+      try {
+        auto storer =
+            GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
+                                          this->state->algorithm->inputFormat(),
+                                          std::move(statusUpdateCallback));
+        storer.store(this->state->quiver);
+        return PregelResults{*storer.result};
+      } catch (std::exception const& ex) {
+        return Result{TRI_ERROR_INTERNAL,
+                      fmt::format("caught exception when receiving results: {}",
+                                  ex.what())};
+      } catch (...) {
+        return Result{TRI_ERROR_INTERNAL,
+                      "caught unknown exception when receiving results"};
       }
-
-      results.add(StaticStrings::KeyString,
-                  VPackValuePair(vertex.key().data(), vertex.key().size(),
-                                 VPackValueType::String));
-
-      V const& data = vertex.data();
-      if (auto res =
-              this->state->graphStore->graphFormat()->buildVertexDocument(
-                  results, &data);
-          !res) {
-        std::string const failureString = "Failed to build vertex document";
-        LOG_TOPIC("eee4d", ERR, Logger::PREGEL) << failureString;
-        this->template dispatch<message::WorkerMessages>(
-            this->state->resultActor,
-            pregel::message::SaveResults{
-                .results = Result(TRI_ERROR_INTERNAL, failureString)});
-        return;
-      }
-      results.close();
-    }*/
-    results.close();
-
+    };
+    auto results = getResults();
     this->template dispatch<pregel::message::ResultMessages>(
         this->state->resultActor,
-        pregel::message::SaveResults{.results = {PregelResults{results}}});
+        pregel::message::SaveResults{.results = {results}});
     this->template dispatch<pregel::conductor::message::ConductorMessages>(
-        this->state->conductor, pregel::conductor::message::ResultCreated{
-                                    .results = {PregelResults{results}}});
+        this->state->conductor,
+        pregel::conductor::message::ResultCreated{.results = {results}});
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Cleanup msg)
+      -> std::unique_ptr<WorkerState<V, E, M>> {
+    LOG_TOPIC("664f5", INFO, Logger::PREGEL)
+        << fmt::format("Worker Actor {} is cleaned", this->self);
+
+    this->finish();
+
+    this->template dispatch<pregel::message::SpawnMessages>(
+        this->state->spawnActor, pregel::message::SpawnCleanup{});
+    this->template dispatch<pregel::conductor::message::ConductorMessages>(
+        this->state->conductor, pregel::conductor::message::CleanupFinished{});
 
     return std::move(this->state);
   }

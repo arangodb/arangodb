@@ -212,7 +212,9 @@ module.exports = {
                       }
                     }
                   }
-                ]
+                ],
+                ["@babel/plugin-proposal-optional-chaining"],
+                ["@babel/plugin-proposal-nullish-coalescing-operator"]
               ],
               // This is a feature of `babel-loader` for webpack (not Babel itself).
               // It enables caching results in ./node_modules/.cache/babel-loader/
@@ -236,7 +238,10 @@ module.exports = {
                 [
                   require.resolve('babel-preset-react-app/dependencies'),
                   { helpers: true }
-                ]
+                ],
+              ],
+              plugins: [
+                ["@babel/plugin-proposal-nullish-coalescing-operator"]
               ],
               cacheDirectory: true,
               // Don't waste time on Gzipping the cache

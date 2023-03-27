@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
@@ -33,19 +33,18 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Storing : ExecutionState {
-  Storing(ConductorState& conductor) : conductor{conductor} {}
-  ~Storing() {}
+  Storing(ConductorState& conductor);
+  ~Storing();
+
   auto name() const -> std::string override { return "storing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  };
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
   ConductorState& conductor;
+  std::unordered_set<actor::ActorPID> respondedWorkers;
 };
 
 }  // namespace arangodb::pregel::conductor
