@@ -1303,6 +1303,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
   }
 
   // Persist our fresh status or unlink the process
+  ExternalProcess *deleteMe = nullptr;
   {
     std::lock_guard guard{ExternalProcessesLock};
 
@@ -1312,7 +1313,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         if (status->_status != TRI_EXT_RUNNING &&
             status->_status != TRI_EXT_STOPPED &&
             status->_status != TRI_EXT_TIMEOUT) {
-          delete *it;
+          deleteMe = *it;
           ExternalProcesses.erase(it);
         } else {
           (*it)->_status = status->_status;
@@ -1321,6 +1322,9 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         break;
       }
     }
+  }
+  if (deleteMe) {
+    delete deleteMe;
   }
 
   return *status;
