@@ -55,12 +55,15 @@ std::string const kTelemetricsGatheringUrl =
 namespace arangodb {
 TelemetricsHandler::TelemetricsHandler(ArangoshServer& server,
                                        bool sendToEndpoint)
-    : _server(server),
+    :
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _sendToEndpoint(sendToEndpoint)
-#endif
-{
+      _server(server),
+      _sendToEndpoint(sendToEndpoint) {
 }
+#else
+      _server(server) {
+}
+#endif
 
 TelemetricsHandler::~TelemetricsHandler() {
   if (_telemetricsThread.joinable()) {
