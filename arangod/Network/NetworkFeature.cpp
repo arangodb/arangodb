@@ -348,24 +348,61 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                         fuerte::Error err,
                                         std::unique_ptr<fuerte::Request> req,
                                         std::unique_ptr<fuerte::Response> res) {
-    if (req->timeReceived().time_since_epoch().count() != 0 &&
-        req->timeAsyncWrite().time_since_epoch().count() != 0 &&
-        req->timeSent().time_since_epoch().count() != 0) {
+    // We need to distinguish 5 cases here what could have happened:
+    // 0. Request was never posted to the queue.
+    // 1. Request was posted to queue but never dequeued.
+    // 2. Request was dequeued but it took very long.
+    // 3. Request was dequeued and asio::asyncWrite was called, but never
+    //    completed (up to the configured timeout).
+    // 4. Request was dequeued and asio::asyncWrite was called and finished,
+    //    but it took an unplausibly long time to send the data off.
+    // 5. Request was dequeued successfully and quickly sent out, but the
+    //    response took a very long time to complete.
+    if (req->timeReceived().time_since_epoch().count() == 0) {
+      LOG_TOPIC("effc0", ERR, Logger::COMMUNICATION)
+          << "Request was sent to fuerte, but was never received there, "
+             "endpoint:"
+          << endpoint;
+      TRI_ASSERT(false);  // should never happen
+    } else if (req->timeAsyncWrite().time_since_epoch().count() == 0) {
+      LOG_TOPIC("effc1", WARN, Logger::COMMUNICATION)
+          << "Request was queued in fuerte, but the sending never started, "
+             "endpoint:"
+          << endpoint;
+    } else {
       auto dur = req->timeAsyncWrite() - req->timeReceived();
       if (dur > std::chrono::seconds(1)) {
-        LOG_TOPIC("f2612", WARN, Logger::COMMUNICATION)
+        LOG_TOPIC("effc2", WARN, Logger::COMMUNICATION)
             << "Time to dequeue request to " << endpoint << ": "
             << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                    .count()
             << " seconds.";
       }
-      dur = req->timeSent() - req->timeAsyncWrite();
-      if (dur > std::chrono::seconds(3)) {
-        LOG_TOPIC("f2613", WARN, Logger::COMMUNICATION)
-            << "Time to send request to " << endpoint << ": "
+      if (req->timeSent().time_since_epoch().count() == 0) {
+        LOG_TOPIC("effc3", WARN, Logger::COMMUNICATION)
+            << "Time to dequeue request to " << endpoint << ": "
             << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                    .count()
-            << " seconds.";
+            << " seconds, however, the sending has not yet finished so far!";
+
+      } else {
+        dur = req->timeSent() - req->timeAsyncWrite();
+        if (dur > std::chrono::seconds(3)) {
+          LOG_TOPIC("effc4", WARN, Logger::COMMUNICATION)
+              << "Time to send request to " << endpoint << ": "
+              << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
+                     .count()
+              << " seconds.";
+        }
+        dur = std::chrono::steady_clock::now() - req->timeSent();
+        if (dur > std::chrono::seconds(60)) {
+          LOG_TOPIC("effc5", WARN, Logger::COMMUNICATION)
+              << "Time since request was sent out to " << endpoint
+              << " until now was "
+              << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
+                     .count()
+              << " seconds.";
+        }
       }
     }
     TRI_ASSERT(req != nullptr);
