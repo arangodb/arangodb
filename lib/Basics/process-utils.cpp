@@ -33,6 +33,7 @@
 #include <memory>
 #include <thread>
 #include <type_traits>
+#include <absl/strings/str_cat.h>
 
 #include "process-utils.h"
 #include "signals.h"
@@ -229,17 +230,15 @@ ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
 
 std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
     TRI_pid_t pid) {
-  {
-    std::lock_guard guard{ExternalProcessesLock};
-    auto found = std::find_if(
-        ExternalProcesses.begin(), ExternalProcesses.end(),
-        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
-    if (found != ExternalProcesses.end()) {
-      ExternalProcessStatus ret;
-      ret._status = (*found)->_status;
-      ret._exitStatus = (*found)->_exitStatus;
-      return std::optional<ExternalProcessStatus>{ret};
-    }
+  std::lock_guard guard{ExternalProcessesLock};
+  auto found = std::find_if(
+    ExternalProcesses.begin(), ExternalProcesses.end(),
+    [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
+  if (found != ExternalProcesses.end()) {
+    ExternalProcessStatus ret;
+    ret._status = (*found)->_status;
+    ret._exitStatus = (*found)->_exitStatus;
+    return std::optional<ExternalProcessStatus>{ret};
   }
   return std::nullopt;
 }
@@ -1088,9 +1087,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         << "checkExternal: pid not found: " << pid._pid;
     return ExternalProcessStatus{
         TRI_EXT_NOT_FOUND, -1,
-        std::string("the pid you're looking for is not in our list: ") +
-            arangodb::basics::StringUtils::itoa(
-                static_cast<int64_t>(pid._pid))};
+        absl::StrCat("the pid you're looking for is not in our list: ",pid._pid) };
   }
 
   if (status->_status == TRI_EXT_RUNNING ||
@@ -1136,8 +1133,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
     if (res == 0) {
       if (wait) {
         status->_errorMessage =
-            std::string("waitpid returned 0 for pid while it shouldn't ") +
-            arangodb::basics::StringUtils::itoa(pid._pid);
+          absl::StrCat("waitpid returned 0 for pid while it shouldn't ", pid._pid);
         if (timeoutHappened) {
           status->_status = TRI_EXT_TIMEOUT;
           status->_exitStatus = -1;
@@ -1165,9 +1161,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
       LOG_TOPIC("308ea", WARN, arangodb::Logger::FIXME)
           << "waitpid returned error for pid " << pid._pid << " (" << wait
           << "): " << TRI_last_error();
-      status->_errorMessage = std::string("waitpid returned error for pid ") +
-                              arangodb::basics::StringUtils::itoa(pid._pid) +
-                              std::string(": ") + std::string(TRI_last_error());
+      status->_errorMessage = absl::StrCat("waitpid returned error for pid ", pid._pid,
+                                           ": ", TRI_last_error());
     } else if (static_cast<TRI_pid_t>(pid._pid) ==
                static_cast<TRI_pid_t>(res)) {
       if (timeoutHappened) {
@@ -1190,9 +1185,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
       LOG_TOPIC("0ab33", WARN, arangodb::Logger::FIXME)
           << "unexpected waitpid result for pid " << pid._pid << ": " << res;
       status->_errorMessage =
-          std::string("unexpected waitpid result for pid ") +
-          arangodb::basics::StringUtils::itoa(pid._pid) + std::string(": ") +
-          arangodb::basics::StringUtils::itoa(res);
+        absl::StrCat("unexpected waitpid result for pid ", pid._pid, ": ", res);
     }
 #else
     {
@@ -1216,10 +1209,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
               << "could not wait for subprocess with pid " << pid._pid << ": "
               << windowsErrorBuf;
           status->_errorMessage =
-              std::string("could not wait for subprocess with pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(pid._pid)) +
-              windowsErrorBuf;
+            absl::StrCat("could not wait for subprocess with pid ", pid._pid,
+                         windowsErrorBuf);
           status->_exitStatus = GetLastError();
         } else if ((result == WAIT_TIMEOUT) && (timeout != 0)) {
           wantGetExitCode = false;
@@ -1251,10 +1242,8 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
                 << "could not wait for subprocess with pid " << pid._pid << ": "
                 << windowsErrorBuf;
             status->_errorMessage =
-                std::string("could not wait for subprocess with PID '") +
-                arangodb::basics::StringUtils::itoa(
-                    static_cast<int64_t>(pid._pid)) +
-                std::string("'") + windowsErrorBuf;
+              absl::StrCat("could not wait for subprocess with PID '", pid._pid,
+                           "'", windowsErrorBuf);
             status->_exitStatus = GetLastError();
           default:
             wantGetExitCode = true;
@@ -1269,9 +1258,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
           LOG_TOPIC("798af", WARN, arangodb::Logger::FIXME)
               << "exit status could not be determined for pid " << pid._pid;
           status->_errorMessage =
-              std::string("exit status could not be determined for pid ") +
-              arangodb::basics::StringUtils::itoa(
-                  static_cast<int64_t>(pid._pid));
+            absl::StrCat("exit status could not be determined for pid ", pid._pid);
           status->_exitStatus = -1;
           status->_status = TRI_EXT_NOT_STARTED;
         } else {
@@ -1296,10 +1283,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
         << "unexpected process status " << status->_status << ": "
         << status->_exitStatus;
     status->_errorMessage =
-        std::string("unexpected process status ") +
-        arangodb::basics::StringUtils::itoa(status->_status) +
-        std::string(": ") +
-        arangodb::basics::StringUtils::itoa(status->_exitStatus);
+      absl::StrCat("unexpected process status ", status->_status, ": ", status->_exitStatus);
   }
 
   // Persist our fresh status or unlink the process
@@ -1307,20 +1291,21 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait,
   {
     std::lock_guard guard{ExternalProcessesLock};
 
-    for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
-         ++it) {
-      if ((*it)->_pid == pid._pid) {
-        if (status->_status != TRI_EXT_RUNNING &&
-            status->_status != TRI_EXT_STOPPED &&
-            status->_status != TRI_EXT_TIMEOUT) {
-          deleteMe = *it;
-          std::swap(*it, ExternalProcesses.back());
-          ExternalProcesses.pop_back();
-        } else {
-          (*it)->_status = status->_status;
-          (*it)->_exitStatus = status->_exitStatus;
-        }
-        break;
+    auto found = std::find_if(
+      ExternalProcesses.begin(), ExternalProcesses.end(),
+      [pid](ExternalProcess const* m) -> bool { return 
+          (m->_pid == pid._pid);
+      });
+    if (found != ExternalProcesses.end()) {
+      if (((*found)->_status != TRI_EXT_RUNNING) &&
+          ((*found)->_status != TRI_EXT_STOPPED) &&
+          ((*found)->_status != TRI_EXT_TIMEOUT)) {
+        deleteMe = *found;
+        std::swap(*found, ExternalProcesses.back());
+        ExternalProcesses.pop_back();
+      } else {
+        (*found)->_status = status->_status;
+        (*found)->_exitStatus = status->_exitStatus;
       }
     }
   }
