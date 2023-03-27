@@ -91,7 +91,7 @@ const GraphAccordionItem = ({
   return (
     <AccordionItem borderColor="gray.300">
       <AccordionButton>
-        <Box as="span" flex="1" textAlign="left">
+        <Box as="span" flex="1" textAlign="left" fontWeight="bold">
           {title}
         </Box>
         <AccordionIcon />

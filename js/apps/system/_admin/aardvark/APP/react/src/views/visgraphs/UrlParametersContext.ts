@@ -6,7 +6,7 @@ export const DEFAULT_URL_PARAMETERS = {
   fruchtermann: "fruchtermann",
   nodeColorByCollection: false,
   edgeColorByCollection: false,
-  nodeColor: "CBDF2F",
+  nodeColor: "48BB78",
   nodeColorAttribute: "",
   edgeColor: "1D2A12",
   edgeColorAttribute: "",

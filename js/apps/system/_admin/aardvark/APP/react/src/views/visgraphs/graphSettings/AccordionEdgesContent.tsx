@@ -18,9 +18,9 @@ export const AccordionEdgesContent = () => {
     >
       <ParameterEdgeLabel />
       <ParameterEdgeColor />
-      <ParameterEdgeLabelByCollection />
       <ParameterEdgeColorByCollection />
       <ParameterEdgeColorAttribute />
+      <ParameterEdgeLabelByCollection />
       <ParameterEdgeDirection />
       <EdgeStyleSelector />
     </Grid>

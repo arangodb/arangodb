@@ -18,9 +18,9 @@ export const AccordionNodesContent = () => {
     >
       <ParameterNodeLabel />
       <ParameterNodeColor />
-      <ParameterNodeLabelByCollection />
       <ParameterNodeColorByCollection />
       <ParameterNodeColorAttribute />
+      <ParameterNodeLabelByCollection />
       <ParameterNodeSizeByEdges />
       <ParameterNodeSize />
     </Grid>

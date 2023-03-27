@@ -1331,7 +1331,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         sizeCategory = node[config.nodeSize] || '';
         nodesSizeValues.push(node[config.nodeSize]);
       }
-      var calculatedNodeColor = '#CBDF2F';
+      var calculatedNodeColor = '#48BB78';
       if (config.nodeColor !== undefined) {
         if(!config.nodeColor.startsWith('#')) {
           calculatedNodeColor = '#' + config.nodeColor;
