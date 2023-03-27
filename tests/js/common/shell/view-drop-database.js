@@ -91,6 +91,7 @@ function DropDatabase() {
             break;
           }
           count -=1;
+          internal.sleep(0.5);
         }
         assertTrue(dirs.length === 0, `views directories not cleaned up: ${JSON.stringify(dirs)}`);
       }
@@ -108,6 +109,7 @@ function DropDatabase() {
             break;
           }
           count -=1;
+          internal.sleep(0.5);
         }
         assertTrue(dirs.length === 0, `views directories not cleaned up: ${JSON.stringify(dirs)}`);
       }
