@@ -88,6 +88,7 @@
 #include "VocBase/LogicalView.h"
 
 #include <absl/strings/str_cat.h>
+#include <utils/file_utils.hpp>
 
 using namespace std::chrono_literals;
 
@@ -816,6 +817,20 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
 }
 
 }  // namespace
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  irs::utf8_path dataPath(feature.directory());
+  dataPath /= "databases";
+  dataPath /= "database-" + std::to_string(link.collection().vocbase().id());
+  bool exists = false;
+  if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
+      (exists && !irs::file_utils::remove(dataPath.c_str()))) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "')";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
