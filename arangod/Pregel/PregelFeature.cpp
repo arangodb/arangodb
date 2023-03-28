@@ -1000,41 +1000,6 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t& vocbase,
   }
 }
 
-ResultT<OperationResult> PregelFeature::handleHistoryRequest(
-    TRI_vocbase_t& vocbase, arangodb::rest::RequestType requestType,
-    std::optional<ExecutionNumber> executionNumber) {
-  if (isStopping()) {
-    // shutdown ongoing
-    return {Result(TRI_ERROR_SHUTTING_DOWN)};
-  }
-
-  if (requestType == rest::RequestType::GET) {
-    if (executionNumber.has_value()) {
-      // read a single result
-      statuswriter::CollectionStatusWriter cWriter{vocbase,
-                                                   executionNumber.value()};
-      return cWriter.readResult();
-    } else {
-      // read all results
-      statuswriter::CollectionStatusWriter cWriter{vocbase};
-      return cWriter.readAllResults();
-    }
-  } else if (requestType == rest::RequestType::DELETE_REQ) {
-    if (executionNumber.has_value()) {
-      // delete a single result
-      statuswriter::CollectionStatusWriter cWriter{vocbase,
-                                                   executionNumber.value()};
-      return cWriter.deleteResult();
-    } else {
-      // delete all results
-      statuswriter::CollectionStatusWriter cWriter{vocbase};
-      return cWriter.deleteAllResults();
-    }
-  }
-
-  return {Result(TRI_ERROR_HTTP_METHOD_NOT_ALLOWED)};
-}
-
 uint64_t PregelFeature::numberOfActiveConductors() const {
   MUTEX_LOCKER(guard, _mutex);
   uint64_t nr{0};
