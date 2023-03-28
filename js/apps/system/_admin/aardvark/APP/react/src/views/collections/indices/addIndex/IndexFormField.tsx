@@ -1,4 +1,4 @@
-import { Box, FormLabel } from "@chakra-ui/react";
+import { FormLabel, Spacer } from "@chakra-ui/react";
 import React from "react";
 import { InputControl } from "../../../../components/form/InputControl";
 import { MultiSelectControl } from "../../../../components/form/MultiSelectControl";
@@ -46,7 +46,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
+          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "number":
@@ -61,7 +61,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
+          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "multiSelect":
@@ -79,7 +79,7 @@ export const IndexFormField = ({
             isRequired={field.isRequired}
             name={field.name}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
+          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
     case "text":
@@ -95,7 +95,7 @@ export const IndexFormField = ({
             name={field.name}
             inputProps={{ autoFocus }}
           />
-          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Box></Box>}
+          {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
         </>
       );
   }

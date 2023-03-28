@@ -1,4 +1,4 @@
-import { Box, FormLabel } from "@chakra-ui/react";
+import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
@@ -41,7 +41,7 @@ const ConsolidationPolicyFields = ({
       >
         <FormLabel>Type</FormLabel>
         <Box>{formikField.value.type}</Box>
-        <Box></Box>
+        <Spacer />
 
         <IndexFormField
           field={{

@@ -1,5 +1,5 @@
 import { CloseIcon } from "@chakra-ui/icons";
-import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
+import { Box, Button, FormLabel, IconButton, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
 import { InputControl } from "../../../../../components/form/InputControl";
@@ -63,7 +63,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
             ]
           }}
         />
-        <Box></Box>
+        <Spacer />
       </Box>
       <FieldArray name={field.name}>
         {({ push, remove }) => {

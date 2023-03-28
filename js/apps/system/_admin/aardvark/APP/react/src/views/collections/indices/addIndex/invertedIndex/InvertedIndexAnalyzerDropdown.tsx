@@ -1,4 +1,4 @@
-import { Box, FormLabel } from "@chakra-ui/react";
+import { FormLabel, Spacer } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
@@ -62,7 +62,7 @@ export const InvertedIndexAnalyzerDropdown = ({
         isRequired={field.isRequired}
         name={field.name}
       />
-      <Box></Box>
+      <Spacer />
     </>
   );
 };
