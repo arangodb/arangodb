@@ -343,8 +343,7 @@ void RestAqlHandler::setupClusterQuery() {
         {coordinatorId, rebootId},
         [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
          queryId = q->id()]() {
-          queryRegistry->destroyQuery(vocbaseName, queryId,
-                                      TRI_ERROR_TRANSACTION_ABORTED);
+          queryRegistry->destroyQuery(queryId, TRI_ERROR_TRANSACTION_ABORTED);
           LOG_TOPIC("42511", DEBUG, Logger::AQL)
               << "Query snippet destroyed as consequence of "
                  "RebootTracker for coordinator, db="
@@ -553,8 +552,7 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
         auto engine = _queryRegistry->openExecutionEngine(qId);
         TRI_ASSERT(engine != nullptr);
         auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                     TRI_ERROR_QUERY_KILLED);
+        _queryRegistry->destroyQuery(queryId, TRI_ERROR_QUERY_KILLED);
         _queryRegistry->closeEngine(qId);
         // Here Engine could be gone
       }
@@ -566,13 +564,11 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
         // Unuse the engine, so we can abort properly
         _queryRegistry->closeEngine(qId);
 
-        auto fut =
-            _queryRegistry->finishQuery(_vocbase.name(), queryId, errorCode);
+        auto fut = _queryRegistry->finishQuery(queryId, errorCode);
         TRI_ASSERT(fut.isReady());
         auto query = fut.get();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId, errorCode);
         TRI_ASSERT(query != nullptr)
-            << "QueryRegistry::destroyQuery does not give us the query pointer";
+            << "QueryRegistry::finishQuery does not give us the query pointer";
         auto f = query->finalizeClusterQuery(errorCode);
         // Wait for query to be fully finalized, as a finish call would do.
         f.wait();
@@ -582,8 +578,7 @@ ExecutionEngine* RestAqlHandler::findEngine(std::string const& idString) {
         auto engine = _queryRegistry->openExecutionEngine(qId);
         TRI_ASSERT(engine != nullptr);
         auto queryId = engine->getQuery().id();
-        _queryRegistry->destroyQuery(_vocbase.name(), queryId,
-                                     TRI_ERROR_NO_ERROR);
+        _queryRegistry->destroyQuery(queryId, TRI_ERROR_NO_ERROR);
         _queryRegistry->closeEngine(qId);
         // Here Engine could be gone
       }
@@ -742,14 +737,13 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
     if (state == ExecutionState::WAITING) {
       TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
-        _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
+        _queryRegistry->destroyQuery(_engine->engineId(),
                                      TRI_ERROR_QUERY_KILLED);
       }
       return RestStatus::WAITING;
     }
     TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
-      _queryRegistry->destroyQuery(_vocbase.name(), _engine->engineId(),
-                                   TRI_ERROR_QUERY_KILLED);
+      _queryRegistry->destroyQuery(_engine->engineId(), TRI_ERROR_QUERY_KILLED);
     }
 
     auto result = AqlExecuteResult{state, skipped, std::move(items)};
@@ -806,8 +800,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
       querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
   auto f =
-      _queryRegistry->finishQuery(_vocbase.name(), qid, errorCode)
-          .thenValue([self = shared_from_this(), this, qid,
+      _queryRegistry->finishQuery(qid, errorCode)
+          .thenValue([self = shared_from_this(), this,
                       errorCode](std::shared_ptr<ClusterQuery> query) mutable
                      -> futures::Future<futures::Unit> {
             if (query == nullptr) {
@@ -819,8 +813,6 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                             TRI_ERROR_HTTP_NOT_FOUND);
               return {};
             }
-
-            _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {
