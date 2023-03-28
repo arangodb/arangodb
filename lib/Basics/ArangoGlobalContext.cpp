@@ -115,8 +115,6 @@ ArangoGlobalContext::ArangoGlobalContext(int argc, char* argv[],
     lastOptionName = optionName;
   }
 
-  LOG_DEVEL << __FILE__ << ":" << __LINE__ << " " << _databasePath;
-
   ADB_WindowsEntryFunction();
 
   // global initialization
