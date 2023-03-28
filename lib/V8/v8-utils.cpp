@@ -4525,6 +4525,8 @@ static void JS_GetExternalSpawned(
         "not allowed to execute or modify state of external processes");
   }
 
+  std::lock_guard guard{ExternalProcessesLock};
+
   v8::Handle<v8::Array> spawnedProcesses =
       v8::Array::New(isolate, static_cast<int>(ExternalProcesses.size()));
 

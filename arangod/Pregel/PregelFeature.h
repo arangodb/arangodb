@@ -49,6 +49,13 @@
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct OperationResult;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
+
 namespace arangodb::pregel {
 
 struct PregelScheduler {
@@ -101,7 +108,6 @@ class PregelFeature final : public ArangodFeature {
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
