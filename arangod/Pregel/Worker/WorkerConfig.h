@@ -80,11 +80,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
     return _edgeCollectionShards;
   }
 
-  inline std::unordered_map<CollectionID, std::string> const&
-  collectionPlanIdMap() const {
-    return _collectionPlanIdMap;
-  }
-
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
     auto const& it = _shardToCollectionName.find(shard);
     if (it != _shardToCollectionName.end()) {
@@ -150,7 +145,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
-  std::unordered_map<std::string, std::string> _collectionPlanIdMap;
   std::map<ShardID, std::string> _shardToCollectionName;
 
   // Map from edge collection to their shards, only iterated over keep sorted
