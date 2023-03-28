@@ -13,6 +13,7 @@ export const SearchAliasViewSettings = ({
   return (
     <SearchAliasProvider initialView={view}>
       <Box
+        width="full"
         height="calc(100vh - 60px)"
         display={"grid"}
         gridTemplateRows="120px 1fr"

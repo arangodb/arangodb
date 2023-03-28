@@ -12,8 +12,13 @@ export const InputControl = (props: InputControlProps) => {
   const [field] = useField(name);
   const { isSubmitting } = useFormikContext();
   return (
-    <FormikFormControl name={name} label={label} {...rest}>
-      <Input {...field} id={name} isDisabled={isSubmitting} {...inputProps} />
+    <FormikFormControl
+      name={name}
+      label={label}
+      isDisabled={isSubmitting}
+      {...rest}
+    >
+      <Input {...field} id={name} {...inputProps} />
     </FormikFormControl>
   );
 };
