@@ -54,7 +54,7 @@ export const InvertedIndexForm = ({
         {() => (
           <Box as={Form} height="calc(100% - 30px)">
             <Split
-              localStorageKey={"invertedIndexJSONSplitTemplate"}
+              accessKey={"invertedIndexJSONSplitTemplate"}
               render={({ getGridProps, getGutterProps }) => {
                 const gridProps = getGridProps();
                 const gutterProps = getGutterProps("column", 1);

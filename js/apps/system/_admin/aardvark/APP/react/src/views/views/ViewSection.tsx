@@ -21,7 +21,7 @@ export const ViewSection = ({
   return (
     <Box as="section" width="full" height="calc(100vh - 200px)">
       <Split
-        localStorageKey={"viewJSONSplitTemplate"}
+        accessKey={"viewJSONSplitTemplate"}
         render={({ getGridProps, getGutterProps }) => {
           const gridProps = getGridProps();
           const gutterProps = getGutterProps("column", 1);
