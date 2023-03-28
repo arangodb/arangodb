@@ -43,6 +43,7 @@
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -178,6 +179,8 @@ void DatabaseManagerThread::run() {
           // ---------------------------
 
           TRI_ASSERT(!database->isSystem());
+
+          iresearch::cleanupDatabase(*database);
 
           if (dealer.isEnabled()) {
             // remove apps directory for database
@@ -1009,36 +1012,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
       vocbase = it->second;
       id = vocbase->id();
       // mark as deleted
-
-      // call LogicalDataSource::drop() to allow instances to clean up
-      // internal state (e.g. for LogicalView implementations)
-      TRI_vocbase_t::dataSourceVisitor visitor =
-          [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
-        // skip LogicalCollection since their internal state is always in the
-        // StorageEngine (optimization)
-        if (arangodb::LogicalCollection::category() == dataSource.category()) {
-          return true;
-        }
-
-        auto result = dataSource.drop();
-
-        if (!result.ok()) {
-          res = result.errorNumber();
-          LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
-              << "failed to drop DataSource '" << dataSource.name()
-              << "' while dropping database '" << vocbase->name()
-              << "': " << result.errorNumber() << " " << result.errorMessage();
-        }
-
-        return true;  // try next DataSource
-      };
-
-      vocbase->visitDataSources(
-          visitor);  // acquires a write lock to avoid potential deadlocks
-
-      if (TRI_ERROR_NO_ERROR != res) {
-        return res;
-      }
 
       newLists->_databases.erase(it);
       newLists->_droppedDatabases.insert(vocbase);

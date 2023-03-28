@@ -342,13 +342,6 @@ struct TRI_vocbase_t {
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection) noexcept;
 
-  /// @brief visit all DataSources registered with this vocbase
-  /// @param visitor returns if visitation should continue
-  /// @return visitation completed successfully
-  typedef std::function<bool(arangodb::LogicalDataSource& dataSource)>
-      dataSourceVisitor;
-  bool visitDataSources(dataSourceVisitor const& visitor);
-
  private:
   /// @brief callback for collection dropping
   static bool dropCollectionCallback(arangodb::LogicalCollection& collection);
