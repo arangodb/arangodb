@@ -697,6 +697,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_ALWAYS(mcpreds::leaderHasSnapshot()),
       MC_ALWAYS(mcpreds::anyServerIsLeader({"A", "D"})),
+      MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("D")),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("A"))};
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
                                             AgencyState, AgencyTransition>;
