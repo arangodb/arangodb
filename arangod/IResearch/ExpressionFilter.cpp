@@ -205,9 +205,6 @@ size_t ExpressionCompilationContext::hash() const noexcept {
       irs::hash_combine(1610612741, aql::AstNodeValueHash()(node.get())), ast);
 }
 
-ByExpression::ByExpression() noexcept
-    : irs::filter{irs::type<ByExpression>::get()} {}
-
 void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
   return init(ctx, std::shared_ptr<aql::AstNode>{&node, [](aql::AstNode*) {}});
 }

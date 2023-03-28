@@ -96,52 +96,39 @@
 
 namespace {
 
-struct DocIdScorer : public irs::ScorerFactory {
+struct DocIdScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "test_doc_id";
   }
 
   static ptr make(std::string_view) { return std::make_unique<DocIdScorer>(); }
-  DocIdScorer() : irs::ScorerFactory(irs::type<DocIdScorer>::get()) {}
-  irs::Scorer::ptr prepare() const override {
-    return std::make_unique<Prepared>();
+  DocIdScorer() = default;
+  void collect(irs::byte_type*, irs::FieldCollector const*,
+               irs::TermCollector const*) const final {}
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
   }
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;
+  }
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return nullptr;
+  }
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const&,
+      std::map<irs::type_info::type_id, irs::field_id> const&,
+      irs::byte_type const*, irs::attribute_provider const& doc_attrs,
+      irs::score_t) const final {
+    auto* doc = irs::get<irs::document>(doc_attrs);
+    EXPECT_NE(nullptr, doc);
 
-  struct Prepared : public irs::ScorerBase<void> {
-
-    Prepared()
-        : ScorerBase(irs::type<Prepared>::get()) {}
-    virtual void collect(irs::byte_type*,
-                         irs::FieldCollector const*,
-                         irs::TermCollector const*) const override {
-    }
-    virtual irs::IndexFeatures index_features() const override {
-      return irs::IndexFeatures::NONE;
-    }
-    virtual irs::FieldCollector::ptr prepare_field_collector()
-        const override {
-      return nullptr;
-    }
-    virtual irs::TermCollector::ptr prepare_term_collector()
-        const override {
-      return nullptr;
-    }
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::ColumnProvider const&,
-        std::map<irs::type_info::type_id, irs::field_id> const&,
-        irs::byte_type const*, irs::attribute_provider const& doc_attrs,
-        irs::score_t) const override {
-      auto* doc = irs::get<irs::document>(doc_attrs);
-      EXPECT_NE(nullptr, doc);
-
-      return irs::ScoreFunction::Make<ScoreCtx>(
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            auto* state = static_cast<ScoreCtx*>(ctx);
-            *res = static_cast<irs::score_t>(state->_doc->value);
-          },
-          doc);
-    }
-  };
+    return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          auto* state = static_cast<ScoreCtx*>(ctx);
+          *res = static_cast<irs::score_t>(state->_doc->value);
+        },
+        doc);
+  }
 
   struct ScoreCtx : public irs::score_ctx {
     ScoreCtx(irs::document const* doc) noexcept : _doc(doc) {}

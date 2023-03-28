@@ -46,156 +46,139 @@ using namespace arangodb::tests;
 
 namespace {
 
-struct custom_sort : public irs::ScorerFactory {
+struct custom_sort final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "custom_sort";
   }
 
-  class prepared : public irs::ScorerBase<void> {
+  class field_collector final : public irs::FieldCollector {
    public:
-    class field_collector : public irs::FieldCollector {
-     public:
-      field_collector(const custom_sort& sort) : sort_(sort) {}
+    field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::SubReader& segment,
-                           const irs::term_reader& field) override {
-        if (sort_.field_collector_collect) {
-          sort_.field_collector_collect(segment, field);
-        }
-      }
-
-      virtual void collect(irs::bytes_view) override {}
-
-      virtual void reset() override {}
-
-      virtual void write(irs::data_output&) const override {}
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    class term_collector : public irs::TermCollector {
-     public:
-      term_collector(const custom_sort& sort) : sort_(sort) {}
-
-      virtual void collect(const irs::SubReader& segment,
-                           const irs::term_reader& field,
-                           const irs::attribute_provider& term_attrs) override {
-        if (sort_.term_collector_collect) {
-          sort_.term_collector_collect(segment, field, term_attrs);
-        }
-      }
-
-      virtual void collect(irs::bytes_view) override {}
-
-      virtual void reset() override {}
-
-      virtual void write(irs::data_output&) const override {}
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort, irs::ColumnProvider const& segment,
-             std::map<irs::type_info::type_id, irs::field_id> const& features,
-             irs::byte_type const* stats,
-             irs::attribute_provider const& doc_attrs)
-          : document_attrs_(doc_attrs),
-            stats_(stats),
-            segment_reader_(segment),
-            sort_(sort) {}
-
-      const irs::attribute_provider& document_attrs_;
-      const irs::byte_type* stats_;
-      const irs::ColumnProvider& segment_reader_;
-      const custom_sort& sort_;
-    };
-
-    prepared(const custom_sort& sort)
-        : ScorerBase(irs::type<prepared>::get()), sort_(sort) {}
-
-    virtual void collect(irs::byte_type* stats, irs::FieldCollector const* field,
-                         irs::TermCollector const* term) const override {
-      if (sort_.collector_finish) {
-        sort_.collector_finish(stats, field, term);
+    void collect(const irs::SubReader& segment,
+                 const irs::term_reader& field) final {
+      if (sort_.fieldCollectorCollect) {
+        sort_.fieldCollectorCollect(segment, field);
       }
     }
 
-    virtual irs::IndexFeatures index_features() const override {
-      return irs::IndexFeatures::NONE;
-    }
+    void collect(irs::bytes_view) final {}
 
-    virtual irs::FieldCollector::ptr prepare_field_collector()
-        const override {
-      if (sort_.prepare_field_collector) {
-        return sort_.prepare_field_collector();
-      }
+    void reset() final {}
 
-      return std::make_unique<custom_sort::prepared::field_collector>(sort_);
-    }
-
-    virtual irs::ScoreFunction prepare_scorer(
-        irs::ColumnProvider const& segment,
-        std::map<irs::type_info::type_id, irs::field_id> const& features,
-        irs::byte_type const* stats, irs::attribute_provider const& doc_attrs,
-        irs::score_t boost) const override {
-      if (sort_.prepare_scorer) {
-        sort_.prepare_scorer(segment, features, stats,
-                             doc_attrs, boost);
-      }
-
-      return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            auto& ctxImpl =
-                *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
-
-            irs::doc_id_t doc_id =
-                irs::get<irs::document>(ctxImpl.document_attrs_)->value;
-
-            if (ctxImpl.sort_.scorer_score) {
-              ctxImpl.sort_.scorer_score(doc_id, res);
-            }
-          },
-          sort_, segment, features, stats, doc_attrs);
-    }
-
-    virtual irs::TermCollector::ptr prepare_term_collector()
-        const override {
-      if (sort_.prepare_term_collector) {
-        return sort_.prepare_term_collector();
-      }
-
-      return std::make_unique<custom_sort::prepared::term_collector>(sort_);
-    }
+    void write(irs::data_output&) const final {}
 
    private:
     const custom_sort& sort_;
   };
 
+  class term_collector final : public irs::TermCollector {
+   public:
+    term_collector(const custom_sort& sort) : sort_(sort) {}
+
+    virtual void collect(const irs::SubReader& segment,
+                         const irs::term_reader& field,
+                         const irs::attribute_provider& term_attrs) final {
+      if (sort_.termCollectorCollect) {
+        sort_.termCollectorCollect(segment, field, term_attrs);
+      }
+    }
+
+    void collect(irs::bytes_view) final {}
+
+    void reset() final {}
+
+    void write(irs::data_output&) const final {}
+
+   private:
+    const custom_sort& sort_;
+  };
+
+  struct scorer final : public irs::score_ctx {
+    scorer(const custom_sort& sort, irs::ColumnProvider const& segment,
+           std::map<irs::type_info::type_id, irs::field_id> const& features,
+           irs::byte_type const* stats,
+           irs::attribute_provider const& doc_attrs)
+        : document_attrs_(doc_attrs),
+          stats_(stats),
+          segment_reader_(segment),
+          sort_(sort) {}
+
+    const irs::attribute_provider& document_attrs_;
+    const irs::byte_type* stats_;
+    const irs::ColumnProvider& segment_reader_;
+    const custom_sort& sort_;
+  };
+
+  void collect(irs::byte_type* stats, irs::FieldCollector const* field,
+               irs::TermCollector const* term) const final {
+    if (collectorFinish) {
+      collectorFinish(stats, field, term);
+    }
+  }
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    if (prepareFieldCollector) {
+      return prepareFieldCollector();
+    }
+
+    return std::make_unique<custom_sort::field_collector>(*this);
+  }
+
+  irs::ScoreFunction prepare_scorer(
+      irs::ColumnProvider const& segment,
+      std::map<irs::type_info::type_id, irs::field_id> const& features,
+      irs::byte_type const* stats, irs::attribute_provider const& doc_attrs,
+      irs::score_t boost) const final {
+    if (prepareScorer) {
+      prepareScorer(segment, features, stats, doc_attrs, boost);
+    }
+
+    return irs::ScoreFunction::Make<custom_sort::scorer>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          auto& ctxImpl = *reinterpret_cast<const custom_sort::scorer*>(ctx);
+
+          irs::doc_id_t doc_id =
+              irs::get<irs::document>(ctxImpl.document_attrs_)->value;
+
+          if (ctxImpl.sort_.scorerScore) {
+            ctxImpl.sort_.scorerScore(doc_id, res);
+          }
+        },
+        *this, segment, features, stats, doc_attrs);
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    if (prepareTermCollector) {
+      return prepareTermCollector();
+    }
+
+    return std::make_unique<custom_sort::term_collector>(*this);
+  }
+
   std::function<void(const irs::SubReader&, const irs::term_reader&)>
-      field_collector_collect;
+      fieldCollectorCollect;
   std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
-      term_collector_collect;
+      termCollectorCollect;
   std::function<void(irs::byte_type*, irs::FieldCollector const*,
                      irs::TermCollector const*)>
-      collector_finish;
-  std::function<irs::FieldCollector::ptr()> prepare_field_collector;
+      collectorFinish;
+  std::function<irs::FieldCollector::ptr()> prepareFieldCollector;
   std::function<void(
       const irs::ColumnProvider& segment,
       std::map<irs::type_info::type_id, irs::field_id> const& features,
       irs::byte_type const* stats, irs::attribute_provider const& doc_attrs,
       irs::score_t boost)>
-      prepare_scorer;
-  std::function<irs::TermCollector::ptr()> prepare_term_collector;
-  std::function<void(irs::doc_id_t&, irs::score_t*)> scorer_score;
+      prepareScorer;
+  std::function<irs::TermCollector::ptr()> prepareTermCollector;
+  std::function<void(irs::doc_id_t&, irs::score_t*)> scorerScore;
 
-  static ptr make();
-  custom_sort() : irs::ScorerFactory(irs::type<custom_sort>::get()) {}
-  virtual prepared::ptr prepare() const override {
-    return std::make_unique<custom_sort::prepared>(*this);
-  }
+  custom_sort() = default;
 };
 
 }  // namespace
@@ -887,33 +870,33 @@ TEST(GeoFilterTest, checkScorer) {
 
     ::custom_sort sort;
 
-    sort.field_collector_collect = [&collector_collect_field_count, &q](
+    sort.fieldCollectorCollect = [&collector_collect_field_count, &q](
                                        const irs::SubReader&,
                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
-    sort.term_collector_collect = [&collector_collect_term_count, &q](
+    sort.termCollectorCollect = [&collector_collect_term_count, &q](
                                       const irs::SubReader&,
                                       const irs::term_reader& field,
                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
-    sort.collector_finish = [&collector_finish_count](
-                                irs::byte_type*,
-                                irs::FieldCollector const*,
+    sort.collectorFinish = [&collector_finish_count](
+                                irs::byte_type*, irs::FieldCollector const*,
                                 irs::TermCollector const*) -> void {
       ++collector_finish_count;
     };
-    sort.prepare_scorer = [&prepare_scorer_count, &q](
+    sort.prepareScorer =
+        [&prepare_scorer_count, &q](
             irs::ColumnProvider const&,
             std::map<irs::type_info::type_id, irs::field_id> const&,
-            irs::byte_type const*,
-            irs::attribute_provider const&, irs::score_t boost) {
-      EXPECT_EQ(q.boost(), boost);
-      ++prepare_scorer_count;
-    };
+            irs::byte_type const*, irs::attribute_provider const&,
+            irs::score_t boost) {
+          EXPECT_EQ(q.boost(), boost);
+          ++prepare_scorer_count;
+        };
 
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score,
+    sort.scorerScore = [&scorer_score_count](irs::doc_id_t& score,
                                               irs::score_t* res) -> void {
       ASSERT_TRUE(res);
       *res = score;
@@ -962,33 +945,33 @@ TEST(GeoFilterTest, checkScorer) {
 
     ::custom_sort sort;
 
-    sort.field_collector_collect = [&collector_collect_field_count, &q](
+    sort.fieldCollectorCollect = [&collector_collect_field_count, &q](
                                        const irs::SubReader&,
                                        const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
-    sort.term_collector_collect = [&collector_collect_term_count, &q](
+    sort.termCollectorCollect = [&collector_collect_term_count, &q](
                                       const irs::SubReader&,
                                       const irs::term_reader& field,
                                       const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
-    sort.collector_finish = [&collector_finish_count](
-                                irs::byte_type*,
-                                const irs::FieldCollector*,
+    sort.collectorFinish = [&collector_finish_count](
+                                irs::byte_type*, const irs::FieldCollector*,
                                 const irs::TermCollector*) -> void {
       ++collector_finish_count;
     };
-    sort.prepare_scorer = [&prepare_scorer_count, &q](
+    sort.prepareScorer =
+        [&prepare_scorer_count, &q](
             const irs::ColumnProvider&,
             std::map<irs::type_info::type_id, irs::field_id> const&,
-            irs::byte_type const*,
-            irs::attribute_provider const&, irs::score_t boost) {
-      EXPECT_EQ(q.boost(), boost);
-      ++prepare_scorer_count;
-    };
+            irs::byte_type const*, irs::attribute_provider const&,
+            irs::score_t boost) {
+          EXPECT_EQ(q.boost(), boost);
+          ++prepare_scorer_count;
+        };
 
-    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score,
+    sort.scorerScore = [&scorer_score_count](irs::doc_id_t& score,
                                               irs::score_t* res) -> void {
       ASSERT_TRUE(res != nullptr);
       *res = score;

@@ -76,7 +76,7 @@ struct TestAttributeZ : public irs::attribute {
 
 REGISTER_ATTRIBUTE(TestAttributeZ);
 
-class EmptyAnalyzer : public irs::analysis::analyzer {
+class EmptyAnalyzer final : public irs::analysis::TypedAnalyzer<EmptyAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept { return "empty"; }
 
@@ -105,16 +105,15 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  EmptyAnalyzer() : irs::analysis::analyzer(irs::type<EmptyAnalyzer>::get()) {}
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  EmptyAnalyzer() = default;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttributeZ>::id()) {
       return &_attr;
     }
     return nullptr;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(std::string_view) override { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view) final { return true; }
 
  private:
   TestAttributeZ _attr;
@@ -2656,9 +2655,9 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
         analyzerCustomInTestVocbase + "\"" +  // local analyzer by full name
         ", \"" + analyzerCustomName + "\"" +  // local analyzer by short name
         ", \"::" + analyzerCustomName +
-        "\"" +  // _system analyzer by short name
+        "\"" +                                // _system analyzer by short name
         ", \"" + analyzerCustomInSystem +
-        "\"" +  // _system analyzer by full name
+        "\"" +                                // _system analyzer by full name
         " ] \
         }");
 
@@ -4128,13 +4127,11 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
 
 // Circumventing fakeit inability to build a mock
 // for class with pure virtual functions in base
-class mock_field_iterator : public irs::field_iterator {
- public:
-  void Destroy() const noexcept override {}
-};
+class mock_field_iterator : public irs::field_iterator {};
 
 class mock_term_reader : public irs::term_reader {
  public:
+  bool has_scorer(irs::byte_type index) const override { return false; }
   irs::seek_term_iterator::ptr iterator(irs::SeekMode mode) const override {
     return nullptr;
   }
@@ -4143,9 +4140,9 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::doc_iterator::ptr wanderator(
-      const irs::seek_cookie&, irs::IndexFeatures,
-      const irs::WanderatorOptions&, irs::WandContext) const override {
+  irs::doc_iterator::ptr wanderator(const irs::seek_cookie&, irs::IndexFeatures,
+                                    const irs::WanderatorOptions&,
+                                    irs::WandContext) const override {
     return nullptr;
   }
 
@@ -4191,7 +4188,6 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   mock_term_reader mockTermReader;
 
   fakeit::Mock<mock_field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, Destroy)).AlwaysReturn();
   fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
     if (field == mockedFields.end()) {
       field = mockedFields.begin();

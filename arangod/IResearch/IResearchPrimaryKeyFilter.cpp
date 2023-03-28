@@ -41,9 +41,7 @@ IRS_FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::SubReader const&,
 #endif
 
 PrimaryKeyFilter::PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept
-    : irs::filter{irs::type<PrimaryKeyFilter>::get()},
-      _pk{DocumentPrimaryKey::encode(value)},
-      _nested{nested} {}
+    : _pk{DocumentPrimaryKey::encode(value)}, _nested{nested} {}
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
     irs::ExecutionContext const& ctx) const {

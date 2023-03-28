@@ -734,10 +734,10 @@ void IResearchViewExecutorBase<Impl, ExecutionTraits>::reset() {
     if (infos().volatileSort() || !_isInitialized) {
       auto const& scorers = infos().scorers();
 
-      containers::SmallVector<irs::ScorerFactory::ptr, 2> order;
+      containers::SmallVector<irs::Scorer::ptr, 2> order;
       order.reserve(scorers.size());
 
-      for (irs::ScorerFactory::ptr scorer; auto const& scorerNode : scorers) {
+      for (irs::Scorer::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
         if (!order_factory::scorer(&scorer, *scorerNode.node, queryCtx)) {
