@@ -90,6 +90,7 @@ struct MultipleRemoteModificationExecutor {
   auto doMultipleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                           OperationResult&) -> void;
 
+  std::shared_ptr<transaction::Context> _ctx;
   transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;

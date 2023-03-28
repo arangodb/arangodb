@@ -28,8 +28,10 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
@@ -38,9 +40,12 @@ namespace arangodb::aql {
 
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
-    : _trx(info._query.newTrxContext()),
+    : _ctx(std::make_shared<transaction::StandaloneContext>(
+          info._query.vocbase())),
+      _trx(_ctx, {}, {info._aqlCollection->name()}, {}, {}),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
+  _trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -98,25 +103,30 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
         "'update' or 'replace'");
   }
 
+  auto res = _trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
                        _info._options);
-  possibleWrites = inDocument.slice().length();
-  // TODO consider the result of the operation
 
   // check operation result
-  if (!_info._ignoreErrors) {  // TODO remove if
-    if (result.ok() && result.hasSlice()) {
-      for (auto it : VPackArrayIterator(result.slice())) {
-        auto errorNum = it.get("errorNum");
-        auto errorMessage = it.get("errorMessage");
-        if (errorNum.isNumber() && errorMessage.isString()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(ErrorCode(errorNum.getInt()),
-                                         errorMessage.stringView());
-        }
-      }
+  if (!_info._ignoreErrors) {
+    if (!result.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (!result.countErrorCodes.empty()) {
+      THROW_ARANGO_EXCEPTION(result.countErrorCodes.begin()->first);
     }
   }
 
+  res = _trx.commit();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  possibleWrites = inDocument.slice().length();
   stats.incrWritesExecuted(possibleWrites);
   stats.incrScannedIndex();
   return result;
