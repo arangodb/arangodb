@@ -49,6 +49,13 @@
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct OperationResult;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
+
 namespace arangodb::pregel {
 
 struct PregelScheduler {
@@ -101,7 +108,6 @@ class PregelFeature final : public ArangodFeature {
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
@@ -118,7 +124,6 @@ class PregelFeature final : public ArangodFeature {
   size_t parallelism(VPackSlice params) const noexcept;
 
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
@@ -133,17 +138,6 @@ class PregelFeature final : public ArangodFeature {
 
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
-
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
 
   mutable Mutex _mutex;
 

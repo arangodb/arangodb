@@ -22,25 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ErrorCode.h"
+#include "Pregel/Conductor/State.h"
 
-namespace arangodb {
+namespace arangodb::pregel::conductor {
 
-class LogicalCollection;
-class ClusterInfo;
+struct ConductorState;
 
-namespace pregel {
+struct Canceled : ExecutionState {
+  Canceled(ConductorState& conductor);
+  ~Canceled() {}
+  auto name() const -> std::string override { return "canceled"; };
+  auto messages()
+      -> std::unordered_map<actor::ActorPID,
+                            worker::message::WorkerMessages> override;
+  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
 
-class WorkerConfig;
-
-struct ResolveShard {
-  static ErrorCode resolve(ClusterInfo& ci, WorkerConfig const* config,
-                           std::string const& collectionName,
-                           std::string const& shardKey,
-                           std::string_view vertexKey,
-                           std::string& responsibleShard);
+  ConductorState& conductor;
 };
 
-}  // namespace pregel
-
-}  // namespace arangodb
+}  // namespace arangodb::pregel::conductor
