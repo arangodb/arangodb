@@ -3,7 +3,7 @@ import * as Yup from "yup";
 import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import { useCreateIndex } from "./useCreateIndex";
 
-const initialValues = {
+export const INITIAL_VALUES = {
   type: "ttl",
   fields: commonFieldsMap.fields.initialValue,
   inBackground: commonFieldsMap.inBackground.initialValue,
@@ -11,7 +11,7 @@ const initialValues = {
   expireAfter: 0
 };
 
-const fields = [
+export const FIELDS = [
   commonFieldsMap.fields,
   commonFieldsMap.name,
   {
@@ -24,23 +24,22 @@ const fields = [
   commonFieldsMap.inBackground
 ];
 
-const schema = Yup.object({
+export const SCHEMA = Yup.object({
   ...commonSchema
 });
 
-
-type ValuesType = Omit<typeof initialValues, "fields"> & {
+type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & {
   fields: string[];
 };
 
 export const useCreateTTLIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
-  const onCreate = async ({ values }: { values: typeof initialValues }) => {
+  const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
       expireAfter: toNumber(values.expireAfter),
       fields: values.fields.split(",")
     });
   };
-  return { onCreate, initialValues, schema, fields };
+  return { onCreate };
 };

@@ -2,7 +2,7 @@ import * as Yup from "yup";
 import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import { useCreateIndex } from "./useCreateIndex";
 
-const persistentIndexFields = [
+export const FIELDS = [
   commonFieldsMap.fields,
   commonFieldsMap.name,
   {
@@ -42,7 +42,7 @@ const persistentIndexFields = [
   commonFieldsMap.inBackground
 ];
 
-const initialValues = {
+export const INITIAL_VALUES = {
   type: "persistent",
   fields: commonFieldsMap.fields.initialValue,
   name: commonFieldsMap.fields.initialValue,
@@ -54,20 +54,19 @@ const initialValues = {
   inBackground: commonFieldsMap.inBackground.initialValue
 };
 
-const schema = Yup.object({
+export const SCHEMA = Yup.object({
   ...commonSchema
 });
 
-
-type ValuesType = Omit<typeof initialValues, "fields"> & { fields: string[] };
+type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & { fields: string[] };
 
 export const useCreatePersistentIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
-  const onCreate = async ({ values }: { values: typeof initialValues }) => {
+  const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
       fields: values.fields.split(",")
     });
   };
-  return { onCreate, initialValues, schema, fields: persistentIndexFields };
+  return { onCreate };
 };
