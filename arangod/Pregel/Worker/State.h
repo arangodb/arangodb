@@ -131,7 +131,7 @@ struct WorkerState {
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
-  std::vector<std::shared_ptr<Quiver<V, E>>> quivers;
+  std::vector<std::shared_ptr<Quiver<V, E>>> quivers = {};
   MessageStats messageStats;
   GssObservables currentGssObservables;
   AllGssStatus allGssStatus;
