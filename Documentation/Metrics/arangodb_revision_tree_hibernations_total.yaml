@@ -15,8 +15,8 @@ description: |
   in RAM in an uncompressed state. However, to reduce the memory
   usage of keeping all revision trees in RAM at the same time, 
   revision trees can be put into "hibernation" mode. Any inactive
-  revision tree will automatically be hibernated by ArangoDB after
-  a while. For the hibernation step, a revision tree will be 
+  revision tree is automatically hibernated by ArangoDB after
+  a while. For the hibernation step, a revision tree is 
   compressed in RAM, and only the compressed version is then kept.
   Later accesses of a compressed revision tree require uncompressing
   the tree again. 

@@ -310,6 +310,7 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
   }
 
   _timing.loading.finish();
+  _graphLoaded = true;
   _timing.computation.start();
 
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
@@ -475,7 +476,6 @@ ErrorCode Conductor::_initializeWorkers() {
         .algorithm = std::string{_algorithm->name()},
         .userParameters = _specifications.userParameters,
         .coordinatorId = coordinatorId,
-        .useMemoryMaps = _specifications.useMemoryMaps,
         .parallelism = _specifications.parallelism,
         .edgeCollectionRestrictions =
             _specifications.edgeCollectionRestrictions,
@@ -738,7 +738,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
-  result.add("useMemoryMaps", VPackValue(_specifications.useMemoryMaps));
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
@@ -749,31 +748,78 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 
 void Conductor::persistPregelState(ExecutionState state) {
   // Persist current pregel state into historic pregel system collection.
-
   statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
                                                _specifications.executionNumber};
-  // Replace this later
-  // TODO: ongoing <WIP>
-  // Note: I wanted to just use the toVelocyPack method. This fails because of
-  // the mutex there. Therefore temporarly, I'll write data that works for now.
-  // VPackBuilder b;
-  // toVelocyPack(b);
+  VPackBuilder stateBuilder;
 
-  VPackBuilder debugOut;
-  debugOut.openObject();
-  debugOut.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
-  debugOut.add("stats", VPackValue(VPackValueType::Object));
-  _statistics.serializeValues(debugOut);
-  debugOut.close();
-  _masterContext->_aggregators->serializeValues(debugOut);
-  debugOut.close();
-  // Replace this later
+  auto addMinimalOutputToBuilder = [&](VPackBuilder& stateBuilder) -> void {
+    TRI_ASSERT(stateBuilder.isOpenObject());
+    stateBuilder.add(
+        "id",
+        VPackValue(std::to_string(_specifications.executionNumber.value)));
+    stateBuilder.add("database", VPackValue(_vocbaseGuard.database().name()));
+    if (_algorithm != nullptr) {
+      stateBuilder.add("algorithm", VPackValue(_algorithm->name()));
+    }
+    stateBuilder.add("created", VPackValue(timepointToString(_created)));
+    stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+    stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
+    stateBuilder.add("gss", VPackValue(_globalSuperstep));
+  };
+  auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
+    TRI_ASSERT(builder.isOpenObject());
+    if (_timing.total.hasStarted()) {
+      builder.add("totalRuntime",
+                  VPackValue(_timing.total.elapsedSeconds().count()));
+    }
+    if (_timing.loading.hasStarted()) {
+      builder.add("startupTime",
+                  VPackValue(_timing.loading.elapsedSeconds().count()));
+    }
+    if (_timing.computation.hasStarted()) {
+      builder.add("computationTime",
+                  VPackValue(_timing.computation.elapsedSeconds().count()));
+    }
+    if (_timing.storing.hasStarted()) {
+      builder.add("storageTime",
+                  VPackValue(_timing.storing.elapsedSeconds().count()));
+    }
+    {
+      builder.add(VPackValue("gssTimes"));
+      VPackArrayBuilder array(&builder);
+      for (auto const& gssTime : _timing.gss) {
+        builder.add(VPackValue(gssTime.elapsedSeconds().count()));
+      }
+    }
+    _statistics.serializeValues(builder);
+  };
+
+  if (_state == ExecutionState::DONE) {
+    // TODO: What I wanted to do here is to just use the already available
+    // toVelocyPack() method. This fails currently because of the lock:
+    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
+    // Therefore, for now - do it manually. Let's clean this up ASAP.
+    // this->toVelocyPack(stateBuilder);
+    // After this works, we can remove all of that code below (same scope).
+    // Including those lambda helper methods.
+
+    stateBuilder.openObject();  // opens main builder
+    addMinimalOutputToBuilder(stateBuilder);
+    addAdditionalOutputToBuilder(stateBuilder);
+    stateBuilder.close();  // closes main builder
+  } else {
+    // minimalistic update during runs or errors (cancel, fatal)
+    // TODO: We should introduce an inspector here as well.
+    stateBuilder.openObject();  // opens main builder
+    addMinimalOutputToBuilder(stateBuilder);
+    stateBuilder.close();  // closes main builder
+  }
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   if (state == ExecutionState::LOADING) {
     // During state LOADING we need to initially create the document in the
     // collection
-    auto storeResult = cWriter.createResult(debugOut.slice());
+    auto storeResult = cWriter.createResult(stateBuilder.slice());
     if (storeResult.ok()) {
       LOG_PREGEL("063x1", INFO)
           << "Stored result into: \"" << StaticStrings::PregelCollection
@@ -787,7 +833,7 @@ void Conductor::persistPregelState(ExecutionState state) {
   } else {
     // During all other states, we will just simply update the already created
     // document
-    auto updateResult = cWriter.updateResult(debugOut.slice());
+    auto updateResult = cWriter.updateResult(stateBuilder.slice());
     if (updateResult.ok()) {
       LOG_PREGEL("063x3", INFO)
           << "Updated state into: \"" << StaticStrings::PregelCollection

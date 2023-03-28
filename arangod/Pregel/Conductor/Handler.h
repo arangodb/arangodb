@@ -117,6 +117,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         this->state->executionState->receive(this->sender, std::move(msg));
     if (newExecutionState.has_value()) {
       changeState(std::move(newExecutionState.value()));
+      sendMessages();
     }
     return std::move(this->state);
   }
@@ -137,6 +138,21 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
             .results = msg.results,
             .receivedAllResults =
                 this->state->executionState->aqlResultsAvailable()});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::CleanupFinished start)
+      -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("02da1", INFO, Logger::PREGEL) << fmt::format(
+        "Conductor Actor: Worker {} is cleaned up", this->sender);
+    auto newExecutionState =
+        this->state->executionState->receive(this->sender, std::move(start));
+    if (newExecutionState.has_value()) {
+      changeState(std::move(newExecutionState.value()));
+      this->finish();
+      this->template dispatch<pregel::message::SpawnMessages>(
+          this->state->spawnActor, pregel::message::SpawnCleanup{});
+    }
     return std::move(this->state);
   }
 

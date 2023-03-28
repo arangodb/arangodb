@@ -13,7 +13,6 @@ exposedBy:
   - single
 description: |
   Total number of read-only transactions, which allow for dirty reads
-  (read from followers). This metric will only be collected for
+  (read from followers). This metric is only collected for
   transactions on Coordinators in a cluster. Other instances may expose
-  the value as 0.
-
+  the value as `0`.
