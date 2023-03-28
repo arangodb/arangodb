@@ -1,4 +1,9 @@
-import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
+import {
+  MenuItem,
+  MenuList,
+  MenuOptionGroup,
+  PortalProps
+} from "@chakra-ui/react";
 import React, {
   forwardRef,
   LegacyRef,
@@ -11,9 +16,11 @@ import { fetchVisData, useGraph } from "./GraphContext";
 import { useUrlParameterContext } from "./UrlParametersContext";
 
 export const GraphRightClickMenu = ({
-  visJsRef
+  visJsRef,
+  portalProps
 }: {
   visJsRef: MutableRefObject<HTMLElement | null>;
+  portalProps?: Omit<PortalProps, "children">;
 }) => {
   const [position, setPosition] = useState({ left: "0", top: "0" });
   const { network, rightClickedEntity, setRightClickedEntity } = useGraph();
@@ -63,6 +70,7 @@ export const GraphRightClickMenu = ({
   };
   return (
     <ContextMenu
+      portalProps={portalProps}
       position={position}
       onClose={() => {
         setRightClickedEntity(undefined);

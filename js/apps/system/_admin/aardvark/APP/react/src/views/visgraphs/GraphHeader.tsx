@@ -81,7 +81,7 @@ const FullscreenButton = () => {
       <IconButton
         size="sm"
         onClick={() => {
-          const elem = document.getElementById("graphNetworkDiv");
+          const elem = document.getElementById("graphNetworkContainer");
           enterFullscreen(elem);
         }}
         icon={<Icon width="5" height="5" as={Fullscreen} />}

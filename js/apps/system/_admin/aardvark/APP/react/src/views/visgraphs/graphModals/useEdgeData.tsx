@@ -2,7 +2,14 @@ import { useEffect, useState } from "react";
 import { getCurrentDB } from "../../../utils/arangoClient";
 
 const immutableIds = ["_id", "_key", "_rev", "_from", "_to"];
-export const useEdgeData = ({ edgeId }: { edgeId?: string }) => {
+
+export const useEdgeData = ({
+  edgeId,
+  disabled
+}: {
+  edgeId?: string;
+  disabled?: boolean;
+}) => {
   const [edgeData, setEdgeData] = useState<{ [key: string]: string }>();
   const [isLoading, setIsLoading] = useState(false);
   const fetchEdgeData = async (edgeId: string) => {
@@ -22,8 +29,8 @@ export const useEdgeData = ({ edgeId }: { edgeId?: string }) => {
     }
   };
   useEffect(() => {
-    edgeId && fetchEdgeData(edgeId);
-  }, [edgeId]);
+    edgeId && !disabled && fetchEdgeData(edgeId);
+  }, [edgeId, disabled]);
 
   return { edgeData, immutableIds, isLoading };
 };

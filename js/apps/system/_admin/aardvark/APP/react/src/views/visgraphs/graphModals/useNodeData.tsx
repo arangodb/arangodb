@@ -3,7 +3,13 @@ import { getCurrentDB } from "../../../utils/arangoClient";
 
 const immutableIds = ["_id", "_key", "_rev"];
 
-export const useNodeData = ({ nodeId }: { nodeId?: string }) => {
+export const useNodeData = ({
+  nodeId,
+  disabled
+}: {
+  nodeId?: string;
+  disabled?: boolean;
+}) => {
   const [nodeData, setNodeData] = useState<{ [key: string]: string }>();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,7 +34,7 @@ export const useNodeData = ({ nodeId }: { nodeId?: string }) => {
     }
   };
   useEffect(() => {
-    nodeId && fetchNodeData(nodeId);
+    nodeId && !disabled && fetchNodeData(nodeId);
   }, [nodeId]);
   return { nodeData, immutableIds, isLoading };
 };

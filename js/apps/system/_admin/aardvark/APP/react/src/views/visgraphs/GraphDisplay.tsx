@@ -1,9 +1,8 @@
 import React from "react";
 import { GraphContextProvider } from "./GraphContext";
-import { GraphNetwork } from "./GraphNetwork";
 import { GraphHeader } from "./GraphHeader";
-import { GraphInfo } from "./GraphInfo";
 import { GraphModals } from "./graphModals/GraphModals";
+import { GraphNetwork } from "./GraphNetwork";
 
 export const GraphDisplay = () => {
   return (
@@ -19,7 +18,6 @@ const GraphContent = () => {
       <GraphHeader />
       <GraphNetwork />
       <GraphModals />
-      <GraphInfo />
     </>
   );
 };

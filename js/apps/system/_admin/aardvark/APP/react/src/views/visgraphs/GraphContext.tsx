@@ -16,7 +16,7 @@ import {
 } from "./UrlParametersContext";
 import { EdgeDataType, NodeDataType, VisGraphData } from "./VisGraphData.types";
 
-type SelectedEntityType = {
+type ActionEntityType = {
   type: string;
   nodeId?: string;
   edgeId?: string;
@@ -28,8 +28,10 @@ export type SelectedActionType = {
   from?: string;
   to?: string;
   callback?: any;
-  entity?: SelectedEntityType;
+  entity?: ActionEntityType;
 };
+
+export type SelectedEntityType = { entityId: string; type: "node" | "edge" };
 
 type AddEdgeArgs = {
   data: { from: string; to: string };
@@ -50,9 +52,9 @@ type GraphContextType = {
   fetchDuration?: number;
   datasets?: DatasetsType;
   setDatasets: (datasets: DatasetsType) => void;
-  rightClickedEntity?: SelectedEntityType;
+  rightClickedEntity?: ActionEntityType;
   setRightClickedEntity: (
-    rightClickedEntity: SelectedEntityType | undefined
+    rightClickedEntity: ActionEntityType | undefined
   ) => void;
   selectedAction?: SelectedActionType;
   setSelectedAction: (selectedAction: SelectedActionType | undefined) => void;
@@ -61,8 +63,8 @@ type GraphContextType = {
   onCloseSettings: () => void;
   onClearAction: () => void;
   onAddEdge: (args: AddEdgeArgs) => void;
-  selectedEntity: string;
-  onSelectEntity: (edgeId: string) => void;
+  selectedEntity?: SelectedEntityType;
+  onSelectEntity: (data: SelectedEntityType) => void;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -146,7 +148,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [datasets, setDatasets] = useState<DatasetsType>();
   const [fetchDuration, setFetchDuration] = useState<number>();
   let [rightClickedEntity, setRightClickedEntity] = useState<
-    SelectedEntityType
+    ActionEntityType
   >();
 
   const { setUrlParams, setParams, params, urlParams } = useSetupParams({
@@ -206,7 +208,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       return { ...action, from: data.from, to: data.to, callback };
     });
   };
-  const [selectedEntity, onSelectEntity] = useState("");
+  const [selectedEntity, onSelectEntity] = useState<SelectedEntityType>();
 
   return (
     <GraphContext.Provider

@@ -1,7 +1,10 @@
+import { Box } from "@chakra-ui/react";
 import React, { useEffect, useRef } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
+import { useElementPosition } from "../../components/hooks/useElementPosition";
 import { useGraph } from "./GraphContext";
+import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
 
 let timer: number;
@@ -11,7 +14,7 @@ function registerNetwork({
   onSelectEntity
 }: {
   newNetwork: Network;
-  onSelectEntity: (id: string) => void;
+  onSelectEntity: (data: { entityId: string; type: "node" | "edge" }) => void;
 }) {
   newNetwork.on("stabilizationIterationsDone", function() {
     newNetwork.fit();
@@ -41,19 +44,20 @@ function registerNetwork({
 
   newNetwork.on("selectNode", event => {
     if (event.nodes.length === 1) {
-      onSelectEntity(event.nodes[0]);
+      onSelectEntity({ entityId: event.nodes[0], type: "node" });
     }
   });
 
   newNetwork.on("selectEdge", event => {
     if (event.edges.length === 1) {
-      onSelectEntity(event.edges[0]);
+      onSelectEntity({ entityId: event.edges[0], type: "edge" });
     }
   });
 }
 
 export const GraphNetwork = () => {
   const visJsRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const {
     graphData,
     setNetwork,
@@ -91,20 +95,31 @@ export const GraphNetwork = () => {
     registerNetwork({ newNetwork, onSelectEntity });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
-
+  const position = useElementPosition(visJsRef);
+  const height = position ? `calc(100vh - ${position.top}px)` : "80vh";
   return (
-    <>
-      <GraphRightClickMenu visJsRef={visJsRef} />
+    <Box
+      id="graphNetworkContainer"
+      ref={containerRef}
+      height={height}
+      background="white"
+    >
+      <GraphRightClickMenu
+        portalProps={{
+          containerRef
+        }}
+        visJsRef={visJsRef}
+      />
       <div
-        id="graphNetworkDiv"
         ref={visJsRef}
         style={{
-          height: "90vh",
-          width: "97%",
+          height: "calc(100% - 40px)",
+          width: "100%",
           background: "#fff",
           margin: "auto"
         }}
       />
-    </>
+      <GraphInfo />
+    </Box>
   );
 };
