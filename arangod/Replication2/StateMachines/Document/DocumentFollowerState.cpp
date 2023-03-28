@@ -130,7 +130,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
         LOG_CTX("b4fcb", DEBUG, self->loggerContext)
             << "Snapshot " << *snapshotTransferResult.snapshotId
-            << " data transfer completed, sending finish request";
+            << " data transfer over, will send finish request: "
+            << snapshotTransferResult.res;
 
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
             .thenValue([snapshotTransferResult](auto&& res) {
