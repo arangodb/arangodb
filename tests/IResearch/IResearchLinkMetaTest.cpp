@@ -605,7 +605,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
     auto slice = builder.slice();
 #ifdef USE_ENTERPRISE
     EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("smartSort");
+    tmpSlice = slice.get("optimizeTopK");
     EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
     EXPECT_EQ(10, slice.length());
@@ -677,7 +677,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
 #ifdef USE_ENTERPRISE
     EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("smartSort");
+    tmpSlice = slice.get("optimizeTopK");
     EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
     EXPECT_EQ(10, slice.length());
@@ -919,7 +919,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
 #ifdef USE_ENTERPRISE
     EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("smartSort");
+    tmpSlice = slice.get("optimizeTopK");
     EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
     EXPECT_EQ(10, slice.length());
@@ -1201,7 +1201,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
 #ifdef USE_ENTERPRISE
     EXPECT_EQ(11, slice.length());
-    tmpSlice = slice.get("smartSort");
+    tmpSlice = slice.get("optimizeTopK");
     EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
     EXPECT_EQ(10, slice.length());
@@ -1521,7 +1521,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
 
 #ifdef USE_ENTERPRISE
     EXPECT_EQ(11, slice.length());
-    EXPECT_TRUE(slice.hasKey("smartSort"));
+    EXPECT_TRUE(slice.hasKey("optimizeTopK"));
 #else
     EXPECT_EQ(10, slice.length());
 #endif
@@ -4590,20 +4590,20 @@ TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
       "cache":false,
       "includeAllFields":true,
       "fields" : {},
-      "smartSort": ["bm25(@doc) desc"]
+      "optimizeTopK": ["bm25(@doc) desc"]
     })");
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(
       meta.init(server.server(), json->slice(), errorField, vocbase.name()));
-  EXPECT_FALSE(meta._smartSort.empty());
-  EXPECT_EQ(1, meta._smartSort.buckets().size());
+  EXPECT_FALSE(meta._optimizeTopK.empty());
+  EXPECT_EQ(1, meta._optimizeTopK.buckets().size());
   {
     VPackBuilder builder;
     builder.openObject();
     EXPECT_TRUE(meta.json(server.server(), builder, true));
     builder.close();
-    auto sort = builder.slice().get("smartSort");
+    auto sort = builder.slice().get("optimizeTopK");
     EXPECT_TRUE(sort.isArray());
     EXPECT_EQ(1, sort.length());
   }
@@ -4612,7 +4612,7 @@ TEST_F(IResearchLinkMetaTest, test_withSmartSort) {
     builder.openObject();
     EXPECT_TRUE(meta.json(server.server(), builder, false));
     builder.close();
-    auto sort = builder.slice().get("smartSort");
+    auto sort = builder.slice().get("optimizeTopK");
     EXPECT_TRUE(sort.isNone());
   }
 }

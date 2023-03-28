@@ -188,7 +188,7 @@ struct StaticStrings {
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
 
 #ifdef USE_ENTERPRISE 
-  static constexpr std::string_view kSmartSortField{"smartSort"};
+  static constexpr std::string_view kOptimizeTopKField{"optimizeTopK"};
 #endif
 
   ////////////////////////////////////////////////////////////////////////////////

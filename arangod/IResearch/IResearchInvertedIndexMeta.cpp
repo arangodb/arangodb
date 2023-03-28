@@ -361,11 +361,11 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
   }
   { 
-    auto smartSortSlice = slice.get(StaticStrings::kSmartSortField);
-    if (!smartSortSlice.isNone()) {
+    auto optimizeTopKSlice = slice.get(StaticStrings::kOptimizeTopKField);
+    if (!optimizeTopKSlice.isNone()) {
       std::string err;
-      if (!_smartSort.fromVelocyPack(smartSortSlice, err)) {
-        errorField = StaticStrings::kSmartSortField;
+      if (!_optimizeTopK.fromVelocyPack(optimizeTopKSlice, err)) {
+        errorField = StaticStrings::kOptimizeTopKField;
         absl::StrAppend(&errorField, ": ", err);
         return false;
       }
@@ -445,8 +445,8 @@ bool IResearchInvertedIndexMeta::json(
     builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
   }
   { 
-    VPackArrayBuilder arrayScope(&builder, StaticStrings::kSmartSortField);
-    _smartSort.toVelocyPack(builder);
+    VPackArrayBuilder arrayScope(&builder, StaticStrings::kOptimizeTopKField);
+    _optimizeTopK.toVelocyPack(builder);
   }
 #endif
 
