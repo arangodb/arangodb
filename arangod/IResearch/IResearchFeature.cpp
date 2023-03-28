@@ -80,6 +80,8 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
+#include <utils/file_utils.hpp>
+
 using namespace std::chrono_literals;
 
 DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
@@ -809,6 +811,20 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
 
 namespace arangodb {
 namespace iresearch {
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  irs::utf8_path dataPath(feature.directory());
+  dataPath /= "databases";
+  dataPath /= "database-" + std::to_string(database.id());
+  bool exists = false;
+  if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
+      (exists && !irs::file_utils::remove(dataPath.c_str()))) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "')";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
