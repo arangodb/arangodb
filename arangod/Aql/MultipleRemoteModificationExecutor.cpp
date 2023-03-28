@@ -91,7 +91,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
 
   OperationResult result(Result(), _info._options);
 
-  int possibleWrites = 0;  // TODO - get real statistic values!
+  size_t possibleWrites = 0;  // TODO - get real statistic values!
 
   TRI_ASSERT(_info._input1RegisterId.isValid());
   AqlValue const& inDocument = input.getValue(_info._input1RegisterId);
