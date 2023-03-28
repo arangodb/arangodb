@@ -9,7 +9,7 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, false>;
 };
 
 export const SelectControl = (props: InputControlProps) => {
@@ -27,7 +27,6 @@ export const SelectControl = (props: InputControlProps) => {
         inputId={name}
         isDisabled={isSubmitting}
         {...selectProps}
-        isMulti={false}
         onChange={value => {
           helper.setValue((value as OptionType)?.value);
         }}
