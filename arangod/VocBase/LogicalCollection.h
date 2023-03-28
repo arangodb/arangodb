@@ -124,10 +124,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToStateId(std::string_view shardId);
-  static std::optional<replication2::LogId> tryShardIdToStateId(
-      std::string_view shardId);
-
   // SECTION: Meta Information
   Version version() const { return _version; }
 
@@ -221,7 +217,6 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
   size_t writeConcern() const noexcept;
-  replication::Version replicationVersion() const noexcept;
   std::string const& distributeShardsLike() const noexcept;
   std::vector<std::string> const& avoidServers() const noexcept;
   bool isSatellite() const noexcept;
@@ -331,11 +326,6 @@ class LogicalCollection : public LogicalDataSource {
 
   bool dropIndex(IndexId iid);
 
-  // SECTION: Index access (local only)
-
-  /// @brief processes a truncate operation
-  Result truncate(transaction::Methods& trx, OperationOptions& options);
-
   /// @brief compact-data operation
   void compact();
 
@@ -395,8 +385,14 @@ class LogicalCollection : public LogicalDataSource {
 
   uint64_t getInternalValidatorTypes() const noexcept;
 
+#ifdef USE_ENTERPRISE
+  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties);
+#endif
+
  private:
-  void initializeSmartAttributes(velocypack::Slice info);
+  void initializeSmartAttributesBefore(velocypack::Slice info);
+  void initializeSmartAttributesAfter(velocypack::Slice info);
 
   void prepareIndexes(velocypack::Slice indexesSlice);
 

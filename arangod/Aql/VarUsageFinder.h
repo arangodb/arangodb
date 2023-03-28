@@ -25,11 +25,11 @@
 
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
+#include "Containers/FlatHashMap.h"
 
 #include <Containers/Enumerate.h>
 
 #include <vector>
-#include <unordered_set>
 
 namespace arangodb::aql {
 
@@ -48,17 +48,17 @@ struct VarUsageFinderT final
   VarSetStack _usedLaterStack{VarSet{}};
   VarSetStack _varsValidStack{VarSet{}};
 
-  std::unordered_map<VariableId, T*>* _varSetBy;
+  containers::FlatHashMap<VariableId, T*>* _varSetBy;
   bool const _ownsVarSetBy;
 
   VarUsageFinderT(VarUsageFinderT const&) = delete;
   VarUsageFinderT& operator=(VarUsageFinderT const&) = delete;
 
   VarUsageFinderT() : _varSetBy(nullptr), _ownsVarSetBy(true) {
-    _varSetBy = new std::unordered_map<VariableId, T*>();
+    _varSetBy = new containers::FlatHashMap<VariableId, T*>();
   }
 
-  explicit VarUsageFinderT(std::unordered_map<VariableId, T*>* varSetBy)
+  explicit VarUsageFinderT(containers::FlatHashMap<VariableId, T*>* varSetBy)
       : _varSetBy(varSetBy), _ownsVarSetBy(false) {
     TRI_ASSERT(_varSetBy != nullptr);
   }

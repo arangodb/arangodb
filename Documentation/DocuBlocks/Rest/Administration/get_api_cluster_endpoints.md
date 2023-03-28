@@ -13,7 +13,8 @@ cluster mode. In case of an error the `error` attribute is set to
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200} is returned when everything went well.
+@RESTRETURNCODE{200}
+is returned when everything went well.
 
 @RESTREPLYBODY{error,boolean,required,}
 boolean flag to indicate whether an error occurred (*true* in this case)
@@ -27,6 +28,7 @@ A list of active cluster endpoints.
 @RESTSTRUCT{endpoint,cluster_endpoints_struct,string,required,}
 The bind of the Coordinator, like `tcp://[::1]:8530`
 
-@RESTRETURNCODE{501} server is not a Coordinator or method was not GET.
+@RESTRETURNCODE{501}
+server is not a Coordinator or method was not GET.
 
 @endDocuBlock

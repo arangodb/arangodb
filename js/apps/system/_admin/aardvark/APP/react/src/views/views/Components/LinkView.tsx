@@ -22,10 +22,15 @@ const LinkView = ({
 
   return links && links[link]
     ? <ViewLinkLayout fragments={[link]}>
-      <ArangoTable style={{ border: 'none' }}>
+      <ArangoTable style={{
+        border: 'none',
+        marginLeft: 0
+      }}>
         <tbody>
         <tr>
-          <ArangoTD seq={0}>
+          <ArangoTD seq={0} style={{
+            paddingLeft: 0
+          }}>
             <LinkPropertiesInput formState={links[link] || {}} disabled={disabled} dispatch={dispatch}
                                  basePath={`links[${link}]`}/>
           </ArangoTD>

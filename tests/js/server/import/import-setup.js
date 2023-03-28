@@ -71,12 +71,13 @@
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
+  db._drop("UnitTestsImportRemoveAttributeJSON");
 
   let dbs = {
     "maçã": true,
     "😀": true,
     "ﻚﻠﺑ ﻞﻄﻴﻓ": false,
-    "abc mötor !\" ' & <>": false, 
+    "abc mötor !\" ' & <>": false,
     "UnitTestImportCreateDatabase": false
   };
   Object.keys(dbs).forEach((name) => {

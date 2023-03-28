@@ -32,15 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/LogMacros.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-
-namespace {
-/// @brief Convert a revision ID to a string
-constexpr static arangodb::RevisionId::BaseType TickLimit =
-    static_cast<arangodb::RevisionId::BaseType>(2016ULL - 1970ULL) * 1000ULL *
-    60ULL * 60ULL * 24ULL * 365ULL;
-}  // namespace
 
 namespace arangodb {
 
@@ -57,10 +49,10 @@ RevisionId RevisionId::next() const { return RevisionId{id() + 1}; }
 RevisionId RevisionId::previous() const { return RevisionId{id() - 1}; }
 
 std::string RevisionId::toString() const {
-  if (id() <= ::TickLimit) {
+  if (id() <= tickLimit) {
     return arangodb::basics::StringUtils::itoa(id());
   }
-  return basics::HybridLogicalClock::encodeTimeStamp(id());
+  return toHLC();
 }
 
 /// encodes the uint64_t timestamp into the provided result buffer
@@ -69,12 +61,16 @@ std::string RevisionId::toString() const {
 /// the length of the encoded value and the start position into
 /// the result buffer are returned by the function
 std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
-  if (id() <= ::TickLimit) {
+  if (id() <= tickLimit) {
     std::pair<size_t, size_t> pos{0, 0};
     pos.second = basics::StringUtils::itoa(id(), buffer);
     return pos;
   }
   return basics::HybridLogicalClock::encodeTimeStamp(id(), buffer);
+}
+
+std::string RevisionId::toHLC() const {
+  return basics::HybridLogicalClock::encodeTimeStamp(id());
 }
 
 /// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
@@ -92,7 +88,7 @@ arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
 RevisionId RevisionId::lowerBound() {
   // "2021-01-01T00:00:00.000Z" => 1609459200000 milliseconds since the epoch
   RevisionId value{uint64_t(1609459200000ULL) << 20ULL};
-  TRI_ASSERT(value.id() > ::TickLimit);
+  TRI_ASSERT(value.id() > (tickLimit << 20ULL));
   return value;
 }
 
@@ -104,39 +100,21 @@ RevisionId RevisionId::createClusterWideUnique(ClusterInfo& ci) {
   return RevisionId{ci.uniqid()};
 }
 
-/// @brief Convert a string into a revision ID, no check variant
-RevisionId RevisionId::fromString(char const* p, size_t len, bool warn) {
-  [[maybe_unused]] bool isOld;
-  return fromString(p, len, isOld, warn);
-}
-
 /// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string const& ridStr) {
-  [[maybe_unused]] bool isOld;
-  return fromString(ridStr.c_str(), ridStr.size(), isOld, false);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(std::string const& ridStr, bool& isOld,
-                                  bool warn) {
-  return fromString(ridStr.c_str(), ridStr.size(), isOld, warn);
-}
-
-/// @brief Convert a string into a revision ID, returns 0 if format invalid
-RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
-                                  bool warn) {
+RevisionId RevisionId::fromString(std::string_view rid) {
+  char const* p = rid.data();
+  size_t len = rid.size();
   if (len > 0 && *p >= '1' && *p <= '9') {
     BaseType r = NumberUtils::atoi_positive_unchecked<BaseType>(p, p + len);
-    if (warn && r > ::TickLimit) {
-      // An old tick value that could be confused with a time stamp
-      LOG_TOPIC("66a3a", WARN, arangodb::Logger::FIXME)
-          << "Saw old _rev value that could be confused with a time stamp!";
-    }
-    isOld = true;
     return RevisionId{r};
   }
-  isOld = false;
-  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(p, len)};
+  return fromHLC(rid);
+}
+
+/// @brief Convert a HLC-encoded string into a revision ID, returns 0 if format
+/// invalid
+RevisionId RevisionId::fromHLC(std::string_view rid) {
+  return RevisionId{basics::HybridLogicalClock::decodeTimeStamp(rid)};
 }
 
 /// @brief extract revision from slice; expects either an integer, or an object
@@ -144,22 +122,14 @@ RevisionId RevisionId::fromString(char const* p, size_t len, bool& isOld,
 RevisionId RevisionId::fromSlice(velocypack::Slice slice) {
   slice = slice.resolveExternal();
 
+  if (slice.isObject()) {
+    slice = slice.get(StaticStrings::RevString);
+  }
   if (slice.isInteger()) {
     return RevisionId{slice.getNumber<BaseType>()};
-  } else if (slice.isString()) {
-    velocypack::ValueLength l;
-    char const* p = slice.getStringUnchecked(l);
-    return fromString(p, l, false);
-  } else if (slice.isObject()) {
-    velocypack::Slice r(slice.get(StaticStrings::RevString));
-    if (r.isString()) {
-      velocypack::ValueLength l;
-      char const* p = r.getStringUnchecked(l);
-      return fromString(p, l, false);
-    }
-    if (r.isInteger()) {
-      return RevisionId{r.getNumber<BaseType>()};
-    }
+  }
+  if (slice.isString()) {
+    return fromString(slice.stringView());
   }
 
   return RevisionId::none();

@@ -20,10 +20,14 @@
 ///
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearch/ViewSnapshot.h"
 #include "Basics/DownCast.h"
+#include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
 #include "Transaction/Methods.h"
+
+#include <absl/strings/str_cat.h>
 
 namespace arangodb::iresearch {
 namespace {
@@ -35,7 +39,7 @@ namespace {
 ///       TransactionState as the IResearchView ViewState, therefore a separate
 ///       lock is not required to be held by the DBServer CompoundReader
 ////////////////////////////////////////////////////////////////////////////////
-class ViewSnapshotCookie final : public ViewSnapshotImpl,
+class ViewSnapshotCookie final : public ViewSnapshot,
                                  public TransactionState::Cookie {
  public:
   ViewSnapshotCookie() noexcept = default;
@@ -47,19 +51,36 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
   bool compute(bool sync, std::string_view name);
 
  private:
-  std::vector<irs::directory_reader> _readers;
+  [[nodiscard]] irs::sub_reader const& operator[](
+      std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return *(_segments[i].second);
+  }
+
+  [[nodiscard]] std::size_t size() const noexcept final {
+    return _segments.size();
+  }
+
+  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
+  }
+
   // prevent data-store deallocation (lock @ AsyncSelf)
-  Links _links;
+  Links _links;  // should be first
+  std::vector<irs::directory_reader> _readers;
+  Segments _segments;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
     : _links{std::move(links)} {
-  _readers.reserve(links.size());
+  _readers.reserve(_links.size());
 }
 
 void ViewSnapshotCookie::clear() noexcept {
   _live_docs_count = 0;
   _docs_count = 0;
+  _hasNestedFields = false;
   _segments.clear();
   _readers.clear();
 }
@@ -69,7 +90,7 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   for (auto& link : _links) {
     if (!link) {
       LOG_TOPIC("fffff", WARN, TOPIC)
-          << "failed to lock a link for view '" << name;
+          << "failed to lock a link for view '" << name << "'";
       return false;
     }
     if (sync) {
@@ -93,6 +114,7 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
     }
     _live_docs_count += reader.live_docs_count();
     _docs_count += reader.docs_count();
+    _hasNestedFields |= _links[i]->hasNestedFields();
   }
   return true;
 }
@@ -122,44 +144,58 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
   return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
 }
 
+FilterCookie& ensureFilterCookie(transaction::Methods& trx, void const* key) {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+
+  if (auto* cookie = state.cookie(key); !cookie) {
+    auto filterCookie = std::make_unique<FilterCookie>();
+    auto* p = filterCookie.get();
+    [[maybe_unused]] auto const old =
+        state.cookie(key, std::move(filterCookie));
+    TRI_ASSERT(!old);
+    return *p;
+  } else {
+    return *basics::downCast<FilterCookie>(cookie);
+  }
+}
+
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
   auto& ctx = basics::downCast<ViewSnapshotCookie>(snapshot);
   ctx.clear();
-  TRI_ASSERT(ctx.compute(true, name));
+  [[maybe_unused]] auto r = ctx.compute(true, name);
+  TRI_ASSERT(r);
 }
 
 ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
                                bool sync, std::string_view name,
-                               ViewSnapshot::Links&& links) noexcept {
-  if (links.empty()) {
-    // cannot be a const, we can call syncViewSnapshot on it,
-    // that should do nothing but in generally we cannot prove it
-    static ViewSnapshotCookie empty;
-    return &empty;  // TODO(MBkkt) Maybe nullptr?
-  }
+                               ViewSnapshot::Links&& links) {
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
   TRI_ASSERT(state.cookie(key) == nullptr);
+
+  for (auto const& link : links) {
+    if (!link) {
+      LOG_TOPIC("b054e", WARN, TOPIC)
+          << "failed to lock a link for view '" << name << "'";
+      return nullptr;
+    }
+
+    if (link->failQueriesOnOutOfSync() && link->isOutOfSync()) {
+      // link is out of sync, we cannot use it for querying
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
+          absl::StrCat("link ", std::to_string(link->id().id()),
+                       " has been marked as failed and needs to be recreated"));
+    }
+  }
+
   auto cookie = std::make_unique<ViewSnapshotCookie>(std::move(links));
   auto& ctx = *cookie;
-  try {
-    if (ctx.compute(sync, name)) {
-      state.cookie(key, std::move(cookie));
-      return &ctx;
-    }
-  } catch (basics::Exception const& e) {
-    LOG_TOPIC("29b30", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "': " << e.code() << " "
-        << e.what();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("ffe73", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "': " << e.what();
-  } catch (...) {
-    LOG_TOPIC("c54e8", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of view '"
-        << name << "', tid '" << state.id() << "'";
+  if (ctx.compute(sync, name)) {
+    state.cookie(key, std::move(cookie));
+    return &ctx;
   }
   return nullptr;
 }

@@ -170,6 +170,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"LOWER", ".", flags, &functions::Lower});
   add({"UPPER", ".", flags, &functions::Upper});
   add({"SUBSTRING", ".,.|.", flags, &functions::Substring});
+  add({"SUBSTRING_BYTES", ".,.|.", flags, &functions::SubstringBytes});
   add({"CONTAINS", ".,.|.", flags, &functions::Contains});
   add({"LIKE", ".,.|.", flags, &functions::Like});
   add({"REGEX_MATCHES", ".,.|.", flags, &functions::RegexMatches});
@@ -375,6 +376,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // KEYS is an alias for ATTRIBUTES
   addAlias("KEYS", "ATTRIBUTES");
   add({"VALUES", ".|.", flags, &functions::Values});
+  add({"VALUE", ".,.", flags, &functions::Value});
   add({"MERGE", ".|+", flags, &functions::Merge});
   add({"MERGE_RECURSIVE", ".|+", flags, &functions::MergeRecursive});
   add({"MATCHES", ".,.|.", flags, &functions::Matches});

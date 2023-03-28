@@ -164,6 +164,7 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    OFFSET_INFO_MATERIALIZE = 35,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -464,7 +465,7 @@ class ExecutionNode {
   RegIdSet const& getRegsToClear() const;
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const;
+  bool isVarUsedLater(Variable const* variable) const noexcept;
 
   /// @brief whether or not the node is in an inner loop
   bool isInInnerLoop() const;
@@ -1159,8 +1160,10 @@ class MaterializeNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return out variable
-  arangodb::aql::Variable const& outVariable() const noexcept {
-    return *_outVariable;
+  aql::Variable const& outVariable() const noexcept { return *_outVariable; }
+
+  aql::Variable const& docIdVariable() const noexcept {
+    return *_inNonMaterializedDocId;
   }
 
  protected:

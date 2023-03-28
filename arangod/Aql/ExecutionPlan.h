@@ -112,6 +112,8 @@ class ExecutionPlan {
   /// @brief check if a specific rule is disabled
   bool isDisabledRule(int rule) const;
 
+  bool hasForcedIndexHints() const noexcept { return _hasForcedIndexHints; }
+
   /// @brief enable a specific rule
   void enableRule(int rule);
 
@@ -298,7 +300,7 @@ class ExecutionPlan {
   bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
-  void increaseCounter(ExecutionNode::NodeType type) noexcept;
+  void increaseCounter(ExecutionNode const& node) noexcept;
 
   bool fullCount() const noexcept;
 
@@ -410,7 +412,7 @@ class ExecutionPlan {
   ExecutionNode* _root;
 
   /// @brief get the node where a variable is introduced.
-  std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _varSetBy;
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
@@ -435,6 +437,9 @@ class ExecutionPlan {
   /// prefetching on the node level should be executed.
   bool _isAsyncPrefetchEnabled{false};
 
+  // Flag there are collection nodes with forceIndexHint:true
+  bool _hasForcedIndexHints{false};
+
   /// @brief current nesting level while building the plan
   int _nestingLevel;
 
@@ -448,7 +453,7 @@ class ExecutionPlan {
   ExecutionNode* _lastLimitNode;
 
   /// @brief a lookup map for all subqueries created
-  std::unordered_map<VariableId, ExecutionNode*> _subqueries;
+  containers::FlatHashMap<VariableId, ExecutionNode*> _subqueries;
 
   /// @brief these nodes will be excluded from building scatter/gather
   /// "diamonds" later

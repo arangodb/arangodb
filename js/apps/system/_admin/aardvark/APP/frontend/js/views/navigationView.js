@@ -142,10 +142,9 @@
           } else {
             self.showLicenseError();
           }
-        },
-        error: function () {
-          self.showLicenseError();
         }
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+        // Additional note: This is required if "--server.harden true" is being set.
       });
     },
 

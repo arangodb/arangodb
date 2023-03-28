@@ -89,7 +89,22 @@ var cancelExecution = function (executionID) {
   return requestResult;
 };
 
+// Test whether the pregel execution with executionID
+// is still busy.
+//
+// With the current API this the only sensible test
+// that can be offered: the executionID might have
+// disappeared or never existed, but then the execution
+// is not busy.
+const isBusy = function (executionID) {
+  let status = getExecutionStatus(executionID);
+  return status === status.state === "loading" ||
+         status.state === "running" ||
+         status.state === "storing";
+};
+
 exports.buildMessage = buildMessage;
 exports.start = startExecution;
 exports.status = getExecutionStatus;
 exports.cancel = cancelExecution;
+exports.isBusy = isBusy;

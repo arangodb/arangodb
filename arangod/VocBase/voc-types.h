@@ -87,8 +87,8 @@ enum TRI_vocbase_col_status_e : int {
 namespace arangodb {
 
 enum class ViewType {
-  kView = 0,
-  kSearch = 1,
+  kArangoSearch = 0,
+  kSearchAlias = 1,
 };
 
 }  // namespace arangodb

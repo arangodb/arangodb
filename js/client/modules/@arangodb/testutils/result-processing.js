@@ -47,6 +47,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const YELLOW = internal.COLORS.COLOR_YELLOW;
 
 const internalMembers = [
+  'crashreport',
   'code',
   'error',
   'status',
@@ -498,7 +499,7 @@ function unitTestPrettyPrintResults (options, results) {
     color = RED;
     statusMessage = 'Fail';
   }
-  if (results.crashed === true) {
+  if (results.crashed === true || cu.GDB_OUTPUT !== '') {
     color = RED;
     for (let failed in failedRuns) {
       crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -996,14 +997,17 @@ function writeDefaultReports(options, testSuites) {
 }
 
 function writeReports(options, results) {
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
 }
 
 function dumpAllResults(options, results) {
   let j;
 
   try {
+    if (cu.GDB_OUTPUT !== '') {
+      results['crashreport'] = cu.GDB_OUTPUT;
+    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);

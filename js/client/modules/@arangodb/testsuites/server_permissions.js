@@ -25,6 +25,7 @@
 // / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const _ = require('lodash');
 const time = require('internal').time;
 const fs = require('fs');
@@ -34,17 +35,20 @@ const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 
-const toArgv = require('internal').toArgv;
-const executeScript = require('internal').executeScript;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
+const toArgv = internal.toArgv;
+const executeScript = internal.executeScript;
+const executeExternalAndWait = internal.executeExternalAndWait;
+const testHelper = require("@arangodb/test-helper");
+const ArangoError = require('@arangodb').ArangoError;
+const isEnterprise = testHelper.isEnterprise;
 
-const platform = require('internal').platform;
+const platform = internal.platform;
 
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
+const BLUE = internal.COLORS.COLOR_BLUE;
+const CYAN = internal.COLORS.COLOR_CYAN;
+const GREEN = internal.COLORS.COLOR_GREEN;
+const RED = internal.COLORS.COLOR_RED;
+const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
@@ -63,18 +67,21 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     this.info = "runInDriverTest";
   }
   run(testList) {
+    let tmpDir = fs.getTempPath();
     let beforeStart = time();
     this.continueTesting = true;
     this.testList = testList;
     let testrunStart = time();
     this.results = {
       shutdown: true,
+      status: true,
       startupTime: testrunStart - beforeStart
     };
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
     for (let i = 0; i < this.testList.length; i++) {
+      testHelper.flushInstanceInfo();
       let te = this.testList[i];
       let filtered = {};
       if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
@@ -92,6 +99,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        clonedOpts['startupMaxCount'] = 600; // Slow startups may occur on slower machines.
         if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
           clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
         }
@@ -113,6 +121,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        this.friendlyName,
                                                        rootDir);
           
+          global.theInstanceManager = this.instanceManager;
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
@@ -129,7 +138,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               throw new Error("setup of test failed");
             }
           } catch (ex) {
-            shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
+            if (ex instanceof ArangoError &&
+                ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+              forceTerminate = true;
+            }
+            shutdownStatus = this.instanceManager.shutdownInstance(forceTerminate);                               // stop
             this.instanceManager.destructor(false);
             this.results[te] = {
               status: false,
@@ -137,9 +150,10 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               shutdown: shutdownStatus
             };
             this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-            return;
+            this.results.status = false;
+            return this.results;
           }
-          if (this.instanceManager.shutdownInstance(false)) {                                                     // stop
+          if (this.instanceManager.shutdownInstance(forceTerminate)) {                                            // stop
             this.instanceManager.arangods.forEach(function(arangod) {
               arangod.pid = null;
             });
@@ -155,6 +169,10 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               }
               this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
             } catch (ex) {
+              if (ex instanceof ArangoError &&
+                  ex.errorNum === internal.errors.ERROR_DISABLED.code) {
+                forceTerminate = true;
+              }
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
                   ex.message + " - " +
@@ -181,7 +199,8 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        paramsSecondRun,
                                                        this.friendlyName,
                                                        rootDir);
-          
+
+          global.theInstanceManager = this.instanceManager;
           // if failurepoints are active, disable SUT-sanity checks:
           let failurePoints = paramsSecondRun.hasOwnProperty('server.failure-point');
           if (failurePoints) {
@@ -238,6 +257,16 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
       }
     }
+    if (this.results.status && this.options.cleanup) {
+      fs.list(tmpDir).forEach(file => {
+        let fullfile = fs.join(tmpDir, file);
+        if (fs.isDirectory(fullfile)) {
+          fs.removeDirectoryRecursive(fullfile, true);
+        } else {
+          fs.remove(fullfile);
+        }
+      });
+    }
     return this.results;
   }
 }
@@ -256,9 +285,12 @@ function server_secrets(options) {
 
   let secretsDir = fs.join(fs.getTempPath(), 'arango_jwt_secrets');
   fs.makeDirectory(secretsDir);
-
-  fs.write(fs.join(secretsDir, 'secret1'), 'jwtsecret-1');
-  fs.write(fs.join(secretsDir, 'secret2'), 'jwtsecret-2');
+  let secretFiles = [
+    fs.join(secretsDir, 'secret1'),
+    fs.join(secretsDir, 'secret2')
+  ];
+  fs.write(secretFiles[0], 'jwtsecret-1');
+  fs.write(secretFiles[1], 'jwtsecret-2');
 
   process.env["jwt-secret-folder"] = secretsDir;
 
@@ -274,6 +306,7 @@ function server_secrets(options) {
   let copyOptions = _.clone(options);
   // necessary to fix shitty process-utils handling
   copyOptions['server.jwt-secret-folder'] = secretsDir;
+  copyOptions['jwtFiles'] = secretFiles;
   copyOptions['protocol'] = "ssl";
 
   const testCases = tu.scanTestPaths([tu.pathForTesting('client/server_secrets')], copyOptions);
@@ -283,8 +316,7 @@ function server_secrets(options) {
     'cluster.create-waits-for-sync-replication': false,
     'ssl.keyfile': keyfileName
   };
-  let version = global.ARANGODB_CLIENT_VERSION(true);
-  if (version.hasOwnProperty('enterprise-version')) {
+  if (isEnterprise()) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }

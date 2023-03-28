@@ -79,7 +79,7 @@ Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
       _shift(shift) {}
 
 void* Table::Subtable::fetchBucket(std::uint32_t hash) noexcept {
-  return &(_buckets[(hash & _mask) >> _shift]);
+  return &_buckets[(hash & _mask) >> _shift];
 }
 
 std::vector<Table::BucketLocker> Table::Subtable::lockAllBuckets() {
@@ -220,6 +220,8 @@ std::uint32_t Table::logSize() const noexcept { return _logSize; }
 
 Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
                                               std::uint64_t maxTries) {
+  std::uint32_t index = (hash & _mask) >> _shift;
+
   BucketLocker bucketGuard;
 
   SpinLocker guard(SpinLocker::Mode::Read, _lock,
@@ -227,8 +229,7 @@ Table::BucketLocker Table::fetchAndLockBucket(std::uint32_t hash,
 
   if (guard.isLocked()) {
     if (!_disabled) {
-      bucketGuard =
-          BucketLocker(&(_buckets[(hash & _mask) >> _shift]), this, maxTries);
+      bucketGuard = BucketLocker(&_buckets[index], this, maxTries);
       if (bucketGuard.isLocked()) {
         if (bucketGuard.bucket<GenericBucket>().isMigrated()) {
           bucketGuard.release();
@@ -257,7 +258,7 @@ void* Table::primaryBucket(uint64_t index) noexcept {
   if (!isEnabled()) {
     return nullptr;
   }
-  return &(_buckets[index]);
+  return &_buckets[index];
 }
 
 std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
@@ -276,13 +277,13 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(std::uint32_t index) {
     TRI_ASSERT(_auxiliary.get() != nullptr);
     if (_logSize > _auxiliary->_logSize) {
       std::uint32_t diff = _logSize - _auxiliary->_logSize;
-      base = &(_auxiliary->_buckets[index >> diff]);
+      base = &_auxiliary->_buckets[index >> diff];
       size = 1;
       mask = 0;
       shift = 0;
     } else {
       std::uint32_t diff = _auxiliary->_logSize - _logSize;
-      base = &(_auxiliary->_buckets[index << diff]);
+      base = &_auxiliary->_buckets[index << diff];
       size = static_cast<std::uint64_t>(1) << diff;
       mask = (static_cast<std::uint32_t>(size - 1) << _auxiliary->_shift);
       shift = _auxiliary->_shift;

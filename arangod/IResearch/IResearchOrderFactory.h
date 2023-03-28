@@ -24,7 +24,7 @@
 
 #pragma once
 
-#include "AqlHelper.h"
+#include "IResearch/SearchFunc.h"
 
 #include "VocBase/voc-types.h"
 
@@ -50,121 +50,25 @@ struct QueryContext;
 
 namespace transaction {
 
-class Methods;  // forward declaration
+class Methods;
 
 }  // namespace transaction
 
-namespace iresearch {
+namespace iresearch::order_factory {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct OrderFactory
-////////////////////////////////////////////////////////////////////////////////
-struct OrderFactory {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch scorer
-  ///        if 'scorer' != nullptr then also append build iresearch scorer
-  ///        there
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
-                     iresearch::QueryContext const& ctx);
+// Extract reference from scorer node
+aql::Variable const* refFromScorer(aql::AstNode const& node);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief determine if the 'node' can be converted into an iresearch scorer
-  ///        if 'scorer' != nullptr then also append build iresearch comparer
-  ///        there
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool comparer(irs::sort::ptr* scorer, aql::AstNode const& node);
+// Determine if the 'node' can be converted into an iresearch scorer
+// if 'scorer' != nullptr then also append build iresearch scorer
+// there.
+bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
+            QueryContext const& ctx);
 
-  OrderFactory() = delete;
-};  // OrderFactory
+// Determine if the 'node' can be converted into an iresearch scorer
+// if 'scorer' != nullptr then also append build iresearch comparer
+// there
+bool comparer(irs::sort::ptr* scorer, aql::AstNode const& node);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct Scorer
-/// @brief represents IResearch scorer in AQL terms
-////////////////////////////////////////////////////////////////////////////////
-struct Scorer {
-  Scorer() = default;
-
-  constexpr Scorer(aql::Variable const* var, aql::AstNode const* node) noexcept
-      : var(var), node(node) {}
-
-  constexpr bool operator==(Scorer const& rhs) const noexcept {
-    return var == rhs.var && node == rhs.node;
-  }
-
-  constexpr bool operator!=(Scorer const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
-  aql::Variable const* var{};  // scorer variable
-  aql::AstNode const* node{};  // scorer node
-};                             // Scorer
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class ScorerReplacer
-/// @brief utility class that replaces scorer function call with corresponding
-///        reference access
-////////////////////////////////////////////////////////////////////////////////
-class ScorerReplacer {
- public:
-  ScorerReplacer() = default;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces all occurences of IResearch scorers in a specified node
-  /// with
-  ///        corresponding reference access
-  ////////////////////////////////////////////////////////////////////////////////
-  void replace(aql::CalculationNode& node);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief extracts replacement results for a given variable
-  ////////////////////////////////////////////////////////////////////////////////
-  void extract(IResearchViewNode const& viewNode, std::vector<Scorer>& scorers);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @returns true if no scorers were replaced
-  ////////////////////////////////////////////////////////////////////////////////
-  bool empty() const noexcept { return _dedup.empty(); }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief visits all replaced scorer entries
-  ////////////////////////////////////////////////////////////////////////////////
-  template<typename Visitor>
-  bool visit(Visitor visitor) const {
-    for (auto& entry : _dedup) {
-      if (!visitor(entry.first)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
- private:
-  struct HashedScorer : Scorer {
-    HashedScorer(aql::Variable const* var, aql::AstNode const* node)
-        : Scorer(var, node), hash(iresearch::hash(node)) {}
-
-    size_t hash;
-  };  // HashedScorer
-
-  struct ScorerHash {
-    size_t operator()(HashedScorer const& key) const noexcept {
-      return key.hash;
-    }
-  };  // ScorerHash
-
-  struct ScorerEqualTo {
-    bool operator()(HashedScorer const& lhs, HashedScorer const& rhs) const {
-      return iresearch::equalTo(lhs.node, rhs.node);
-    }
-  };  // ScorerEqualTo
-
-  typedef std::unordered_map<HashedScorer, aql::Variable const*, ScorerHash,
-                             ScorerEqualTo>
-      DedupScorers;
-
-  DedupScorers _dedup;
-};  // ScorerReplacer
-
-}  // namespace iresearch
+}  // namespace iresearch::order_factory
 }  // namespace arangodb

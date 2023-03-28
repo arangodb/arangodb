@@ -1,102 +1,95 @@
-import React, { useContext, useState } from "react";
-import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
-import { IconButton } from "../../../components/arango/buttons";
+import React, { useContext, useEffect, useState } from "react";
 import { FormState, ViewContext, ViewProps } from "../constants";
-import Modal, { ModalFooter, ModalHeader } from "../../../components/modal/Modal";
-import { Link as HashLink, useRouteMatch } from 'react-router-dom';
 import { SaveButton } from "../Actions";
-import { chain, size } from "lodash";
+import { chain, difference, isNull, map, without } from "lodash";
+import useSWR from "swr";
+import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import AutoCompleteMultiSelect from "../../../components/pure-css/form/AutoCompleteMultiSelect";
+import { Cell, Grid } from "../../../components/pure-css/grid";
+import { Link, useRouteMatch } from "react-router-dom";
 
-type DeleteButtonProps = {
-  collection: string;
-  modalCid: string;
-};
+const LinkList = ({ name }: ViewProps) => {
+  const { dispatch, formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
+  const formState = fs as FormState;
+  const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) =>
+    getApiRouteForCurrentDB().get(path, qs)
+  );
+  const [options, setOptions] = useState<string[]>([]);
+  const match = useRouteMatch();
 
-const DeleteButton = ({ collection, modalCid }: DeleteButtonProps) => {
-  const [show, setShow] = useState(false);
-  const { dispatch } = useContext(ViewContext);
+  useEffect(() => {
+    if (data) {
+      const linkKeys = chain(formState.links)
+        .omitBy(isNull)
+        .keys()
+        .value();
+      const collNames = map(data.body.result, 'name');
+      const tempOptions = difference(collNames, linkKeys).sort();
 
-  const removeLink = async () => {
+      setOptions(tempOptions);
+    }
+  }, [data, formState.links]);
+
+  const addLink = (link: string | number) => {
     dispatch({
       type: "setField",
       field: {
-        path: `links[${collection}]`,
+        path: `links[${link}]`,
+        value: {}
+      }
+    });
+    setOptions(without(options, link as string));
+  };
+
+  const removeLink = async (link: string | number) => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: `links[${link}]`,
         value: null
       }
     });
+    setOptions(options.concat([link as string]).sort());
   };
 
-  return <>
-    <IconButton icon={'trash-o'} type={'danger'} onClick={() => setShow(true)}/>
-    <Modal show={show} setShow={setShow} cid={modalCid}>
-      <ModalHeader title={`Delete Link "${collection}"?`}/>
-      <ModalFooter>
-        <button className="button-close" onClick={() => setShow(false)}>Close</button>
-        <button className="button-danger" style={{ float: 'right' }} onClick={removeLink}>Delete</button>
-      </ModalFooter>
-    </Modal>
-  </>;
-};
+  const validLinks = chain(formState.links).toPairs().filter(pair => pair[1] !== null).map(pair => ({
+    key: pair[0],
+    value: <Link to={`${match.url}${pair[0]}`}>{pair[0]}</Link>
+  })).value();
 
-const LinkList = ({ name }: ViewProps) => {
-  const { formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
-  const match = useRouteMatch();
-
-  const formState = fs as FormState;
-  const validLinks = chain(formState.links || {}).toPairs().filter(pair => pair[1] !== null).value();
-
-  return (
-    <div id="modal-dialog">
-      <div className="modal-body">
-        <ArangoTable className={"edit-index-table arango-table"}>
-          <thead>
-          <tr className="figuresHeader">
-            <ArangoTH seq={0}>Collection</ArangoTH>
-            <ArangoTH seq={1}>Actions</ArangoTH>
-          </tr>
-          </thead>
-
-          <tbody>
-          {
-            size(validLinks)
-              ? validLinks.map(pair =>
-                <tr key={pair[0]}>
-                  <ArangoTD seq={0}>{pair[0]}</ArangoTD>
-                  <ArangoTD seq={1}>
-                    <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${pair[0]}`}/>
-                    <HashLink to={`/${pair[0]}`}>
-                      <IconButton icon={"edit"} type={"warning"}/>
-                    </HashLink>
-                  </ArangoTD>
-                </tr>
-              )
-              : <tr>
-                <ArangoTD seq={0} colSpan={2}>No links.</ArangoTD>
-              </tr>
-          }
-          </tbody>
-          {
-            isAdminUser
-              ? <tfoot>
-              <tr>
-                <ArangoTD seq={0} colSpan={2}>
-                  <HashLink to={`${match.url}_add`}>
-                    <i className={'fa fa-plus-circle'}/>
-                  </HashLink>
-                </ArangoTD>
-              </tr>
-              </tfoot>
-              : null
-          }
-        </ArangoTable>
+  return <div id="modal-dialog" style={{
+    width: 1024,
+    marginLeft: 'auto',
+    marginRight: 'auto'
+  }}>
+    <div className="modal-body" style={{
+      minHeight: 300,
+      border: 'none',
+      height: 'fit-content'
+    }}>
+      <Grid>
+        <Cell size={"1"}>
+          <AutoCompleteMultiSelect
+            values={validLinks}
+            onRemove={removeLink}
+            onSelect={addLink}
+            options={options}
+            label={'Links'}
+            disabled={!isAdminUser}
+            errorMsg={'Collection does not exist'}
+            placeholder={'Enter a collection name'}
+          />
+        </Cell>
         {
           isAdminUser && changed
-            ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+            ? <Cell size={"1"}>
+              <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+            </Cell>
             : null
         }
-      </div>
+      </Grid>
     </div>
-  );
+  </div>;
 };
 
 export default LinkList;

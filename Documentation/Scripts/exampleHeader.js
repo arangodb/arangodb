@@ -175,7 +175,7 @@ var createErrorMessage = function(err, line, testName, sourceFN, sourceLine, lin
       msg + "\n" + err + "\n" + err.stack;
 };
 
-var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, showCmd, expectError, isLoop, fakeVar) {
+var runTestLine = function(line, testName, sourceFN, sourceLine, lineCount, showCmd, expectError, isLoop, fakeVar, assert) {
   XXX = undefined;
   if (showCmd) {
     print("arangosh> " + (fakeVar?"var ":"") + line.replace(/\n/g, '\n........> '));

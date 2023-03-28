@@ -29,7 +29,7 @@
 #include "IResearchLinkMock.h"
 #include "Indexes/IndexIterator.h"
 #include "Mocks/IResearchLinkMock.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
+#include "Mocks/IResearchInvertedIndexMock.h"
 #include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -146,9 +146,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::OperationOptions const& options) override;
   virtual arangodb::RevisionId revision(
       arangodb::transaction::Methods* trx) const override;
-  virtual arangodb::Result truncate(
-      arangodb::transaction::Methods& trx,
-      arangodb::OperationOptions& options) override;
+  virtual arangodb::Result truncate(arangodb::transaction::Methods& trx,
+                                    arangodb::OperationOptions& options,
+                                    bool& usedRangeDelete) override;
   virtual void compact() override {}
   virtual arangodb::Result update(
       arangodb::transaction::Methods& trx,
@@ -209,6 +209,9 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result performIntermediateCommitIfRequired(
       arangodb::DataSourceId cid) override;
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return 0;
+  }
   virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
   TRI_voc_tick_t lastOperationTick() const noexcept override;
@@ -326,19 +329,17 @@ class StorageEngineMock : public arangodb::StorageEngine {
       std::chrono::milliseconds maxWaitTime) override;
   virtual arangodb::WalAccess const* walAccess() const override;
 
+  bool autoRefillIndexCaches() const override;
+  bool autoRefillIndexCachesOnFollowers() const override;
+
   static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
       arangodb::IndexId id, arangodb::LogicalCollection& collection,
       VPackSlice const& info);
 
-  auto createReplicatedLog(TRI_vocbase_t& vocbase,
-                           arangodb::replication2::LogId id)
-      -> arangodb::ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  auto dropReplicatedLog(
-      TRI_vocbase_t& vocbase,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const& ptr)
-      -> arangodb::Result override;
+  static std::shared_ptr<arangodb::iresearch::IResearchInvertedIndexMock>
+  buildInvertedIndexMock(arangodb::IndexId id,
+                         arangodb::LogicalCollection& collection,
+                         VPackSlice const& info);
 
  private:
   TRI_voc_tick_t _releasedTick;

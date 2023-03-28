@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+#include "Basics/exitcodes.h"
 
 #include "gtest/gtest.h"
 
@@ -231,4 +232,179 @@ sounds = snuggles
   it++;
   ASSERT_EQ(findStrangePorkSound("snuggles"), it);
   ASSERT_EQ(findStrangePorkSound("blub"), strangePorkSounds.end());
+}
+
+TEST(InifileParserTest, test_exit_codes_for_valid_options) {
+  using namespace arangodb::options;
+  uint64_t value = 0;
+
+  // test valid option value
+  {
+    auto contents = R"data(
+[this]
+is-some-value = 3
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(0, options.processingResult().exitCode());
+    ASSERT_EQ(EXIT_FAILURE, options.processingResult().exitCodeOrFailure());
+  }
+
+  // test valid option value
+  {
+    auto contents = R"data(
+[this]
+is-some-value = 18446744073709551615
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_TRUE(result);
+    ASSERT_EQ(0, options.processingResult().exitCode());
+    ASSERT_EQ(EXIT_FAILURE, options.processingResult().exitCodeOrFailure());
+  }
+}
+
+TEST(InifileParserTest, test_exit_codes_for_invalid_options) {
+  using namespace arangodb::options;
+  uint64_t value = 0;
+
+  // test invalid option value (out of range)
+  {
+    auto contents = R"data(
+[this]
+is-some-value = 18446744073709551616
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCode());
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCodeOrFailure());
+  }
+
+  // test invalid option value (out of range, negative)
+  {
+    auto contents = R"data(
+[this]
+is-some-value = -1
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCode());
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCodeOrFailure());
+  }
+
+  // test invalid option value (invalid type)
+  {
+    auto contents = R"data(
+[this]
+is-some-value = abc
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCode());
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_VALUE,
+              options.processingResult().exitCodeOrFailure());
+  }
+}
+
+TEST(InifileParserTest, test_exit_codes_for_unknown_options) {
+  using namespace arangodb::options;
+  uint64_t value = 0;
+
+  // test unknown option section
+  {
+    auto contents = R"data(
+[that]
+is-some-value = 123
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_NAME,
+              options.processingResult().exitCode());
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_NAME,
+              options.processingResult().exitCodeOrFailure());
+  }
+
+  // test unknown option name
+  {
+    auto contents = R"data(
+[this]
+der-fuxx = 123
+)data";
+
+    ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+    options.addOption("--this.is-some-value", "bla",
+                      new UInt64Parameter(&value));
+
+    IniFileParser parser(&options);
+
+    bool result = parser.parseContent("arangod.conf", contents, true);
+    ASSERT_FALSE(result);
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_NAME,
+              options.processingResult().exitCode());
+    ASSERT_EQ(TRI_EXIT_INVALID_OPTION_NAME,
+              options.processingResult().exitCodeOrFailure());
+  }
+}
+
+TEST(InifileParserTest, test_exit_codes_for_non_existing_config_file) {
+  using namespace arangodb::options;
+  uint64_t value = 0;
+
+  ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
+  options.addOption("--this.is-some-value", "bla", new UInt64Parameter(&value));
+
+  IniFileParser parser(&options);
+
+  bool result =
+      parser.parse("for-sure-this-file-does-NOT-exist-anywhere.conf", true);
+  ASSERT_FALSE(result);
+  ASSERT_EQ(TRI_EXIT_CONFIG_NOT_FOUND, options.processingResult().exitCode());
+  ASSERT_EQ(TRI_EXIT_CONFIG_NOT_FOUND,
+            options.processingResult().exitCodeOrFailure());
 }

@@ -120,12 +120,15 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0 && (allowMemoryLimitOverride || v < memoryLimit)) {
+    if (allowMemoryLimitOverride) {
+      memoryLimit = v;
+    } else if (v > 0 && v < memoryLimit) {
       // only allow increasing the memory limit if the respective startup option
-      // is set. and if it is set, only allow decreasing the memory limit
+      // is set. and if it is not set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }
+
   value = slice.get("maxNumberOfPlans");
   if (value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
@@ -221,7 +224,8 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get("forceOneShardAttributeValue"); value.isString()) {
+  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+      value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
@@ -294,7 +298,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
   if (!forceOneShardAttributeValue.empty()) {
-    builder.add("forceOneShardAttributeValue",
+    builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
   }
 

@@ -265,7 +265,8 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
                                     LocalDocumentId const& documentId,
-                                    velocypack::Slice doc) {
+                                    velocypack::Slice doc,
+                                    OperationOptions const& /*options*/) {
   Result res;
   std::set<std::string> words = wordlist(doc);
 

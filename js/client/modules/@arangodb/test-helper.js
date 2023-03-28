@@ -1,8 +1,7 @@
 /*jshint strict: false */
 /*global arango, db, assertTrue, assertFalse, assertEqual */
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for JavaScript Tests
+// / @brief helper for JavaScript Tests
 // /
 // / @file
 // /
@@ -29,33 +28,54 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
-const { 
-  getServerById,
-  getServersByType,
-  getEndpointById,
-  getEndpointsByType,
-  Helper,
+const {
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
+  endpointToURL,
+  versionHas,
+  isEnterprise,
 } = require('@arangodb/test-helper-common');
 const fs = require('fs');
-const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
-    
-exports.getServerById = getServerById;
-exports.getServersByType = getServersByType;
-exports.getEndpointById = getEndpointById;
-exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+const request = require('@arangodb/request');
+const arangosh = require('@arangodb/arangosh');
+const jsunity = require('jsunity');
+const arango = internal.arango;
+const db = internal.db;
+const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const isServer = require("@arangodb").isServer;
+
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
+
+let instanceInfo = null;
+
+exports.flushInstanceInfo = () => {
+  instanceInfo = null;
+};
+
+function getInstanceInfo() {
+  if (instanceInfo === null) {
+    instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+    if (instanceInfo.arangods.length > 2) {
+      instanceInfo.arangods.forEach(arangod => {
+        arangod.id = fs.readFileSync(fs.join(arangod.dataDir, 'UUID')).toString();
+      });
+    }
+  }
+  return instanceInfo;
+}
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
@@ -406,7 +426,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  const instanceInfo = getInstanceInfo();
   let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
@@ -424,25 +444,54 @@ exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
 };
 
+exports.getServerById = function (id) {
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.find((d) => (d.id === id));
+};
+
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter(isType);
+};
+
+exports.getEndpointById = function (id) {
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = getInstanceInfo();
+  const instance = instanceInfo.arangods.find(d => d.id === id);
+  return endpointToURL(toEndpoint(instance));
+};
+
+exports.getUrlById = function (id) {
+  const toUrl = (d) => (d.url);
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter((d) => (d.id === id))
+    .map(toUrl)[0];
+};
+
+exports.getEndpointsByType = function (type) {
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
+  const toEndpoint = (d) => (d.endpoint);
+
+  const instanceInfo = getInstanceInfo();
+  return instanceInfo.arangods.filter(isType)
+    .map(toEndpoint)
+    .map(endpointToURL);
+};
+
+exports.triggerMetrics = function () {
+  let coordinators = exports.getEndpointsByType("coordinator");
+  exports.getRawMetric(coordinators[0], '?mode=write_global');
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    exports.getRawMetric(c, '?mode=trigger_global');
+  }
+  require("internal").sleep(2);
+};
+
 exports.getEndpoints = function (role) {
-  const endpointToURL = (instance) => {
-    let protocol = instance.endpoint.split('://')[0];
-    switch(protocol) {
-    case 'ssl':
-      return 'https://' + instance.endpoint.substr(6);
-      break;
-    case 'tcp':
-      return 'http://' + instance.endpoint.substr(6);
-      break;
-    default:
-      var pos = instance.endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + instance.endpoint;
-      }
-      return 'http' + instance.endpoint.substr(pos);
-    }
-  };
-  return exports.getServers(role).map(endpointToURL);
+  return exports.getServers(role).map(instance => endpointToURL(instance.endpoint));
 };
 
 exports.getCoordinatorEndpoints = function () {
@@ -453,4 +502,68 @@ exports.getDBServerEndpoints = function () {
 };
 exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
+};
+
+const callAgency = function (operation, body) {
+  // Memoize the agents
+  const getAgents = (function () {
+    let agents;
+    return function () {
+      if (!agents) {
+        agents = exports.getAgentEndpoints();
+      }
+      return agents;
+    };
+  }());
+  const agents = getAgents();
+  assertTrue(agents.length > 0, 'No agents present');
+  const res = request.post({
+    url: `${agents[0]}/_api/agency/${operation}`,
+    body: JSON.stringify(body),
+    timeout: 300,
+  });
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
+  assertEqual(res.statusCode, 200, JSON.stringify(res));
+  assertTrue(res.hasOwnProperty('json'));
+  return arangosh.checkRequestResult(res.json);
+};
+
+// client-side API compatible to global.ArangoAgency
+exports.agency = {
+  get: function (key) {
+    const res = callAgency('read', [[
+      `/arango/${key}`,
+    ]]);
+    return res[0];
+  },
+
+  set: function (path, value) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'set',
+        'new': value,
+      },
+    }]]);
+  },
+
+  remove: function (path) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'delete'
+      },
+    }]]);
+  },
+
+  call: callAgency,
+
+  increaseVersion: function (path) {
+    callAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'increment',
+      },
+    }]]);
+  },
+
+  // TODO implement the rest...
 };

@@ -39,6 +39,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
@@ -48,6 +49,9 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#include "V8Server/FoxxFeature.h"
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -55,9 +59,11 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-std::string const AdminAardvark("/_admin/aardvark/");
-std::string const ApiUser("/_api/user/");
-std::string const Open("/_open/");
+constexpr std::string_view pathPrefixApi("/_api/");
+constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixAdmin("/_admin/");
+constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
+constexpr std::string_view pathPrefixOpen("/_open/");
 
 TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
                                          GeneralRequest& req) {
@@ -176,9 +182,12 @@ CommTask::Flow CommTask::prepareExecution(
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
 
+  bool allowEarlyConnections = _server.allowEarlyConnections();
+
   switch (mode) {
     case ServerState::Mode::STARTUP: {
-      if (_auth->isActive() && !req.authenticated()) {
+      if (!allowEarlyConnections ||
+          (_auth->isActive() && !req.authenticated())) {
         if (req.authenticationMethod() == rest::AuthenticationMethod::BASIC) {
           // HTTP basic authentication is not supported during the startup
           // phase, as we do not have any access to the database data. However,
@@ -198,7 +207,7 @@ CommTask::Flow CommTask::prepareExecution(
       }
 
       // passed authentication!
-
+      TRI_ASSERT(allowEarlyConnections);
       if (path == "/_api/version" || path == "/_admin/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           path.starts_with("/_admin/debug/") ||
@@ -215,6 +224,15 @@ CommTask::Flow CommTask::prepareExecution(
     }
 
     case ServerState::Mode::MAINTENANCE: {
+      if (allowEarlyConnections &&
+          (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+           path.starts_with("/_admin/debug/") ||
+#endif
+           path == "/_admin/status")) {
+        return Flow::Continue;
+      }
+
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
@@ -241,9 +259,10 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
-      // the following paths are allowed on followers
+      // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
+          !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
@@ -320,6 +339,20 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
 
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    auto& ff = _server.server().getFeature<FoxxFeature>();
+    if (!ff.foxxEnabled() &&
+        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+          path.starts_with(::pathPrefixApi) ||
+          path.starts_with(::pathPrefixOpen))) {
+      sendErrorResponse(rest::ResponseCode::FORBIDDEN,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_FORBIDDEN,
+                        "access to Foxx apps is turned off on this instance");
+      return Flow::Abort;
+    }
+  }
+
   // Step 5: Update global HLC timestamp from authenticated requests
   if (req.authenticated()) {  // TODO only from superuser ??
     // check for an HLC time stamp only with auth
@@ -349,7 +382,7 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
   }
   if (res.transportType() == Endpoint::TransportType::HTTP &&
-      !ServerState::instance()->isDBServer()) {
+      ServerState::instance()->isSingleServerOrCoordinator()) {
     // CORS response handling
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
@@ -375,6 +408,18 @@ void CommTask::finishExecution(GeneralResponse& res,
     // use "IfNotSet" to not overwrite an existing response header
     res.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions,
                             StaticStrings::NoSniff);
+
+    // CSP Headers for security.
+    res.setHeaderNCIfNotSet(StaticStrings::ContentSecurityPolicy,
+                            "frame-ancestors 'self'; form-action 'self';");
+    res.setHeaderNCIfNotSet(
+        StaticStrings::CacheControl,
+        "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, "
+        "max-age=0, s-maxage=0");
+    res.setHeaderNCIfNotSet(StaticStrings::Pragma, "no-cache");
+    res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
+    res.setHeaderNCIfNotSet(StaticStrings::HSTS,
+                            "max-age=31536000 ; includeSubDomains");
   }
 
   // add "x-arango-queue-time-seconds" header
@@ -464,6 +509,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  if (res.hasValue() && res.get().fail()) {
+    auto& r = res.get();
+    sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
+                      messageId, r.errorNumber(), r.errorMessage());
+    return;
+  }
+
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
@@ -512,6 +564,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // -----------------------------------------------------------------------------
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
+
+void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
+  _statisticsMap.insert_or_assign(id, std::move(stat));
+}
 
 RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics::Item stat = RequestStatistics::acquire();
@@ -785,8 +842,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || path.starts_with(Open) ||
-          path.starts_with(AdminAardvark) ||
+      if (path == "/" || path.starts_with(::pathPrefixOpen) ||
+          path.starts_with(::pathPrefixAdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -797,12 +854,13 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 path.starts_with(ApiUser + username + '/')) {
+                 path.starts_with(std::string{::pathPrefixApiUser} + username +
+                                  '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && path.starts_with(ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
         result = Flow::Continue;
       }
     }

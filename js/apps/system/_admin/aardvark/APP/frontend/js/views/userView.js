@@ -304,7 +304,8 @@
         return;
       }
       var user = this.collection.findWhere({'user': username});
-      user.save({'extra': {'name': name}, 'active': status}, {
+      const extra = user.get('extra');
+      user.save({'extra': Object.assign(extra, {'name': name}), 'active': status}, {
         type: 'PATCH',
         success: function () {
           arangoHelper.arangoNotification('User', user.get('user') + ' updated.');

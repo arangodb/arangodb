@@ -42,16 +42,16 @@ std::string const GlobalContextMethods::CodeReloadAql =
     "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
 
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
-    : _id(id),
-      _isolate(isolate),
-      _locker(nullptr),
-      _creationStamp(TRI_microtime()),
-      _acquired(0.0),
-      _description("(none)"),
-      _lastGcStamp(0.0),
-      _invocations(0),
-      _invocationsSinceLastGc(0),
-      _hasActiveExternals(false) {}
+    : _isolate{isolate},
+      _lastGcStamp{0.0},
+      _invocationsSinceLastGc{0},
+      _hasActiveExternals{false},
+      _id{id},
+      _invocations{0},
+      _locker{nullptr},
+      _description{"(none)"},
+      _acquired{0.0},
+      _creationStamp{TRI_microtime()} {}
 
 void V8Context::lockAndEnter() {
   TRI_ASSERT(_isolate != nullptr);
@@ -61,7 +61,7 @@ void V8Context::lockAndEnter() {
 
   assertLocked();
 
-  ++_invocations;
+  _invocations.fetch_add(1, std::memory_order_relaxed);
   ++_invocationsSinceLastGc;
 }
 
@@ -100,7 +100,7 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
     return true;
   }
 
-  if (maxInvocations > 0 && _invocations >= maxInvocations) {
+  if (maxInvocations > 0 && invocations() >= maxInvocations) {
     // context is used often enough
     return true;
   }
@@ -184,7 +184,7 @@ void V8Context::handleGlobalContextMethods() {
   }
 }
 
-void V8Context::handleCancelationCleanup() {
+void V8Context::handleCancellationCleanup() {
   v8::HandleScope scope(_isolate);
 
   LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)

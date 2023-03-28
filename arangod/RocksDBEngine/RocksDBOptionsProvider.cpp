@@ -95,6 +95,9 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
     }
   }
 
+  // set TTL for .sst file compaction
+  result.ttl = periodicCompactionTtl();
+
   return result;
 }
 }  // namespace arangodb

@@ -176,6 +176,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -184,6 +185,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
+      _enabledClusterOneShardRule(false),
       _options(std::move(options)) {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
@@ -360,6 +362,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(nullptr),
       _tmpObjVariable(nullptr),
       _tmpObjVarNode(nullptr),
@@ -371,7 +374,10 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(
           base, StaticStrings::IsSmart, false)),
       _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          base, StaticStrings::IsDisjoint, false)) {
+          base, StaticStrings::IsDisjoint, false)),
+      _enabledClusterOneShardRule(
+          arangodb::basics::VelocyPackHelper::getBooleanValue(
+              base, StaticStrings::ForceOneShardAttributeValue, false)) {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -481,6 +487,15 @@ GraphNode::GraphNode(ExecutionPlan* plan,
         Variable::varFromVPack(plan->getAst(), base, "edgeOutVariable");
   }
 
+  VPackSlice optimizedOutVariables = base.get("optimizedOutVariables");
+  if (optimizedOutVariables.isArray()) {
+    for (auto const& var : VPackArrayIterator(optimizedOutVariables)) {
+      if (var.isNumber()) {
+        _optimizedOutVariables.emplace(var.getNumber<VariableId>());
+      }
+    }
+  }
+
   // Temporary Filter Objects
   TRI_ASSERT(base.hasKey("tmpObjVariable"));
   _tmpObjVariable =
@@ -525,6 +540,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _vocbase(vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables({}),
       _graphObj(graph),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -533,6 +549,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
+      _enabledClusterOneShardRule(false),
       _directions(std::move(directions)),
       _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
@@ -542,6 +559,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 void GraphNode::determineEnterpriseFlags(AstNode const*) {
   _isSmart = false;
   _isDisjoint = false;
+  _enabledClusterOneShardRule = false;
 }
 #endif
 
@@ -568,6 +586,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _vocbase(other._vocbase),
       _vertexOutVariable(nullptr),
       _edgeOutVariable(nullptr),
+      _optimizedOutVariables(other._optimizedOutVariables),
       _graphObj(other.graph()),
       _tmpObjVariable(_plan->getAst()->variables()->createTemporaryVariable()),
       _tmpObjVarNode(_plan->getAst()->createNodeReference(_tmpObjVariable)),
@@ -576,6 +595,7 @@ GraphNode::GraphNode(ExecutionPlan& plan, GraphNode const& other,
       _optionsBuilt(false),
       _isSmart(other.isSmart()),
       _isDisjoint(other.isDisjoint()),
+      _enabledClusterOneShardRule(other.isClusterOneShardRuleEnabled()),
       _directions(other._directions),
       _options(std::move(options)),
       _collectionToShard(other._collectionToShard) {
@@ -681,9 +701,19 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
     edgeOutVariable()->toVelocyPack(nodes);
   }
 
+  nodes.add(VPackValue("optimizedOutVariables"));
+  {
+    VPackArrayBuilder guard(&nodes);
+    for (auto const& var : _optimizedOutVariables) {
+      nodes.add(VPackValue(var));
+    }
+  }
+
   // Flags
-  nodes.add("isSmart", VPackValue(_isSmart));
-  nodes.add("isDisjoint", VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::IsSmart, VPackValue(_isSmart));
+  nodes.add(StaticStrings::IsDisjoint, VPackValue(_isDisjoint));
+  nodes.add(StaticStrings::ForceOneShardAttributeValue,
+            VPackValue(_enabledClusterOneShardRule));
 
   // Temporary AST Nodes for conditions
   TRI_ASSERT(_tmpObjVariable != nullptr);
@@ -708,6 +738,10 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone, bool) const {
   clone._isSmart = _isSmart;
   clone._isDisjoint = _isDisjoint;
+  clone._enabledClusterOneShardRule = _enabledClusterOneShardRule;
+
+  // Optimized Out Variables
+  clone._optimizedOutVariables = _optimizedOutVariables;
 }
 
 CostEstimate GraphNode::estimateCost() const {
@@ -977,7 +1011,14 @@ bool GraphNode::isVertexOutVariableUsedLater() const {
 }
 
 void GraphNode::setVertexOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_vertexOutVariable);
+  }
   _vertexOutVariable = outVar;
+}
+
+void GraphNode::markUnusedConditionVariable(Variable const* var) {
+  _optimizedOutVariables.emplace(var->id);
 }
 
 Variable const* GraphNode::edgeOutVariable() const { return _edgeOutVariable; }
@@ -987,6 +1028,9 @@ bool GraphNode::isEdgeOutVariableUsedLater() const {
 }
 
 void GraphNode::setEdgeOutput(Variable const* outVar) {
+  if (outVar == nullptr) {
+    markUnusedConditionVariable(_edgeOutVariable);
+  }
   _edgeOutVariable = outVar;
 }
 
@@ -1027,7 +1071,13 @@ bool GraphNode::isUsedAsSatellite() const { return false; }
 
 bool GraphNode::isLocalGraphNode() const { return false; }
 
+bool GraphNode::isHybridDisjoint() const { return false; }
+
 void GraphNode::waitForSatelliteIfRequired(
     ExecutionEngine const* engine) const {}
+
+void GraphNode::enableClusterOneShardRule(bool enable) { TRI_ASSERT(false); }
+
+bool GraphNode::isClusterOneShardRuleEnabled() const { return false; }
 
 #endif

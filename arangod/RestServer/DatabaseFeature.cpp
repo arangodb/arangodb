@@ -42,6 +42,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -176,6 +177,8 @@ void DatabaseManagerThread::run() {
           // ---------------------------
 
           TRI_ASSERT(!database->isSystem());
+
+          iresearch::cleanupDatabase(*database);
 
           if (dealer.isEnabled()) {
             // remove apps directory for database
@@ -473,28 +476,36 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--database.wait-for-sync",
-      "default wait-for-sync behavior, can be overwritten "
-      "when creating a collection",
+      "The default waitForSync behavior. Can be overwritten when creating a "
+      "collection.",
       new BooleanParameter(&_defaultWaitForSync),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options->addOption(
-      "--database.force-sync-properties",
-      "force syncing of collection properties to disk, "
-      "will use waitForSync value of collection when "
-      "turned off",
-      new BooleanParameter(&_forceSyncProperties),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption(
+          "--database.force-sync-properties",
+          "Force syncing of collection properties to disk after creating a "
+          "collection or updating its properties. Otherwise, let the "
+          "waitForSync "
+          "property of each collection determine it.",
+          new BooleanParameter(&_forceSyncProperties),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(If turned off, no fsync happens for the collection
+and database properties stored in `parameter.json` files in the file system. If
+you turn this option off, it speeds up workloads that create and drop a lot of
+collections (e.g. test suites).)");
 
   options->addOption(
       "--database.ignore-datafile-errors",
-      "load collections even if datafiles may contain errors",
+      "Load collections even if datafiles may contain errors.",
       new BooleanParameter(&_ignoreDatafileErrors),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption("--database.extended-names-databases",
-                  "allow extended characters in database names",
+                  "Allow most UTF-8 characters in database names. Once in use, "
+                  "this option cannot be turned off again.",
                   new BooleanParameter(&_extendedNamesForDatabases),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
@@ -503,16 +514,17 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--database.io-heartbeat",
-                  "perform IO heartbeat to test underlying volume",
+                  "Perform I/O heartbeat to test the underlying volume.",
                   new BooleanParameter(&_performIOHeartbeat),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30807);
+      .setIntroducedIn(30807)
+      .setIntroducedIn(30902);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
       "--database.old-system-collections",
-      "create and use deprecated system collection (_modules, _fishbowl)",
+      "Create and use deprecated system collection (_modules, _fishbowl).",
       false);
 
   // the following option was obsoleted in 3.8
@@ -1008,37 +1020,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string const& name,
       id = vocbase->id();
       // mark as deleted
 
-      // call LogicalDataSource::drop() to allow instances to clean up
-      // internal state (e.g. for LogicalView implementations)
-      TRI_vocbase_t::dataSourceVisitor visitor =
-          [&res, &vocbase](arangodb::LogicalDataSource& dataSource) -> bool {
-        // skip LogicalCollection since their internal state is always in the
-        // StorageEngine (optimization)
-        if (arangodb::LogicalDataSource::Category::kCollection ==
-            dataSource.category()) {
-          return true;
-        }
-
-        auto result = dataSource.drop();
-
-        if (!result.ok()) {
-          res = result.errorNumber();
-          LOG_TOPIC("c44cb", ERR, arangodb::Logger::FIXME)
-              << "failed to drop DataSource '" << dataSource.name()
-              << "' while dropping database '" << vocbase->name()
-              << "': " << result.errorNumber() << " " << result.errorMessage();
-        }
-
-        return true;  // try next DataSource
-      };
-
-      vocbase->visitDataSources(
-          visitor);  // acquires a write lock to avoid potential deadlocks
-
-      if (TRI_ERROR_NO_ERROR != res) {
-        return res;
-      }
-
       newLists->_databases.erase(it);
       newLists->_droppedDatabases.insert(vocbase);
     } catch (...) {
@@ -1531,13 +1512,19 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      arangodb::CreateDatabaseInfo info(server(), ExecContext::current());
+      CreateDatabaseInfo info(server(), ExecContext::current());
+      // set strict validation for database options to false.
+      // we don't want the server start to fail here in case some
+      // invalid settings are present
+      info.strictValidation(false);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
+
       if (res.fail()) {
+        std::string errorMsg;
         if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+          errorMsg.append(res.errorMessage());
           // special case: if we find an invalid database name during startup,
           // we will give the user some hint how to fix it
-          std::string errorMsg(res.errorMessage());
           errorMsg.append(": '").append(databaseName).append("'");
           // check if the name would be allowed when using extended names
           if (DatabaseNameValidator::isAllowedName(
@@ -1549,9 +1536,14 @@ ErrorCode DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
                 "be enabled via the startup option "
                 "`--database.extended-names-databases true`");
           }
-          res.reset(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID,
-                    std::move(errorMsg));
+        } else {
+          errorMsg.append("when opening database '")
+              .append(databaseName)
+              .append("': ");
+          errorMsg.append(res.errorMessage());
         }
+
+        res.reset(res.errorNumber(), std::move(errorMsg));
         THROW_ARANGO_EXCEPTION(res);
       }
 

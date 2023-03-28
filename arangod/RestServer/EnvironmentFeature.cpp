@@ -35,6 +35,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Logger/LogMacros.h"
@@ -135,7 +136,8 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
-#ifdef __arm__
+#ifdef __linux__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
     LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY)
@@ -177,10 +179,11 @@ void EnvironmentFeature::prepare() {
           }
         }
         while (end < cpuAlignment.size()) {
-          ++end;
           if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            ++end;
             break;
           }
+          ++end;
         }
 
         int64_t alignment =
@@ -230,6 +233,7 @@ void EnvironmentFeature::prepare() {
           << "unable to detect CPU type '" << filename << "'";
     }
   }
+#endif
 #endif
 
 #ifdef __linux__

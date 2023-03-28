@@ -182,7 +182,7 @@ the number of intermediate commits done
 Statistics about the V8 javascript contexts
 
 @RESTSTRUCT{available,v8_context_struct,integer,required,}
-the number of currently spawnen V8 contexts
+the number of currently spawned V8 contexts
 
 @RESTSTRUCT{busy,v8_context_struct,integer,required,}
 the number of currently active V8 contexts
@@ -228,7 +228,7 @@ The number of spawned worker threads
 The number of currently busy worker threads
 
 @RESTSTRUCT{queued,server_threads_struct,integer,required,}
-The number of jobs queued up waiting for worker threads becomming available
+The number of jobs queued up waiting for worker threads becoming available
 
 @EXAMPLES
 

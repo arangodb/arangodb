@@ -35,39 +35,45 @@
 
 #include <ostream>
 
+namespace arangodb {
+namespace aql {
 namespace {
-std::string const TypeDisabled("disabled");
-std::string const TypeIllegal("illegal");
-std::string const TypeNone("none");
-std::string const TypeSimple("simple");
+std::string_view constexpr kTypeDisabled("disabled");
+std::string_view constexpr kTypeIllegal("illegal");
+std::string_view constexpr kTypeNone("none");
+std::string_view constexpr kTypeSimple("simple");
 
-std::string const FieldContainer("indexHint");
-std::string const FieldForced("forced");
-std::string const FieldHint("hint");
-std::string const FieldLookahead("lookahead");
-std::string const FieldType("type");
+std::string_view constexpr kFieldContainer("indexHint");
+std::string_view constexpr kFieldForced("forced");
+std::string_view constexpr kFieldHint("hint");
+std::string_view constexpr kFieldType("type");
 
-arangodb::aql::IndexHint::HintType fromTypeName(std::string const& typeName) {
-  if (::TypeDisabled == typeName) {
-    return arangodb::aql::IndexHint::HintType::Disabled;
+IndexHint::HintType fromTypeName(std::string_view typeName) noexcept {
+  if (kTypeDisabled == typeName) {
+    return IndexHint::Disabled;
   }
-  if (::TypeSimple == typeName) {
-    return arangodb::aql::IndexHint::HintType::Simple;
+  if (kTypeSimple == typeName) {
+    return IndexHint::Simple;
   }
-  if (::TypeNone == typeName) {
-    return arangodb::aql::IndexHint::HintType::None;
+  if (kTypeNone == typeName) {
+    return IndexHint::None;
   }
 
-  return arangodb::aql::IndexHint::HintType::Illegal;
+  return IndexHint::Illegal;
 }
 }  // namespace
 
-namespace arangodb {
-namespace aql {
+IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
+  auto getBooleanValue = [](AstNode const* child, bool& result) {
+    AstNode const* value = child->getMember(0);
 
-IndexHint::IndexHint() : _type{HintType::None}, _forced{false} {}
+    if (value->isBoolValue()) {
+      result = value->getBoolValue();
+      return true;
+    }
+    return false;
+  };
 
-IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -109,16 +115,17 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
             }
           }
           handled = !_hint.simple.empty();
-        } else if (name == arangodb::StaticStrings::IndexHintOptionForce) {
+        } else if (name == StaticStrings::IndexHintOptionForce) {
           // forceIndexHint
-          AstNode const* value = child->getMember(0);
-
-          if (value->isBoolValue()) {
-            // forceIndexHint: bool
-            _forced = value->getBoolValue();
+          if (getBooleanValue(child, _forced)) {
             handled = true;
           }
-        } else if (name == arangodb::StaticStrings::IndexHintDisableIndex) {
+        } else if (name == StaticStrings::WaitForSyncString) {
+          // waitForSync
+          if (getBooleanValue(child, _waitForSync)) {
+            handled = true;
+          }
+        } else if (name == StaticStrings::IndexHintDisableIndex) {
           // disableIndex
           AstNode const* value = child->getMember(0);
 
@@ -137,12 +144,12 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
             }
             handled = true;
           }
-        } else if (name == arangodb::StaticStrings::MaxProjections ||
-                   name == arangodb::StaticStrings::UseCache) {
+        } else if (name == StaticStrings::MaxProjections ||
+                   name == StaticStrings::UseCache) {
           // "maxProjections" and "useCache" are valid attributes,
           // but handled elsewhere
           handled = true;
-        } else if (name == ::FieldLookahead) {
+        } else if (name == StaticStrings::IndexLookahead) {
           TRI_ASSERT(child->numMembers() > 0);
           AstNode const* value = child->getMember(0);
 
@@ -153,10 +160,17 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
                                                   name.data(), name.size());
           }
           handled = true;
+        } else {
+          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+                                                name.data(), name.size());
+          handled = true;
         }
 
         if (!handled) {
-          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
+          VPackBuilder builder;
+          child->getMember(0)->toVelocyPackValue(builder);
+          std::string msg = "invalid value " + builder.toJson() + " in ";
+          ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
                                                 name.data(), name.size());
         }
       }
@@ -164,25 +178,26 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) : IndexHint() {
   }
 }
 
-IndexHint::IndexHint(VPackSlice slice) : IndexHint() {
+IndexHint::IndexHint(VPackSlice slice) {
   // read index hint from slice
   // index hints were introduced in version 3.5. in previous versions they
   // are not available, so we need to be careful when reading them
-  VPackSlice s = slice.get(::FieldContainer);
+  VPackSlice s = slice.get(kFieldContainer);
   if (s.isObject()) {
-    _forced =
-        basics::VelocyPackHelper::getBooleanValue(s, ::FieldForced, false);
-    _lookahead = basics::VelocyPackHelper::getNumericValue(s, ::FieldLookahead,
-                                                           _lookahead);
-    _type = ::fromTypeName(
-        basics::VelocyPackHelper::getStringValue(s, ::FieldType, ""));
+    _lookahead = basics::VelocyPackHelper::getNumericValue(
+        s, StaticStrings::IndexLookahead, _lookahead);
+    _type = fromTypeName(
+        basics::VelocyPackHelper::getStringValue(s, kFieldType, ""));
+    _forced = basics::VelocyPackHelper::getBooleanValue(s, kFieldForced, false);
+    _waitForSync = basics::VelocyPackHelper::getBooleanValue(
+        s, StaticStrings::WaitForSyncString, false);
   }
 
   if (_type != HintType::Illegal && _type != HintType::None) {
     TRI_ASSERT(s.isObject());
 
     if (_type == HintType::Simple) {
-      VPackSlice hintSlice = s.get(::FieldHint);
+      VPackSlice hintSlice = s.get(kFieldHint);
       TRI_ASSERT(hintSlice.isArray());
       for (VPackSlice index : VPackArrayIterator(hintSlice)) {
         TRI_ASSERT(index.isString());
@@ -192,39 +207,35 @@ IndexHint::IndexHint(VPackSlice slice) : IndexHint() {
   }
 }
 
-IndexHint::HintType IndexHint::type() const noexcept { return _type; }
-
-bool IndexHint::isForced() const noexcept { return _forced; }
-
 std::vector<std::string> const& IndexHint::hint() const noexcept {
   TRI_ASSERT(_type == HintType::Simple);
   return _hint.simple;
 }
 
-std::string IndexHint::typeName() const {
+std::string_view IndexHint::typeName() const {
   switch (_type) {
     case HintType::Illegal:
-      return ::TypeIllegal;
+      return kTypeIllegal;
     case HintType::Disabled:
-      return ::TypeDisabled;
+      return kTypeDisabled;
     case HintType::None:
-      return ::TypeNone;
+      return kTypeNone;
     case HintType::Simple:
-      return ::TypeSimple;
+      return kTypeSimple;
   }
 
-  return ::TypeIllegal;
+  return kTypeIllegal;
 }
 
 void IndexHint::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
-  VPackObjectBuilder guard(&builder, ::FieldContainer);
-  builder.add(::FieldForced, VPackValue(_forced));
-  builder.add(::FieldLookahead, VPackValue(_lookahead));
-  builder.add(::FieldType, VPackValue(typeName()));
+  VPackObjectBuilder guard(&builder, kFieldContainer);
+  builder.add(kFieldForced, VPackValue(_forced));
+  builder.add(StaticStrings::IndexLookahead, VPackValue(_lookahead));
+  builder.add(kFieldType, VPackValue(typeName()));
   if (_type == HintType::Simple) {
-    VPackArrayBuilder hintGuard(&builder, ::FieldHint);
-    for (std::string const& index : _hint.simple) {
+    VPackArrayBuilder hintGuard(&builder, kFieldHint);
+    for (auto const& index : _hint.simple) {
       builder.add(VPackValue(index));
     }
   }
@@ -239,8 +250,7 @@ std::string IndexHint::toString() const {
   return builder.slice().toJson();
 }
 
-std::ostream& operator<<(std::ostream& stream,
-                         arangodb::aql::IndexHint const& hint) {
+std::ostream& operator<<(std::ostream& stream, IndexHint const& hint) {
   stream << hint.toString();
   return stream;
 }

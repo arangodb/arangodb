@@ -79,6 +79,22 @@ bool equalAnalyzers(std::vector<FieldMeta::Analyzer> const& lhs,
   return true;
 }
 
+bool equalFields(IResearchLinkMeta::Fields const& lhs,
+                 IResearchLinkMeta::Fields const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+
+  for (auto const notFoundField = rhs.end(); auto& entry : lhs) {
+    auto rhsField = rhs.find(entry.key());
+    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 constexpr frozen::map<std::string_view, ValueStorage, 3> kNameToPolicy = {
     {"none", ValueStorage::NONE},
     {"id", ValueStorage::ID},
@@ -104,35 +120,39 @@ bool operator<(irs::string_ref lhs,
 namespace arangodb {
 namespace iresearch {
 
+FieldMeta::Analyzer const& FieldMeta::identity() {
+  static Analyzer kIdentity{IResearchAnalyzerFeature::identity()};
+  return kIdentity;
+}
+
 bool FieldMeta::operator==(FieldMeta const& rhs) const noexcept {
   if (!equalAnalyzers(_analyzers, rhs._analyzers)) {
-    return false;  // values do not match
+    return false;
   }
 
-  if (_fields.size() != rhs._fields.size()) {
-    return false;  // values do not match
+  if (!equalFields(_fields, rhs._fields)) {
+    return false;
   }
 
-  auto const notFoundField = rhs._fields.end();
-
-  for (auto& entry : _fields) {
-    auto rhsField = rhs._fields.find(entry.key());
-    if (rhsField == notFoundField || rhsField.value() != entry.value()) {
-      return false;
-    }
+  if (_includeAllFields != rhs._includeAllFields ||
+      _trackListPositions != rhs._trackListPositions ||
+      _storeValues != rhs._storeValues) {
+    return false;
   }
 
-  if (_includeAllFields != rhs._includeAllFields) {
-    return false;  // values do not match
+#ifdef USE_ENTERPRISE
+  if (_cache != rhs._cache) {
+    return false;
   }
 
-  if (_trackListPositions != rhs._trackListPositions) {
-    return false;  // values do not match
+  if (_hasNested != rhs._hasNested) {
+    return false;
   }
 
-  if (_storeValues != rhs._storeValues) {
-    return false;  // values do not match
+  if (!equalFields(_nested, rhs._nested)) {
+    return false;
   }
+#endif
 
   return true;
 }
@@ -339,10 +359,26 @@ bool FieldMeta::init(
     }
   }
 
+#ifdef USE_ENTERPRISE
+  // optional caching
+  {
+    auto const field = slice.get(StaticStrings::kCacheField);
+    mask->_cache = !field.isNone();
+    if (!mask->_cache) {
+      _cache = defaults._cache;
+    } else {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kCacheField;
+        return false;
+      }
+      _cache = field.getBool();
+    }
+  }
+#endif
+
   // .............................................................................
   // process fields last since children inherit from parent
   // .............................................................................
-
   {
     // optional string map<name, overrides>
     constexpr std::string_view kFieldName{"fields"};
@@ -398,6 +434,72 @@ bool FieldMeta::init(
       }
     }
   }
+
+  {
+    // optional string map<name, overrides>
+    constexpr std::string_view kFieldName{"nested"};
+
+    if (auto const field = slice.get(kFieldName); !field.isNone()) {
+#ifndef USE_ENTERPRISE
+      errorField =
+          absl::StrCat("'", kFieldName,
+                       "' is supported in ArangoDB Enterprise Edition only.");
+      return false;
+#else
+      if (!field.isObject()) {
+        errorField = kFieldName;
+
+        return false;
+      }
+
+      auto subDefaults = *this;
+
+      _nested.clear();  // reset to match either defaults or read values exactly
+
+      for (velocypack::ObjectIterator itr(field); itr.valid(); ++itr) {
+        auto key = itr.key();
+        auto value = itr.value();
+
+        if (!key.isString()) {
+          errorField = std::string{kFieldName} + "[" +
+                       basics::StringUtils::itoa(itr.index()) + "]";
+
+          return false;
+        }
+
+        auto name = key.stringView();
+
+        if (!value.isObject()) {
+          errorField = absl::StrCat(kFieldName, ".", name);
+          return false;
+        }
+
+        std::string childErrorField;
+
+        if (!_nested[name]->init(server, value, childErrorField, defaultVocbase,
+                                 version, subDefaults, referencedAnalyzers,
+                                 nullptr)) {
+          errorField =
+              absl::StrCat(kFieldName, ".", name, ".", childErrorField);
+          return false;
+        }
+      }
+#endif
+    }
+  }
+
+#ifdef USE_ENTERPRISE
+  _hasNested = !_nested.empty();
+  if (!_hasNested) {
+    for (auto const& f : _fields) {
+      if (!f.value()->_nested.empty()) {
+        _hasNested = true;
+        break;
+      }
+    }
+  }
+#endif
+
   return true;
 }
 
@@ -475,6 +577,31 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     fieldsBuilder.close();
     builder.add("fields", fieldsBuilder.slice());
   }
+#ifdef USE_ENTERPRISE
+  if (!_nested.empty()) {
+    velocypack::Builder fieldsBuilder;
+    Mask fieldMask(true);      // output all non-matching fields
+    auto subDefaults = *this;  // make modifable copy
+    fieldsBuilder.openObject();
+
+    for (auto& entry : _nested) {
+      // do not output empty fields on subobjects
+      fieldMask._fields = !entry.value()->_fields.empty();
+      fieldsBuilder.add(
+          std::string_view(entry.key().c_str(), entry.key().size()),
+          VPackValue(velocypack::ValueType::Object));
+
+      if (!entry.value()->json(server, fieldsBuilder, &subDefaults,
+                               defaultVocbase, &fieldMask)) {
+        return false;
+      }
+
+      fieldsBuilder.close();
+    }
+    fieldsBuilder.close();
+    builder.add("nested", fieldsBuilder.slice());
+  }
+#endif
 
   if ((!ignoreEqual || _includeAllFields != ignoreEqual->_includeAllFields) &&
       (!mask || mask->_includeAllFields)) {
@@ -504,6 +631,14 @@ bool FieldMeta::json(ArangodServer& server, velocypack::Builder& builder,
     builder.add("storeValues", velocypack::Value(kPolicyToName[policyIdx]));
   }
 
+#ifdef USE_ENTERPRISE
+  if (((!ignoreEqual && _cache) ||
+       (ignoreEqual && _cache != ignoreEqual->_cache)) &&
+      (!mask || mask->_cache)) {
+    builder.add(StaticStrings::kCacheField, velocypack::Value(_cache));
+  }
+#endif
+
   return true;
 }
 
@@ -527,7 +662,7 @@ size_t FieldMeta::memory() const noexcept {
 
 IResearchLinkMeta::IResearchLinkMeta()
     : _version{static_cast<uint32_t>(LinkVersion::MIN)} {
-  _analyzers.emplace_back(IResearchAnalyzerFeature::identity());
+  _analyzers.emplace_back(FieldMeta::identity());
   _primitiveOffset = _analyzers.size();
 }
 
@@ -537,21 +672,17 @@ bool IResearchLinkMeta::operator==(
     return false;
   }
 
-  if (_sort != other._sort) {
+  if (_sort != other._sort || _storedValues != other._storedValues ||
+      _sortCompression != other._sortCompression ||
+      _version != other._version) {
     return false;
   }
 
-  if (_storedValues != other._storedValues) {
+#ifdef USE_ENTERPRISE
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache) {
     return false;
   }
-
-  if (_sortCompression != other._sortCompression) {
-    return false;
-  }
-
-  if (_version != other._version) {
-    return false;
-  }
+#endif
 
   // Intentionally do not compare _collectioName here.
   // It should be filled equally during upgrade/creation
@@ -607,6 +738,31 @@ bool IResearchLinkMeta::init(
       return false;
     }
   }
+
+#ifdef USE_ENTERPRISE
+  {
+    auto const field = slice.get(StaticStrings::kPrimarySortCacheField);
+    mask->_sortCache = !field.isNone();
+    if (mask->_sortCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kPrimarySortCacheField;
+        return false;
+      }
+      _sortCache = field.getBoolean();
+    }
+  }
+  {
+    auto const field = slice.get(StaticStrings::kCachePrimaryKeyField);
+    mask->_pkCache = !field.isNone();
+    if (mask->_pkCache) {
+      if (!field.isBool()) {
+        errorField = StaticStrings::kCachePrimaryKeyField;
+        return false;
+      }
+      _pkCache = field.getBool();
+    }
+  }
+#endif
 
   {
     // Optional version
@@ -845,6 +1001,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
                  columnCompressionToString(_sortCompression));
   }
 
+#ifdef USE_ENTERPRISE
+  if (writeAnalyzerDefinition && (!mask || mask->_sortCache) &&
+      ((!ignoreEqual && _sortCache) ||
+       (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
+    builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
+  }
+#endif
+
   if (writeAnalyzerDefinition && (!mask || mask->_version)) {
     builder.add(StaticStrings::VersionField, VPackValue(_version));
   }
@@ -867,6 +1031,14 @@ bool IResearchLinkMeta::json(ArangodServer& server,
                                    // value to match stored definition
     addStringRef(builder, StaticStrings::CollectionNameField, _collectionName);
   }
+
+#ifdef USE_ENTERPRISE
+  if (writeAnalyzerDefinition && (!mask || mask->_pkCache) &&
+      ((!ignoreEqual && _pkCache) ||
+       (ignoreEqual && _pkCache != ignoreEqual->_pkCache))) {
+    builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
+  }
+#endif
 
   return FieldMeta::json(server, builder, ignoreEqual, defaultVocbase, mask);
 }

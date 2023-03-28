@@ -44,18 +44,42 @@ function ahuacatlQueryOptimizerSortTestSuite () {
   let idx = null;
 
   let explain = function (query, params) {
-    return helper.removeClusterNodes(helper.getCompactPlan(AQL_EXPLAIN(query, params, { optimizer: { rules: [ "-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts" ] } })).map(function(node) { return node.type; }));
+    return helper.removeClusterNodes(
+      helper.getCompactPlan(
+        AQL_EXPLAIN(query, params, {optimizer: {rules: ["-all", "+use-index-for-sort", "+use-indexes", "+remove-redundant-sorts"]}})
+      ).map(function (node) {
+        return node.type;
+      }));
+  };
+
+  const generateData = () => {
+    // Static data we will use in our AQL Queries.
+    // We do not need collection/document access or dynamic data.
+    return [
+      {"friend": {"name": "piotr"}, id: 1, age: 10},
+      {"friend": {"name": "heiko"}, id: 2, age: 20},
+      {"friend": {"name": "micha"}, id: 3, age: 30}
+    ];
+  };
+
+  const explainMultipleSorts = function (query, params) {
+    return helper.removeClusterNodes(
+      helper.getCompactPlan(
+        AQL_EXPLAIN(query, params)).map(function (node) {
+        return node.type;
+      })
+    );
   };
 
   return {
 
-    setUpAll : function () {
+    setUpAll: function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
 
       let docs = [];
       for (let i = 0; i < 100; ++i) {
-        docs.push({ "value" : i, "value2" : i });
+        docs.push({"value": i, "value2": i});
       }
       collection.insert(docs);
     },
@@ -91,7 +115,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual([ "SingletonNode",
                     "EnumerateCollectionNode",
                     "CalculationNode",
@@ -116,7 +140,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(49, actual[50].value);
       assertEqual(1, actual[98].value);
       assertEqual(0, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "EnumerateCollectionNode",
                    "CalculationNode",
@@ -143,12 +167,12 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
-      assertEqual(["SingletonNode", 
-                   "IndexNode",
-                   "CalculationNode",
-                   "ReturnNode"],
-                  explain(query));
+
+      assertEqual(["SingletonNode",
+          "IndexNode",
+          "CalculationNode",
+          "ReturnNode"],
+        explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -168,7 +192,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(18, actual[3].value);
       assertEqual(98, actual[83].value);
       assertEqual(99, actual[84].value);
-     
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -195,7 +219,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(96, actual[3].value);
       assertEqual(16, actual[83].value);
       assertEqual(15, actual[84].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -223,7 +247,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -252,7 +276,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(49, actual[50].value);
       assertEqual(1, actual[98].value);
       assertEqual(0, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -281,23 +305,108 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
-                   "IndexNode",
-                   "CalculationNode",
-                   "FilterNode",
-                   "CalculationNode",
-                   "CalculationNode",
-                   "ReturnNode"],
-                  explain(query));
+          "IndexNode",
+          "CalculationNode",
+          "FilterNode",
+          "CalculationNode",
+          "CalculationNode",
+          "ReturnNode"],
+        explain(query));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check sort tripplets
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortTripplets1: function () {
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR friend in friends 
+          SORT friend.friend.name, friend.id, friend.age
+          SORT friend.friend.name, friend.id
+          SORT friend.id
+        RETURN friend    
+      `;
+
+      const actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual("piotr", actual[0].friend.name);
+      assertEqual("heiko", actual[1].friend.name);
+      assertEqual("micha", actual[2].friend.name);
+
+      assertEqual(["SingletonNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "CalculationNode",
+          "SortNode",
+          "ReturnNode"],
+        explainMultipleSorts(query));
+    },
+
+    testSortTripplets2: function () {
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR friend in friends 
+          SORT friend.friend.name, friend.id, friend.age
+          SORT friend.id
+          SORT friend.friend.name, friend.id ASC
+        RETURN friend    
+      `;
+
+      const actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual("heiko", actual[0].friend.name);
+      assertEqual("micha", actual[1].friend.name);
+      assertEqual("piotr", actual[2].friend.name);
+
+      // Related to: BTS-937
+      assertEqual(["SingletonNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "CalculationNode",
+          "CalculationNode",
+          "CalculationNode",
+          "SortNode",
+          "ReturnNode"],
+        explainMultipleSorts(query));
+    },
+
+    testSortTripplets3: function () {
+      const query = `
+        LET friends = ${JSON.stringify(generateData())}
+        FOR friend in friends
+          SORT friend.id 
+          SORT friend.friend.name, friend.id, friend.age
+          SORT friend.friend.name, friend.id ASC
+        RETURN friend    
+      `;
+
+      const actual = getQueryResults(query);
+      assertEqual(3, actual.length);
+      assertEqual("heiko", actual[0].friend.name);
+      assertEqual("micha", actual[1].friend.name);
+      assertEqual("piotr", actual[2].friend.name);
+
+      // Related to: BTS-937
+      assertEqual(["SingletonNode",
+          "CalculationNode",
+          "EnumerateListNode",
+          "CalculationNode",
+          "CalculationNode",
+          "CalculationNode",
+          "SortNode",
+          "ReturnNode"],
+        explainMultipleSorts(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check sort optimization with index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMultipleFields1 : function () {
-      idx = collection.ensureIndex({ type: "persistent", fields: ["value", "value2"] });
+    testMultipleFields1: function () {
+      idx = collection.ensureIndex({type: "persistent", fields: ["value", "value2"]});
 
       var query = "FOR c IN " + cn + " FILTER c.value >= 0 SORT c.value RETURN c";
 
@@ -310,7 +419,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-     
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -318,13 +427,13 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                    "CalculationNode",
                    "ReturnNode"],
                   explain(query));
-      
+
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 >= 0 SORT c.value RETURN c";
 
       actual = getQueryResults(query);
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -352,7 +461,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-     
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -361,7 +470,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
                    "CalculationNode",
                    "ReturnNode"],
                   explain(query));
-      
+
       query = "FOR c IN " + cn + " FILTER c.value == 0 && c.value2 <= 1 SORT c.value, c.value2 RETURN c";
 
       actual = getQueryResults(query);
@@ -396,7 +505,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -424,7 +533,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-     
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -452,7 +561,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "EnumerateCollectionNode",
                    "CalculationNode",
@@ -481,7 +590,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -510,7 +619,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -539,7 +648,7 @@ function ahuacatlQueryOptimizerSortTestSuite () {
       assertEqual(50, actual[50].value);
       assertEqual(98, actual[98].value);
       assertEqual(99, actual[99].value);
-      
+
       assertEqual(["SingletonNode",
                    "IndexNode",
                    "CalculationNode",
@@ -586,12 +695,12 @@ function sortTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check sort results
 ////////////////////////////////////////////////////////////////////////////////
-  
+
     testSortOrderAsc : function () {
       var Query = "FOR i in " + cn + " SORT i.testString ASC RETURN i.testString";
       var result = getQueryResults(Query);
       var length = result.length;
-      
+
       // Verify results...
       assertEqual(length, testStringsSorted.length);
       for (var i = 0; i < length; i++) {
@@ -600,13 +709,13 @@ function sortTestsuite () {
       }
 
       // inspect plan
-      assertEqual(explain(Query), 
-                  ["SingletonNode",
-                   "EnumerateCollectionNode",
-                   "CalculationNode",
-                   "SortNode",
-                   "CalculationNode",
-                   "ReturnNode"]);
+      assertEqual(explain(Query),
+        ["SingletonNode",
+          "EnumerateCollectionNode",
+          "CalculationNode",
+          "SortNode",
+          "CalculationNode",
+          "ReturnNode"]);
 
       var plan = AQL_EXPLAIN(Query);
       var sortNode = findExecutionNodes(plan, "SortNode")[0];
@@ -631,13 +740,13 @@ function sortTestsuite () {
       }
 
       // inspect plan
-      assertEqual(explain(Query), 
-                  ["SingletonNode",
-                   "EnumerateCollectionNode",
-                   "CalculationNode",
-                   "SortNode",
-                   "CalculationNode",
-                   "ReturnNode"]);
+      assertEqual(explain(Query),
+        ["SingletonNode",
+          "EnumerateCollectionNode",
+          "CalculationNode",
+          "SortNode",
+          "CalculationNode",
+          "ReturnNode"]);
 
       var plan = AQL_EXPLAIN(Query);
       var sortNode = findExecutionNodes(plan, "SortNode")[0];

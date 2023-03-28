@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -60,7 +61,9 @@
 #include "velocypack/Parser.h"
 
 #if USE_ENTERPRISE
+#include "fakeit.hpp"
 #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 
 namespace {
@@ -206,6 +209,12 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
     EXPECT_TRUE(meta._fields.empty());
     EXPECT_FALSE(meta._includeAllFields);
     EXPECT_FALSE(meta._trackListPositions);
+#ifdef USE_ENTERPRISE
+    EXPECT_FALSE(meta._cache);
+    EXPECT_FALSE(meta._pkCache);
+    EXPECT_FALSE(meta._sortCache);
+    EXPECT_FALSE(arangodb::iresearch::hasHotFields(meta));
+#endif
     EXPECT_EQ(arangodb::iresearch::ValueStorage::NONE, meta._storeValues);
     EXPECT_EQ(1U, meta._analyzers.size());
     EXPECT_TRUE(*(meta._analyzers.begin()));
@@ -3699,3 +3708,950 @@ TEST_F(IResearchLinkMetaTest, test_collectioNameComparison) {
   ASSERT_EQ(meta, meta1);
   ASSERT_FALSE(meta != meta1);
 }
+
+#ifdef USE_ENTERPRISE
+TEST_F(IResearchLinkMetaTest, test_withNested) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  arangodb::iresearch::IResearchLinkMeta meta;
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({ 
+    "analyzerDefinitions": [ 
+      { "name": "empty", "type": "empty",
+        "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
+    "includeAllFields" : false,
+    "trackListPositions" : false,
+    "fields" : { 
+      "abc": {},
+      "foo" : {
+        "nested": { "bar":{}, 
+                    "bas":{
+                      "nested":{
+                        "a":{"analyzers":["empty"]}, "b":{}, "c":{}
+                       }
+                    },
+                    "kas":{
+                      "nested": { 
+                        "skas":{
+                          "analyzers":["empty"],
+                          "includeAllFields":true
+                         }
+                       }
+                    }
+                  } 
+      },
+      "bar" : {
+        "nested": { "c":{}, "d":{}} 
+      } 
+    },
+    "analyzers": [ "identity" ]
+  })");
+
+  std::string errorField;
+  ASSERT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+
+  ASSERT_EQ(3, meta._fields.size());
+  ASSERT_TRUE(meta._hasNested);
+
+  {
+    auto const abc = meta._fields.findPtr("abc");
+    ASSERT_NE(nullptr, abc);
+    ASSERT_FALSE((*abc)->_hasNested);
+    ASSERT_FALSE((*abc)->_includeAllFields);
+    ASSERT_FALSE((*abc)->_trackListPositions);
+    ASSERT_EQ(1, (*abc)->_analyzers.size());
+    ASSERT_TRUE((*abc)->_nested.empty());
+    ASSERT_TRUE((*abc)->_fields.empty());
+  }
+  {
+    auto const foo = meta._fields.findPtr("foo");
+    ASSERT_NE(nullptr, foo);
+    ASSERT_TRUE((*foo)->_hasNested);
+    ASSERT_FALSE((*foo)->_includeAllFields);
+    ASSERT_FALSE((*foo)->_trackListPositions);
+    ASSERT_EQ(1, (*foo)->_analyzers.size());
+    ASSERT_EQ(3, (*foo)->_nested.size());
+    {
+      auto const bar = (*foo)->_nested.findPtr("bar");
+      ASSERT_NE(nullptr, bar);
+      ASSERT_FALSE((*bar)->_hasNested);
+      ASSERT_FALSE((*bar)->_includeAllFields);
+      ASSERT_FALSE((*bar)->_trackListPositions);
+      ASSERT_EQ(1, (*bar)->_analyzers.size());
+      ASSERT_TRUE((*bar)->_nested.empty());
+      ASSERT_TRUE((*bar)->_fields.empty());
+    }
+    {
+      auto const bas = (*foo)->_nested.findPtr("bas");
+      ASSERT_NE(nullptr, bas);
+      ASSERT_TRUE((*bas)->_hasNested);
+      ASSERT_FALSE((*bas)->_includeAllFields);
+      ASSERT_FALSE((*bas)->_trackListPositions);
+      ASSERT_EQ(1, (*bas)->_analyzers.size());
+      ASSERT_EQ(3, (*bas)->_nested.size());
+      {
+        auto const a = (*bas)->_nested.findPtr("a");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("empty", analyzer._shortName);
+      }
+      {
+        auto const a = (*bas)->_nested.findPtr("b");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("identity", analyzer._shortName);
+      }
+      {
+        auto const a = (*bas)->_nested.findPtr("c");
+        ASSERT_FALSE((*a)->_hasNested);
+        ASSERT_EQ(1, (*a)->_analyzers.size());
+        auto analyzer = (*a)->_analyzers[0];
+        ASSERT_EQ("identity", analyzer._shortName);
+      }
+      ASSERT_TRUE((*bas)->_fields.empty());
+    }
+    {
+      auto const kas = (*foo)->_nested.findPtr("kas");
+      ASSERT_NE(nullptr, kas);
+      ASSERT_TRUE((*kas)->_hasNested);
+      ASSERT_FALSE((*kas)->_includeAllFields);
+      ASSERT_FALSE((*kas)->_trackListPositions);
+      ASSERT_EQ(1, (*kas)->_analyzers.size());
+      auto analyzer = (*kas)->_analyzers[0];
+      ASSERT_EQ("identity", analyzer._shortName);
+      ASSERT_EQ(1, (*kas)->_nested.size());
+      {
+        auto const skas = (*kas)->_nested.findPtr("skas");
+        ASSERT_NE(nullptr, skas);
+        ASSERT_FALSE((*skas)->_hasNested);
+        ASSERT_TRUE((*skas)->_includeAllFields);
+        ASSERT_FALSE((*skas)->_trackListPositions);
+        ASSERT_EQ(1, (*skas)->_analyzers.size());
+        auto analyzer = (*skas)->_analyzers[0];
+        ASSERT_EQ("empty", analyzer._shortName);
+        ASSERT_EQ(0, (*skas)->_fields.size());
+        ASSERT_EQ(0, (*skas)->_nested.size());
+      }
+      ASSERT_TRUE((*kas)->_fields.empty());
+    }
+    ASSERT_TRUE((*foo)->_fields.empty());
+  }
+  {
+    auto const bar = meta._fields.findPtr("bar");
+    ASSERT_NE(nullptr, bar);
+    ASSERT_TRUE((*bar)->_hasNested);
+    ASSERT_FALSE((*bar)->_includeAllFields);
+    ASSERT_FALSE((*bar)->_trackListPositions);
+    ASSERT_EQ(1, (*bar)->_analyzers.size());
+    ASSERT_EQ(2, (*bar)->_nested.size());
+    ASSERT_TRUE((*bar)->_fields.empty());
+    {
+      auto const nestedD = (*bar)->_nested.findPtr("d");
+      ASSERT_NE(nullptr, nestedD);
+      ASSERT_FALSE((*nestedD)->_hasNested);
+      ASSERT_FALSE((*nestedD)->_includeAllFields);
+      ASSERT_FALSE((*nestedD)->_trackListPositions);
+      ASSERT_EQ(1, (*nestedD)->_analyzers.size());
+      ASSERT_TRUE((*nestedD)->_nested.empty());
+      ASSERT_TRUE((*nestedD)->_fields.empty());
+    }
+    {
+      auto const nestedC = (*bar)->_nested.findPtr("c");
+      ASSERT_NE(nullptr, nestedC);
+      ASSERT_FALSE((*nestedC)->_hasNested);
+      ASSERT_FALSE((*nestedC)->_includeAllFields);
+      ASSERT_FALSE((*nestedC)->_trackListPositions);
+      ASSERT_EQ(1, (*nestedC)->_analyzers.size());
+      ASSERT_TRUE((*nestedC)->_nested.empty());
+      ASSERT_TRUE((*nestedC)->_fields.empty());
+    }
+  }
+  VPackBuilder serialized;
+  {
+    VPackObjectBuilder ob(&serialized);
+    ASSERT_TRUE(meta.json(server.server(), serialized, false));
+  }
+  auto slice = serialized.slice();
+  ASSERT_TRUE(slice.isObject());
+  auto tmpSlice = slice.get("includeAllFields");
+  ASSERT_FALSE(tmpSlice.getBool());
+  tmpSlice = slice.get("trackListPositions");
+  ASSERT_FALSE(tmpSlice.getBool());
+  auto fieldsSlice = slice.get("fields");
+  ASSERT_TRUE(fieldsSlice.isObject());
+  auto abcSlice = fieldsSlice.get("abc");
+  ASSERT_TRUE(abcSlice.isObject());
+  ASSERT_FALSE(abcSlice.hasKey("fields"));
+  ASSERT_FALSE(abcSlice.hasKey("nested"));
+  auto fooSlice = fieldsSlice.get("foo");
+  ASSERT_TRUE(fooSlice.isObject());
+  ASSERT_FALSE(fooSlice.hasKey("fields"));
+  ASSERT_TRUE(fooSlice.hasKey("nested"));
+  {
+    auto fooNested = fooSlice.get("nested");
+    ASSERT_TRUE(fooNested.isObject());
+    auto fooBar = fooNested.get("bar");
+    ASSERT_TRUE(fooBar.isEmptyObject());
+
+    auto fooBas = fooNested.get("bas");
+    ASSERT_TRUE(fooBas.isObject());
+    ASSERT_TRUE(fooBas.hasKey("nested"));
+    ASSERT_FALSE(fooBas.hasKey("fields"));
+    auto fooBasNested = fooBas.get("nested");
+    ASSERT_TRUE(fooBasNested.isObject());
+    auto aSlice = fooBasNested.get("a");
+    ASSERT_TRUE(aSlice.isObject());
+    ASSERT_TRUE(aSlice.hasKey("analyzers"));
+    auto bSlice = fooBasNested.get("b");
+    ASSERT_TRUE(bSlice.isEmptyObject());
+    auto cSlice = fooBasNested.get("c");
+    ASSERT_TRUE(cSlice.isEmptyObject());
+
+    auto fooKas = fooNested.get("kas");
+    ASSERT_TRUE(fooKas.isObject());
+    ASSERT_TRUE(fooKas.hasKey("nested"));
+    ASSERT_FALSE(fooKas.hasKey("fields"));
+    auto skas = fooKas.get("nested").get("skas");
+    ASSERT_TRUE(skas.isObject());
+    tmpSlice = skas.get("includeAllFields");
+    ASSERT_TRUE(tmpSlice.getBool());
+    auto analyzersSlice = skas.get("analyzers");
+    ASSERT_TRUE(analyzersSlice.isArray());
+    ASSERT_EQ(1, analyzersSlice.length());
+  }
+}
+#else
+TEST_F(IResearchLinkMetaTest, test_withNested) {
+  arangodb::iresearch::IResearchLinkMeta meta;
+  auto json = arangodb::velocypack::Parser::fromJson(
+      R"({
+    "analyzerDefinitions": [
+      { "name": "empty", "type": "empty",
+        "properties": {"args":"ru"}, "features": [ "frequency" ] } ],
+    "includeAllFields" : false,
+    "trackListPositions" : false,
+    "fields" : {
+      "abc": {},
+      "foo" : {
+        "nested": { "bar":{},
+                    "bas":{
+                      "nested":{
+                        "a":{"analyzers":["empty"]}, "b":{}, "c":{}
+                       }
+                    },
+                    "kas":{
+                      "nested": {
+                        "skas":{
+                          "analyzers":["empty"],
+                          "includeAllFields":true
+                         }
+                       }
+                    }
+                  }
+      },
+      "bar" : {
+        "nested": { "c":{}, "d":{}}
+      }
+    },
+    "analyzers": [ "identity" ]
+  })");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  std::string errorField;
+  ASSERT_FALSE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_NE(std::string::npos, errorField.find("Enterprise"));
+}
+#endif
+
+#ifdef USE_ENTERPRISE
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache": false,
+      "fields" : {
+        "nothot": {
+        },
+        "field": {
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "cache":true,
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_FALSE(meta._pkCache);
+  ASSERT_FALSE(meta._sortCache);
+  ASSERT_EQ(2, meta._fields.size());
+  {
+    auto const& field = meta._fields["nothot"];
+    ASSERT_FALSE(field.get()->_cache);
+  }
+  {
+    auto const& field = meta._fields["field"];
+    ASSERT_TRUE(field.get()->_cache);
+    auto const& foo = field.get()->_fields.findPtr("foo");
+    ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
+  }
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache": true,
+      "primaryKeyCache": true,
+      "fields" : {
+        "globalhot": {
+        },
+        "field": {
+          "cache": true,
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_TRUE(meta._pkCache);
+  ASSERT_FALSE(meta._sortCache);
+  ASSERT_EQ(2, meta._fields.size());
+  {
+    auto const& field = meta._fields["globalhot"];
+    ASSERT_TRUE(field.get()->_cache);
+  }
+  {
+    auto const& field = meta._fields["field"];
+    ASSERT_TRUE(field.get()->_cache);
+    auto const& foo = field.get()->_fields.findPtr("foo");
+    ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
+  }
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache": true,
+      "primaryKeyCache": false,
+      "primarySortCache": true,
+      "storedValues": [{"fields":["foo"], "cache":true},
+                       {"fields":["boo"], "cache":false}],
+      "fields" : {
+        "globalhot": {
+        },
+        "field": {
+          "cache": true,
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  ASSERT_FALSE(meta._pkCache);
+  ASSERT_TRUE(meta._sortCache);
+  ASSERT_EQ(2, meta._fields.size());
+  {
+    auto const& field = meta._fields["globalhot"];
+    ASSERT_TRUE(field.get()->_cache);
+  }
+  {
+    auto const& field = meta._fields["field"];
+    ASSERT_TRUE(field.get()->_cache);
+    auto const& foo = field.get()->_fields.findPtr("foo");
+    ASSERT_FALSE(foo->get()->_cache);
+    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
+    ASSERT_TRUE(hotfoo->get()->_cache);
+  }
+  ASSERT_EQ(2, meta._storedValues.columns().size());
+  ASSERT_TRUE(meta._storedValues.columns()[0].cached);
+  ASSERT_FALSE(meta._storedValues.columns()[1].cached);
+
+  VPackBuilder builder;
+  builder.openObject();
+  EXPECT_TRUE(meta.json(server.server(), builder, false));
+  builder.close();
+}
+
+// Circumventing fakeit inability to build a mock
+// for class with pure virtual functions in base
+class mock_term_reader : public irs::term_reader {
+ public:
+  irs::seek_term_iterator::ptr iterator(irs::SeekMode mode) const override {
+    return nullptr;
+  }
+  irs::seek_term_iterator::ptr iterator(
+      irs::automaton_table_matcher&) const override {
+    return nullptr;
+  }
+
+  irs::doc_iterator::ptr wanderator(const irs::seek_cookie&,
+                                    irs::IndexFeatures) const override {
+    return nullptr;
+  }
+
+  irs::bytes_ref const&(min)() const override { return irs::bytes_ref::NIL; }
+
+  irs::bytes_ref const&(max)() const override { return irs::bytes_ref::NIL; }
+
+  irs::attribute* get_mutable(irs::type_info::type_id) override {
+    return nullptr;
+  }
+
+  size_t bit_union(const cookie_provider& provider,
+                   size_t* bitset) const override {
+    return 0;
+  }
+
+  irs::doc_iterator::ptr postings(const irs::seek_cookie& cookie,
+                                  irs::IndexFeatures features) const override {
+    return nullptr;
+  }
+
+  const irs::field_meta& meta() const override { return *field_meta_; }
+
+  size_t size() const override { return 0; }
+  uint64_t docs_count() const override { return 0; }
+
+  irs::field_meta const* field_meta_;
+};
+
+void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
+                           arangodb::iresearch::IResearchLinkMeta const& meta,
+                           std::set<irs::field_id> expected,
+                           arangodb::containers::FlatHashSet<std::string> const*
+                               expectedGeoColumns = nullptr) {
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> actual;
+  arangodb::containers::FlatHashSet<std::string> geoColumns;
+  arangodb::iresearch::collectCachedColumns(actual, geoColumns,
+                                            mockFieldsReader.get(), meta);
+  if (!expectedGeoColumns) {
+    ASSERT_TRUE(geoColumns.empty());
+  } else {
+    ASSERT_EQ(*expectedGeoColumns, geoColumns);
+  }
+  ASSERT_EQ(actual, expected);
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [
+         { "name": "geo", "type": "geojson", 
+           "properties": {
+             "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
+           "features": [ "frequency" ]},
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "fields" : {
+        "nothot": {
+        },
+        "field": {
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true, "analyzers":["geo"]}
+          },
+          "cache":true,
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[123456789]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 5);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 6);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "missing\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 7);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.mising\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 8);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 9);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.hotfoo\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 10);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.hotfoo.sub\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 11);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.hotfoo.sub[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 12);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.hotfoo[12].sub[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 13);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].hotfoo.sub[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 14);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].hotfoo[1].sub\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 15);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].hotfoo.sub[1]\1identity";
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":true,
+      "includeAllFields":true,
+      "fields" : {
+        "nothot": {
+        },
+        "field": {
+          "fields": {
+            "foo": {"cache":false},
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[123456789]\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 5);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    // should be ignored as foo is explicitly not cached
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].foo.bii[2344].aaa[2343].foo\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 6);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field[1].boo.bii[2344].aaa[2343].foo\0_d";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 7);
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":true,
+      "includeAllFields":true,
+      "fields" : {
+        "nothot": {
+          "cache":false,
+          "nested": {
+            "nested" :{
+              "cache":true
+            }
+          }
+        },
+        "field": {
+          "fields": {
+            "foo": {
+              "nested": {
+                "subfoo": {
+                  "nested": {
+                    "subsubfoo": {
+                    },
+                    "subsubfoo2": {
+                      "cache":false
+                    }
+                  }
+                }
+              }
+            },
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\2.nested\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo2\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 3};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+
+TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+
+  auto json = VPackParser::fromJson(
+      R"({
+      "analyzerDefinitions": [ 
+         { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
+         { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
+      ],
+      "cache":false,
+      "includeAllFields":true,
+      "fields" : {
+        "nothot": {
+          "nested": {
+            "nested" :{
+              "cache":true
+            }
+          }
+        },
+        "field": {
+          "fields": {
+            "foo": {
+              "nested": {
+                "subfoo": {
+                  "nested": {
+                    "subsubfoo": {
+                    },
+                    "subsubfoo2": {
+                      "cache":true
+                    }
+                  }
+                }
+              }
+            },
+            "hotfoo": { "includeAllFields":true}
+          },
+          "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
+      }}
+    })");
+  arangodb::iresearch::IResearchLinkMeta meta;
+  std::string errorField;
+  EXPECT_TRUE(
+      meta.init(server.server(), json->slice(), errorField, vocbase.name()));
+  std::vector<irs::field_meta> mockedFields;
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\2.nested\1empty";
+    field_meta.features.emplace(irs::type<irs::Norm2>::id(), 1);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "nothot\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 2);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 3);
+    mockedFields.push_back(std::move(field_meta));
+  }
+  {
+    irs::field_meta field_meta;
+    field_meta.name = "field.foo\2.subfoo\2.subsubfoo2\1identity";
+    field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
+    mockedFields.push_back(std::move(field_meta));
+  }
+
+  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
+  mock_term_reader mockTermReader;
+
+  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
+    if (field == mockedFields.end()) {
+      field = mockedFields.begin();
+      mockTermReader.field_meta_ = &(*field);
+      return true;
+    }
+    ++field;
+    if (field != mockedFields.end()) {
+      mockTermReader.field_meta_ = &(*field);
+    }
+    return field != mockedFields.end();
+  });
+  fakeit::When(Method(mockFieldIterator, value))
+      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
+
+  fakeit::Mock<irs::field_reader> mockFieldsReader;
+  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
+    return irs::memory::to_managed<irs::field_iterator, false>(
+        &mockFieldIterator.get());
+  });
+  std::set<irs::field_id> expected{1, 4};
+  makeCachedColumnsTest(mockedFields, meta, expected);
+  ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
+}
+#endif

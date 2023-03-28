@@ -69,6 +69,7 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/FileSystemFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
@@ -203,26 +204,6 @@ add_library(arango STATIC
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
-# The following is necessary to compile MerkleTree.cpp without RTTI.
-# RTTI needs to be disabled because the file contains a class that
-# is derived from some Snappy base class, which itself is compiled
-# with -fno-rtti. Mixing RTTI code and non-RTTI code can cause
-# problems during linking. Here is what "man g++" has to say:
-#     Mixing code compiled with -frtti with that compiled with
-#     -fno-rtti may not work. For example, programs may fail to
-#     link if a class compiled with -fno-rtti is used as a
-#     base for a class compiled with -frtti.
-if(MSVC)
-  set_source_files_properties(
-    Containers/MerkleTreeHelpers.cpp
-    PROPERTIES COMPILE_FLAGS "/GR-")
-else()
-  set_source_files_properties(
-    Containers/MerkleTreeHelpers.cpp
-    PROPERTIES COMPILE_FLAGS "-fno-rtti")
-endif()
-
-
 target_link_libraries(arango PUBLIC
   s2
   boost_system
@@ -310,28 +291,7 @@ target_link_libraries(arango_greenspun date_interface)
 ## LIB_ARANGO_GEO
 ################################################################################
 
-add_library(arango_geo STATIC
-  Geo/Ellipsoid.cpp
-  Geo/GeoJson.cpp
-  Geo/GeoParams.cpp
-  Geo/ShapeContainer.cpp
-  Geo/Shapes.cpp
-  Geo/Utils.cpp
-  Geo/karney/geodesic.c
-  Geo/S2/S2MultiPointRegion.cpp
-  Geo/S2/S2MultiPolyline.cpp
-)
-
-target_link_libraries(arango_geo
-  arango
-  boost_system
-  boost_boost
-  s2
-)
-
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif()
+add_subdirectory(Geo)
 
 # Enterprise
 if (USE_ENTERPRISE)

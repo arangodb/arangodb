@@ -49,35 +49,36 @@ ShellFeature::ShellFeature(Server& server, int* result)
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--jslint", "do not start as shell, run jslint instead",
+  options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
                      new VectorParameter<StringParameter>(&_jslint));
 
   options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.execute",
-                     "execute JavaScript code from file",
+                     "Execute the JavaScript code from the specified file.",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
-                     "execute JavaScript code from string",
+                     "Execute the JavaScript code from the specified string.",
                      new VectorParameter<StringParameter>(&_executeStrings));
 
-  options->addOption("--javascript.check-syntax",
-                     "syntax check code JavaScript code from file",
-                     new VectorParameter<StringParameter>(&_checkSyntaxFiles));
+  options->addOption(
+      "--javascript.check-syntax",
+      "Check the syntax of the JavaScript code from the specified file.",
+      new VectorParameter<StringParameter>(&_checkSyntaxFiles));
 
   options->addOption("--javascript.unit-tests",
-                     "do not start as shell, run unit tests instead",
+                     "Do not start as a shell, run unit tests instead.",
                      new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.unit-test-filter",
-                     "filter testcases in suite",
+                     "Filter the test cases in the test suite.",
                      new StringParameter(&_unitTestFilter));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  options->addOption("--javascript.script-parameter", "script parameter",
+  options->addOption("--javascript.script-parameter", "Script parameter.",
                      new VectorParameter<StringParameter>(&_scriptParameters));
 
-  options->addOption("--javascript.run-main", "execute function main",
+  options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
 }

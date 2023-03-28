@@ -347,8 +347,23 @@ std::string ActiveFailoverJob::findBestFollower() {
             });
   if (!ticks.empty()) {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
+
+    // log information about follower states
+    VPackBuilder b;
+    b.openArray();
+    for (auto const& it : ticks) {
+      b.openObject();
+      b.add("server", VPackValue(it.first));
+      b.add("tick", VPackValue(it.second));
+      b.close();
+    }
+    b.close();
+    LOG_TOPIC("27a94", INFO, Logger::SUPERVISION)
+        << "follower states: " << b.slice().toJson();
+
     return ticks[0].first;
   }
+
   LOG_TOPIC("f94ec", ERR, Logger::SUPERVISION) << "no follower ticks available";
   return "";  // fallback to any available server
 }

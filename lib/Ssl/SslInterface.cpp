@@ -358,8 +358,13 @@ int rsaPrivSign(EVP_MD_CTX* ctx, EVP_PKEY* pkey, std::string const& msg,
 int rsaPrivSign(std::string const& pem, std::string const& msg,
                 std::string& sign, std::string& error) {
   BIO* keybio = BIO_new_mem_buf(pem.c_str(), -1);
-  RSA* rsa;
-  rsa = RSA_new();
+  if (keybio == nullptr) {
+    error.append("Failed to initialize keybio.");
+    return 1;
+  }
+  auto cleanupBio = scopeGuard([&]() noexcept { BIO_free_all(keybio); });
+
+  RSA* rsa = RSA_new();
   if (rsa == nullptr) {
     error.append("Failed to initialize RSA algorithm.");
     return 1;
@@ -371,10 +376,7 @@ int rsaPrivSign(std::string const& pem, std::string const& msg,
     return 1;
   }
   EVP_PKEY_assign_RSA(pKey, rsa);
-  auto cleanupKeys = scopeGuard([&]() noexcept {
-    EVP_PKEY_free(pKey);
-    BIO_free_all(keybio);
-  });
+  auto cleanupKeys = scopeGuard([&]() noexcept { EVP_PKEY_free(pKey); });
 
   auto* ctx = EVP_MD_CTX_new();
   auto cleanupContext = scopeGuard([&]() noexcept { EVP_MD_CTX_free(ctx); });

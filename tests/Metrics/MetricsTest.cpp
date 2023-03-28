@@ -30,6 +30,7 @@
 #include "Metrics/Histogram.h"
 #include "Metrics/LinScale.h"
 #include "Metrics/LogScale.h"
+#include "Basics/ThreadGuard.h"
 
 #include <algorithm>
 #include <atomic>
@@ -46,6 +47,7 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 }  // namespace
 
+using namespace arangodb;
 using namespace arangodb::metrics;
 
 TEST(MetricsTest, test_counter_concurrency) {
@@ -55,10 +57,10 @@ TEST(MetricsTest, test_counter_concurrency) {
 
   std::atomic<bool> go = false;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
+  auto threads = ThreadGuard(::numThreads);
+
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -71,9 +73,7 @@ TEST(MetricsTest, test_counter_concurrency) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(c.load(), ::numThreads * ::numOpsPerThread);
 }
@@ -89,10 +89,10 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 
   std::atomic<bool> go = false;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
+  auto threads = ThreadGuard(::numThreads);
+
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
@@ -105,9 +105,7 @@ TEST(MetricsTest, test_histogram_concurrency_same) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(h.load(0), ::numThreads * ::numOpsPerThread);
   ASSERT_EQ(h.load(1), 0);
@@ -126,10 +124,10 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 
   std::atomic<bool> go = false;
 
-  std::vector<std::thread> threads;
-  threads.reserve(::numThreads);
+  auto threads = ThreadGuard(::numThreads);
+
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back(
+    threads.emplace(
         [&](uint64_t value) {
           while (!go.load()) {
             // wait until all threads are created, so they can
@@ -144,9 +142,7 @@ TEST(MetricsTest, test_histogram_concurrency_distributed) {
 
   go.store(true);
 
-  for (auto& thread : threads) {
-    thread.join();
-  }
+  threads.joinAll();
 
   ASSERT_EQ(h.load(0), ::numOpsPerThread);
   ASSERT_EQ(h.load(1), (::numThreads > 1 ? 1 : 0) * ::numOpsPerThread);

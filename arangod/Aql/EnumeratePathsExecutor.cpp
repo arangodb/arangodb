@@ -62,6 +62,31 @@ static bool isValidId(VPackSlice id) {
   TRI_ASSERT(id.isString());
   return id.stringView().find('/') != std::string_view::npos;
 }
+
+template<class FinderType>
+constexpr auto isNewStyleFinder() {
+  return std::is_same_v<
+             FinderType,
+             KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
+                                        SingleServerProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<
+             FinderType,
+             TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        AllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType,
+                        TracedAllShortestPathsEnumerator<
+                            SingleServerProvider<SingleServerProviderStep>>> ||
+         std::is_same_v<FinderType, AllShortestPathsEnumerator<ClusterProvider<
+                                        ClusterProviderStep>>> ||
+         std::is_same_v<FinderType, TracedAllShortestPathsEnumerator<
+                                        ClusterProvider<ClusterProviderStep>>>;
+}
 }  // namespace
 
 template<class FinderType>
@@ -148,19 +173,7 @@ auto EnumeratePathsExecutorInfos<FinderType>::getTargetVertex() const noexcept
 template<class FinderType>
 auto EnumeratePathsExecutorInfos<FinderType>::cache() const
     -> graph::TraverserCache* {
-  if constexpr (std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                               SingleServerProviderStep>>> ||
-                std::is_same_v<FinderType,
-                               TracedKPathEnumerator<SingleServerProvider<
-                                   SingleServerProviderStep>>> ||
-                std::is_same_v<
-                    FinderType,
-                    KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-                std::is_same_v<
-                    FinderType,
-                    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>
-
-  ) {
+  if constexpr (isNewStyleFinder<FinderType>()) {
     TRI_ASSERT(false);
     return nullptr;
   } else {
@@ -283,36 +296,19 @@ auto EnumeratePathsExecutor<FinderType>::doOutputPath(OutputAqlItemRow& output)
     -> void {
   transaction::BuilderLeaser tmp{&_trx};
   tmp->clear();
-  if constexpr (
-      std::is_same_v<
-          FinderType,
-          KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<SingleServerProvider<
-                                     SingleServerProviderStep>>> ||
-      std::is_same_v<FinderType,
-                     KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-      std::is_same_v<FinderType, TracedKPathEnumerator<
-                                     ClusterProvider<ClusterProviderStep>>>) {
-    if (_finder.getNextPath(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
-  } else if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
-    if (_finder.getNextPathAql(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
+
+  bool nextPath;
+  if constexpr (std::is_same_v<FinderType, KShortestPathsFinder>) {
+    nextPath = _finder.getNextPathAql(*tmp.builder());
   } else {
-    if (_finder.getNextPath(*tmp.builder())) {
-      AqlValue path{tmp->slice()};
-      AqlValueGuard guard{path, true};
-      output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
-      output.advanceRow();
-    }
+    nextPath = _finder.getNextPath(*tmp.builder());
+  }
+
+  if (nextPath) {
+    AqlValue path{tmp->slice()};
+    AqlValueGuard guard{path, true};
+    output.moveValueInto(_infos.getOutputRegister(), _inputRow, guard);
+    output.advanceRow();
   }
 }
 
@@ -329,17 +325,7 @@ auto EnumeratePathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
           std::string idString;
           // TODO:  calculate expression once e.g. header constexpr bool and
           // check then here
-          if constexpr (
-              std::is_same_v<FinderType, KPathEnumerator<SingleServerProvider<
-                                             SingleServerProviderStep>>> ||
-              std::is_same_v<FinderType,
-                             TracedKPathEnumerator<SingleServerProvider<
-                                 SingleServerProviderStep>>> ||
-              std::is_same_v<
-                  FinderType,
-                  KPathEnumerator<ClusterProvider<ClusterProviderStep>>> ||
-              std::is_same_v<FinderType, TracedKPathEnumerator<ClusterProvider<
-                                             ClusterProviderStep>>>) {
+          if constexpr (isNewStyleFinder<FinderType>()) {
             idString = _trx.extractIdString(in.slice());
           } else {
             idString = _finder.options().trx()->extractIdString(in.slice());
@@ -407,27 +393,48 @@ template<class FinderType>
 
 /* SingleServerProvider Section */
 
+using SingleServer = SingleServerProvider<SingleServerProviderStep>;
+
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+    AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+    TracedAllShortestPathsEnumerator<SingleServer>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//     KPathEnumerator<SingleServer>>;
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//    TracedKPathEnumerator<SingleServer>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    KPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+    AllShortestPathsEnumerator<SingleServer>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedKPathEnumerator<SingleServerProvider<SingleServerProviderStep>>>;
+    TracedAllShortestPathsEnumerator<SingleServer>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//    KPathEnumerator<SingleServer>>;
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//    TracedKPathEnumerator<SingleServer>>;
 
 /* ClusterProvider Section */
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
-template class ::arangodb::aql::EnumeratePathsExecutorInfos<
-    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+// template class ::arangodb::aql::EnumeratePathsExecutorInfos<
+//    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+    AllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
 template class ::arangodb::aql::EnumeratePathsExecutor<
-    TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+    TracedAllShortestPathsEnumerator<ClusterProvider<ClusterProviderStep>>>;
+
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     KPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
+// template class ::arangodb::aql::EnumeratePathsExecutor<
+//     TracedKPathEnumerator<ClusterProvider<ClusterProviderStep>>>;
 
 /* Fallback Section - Can be removed completely after refactor is done */
 

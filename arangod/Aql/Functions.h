@@ -122,6 +122,8 @@ AqlValue Upper(arangodb::aql::ExpressionContext*, AstNode const&,
                VPackFunctionParametersView);
 AqlValue Substring(arangodb::aql::ExpressionContext*, AstNode const&,
                    VPackFunctionParametersView);
+AqlValue SubstringBytes(arangodb::aql::ExpressionContext*, AstNode const&,
+                        VPackFunctionParametersView);
 AqlValue Substitute(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Left(arangodb::aql::ExpressionContext*, AstNode const&,
@@ -284,6 +286,8 @@ AqlValue Attributes(arangodb::aql::ExpressionContext*, AstNode const&,
                     VPackFunctionParametersView);
 AqlValue Values(arangodb::aql::ExpressionContext*, AstNode const&,
                 VPackFunctionParametersView);
+AqlValue Value(arangodb::aql::ExpressionContext*, AstNode const&,
+               VPackFunctionParametersView);
 AqlValue Min(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
 AqlValue Max(arangodb::aql::ExpressionContext*, AstNode const&,

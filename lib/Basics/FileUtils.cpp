@@ -294,7 +294,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   auto sg = arangodb::scopeGuard([&]() noexcept { TRI_CLOSE(fd); });
 
   while (0 < len) {
-    ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
+    auto n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       throwFileWriteError(filename);

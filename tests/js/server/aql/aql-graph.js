@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, sub: true, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertNotEqual, assertFalse, assertTrue, assertNotNull, AQL_EXPLAIN, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -28,31 +28,27 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var internal = require("internal");
-var errors = internal.errors;
-var helper = require("@arangodb/aql-helper");
-var cluster = require("@arangodb/cluster");
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
+const errors = internal.errors;
+const helper = require("@arangodb/aql-helper");
+const cluster = require("@arangodb/cluster");
 const gm = require("@arangodb/general-graph");
-var getQueryResults = helper.getQueryResults;
-var getRawQueryResults = helper.getRawQueryResults;
-var assertQueryError = helper.assertQueryError;
+const getQueryResults = helper.getQueryResults;
+const getRawQueryResults = helper.getRawQueryResults;
+const assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for graph features
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQueryEdgesTestSuite() {
-  var vertex = null;
-  var edge = null;
-  var vn = "UnitTestsAhuacatlVertex";
+  const vn = "UnitTestsAhuacatlVertex";
+  let vertex = null;
+  let edge = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
       db._drop(vn);
@@ -83,10 +79,6 @@ function ahuacatlQueryEdgesTestSuite() {
       makeEdge("v7", "v3");
       makeEdge("v6", "v3");
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex");
@@ -1491,6 +1483,32 @@ function ahuacatlQueryShortestPathTestSuite() {
 
       // re-add vertex to let environment stay as is has been before the test
       vertexCollection.save({_key: key, name: key});
+    },
+
+    testAllPathsConnectedButInnerVertexDeleted: function () {
+      // Find the path(s): A -> B -> F (which is valid)
+      // Case: B will be deleted before query execution.
+      // This is valid, but the query needs to report an error!
+      let key = 'B';
+      let item = `${vn}/${key}`;
+      vertexCollection.remove(item);
+
+      // Execute without fail and check
+      let query = `WITH ${vn} FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let actual = getQueryResults(query);
+      assertEqual(1, actual.length);
+      assertEqual([['A', 'null', 'F']], actual);
+
+      // Now execute with fail on warnings
+      try {
+        db._query(query, null, {"failOnWarning": true});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-add vertex to let environment stay as is has been before the test
+      vertexCollection.save({_key: key, name: key});
     }
   };
 }
@@ -1642,6 +1660,184 @@ function kPathsTestSuite() {
 
       assertEqual(outbound.toArray().length, 12);
       assertEqual(any.toArray().length, 16);
+    },
+    
+    testkPathsWithVertices1: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertTrue(doc.hasOwnProperty("vertices"));
+        assertTrue(doc.hasOwnProperty("edges"));
+      });
+    },
+    
+    testkPathsWithVertices2: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertTrue(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+      outbound.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+      any.toArray().forEach((doc) => {
+        assertNotNull(doc);
+      });
+    },
+    
+    testkPathsNoVertices: function () {
+      const queryOutbound = `
+        FOR p IN 1..10 OUTBOUND K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+      
+      const queryAny = `
+        FOR p IN 1..10 ANY K_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.edges
+      `;
+
+      let plan = AQL_EXPLAIN(queryOutbound).plan;
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      let nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+      
+      plan = AQL_EXPLAIN(queryAny).plan;
+      nodes = plan.nodes.filter((n) => n.type === 'EnumeratePathsNode');
+      assertNotEqual(-1, plan.rules.indexOf("optimize-paths"));
+      assertEqual(1, nodes.length);
+      assertTrue(nodes[0].options.hasOwnProperty("produceVertices"));
+      assertFalse(nodes[0].options.produceVertices);
+
+      let outbound = db._query(queryOutbound);
+      assertEqual(outbound.toArray().length, 12);
+
+      let any = db._query(queryAny);
+      assertEqual(any.toArray().length, 16);
+    },
+  };
+}
+
+function allShortestPathsTestSuite() {
+  const gn = "UnitTestGraph";
+  const vn = "UnitTestV";
+  const en = "UnitTestE";
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUpAll: function () {
+      gm._create(gn, [gm._relation(en, vn, vn)]);
+
+      ["s", "t", "a", "b", "c", "d", "e", "f", "g", "x", "y", "z"].map((elem) => {
+        db[vn].insert({_key: elem});
+      });
+
+      [
+        ["s", "a"], ["s", "b"], ["a", "b"], ["a", "c"], ["b", "c"],
+        ["c", "d"], ["d", "t"],
+        ["c", "e"], ["e", "t"],
+        ["c", "f"], ["f", "t"],
+        ["c", "g"], ["g", "t"],
+        ["s", "x"], ["y", "x"], ["y", "z"], ["z", "y"], ["z", "t"]
+      ].map(([a, b]) => {
+        db[en].insert({_from: `${vn}/${a}`, _to: `${vn}/${b}`});
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll: function () {
+      gm._drop(gn, true);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if we are able to find all shortest paths when using ANY direction with ALL_SHORTEST_PATHS
+/// One of the edges is used in both directions.
+////////////////////////////////////////////////////////////////////////////////
+
+    testAllShortestPathsAnyUseEdgeTwice: function () {
+      let outbound = db._query(`
+        FOR p IN OUTBOUND ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      let any = db._query(`
+        FOR p IN ANY ALL_SHORTEST_PATHS "${vn}/s" to "${vn}/t"
+          GRAPH ${gn}
+        RETURN p.vertices[*]._key
+      `);
+
+      assertEqual(outbound.toArray().length, 8);
+      assertEqual(any.toArray().length, 10); // two new paths: S -> X <- Y <-> Z -> T
     }
   };
 }
@@ -1740,6 +1936,78 @@ function ShortestPathErrorTestSuite() {
       } catch (err) {
         assertEqual(err.errorNum, internal.errors.ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT.code);
       }
+    },
+
+    testShortestPathInvalidOptionsParameter: function () {
+      /* SHORTEST_PATH */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND SHORTEST_PATH "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in SHORTEST_PATH statement'));
+    },
+
+    testKPathsInvalidOptionsParameter: function () {
+      /* K_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND K_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in K_PATHS statement'));
+    },
+
+    testKShortestPathsInvalidOptionsParameter: function () {
+      /* K_SHORTEST_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND K_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in K_SHORTEST_PATHS statement'));
+    },
+
+    testAllShortestPathsInvalidOptionsParameter: function () {
+      /* ALL_SHORTEST_PATHS */
+      const source = `${vName}/${keyA}`;
+      const target = `${vName}/${keyD}`;
+
+      const query = `
+        FOR path IN OUTBOUND ALL_SHORTEST_PATHS "${source}" TO "${target}" GRAPH "${graphName}"
+          OPTIONS {invalidParameter: "IShouldCreateAWarning"}
+          RETURN path
+      `;
+
+      const result = db._query(query);
+      const extra = result.getExtra();
+      assertEqual(1, extra.warnings.length);
+      assertEqual(extra.warnings[0].code, internal.errors.ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE.code);
+      assertTrue(extra.warnings[0].message.includes('in ALL_SHORTEST_PATHS statement'));
     }
   };
 }
@@ -1756,6 +2024,7 @@ if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 jsunity.run(kPathsTestSuite);
+jsunity.run(allShortestPathsTestSuite);
 jsunity.run(ShortestPathErrorTestSuite);
 
 return jsunity.done();

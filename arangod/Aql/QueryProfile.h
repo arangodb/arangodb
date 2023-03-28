@@ -45,7 +45,6 @@ struct QueryProfile {
 
   ~QueryProfile();
 
- public:
   void registerInQueryList();
 
   /// @brief unregister the query from the list of queries, if entered

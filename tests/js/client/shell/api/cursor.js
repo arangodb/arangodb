@@ -1131,6 +1131,17 @@ function dealing_with_cursorsSuite_checking_a_querySuite () {
       assertEqual(doc.parsedBody['bindVars'], ["name"]);
     },
 
+    test_window_aggregate_no_arguments_query: function() {
+      let cmd = "/_api/query";
+      let body = { "query" : `FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1`};
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+    },
+
     test_invalid_query: function() {
       let cmd = "/_api/query";
       let body = { "query" : `FOR u IN ${cn} FILTER u.name = @name LIMIT 2 RETURN u.n` };

@@ -251,24 +251,44 @@ void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--log.in-memory",
-                  "use in-memory log appender, which can be queried via the "
-                  "API and web interface",
+                  "Use an in-memory log appender which can be queried via the "
+                  "API and web interface.",
                   new BooleanParameter(&_useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(You can use this option to toggle storing log
+messages in memory, from which they can be consumed via the `/_admin/log`
+HTTP API and via the web interface.
+
+By default, this option is turned on, so log messages are consumable via the API
+and web interface. Turning this option off disables that functionality, saves a
+bit of memory for the in-memory log buffers, and prevents potential log
+information leakage via these means.)");
 
   std::unordered_set<std::string> const logLevels = {
       "fatal", "error", "err", "warning", "warn", "info", "debug", "trace"};
   options
       ->addOption(
           "--log.in-memory-level",
-          "use in-memory log appender only for this log level and higher",
+          "Use an in-memory log appender only for this log level and higher.",
           new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
                                                        logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709);
+      .setIntroducedIn(30709)
+      .setLongDescription(R"(You can use this option to control which log
+messages are preserved in memory (in case `--log.in-memory` is enabled).
+
+The default value is `info`, meaning all log messages of types `info`,
+`warning`, `error`, and `fatal` are stored in-memory by an instance. By setting
+this option to `warning`, only `warning`, `error` and `fatal` log messages are 
+preserved in memory, and by setting the option to `error`, only `error` and
+`fatal` messages are kept.
+
+This option is useful because the number of in-memory log messages is limited 
+to the latest 2048 messages, and these slots are shared between informational,
+warning, and error messages by default.)");
 }
 
 void LogBufferFeature::prepare() {

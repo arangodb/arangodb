@@ -19,118 +19,89 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-#include "common.h"
+#include <absl/strings/str_replace.h>
+
+#include <s2/s2latlng.h>
+
+#include "Geo/GeoJson.h"
+#include "Geo/ShapeContainer.h"
 #include "IResearch/MakeViewSnapshot.h"
+#include "IResearchQueryCommon.h"
 
-#include "IResearch/IResearchView.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Iterator.h>
-
-#include "utils/string_utils.hpp"
-
-extern const char* ARGV0;  // defined in main.cpp
-
+namespace arangodb::tests {
 namespace {
 
-static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
-static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
+std::vector<VPackSlice> const empty;
 
-class IResearchQueryGeoInRangeTest : public IResearchQueryTest {};
-
-TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  std::vector<arangodb::velocypack::Builder> insertedDocs;
-  arangodb::LogicalView* view;
-
-  // geo analyzer
-  {
-    auto& analyzers =
-        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-    // shape
+class QueryGeoInRange : public QueryTest {
+ protected:
+  void createAnalyzers(std::string_view analyzer,
+                       std::string_view params = {}) {
+    auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+    iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     {
-      auto json = VPackParser::fromJson(R"({})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, vocbase.name() + "::mygeojson",
-                               "geojson", json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "shape"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeojson",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
-
-    // centroid
     {
-      auto json = VPackParser::fromJson(R"({"type": "centroid"})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, vocbase.name() + "::mygeocentroid",
-                               "geojson", json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "centroid"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeocentroid",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
-
-    // point
     {
-      auto json = VPackParser::fromJson(R"({"type": "point"})");
-      ASSERT_TRUE(analyzers
-                      .emplace(result, vocbase.name() + "::mygeopoint",
-                               "geojson", json->slice(), {})
-                      .ok());
+      auto json = VPackParser::fromJson(
+          absl::Substitute(R"({$0 "type": "point"})", params));
+      auto r = analyzers.emplace(result, _vocbase.name() + "::mygeopoint",
+                                 analyzer, json->slice(), {});
+      ASSERT_TRUE(r.ok()) << r.errorMessage();
     }
   }
 
-  // create collection
-  std::shared_ptr<arangodb::LogicalCollection> collection;
-  {
-    auto createJson =
-        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-    collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
+  void createAnalyzers2() {
+    auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+    iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+
+    auto json = VPackParser::fromJson(R"({})");
+    ASSERT_TRUE(analyzers
+                    .emplace(result, _vocbase.name() + "::mygeopoint",
+                             "geopoint", json->slice(), {})
+                    .ok());
   }
 
-  // create view
-  arangodb::iresearch::IResearchView* impl{};
-  {
-    auto createJson = VPackParser::fromJson(
-        R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
+  void createAnalyzers3() {
+    auto& analyzers = server.getFeature<iresearch::IResearchAnalyzerFeature>();
+    iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    view = logicalView.get();
-    impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_NE(nullptr, impl);
-
-    auto viewDefinitionTemplate = R"({
-      "links" : {
-        "testCollection0" : {
-          "fields" : { "geometry" : { "analyzers": ["mygeojson", "mygeocentroid", "mygeopoint"] } },
-          "version" : %u
-        }}
-    })";
-
-    auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
-
-    auto updateJson = VPackParser::fromJson(viewDefinition);
-
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections(
-        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
-          cids.emplace(cid);
-          return true;
-        });
-    EXPECT_EQ(1, cids.size());
+    auto json = VPackParser::fromJson(R"({
+      "latitude" : ["coordinates", "lat" ],
+      "longitude": ["coordinates", "lon" ]
+    })");
+    ASSERT_TRUE(analyzers
+                    .emplace(result, _vocbase.name() + "::mygeopoint",
+                             "geopoint", json->slice(), {})
+                    .ok());
   }
 
-  // populate collection
-  {
-    auto docs = VPackParser::fromJson(R"([
+  void createCollections() {
+    auto createJson = VPackParser::fromJson(R"({ "name": "testCollection0" })");
+    auto collection = _vocbase.createCollection(createJson->slice());
+    ASSERT_TRUE(collection);
+  }
+
+  void queryTests() {
+    // populate collection
+    {
+      auto collection = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collection);
+      auto docs = VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [ 37.615895, 55.7039   ] } },
         { "id": 2,  "geometry": { "type": "Point", "coordinates": [ 37.615315, 55.703915 ] } },
         { "id": 3,  "geometry": { "type": "Point", "coordinates": [ 37.61509, 55.703537  ] } },
@@ -161,495 +132,292 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoJson) {
         { "id": 28, "geometry": { "type": "Point", "coordinates": [ 37.525177, 55.802825 ] } }
       ])");
 
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
+      OperationOptions options;
+      options.returnNew = true;
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::WRITE);
+      EXPECT_TRUE(trx.begin().ok());
 
-    for (auto doc : VPackArrayIterator(docs->slice())) {
-      auto res = trx.insert(collection->name(), doc, options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
+      for (auto doc : VPackArrayIterator(docs->slice())) {
+        auto res = trx.insert(collection->name(), doc, options);
+        EXPECT_TRUE(res.ok()) << res.errorMessage();
+        _insertedDocs.emplace_back(res.slice().get("new"));
+      }
+
+      EXPECT_TRUE(trx.commit().ok());
+
+      // sync view
+      ASSERT_TRUE(
+          executeQuery(
+              _vocbase,
+              "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
+              .result.ok());
     }
-
-    EXPECT_TRUE(trx.commit().ok());
-
-    // sync view
-    ASSERT_TRUE(
-        arangodb::tests::executeQuery(
-            vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
-            .result.ok());
-  }
-
-  // ensure presence of special a column for geo indices
-  {
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::READ);
-    ASSERT_TRUE(trx.begin().ok());
-    ASSERT_TRUE(trx.state());
-    auto* snapshot = makeViewSnapshot(
-        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        impl->getLinks(), impl, impl->name());
-    ASSERT_NE(nullptr, snapshot);
-    ASSERT_EQ(1, snapshot->size());
-    ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
-    ASSERT_EQ(insertedDocs.size(), snapshot->live_docs_count());
-
-    auto& segment = (*snapshot)[0];
-
-    auto const columnName = mangleString("geometry", "mygeojson");
-    auto* columnReader = segment.column(columnName);
-    ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-
-    auto doc = insertedDocs.begin();
-    for (; it->next(); ++doc) {
-      EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
-                          arangodb::iresearch::slice(payload->value));
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
     }
-
-    ASSERT_TRUE(trx.commit().ok());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    // EXISTS will also work
+    if (type() == ViewType::kArangoSearch) {
+      EXPECT_TRUE(runQuery(
+          R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
+    } else if (type() == ViewType::kSearchAlias) {
+      // Because for search/inverted-index
+      // we consider strings can be found as normal fields,
+      // so them all have suffix \0_s,
+      // but geo analyzer fields can be handled by geo functions or analyzer
+      EXPECT_TRUE(runQuery(
+          R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)",
+          empty));
+    } else {
+      ASSERT_TRUE(false);
     }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'string')
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
     }
-    EXPECT_EQ(i, insertedDocs.size());
   }
 
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
+  void queryTestsGeoJson(bool isVPack) {
+    // ensure presence of special a column for geo indices
+    {
+      auto collection = _vocbase.lookupCollection("testCollection0");
+      ASSERT_TRUE(collection);
+      auto view = _vocbase.lookupView("testView");
+      ASSERT_TRUE(view);
+      auto links = [&] {
+        if (view->type() == ViewType::kSearchAlias) {
+          auto& impl = basics::downCast<iresearch::Search>(*view);
+          return impl.getLinks();
+        }
+        auto& impl = basics::downCast<iresearch::IResearchView>(*view);
+        return impl.getLinks();
+      };
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::READ);
+      ASSERT_TRUE(trx.begin().ok());
+      ASSERT_TRUE(trx.state());
+      auto* snapshot =
+          makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
+                           links(), view.get(), view->name());
+      ASSERT_NE(nullptr, snapshot);
+      ASSERT_EQ(1U, snapshot->size());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
+      if (isVPack) {
+        auto& segment = (*snapshot)[0];
 
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
+        auto const columnName = mangleString("geometry", "mygeojson");
+        auto* columnReader = segment.column(columnName);
+        ASSERT_NE(nullptr, columnReader);
+        auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, it);
+        auto* payload = irs::get<irs::payload>(*it);
+        ASSERT_NE(nullptr, payload);
 
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected{
-        insertedDocs[23].slice(),
-        insertedDocs[24].slice(),
-        insertedDocs[25].slice(),
-    };
-
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-}
-
-TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  std::vector<arangodb::velocypack::Builder> insertedDocs;
-  arangodb::LogicalView* view;
-
-  // geo analyzer
-  {
-    auto& analyzers =
-        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-    auto json = VPackParser::fromJson(R"({})");
-    ASSERT_TRUE(analyzers
-                    .emplace(result, vocbase.name() + "::mygeopoint",
-                             "geopoint", json->slice(), {})
-                    .ok());
-  }
-
-  // create collection
-  std::shared_ptr<arangodb::LogicalCollection> collection;
-  {
-    auto createJson =
-        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-    collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
-  }
-
-  // create view
-  arangodb::iresearch::IResearchView* impl{};
-  {
-    auto createJson = VPackParser::fromJson(
-        R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
-
-    view = logicalView.get();
-    impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_NE(nullptr, impl);
-
-    auto viewDefinitionTemplate = R"({
-      "links" : {
-        "testCollection0" : {
-          "fields" : { "geometry" : { "fields" : { "coordinates" : { "analyzers": ["mygeopoint"] } } } },
-          "version" : %u
+        auto doc = _insertedDocs.begin();
+        for (; it->next(); ++doc) {
+          EXPECT_EQUAL_SLICES(doc->slice().get("geometry"),
+                              iresearch::slice(payload->value));
         }
       }
-    })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
-
-    auto updateJson = VPackParser::fromJson(viewDefinition);
-
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections(
-        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
-          cids.emplace(cid);
-          return true;
-        });
-    EXPECT_EQ(1, cids.size());
+      ASSERT_TRUE(trx.commit().ok());
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', "mygeojson")
+        RETURN d)"));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected{
+          _insertedDocs[23].slice(),
+          _insertedDocs[24].slice(),
+          _insertedDocs[25].slice(),
+      };
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeojson')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
   }
 
-  // populate collection
-  {
-    auto docs = VPackParser::fromJson(R"([
+  void queryTestsGeoCentroid() {
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeocentroid')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+  }
+
+  void queryTestsGeoPoint() {
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+  }
+
+  void queryTestsMulti() {}
+
+  void queryTests2() {
+    auto collection = _vocbase.lookupCollection("testCollection0");
+    ASSERT_TRUE(collection);
+    // populate collection
+    {
+      auto docs = VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": [55.7039   , 37.615895  ] } },
         { "id": 2,  "geometry": { "type": "Point", "coordinates": [55.703915 , 37.615315  ] } },
         { "id": 3,  "geometry": { "type": "Point", "coordinates": [55.703537 , 37.61509    ] } },
@@ -680,482 +448,279 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointArray) {
         { "id": 28, "geometry": { "type": "Point", "coordinates": [55.802825 , 37.525177  ] } }
       ])");
 
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
+      OperationOptions options;
+      options.returnNew = true;
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::WRITE);
+      EXPECT_TRUE(trx.begin().ok());
 
-    for (auto doc : VPackArrayIterator(docs->slice())) {
-      auto res = trx.insert(collection->name(), doc, options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
-    }
-
-    EXPECT_TRUE(trx.commit().ok());
-
-    // sync view
-    ASSERT_TRUE(
-        arangodb::tests::executeQuery(
-            vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
-            .result.ok());
-  }
-
-  // ensure presence of special a column for geo indices
-  {
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::READ);
-    ASSERT_TRUE(trx.begin().ok());
-    ASSERT_TRUE(trx.state());
-    auto* snapshot = makeViewSnapshot(
-        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        impl->getLinks(), impl, impl->name());
-    ASSERT_NE(nullptr, snapshot);
-    ASSERT_EQ(1, snapshot->size());
-    ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
-    ASSERT_EQ(insertedDocs.size(), snapshot->live_docs_count());
-
-    auto& segment = (*snapshot)[0];
-
-    auto const columnName = mangleString("geometry.coordinates", "mygeopoint");
-    auto* columnReader = segment.column(columnName);
-    ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-
-    auto doc = insertedDocs.begin();
-    for (; it->next(); ++doc) {
-      auto const storedValue = arangodb::iresearch::slice(payload->value);
-      ASSERT_TRUE(storedValue.isArray());
-      ASSERT_EQ(2, storedValue.length());
-      EXPECT_DOUBLE_EQ(
-          storedValue.at(0).getDouble(),
-          doc->slice().get({"geometry", "coordinates"}).at(1).getDouble());
-      EXPECT_DOUBLE_EQ(
-          storedValue.at(1).getDouble(),
-          doc->slice().get({"geometry", "coordinates"}).at(0).getDouble());
-    }
-
-    ASSERT_TRUE(trx.commit().ok());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry.coordinates, 'string')
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry.coordinates, 'analyzer', "mygeopoint")
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0, false, false), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected{
-        insertedDocs[23].slice(),
-        insertedDocs[24].slice(),
-        insertedDocs[25].slice(),
-    };
-
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 15000, 20000), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-}
-
-TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  std::vector<arangodb::velocypack::Builder> insertedDocs;
-  arangodb::LogicalView* view;
-
-  // geo analyzer
-  {
-    auto& analyzers =
-        server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-
-    auto json = VPackParser::fromJson(R"({
-      "latitude" : ["coordinates", "lat" ],
-      "longitude": ["coordinates", "lon" ]
-    })");
-    ASSERT_TRUE(analyzers
-                    .emplace(result, vocbase.name() + "::mygeopoint",
-                             "geopoint", json->slice(), {})
-                    .ok());
-  }
-
-  // create collection
-  std::shared_ptr<arangodb::LogicalCollection> collection;
-  {
-    auto createJson =
-        VPackParser::fromJson("{ \"name\": \"testCollection0\" }");
-    collection = vocbase.createCollection(createJson->slice());
-    ASSERT_NE(nullptr, collection);
-  }
-
-  // create view
-  arangodb::iresearch::IResearchView* impl{};
-  {
-    auto createJson = VPackParser::fromJson(
-        R"({ "name": "testView", "type": "arangosearch" })");
-    auto logicalView = vocbase.createView(createJson->slice());
-    ASSERT_FALSE(!logicalView);
-
-    view = logicalView.get();
-    impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    ASSERT_NE(nullptr, impl);
-
-    auto viewDefinitionTemplate = R"({
-      "links" : {
-        "testCollection0" : {
-          "fields" : { "geometry" : { "analyzers": ["mygeopoint"] } },
-          "version" : %u
-        }
+      for (auto doc : VPackArrayIterator(docs->slice())) {
+        auto res = trx.insert(collection->name(), doc, options);
+        EXPECT_TRUE(res.ok());
+        _insertedDocs.emplace_back(res.slice().get("new"));
       }
-    })";
 
-    auto viewDefinition = irs::string_utils::to_string(
-        viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()));
+      EXPECT_TRUE(trx.commit().ok());
 
-    auto updateJson = VPackParser::fromJson(viewDefinition);
+      // sync view
+      ASSERT_TRUE(
+          executeQuery(
+              _vocbase,
+              "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
+              .result.ok());
+    }
+    auto view = _vocbase.lookupView("testView");
+    ASSERT_TRUE(view);
+    auto links = [&] {
+      if (view->type() == ViewType::kSearchAlias) {
+        auto& impl = basics::downCast<iresearch::Search>(*view);
+        return impl.getLinks();
+      }
+      auto& impl = basics::downCast<iresearch::IResearchView>(*view);
+      return impl.getLinks();
+    };
+    // ensure presence of special a column for geo indices
+    {
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::READ);
+      ASSERT_TRUE(trx.begin().ok());
+      ASSERT_TRUE(trx.state());
+      auto* snapshot =
+          makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
+                           links(), view.get(), view->name());
+      ASSERT_NE(nullptr, snapshot);
+      ASSERT_EQ(1U, snapshot->size());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-    EXPECT_TRUE(impl->properties(updateJson->slice(), true, true).ok());
-    std::set<arangodb::DataSourceId> cids;
-    impl->visitCollections(
-        [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
-          cids.emplace(cid);
-          return true;
-        });
-    EXPECT_EQ(1, cids.size());
+      auto& segment = (*snapshot)[0];
+
+      auto const columnName =
+          mangleString("geometry.coordinates", "mygeopoint");
+      auto* columnReader = segment.column(columnName);
+      ASSERT_NE(nullptr, columnReader);
+      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      auto doc = _insertedDocs.begin();
+      for (; it->next(); ++doc) {
+        auto const storedValue = iresearch::slice(payload->value);
+        ASSERT_TRUE(storedValue.isArray());
+        ASSERT_EQ(2U, storedValue.length());
+        EXPECT_DOUBLE_EQ(
+            storedValue.at(0).getDouble(),
+            doc->slice().get({"geometry", "coordinates"}).at(1).getDouble());
+        EXPECT_DOUBLE_EQ(
+            storedValue.at(1).getDouble(),
+            doc->slice().get({"geometry", "coordinates"}).at(0).getDouble());
+      }
+
+      ASSERT_TRUE(trx.commit().ok());
+    }
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates)
+        RETURN d)"));
+    }
+    // EXISTS will also work
+    if (type() == ViewType::kArangoSearch) {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates, 'string') RETURN d)"));
+    } else if (type() == ViewType::kSearchAlias) {
+      // Because for search/inverted-index
+      // we consider strings can be found as normal fields,
+      // so them all have suffix \0_s,
+      // but geo analyzer fields can be handled by geo functions or analyzer
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates, 'string') RETURN d)",
+                           empty));
+    } else {
+      ASSERT_TRUE(false);
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry.coordinates, 'analyzer', "mygeopoint")
+        RETURN d)"));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
+    }
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 0, 0, false, false), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry.coordinates, origin, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected{
+          _insertedDocs[23].slice(),
+          _insertedDocs[24].slice(),
+          _insertedDocs[25].slice(),
+      };
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry.coordinates, 15000, 20000), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
   }
 
-  // populate collection
-  {
-    auto docs = VPackParser::fromJson(R"([
+  void queryTests3() {
+    auto collection = _vocbase.lookupCollection("testCollection0");
+    ASSERT_TRUE(collection);
+    // populate collection
+    {
+      auto docs = VPackParser::fromJson(R"([
         { "id": 1,  "geometry": { "type": "Point", "coordinates": { "lat": 55.7039  , "lon" : 37.615895  } } },
         { "id": 2,  "geometry": { "type": "Point", "coordinates": { "lat": 55.703915, "lon" : 37.615315  } } },
         { "id": 3,  "geometry": { "type": "Point", "coordinates": { "lat": 55.703537, "lon" : 37.61509   } } },
@@ -1186,413 +751,517 @@ TEST_P(IResearchQueryGeoInRangeTest, testGeoPointObject) {
         { "id": 28, "geometry": { "type": "Point", "coordinates": { "lat": 55.802825, "lon" : 37.525177  } } }
       ])");
 
-    arangodb::OperationOptions options;
-    options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
-    EXPECT_TRUE(trx.begin().ok());
+      OperationOptions options;
+      options.returnNew = true;
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::WRITE);
+      EXPECT_TRUE(trx.begin().ok());
 
-    for (auto doc : VPackArrayIterator(docs->slice())) {
-      auto res = trx.insert(collection->name(), doc, options);
-      EXPECT_TRUE(res.ok());
-      insertedDocs.emplace_back(res.slice().get("new"));
+      for (auto doc : VPackArrayIterator(docs->slice())) {
+        auto res = trx.insert(collection->name(), doc, options);
+        EXPECT_TRUE(res.ok());
+        _insertedDocs.emplace_back(res.slice().get("new"));
+      }
+
+      EXPECT_TRUE(trx.commit().ok());
+
+      // sync view
+      ASSERT_TRUE(
+          executeQuery(
+              _vocbase,
+              "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
+              .result.ok());
     }
-
-    EXPECT_TRUE(trx.commit().ok());
-
-    // sync view
-    ASSERT_TRUE(
-        arangodb::tests::executeQuery(
-            vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d")
-            .result.ok());
-  }
-
-  // ensure presence of special a column for geo indices
-  {
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::READ);
-    ASSERT_TRUE(trx.begin().ok());
-    ASSERT_TRUE(trx.state());
-    auto* snapshot = makeViewSnapshot(
-        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        impl->getLinks(), impl, impl->name());
-    ASSERT_NE(nullptr, snapshot);
-    ASSERT_EQ(1, snapshot->size());
-    ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());
-    ASSERT_EQ(insertedDocs.size(), snapshot->live_docs_count());
-
-    auto& segment = (*snapshot)[0];
-
-    auto const columnName = mangleString("geometry", "mygeopoint");
-    auto* columnReader = segment.column(columnName);
-    ASSERT_NE(nullptr, columnReader);
-    auto it = columnReader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-
-    auto doc = insertedDocs.begin();
-    for (; it->next(); ++doc) {
-      auto const storedValue = arangodb::iresearch::slice(payload->value);
-      ASSERT_TRUE(storedValue.isArray());
-      ASSERT_EQ(2, storedValue.length());
-      EXPECT_DOUBLE_EQ(
-          storedValue.at(0).getDouble(),
-          doc->slice().get({"geometry", "coordinates", "lon"}).getDouble());
-      EXPECT_DOUBLE_EQ(
-          storedValue.at(1).getDouble(),
-          doc->slice().get({"geometry", "coordinates", "lat"}).getDouble());
-    }
-
-    ASSERT_TRUE(trx.commit().ok());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry)
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'string')
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // EXISTS will also work
-  {
-    auto result = arangodb::tests::executeQuery(vocbase,
-                                                R"(FOR d IN testView
-           SEARCH EXISTS(d.geometry, 'analyzer', "mygeopoint")
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(insertedDocs.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, insertedDocs.size());
-      EXPECT_EQUAL_SLICES(insertedDocs[i++].slice(), resolved);
-    }
-    EXPECT_EQ(i, insertedDocs.size());
-  }
-
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing field
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  // test missing analyzer
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[12].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.613663, 55.704002)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(0, slice.length());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[16].slice(), insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[17].slice()};
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
-    }
-    EXPECT_EQ(i, expected.size());
-  }
-
-  {
-    std::vector<arangodb::velocypack::Slice> expected{
-        insertedDocs[23].slice(),
-        insertedDocs[24].slice(),
-        insertedDocs[25].slice(),
+    auto view = _vocbase.lookupView("testView");
+    ASSERT_TRUE(view);
+    auto links = [&] {
+      if (view->type() == ViewType::kSearchAlias) {
+        auto& impl = basics::downCast<iresearch::Search>(*view);
+        return impl.getLinks();
+      }
+      auto& impl = basics::downCast<iresearch::IResearchView>(*view);
+      return impl.getLinks();
     };
+    // ensure presence of special a column for geo indices
+    {
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), *collection,
+          AccessMode::Type::READ);
+      ASSERT_TRUE(trx.begin().ok());
+      ASSERT_TRUE(trx.state());
+      auto* snapshot =
+          makeViewSnapshot(trx, iresearch::ViewSnapshotMode::FindOrCreate,
+                           links(), view.get(), view->name());
+      ASSERT_NE(nullptr, snapshot);
+      ASSERT_EQ(1U, snapshot->size());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->docs_count());
+      ASSERT_EQ(_insertedDocs.size(), snapshot->live_docs_count());
 
-    auto result = arangodb::tests::executeQuery(
-        vocbase,
-        R"(LET origin = GEO_POINT(37.607768, 55.70892)
-           FOR d IN testView
-           SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeopoint')
-           SORT d.id ASC
-           RETURN d)");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    ASSERT_EQ(expected.size(), slice.length());
-    size_t i = 0;
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_LT(i, expected.size());
-      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+      auto& segment = (*snapshot)[0];
+
+      auto const columnName = mangleString("geometry", "mygeopoint");
+      auto* columnReader = segment.column(columnName);
+      ASSERT_NE(nullptr, columnReader);
+      auto it = columnReader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+
+      auto doc = _insertedDocs.begin();
+      for (; it->next(); ++doc) {
+        auto const storedValue = iresearch::slice(payload->value);
+        ASSERT_TRUE(storedValue.isArray());
+        ASSERT_EQ(2U, storedValue.length());
+        EXPECT_DOUBLE_EQ(
+            storedValue.at(0).getDouble(),
+            doc->slice().get({"geometry", "coordinates", "lon"}).getDouble());
+        EXPECT_DOUBLE_EQ(
+            storedValue.at(1).getDouble(),
+            doc->slice().get({"geometry", "coordinates", "lat"}).getDouble());
+      }
+
+      ASSERT_TRUE(trx.commit().ok());
     }
-    EXPECT_EQ(i, expected.size());
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry)
+        RETURN d)"));
+    }
+    // EXISTS will also work
+    if (type() == ViewType::kArangoSearch) {
+      EXPECT_TRUE(runQuery(
+          R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)"));
+    } else if (type() == ViewType::kSearchAlias) {
+      // Because for search/inverted-index
+      // we consider strings can be found as normal fields,
+      // so them all have suffix \0_s,
+      // but geo analyzer fields can be handled by geo functions or analyzer
+      EXPECT_TRUE(runQuery(
+          R"(FOR d IN testView SEARCH EXISTS(d.geometry, 'string') RETURN d)",
+          empty));
+    } else {
+      ASSERT_TRUE(false);
+    }
+    // EXISTS will also work
+    {
+      EXPECT_TRUE(runQuery(R"(FOR d IN testView
+        SEARCH EXISTS(d.geometry, 'analyzer', "mygeopoint")
+        RETURN d)"));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.missing, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    // test missing field
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.missing, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(d.geometry, origin, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
+    }
+    // test missing analyzer
+    {
+      static constexpr std::string_view kQueryStr =
+          R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH GEO_IN_RANGE(origin, d.geometry, 0, 300)
+        SORT d.id ASC
+        RETURN d)";
+      if (type() == ViewType::kSearchAlias) {
+        auto expected =
+            std::vector{_insertedDocs[16].slice(), _insertedDocs[17].slice()};
+        EXPECT_TRUE(runQuery(kQueryStr, expected)) << kQueryStr;
+      } else {
+        auto r = executeQuery(_vocbase, std::string{kQueryStr});
+        EXPECT_EQ(r.result.errorNumber(), TRI_ERROR_BAD_PARAMETER) << kQueryStr;
+      }
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[12].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.613663, 55.704002)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 0, 0, false, false), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           empty));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[16].slice(),
+                                          _insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 100, 300), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected = {_insertedDocs[17].slice()};
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(d.geometry, origin, 206, 207), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
+    //
+    {
+      std::vector<VPackSlice> expected{
+          _insertedDocs[23].slice(),
+          _insertedDocs[24].slice(),
+          _insertedDocs[25].slice(),
+      };
+      EXPECT_TRUE(runQuery(R"(LET origin = GEO_POINT(37.607768, 55.70892)
+        FOR d IN testView
+        SEARCH ANALYZER(GEO_IN_RANGE(origin, d.geometry, 15000, 20000), 'mygeopoint')
+        SORT d.id ASC
+        RETURN d)",
+                           expected));
+    }
   }
+};
+
+class QueryGeoInRangeView : public QueryGeoInRange {
+ protected:
+  ViewType type() const final { return ViewType::kArangoSearch; }
+
+  void createView(std::string_view fields) {
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "arangosearch" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
+    ASSERT_FALSE(!logicalView);
+    auto& implView = basics::downCast<iresearch::IResearchView>(*logicalView);
+    auto updateJson =
+        VPackParser::fromJson(absl::Substitute(R"({ "links": {
+          "testCollection0": {
+            "fields" : $1,
+            "version": $0 } } })",
+                                               version(), fields));
+    auto r = implView.properties(updateJson->slice(), true, true);
+    EXPECT_TRUE(r.ok()) << r.errorMessage();
+    checkView(implView, 1);
+  }
+};
+
+class QueryGeoInRangeSearch : public QueryGeoInRange {
+ protected:
+  ViewType type() const final { return ViewType::kSearchAlias; }
+
+  void createIndexes(std::string_view fields) {
+    bool created = false;
+    // TODO kSearch remove fields, also see SEARCH-334
+    auto createJson = VPackParser::fromJson(absl::Substitute(
+        R"({ "name": "testIndex0", "type": "inverted",
+             "fields": $1,
+             "version": $0 })",
+        version(), fields));
+    auto collection = _vocbase.lookupCollection("testCollection0");
+    EXPECT_TRUE(collection);
+    collection->createIndex(createJson->slice(), created);
+    ASSERT_TRUE(created);
+  }
+
+  void createSearch() {
+    auto createJson = VPackParser::fromJson(
+        R"({ "name": "testView", "type": "search-alias" })");
+    auto logicalView = _vocbase.createView(createJson->slice(), false);
+    ASSERT_FALSE(!logicalView);
+    auto& implView = basics::downCast<iresearch::Search>(*logicalView);
+    auto updateJson = VPackParser::fromJson(R"({ "indexes": [
+      { "collection": "testCollection0", "index": "testIndex0" } ] })");
+    auto r = implView.properties(updateJson->slice(), true, true);
+    EXPECT_TRUE(r.ok()) << r.errorMessage();
+    checkView(implView, 1);
+  }
+};
+
+TEST_P(QueryGeoInRangeView, Test) {
+  createAnalyzers("geojson");
+  createCollections();
+  createView(
+      R"({ "geometry": { "analyzers": [ "mygeojson", "mygeocentroid", "mygeopoint" ] } })");
+  queryTests();
+  queryTestsGeoJson(true);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
 }
 
-INSTANTIATE_TEST_CASE_P(IResearchQueryGeoInRangeTest,
-                        IResearchQueryGeoInRangeTest, GetLinkVersions());
+TEST_P(QueryGeoInRangeSearch, TestGeoJson) {
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeojson" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(true);
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoCentroid) {
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeocentroid" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoPoint) {
+  createAnalyzers("geojson");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+#ifdef USE_ENTERPRISE
+
+TEST_P(QueryGeoInRangeView, TestS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createView(
+      R"({ "geometry": { "analyzers": [ "mygeojson", "mygeocentroid", "mygeopoint" ] } })");
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoJsonS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeojson" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoCentroidS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeocentroid" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoPointS2LatLng) {
+  createAnalyzers("geo_s2", R"("format":"latLngDouble",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+TEST_P(QueryGeoInRangeView, TestS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createView(
+      R"({ "geometry": { "analyzers": [ "mygeojson", "mygeocentroid", "mygeopoint" ] } })");
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoJsonS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeojson" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoCentroidS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeocentroid" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoPointS2LatLngInt) {
+  createAnalyzers("geo_s2", R"("format":"latLngInt",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+TEST_P(QueryGeoInRangeView, TestS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createView(
+      R"({ "geometry": { "analyzers": [ "mygeojson", "mygeocentroid", "mygeopoint" ] } })");
+  queryTests();
+  queryTestsGeoJson(false);
+  queryTestsGeoCentroid();
+  queryTestsGeoPoint();
+  queryTestsMulti();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoJsonS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeojson" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoJson(false);
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoCentroidS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeocentroid" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoCentroid();
+}
+
+TEST_P(QueryGeoInRangeSearch, TestGeoPointS2Point) {
+  createAnalyzers("geo_s2", R"("format":"s2Point",)");
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests();
+  queryTestsGeoPoint();
+}
+
+#endif
+
+TEST_P(QueryGeoInRangeView, testGeoPointArray) {
+  createAnalyzers2();
+  createCollections();
+  createView(
+      R"({ "geometry": { "fields": { "coordinates": { "analyzers": [ "mygeopoint" ] } } } })");
+  queryTests2();
+}
+
+TEST_P(QueryGeoInRangeSearch, testGeoPointArray) {
+  createAnalyzers2();
+  createCollections();
+  createIndexes(
+      R"([ { "name": "geometry.coordinates", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests2();
+}
+
+TEST_P(QueryGeoInRangeView, testGeoPointObject) {
+  createAnalyzers3();
+  createCollections();
+  createView(R"({ "geometry": { "analyzers": [ "mygeopoint" ] } })");
+  queryTests3();
+}
+
+TEST_P(QueryGeoInRangeSearch, testGeoPointObject) {
+  createAnalyzers3();
+  createCollections();
+  createIndexes(R"([ { "name": "geometry", "analyzer": "mygeopoint" } ])");
+  createSearch();
+  queryTests3();
+}
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryGeoInRangeView, GetLinkVersions());
+
+INSTANTIATE_TEST_CASE_P(IResearch, QueryGeoInRangeSearch, GetIndexVersions());
 
 }  // namespace
+}  // namespace arangodb::tests

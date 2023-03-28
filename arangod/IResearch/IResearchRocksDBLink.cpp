@@ -109,7 +109,7 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice definition, IndexId id,
-    bool /*isClusterConstructor*/) const {
+    bool isOpening) const {
   uint64_t objectId = basics::VelocyPackHelper::stringUInt64(
       definition, arangodb::StaticStrings::ObjectId);
   auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
@@ -124,6 +124,9 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
       link->drop();
     }
   });
+  if (!isOpening) {
+    link->setBuilding(true);
+  }
   auto const res =
       link->init(definition, pathExists, [this]() -> irs::directory_attributes {
         auto& selector = _server.getFeature<EngineSelectorFeature>();

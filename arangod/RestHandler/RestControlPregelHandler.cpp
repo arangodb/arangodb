@@ -97,8 +97,16 @@ RestControlPregelHandler::forwardingTarget() {
   if (sourceServer == ServerState::instance()->getShortId()) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
+
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+  auto coordinatorId = ci.getCoordinatorByShortID(sourceServer);
+
+  if (coordinatorId.empty()) {
+    return ResultT<std::pair<std::string, bool>>::error(
+        TRI_ERROR_CURSOR_NOT_FOUND, "cannot find target server for pregel id");
+  }
+
+  return {std::make_pair(std::move(coordinatorId), false)};
 }
 
 void RestControlPregelHandler::startExecution() {

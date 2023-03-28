@@ -29,10 +29,9 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
@@ -391,6 +390,26 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   estimateCosts(queryOptions, estimateAllPlans);
 
+  // Best plan should not have forced hints left.
+  // There might be other plans that has, but we don't care
+  if (auto& bestPlan = _plans.list.front().first;
+      bestPlan->hasForcedIndexHints()) {
+    containers::SmallVector<ExecutionNode*, 8> nodes;
+    bestPlan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+    for (auto n : nodes) {
+      TRI_ASSERT(n);
+      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION);
+      EnumerateCollectionNode const* en =
+          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+      auto const& hint = en->hint();
+      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            "could not use index hint to serve query; " + hint.toString());
+      }
+    }
+  }
+
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
       << "optimization ends with " << _plans.size() << " plans";
 }
@@ -449,7 +468,7 @@ void Optimizer::disableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name.front() == '-') {
+  if (name.starts_with('-')) {
     name = name.substr(1);
   }
 
@@ -473,7 +492,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, int level) {
 }
 
 void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
-  if (!name.empty() && name.front() == '+') {
+  if (name.starts_with('+')) {
     name = name.substr(1);
   }
 
@@ -491,7 +510,7 @@ void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
 }
 
 void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
-  velocypack::ObjectBuilder guard(&b, true);
+  TRI_ASSERT(b.isOpenObject());
   b.add("rulesExecuted", velocypack::Value(rulesExecuted));
   b.add("rulesSkipped", velocypack::Value(rulesSkipped));
   b.add("plansCreated", velocypack::Value(plansCreated));

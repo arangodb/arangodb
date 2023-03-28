@@ -36,7 +36,8 @@ struct FailedFollower : public Job {
                  std::string const& database = std::string(),
                  std::string const& collection = std::string(),
                  std::string const& shard = std::string(),
-                 std::string const& from = std::string());
+                 std::string const& from = std::string(),
+                 std::string const& notBefore = std::string());
 
   FailedFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
                  std::string const& jobId);
@@ -55,6 +56,7 @@ struct FailedFollower : public Job {
   std::string _from;
   std::string _to;
   std::chrono::system_clock::time_point _created;
+  std::chrono::system_clock::time_point _notBefore;
 };
 }  // namespace consensus
 }  // namespace arangodb

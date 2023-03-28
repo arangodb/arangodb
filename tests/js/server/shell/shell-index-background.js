@@ -35,18 +35,42 @@ function backgroundIndexSuite() {
   const cn = "UnitTestsCollectionIdx";
   const tasks = require("@arangodb/tasks");
   const tasksCompleted = () => {
-    return 0 === tasks.get().filter((task) => {
+    return tasks.get().filter((task) => {
       return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
     }).length;
   };
   const waitForTasks = () => {
     const time = internal.time;
     const start = time();
-    while (!tasksCompleted()) {
-      if (time() - start > 300) { // wait for 5 minutes maximum
-        fail("Timeout after 5 minutes");
+    let c = db[cn];
+    let oldCount = c.count();
+    let deadline = 300;
+    let count = 0;
+    // wait for 5 minutes + progress maximum
+    let noTasksCompleted = tasksCompleted();
+    while (true) {
+      let newTasksCompleted = tasksCompleted();
+      if (newTasksCompleted === 0) {
+        break;
+      }
+      if (time() - start > deadline) { 
+        fail(`Timeout after ${deadline / 60} minutes`);
       }
       internal.wait(0.5, false);
+      count += 1;
+      if (newTasksCompleted !== noTasksCompleted) {
+        // one more minute per completed task!
+        noTasksCompleted = newTasksCompleted;
+        deadline += 60;
+      }
+      if (count % 2 === 0) {
+        let newCount = c.count();
+        if (newCount > oldCount) {
+          // 10 more seconds for added documents
+          oldCount = newCount;
+          deadline += 10;
+        }
+      }
     }
     internal.wal.flush(true, true);
     // wait an extra second for good measure

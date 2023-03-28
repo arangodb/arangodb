@@ -62,8 +62,8 @@
       'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'viewSettings',
-      'view/:name/info': 'viewInfo',
-      'view/:name/consolidation': 'viewConsolidation',
+      // 'view/:name/info': 'viewInfo',
+      // 'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
       'view/:name/links/*link': 'viewLinks',
       'view/:name/json': 'viewJSON',
@@ -118,7 +118,7 @@
         }
 
         $('#modal-dialog').on('hide', function () {
-          if (goBack) {
+          if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
         });
@@ -805,7 +805,7 @@
         });
       });
     },
-    
+
     cComputedValues: function (colname) {
       const self = this;
 

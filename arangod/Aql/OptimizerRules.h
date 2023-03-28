@@ -179,6 +179,14 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
+void distributeOffsetInfoToClusterRule(aql::Optimizer* opt,
+                                       std::unique_ptr<aql::ExecutionPlan> plan,
+                                       aql::OptimizerRule const& rule);
+
+void lateMaterialiationOffsetInfoRule(aql::Optimizer* opt,
+                                      std::unique_ptr<aql::ExecutionPlan> plan,
+                                      aql::OptimizerRule const& rule);
+
 ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                             ExecutionNode* node,
                                             bool& wasModified);
@@ -278,6 +286,10 @@ void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void optimizeTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                             OptimizerRule const&);
 
+/// @brief optimizes away unused K_PATHS things
+void optimizePathsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const&);
+
 /// @brief removes filter nodes already covered by the traversal and removes
 /// unused variables
 void removeFiltersCoveredByTraversal(Optimizer* opt,
@@ -358,16 +370,16 @@ void findSubqueriesInPlan(
     containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
-auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
-    -> DistributeNode*;
+DistributeNode* createDistributeNodeFor(ExecutionPlan& plan,
+                                        ExecutionNode* node);
 
 //// @brief create a gather node matching the given DistributeNode
-auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node)
-    -> GatherNode*;
+GatherNode* createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node);
 
 //// @brief enclose a node in DISTRIBUTE/GATHER
-auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at,
-                                   SubqueryNode* snode) -> DistributeNode*;
+DistributeNode* insertDistributeGatherSnippet(ExecutionPlan& plan,
+                                              ExecutionNode* at,
+                                              SubqueryNode* snode);
 
 }  // namespace aql
 }  // namespace arangodb

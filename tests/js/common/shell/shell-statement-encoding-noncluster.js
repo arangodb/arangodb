@@ -94,10 +94,10 @@ function StatementResultEncodingSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQueryAttribute : function () {
-      var results = db._query("FOR t IN UnitTestsShellStatement " + 
-        "LET l = (FOR x IN t.alternateName FILTER x.`@language` == 'bn' RETURN x) " + 
-        "RETURN { name: t.name, alternateName: l }", {}, {profile: 3}).toArray();
-      var map = { };
+      var results = db._query("FOR t IN UnitTestsShellStatement " +
+        "LET l = (FOR x IN t.alternateName FILTER x.`@language` == 'bn' RETURN x) " +
+        "RETURN { name: t.name, alternateName: l }").toArray();
+      var map = {};
       results.forEach(function(result) {
         delete result._key;
         delete result._rev;

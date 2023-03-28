@@ -37,7 +37,7 @@ class RocksDBTrxMethods : public RocksDBTrxBaseMethods {
   explicit RocksDBTrxMethods(RocksDBTransactionState*,
                              rocksdb::TransactionDB* db);
 
-  ~RocksDBTrxMethods();
+  ~RocksDBTrxMethods() override;
 
   Result beginTransaction() override;
 

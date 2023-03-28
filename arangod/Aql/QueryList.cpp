@@ -28,6 +28,7 @@
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
@@ -110,7 +111,7 @@ QueryList::QueryList(QueryRegistryFeature& feature)
       _slowQueryThreshold(feature.slowQueryThreshold()),
       _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
-      _maxQueryStringLength(defaultMaxQueryStringLength) {
+      _maxQueryStringLength(feature.maxQueryStringLength()) {
   _current.reserve(32);
 }
 
@@ -163,7 +164,7 @@ void QueryList::remove(Query& query) {
   }
 
   // elapsed time since query start
-  double const elapsed = elapsedSince(query.startTime());
+  double const elapsed = query.executionTime();
 
   _queryRegistryFeature.trackQueryEnd(elapsed);
 
@@ -194,38 +195,18 @@ void QueryList::remove(Query& query) {
       size_t const maxQueryStringLength =
           _maxQueryStringLength.load(std::memory_order_relaxed);
 
-      std::string q = extractQueryString(query, maxQueryStringLength);
+      std::string q =
+          query.extractQueryString(maxQueryStringLength, trackQueryString());
       std::string bindParameters;
       if (_trackBindVars) {
         // also log bind variables
-        auto bp = query.bindParameters();
-        if (bp != nullptr && !bp->slice().isNone()) {
-          bindParameters.append(", bind vars: ");
-          bp->slice().toJson(bindParameters);
-          if (bindParameters.size() > maxQueryStringLength) {
-            bindParameters.resize(maxQueryStringLength - 3);
-            bindParameters.append("...");
-          }
-        }
+        query.stringifyBindParameters(bindParameters,
+                                      ", bind vars: ", maxQueryStringLength);
       }
 
       std::string dataSources;
       if (_trackDataSources) {
-        auto const d = query.collectionNames();
-        if (!d.empty()) {
-          size_t i = 0;
-          dataSources = ", data sources: [";
-          arangodb::velocypack::StringSink sink(&dataSources);
-          arangodb::velocypack::Dumper dumper(&sink);
-          for (auto const& dn : d) {
-            if (i > 0) {
-              dataSources.push_back(',');
-            }
-            dumper.appendString(dn.data(), dn.size());
-            ++i;
-          }
-          dataSources.push_back(']');
-        }
+        query.stringifyDataSources(dataSources, ", data sources: ");
       }
 
       auto resultCode = query.resultCode();
@@ -235,7 +216,9 @@ void QueryList::remove(Query& query) {
           << "'" << bindParameters << dataSources
           << ", database: " << query.vocbase().name()
           << ", user: " << query.user() << ", id: " << query.id()
-          << ", token: QRY" << query.id() << ", exit code: " << resultCode
+          << ", token: QRY" << query.id()
+          << ", peak memory usage: " << query.resourceMonitor().peak()
+          << ", exit code: " << resultCode
           << ", took: " << Logger::FIXED(elapsed) << " s";
 
       // acquire the query list lock again
@@ -322,12 +305,15 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   // reserve room for some queries outside of the lock already,
   // so we reduce the possibility of having to reserve more room later
   result.reserve(16);
+
   auto const maxLength = _maxQueryStringLength.load(std::memory_order_relaxed);
+  auto showQueryString = trackQueryString();
   double const now = TRI_microtime();
 
   {
     READ_LOCKER(readLocker, _lock);
     // reserve the actually needed space
+    //
     result.reserve(_current.size());
     queries.reserve(_current.size());
     for (auto const& it : _current) {
@@ -347,7 +333,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       // query inside the Query object.
       result.emplace_back(
           query.id(), query.vocbase().name(), query.user(),
-          extractQueryString(query, maxLength),
+          query.extractQueryString(maxLength, showQueryString),
           _trackBindVars ? query.bindParameters() : nullptr,
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
@@ -394,17 +380,9 @@ size_t QueryList::count() {
   return _current.size();
 }
 
-std::string QueryList::extractQueryString(Query const& query,
-                                          size_t maxLength) const {
-  if (trackQueryString()) {
-    return query.queryString().extract(maxLength);
-  }
-  return "<hidden>";
-}
-
 void QueryList::killQuery(Query& query, size_t maxLength, bool silent) {
   std::string msg = "killing AQL query '" +
-                    extractQueryString(query, maxLength) +
+                    query.extractQueryString(maxLength, trackQueryString()) +
                     "', id: " + std::to_string(query.id()) + ", token: QRY" +
                     std::to_string(query.id());
 

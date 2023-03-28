@@ -38,10 +38,26 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 
+#include <velocypack/Iterator.h>
+
 namespace arangodb::metrics {
 
+static std::shared_ptr<ClusterMetricsFeature::Data> createEmptyData() {
+  auto data = std::make_shared<ClusterMetricsFeature::Data>();
+  velocypack::Builder builder;
+  builder.openObject();
+  // We use "0" instead of "" because we cannot parse empty string parameter
+  builder.add("ServerId", VPackValue{"0"});
+  builder.add("RebootId", VPackValue{0});
+  builder.add("Version", VPackValue{0});
+  builder.add("Data", VPackSlice::emptyArraySlice());
+  builder.close();
+  data->packed = builder.buffer();
+  return data;
+}
+
 ClusterMetricsFeature::ClusterMetricsFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this}, _data{createEmptyData()} {
   setOptional();
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
@@ -52,7 +68,7 @@ void ClusterMetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--server.cluster-metrics-timeout",
-                  "Cluster metrics polling timeout in seconds",
+                  "Cluster metrics polling timeout (in seconds).",
                   new options::UInt32Parameter(&_timeout),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
@@ -73,7 +89,7 @@ void ClusterMetricsFeature::start() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.initMetricsState();
   if (_timeout != 0) {
-    rescheduleTimer();
+    rescheduleTimer(0);
   }
 }
 
@@ -122,23 +138,23 @@ std::optional<std::string> ClusterMetricsFeature::update(
   return std::nullopt;
 }
 
-void ClusterMetricsFeature::rescheduleTimer() noexcept {
+void ClusterMetricsFeature::rescheduleTimer(uint32_t timeoutMs) noexcept {
   TRI_ASSERT(_timeout > 0);
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::DELAYED_FUTURE, std::chrono::seconds{_timeout},
+      RequestLane::DELAYED_FUTURE, std::chrono::milliseconds{timeoutMs},
       [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
         }
         update(CollectMode::TriggerGlobal);
-        rescheduleTimer();
+        rescheduleTimer(_timeout * 1000);
       });
   std::atomic_store_explicit(&_timer, std::move(h), std::memory_order_relaxed);
 }
 
-void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
+void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeoutMs) noexcept {
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
-      RequestLane::CLUSTER_INTERNAL, std::chrono::seconds{timeout},
+      RequestLane::CLUSTER_INTERNAL, std::chrono::milliseconds{timeoutMs},
       [this](bool canceled) noexcept {
         if (canceled || wasStop()) {
           return;
@@ -154,7 +170,7 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
         try {
           update();
         } catch (...) {
-          repeatUpdate(true);
+          repeatUpdate(std::max(_timeout, 1U) * 1000);
         }
       });
   std::atomic_store_explicit(&_update, std::move(h), std::memory_order_relaxed);
@@ -166,10 +182,8 @@ void ClusterMetricsFeature::update() {
   auto& ci = cf.clusterInfo();
   auto leader = std::move(ci.getMetricsState(true).leader);
   auto data = getData();
-  bool const isData = data && data->packed;
-  auto const oldData =
-      isData ? VPackSlice{data->packed->data()} : VPackSlice::noneSlice();
-  auto version = isData ? oldData.get("Version").getNumber<uint64_t>() : 0;
+  auto const oldData = VPackSlice{data->packed->data()};
+  auto version = oldData.get("Version").getNumber<uint64_t>();
   if (wasStop()) {
     return;
   }
@@ -179,48 +193,48 @@ void ClusterMetricsFeature::update() {
           if (wasStop()) {
             return;
           }
-          bool force = false;
+          uint32_t timeoutMs = std::max(_timeout, 1U) * 1000;
           try {
-            force = !writeData(version, std::move(raw));
+            if (writeData(version, std::move(raw))) {
+              timeoutMs = 0;  // success
+            }
           } catch (...) {
-            force = true;
           }
-          repeatUpdate(force);
+          repeatUpdate(timeoutMs);
         });
   }
   if (leader->empty()) {
-    return rescheduleUpdate(std::max(_timeout, 1U));
+    return repeatUpdate(1000);  // invalid leader, retry
   }
-  auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
-  // We use `"0"` instead of `""` because we cannot parse empty string parameter
-  auto serverId = isData ? oldData.get("ServerId").copyString() : "0";
+  auto rebootId = oldData.get("RebootId").getNumber<uint64_t>();
+  auto serverId = oldData.get("ServerId").copyString();
   data.reset();
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
         if (wasStop()) {
           return;
         }
-        bool force = false;
+        uint32_t timeoutMs = 1000;  // invalid leader, retry
         try {
-          force = !readData(std::move(raw));
+          if (readData(std::move(raw))) {
+            timeoutMs = 0;  // success
+          }
         } catch (...) {
-          force = true;
         }
-        repeatUpdate(force);
+        repeatUpdate(timeoutMs);
       });
 }
 
-void ClusterMetricsFeature::repeatUpdate(bool force) noexcept {
-  if (force) {
-    if (!wasStop()) {
-      rescheduleUpdate(std::max(_timeout, 1U));
-    }
-  } else {
+void ClusterMetricsFeature::repeatUpdate(uint32_t timeoutMs) noexcept {
+  if (timeoutMs == 0) {
     auto const count = _count.fetch_sub(kUpdate);
-    if (count % 2 != kStop && count > kUpdate) {
-      rescheduleUpdate(0);
+    if (count % 2 == kStop || count <= kUpdate) {
+      return;
     }
+  } else if (wasStop()) {
+    return;
   }
+  rescheduleUpdate(timeoutMs);
 }
 
 bool ClusterMetricsFeature::writeData(uint64_t version,
@@ -229,9 +243,11 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
     return false;
   }
   auto metrics = parse(std::move(raw).get());
-  if (metrics.values.empty()) {
+  bool const currEmpty = metrics.values.empty();
+  if (currEmpty && _prevEmpty) {
     return true;
   }
+  _prevEmpty = currEmpty;
   velocypack::Builder builder;
   builder.openObject();
   builder.add("ServerId", VPackValue{ServerState::instance()->getId()});
@@ -252,11 +268,15 @@ bool ClusterMetricsFeature::readData(futures::Try<LeaderResponse>&& raw) {
     return false;
   }
   velocypack::Slice metrics{raw.get()->data()};
+  if (metrics.isNull()) {
+    return true;  // our data is up to date
+  }
   if (!metrics.isObject()) {
     return false;
   }
   auto data = Data::fromVPack(metrics);
   data->packed = std::move(raw).get();
+  _prevEmpty = data->metrics.values.empty();
   std::atomic_store_explicit(&_data, std::move(data),
                              std::memory_order_release);
   return true;
@@ -326,18 +346,24 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
 
 std::shared_ptr<ClusterMetricsFeature::Data> ClusterMetricsFeature::getData()
     const {
-  return std::atomic_load_explicit(&_data, std::memory_order_acquire);
+  auto data = std::atomic_load_explicit(&_data, std::memory_order_acquire);
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data->packed != nullptr);
+  return data;
 }
 
 std::shared_ptr<ClusterMetricsFeature::Data>
 ClusterMetricsFeature::Data::fromVPack(VPackSlice slice) {
-  auto const metrics = slice.get("Data");
-  auto const size = metrics.length();
+  VPackArrayIterator metrics{slice.get("Data")};
+  auto const size = metrics.size();
   auto data = std::make_shared<Data>();
   for (size_t i = 0; i < size; i += 3) {
-    auto name = metrics.at(i).stringView();
-    auto labels = metrics.at(i + 1).stringView();
-    auto value = metrics.at(i + 2).getNumber<uint64_t>();
+    auto name = (*metrics).stringView();
+    metrics.next();
+    auto labels = (*metrics).stringView();
+    metrics.next();
+    auto value = (*metrics).getNumber<uint64_t>();
+    metrics.next();
     data->metrics.values.emplace(
         MetricKey<std::string>{std::string{name}, std::string{labels}},
         MetricValue{value});

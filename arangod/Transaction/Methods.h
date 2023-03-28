@@ -128,14 +128,17 @@ class Methods {
   typedef Result (*DataSourceRegistrationCallback)(
       LogicalDataSource& dataSource, Methods& trx);
 
+  enum class CallbacksTag {
+    StatusChange = 0,
+  };
+
   /// @brief definition from TransactionState::StatusChangeCallback
   /// @param status the new status of the transaction
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  typedef std::function<void(transaction::Methods& trx,
-                             transaction::Status status)>
-      StatusChangeCallback;
+  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
+                                                  transaction::Status status)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -144,7 +147,7 @@ class Methods {
       DataSourceRegistrationCallback const& callback);
 
   /// @brief add a callback to be called for state change events
-  /// @param callback nullptr and empty functers are ignored, treated as success
+  /// @param callback nullptr and empty functors are ignored, treated as success
   /// @return success
   bool addStatusChangeCallback(StatusChangeCallback const* callback);
   bool removeStatusChangeCallback(StatusChangeCallback const* callback);
@@ -561,6 +564,9 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
  private:
+  template<CallbacksTag tag, typename Callback>
+  [[nodiscard]] bool addCallbackImpl(Callback const* callback);
+
   /// @brief the state
   std::shared_ptr<TransactionState> _state;
 

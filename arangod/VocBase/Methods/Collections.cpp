@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/Common.h"
-#include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -56,6 +55,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/V8Context.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
@@ -102,7 +102,7 @@ bool isSystemName(CollectionCreationInfo const& info) {
 }
 
 Result validateCreationInfo(CollectionCreationInfo const& info,
-                            TRI_vocbase_t const& vocbase,
+                            TRI_vocbase_t& vocbase,
                             bool isSingleServerSmartGraph,
                             bool enforceReplicationFactor,
                             bool isLocalCollection, bool isSystemName,
@@ -126,13 +126,37 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID};
   }
 
-  // validate shards factor and replication factor
+  // validate number of shards and replication factor
   if (ServerState::instance()->isCoordinator() || isSingleServerSmartGraph) {
     Result res = ShardingInfo::validateShardsAndReplicationFactor(
         info.properties, vocbase.server(), enforceReplicationFactor);
     if (res.fail()) {
       return res;
     }
+  }
+
+  std::vector<std::string> shardKeys;
+  if (ServerState::instance()->isCoordinator()) {
+    bool isSmart = basics::VelocyPackHelper::getBooleanValue(
+        info.properties, StaticStrings::IsSmart, false);
+    size_t replicationFactor = 1;
+    Result res = ShardingInfo::extractReplicationFactor(
+        info.properties, isSmart, replicationFactor);
+    if (res.ok()) {
+      // extract shard keys
+      res = ShardingInfo::extractShardKeys(info.properties, replicationFactor,
+                                           shardKeys);
+    }
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  // validate computed values
+  auto result = ComputedValues::buildInstance(
+      vocbase, shardKeys, info.properties.get(StaticStrings::ComputedValues));
+  if (result.fail()) {
+    return result.result();
   }
 
   // All collections on a single server should be local collections.
@@ -182,9 +206,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
 // validate collection parameters. if the validation fails, it will audit-log
 // the failure.
 Result validateAllCollectionsInfo(
-    TRI_vocbase_t const& vocbase,
-    std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
-    bool allowEnterpriseCollectionsOnSingleServer,
+    TRI_vocbase_t& vocbase, std::vector<CollectionCreationInfo> const& infos,
+    bool allowSystem, bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
   Result res;
 
@@ -640,7 +663,7 @@ Result Collections::create(
   VPackBuilder builder = createCollectionProperties(
       vocbase, infos, allowEnterpriseCollectionsOnSingleServer);
 
-  VPackSlice const infoSlice = builder.slice();
+  VPackSlice infoSlice = builder.slice();
 
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);
@@ -875,7 +898,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props,
+                                     velocypack::Slice props,
                                      OperationOptions const& options) {
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
@@ -893,10 +916,11 @@ Result Collections::updateProperties(LogicalCollection& collection,
                                  std::to_string(collection.id().id()));
 
     // replication checks
-    int64_t replFactor = Helper::getNumericValue<int64_t>(
-        props, StaticStrings::ReplicationFactor, 0);
-    if (replFactor > 0) {
-      if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
+    if (auto s = props.get(StaticStrings::ReplicationFactor); s.isNumber()) {
+      int64_t replFactor = Helper::getNumericValue<int64_t>(
+          props, StaticStrings::ReplicationFactor, 0);
+      if (replFactor > 0 &&
+          static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
         return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
       }
     }
@@ -1112,7 +1136,7 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
                                             LogicalCollection const& coll) {
-  ExecContext const& exec = ExecContext::current();  // disallow expensive ops
+  ExecContext const& exec = ExecContext::current();
   if (!exec.canUseCollection(coll.name(), auth::Level::RO)) {
     return futures::makeFuture(Result(TRI_ERROR_FORBIDDEN));
   }
@@ -1124,35 +1148,16 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll, AccessMode::Type::READ);
-  Result res = trx.begin();
-
-  if (res.fail()) {
-    return futures::makeFuture(res);
-  }
-
-  auto poster = [](std::function<void()> fn) -> void {
-    return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
-  };
-
-  auto queue =
-      std::make_shared<basics::LocalTaskQueue>(vocbase.server(), poster);
+  StorageEngine& engine =
+      vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
   auto idxs = coll.getIndexes();
-  for (auto& idx : idxs) {
-    idx->warmup(&trx, queue);
+  for (auto const& idx : idxs) {
+    if (idx->canWarmup()) {
+      engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());
+    }
   }
-
-  queue->dispatchAndWait();
-
-  if (queue->status().ok()) {
-    res = trx.commit();
-  } else {
-    return futures::makeFuture(Result(queue->status()));
-  }
-
-  return futures::makeFuture(res);
+  return futures::makeFuture(Result());
 }
 
 futures::Future<OperationResult> Collections::revisionId(

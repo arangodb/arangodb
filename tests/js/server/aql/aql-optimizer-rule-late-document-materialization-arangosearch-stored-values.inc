@@ -32,7 +32,7 @@
   var db = require("@arangodb").db;
   const analyzers = require("@arangodb/analyzers");
 
-  return function (isCluster, newDbName, dbArgs) {
+  return function (isSearchAlias, isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
@@ -46,16 +46,37 @@
 
         let c = db._create(cn, { numberOfShards: 3 });
         let c1 = db._create(cn1, { numberOfShards: 3 });
-
-        db._createView(vn, "arangosearch", {
-          consolidationIntervalMsec: 5000,
-          primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
-          primarySortCompression: "none",
-          storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"}, ["obj.f", "obj.g", "obj.h"]],
-          links: {
-            [cn] : { includeAllFields: true },
-            [cn1] : { includeAllFields: true }
-          }});
+        if (isSearchAlias) {
+          let props = {
+            type: "inverted", includeAllFields: true,
+            storedValues: [["obj.a.a1"], {fields: ["obj.c"], compression: "none"}, {
+              fields: ["obj.d.d1", "obj.e.e1"],
+              compression: "lz4"
+            }, ["obj.f", "obj.g", "obj.h"]],
+            primarySort: {
+              fields: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+              compression: "none"
+            }
+          };
+          let i = c.ensureIndex(props);
+          let i1 = c1.ensureIndex(props);
+          db._createView(vn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+        } else {
+          db._createView(vn, "arangosearch", {
+            consolidationIntervalMsec: 5000,
+            primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+            primarySortCompression: "none",
+            storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"}, ["obj.f", "obj.g", "obj.h"]],
+            links: {
+              [cn] : { includeAllFields: true },
+              [cn1] : { includeAllFields: true }
+            }});
+        }
 
         c.save({ _key: 'c0', obj: {a: {a1: 0}, b: {b1: 1}, c: 2, d: {d1: 3}, e: {e1: 4}, f: 5, g: 6, h: 7, j: 8 } });
         c1.save({ _key: 'c_0', obj: {a: {a1: 10}, b: {b1: 11}, c: 12, d: {d1: 13}, e: {e1: 14}, f: 15, g: 16, h: 17, j: 18 } });

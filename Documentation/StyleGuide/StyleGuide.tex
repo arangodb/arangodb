@@ -108,7 +108,7 @@ should be flexible.
 
 However, as readability is subject to personal taste, any violation should be
 discussed with the team. If a violation makes sense within a given context, a
-corresponding recomemendation should be added to this document.
+corresponding recommendation should be added to this document.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{General Naming Conventions}
@@ -428,7 +428,7 @@ something is looked up.
 }
 
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-\guideline{Should use \trcode{initialize} for initialisation}
+\guideline{Should use \trcode{initialize} for initialization}
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The term \trcode{initialize} should be used where an object or a concept is
@@ -648,7 +648,7 @@ write:
 Many variables in a C/C++ environment are pointers, so a convention like this is
 almost impossible to follow. Also objects in C++ are often oblique types where
 the specific implementation should be ignored by the programmer. Only when the
-actual type of an object is of special significance, the name should empahsize
+actual type of an object is of special significance, the name should emphasize
 the type.
 
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -970,10 +970,10 @@ Use the following ordering within a header file.
     include project C++ headers, use forward declarations where possible
 
   \item
-    forward declararions for C++ classes and structs
+    forward declarations for C++ classes and structs
 
   \item
-    class declararion
+    class declaration
 
     \begin{enumerate}
       \item
@@ -1184,7 +1184,7 @@ Unrelated variables should not be declared in the same statement.
 
 The common requirement of having declarations on separate lines is not
 useful in the situations like the ones above. It enhances readability
-to group variables like this. Howevery, in the case the type must not be
+to group variables like this. However, in the case the type must not be
 a pointer.
 
 Pointers and classes however must be declared on separate lines.
@@ -1318,7 +1318,7 @@ must scan the entire loop in order to understand the scope of the
 loop.  In addition, \trcode{do-while} loops are not needed. Any
 \trcode{do-while} loop can easily be rewritten into a \trcode{while}
 loop or a \trcode{for} loop. Reducing the number of constructs used
-enhance readbility.
+enhance readability.
 
 %~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 \guideline{The use of \trcode{break} and \trcode{continue} in loops should be minimized}
@@ -1790,7 +1790,7 @@ A \trcode{try-catch} statement should have the following form:
 
 This follows partly from the general block rule above. The discussion about
 closing brackets for \trcode{if-else} statements apply to the \trcode{try-catch}
-statments.
+statements.
 
 The function return type must be put in the immediately before the function
 name.
@@ -1843,7 +1843,7 @@ brackets.
 C++ reserved words should be followed by a white space.  Commas should be
 followed by a white space.  Colons should be surrounded by white space.  Colons
 in \trcode{case} statements should not be surrounded by white space.  Semicolons
-in \trcode{for} statments should be followed by one or two (recommended) space
+in \trcode{for} statements should be followed by one or two (recommended) space
 characters.
 
 \begin{code}
@@ -1939,7 +1939,7 @@ They should be separated with three blank lines in larger files.
 }
 
 \begin{code}
-  if      (a == lowValue)    compueSomething();
+  if      (a == lowValue)    computeSomething();
   else if (a == mediumValue) computeSomethingElse();
   else if (a == highValue)   computeSomethingElseYet();
 

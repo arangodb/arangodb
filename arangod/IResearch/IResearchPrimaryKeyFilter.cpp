@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchPrimaryKeyFilter.h"
+#include "Basics/DownCast.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -44,6 +45,12 @@ struct typeRecovery {
   }
 };
 
+struct typeExists {
+  static constexpr std::string_view type_name() noexcept {
+    return "::typeExists";
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -58,11 +65,11 @@ FORCE_INLINE irs::doc_id_t getRemovalBoundary(irs::sub_reader const&,
 #endif
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::sub_reader const& segment, irs::Order const& /*order*/,
-    irs::ExecutionMode, irs::attribute_provider const* /*ctx*/) const {
+    irs::ExecutionContext const& ctx) const {
   // re-execution of a fiter is not expected to ever
   // occur without a call to prepare(...)
   TRI_ASSERT(!_pkSeen);
+  auto& segment = ctx.segment;
 
   auto* pkField = segment.field(DocumentPrimaryKey::PK());
 
@@ -83,7 +90,9 @@ irs::doc_iterator::ptr PrimaryKeyFilter::execute(
   }
 
   // must not match removed docs
-  auto docs = segment.mask(term->postings(irs::IndexFeatures::NONE));
+  auto docs = irs::filter::type() == irs::type<typeExists>::id()
+                  ? term->postings(irs::IndexFeatures::NONE)
+                  : ctx.segment.mask(term->postings(irs::IndexFeatures::NONE));
 
   if (!docs->next()) {
     return irs::doc_iterator::empty();
@@ -135,10 +144,14 @@ irs::filter::prepared::ptr PrimaryKeyFilter::prepare(
 
 bool PrimaryKeyFilter::equals(filter const& rhs) const noexcept {
   return filter::equals(rhs) &&
-         _pk == static_cast<PrimaryKeyFilter const&>(rhs)._pk;
+         _pk == basics::downCast<PrimaryKeyFilter>(rhs)._pk;
 }
 
-/*static*/ irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
+irs::type_info PrimaryKeyFilter::type(ExistsTag) {
+  return irs::type<typeExists>::get();
+}
+
+irs::type_info PrimaryKeyFilter::type(StorageEngine& engine) {
   return engine.inRecovery() ? irs::type<typeRecovery>::get()
                              : irs::type<typeDefault>::get();
 }

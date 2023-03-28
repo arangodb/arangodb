@@ -159,7 +159,7 @@ void assertOrder(
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
 
-      EXPECT_TRUE(parseOk == arangodb::iresearch::OrderFactory::scorer(
+      EXPECT_TRUE(parseOk == arangodb::iresearch::order_factory::scorer(
                                  nullptr, *expr, ctx));
     }
   }
@@ -184,7 +184,7 @@ void assertOrder(
     for (size_t i = 0, count = sortNode->numMembers(); i < count; ++i) {
       auto const* sort = sortNode->getMember(i);
       auto const* expr = sort->getMember(0);
-      EXPECT_TRUE(execOk == arangodb::iresearch::OrderFactory::scorer(
+      EXPECT_TRUE(execOk == arangodb::iresearch::order_factory::scorer(
                                 &actualScorer, *expr, ctx));
 
       if (execOk) {

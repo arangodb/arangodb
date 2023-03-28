@@ -55,7 +55,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class SingleServerEdgeCursor;
 class TraverserCache;
 
 /**

@@ -215,7 +215,7 @@ TEST(CacheRebalancerTest,
         manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
   }
 
-  bool doneRebalancing = false;
+  std::atomic_bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
       auto status = rebalancer.rebalance();

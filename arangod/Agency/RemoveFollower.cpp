@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Random/RandomGenerator.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::consensus;
 

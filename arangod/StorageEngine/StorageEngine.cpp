@@ -27,7 +27,6 @@
 #include <velocypack/Slice.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 
 #include <utility>
 
@@ -60,9 +59,20 @@ Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   return {};
 }
 Result StorageEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) { return {}; }
+
 bool StorageEngine::inRecovery() {
   return recoveryState() < RecoveryState::DONE;
 }
+
+void StorageEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // should not be called on the base engine
+  TRI_ASSERT(false);
+}
+
+void StorageEngine::syncIndexCaches() {}
+
 IndexFactory const& StorageEngine::indexFactory() const {
   // The factory has to be created by the implementation
   // and shall never be deleted
@@ -111,12 +121,6 @@ void StorageEngine::registerView(
     TRI_vocbase_t& vocbase,
     const std::shared_ptr<arangodb::LogicalView>& view) {
   vocbase.registerView(true, view);
-}
-
-void StorageEngine::registerReplicatedLog(
-    TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> log) {
-  vocbase.registerReplicatedLog(id, std::move(log));
 }
 
 std::string_view StorageEngine::typeName() const { return _typeName; }

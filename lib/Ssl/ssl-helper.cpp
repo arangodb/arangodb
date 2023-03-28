@@ -184,13 +184,13 @@ std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
 
 std::string arangodb::availableSslProtocolsDescription() {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
-  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
-         "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, 9 = generic TLS)";
+  return "The SSL protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, "
+         "9 = generic TLS (negotiated))";
 #else
-  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
-         "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2, 9 = generic TLS)";
+  return "The SSL protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = TLSv1, 5 = TLSv1.2, "
+         "9 = generic TLS (negotiated))";
 #endif
 }
 

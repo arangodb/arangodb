@@ -67,6 +67,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
   setDefaultWeight(
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
+  setProduceVertices(
+      VPackHelper::getBooleanValue(info, "produceVertices", true));
 }
 
 ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
@@ -88,6 +90,8 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getStringValue(info, "weightAttribute", ""));
   setDefaultWeight(
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1));
+  setProduceVertices(
+      VPackHelper::getBooleanValue(info, "produceVertices", true));
 
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
@@ -132,6 +136,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
+  builder.add("produceVertices", VPackValue(produceVertices()));
   builder.add("type", VPackValue("shortestPath"));
 }
 

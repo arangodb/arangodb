@@ -21,9 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Graph/TraverserOptions.h>
-#include <velocypack/Iterator.h>
-
 #include "ExecutionPlan.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -63,6 +60,9 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/AccessMode.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -326,7 +326,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
 
 std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
-    bool defaultToRefactor = false) {
+    arangodb::graph::PathType::Type type, bool defaultToRefactor = false) {
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
   TRI_ASSERT(direction->numMembers() == 2);
@@ -360,9 +360,10 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else if (name == StaticStrings::GraphRefactorFlag) {
           options->setRefactor(value->getBoolValue());
         } else {
-          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
-                                                "SHORTEST_PATH", name.data(),
-                                                name.size());
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name.data(),
+              name.size());
         }
       }
     }
@@ -525,8 +526,21 @@ bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
 }
 
 /// @brief increase the node counter for the type
-void ExecutionPlan::increaseCounter(ExecutionNode::NodeType type) noexcept {
+void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
+  auto const type = node.getType();
   ++_typeCounts[type];
+
+  // Tracking forced index hints left to use.
+  // This could be only collection nodes. IndexNodes
+  // are created by optimizer as a result of applying index
+  // and corresponding hint if any.
+  if (type == ExecutionNode::ENUMERATE_COLLECTION) {
+    EnumerateCollectionNode const* en =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |=
+        hint.type() == aql::IndexHint::HintType::Simple && hint.isForced();
+  }
 }
 
 /// @brief process the list of collections in a VelocyPack
@@ -989,6 +1003,10 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.validate = !value->isTrue();
         } else if (name == StaticStrings::KeepNullString) {
           options.keepNull = value->isTrue();
+        } else if (name == StaticStrings::RefillIndexCachesString) {
+          options.refillIndexCaches = value->isTrue()
+                                          ? RefillIndexCaches::kRefill
+                                          : RefillIndexCaches::kDontRefill;
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
         } else if (name == StaticStrings::Overwrite) {
@@ -1331,6 +1349,27 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   std::unique_ptr<Expression> pruneExpression =
       createPruneExpression(this, _ast, node->getMember(3));
 
+  std::string errorReason;
+  if (pruneExpression != nullptr &&
+      !pruneExpression->canBeUsedInPrune(_ast->query().vocbase().isOneShard(),
+                                         errorReason)) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUERY_PARSE,
+        absl::StrCat("Invalid PRUNE expression: ", errorReason));
+  }
+
+  if (pruneExpression != nullptr && !pruneExpression->canBeUsedInPrune(
+                                        _ast->query().vocbase().isOneShard())) {
+    // PRUNE is designed to be executed inside a DBServer. Therefore, we need a
+    // check here and abort in cases which are just not allowed, e.g. execution
+    // of user defined JavaScript method or V8 based methods.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "Invalid PRUNE expression");
+  }
+
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
 
@@ -1414,7 +1453,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4));
+      createShortestPathOptions(getAst(), direction, node->getMember(4),
+                                arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode =
@@ -1450,7 +1490,8 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   auto const type = static_cast<arangodb::graph::PathType::Type>(
       node->getMember(0)->getIntValue());
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
-             type == arangodb::graph::PathType::Type::KPaths);
+             type == arangodb::graph::PathType::Type::KPaths ||
+             type == arangodb::graph::PathType::Type::AllShortestPaths);
 
   // the first 5 members are used by shortest_path internally.
   // The members 6 is the out variable
@@ -1465,7 +1506,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   bool defaultToRefactor = type == arangodb::graph::PathType::Type::KPaths;
 
   auto options = createShortestPathOptions(
-      getAst(), direction, node->getMember(5), defaultToRefactor);
+      getAst(), direction, node->getMember(5), type, defaultToRefactor);
 
   // First create the node
   auto spNode = new EnumeratePathsNode(
@@ -2399,6 +2440,7 @@ void ExecutionPlan::findEndNodes(
 
 /// @brief determine and set _varsUsedLater in all nodes
 /// as a side effect, count the different types of nodes in the plan
+/// and if there are any forced index hints left in the plan on collection nodes
 void ExecutionPlan::findVarUsage() {
   if (varUsageComputed()) {
     return;
@@ -2408,7 +2450,7 @@ void ExecutionPlan::findVarUsage() {
   for (auto& counter : _typeCounts) {
     counter = 0;
   }
-
+  _hasForcedIndexHints = false;
   _varSetBy.clear();
   ::VarUsageFinder finder(&_varSetBy);
   root()->walk(finder);
@@ -2476,7 +2518,6 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
     TRI_ASSERT(x != nullptr);
     node->removeDependency(x);
   }
-
   clearVarUsageComputed();
 }
 
@@ -2606,7 +2647,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     // we have to count all nodes by their type here, because our caller
     // will set the _varUsageComputed flag to true manually, bypassing the
     // regular counting!
-    increaseCounter(ret->getType());
+    increaseCounter(*ret);
 
     TRI_ASSERT(ret != nullptr);
 

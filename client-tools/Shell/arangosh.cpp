@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"

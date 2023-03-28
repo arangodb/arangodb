@@ -113,62 +113,60 @@ bool ChecksumHelper::writeShaFile(std::string const& fileName,
 }
 
 void ChecksumHelper::checkMissingShaFiles() {
-  if (!_rootPath.empty()) {
-    std::vector<std::string> fileList = TRI_FilesDirectory(_rootPath.c_str());
-    std::sort(fileList.begin(), fileList.end());
-    std::string sstFileName;
-    for (auto it = fileList.begin(); it != fileList.end(); ++it) {
-      if (it->size() < 5) {
-        // filename is too short and does not matter
-        continue;
+  if (_rootPath.empty()) {
+    return;
+  }
+
+  std::vector<std::string> fileList = TRI_FilesDirectory(_rootPath.c_str());
+  // sorting will put xxxxxx.sha.yyy just before xxxxxx.sst
+  std::sort(fileList.begin(), fileList.end());
+
+  std::string sstFileName;
+  for (auto it = fileList.begin(); it != fileList.end(); ++it) {
+    if (it->size() < 5) {
+      // filename is too short and does not matter
+      continue;
+    }
+    TRI_ASSERT(*it == TRI_Basename(*it));
+    std::string::size_type shaIndex = it->find(".sha.");
+    if (shaIndex != std::string::npos) {
+      sstFileName = it->substr(0, shaIndex) + ".sst";
+      TRI_ASSERT(sstFileName == TRI_Basename(sstFileName));
+      auto nextIt = it + 1;
+      // two cases: 1. its .sst follows so skip both, 2. no matching .sst, so
+      // delete
+      if (nextIt != fileList.end() && nextIt->compare(sstFileName) == 0) {
+        // .sha file is followed by .sst file
+        TRI_ASSERT(it->size() >= shaIndex + 64);
+        std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
+        it = nextIt;
+        MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+        _fileNamesToHashes.try_emplace(std::move(sstFileName), std::move(hash));
+      } else {
+        // .sha file is not follwed by .sst file
+        std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
+        LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES)
+            << "checkMissingShaFiles:"
+               " Deleting file "
+            << tempPath;
+        TRI_UnlinkFile(tempPath.data());
+        MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
+        _fileNamesToHashes.erase(sstFileName);
       }
-      TRI_ASSERT(*it == TRI_Basename(*it));
-      std::string::size_type shaIndex = it->find(".sha.");
-      if (shaIndex != std::string::npos) {
-        sstFileName = it->substr(0, shaIndex) + ".sst";
-        TRI_ASSERT(sstFileName == TRI_Basename(sstFileName));
-        auto nextIt = it + 1;
-        if (nextIt != fileList.end() && nextIt->compare(sstFileName) == 0) {
-          TRI_ASSERT(it->size() >= shaIndex + 64);
-          std::string hash = it->substr(shaIndex + /*.sha.*/ 5, 64);
-          it = nextIt;
-          MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _fileNamesToHashes.try_emplace(std::move(sstFileName),
-                                         std::move(hash));
-        } else {
-          std::string tempPath =
-              basics::FileUtils::buildFilename(_rootPath, *it);
-          LOG_TOPIC("4eac9", DEBUG, arangodb::Logger::ENGINES)
-              << "checkMissingShaFiles:"
-                 " Deleting file "
-              << tempPath;
-          TRI_UnlinkFile(tempPath.data());
-          MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          _fileNamesToHashes.erase(sstFileName);
-        }
-      } else if (isFileNameSst(*it)) {
-        std::unordered_map<std::string, std::string>::const_iterator hashIt;
-        {
-          MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
-          hashIt = _fileNamesToHashes.find(*it);
-        }
-        if (hashIt == _fileNamesToHashes.end()) {
-          std::string tempPath =
-              basics::FileUtils::buildFilename(_rootPath, *it);
-          LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
-              << "checkMissingShaFiles:"
-                 " Computing checksum for "
-              << tempPath;
-          auto checksumCalc = ChecksumCalculator();
-          if (TRI_ProcessFile(tempPath.c_str(),
-                              [&checksumCalc](char const* buffer, size_t n) {
-                                checksumCalc.updateEVPWithContent(buffer, n);
-                                return true;
-                              })) {
-            checksumCalc.computeFinalChecksum();
-            writeShaFile(tempPath, checksumCalc.getChecksum());
-          }
-        }
+    } else if (isFileNameSst(*it)) {
+      std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
+      LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
+          << "checkMissingShaFiles:"
+             " Computing checksum for "
+          << tempPath;
+      auto checksumCalc = ChecksumCalculator();
+      if (TRI_ProcessFile(tempPath.c_str(),
+                          [&checksumCalc](char const* buffer, size_t n) {
+                            checksumCalc.updateEVPWithContent(buffer, n);
+                            return true;
+                          })) {
+        checksumCalc.computeFinalChecksum();
+        writeShaFile(tempPath, checksumCalc.getChecksum());
       }
     }
   }

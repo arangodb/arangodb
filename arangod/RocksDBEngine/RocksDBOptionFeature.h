@@ -72,6 +72,9 @@ class RocksDBOptionFeature final : public ArangodFeature,
   }
   uint32_t numThreadsHigh() const noexcept override { return _numThreadsHigh; }
   uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
+  uint64_t periodicCompactionTtl() const noexcept override {
+    return _periodicCompactionTtl;
+  }
 
  protected:
   rocksdb::Options doGetOptions() const override;
@@ -102,6 +105,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _targetFileSizeMultiplier;
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
+  double _bloomBitsPerKey;
   uint64_t _tableBlockSize;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
@@ -109,6 +113,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  uint64_t _periodicCompactionTtl;
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;

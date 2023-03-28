@@ -74,7 +74,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -202,7 +202,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();
@@ -364,7 +364,7 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
   {
     auto createJson = VPackParser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice());
+    auto logicalView = vocbase.createView(createJson->slice(), false);
     ASSERT_FALSE(!logicalView);
 
     view = logicalView.get();

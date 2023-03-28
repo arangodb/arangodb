@@ -45,7 +45,7 @@ class SingleServerProviderStep
    public:
     explicit Vertex(VertexType v) : _vertex(v) {}
 
-    VertexType const& getID() const;
+    VertexType const& getID() const noexcept;
 
     bool operator<(Vertex const& other) const noexcept {
       return _vertex < other._vertex;
@@ -66,8 +66,8 @@ class SingleServerProviderStep
 
     void addToBuilder(SingleServerProvider<SingleServerProviderStep>& provider,
                       arangodb::velocypack::Builder& builder) const;
-    EdgeType const& getID() const;
-    bool isValid() const;
+    EdgeType const& getID() const noexcept;
+    bool isValid() const noexcept;
 
    private:
     EdgeDocumentToken _token;
@@ -94,10 +94,10 @@ class SingleServerProviderStep
   bool isProcessable() const { return !isLooseEnd(); }
   bool isLooseEnd() const { return false; }
 
-  ::arangodb::graph::VertexType getVertexIdentifier() const {
-    return _vertex.getID();
-  }
+  // beware: will return a *copy* of the vertex id
+  VertexType getVertexIdentifier() const { return _vertex.getID(); }
 
+  // beware: will return a *copy* of the edge id
   EdgeType getEdgeIdentifier() const { return _edge.getID(); }
 
   std::string getCollectionName() const {
@@ -113,14 +113,12 @@ class SingleServerProviderStep
     return collectionNameResult.get().first;
   };
 
-  bool isResponsible(transaction::Methods*) const;
-
   friend auto operator<<(std::ostream& out,
                          SingleServerProviderStep const& step) -> std::ostream&;
 
-  static bool vertexFetched() { return true; }
+  static bool vertexFetched() noexcept { return true; }
 
-  static bool edgeFetched() { return true; }
+  static bool edgeFetched() noexcept { return true; }
 
  private:
   Vertex _vertex;

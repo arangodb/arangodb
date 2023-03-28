@@ -33,11 +33,6 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  let platform = internal.platform;
-  if (platform !== 'linux') {
-    // crash handler only available on Linux
-    return;
-  }
   // make log level more verbose, as by default we hide most messages from
   // the test output
   require("internal").logLevel("crash=info");

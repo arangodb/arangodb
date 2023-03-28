@@ -1,0 +1,20 @@
+name: rocksdb_cache_auto_refill_loaded_total
+introducedIn: "3.10.2"
+help: |
+  Total number of automatically refilled in-memory edge cache entries.
+unit: number
+type: counter
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric shows the total number of automatically refilled in-memory
+  edge cache entries. Entries in the in-memory edge cache are automatically
+  refilled for edge indexes if an insert, update, replace, or remove operation
+  requests the cache refilling, or if the `--rocksdb.auto-refill-index-caches`
+  startup option is enabled.
+  On Agents and Coordinators, the values reported by this metric are always zero.

@@ -165,6 +165,11 @@ is returned if there are insufficient privileges to access the logs.
 
 @RESTHEADER{GET /_admin/log/level, Return the current server log level}
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{serverId,string,optional}
+Forwards the request to the specified server.
+
 @RESTDESCRIPTION
 Returns the server's current log level settings.
 The result is a JSON object with the log topics being the object keys, and
@@ -189,6 +194,11 @@ is returned if there are insufficient privileges to read log levels.
 @brief modifies the current log level settings
 
 @RESTHEADER{PUT /_admin/log/level, Modify and return the current server log level}
+
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{serverId,string,optional}
+Forwards the request to the specified server.
 
 @RESTDESCRIPTION
 Modifies and returns the server's current log level settings.

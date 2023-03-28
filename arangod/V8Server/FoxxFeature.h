@@ -37,17 +37,15 @@ class FoxxFeature final : public ArangodFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
 
   // return poll interval for foxx queues. returns a negative number if
   // foxx queues are turned off
-  double pollInterval() const {
-    if (!_enabled) {
-      return -1.0;
-    }
-    return _pollInterval;
-  }
+  double pollInterval() const noexcept;
 
-  bool startupWaitForSelfHeal() const;
+  bool startupWaitForSelfHeal() const noexcept;
+
+  bool foxxEnabled() const noexcept;
 
   // store the locally applied version of the queue. this method will make sure
   // we will not go below any version that we have already seen.
@@ -75,9 +73,10 @@ class FoxxFeature final : public ArangodFeature {
   uint64_t _queueVersion;
   uint64_t _localQueueInserts;
 
-  double _pollInterval;
-  bool _enabled;
+  double _queuesPollInterval;
+  bool _queuesEnabled;
   bool _startupWaitForSelfHeal;
+  bool _foxxEnabled;
 };
 
 }  // namespace arangodb

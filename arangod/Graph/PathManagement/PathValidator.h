@@ -131,7 +131,15 @@ class PathValidator {
       -> arangodb::graph::ValidationResult::Type;
 
   auto isDisjoint() const { return _options.isDisjoint(); }
-  auto isSatelliteLeader() const { return _options.isSatelliteLeader(); }
+  auto isSatelliteLeader() const {
+    if (_options.isClusterOneShardRuleEnabled()) {
+      // In case the cluster one shard rule is enabled, we will declare
+      // any shard as "a leader" - which means it can be used and in this
+      // particular case, we are sure that we cannot produce duplicate results
+      return true;
+    }
+    return _options.isSatelliteLeader();
+  }
 };
 }  // namespace graph
 }  // namespace arangodb

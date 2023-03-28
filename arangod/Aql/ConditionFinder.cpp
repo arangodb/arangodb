@@ -154,6 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         opts.lookahead = node->hint().getLookahead();
+        opts.waitForSync = node->hint().waitForSync();
         opts.useCache = node->useCache();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

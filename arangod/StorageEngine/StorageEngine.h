@@ -31,6 +31,7 @@
 #include "RestServer/arangod.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -203,17 +204,6 @@ class StorageEngine : public ArangodFeature {
   /// @brief current recovery tick
   virtual TRI_voc_tick_t recoveryTick() = 0;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> = 0;
-
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result = 0;
-
   //// Operations on Collections
   // asks the storage engine to create a collection as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
@@ -349,6 +339,14 @@ class StorageEngine : public ArangodFeature {
   virtual TRI_voc_tick_t releasedTick() const = 0;
   virtual void releaseTick(TRI_voc_tick_t) = 0;
 
+  virtual void scheduleFullIndexRefill(std::string const& database,
+                                       std::string const& collection,
+                                       IndexId iid);
+
+  virtual bool autoRefillIndexCaches() const = 0;
+  virtual bool autoRefillIndexCachesOnFollowers() const = 0;
+  virtual void syncIndexCaches();
+
  protected:
   void registerCollection(
       TRI_vocbase_t& vocbase,
@@ -356,11 +354,6 @@ class StorageEngine : public ArangodFeature {
 
   void registerView(TRI_vocbase_t& vocbase,
                     std::shared_ptr<arangodb::LogicalView> const& view);
-
-  static void registerReplicatedLog(
-      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
-      std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>
-          log);
 
  private:
   std::unique_ptr<IndexFactory> const _indexFactory;

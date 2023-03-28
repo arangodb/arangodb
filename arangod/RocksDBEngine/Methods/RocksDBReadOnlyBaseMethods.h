@@ -36,7 +36,7 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   explicit RocksDBReadOnlyBaseMethods(RocksDBTransactionState* state,
                                       rocksdb::TransactionDB* db);
 
-  ~RocksDBReadOnlyBaseMethods();
+  ~RocksDBReadOnlyBaseMethods() override;
 
   bool ensureSnapshot() override;
 
@@ -47,6 +47,10 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
   uint64_t numCommits() const noexcept override { return 0; }
 
   bool hasOperations() const noexcept override { return false; }
+
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final {
+    return 0;
+  }
 
   uint64_t numOperations() const noexcept override { return 0; }
 

@@ -268,6 +268,8 @@ class IndexIterator {
   [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
   getAndResetCacheStats() noexcept;
 
+  void setResetInternals() noexcept { _resetInternals = true; }
+
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
 
@@ -313,6 +315,7 @@ class IndexIterator {
   std::uint64_t _cacheMisses;
 
   bool _hasMore;
+  bool _resetInternals;
 
  private:
   ReadOwnWrites const _readOwnWrites;
@@ -391,6 +394,9 @@ class MultiIndexIterator final : public IndexIterator {
 struct IndexIteratorOptions {
   /// @brief Limit used in a parent LIMIT node (if non-zero)
   size_t limit = 0;
+  /// @brief number of lookahead elements considered before computing the next
+  /// intersection of the Z-curve with the search range
+  size_t lookahead = 1;
   /// @brief whether the index must sort its results
   bool sorted = true;
   /// @brief the index sort order - this is the same order for all indexes
@@ -400,9 +406,8 @@ struct IndexIteratorOptions {
   bool evaluateFCalls = true;
   /// @brief enable caching
   bool useCache = true;
-  /// @brief number of lookahead elements considered before computing the next
-  /// intersection of the Z-curve with the search range
-  size_t lookahead = 1;
+  /// @brief forcefully synchronize external indexes
+  bool waitForSync = false;
 };
 
 /// index estimate map, defined here because it was convenient

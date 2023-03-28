@@ -34,10 +34,10 @@
   const analyzers = require("@arangodb/analyzers");
   const internal = require('internal');
 
-  return function (isCluster, newDbName, dbArgs) {
+  return function (isSearchField, isCluster, newDbName, dbArgs) {
     const ruleName = "late-document-materialization-arangosearch";
     // need to disable this superseding rule to let test our rule
-    const diabledRules  = {optimizer:{rules:['-arangosearch-constrained-sort']}};
+    const diabledRules = {optimizer: {rules: ['-arangosearch-constrained-sort']}};
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
     const cn2 = "UnitTestsCollection2";
@@ -47,43 +47,86 @@
     return {
       setUpAll : function () {
         db._useDatabase("_system");
-        try { db._dropDatabase(newDbName); } catch (err) {}
+        try {
+          db._dropDatabase(newDbName);
+        } catch (err) {
+        }
         db._createDatabase(newDbName, dbArgs);
         db._useDatabase(newDbName);
-        
-        let c = db._create(cn, { numberOfShards: 3 });
-        let c2 = db._create(cn1, { numberOfShards: 3 });
-        let c3 = db._create(cn2, { numberOfShards: 3 });
-        
-        db._createView(vn, "arangosearch", { 
-          links: { 
-            [cn] : { includeAllFields: true, analyzers : [ "identity" ],
-                     fields : { str : { "analyzers" : [ "text_en" ] }}, }, 
-            [cn1] : { includeAllFields: true, analyzers : [ "identity" ],
-                      fields : { str : { "analyzers" : [ "text_en" ] }}} 
-          }});
-        db._createView(svn, "arangosearch", {
-          consolidationIntervalMsec: 5000, 
-          primarySort: [{"field": "str", "direction": "asc"}], 
-          links: { 
-            [cn] : { includeAllFields: true }, 
-            [cn1] : { includeAllFields: true } 
-          }});
-          
-        db._createView(lvn, "arangosearch", {
-          consolidationIntervalMsec: 5000, 
-          links: { 
-            [cn2] : { includeAllFields: true } 
-          }});
 
-        c.save({ _key: 'c0',  str: 'cat cat cat cat cat cat cat cat dog', value: 0 });
-        c2.save({_key: 'c_0', str: 'cat cat cat cat cat cat cat rat dog', value: 10 });
-        c.save({ _key: 'c1',  str: 'cat cat cat cat cat cat pig rat dog', value: 1 });
-        c2.save({_key: 'c_1', str: 'cat cat cat cat cat pot pig rat dog', value: 11 });
-        c.save({ _key: 'c2',  str: 'cat cat cat cat dot pot pig rat dog', value: 2 });
-        c2.save({_key: 'c_2', str: 'cat cat cat fat dot pot pig rat dog', value: 12 });
-        c.save({ _key: 'c3',  str: 'cat cat map fat dot pot pig rat dog', value: 3 });
-        c2.save({_key: 'c_3', str: 'cat ant map fat dot pot pig rat dog', value: 13 });
+        let c = db._create(cn, {numberOfShards: 3});
+        let c2 = db._create(cn1, {numberOfShards: 3});
+        let c3 = db._create(cn2, {numberOfShards: 3});
+        if (isSearchField) {
+          let props = {
+            type: "inverted", includeAllFields: true,
+            fields: [{name: "str", analyzer: "text_en"}]
+          };
+          let i = c.ensureIndex(props);
+          let i1 = c2.ensureIndex(props);
+          db._createView(vn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+
+          props = {
+            type: "inverted", includeAllFields: true,
+            consolidationIntervalMsec: 5000
+          };
+          i = c3.ensureIndex(props);
+          db._createView(lvn, "search-alias", {
+            indexes: [{collection: cn2, index: i.name}]
+          });
+
+          props["primarySort"] = {fields: [{"field": "str", "direction": "asc"}]};
+          i = c.ensureIndex(props);
+          i1 = c2.ensureIndex(props);
+          db._createView(svn, "search-alias", {
+            indexes: [
+              {collection: cn, index: i.name},
+              {collection: cn1, index: i1.name},
+            ]
+          });
+        } else {
+          db._createView(vn, "arangosearch", {
+            links: {
+              [cn]: {
+                includeAllFields: true, analyzers: ["identity"],
+                fields: {str: {"analyzers": ["text_en"]}},
+              },
+              [cn1]: {
+                includeAllFields: true, analyzers: ["identity"],
+                fields: {str: {"analyzers": ["text_en"]}}
+              }
+            }
+          });
+          db._createView(svn, "arangosearch", {
+            consolidationIntervalMsec: 5000,
+            primarySort: [{"field": "str", "direction": "asc"}],
+            links: {
+              [cn]: {includeAllFields: true},
+              [cn1]: {includeAllFields: true}
+            }
+          });
+
+          db._createView(lvn, "arangosearch", {
+            consolidationIntervalMsec: 5000,
+            links: {
+              [cn2]: {includeAllFields: true}
+            }
+          });
+        }
+
+        c.save({_key: 'c0', str: 'cat cat cat cat cat cat cat cat dog', value: 0});
+        c2.save({_key: 'c_0', str: 'cat cat cat cat cat cat cat rat dog', value: 10});
+        c.save({_key: 'c1', str: 'cat cat cat cat cat cat pig rat dog', value: 1});
+        c2.save({_key: 'c_1', str: 'cat cat cat cat cat pot pig rat dog', value: 11});
+        c.save({_key: 'c2', str: 'cat cat cat cat dot pot pig rat dog', value: 2});
+        c2.save({_key: 'c_2', str: 'cat cat cat fat dot pot pig rat dog', value: 12});
+        c.save({_key: 'c3', str: 'cat cat map fat dot pot pig rat dog', value: 3});
+        c2.save({_key: 'c_3', str: 'cat ant map fat dot pot pig rat dog', value: 13});
         
         let c3data = [];
         for (let i = 0 ; i < 1000; i++) {
@@ -391,16 +434,16 @@
         assertEqual(0, expected.size);
       },
       testNoDanglingCalculationNode() {
-        let query = "FOR d IN " + svn  + " SEARCH d.value > 9 SORT d.str ASC LIMIT 5  RETURN d";
+        let query = "FOR d IN " + svn + " SEARCH d.value > 9 SORT d.str ASC LIMIT 5  RETURN d";
         let plan = AQL_EXPLAIN(query, {}, diabledRules).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
         let materializeNodeFound = false;
-        plan.nodes.forEach(function(node) {
+        plan.nodes.forEach(function (node) {
           // should be no redundand calculation nodes for single or oneshard server
           if (!isCluster) {
             assertNotEqual(node.type, "CalculationNode");
           }
-          if( node.type === "MaterializeNode") {
+          if (node.type === "MaterializeNode") {
             materializeNodeFound = true;
           }
         });

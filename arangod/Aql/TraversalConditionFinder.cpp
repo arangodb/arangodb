@@ -26,13 +26,14 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LogMacros.h"
-
-#include "Basics/StaticStrings.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -64,11 +65,10 @@ AstNode* conditionWithInlineCalculations(ExecutionPlan const* plan,
 
   return Ast::traverseAndModify(cond, func);
 }
-}  // namespace
 
 enum class OptimizationCase { PATH, EDGE, VERTEX, NON_OPTIMIZABLE };
 
-static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
+AstNodeType buildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(condition->numMembers() == 3);
   AstNodeType type = NODE_TYPE_ROOT;
 
@@ -115,9 +115,9 @@ static AstNodeType BuildSingleComparatorType(AstNode const* condition) {
   return type;
 }
 
-static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition,
-                                          AstNode* tmpVar) {
-  AstNodeType type = BuildSingleComparatorType(condition);
+AstNode* buildExpansionReplacement(Ast* ast, AstNode const* condition,
+                                   AstNode* tmpVar) {
+  AstNodeType type = buildSingleComparatorType(condition);
 
   auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
     if (node->type == NODE_TYPE_REFERENCE) {
@@ -141,7 +141,8 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition,
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
-static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
+bool isSupportedNode(Ast const* ast, Variable const* pathVar,
+                     AstNode const* node) {
   // do a quick first check for all comparisons
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
@@ -230,9 +231,26 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
       return true;
-    case NODE_TYPE_FCALL:
+    case NODE_TYPE_FCALL: {
+      auto* func = static_cast<Function const*>(node->getData());
+      if (!func->hasFlag(Function::Flags::Deterministic)) {
+        // non-deterministic functions will never be pulled into the
+        // traversal
+        return false;
+      }
+      if (!ServerState::instance()->isRunningInCluster()) {
+        return true;
+      }
+      // only allow those functions that can be executed on DB servers
+      // as well
+      if (ast->query().vocbase().isOneShard()) {
+        return func->hasFlag(Function::Flags::CanRunOnDBServerOneShard);
+      }
+      return func->hasFlag(Function::Flags::CanRunOnDBServerCluster);
+    }
     case NODE_TYPE_FCALL_USER:
-      // These may be possible in the future
+      // JavaScript user-defined functions will never be pulled into the
+      // traversal
       return false;
     case NODE_TYPE_OPERATOR_NARY_OR:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -248,12 +266,14 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
   }
 }
 
-static bool checkPathVariableAccessFeasible(
-    Ast* ast, ExecutionPlan* plan, AstNode* parent, size_t testIndex,
-    TraversalNode* tn, Variable const* pathVar, bool& conditionIsImpossible,
-    size_t& swappedIndex, int64_t& indexedAccessDepth) {
+bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
+                                     AstNode* parent, size_t testIndex,
+                                     TraversalNode* tn, Variable const* pathVar,
+                                     bool& conditionIsImpossible,
+                                     size_t& swappedIndex,
+                                     int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
-  if (!IsSupportedNode(pathVar, node)) {
+  if (!isSupportedNode(ast, pathVar, node)) {
     return false;
   }
   // We need to walk through each branch and validate:
@@ -276,12 +296,13 @@ static bool checkPathVariableAccessFeasible(
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&notSupported, pathVar](AstNode const* n) -> bool {
+  auto supportedGuard = [&ast, &notSupported,
+                         pathVar](AstNode const* n) -> bool {
     // cppcheck-suppress knownConditionTrueFalse
     if (notSupported) {
       return false;
     }
-    if (!IsSupportedNode(pathVar, n)) {
+    if (!isSupportedNode(ast, pathVar, n)) {
       notSupported = true;
       return false;
     }
@@ -497,7 +518,7 @@ static bool checkPathVariableAccessFeasible(
   TRI_ASSERT(parentOfReplace != nullptr);
   if (depth == UINT64_MAX) {
     // Global Case
-    auto replaceNode = BuildExpansionReplacement(
+    auto replaceNode = buildExpansionReplacement(
         ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
     parentOfReplace->changeMember(replaceIdx, replaceNode);
     ///////////
@@ -526,6 +547,8 @@ static bool checkPathVariableAccessFeasible(
   }
   return true;
 }
+
+}  // namespace
 
 TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
                                                    bool* planAltered)
@@ -729,21 +752,31 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           case OptimizationCase::VERTEX:
           case OptimizationCase::EDGE: {
             // We have the Vertex or Edge variable in the statement
-            // Both have about the Same code and just differ in the used
-            // variable. auto usedVar = usedCase == OptimizationCase::VERTEX ?
-            // vertexVar : edgeVar;
+            AstNode* expr = andNode->getMemberUnchecked(i - 1);
 
-            auto conditionToOptimize = conditionWithInlineCalculations(
-                _plan, andNode->getMemberUnchecked(i - 1));
+            // check if the filter condition can be executed on a DB server,
+            // deterministically
+            if (expr != nullptr &&
+                expr->canBeUsedInFilter(
+                    _plan->getAst()->query().vocbase().isOneShard())) {
+              // Only do register this condition in case it can be executed
+              // inside a TraversalNode. We need to check here and abort in
+              // cases which are just not allowed, e.g. execution of user
+              // defined JavaScript method or V8 based methods.
 
-            // Create a clone before we modify the Condition
-            AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
-            // Retain original condition, as covered by this Node
-            coveredCondition->andCombine(cloned);
-            node->registerPostFilterCondition(conditionToOptimize);
+              auto conditionToOptimize =
+                  conditionWithInlineCalculations(_plan, expr);
+
+              // Create a clone before we modify the Condition
+              AstNode* cloned = conditionToOptimize->clone(_plan->getAst());
+              // Retain original condition, as covered by this Node
+              coveredCondition->andCombine(cloned);
+              node->registerPostFilterCondition(conditionToOptimize);
+            }
             break;
           }
-        };
+        }
+
         if (conditionIsImpossible) {
           // Abort iteration through nodes
           break;

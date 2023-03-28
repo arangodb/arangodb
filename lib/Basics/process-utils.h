@@ -166,12 +166,14 @@ void TRI_SetProcessTitle(char const* title);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
+/// `fileForStdErr` is a file name, to which we will redirect stderr of the
+/// external process, if the string is non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable,
-                               std::vector<std::string> const& arguments,
-                               std::vector<std::string> const& additionalEnv,
-                               bool usePipes, ExternalId* pid);
+void TRI_CreateExternalProcess(
+    char const* executable, std::vector<std::string> const& arguments,
+    std::vector<std::string> const& additionalEnv, bool usePipes,
+    ExternalId* pid, std::string const& fileForStdErr = std::string());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes

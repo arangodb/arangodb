@@ -56,6 +56,8 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState {
 
   bool hasOperations() const noexcept override;
 
+  [[nodiscard]] uint64_t numPrimitiveOperations() const noexcept final;
+
   uint64_t numOperations() const noexcept override;
 
   bool ensureSnapshot() override;

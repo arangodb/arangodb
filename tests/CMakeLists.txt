@@ -58,6 +58,7 @@ endif ()
 
 set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
@@ -178,6 +179,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FilesTest.cpp
   Basics/FpConvTest.cpp
   Basics/HashesTest.cpp
+  Basics/HybridLogicalClockTest.cpp
   Basics/OverloadTest.cpp
   Basics/PriorityQueueTest.cpp
   Basics/StringBufferTest.cpp
@@ -258,6 +260,7 @@ set(ARANGODB_TESTS_SOURCES
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
+  Rest/HttpRequestTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
   RestHandler/RestDocumentHandlerTest.cpp
@@ -267,6 +270,7 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
+  RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/HotBackupTest.cpp
@@ -287,91 +291,16 @@ set(ARANGODB_TESTS_SOURCES
   V8Server/V8AnalyzersTest.cpp
   V8Server/V8UsersTest.cpp
   V8Server/V8ViewsTest.cpp
-  VocBase/VocbaseTest.cpp
+  VocBase/ComputedValuesTest.cpp
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
   VocBase/VersionTest.cpp
+  VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
   Zkd/Conversion.cpp
   Zkd/Library.cpp
-  ${ADDITIONAL_TEST_SOURCES})
-
-set(ARANGODB_REPLICATION2_TEST_SOURCES
-  Replication2/Helper/ModelChecker/Actors.cpp
-  Replication2/Helper/ModelChecker/AgencyTransition.cpp
-  Replication2/Helper/WaitForQueue.cpp
-  Replication2/Mocks/AsyncFollower.cpp
-  Replication2/Mocks/AsyncFollower.h
-  Replication2/Mocks/AsyncLeader.cpp
-  Replication2/Mocks/FakeAbstractFollower.h
-  Replication2/Mocks/FakeFailureOracle.cpp
-  Replication2/Mocks/FakeFailureOracle.h
-  Replication2/Mocks/FakeFollower.cpp
-  Replication2/Mocks/FakeFollower.h
-  Replication2/Mocks/FakeReplicatedLog.cpp
-  Replication2/Mocks/FakeReplicatedLog.h
-  Replication2/Mocks/FakeReplicatedState.cpp
-  Replication2/Mocks/PersistedLog.cpp
-  Replication2/Mocks/PersistedLog.cpp
-  Replication2/Mocks/PersistedLog.h
-  Replication2/Mocks/PersistedLog.h
-  Replication2/Mocks/ReplicatedLogMetricsMock.cpp
-  Replication2/Mocks/ReplicatedStateMetricsMock.cpp
-  Replication2/ModelChecker/ModelChecker.cpp
-  Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
-  Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
-  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
-  Replication2/ReplicatedLog/ChangeStreamTests.cpp
-  Replication2/ReplicatedLog/CheckLogsTest.cpp
-  Replication2/ReplicatedLog/ConcurrencyTests.cpp
-  Replication2/ReplicatedLog/DetectConflictTest.cpp
-  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
-  Replication2/ReplicatedLog/FollowerAppendEntries.cpp
-  Replication2/ReplicatedLog/FollowerWaitFor.cpp
-  Replication2/ReplicatedLog/InMemoryLogTest.cpp
-  Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
-  Replication2/ReplicatedLog/LogFollowerCompactionTest.cpp
-  Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
-  Replication2/ReplicatedLog/LogReclaimTest.cpp
-  Replication2/ReplicatedLog/LogStatusTest.cpp
-  Replication2/ReplicatedLog/MaintenanceTests.cpp
-  Replication2/ReplicatedLog/MultiTermTest.cpp
-  Replication2/ReplicatedLog/ParticipantResignTest.cpp
-  Replication2/ReplicatedLog/ParticipantsHealthTest.cpp
-  Replication2/ReplicatedLog/ReplicatedLogTest.cpp
-  Replication2/ReplicatedLog/RewriteLogTest.cpp
-  Replication2/ReplicatedLog/RocksDBLogTest.cpp
-  Replication2/ReplicatedLog/SimpleInsertTests.cpp
-  Replication2/ReplicatedLog/SupervisionTest.cpp
-  Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
-  Replication2/ReplicatedLog/TestHelper.cpp
-  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
-  Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
-  Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedState/FollowerSnapshotTest.cpp
-  Replication2/ReplicatedState/FollowerWaitForTest.cpp
-  Replication2/ReplicatedState/LeaderRecoveryTest.cpp
-  Replication2/ReplicatedState/MaintenanceTest.cpp
-  Replication2/ReplicatedState/DocumentStateMachineTest.cpp
-  Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
-  Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
-  Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/ReplicatedState/SupervisionModelChecker.cpp
-  Replication2/ReplicatedState/SupervisionTest.cpp
-  Replication2/Serialization/AgencyLogSpecificationTest.cpp
-  Replication2/Serialization/LogCommonTest.cpp
-  Replication2/Serialization/LogStatusTest.cpp
-  Replication2/Streams/LogMultiplexerTest.cpp
-  Replication2/Streams/MultiplexerConcurrencyTest.cpp
-  Replication2/Streams/TestLogSpecification.cpp
-  Replication2/Streams/TestLogSpecification.h
-  Replication2/ReplicatedState/ReplicatedStateMetricsTest.cpp
-  Replication2/ReplicatedLog/MetricsTest.cpp
-)
+  ${ADDITIONAL_TEST_SOURCES} Cluster/ShardAutoRebalancerTest.cpp)
 
 set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/ClusterTraverserCacheTest.cpp
@@ -381,6 +310,7 @@ set(ARANGODB_GRAPH_TEST_SOURCES
   Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
+  Graph/AllShortestPathsFinderTest.cpp
   Graph/DFSFinderTest.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/PathStoreTest.cpp
@@ -415,18 +345,6 @@ add_executable(
   main.cpp
 )
 
-set(USE_SEPARATE_REPLICATION2_TESTS_BINARY FALSE CACHE BOOL
-  "Write a separate binary 'arangodbtests_replication2', containing only the Replication 2.0 tests.")
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  add_executable(
-    arangodbtests_replication2
-    ${ARANGODB_TESTS_COMMON_SOURCES}
-    ${ARANGODB_REPLICATION2_TEST_SOURCES}
-    main.cpp
-  )
-endif()
-
 set(USE_SEPARATE_GRAPH_TESTS_BINARY FALSE CACHE BOOL
         "Write a separate binary 'arangodbtests_graph', containing only the graph tests.")
 
@@ -460,26 +378,12 @@ target_link_libraries(arangodbtests
   fmt
 )
 
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_link_libraries(arangodbtests_replication2
-    gtest
-    arango_agency
-    arango_v8server
-    arangoserver
-    arango_replication2
-    arango_iresearch
-    fmt
-  )
-endif()
-
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_link_libraries(arangodbtests_graph
           gtest
           arango_agency
           arango_v8server
           arangoserver
-          arango_replication2
           arango_iresearch
           )
 endif()
@@ -494,16 +398,6 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_include_directories(arangodbtests_replication2 PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
-  )
-  target_link_libraries(arangodbtests_replication2 arango)
-endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph PRIVATE
@@ -555,12 +449,6 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
 )
 
 target_link_libraries(arangodbtests v8_interface)
-
-if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
-  target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
-  )
-endif()
 
 if (USE_SEPARATE_GRAPH_TESTS_BINARY)
   target_include_directories(arangodbtests_graph SYSTEM PRIVATE

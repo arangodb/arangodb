@@ -36,8 +36,6 @@
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/TakeoverShardLeadership.h"
 #include "Cluster/UpdateCollection.h"
-#include "Cluster/UpdateReplicatedLogAction.h"
-#include "Cluster/UpdateReplicatedStateAction.h"
 
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -100,16 +98,6 @@ static factories_t factories = factories_t{
     {TAKEOVER_SHARD_LEADERSHIP,
      [](MaintenanceFeature& f, ActionDescription const& a) {
        return std::unique_ptr<ActionBase>(new TakeoverShardLeadership(f, a));
-     }},
-
-    {UPDATE_REPLICATED_LOG,
-     [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::make_unique<UpdateReplicatedLogAction>(f, a);
-     }},
-
-    {UPDATE_REPLICATED_STATE,
-     [](MaintenanceFeature& f, ActionDescription const& a) {
-       return std::make_unique<UpdateReplicatedStateAction>(f, a);
      }},
 };
 

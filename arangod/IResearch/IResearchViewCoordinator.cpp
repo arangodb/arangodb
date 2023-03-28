@@ -24,6 +24,7 @@
 #include "IResearchViewCoordinator.h"
 #include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
+#include "IResearchLinkCoordinator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -72,9 +73,9 @@ bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
 ////////////////////////////////////////////////////////////////////////////////
-struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
+struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                VPackSlice definition, bool isUserRequest) const override {
+                VPackSlice definition, bool isUserRequest) const final {
     auto& server = vocbase.server();
     if (!server.hasFeature<ClusterFeature>()) {
       return {TRI_ERROR_INTERNAL,
@@ -94,7 +95,7 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
       return r;
     }
     LogicalView::ptr impl;
-    r = cluster_helper::construct(impl, vocbase, definition);
+    r = cluster_helper::construct(impl, vocbase, definition, isUserRequest);
     if (!r.ok()) {
       return r;
     }
@@ -140,18 +141,21 @@ struct IResearchViewCoordinator::ViewFactory : public arangodb::ViewFactory {
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     velocypack::Slice definition) const override {
+                     velocypack::Slice definition,
+                     bool /*isUserRequest*/) const final {
     std::string error;
     // TODO make_shared instead of new
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
         new IResearchViewCoordinator(vocbase, definition));
     if (!impl->_meta.init(definition, error)) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "failed to initialize arangosearch View '" + impl->name() +
-                  (error.empty() ? ("' from definition: ")
-                                 : ("' from definition, error in attribute '" +
-                                    error + "': ")) +
-                  definition.toString()};
+              absl::StrCat(
+                  "failed to initialize arangosearch View '", impl->name(),
+                  (error.empty()
+                       ? "' from definition: "
+                       : absl::StrCat("' from definition, error in attribute '",
+                                      error, "': ")),
+                  definition.toString())};
     }
     view = impl;
     return {};
@@ -170,7 +174,8 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
       for (auto& entry : _collections) {
-        if (!exec.canUseCollection(vocbase().name(), entry.second.first,
+        if (!exec.canUseCollection(vocbase().name(),
+                                   entry.second->collectionName,
                                    auth::Level::RO)) {
           return {TRI_ERROR_FORBIDDEN};
         }
@@ -187,19 +192,19 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
              key != iresearch::StaticStrings::CollectionNameField;
     };
     for (auto& entry : _collections) {
-      auto linkSlice = entry.second.second.slice();
+      auto linkSlice = entry.second->linkDefinition.slice();
       if (ctx == Serialization::Properties) {
         tmp.clear();
         tmp.openObject();
         if (!mergeSliceSkipKeys(tmp, linkSlice, accept)) {
           return {TRI_ERROR_INTERNAL,
-                  "failed to generate externally visible link definition for "
-                  "arangosearch View '" +
-                      name() + "'"};
+                  absl::StrCat("failed to generate externally visible link "
+                               "definition for arangosearch View '",
+                               name(), "'")};
         }
         linkSlice = tmp.close().slice();
       }
-      build.add(entry.second.first, linkSlice);
+      build.add(entry.second->collectionName, linkSlice);
     }
     build.close();
   }
@@ -224,9 +229,9 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
   if (!_meta.json(sanitizedBuilder, nullptr, &mask) ||
       !mergeSliceSkipKeys(build, sanitizedBuilder.close().slice(), *acceptor)) {
     return {TRI_ERROR_INTERNAL,
-            "failure to generate definition while generating properties jSON "
-            "for IResearch View in database '" +
-                vocbase().name() + "'"};
+            absl::StrCat("failure to generate definition while generating "
+                         "properties jSON for IResearch View in database '",
+                         vocbase().name(), "'")};
   }
   return {};
 }
@@ -236,8 +241,8 @@ ViewFactory const& IResearchViewCoordinator::factory() {
   return factory;
 }
 
-Result IResearchViewCoordinator::link(IResearchLink const& link) {
-  auto& collection = link.collection();
+Result IResearchViewCoordinator::link(IResearchLinkCoordinator const& link) {
+  auto& collection = static_cast<IResearchLink const&>(link).collection();
   auto const& cname = collection.name();
   if (!ClusterMethods::includeHiddenCollectionInLink(cname)) {
     return {TRI_ERROR_NO_ERROR};
@@ -262,19 +267,20 @@ Result IResearchViewCoordinator::link(IResearchLink const& link) {
   // from externally visible link definition
   if (!mergeSliceSkipKeys(sanitizedBuild, builder.slice(), acceptor)) {
     return {TRI_ERROR_INTERNAL,
-            "failed to generate externally visible link definition while "
-            "emplacing collection '" +
-                std::to_string(cid.id()) + "' into arangosearch View '" +
-                name() + "'"};
+            absl::StrCat(
+                "failed to generate externally visible link definition while "
+                "emplace to collection '",
+                cid.id(), "' into arangosearch View '", name(), "'")};
   }
   sanitizedBuild.close();
   std::lock_guard lock{_mutex};
-  auto entry = _collections.try_emplace(cid, cname, std::move(sanitizedBuild));
+  auto entry = _collections.try_emplace(
+      cid, std::make_unique<Data>(cname, std::move(sanitizedBuild),
+                                  link.isBuilding()));
   if (!entry.second) {
     return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
-            "duplicate entry while emplacing collection '" +
-                std::to_string(cid.id()) + "' into arangosearch View '" +
-                name() + "'"};
+            absl::StrCat("duplicate entry while emplacing collection '",
+                         cid.id(), "' into arangosearch View '", name(), "'")};
   }
   return {};
 }
@@ -304,14 +310,26 @@ bool IResearchViewCoordinator::visitCollections(
   return true;
 }
 
+bool IResearchViewCoordinator::isBuilding() const {
+  std::shared_lock lock{_mutex};
+  for (auto& entry : _collections) {
+    if (entry.second->isBuilding) {
+      return true;
+    }
+  }
+  return false;
+}
+
 Result IResearchViewCoordinator::properties(velocypack::Slice slice,
                                             bool isUserRequest,
                                             bool partialUpdate) {
   auto& server = vocbase().server();
   if (!server.hasFeature<ClusterFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            "failure to get storage engine while updating arangosearch view '" +
-                name() + "'"};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "failure to get storage engine while updating arangosearch view '",
+            name(), "'")};
   }
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   try {
@@ -334,8 +352,9 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
             !exec.canUseCollection(name, collection->name(), auth::Level::RO)) {
           return {
               TRI_ERROR_FORBIDDEN,
-              "while updating arangosearch definition, error: collection '" +
-                  collection->name() + "' not authorized for read access"};
+              absl::StrCat(
+                  "while updating arangosearch definition, error: collection '",
+                  collection->name(), "' not authorized for read access")};
         }
       }
     }
@@ -345,11 +364,13 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
     auto const& defaults = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
     if (!meta.init(slice, error, defaults)) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "failed to update arangosearch view '" + name() +
-                  (error.empty() ? "' from definition: "
-                                 : ("' from definition, error in attribute '" +
-                                    error + "': ")) +
-                  slice.toString()};
+              absl::StrCat(
+                  "failed to update arangosearch view '", name(),
+                  (error.empty()
+                       ? "' from definition: "
+                       : absl::StrCat("' from definition, error in attribute '",
+                                      error, "': ")),
+                  slice.toString())};
     }
     // only trigger persisting of properties if they have changed
     if (!equalPartial(_meta, meta)) {
@@ -387,28 +408,33 @@ Result IResearchViewCoordinator::properties(velocypack::Slice slice,
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.code() << " " << e.what();
     return {e.code(),
-            "error updating properties for arangosearch view '" + name() + "'"};
+            absl::StrCat("error updating properties for arangosearch view '",
+                         name(), "'")};
   } catch (std::exception const& e) {
     LOG_TOPIC("86a5c", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "': " << e.what();
     return {TRI_ERROR_BAD_PARAMETER,
-            "error updating properties for arangosearch view '" + name() + "'"};
+            absl::StrCat("error updating properties for arangosearch view '",
+                         name(), "'")};
   } catch (...) {
     LOG_TOPIC("17b66", WARN, iresearch::TOPIC)
         << "caught exception while updating properties for arangosearch view '"
         << name() << "'";
     return {TRI_ERROR_BAD_PARAMETER,
-            "error updating properties for arangosearch view '" + name() + "'"};
+            absl::StrCat("error updating properties for arangosearch view '",
+                         name(), "'")};
   }
 }
 
 Result IResearchViewCoordinator::dropImpl() {
   auto& server = vocbase().server();
   if (!server.hasFeature<ClusterFeature>()) {
-    return {TRI_ERROR_INTERNAL,
-            "failure to get storage engine while dropping arangosearch view '" +
-                name() + "'"};
+    return {
+        TRI_ERROR_INTERNAL,
+        absl::StrCat(
+            "failure to get storage engine while dropping arangosearch view '",
+            name(), "'")};
   }
   auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
   // drop links first
@@ -437,8 +463,9 @@ Result IResearchViewCoordinator::dropImpl() {
       currentCids);
   if (!r.ok()) {
     return {r.errorNumber(),
-            "failed to remove links while removing arangosearch view '" +
-                name() + "': " + std::string{r.errorMessage()}};
+            absl::StrCat(
+                "failed to remove links while removing arangosearch view '",
+                name(), "': ", r.errorMessage())};
   }
   return cluster_helper::drop(*this);
 }

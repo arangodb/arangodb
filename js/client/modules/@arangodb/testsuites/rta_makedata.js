@@ -73,6 +73,7 @@ function makeDataWrapper (options) {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runRtaInArangosh";
+      this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
     }
     runOneTest(file) {
       let res = {'total':0, 'duration':0.0, 'status':true};

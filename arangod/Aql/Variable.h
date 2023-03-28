@@ -25,6 +25,7 @@
 
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
@@ -41,6 +42,8 @@ class Ast;
 struct AstNode;
 
 struct Variable {
+  struct WithConstantValue {};
+
   /// @brief name of $OLD variable
   static constexpr std::string_view NAME_OLD = "$OLD";
 
@@ -62,7 +65,7 @@ struct Variable {
   /// @brief create the variable
   Variable(std::string name, VariableId id, bool isFullDocumentFromCollection);
 
-  explicit Variable(arangodb::velocypack::Slice const&);
+  explicit Variable(velocypack::Slice slice);
 
   /// @brief destroy the variable
   ~Variable();
@@ -70,25 +73,29 @@ struct Variable {
   Variable* clone() const;
 
   /// @brief whether or not the variable is user-defined
-  bool isUserDefined() const;
+  bool isUserDefined() const noexcept;
 
   /// @brief whether or not the variable needs a register assigned
-  bool needsRegister() const;
+  bool needsRegister() const noexcept;
 
-  /// @brief return a VelocyPack representation of the variable
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  /// @brief return a VelocyPack representation of the variable, not including
+  /// the variable's constant value (if set)
+  void toVelocyPack(velocypack::Builder& builder) const;
+
+  /// @brief return a VelocyPack representation of the variable, including
+  /// the variable's constant value (if set)
+  void toVelocyPack(velocypack::Builder& builder, WithConstantValue) const;
 
   /// @brief replace a variable by another
   static Variable const* replace(
       Variable const*, std::unordered_map<VariableId, Variable const*> const&);
 
   /// @brief factory for (optional) variables from VPack
-  static Variable* varFromVPack(Ast* ast,
-                                arangodb::velocypack::Slice const& base,
-                                char const* variableName,
+  static Variable* varFromVPack(Ast* ast, velocypack::Slice base,
+                                std::string_view variableName,
                                 bool optional = false);
 
-  bool isEqualTo(Variable const& other) const;
+  bool isEqualTo(Variable const& other) const noexcept;
 
   /// @brief returns the type of the variable. The type is determined based
   // on the constantValue. If constantValue.isNone, the type is Type::Regular,
@@ -114,6 +121,9 @@ struct Variable {
   bool isFullDocumentFromCollection;
 
  private:
+  /// @brief serialize common parts
+  void toVelocyPackCommon(velocypack::Builder& builder) const;
+
   // for const variables, this stores the constant value determined
   // while initializing the plan. Note: the variable takes ownership of this
   // value and destroys it

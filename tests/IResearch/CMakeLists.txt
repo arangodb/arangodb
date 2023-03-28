@@ -60,7 +60,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTokensTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryValueTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchQueryTraversalTest.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearchRocksDBRecoveryHelperTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchPrimaryKeyReuseTest.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchTestCommon.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearchViewTest.cpp
@@ -82,7 +81,6 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
 add_executable(
   arangodbtests-iresearch
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
-  ../main.cpp
 )
 
 set_target_properties(arangodbtests-iresearch PROPERTIES EXCLUDE_FROM_ALL TRUE)
@@ -115,6 +113,7 @@ target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
 )
+
 target_link_libraries(arangodbtests-iresearch v8_interface)
 
 if (USE_JEMALLOC)

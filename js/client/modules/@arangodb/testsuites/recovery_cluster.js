@@ -39,6 +39,7 @@ const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const _ = require('lodash');
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 const toArgv = require('internal').toArgv;
 
@@ -154,6 +155,7 @@ function runArangodRecovery (params, useEncryption) {
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
+    params.instanceManager.nonfatalAssertSearch();
     if (!params.instanceManager.launchInstance()) {
       params.instanceManager.destructor(false);
       return {
@@ -183,12 +185,38 @@ function runArangodRecovery (params, useEncryption) {
   Object.assign(agentArgs, additionalTestParams);
   require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
   try {
-    pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceManager.rootDir, false);
+    let instanceInfo = {
+      rootDir: params.instanceManager.rootDir,
+      pid: 0,
+      exitStatus: {},
+      getStructure: function() { return {}; }
+    };
+
+    pu.executeAndWait(pu.ARANGOSH_BIN,
+                      toArgv(agentArgs),
+                      params.options,
+                      false,
+                      params.instanceManager.rootDir,
+                      false,
+                      0,
+                      instanceInfo);
+    if (!instanceInfo.exitStatus.hasOwnProperty('exit') || (instanceInfo.exitStatus.exit !== 0)) {
+      print('Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus));
+      params.instanceManager.shutdownInstance(false);
+      params.instanceManager.destructor(false);
+      return {
+        status: false,
+        message: 'Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus)
+      };
+    }
   } catch(err) {
     print('Error while launching test:' + err);
     params.instanceManager.shutdownInstance(false);
     params.instanceManager.destructor(false);
-    return; // without test server test will for sure fail
+    return {
+      status: false,
+      message: 'Error while launching test: ' + err
+    };
   }
   if (params.setup) {
     let dbServers = params.instanceManager.arangods.filter(
@@ -206,13 +234,13 @@ function runArangodRecovery (params, useEncryption) {
   } else {
     params.instanceManager.shutdownInstance(false);
   }
+  return {
+    status: true
+  };
 }
 
 function recovery (options) {
-  if ((!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-       global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') ||
-      (!global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] ||
-       global.ARANGODB_CLIENT_VERSION(true)['maintainer-mode'] === 'false')) {
+  if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
       recovery: {
         status: false,
@@ -234,13 +262,7 @@ function recovery (options) {
   let results = {
     status: true
   };
-  let useEncryption = false;
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
+  let useEncryption = isEnterprise();
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, options);
 
@@ -269,8 +291,11 @@ function recovery (options) {
       };
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
-      runArangodRecovery(params, useEncryption);
-
+      let ret = runArangodRecovery(params, useEncryption);
+      if (!ret.status) {
+        results[test] = ret;
+        continue;
+      }
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;

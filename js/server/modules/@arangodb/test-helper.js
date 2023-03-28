@@ -35,20 +35,25 @@ let {
   getServersByType,
   getEndpointById,
   getEndpointsByType,
-  Helper,
+  helper,
   deriveTestSuite,
   deriveTestSuiteWithnamespace,
   typeName,
   isEqual,
   compareStringIds,
-    } = require('@arangodb/test-helper-common');
+  endpointToURL,
+  versionHas,
+  isEnterprise,
+} = require('@arangodb/test-helper-common');
 const clusterInfo = global.ArangoClusterInfo;
 
+exports.isEnterprise = isEnterprise;
+exports.versionHas = versionHas;
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
 exports.getEndpointById = getEndpointById;
 exports.getEndpointsByType = getEndpointsByType;
-exports.Helper = Helper;
+exports.helper = helper;
 exports.deriveTestSuite = deriveTestSuite;
 exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
@@ -180,5 +185,35 @@ exports.waitForShardsInSync = function(cn, timeout) {
     internal.wait(1);
   }
   assertTrue(false, "Shards were not getting in sync in time, giving up!");
-  return;
 };
+
+exports.getCoordinators = function () {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getCoordinators().map(id => ({id}));
+};
+
+exports.getDBServers = function() {
+  // Note that the client implementation has more information, not all of which
+  // we have available.
+  return global.ArangoClusterInfo.getDBServers().map(x => ({id: x.serverId}));
+};
+
+exports.triggerMetrics = function () {
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=write_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  request({
+    method: "get",
+    url: "/_db/_system/_admin/metrics?mode=trigger_global",
+    headers: {accept: "application/json"},
+    body: {}
+  });
+  require("internal").sleep(2);
+};
+
+exports.uniqid = global.ArangoClusterInfo.uniqid;
+exports.agency = global.ArangoAgency;

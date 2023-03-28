@@ -41,6 +41,7 @@ const SetGlobalExecutionDeadlineTo = require('internal').SetGlobalExecutionDeadl
 const userManager = require("@arangodb/users");
 const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const setDidSplitBuckets = require('@arangodb/testutils/testrunner').setDidSplitBuckets;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -165,6 +166,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
+  
+  if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
+    whichFilter.filter = 'non-windows';
+    return false;
+  }
 
 // *.<ext>_DISABLED should be used instead
 //  if (testname.indexOf('-disabled') !== -1) {
@@ -187,8 +193,8 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if ((testname.indexOf('-noasan') !== -1) && global.ARANGODB_CLIENT_VERSION(true).asan === 'true') {
-    whichFilter.filter = 'skip when built with asan';
+  if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
+    whichFilter.filter = 'skip when built with asan or tsan';
     return false;
   }
 
@@ -255,7 +261,7 @@ function doOnePathInner (path) {
 
 function scanTestPaths (paths, options) {
   // add Enterprise Edition tests
-  if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
+  if (isEnterprise()) {
     paths = paths.concat(paths.map(function(p) {
       return 'enterprise/' + p;
     }));
@@ -323,7 +329,7 @@ class runOnArangodRunner extends testRunnerBase{
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
-      if (this.options.isAsan) {
+      if (this.options.isSan) {
         httpOptions.timeout *= 2;
       }
       if (this.options.valgrind) {

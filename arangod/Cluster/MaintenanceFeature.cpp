@@ -187,7 +187,7 @@ void MaintenanceFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.maintenance-threads",
-      "maximum number of threads available for maintenance actions",
+      "The maximum number of threads available for maintenance actions.",
       new UInt32Parameter(&_maintenanceThreadsMax),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -197,8 +197,9 @@ void MaintenanceFeature::collectOptions(
 
   options
       ->addOption("--server.maintenance-slow-threads",
-                  "maximum number of threads available for slow maintenance "
-                  "actions (long SynchronizeShard and long EnsureIndex)",
+                  "The maximum number of threads available for slow "
+                  "maintenance actions (long SynchronizeShard and long "
+                  "EnsureIndex).",
                   new UInt32Parameter(&_maintenanceThreadsSlowMax),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -209,7 +210,7 @@ void MaintenanceFeature::collectOptions(
 
   options->addOption(
       "--server.maintenance-actions-block",
-      "minimum number of seconds finished Actions block duplicates",
+      "The minimum number of seconds finished actions block duplicates.",
       new Int32Parameter(&_secondsActionsBlock),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -218,7 +219,7 @@ void MaintenanceFeature::collectOptions(
 
   options->addOption(
       "--server.maintenance-actions-linger",
-      "minimum number of seconds finished Actions remain in deque",
+      "The minimum number of seconds finished actions remain in the deque.",
       new Int32Parameter(&_secondsActionsLinger),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
@@ -227,7 +228,7 @@ void MaintenanceFeature::collectOptions(
 
   options->addOption(
       "--cluster.resign-leadership-on-shutdown",
-      "create resign leader ship job for this dbsever on shutdown",
+      "Create a resign leader ship job for this DB-Server on shutdown.",
       new BooleanParameter(&_resignLeadershipOnShutdown),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,

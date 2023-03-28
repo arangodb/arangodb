@@ -24,43 +24,53 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const internal = require("internal");
+const request = require('@arangodb/request');
+const helper = require('@arangodb/test-helper');
+const _ = require("lodash");
+
+const dbservers = (function () {
+  const isType = (d) => (d.instanceRole.toLowerCase() === "dbserver");
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType).map((x) => x.id);
+})();
 
 function adminLogSuite() {
   'use strict';
-      
-  let log = function(level) {
+
+  let log = function (level) {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
   let oldLogLevel;
 
   return {
-    setUpAll : function() {
+    setUpAll: function () {
       oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", { general: "info" });
+      arango.PUT("/_admin/log/level", {general: "info"});
     },
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      arango.PUT("/_admin/log/level", {general: oldLogLevel});
     },
 
-    setUp : function() {
+    setUp: function () {
       arango.DELETE("/_admin/log");
     },
-    
+
     testPutAdminSetAllLevels: function () {
       let previous = arango.GET("/_admin/log/level");
       try {
         // set all log levels to trace
-        let res = arango.PUT("/_admin/log/level", { all: "trace" });
+        let res = arango.PUT("/_admin/log/level", {all: "trace"});
         Object.keys(res).forEach((topic) => {
           assertEqual(res[topic], "TRACE");
         });
-      
+
         // delete all exiting log messages
         arango.DELETE("/_admin/log");
-      
+
         log("trace");
         // wait until we have at least 5 log messages (should not
         // take long with all log levels set to trace)
@@ -80,7 +90,7 @@ function adminLogSuite() {
         Object.keys(res).forEach((topic) => {
           assertEqual(res[topic], "TRACE");
         });
-        res = arango.PUT("/_admin/log/level", { all: "info", syscall: "trace" });
+        res = arango.PUT("/_admin/log/level", {all: "info", syscall: "trace"});
         Object.keys(res).forEach((topic) => {
           if (topic === "syscall") {
             assertEqual(res[topic], "TRACE");
@@ -92,6 +102,26 @@ function adminLogSuite() {
         // cleanup
         arango.PUT("/_admin/log/level", previous);
       }
+    },
+
+    testPutAdminLogLevelOtherServer: function () {
+      if (dbservers.length === 0) {
+        return;
+      }
+      const server = dbservers[0];
+      const url = helper.getEndpointById(server);
+      const old = request.get(`${url}/_admin/log/level`);
+      // change the value via coordinator
+      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace"});
+      assertEqual(res.trx, "TRACE");
+      // read directly from dbserver
+      const newValue = request.get(`${url}/_admin/log/level`);
+      assertEqual(newValue.json.trx, "TRACE");
+      // restore old value
+      request.put(`${url}/_admin/log/level`, {body: {"trx": old.json.trx}, json: true});
+      // now read the restored value
+      const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
+      assertEqual(old.json.trx, newOld.trx);
     },
 
     testGetAdminLogOldFormat: function () {

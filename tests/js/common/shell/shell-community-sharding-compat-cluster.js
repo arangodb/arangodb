@@ -73,9 +73,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.insert(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -91,8 +93,13 @@ function DocumentShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: i })._key);
+        docs.push({ value: i });
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
@@ -108,9 +115,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.save(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -129,9 +138,11 @@ function DocumentShardingSuite() {
       assertEqual(["_key"], c1.properties()["shardKeys"]);
       assertEqual(["_key"], c2.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c2.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c2.save(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c2.count(true)).sort());
 
@@ -151,8 +162,13 @@ function DocumentShardingSuite() {
       assertEqual(["two"], c2.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c2.insert({ two: i })._key);
+        docs.push({ two: i });
+      }
+      docs = c2.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c2.count(true)).sort());
@@ -173,8 +189,13 @@ function DocumentShardingSuite() {
       assertEqual(["three", "four"], c2.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c2.insert({ three: i, four: i + 1 })._key);
+        docs.push({ three: i, four: i + 1 });
+      }
+      docs = c2.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 187, 188, 203, 208, 214 ], Object.values(c2.count(true)).sort());
@@ -201,8 +222,13 @@ function DocumentShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ })._key);
+        docs.push({});
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
@@ -219,8 +245,13 @@ function DocumentShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: i })._key);
+        docs.push({ value: i });
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c.count(true)).sort());
@@ -237,8 +268,13 @@ function DocumentShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: null })._key);
+        docs.push({ value: null });
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
@@ -259,8 +295,13 @@ function DocumentShardingSuite() {
       assertEqual(["value"], c2.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c2.insert({ value: i })._key);
+        docs.push({ value: i });
+      }
+      docs = c2.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c2.count(true)).sort());
@@ -313,9 +354,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
+        docs.push({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
       }
+      c.save(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -359,8 +402,13 @@ function EdgeShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: i, _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ value: i, _from: "v/test" + i, _to: "v/test" + i });
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c.count(true)).sort());
@@ -377,8 +425,13 @@ function EdgeShardingSuite() {
       assertEqual(["value"], c.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: null, _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ value: null, _from: "v/test" + i, _to: "v/test" + i });
+      }
+      docs = c.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
@@ -399,8 +452,13 @@ function EdgeShardingSuite() {
       assertEqual(["value"], c2.properties()["shardKeys"]);
 
       let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c2.insert({ value: i, _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ value: i, _from: "v/test" + i, _to: "v/test" + i });
+      }
+      docs = c2.save(docs);
+      for (let i = 0; i < 1000; ++i) {
+        keys.push(docs[i]._key);
       }
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c2.count(true)).sort());

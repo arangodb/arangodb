@@ -21,6 +21,9 @@
 /// @author Andrey Abramov
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "IResearchFeature.h"
+
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 
@@ -46,6 +49,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #ifdef USE_ENTERPRISE
@@ -54,9 +58,10 @@
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "IResearch/Containers.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -82,27 +87,111 @@
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
 
+#include <absl/strings/str_cat.h>
+#include <utils/file_utils.hpp>
+
 using namespace std::chrono_literals;
 
-namespace arangodb {
-namespace aql {
+DECLARE_GAUGE(arangodb_search_num_out_of_sync_links, uint64_t,
+              "Number of arangosearch links/indexes currently out of sync");
 
+#ifdef USE_ENTERPRISE
+DECLARE_GAUGE(arangodb_search_columns_cache_size, int64_t,
+              "ArangoSearch columns cache usage in bytes");
+#endif
+
+namespace arangodb::aql {
 class Query;
+}  // namespace arangodb::aql
 
-}  // namespace aql
-}  // namespace arangodb
 namespace arangodb::iresearch {
 namespace {
 
-aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const& node,
-                              std::span<aql::AqlValue const>) {
+// Log topic implementation for IResearch
+class IResearchLogTopic final : public LogTopic {
+ public:
+  explicit IResearchLogTopic(std::string const& name)
+      : LogTopic(name, kDefaultLevel) {
+    setIResearchLogLevel(kDefaultLevel);
+  }
+
+  virtual void setLogLevel(LogLevel level) override {
+    LogTopic::setLogLevel(level);
+    setIResearchLogLevel(level);
+  }
+
+ private:
+  static LogLevel const kDefaultLevel = LogLevel::INFO;
+
+  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
+  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
+
+  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
+                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
+                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
+                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
+                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
+                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
+                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
+                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
+                "inconsistent log level mapping");
+
+  static void log_appender(void* context, const char* function,
+                           const char* file, int line,
+                           irs::logger::level_t level, const char* message,
+                           size_t message_len);
+  static void setIResearchLogLevel(LogLevel level) {
+    if (level == LogLevel::DEFAULT) {
+      level = kDefaultLevel;
+    }
+
+    auto irsLevel = static_cast<irs::logger::level_t>(
+        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
+
+    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
+    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
+    irs::logger::output_le(irsLevel, log_appender, nullptr);
+  }
+};
+
+IResearchLogTopic LIBIRESEARCH("libiresearch");
+
+std::string const THREADS_PARAM("--arangosearch.threads");
+std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
+std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
+std::string const COMMIT_THREADS_IDLE_PARAM(
+    "--arangosearch.commit-threads-idle");
+std::string const CONSOLIDATION_THREADS_PARAM(
+    "--arangosearch.consolidation-threads");
+std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
+    "--arangosearch.consolidation-threads-idle");
+std::string const FAIL_ON_OUT_OF_SYNC(
+    "--arangosearch.fail-queries-on-out-of-sync");
+std::string const SKIP_RECOVERY("--arangosearch.skip-recovery");
+std::string const CACHE_LIMIT("--arangosearch.columns-cache-limit");
+
+aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
+                        std::span<aql::AqlValue const>) {
   THROW_ARANGO_EXCEPTION_FORMAT(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter function '%s' "
-      " is designed to be used only within a corresponding SEARCH statement "
-      "of ArangoSearch view."
-      " Please ensure function signature is correct.",
+      "ArangoSearch function '%s' is designed to be used only within a "
+      "corresponding SEARCH statement of ArangoSearch view. Please ensure "
+      "function signature is correct.",
       getFunctionName(node).data());
+}
+
+aql::AqlValue offsetInfoFunc(aql::ExpressionContext* ctx,
+                             aql::AstNode const& node,
+                             std::span<aql::AqlValue const> args) {
+#ifdef USE_ENTERPRISE
+  return dummyFunc(ctx, node, args);
+#else
+  return aql::functions::NotImplementedEE(ctx, node, args);
+#endif
 }
 
 // Function body for ArangoSearch context functions ANALYZER/BOOST.
@@ -218,60 +307,6 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
       aql::getFunctionName(node).data());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class IResearchLogTopic
-/// @brief Log topic implementation for IResearch
-////////////////////////////////////////////////////////////////////////////////
-class IResearchLogTopic final : public LogTopic {
- public:
-  explicit IResearchLogTopic(std::string const& name)
-      : LogTopic(name, kDefaultLevel) {
-    setIResearchLogLevel(kDefaultLevel);
-  }
-
-  virtual void setLogLevel(LogLevel level) override {
-    LogTopic::setLogLevel(level);
-    setIResearchLogLevel(level);
-  }
-
- private:
-  static LogLevel const kDefaultLevel = LogLevel::INFO;
-
-  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
-  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
-
-  static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
-                        static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_ERROR) ==
-                        static_cast<arangoLogLevelType>(LogLevel::ERR) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_WARN) ==
-                        static_cast<arangoLogLevelType>(LogLevel::WARN) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_INFO) ==
-                        static_cast<arangoLogLevelType>(LogLevel::INFO) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_DEBUG) ==
-                        static_cast<arangoLogLevelType>(LogLevel::DEBUG) - 1 &&
-                    static_cast<irsLogLevelType>(irs::logger::IRL_TRACE) ==
-                        static_cast<arangoLogLevelType>(LogLevel::TRACE) - 1,
-                "inconsistent log level mapping");
-
-  static void log_appender(void* context, const char* function,
-                           const char* file, int line,
-                           irs::logger::level_t level, const char* message,
-                           size_t message_len);
-  static void setIResearchLogLevel(LogLevel level) {
-    if (level == LogLevel::DEFAULT) {
-      level = kDefaultLevel;
-    }
-
-    auto irsLevel = static_cast<irs::logger::level_t>(
-        static_cast<arangoLogLevelType>(level) - 1);  // -1 for DEFAULT
-
-    irsLevel = std::max(irsLevel, irs::logger::IRL_FATAL);
-    irsLevel = std::min(irsLevel, irs::logger::IRL_TRACE);
-    irs::logger::output_le(irsLevel, log_appender, nullptr);
-  }
-};  // IResearchLogTopic
-
 uint32_t computeIdleThreadsCount(uint32_t idleThreads,
                                  uint32_t threads) noexcept {
   if (0 == idleThreads) {
@@ -284,8 +319,8 @@ uint32_t computeIdleThreadsCount(uint32_t idleThreads,
 uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
                              uint32_t div) noexcept {
   TRI_ASSERT(div);
-  constexpr uint32_t MAX_THREADS =
-      8;  // arbitrary limit on the upper bound of threads in pool
+  // arbitrary limit on the upper bound of threads in pool
+  constexpr uint32_t MAX_THREADS = 8;
   constexpr uint32_t MIN_THREADS = 1;  // at least one thread is required
 
   return std::max(
@@ -461,7 +496,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -547,8 +582,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (attribute, ["analyzer"|"type"|"string"|"numeric"|"bool"|"null"]).
   // cannot be used in analyzers!
-  addFunction(functions,
-              {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFilterFunc});
+  addFunction(functions, {"EXISTS", ".|.,.", flagsNoAnalyzer, &dummyFunc});
 
   // (attribute, [ '[' ] prefix [, prefix, ... ']' ] [,
   // scoring-limit|min-match-count ] [, scoring-limit ])
@@ -556,8 +590,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (attribute, input [, offset, input... ] [, analyzer])
   // cannot be used in analyzers!
-  addFunction(functions,
-              {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFilterFunc});
+  addFunction(functions, {"PHRASE", ".,.|.+", flagsNoAnalyzer, &dummyFunc});
 
   // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &minMatchFunc});
@@ -581,7 +614,8 @@ void registerSingleFactory(
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
     Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::ViewType}, factory);
+        std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
+        factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
@@ -592,7 +626,20 @@ void registerSingleFactory(
     }
   }
 }
+
 }  // namespace
+
+void registerFunctions(aql::AqlFunctionFeature& functions) {
+  arangodb::iresearch::addFunction(
+      functions,
+      {"OFFSET_INFO", ".,.",
+       aql::Function::makeFlags(aql::Function::Flags::Deterministic,
+                                aql::Function::Flags::Cacheable,
+                                aql::Function::Flags::CanRunOnDBServerCluster,
+                                aql::Function::Flags::CanRunOnDBServerOneShard,
+                                aql::Function::Flags::NoEval),
+       &offsetInfoFunc});
+}
 
 void registerIndexFactory(
     std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
@@ -640,15 +687,6 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
 
         return true;
       });
-}
-
-void registerRecoveryHelper(ArangodServer& server) {
-  auto helper = std::make_shared<IResearchRocksDBRecoveryHelper>(server);
-  auto res = RocksDBEngine::registerRecoveryHelper(helper);
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        res.errorNumber(), "failed to register RocksDB recovery helper");
-  }
 }
 
 void registerUpgradeTasks(ArangodServer& server) {
@@ -709,20 +747,25 @@ void registerViewFactory(ArangodServer& server) {
   // DB server in custer or single-server
   auto& viewTypes = server.getFeature<ViewTypesFeature>();
   if (ServerState::instance()->isCoordinator()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchViewCoordinator::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchViewCoordinator::factory());
     check();
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
-                          Search::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewSearchAliasType,
+        Search::factory());
   } else if (ServerState::instance()->isSingleServer()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchView::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchView::factory());
     check();
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::SearchType,
-                          Search::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewSearchAliasType,
+        Search::factory());
   } else if (ServerState::instance()->isDBServer()) {
-    r = viewTypes.emplace(arangodb::iresearch::StaticStrings::ViewType,
-                          IResearchView::factory());
+    r = viewTypes.emplace(
+        arangodb::iresearch::StaticStrings::ViewArangoSearchType,
+        IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
                                    "Invalid role for view creation.");
@@ -746,10 +789,10 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
     return {TRI_ERROR_INTERNAL};
   }
 
-  if (view->type() == ViewType::kSearch) {
+  if (view->type() == ViewType::kSearchAlias) {
     auto& impl = basics::downCast<Search>(*view);
     return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
-  } else if (view->type() == ViewType::kView) {
+  } else if (view->type() == ViewType::kArangoSearch) {
     auto& impl = basics::downCast<IResearchView>(*view);
     return {impl.apply(trx) ? TRI_ERROR_NO_ERROR : TRI_ERROR_INTERNAL};
   }
@@ -763,18 +806,6 @@ void registerTransactionDataSourceRegistrationCallback() {
   }
 }
 
-IResearchLogTopic LIBIRESEARCH("libiresearch");
-
-std::string const THREADS_PARAM("--arangosearch.threads");
-std::string const THREADS_LIMIT_PARAM("--arangosearch.threads-limit");
-std::string const COMMIT_THREADS_PARAM("--arangosearch.commit-threads");
-std::string const COMMIT_THREADS_IDLE_PARAM(
-    "--arangosearch.commit-threads-idle");
-std::string const CONSOLIDATION_THREADS_PARAM(
-    "--arangosearch.consolidation-threads");
-std::string const CONSOLIDATION_THREADS_IDLE_PARAM(
-    "--arangosearch.consolidation-threads-idle");
-
 void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
                                      const char* file, int line,
                                      irs::logger::level_t level,
@@ -786,6 +817,20 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
 }
 
 }  // namespace
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  irs::utf8_path dataPath(feature.directory());
+  dataPath /= "databases";
+  dataPath /= "database-" + std::to_string(database.id());
+  bool exists = false;
+  if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
+      (exists && !irs::file_utils::remove(dataPath.c_str()))) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "')";
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
@@ -827,7 +872,7 @@ class IResearchAsync {
 };  // IResearchAsync
 
 bool isFilter(aql::Function const& func) noexcept {
-  return func.implementation == &dummyFilterFunc ||
+  return func.implementation == &dummyFunc ||
          func.implementation == &contextFunc ||
          func.implementation == &minMatchFunc ||
          func.implementation == &startsWithFunc ||
@@ -835,6 +880,7 @@ bool isFilter(aql::Function const& func) noexcept {
          func.implementation == &aql::functions::GeoContains ||
          func.implementation == &aql::functions::GeoInRange ||
          func.implementation == &aql::functions::GeoIntersects ||
+         func.implementation == &aql::functions::GeoDistance ||
          func.implementation == &aql::functions::LevenshteinMatch ||
          func.implementation == &aql::functions::Like ||
          func.implementation == &aql::functions::NgramMatch ||
@@ -845,16 +891,29 @@ bool isScorer(aql::Function const& func) noexcept {
   return func.implementation == &dummyScorerFunc;
 }
 
+bool isOffsetInfo(aql::Function const& func) noexcept {
+  return func.implementation == &offsetInfoFunc;
+}
+
 IResearchFeature::IResearchFeature(Server& server)
     : ArangodFeature{server, *this},
       _async(std::make_unique<IResearchAsync>()),
       _running(false),
+      _failQueriesOnOutOfSync(false),
       _consolidationThreads(0),
       _consolidationThreadsIdle(0),
       _commitThreads(0),
       _commitThreadsIdle(0),
       _threads(0),
-      _threadsLimit(0) {
+      _threadsLimit(0),
+      _outOfSyncLinks(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_num_out_of_sync_links{}))
+#ifdef USE_ENTERPRISE
+      ,
+      _columnsCacheMemoryUsed(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_search_columns_cache_size{}))
+#endif
+{
   setOptional(true);
   startsAfter<application_features::V8FeaturePhase>();
   startsAfter<IResearchAnalyzerFeature>();
@@ -867,46 +926,156 @@ void IResearchFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _running.store(false);
   options->addSection("arangosearch", std::string{name()}.append(" feature"));
+
   options
       ->addOption(THREADS_PARAM,
-                  "the exact number of threads to use for asynchronous "
-                  "tasks (0 == autodetect)",
+                  "The exact number of threads to use for asynchronous "
+                  "tasks (0 = auto-detect).",
                   new options::UInt32Parameter(&_threads))
-      .setDeprecatedIn(30705);
+      .setDeprecatedIn(30705)
+      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+and consolidation thread counts separately via the following options instead:
+
+- `--arangosearch.commit-threads`
+- `--arangosearch.commit-threads-idle`
+- `--arangosearch.consolidation-threads`
+- `--arangosearch.consolidation-threads-idle`
+
+If either `--arangosearch.commit-threads` or
+`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
+`arangosearch.threads-limit` are ignored. If only the legacy options are set,
+then the commit and consolidation thread counts are calculated as follows:
+
+- Maximum: The smaller value out of `--arangosearch.threads` and
+  `arangosearch.threads-limit` divided by 2, but at least 1.
+- Minimum: the maximum divided by 2, but at least 1.\n)");
+
   options
-      ->addOption(THREADS_LIMIT_PARAM,
-                  "upper limit to the autodetected number of threads to use "
-                  "for asynchronous tasks (0 == use default)",
-                  new options::UInt32Parameter(&_threadsLimit))
-      .setDeprecatedIn(30705);
+      ->addOption(
+          THREADS_LIMIT_PARAM,
+          "The upper limit to the auto-detected number of threads to use "
+          "for asynchronous tasks (0 = use default).",
+          new options::UInt32Parameter(&_threadsLimit))
+      .setDeprecatedIn(30705)
+      .setLongDescription(R"(From version 3.7.5 on, you should set the commit
+and consolidation thread counts separately via the following options instead:
+
+- `--arangosearch.commit-threads`
+- `--arangosearch.commit-threads-idle`
+- `--arangosearch.consolidation-threads`
+- `--arangosearch.consolidation-threads-idle`
+
+If either `--arangosearch.commit-threads` or
+`--arangosearch.consolidation-threads` is set, then `--arangosearch.threads` and
+`arangosearch.threads-limit` are ignored. If only the legacy options are set,
+then the commit and consolidation thread counts are calculated as follows:
+
+- Maximum: The smaller value out of `--arangosearch.threads` and
+  `arangosearch.threads-limit` divided by 2, but at least 1.
+- Minimum: the maximum divided by 2, but at least 1.)");
+
   options
-      ->addOption(CONSOLIDATION_THREADS_PARAM,
-                  "upper limit to the allowed number of consolidation threads "
-                  "(0 == autodetect)",
-                  new options::UInt32Parameter(&_consolidationThreads))
+      ->addOption(
+          CONSOLIDATION_THREADS_PARAM,
+          "The upper limit to the allowed number of consolidation threads "
+          "(0 = auto-detect).",
+          new options::UInt32Parameter(&_consolidationThreads))
+      .setIntroducedIn(30705)
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..arangosearch.consolidation-threads ]`. Set it to `0` to automatically
+choose a sensible number based on the number of cores in the system.)");
+
+  options
+      ->addOption(
+          CONSOLIDATION_THREADS_IDLE_PARAM,
+          "The upper limit to the allowed number of idle threads to use "
+          "for consolidation tasks (0 = auto-detect).",
+          new options::UInt32Parameter(&_consolidationThreadsIdle))
       .setIntroducedIn(30705);
-  options
-      ->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
-                  "upper limit to the allowed number of idle threads to use "
-                  "for consolidation tasks (0 == autodetect)",
-                  new options::UInt32Parameter(&_consolidationThreadsIdle))
-      .setIntroducedIn(30705);
+
   options
       ->addOption(COMMIT_THREADS_PARAM,
-                  "upper limit to the allowed number of commit threads "
-                  "(0 == autodetect)",
+                  "The upper limit to the allowed number of commit threads "
+                  "(0 = auto-detect).",
                   new options::UInt32Parameter(&_commitThreads))
-      .setIntroducedIn(30705);
+      .setIntroducedIn(30705)
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..4 * NumberOfCores ]`. Set it to `0` to automatically choose a sensible
+number based on the number of cores in the system.)");
+
   options
-      ->addOption(COMMIT_THREADS_IDLE_PARAM,
-                  "upper limit to the allowed number of idle threads to use "
-                  "for commit tasks (0 == autodetect)",
-                  new options::UInt32Parameter(&_commitThreadsIdle))
-      .setIntroducedIn(30705);
+      ->addOption(
+          COMMIT_THREADS_IDLE_PARAM,
+          "The upper limit to the allowed number of idle threads to use "
+          "for commit tasks (0 = auto-detect)",
+          new options::UInt32Parameter(&_commitThreadsIdle))
+      .setIntroducedIn(30705)
+      .setLongDescription(R"(The option value must fall in the range
+`[ 1..arangosearch.commit-threads ]`. Set it to `0` to automatically choose a
+sensible number based on the number of cores in the system.)");
+
+  options
+      ->addOption(
+          SKIP_RECOVERY,  // TODO: Move parts of the descriptions to
+                          // longDescription?
+          "Skip the data recovery for the specified View link or inverted "
+          "index on startup. The value for this option needs to have the "
+          "format '<collection-name>/<index-id>' or "
+          "'<collection-name>/<index-name>'. You can use the option multiple "
+          "times, for each View link and inverted index to skip the recovery "
+          "for. The pseudo-value 'all' disables the recovery for all View "
+          "links and inverted indexes. The links/indexes skipped during the "
+          "recovery are marked as out-of-sync when the recovery completes. You "
+          "need to recreate them manually afterwards.\n"
+          "WARNING: Using this option causes data of affected links/indexes to "
+          "become incomplete or more incomplete until they have been manually "
+          "recreated.",
+          new options::VectorParameter<options::StringParameter>(
+              &_skipRecoveryItems))
+      .setIntroducedIn(30904);
+
+  options
+      ->addOption(FAIL_ON_OUT_OF_SYNC,
+                  "Whether or not retrieval queries on out-of-sync "
+                  "View links and inverted indexes should fail.",
+                  new options::BooleanParameter(&_failQueriesOnOutOfSync))
+      .setIntroducedIn(30904)
+      .setLongDescription(R"(If set to `true`, any data retrieval queries on
+out-of-sync links/indexes fail with the error 'collection/view is out of sync'
+(error code 1481).
+
+If set to `false`, queries on out-of-sync links/indexes are answered normally,
+but the returned data may be incomplete.)");
+#ifdef USE_ENTERPRISE
+  options
+      ->addOption(
+          CACHE_LIMIT,
+          "Limit in bytes for ArangoSearch columns cache. (0 = no caching)",
+          new options::UInt64Parameter(&_columnsCacheLimit),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Enterprise))
+      .setIntroducedIn(30905);
+#endif
 }
 
 void IResearchFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
+  // validate all entries in _skipRecoveryItems for formal correctness
+  for (auto const& item : _skipRecoveryItems) {
+    if (item != "all" && basics::StringUtils::split(item, '/').size() != 2) {
+      LOG_TOPIC("b9f28", FATAL, arangodb::iresearch::TOPIC)
+          << "invalid format for '" << SKIP_RECOVERY
+          << "' parameter. expecting '"
+          << "<collection-name>/<index-id>' or "
+             "'<collection-name>/<index-name>' or "
+          << "'all', got: '" << item << "'";
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   auto const& args = options->processingResult();
   bool const threadsSet = args.touched(THREADS_PARAM);
   bool const threadsLimitSet = args.touched(THREADS_LIMIT_PARAM);
@@ -966,13 +1135,14 @@ void IResearchFeature::prepare() {
   // register 'arangosearch' Transaction DataSource registration callback
   registerTransactionDataSourceRegistrationCallback();
 
-  registerRecoveryHelper(server());
+  registerRecoveryHelper();
 
   // register filters
   if (server().hasFeature<aql::AqlFunctionFeature>()) {
     auto& functions = server().getFeature<aql::AqlFunctionFeature>();
     registerFilters(functions);
     registerScorers(functions);
+    registerFunctions(functions);
   } else {
     LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
         << "failure to find feature 'AQLFunctions' while registering "
@@ -993,7 +1163,7 @@ void IResearchFeature::prepare() {
     auto submitTask = [this](ThreadGroup group) {
       return queue(group, 0ms, [state = _startState]() noexcept {
         {
-          auto lock = irs::make_lock_guard(state->mtx);
+          std::lock_guard lock{state->mtx};
           ++state->counter;
         }
         state->cv.notify_one();
@@ -1037,8 +1207,13 @@ void IResearchFeature::start() {
         << "[" << _consolidationThreadsIdle << ".." << _consolidationThreads
         << "] consolidation thread(s)";
 
+#ifdef USE_ENTERPRISE
+    LOG_TOPIC("c2c74", INFO, arangodb::iresearch::TOPIC)
+        << "ArangoSearch columns cache limit: " << _columnsCacheLimit;
+#endif
+
     {
-      auto lock = irs::make_unique_lock(_startState->mtx);
+      std::unique_lock lock{_startState->mtx};
       if (!_startState->cv.wait_for(
               lock, 60s, [this]() { return _startState->counter == 2; })) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -1064,6 +1239,27 @@ void IResearchFeature::stop() {
 void IResearchFeature::unprepare() {
   TRI_ASSERT(isEnabled());
   _running.store(false);
+}
+
+void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
+                                              std::string_view phase,
+                                              size_t current, size_t total) {
+  TRI_ASSERT(total != 0);
+  auto now = std::chrono::system_clock::now();
+
+  if (id != _progressState.lastReportId ||
+      now - _progressState.lastReportTime >= std::chrono::minutes(1)) {
+    // report progress only when index/link id changes or one minute has passed
+
+    auto progress = static_cast<size_t>(100.0 * current / total);
+    LOG_TOPIC("d1f18", INFO, TOPIC)
+        << "recovering arangosearch index " << id << ", " << phase
+        << ": operation " << (current + 1) << "/" << total << " (" << progress
+        << "%)...";
+
+    _progressState.lastReportId = id;
+    _progressState.lastReportTime = now;
+  }
 }
 
 bool IResearchFeature::queue(ThreadGroup id,
@@ -1124,6 +1320,73 @@ std::tuple<size_t, size_t, size_t> IResearchFeature::stats(
 std::pair<size_t, size_t> IResearchFeature::limits(ThreadGroup id) const {
   return _async->get(id).limits();
 }
+
+bool IResearchFeature::linkSkippedDuringRecovery(
+    arangodb::IndexId id) const noexcept {
+  if (_recoveryHelper != nullptr) {
+    return _recoveryHelper->wasSkipped(id);
+  }
+  return false;
+}
+
+void IResearchFeature::trackOutOfSyncLink() noexcept { ++_outOfSyncLinks; }
+
+void IResearchFeature::untrackOutOfSyncLink() noexcept {
+  uint64_t previous = _outOfSyncLinks.fetch_sub(1);
+  TRI_ASSERT(previous > 0);
+}
+
+bool IResearchFeature::failQueriesOnOutOfSync() const noexcept {
+  TRI_IF_FAILURE("ArangoSearch::FailQueriesOnOutOfSync") {
+    // here to test --arangosearch.fail-queries-on-out-of-sync
+    return true;
+  }
+  return _failQueriesOnOutOfSync;
+}
+
+void IResearchFeature::registerRecoveryHelper() {
+  if (!_skipRecoveryItems.empty()) {
+    LOG_TOPIC("e36f2", WARN, arangodb::iresearch::TOPIC)
+        << "arangosearch recovery explicitly disabled via the '"
+        << SKIP_RECOVERY << "' startup option for the following links/indexes: "
+        << _skipRecoveryItems
+        << ". all affected links/indexes that are touched during "
+           "recovery will be marked as out of sync and should be recreated "
+           "manually when the recovery is finished.";
+  }
+
+  _recoveryHelper = std::make_shared<IResearchRocksDBRecoveryHelper>(
+      server(), _skipRecoveryItems);
+  auto res = RocksDBEngine::registerRecoveryHelper(_recoveryHelper);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        absl::StrCat("failed to register RocksDB recovery helper: ",
+                     res.errorMessage()));
+  }
+}
+
+#ifdef USE_ENTERPRISE
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+int64_t IResearchFeature::columnsCacheUsage() const noexcept {
+  return _columnsCacheMemoryUsed.load();
+}
+#endif
+bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
+  bool done = false;
+  int64_t current = _columnsCacheMemoryUsed.load(std::memory_order_relaxed);
+  do {
+    const auto newValue = current + diff;
+    if (newValue <= static_cast<int64_t>(_columnsCacheLimit)) {
+      TRI_ASSERT(newValue >= 0);
+      done = _columnsCacheMemoryUsed.compare_exchange_weak(current, newValue);
+    } else {
+      return false;
+    }
+  } while (!done);
+  return true;
+}
+#endif
 
 template<typename Engine, typename std::enable_if_t<
                               std::is_base_of_v<StorageEngine, Engine>, int>>

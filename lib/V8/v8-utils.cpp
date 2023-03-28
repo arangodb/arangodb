@@ -2335,7 +2335,7 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       uint32_t pos = 0;
 
-      for (auto level : levels) {
+      for (auto const& level : levels) {
         std::string output =
             level.first + "=" + Logger::translateLogLevel(level.second);
         v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
@@ -2898,7 +2898,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = TRI_WRITE(STDOUT_FILENO, ptr, static_cast<TRI_write_t>(len));
+      auto n = TRI_WRITE(STDOUT_FILENO, ptr, static_cast<TRI_write_t>(len));
 
       if (n < 0) {
         break;
@@ -6201,14 +6201,6 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
       TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
-
-#ifdef COVERAGE
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::True(isolate));
-#else
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::False(isolate));
-#endif
 
   TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "VERSION"),
                                TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));

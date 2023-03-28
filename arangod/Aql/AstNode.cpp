@@ -165,6 +165,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
+    {static_cast<int>(NODE_TYPE_WINDOW), "window"},
 };
 
 /// @brief names for AST node value types
@@ -1563,15 +1564,32 @@ bool AstNode::willUseV8() const {
 
     if (func->name == "CALL" || func->name == "APPLY") {
       // CALL and APPLY can call arbitrary other functions...
-      if (numMembers() > 0 && getMemberUnchecked(0)->isStringValue()) {
-        auto s = getMemberUnchecked(0)->getStringView();
-        if (s.find(':') != std::string::npos) {
+      if (numMembers() > 0 && getMemberUnchecked(0)->isArray() &&
+          getMemberUnchecked(0)->numMembers() > 0 &&
+          getMemberUnchecked(0)->getMemberUnchecked(0)->isStringValue()) {
+        // calling a function with a fixed name (known an query compile time)
+        if (auto s =
+                getMemberUnchecked(0)->getMemberUnchecked(0)->getStringView();
+            s.find(':') != std::string::npos) {
           // a user-defined function.
           // this will use V8
           setFlag(DETERMINED_V8, VALUE_V8);
           return true;
+        } else {
+          // a built-in function (or some invalid function name)
+          auto [normalized, isBuiltIn] = Ast::normalizeFunctionName(s);
+          // note: normalizeFunctionName always returns an upper-case name.
+          // we must hard-code the function name here, because we can't lookup
+          // the definition for the function s without having access to the
+          // AqlFunctionsFeature, which is not present here.
+          if (normalized == "V8") {
+            // the V8() function itself... obviously uses V8
+            setFlag(DETERMINED_V8, VALUE_V8);
+            return true;
+          }
         }
-        // fallthrough intentional
+        // fallthrough intentional. additionally inspect the function call
+        // parameters for CALL/APPLY
       } else {
         // we are unsure about what function will be called by
         // CALL and APPLY. We cannot rule out user-defined functions,
@@ -1582,6 +1600,7 @@ bool AstNode::willUseV8() const {
     }
   }
 
+  // inspect all subnodes
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -1595,6 +1614,15 @@ bool AstNode::willUseV8() const {
 
   setFlag(DETERMINED_V8);
   return false;
+}
+
+/// @brief whether or not a node's filter condition can be used inside a
+/// TraversalNode
+bool AstNode::canBeUsedInFilter(bool isOneShard) const {
+  if (willUseV8() || !canRunOnDBServer(isOneShard) || !isDeterministic()) {
+    return false;
+  }
+  return true;
 }
 
 /// @brief whether or not a node has a constant value
@@ -2113,6 +2141,12 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
+  if (type == NODE_TYPE_NOP) {
+    // not used by V8
+    buffer.append("NOP");
+    return;
+  }
+
   if (type == NODE_TYPE_ITERATOR) {
     // not used by V8
     buffer.append("_ITERATOR(");
@@ -2232,7 +2266,7 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   std::string message("stringification not supported for node type ");
   message.append(getTypeString());
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
 }
 
 /// note that this may throw and that the caller is responsible for

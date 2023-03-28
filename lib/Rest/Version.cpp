@@ -139,7 +139,7 @@ void Version::initialize() {
 
   Values["architecture"] =
       (sizeof(void*) == 4 ? "32" : "64") + std::string("bit");
-#ifdef __arm__
+#if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   Values["arm"] = "true";
 #else
   Values["arm"] = "false";
@@ -162,6 +162,11 @@ void Version::initialize() {
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
+#endif
+#ifdef USE_COVERAGE
+  Values["coverage"] = "true";
+#else
+  Values["coverage"] = "false";
 #endif
 #ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);

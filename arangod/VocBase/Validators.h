@@ -68,6 +68,8 @@ struct ValidatorBase {
   void setLevel(ValidationLevel level) noexcept { _level = level; }
   ValidationLevel level() { return _level; }
 
+  static bool isSame(VPackSlice validator1, VPackSlice validator2);
+
  protected:
   virtual void toVelocyPackDerived(VPackBuilder&) const = 0;
 

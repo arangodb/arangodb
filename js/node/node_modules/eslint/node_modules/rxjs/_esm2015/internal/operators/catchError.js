@@ -1,6 +1,4 @@
-import { OuterSubscriber } from '../OuterSubscriber';
-import { InnerSubscriber } from '../InnerSubscriber';
-import { subscribeToResult } from '../util/subscribeToResult';
+import { SimpleOuterSubscriber, SimpleInnerSubscriber, innerSubscribe } from '../innerSubscribe';
 export function catchError(selector) {
     return function catchErrorOperatorFunction(source) {
         const operator = new CatchOperator(selector);
@@ -16,7 +14,7 @@ class CatchOperator {
         return source.subscribe(new CatchSubscriber(subscriber, this.selector, this.caught));
     }
 }
-class CatchSubscriber extends OuterSubscriber {
+class CatchSubscriber extends SimpleOuterSubscriber {
     constructor(destination, selector, caught) {
         super(destination);
         this.selector = selector;
@@ -33,9 +31,12 @@ class CatchSubscriber extends OuterSubscriber {
                 return;
             }
             this._unsubscribeAndRecycle();
-            const innerSubscriber = new InnerSubscriber(this, undefined, undefined);
+            const innerSubscriber = new SimpleInnerSubscriber(this);
             this.add(innerSubscriber);
-            subscribeToResult(this, result, undefined, undefined, innerSubscriber);
+            const innerSubscription = innerSubscribe(result, innerSubscriber);
+            if (innerSubscription !== innerSubscriber) {
+                this.add(innerSubscription);
+            }
         }
     }
 }

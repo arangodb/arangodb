@@ -60,6 +60,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
+#include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "Logger/LogTopic.h"
@@ -1117,7 +1118,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "name";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name) RETURN d", expected);
@@ -1136,7 +1138,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "[42]";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d[42]) RETURN d", expected);
@@ -1147,7 +1150,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop.name";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop.name) RETURN d",
@@ -1169,7 +1173,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop[3].name";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.obj.prop[3].name) RETURN d",
@@ -1193,7 +1198,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop[3].name";
     exists.boost(1.5f);
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1226,7 +1232,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "obj.prop[3].name";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1263,7 +1270,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = "a.b.c.e[4].f[5].g[3].g.a";
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(),
@@ -1360,7 +1368,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleType("name");
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'type') RETURN d",
@@ -1409,7 +1418,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleAnalyzer("name");
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'string') RETURN d",
@@ -1433,6 +1443,37 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     assertFilterFail(
         vocbase(),
         "FOR d IN myView FILTER exists(d.name, 'string', 'test_analyzer') "
+        "RETURN d");
+  }
+
+  // field + nested
+  {
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    *exists.mutable_field() = mangleNested("name");
+
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER eXists(d.name, 'nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'Nested') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(), "FOR d IN myView FILTER exists(d.name, 'NESTED') RETURN d",
+        expected);
+    assertFilterSuccess(
+        vocbase(),
+        "FOR d IN myView FILTER analyzer(exists(d.name, 'NESTED'), "
+        "'test_analyzer') RETURN d",
+        expected);
+
+    // invalid 3rd argument
+    assertFilterFail(
+        vocbase(),
+        "FOR d IN myView FILTER exists(d.name, 'nested', 'test_analyzer') "
         "RETURN d");
   }
 
@@ -1461,7 +1502,8 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleAnalyzer("name");
-    exists.mutable_options()->prefix_match = true;
+    exists.mutable_options()->acceptor =
+        arangodb::iresearch::makeColumnAcceptor(false);
 
     assertFilterSuccess(vocbase(),
                         "LET anl='str' FOR d IN myView FILTER exists(d.name, "
@@ -1501,7 +1543,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleStringIdentity("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'analyzer') RETURN d",
@@ -1545,7 +1586,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleStringIdentity("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1574,7 +1614,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleNumeric("obj.name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1612,7 +1651,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleNumeric("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='nume' FOR d IN myView FILTER exists(d.name, "
@@ -1641,7 +1679,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleBool("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'bool') RETURN d",
@@ -1673,7 +1710,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleBool("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'boolean') RETURN d",
@@ -1713,7 +1749,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleBool("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='boo' FOR d IN myView FILTER exists(d.name, "
@@ -1742,7 +1777,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleNull("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(), "FOR d IN myView FILTER exists(d.name, 'null') RETURN d",
@@ -1777,7 +1811,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleNull("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(vocbase(),
                         "LET type='nu' FOR d IN myView FILTER exists(d.name, "
@@ -1837,7 +1870,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleStringIdentity("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1859,7 +1891,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleString("name", "test_analyzer");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1960,7 +1991,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleString("name", "test_analyzer");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -1991,7 +2021,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleString("name", "test_analyzer");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),
@@ -2088,7 +2117,6 @@ TEST_F(IResearchFilterFunctionTest, Exists) {
     irs::Or expected;
     auto& exists = expected.add<irs::by_column_existence>();
     *exists.mutable_field() = mangleStringIdentity("name");
-    exists.mutable_options()->prefix_match = false;
 
     assertFilterSuccess(
         vocbase(),

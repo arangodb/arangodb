@@ -20,6 +20,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "IResearchDataStoreMeta.h"
@@ -38,6 +39,8 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include <atomic>
+
 namespace arangodb {
 
 struct FlushSubscription;
@@ -51,74 +54,39 @@ class IResearchDataStore;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchDataStore handle to use with asynchronous tasks
 ////////////////////////////////////////////////////////////////////////////////
-class AsyncLinkHandle final {
- public:
-  explicit AsyncLinkHandle(IResearchDataStore* link);
-  ~AsyncLinkHandle();
-  [[nodiscard]] bool empty() const noexcept { return _link.empty(); }
-  [[nodiscard]] auto lock() noexcept { return _link.lock(); }
-  [[nodiscard]] bool terminationRequested() const noexcept {
-    return _asyncTerminate.load(std::memory_order_acquire);
-  }
-
-  AsyncLinkHandle(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle(AsyncLinkHandle&&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle const&) = delete;
-  AsyncLinkHandle& operator=(AsyncLinkHandle&&) = delete;
-
- private:
-  friend class IResearchDataStore;
-
-  void reset();
-
-  AsyncValue<IResearchDataStore> _link;
-  // trigger termination of long-running async jobs
-  std::atomic_bool _asyncTerminate{false};
-};
-
-using LinkLock = AsyncValue<IResearchDataStore>::Value;
+using AsyncLinkHandle = AsyncValue<IResearchDataStore>;
+using LinkLock = AsyncLinkHandle::Value;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container storing the index state for a given TransactionState
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchTrxState final : public TransactionState::Cookie {
-  irs::index_writer::documents_context _ctx;
   // prevent data-store deallocation (lock @ AsyncSelf)
-  LinkLock _linkLock;
+  LinkLock _linkLock;  // should be first field to destroy last
+  irs::index_writer::documents_context _ctx;
   PrimaryKeyFilterContainer _removals;  // list of document removals
+  bool _wasCommit = false;
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
+      : _linkLock{std::move(linkLock)}, _ctx{writer.documents()} {}
 
   ~IResearchTrxState() final {
-    if (_removals.empty()) {
-      return;  // nothing to do
+    if (!_wasCommit) {
+      _removals.clear();
+      _ctx.reset();
     }
-    try {
-      // hold references even after transaction
-      auto filter =
-          std::make_unique<PrimaryKeyFilterContainer>(std::move(_removals));
-      _ctx.remove(std::unique_ptr<irs::filter>(std::move(filter)));
-    } catch (std::exception const& e) {
-      LOG_TOPIC("eb463", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals: "
-          << e.what();
-    } catch (...) {
-      LOG_TOPIC("14917", ERR, arangodb::iresearch::TOPIC)
-          << "caught exception while applying accumulated removals";
-    }
+    TRI_ASSERT(_removals.empty());
   }
 
   void remove(StorageEngine& engine, LocalDocumentId const& value,
               bool nested) {
     _ctx.remove(_removals.emplace(engine, value, nested));
   }
-
-  void reset() noexcept {
-    _removals.clear();
-    _ctx.reset();
-  }
 };
+
+void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
+                           uint64_t id, bool indexIdAttribute,
+                           std::string& name);
 
 class IResearchDataStore {
  public:
@@ -160,7 +128,8 @@ class IResearchDataStore {
 
   IResearchDataStore(IndexId iid, LogicalCollection& collection);
 
-  virtual ~IResearchDataStore() = default;
+  virtual ~IResearchDataStore();
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
@@ -185,8 +154,11 @@ class IResearchDataStore {
   /// @note arangodb::Index override
   //////////////////////////////////////////////////////////////////////////////
   LogicalCollection& collection() const noexcept { return _collection; }
+  StorageEngine* engine() const noexcept { return _engine; }
 
   static bool hasSelectivityEstimate();  // arangodb::Index override
+
+  bool hasNestedFields() const noexcept { return _hasNestedFields; }
 
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx);  // arangodb::Index override
@@ -215,12 +187,19 @@ class IResearchDataStore {
   [[nodiscard]] virtual AnalyzerPool::ptr findAnalyzer(
       AnalyzerPool const& analyzer) const = 0;
 
+  auto recoveryTickHigh() const noexcept {
+    return _dataStore._recoveryTickHigh;
+  }
+
+  bool exists(Snapshot const& snapshot, LocalDocumentId documentId, bool nested,
+              uint64_t const* recoveryTick) const;
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
   Result remove(transaction::Methods& trx, LocalDocumentId documentId,
-                bool nested);
+                bool nested, uint64_t const* recoveryTick);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
@@ -229,7 +208,8 @@ class IResearchDataStore {
   ////////////////////////////////////////////////////////////////////////////////
   template<typename FieldIteratorType, typename MetaType>
   Result insert(transaction::Methods& trx, LocalDocumentId documentId,
-                velocypack::Slice doc, MetaType const& meta);
+                velocypack::Slice doc, MetaType const& meta,
+                uint64_t const* recoveryTick);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update runtine data processing properties
@@ -253,6 +233,27 @@ class IResearchDataStore {
   /// @brief get index stats for current snapshot
   ////////////////////////////////////////////////////////////////////////////////
   virtual Stats stats() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set the data store to out of sync. if a data store is out of sync,
+  /// it is known to have incomplete data and may refuse to serve queries
+  /// (depending on settings). returns true if the call set the data store to
+  /// out of sync, and false if the data store was already marked as out of
+  /// sync before.
+  //////////////////////////////////////////////////////////////////////////////
+  bool setOutOfSync() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the data store is out of sync (i.e. has incomplete
+  /// data)
+  //////////////////////////////////////////////////////////////////////////////
+  bool isOutOfSync() const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not queries on this data store fail should fail with an
+  /// error if the data store is out of sync.
+  //////////////////////////////////////////////////////////////////////////////
+  bool failQueriesOnOutOfSync() const noexcept;
 
  protected:
   friend struct CommitTask;
@@ -287,16 +288,19 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchDataStoreMeta
-        _meta;  // runtime meta for a data store (not persisted)
+    // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta _meta;
     irs::directory::ptr _directory;
-    basics::ReadWriteLock _mutex;  // for use with member '_meta'
+    // for use with member '_meta'
+    basics::ReadWriteLock _mutex;
     irs::utf8_path _path;
     irs::directory_reader _reader;
     irs::index_writer::ptr _writer;
     // the tick at which data store was recovered
-    TRI_voc_tick_t _recoveryTick{0};
-    std::atomic_bool _inRecovery{false};  // data store is in recovery
+    uint64_t _recoveryTickLow{0};
+    uint64_t _recoveryTickHigh{0};
+    // data store is in recovery
+    std::atomic_bool _inRecovery{false};
     explicit operator bool() const noexcept { return _directory && _writer; }
 
     void resetDataStore() noexcept {
@@ -323,7 +327,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  UnsafeOpResult commitUnsafe(bool wait, CommitResult* code);
+  UnsafeOpResult commitUnsafe(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -345,7 +351,9 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafeImpl(bool wait, CommitResult* code);
+  Result commitUnsafeImpl(
+      bool wait, irs::index_writer::progress_report_callback const& progress,
+      CommitResult& code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief run segment consolidation on the data store
@@ -356,14 +364,17 @@ class IResearchDataStore {
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
+  void initAsyncSelf();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
   Result initDataStore(
       bool& pathExists, InitCallback const& initCallback, uint32_t version,
-      bool sorted,
+      bool sorted, bool nested,
       std::vector<IResearchViewStoredValues::StoredColumn> const& storedColumns,
-      irs::type_info::type_id primarySortCompression);
+      irs::type_info::type_id primarySortCompression,
+      irs::index_reader_options const& readerOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief schedule a commit job
@@ -400,11 +411,22 @@ class IResearchDataStore {
   std::tuple<uint64_t, uint64_t, uint64_t> avgTime() const;
 
  protected:
+  enum class DataStoreError : uint8_t {
+    // data store has no issues
+    kNoError = 0,
+    // data store is out of sync
+    kOutOfSync = 1,
+    // data store is failed (currently not used)
+    kFailed = 2,
+  };
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Update index stats for current snapshot
   /// @note Unsafe, can only be called is _asyncSelf is locked
   ////////////////////////////////////////////////////////////////////////////////
   Stats updateStatsUnsafe() const;
+
+  void initClusterMetrics() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief insert metrics to MetricsFeature
@@ -420,7 +442,7 @@ class IResearchDataStore {
 
   virtual irs::comparer const* getComparator() const noexcept = 0;
 
-  StorageEngine* _engine;
+  StorageEngine* _engine{nullptr};
 
   // the feature where async jobs were registered (nullptr == no jobs
   // registered)
@@ -435,34 +457,53 @@ class IResearchDataStore {
   // the iresearch data store, protected by _asyncSelf->mutex()
   DataStore _dataStore;
 
+  // data store error state
+  std::atomic<DataStoreError> _error;
+
   std::shared_ptr<FlushSubscription> _flushSubscription;
   std::shared_ptr<MaintenanceState> _maintenanceState;
   IndexId const _id;
+  bool _hasNestedFields{false};
+
   // protected by _commitMutex
-  TRI_voc_tick_t _lastCommittedTick;
-  size_t _cleanupIntervalCount;
+  bool _commitStageOne{false};
+  uint64_t _lastCommittedTickOne{0};
+  uint64_t _lastCommittedTickTwo{0};
+
+  size_t _cleanupIntervalCount{0};
 
   // prevents data store sequential commits
   std::mutex _commitMutex;
 
+  irs::format::ptr _format;
+
   // for insert(...)/remove(...)
-  std::function<void(transaction::Methods& trx, transaction::Status status)>
-      _trxCallback;
+  TransactionState::BeforeCommitCallback _beforeCommitCallback;
+  TransactionState::AfterCommitCallback _afterCommitCallback;
 
-  metrics::Gauge<uint64_t>* _numFailedCommits;
-  metrics::Gauge<uint64_t>* _numFailedCleanups;
-  metrics::Gauge<uint64_t>* _numFailedConsolidations;
+  metrics::Gauge<uint64_t>* _numFailedCommits{nullptr};
+  metrics::Gauge<uint64_t>* _numFailedCleanups{nullptr};
+  metrics::Gauge<uint64_t>* _numFailedConsolidations{nullptr};
 
-  std::atomic_uint64_t _commitTimeNum;
-  metrics::Gauge<uint64_t>* _avgCommitTimeMs;
+  std::atomic_uint64_t _commitTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgCommitTimeMs{nullptr};
 
-  std::atomic_uint64_t _cleanupTimeNum;
-  metrics::Gauge<uint64_t>* _avgCleanupTimeMs;
+  std::atomic_uint64_t _cleanupTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgCleanupTimeMs{nullptr};
 
-  std::atomic_uint64_t _consolidationTimeNum;
-  metrics::Gauge<uint64_t>* _avgConsolidationTimeMs;
+  std::atomic_uint64_t _consolidationTimeNum{0};
+  metrics::Gauge<uint64_t>* _avgConsolidationTimeMs{nullptr};
 
-  metrics::Guard<Stats>* _metricStats;
+  metrics::Guard<Stats>* _metricStats{nullptr};
+
+#if ARANGODB_ENABLE_MAINTAINER_MODE && ARANGODB_ENABLE_FAILURE_TESTS
+  // auxiliary tools to test fail-cases with transactions commit order
+  std::mutex _t3FailureSync;
+  std::vector<uint64_t> _t3Candidates;
+  uint64_t _t3PreCommit{0};
+  uint64_t _t3NumFlushRegistered{0};
+  bool _t3CommitSignal{false};
+#endif
 };
 
 irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,

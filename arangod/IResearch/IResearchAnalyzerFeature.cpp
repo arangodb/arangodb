@@ -61,6 +61,7 @@
 #include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchKludge.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -87,6 +88,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchAnalyzerFeature.h"
+#include "Enterprise/IResearch/GeoAnalyzerEE.h"
 #endif
 
 namespace {
@@ -119,8 +121,8 @@ REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make,
                         IdentityAnalyzer::normalize);
 REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make_json,
                        IdentityAnalyzer::normalize_json);
-REGISTER_ANALYZER_VPACK(GeoJSONAnalyzer, GeoJSONAnalyzer::make,
-                        GeoJSONAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
+                        GeoVPackAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
@@ -494,8 +496,10 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     if (!coords.empty() &&
         !vocbase.isSystem() &&  // System database could be on other server so
                                 // OneShard optimization will not work
-        (vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-         vocbase.isOneShard())) {
+        vocbase.isOneShard()) {
+      TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
@@ -526,29 +530,31 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       if (shards->empty()) {
         return {};  // treat missing collection as if there are no analyzers
       }
-      // If this is indeed OneShard this should be us!
-      TRI_ASSERT(shards->begin()->second.front() ==
-                 ServerState::instance()->getId());
-      auto oneShardQueryString =
-          aql::QueryString("FOR d IN "s + shards->begin()->first + " RETURN d");
-      auto query =
-          aql::Query::create(transaction::StandaloneContext::Create(vocbase),
-                             std::move(oneShardQueryString), nullptr);
+      // If this is indeed OneShard this should be us.
+      // satellite collections and dirty-reads may break this assumption.
+      // In that case we just proceed with regular cluster query
+      if (shards->begin()->second.front() == ServerState::instance()->getId()) {
+        auto oneShardQueryString = aql::QueryString(
+            "FOR d IN "s + shards->begin()->first + " RETURN d");
+        auto query =
+            aql::Query::create(transaction::StandaloneContext::Create(vocbase),
+                               std::move(oneShardQueryString), nullptr);
 
-      auto result = query->executeSync();
+        auto result = query->executeSync();
 
-      if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-          result.result.errorNumber()) {
-        return {};  // treat missing collection as if there are no analyzers
+        if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+            result.result.errorNumber()) {
+          return {};  // treat missing collection as if there are no analyzers
+        }
+
+        if (result.result.fail()) {
+          return result.result;
+        }
+
+        auto slice = result.data->slice();
+
+        return resultVisitor(visitor, vocbase, slice);
       }
-
-      if (result.result.fail()) {
-        return result.result;
-      }
-
-      auto slice = result.data->slice();
-
-      return resultVisitor(visitor, vocbase, slice);
     }
 
     network::RequestOptions reqOpts;
@@ -787,9 +793,14 @@ std::tuple<AnalyzerValueType, AnalyzerValueType, AnalyzerPool::StoreFunc>
 getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   TRI_ASSERT(analyzer);
   auto const type = analyzer->type();
-  if (type == irs::type<GeoJSONAnalyzer>::id()) {
+  if (type == irs::type<GeoVPackAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
-            AnalyzerValueType::String, &GeoJSONAnalyzer::store};
+            AnalyzerValueType::String, &GeoVPackAnalyzer::store};
+#ifdef USE_ENTERPRISE
+  } else if (type == irs::type<GeoS2Analyzer>::id()) {
+    return {AnalyzerValueType::Object | AnalyzerValueType::Array,
+            AnalyzerValueType::String, &GeoS2Analyzer::store};
+#endif
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
@@ -939,7 +950,7 @@ bool AnalyzerPool::init(irs::string_ref const& type,
         _type = irs::string_ref(_config.c_str() + _properties.byteSize(),
                                 type.size());
       }
-      _requireMangling = isGeoAnalyzer(_type);
+      _requireMangling = kludge::isGeoAnalyzer(_type);
 
       if (instance->type() ==
           irs::type<irs::analysis::pipeline_token_stream>::id()) {
@@ -1516,6 +1527,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(TRI_vocbase_t& vocbase) {
       SingleCollectionTransaction trx(
           ctx, arangodb::StaticStrings::AnalyzersCollection,
           AccessMode::Type::EXCLUSIVE);
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
       auto res = trx.begin();
       if (res.fail()) {
@@ -1987,6 +1999,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
     SingleCollectionTransaction trx(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
     trx.begin();
 
     auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);
@@ -2997,10 +3010,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref database) {
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
-  auto itr = _lastLoad.find(
-      static_cast<std::string>(  // FIXME: after C++20 remove cast and use
-                                 // heterogeneous lookup
-          irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
+  // FIXME: after C++20 remove cast and use
+  // heterogeneous lookup
+  auto itr = _lastLoad.find(static_cast<std::string>(
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>())));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);
@@ -3008,11 +3021,14 @@ void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
 }
 
 void Features::visit(std::function<void(std::string_view)> visitor) const {
-  if (irs::IndexFeatures::FREQ == (_indexFeatures & irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::FREQ)) {
     visitor(irs::type<irs::frequency>::name());
   }
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
+  if (hasFeatures(irs::IndexFeatures::POS)) {
     visitor(irs::type<irs::position>::name());
+  }
+  if (hasFeatures(irs::IndexFeatures::OFFS)) {
+    visitor(irs::type<irs::offset>::name());
   }
   if (FieldFeatures::NORM == (_fieldFeatures & FieldFeatures::NORM)) {
     visitor(irs::type<irs::Norm>::name());
@@ -3055,7 +3071,7 @@ Result Features::fromVelocyPack(VPackSlice slice) {
                   .append(std::to_string(subItr.index()))};
     }
   }
-  return {};
+  return validate();
 }
 
 bool Features::add(irs::string_ref featureName) {
@@ -3069,6 +3085,11 @@ bool Features::add(irs::string_ref featureName) {
     return true;
   }
 
+  if (featureName == irs::type<irs::offset>::name()) {
+    _indexFeatures |= irs::IndexFeatures::OFFS;
+    return true;
+  }
+
   if (featureName == irs::type<irs::Norm>::name()) {
     _fieldFeatures |= FieldFeatures::NORM;
     return true;
@@ -3078,17 +3099,25 @@ bool Features::add(irs::string_ref featureName) {
 }
 
 Result Features::validate() const {
-  if (irs::IndexFeatures::POS == (_indexFeatures & irs::IndexFeatures::POS)) {
-    if (irs::IndexFeatures::FREQ !=
-        (_indexFeatures & irs::IndexFeatures::FREQ)) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "missing feature 'frequency' required when 'position' feature is "
-              "specified"};
-    }
+  if (hasFeatures(irs::IndexFeatures::OFFS) &&
+      !hasFeatures(irs::IndexFeatures::POS)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'position' required when 'offset' feature is "
+            "specified"};
   }
 
-  if ((irs::IndexFeatures::POS | irs::IndexFeatures::FREQ) !=
-      (_indexFeatures | irs::IndexFeatures::POS | irs::IndexFeatures::FREQ)) {
+  if (hasFeatures(irs::IndexFeatures::POS) &&
+      !hasFeatures(irs::IndexFeatures::FREQ)) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "missing feature 'frequency' required when 'position' feature is "
+            "specified"};
+  }
+
+  constexpr irs::IndexFeatures kSupportedFeatures = irs::IndexFeatures::OFFS |
+                                                    irs::IndexFeatures::POS |
+                                                    irs::IndexFeatures::FREQ;
+
+  if (kSupportedFeatures != (_indexFeatures | kSupportedFeatures)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Unsupported index features are specified: "s +
                 std::to_string(
@@ -3101,7 +3130,3 @@ Result Features::validate() const {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

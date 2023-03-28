@@ -1936,6 +1936,34 @@ function BaseTestConfig() {
         }
       );
     },
+    
+    testViewSearchAlias: function() {
+      const idxName = "inverted_idx";
+      compare(
+        function(state) {
+          let c = db._create(cn);
+          let idx = c.ensureIndex({ type: "inverted", name: idxName, fields: [ { name: "value" } ] });
+          let view = db._createView('UnitTestsSyncSearchAlias', 'search-alias', {});
+          view.properties({
+            indexes: [
+              {
+                collection: cn,
+                index: idxName
+              }
+            ]
+          });
+          assertEqual(1, view.properties().indexes.length);
+        },
+        function(state) {
+          let view = db._view('UnitTestsSyncSearchAlias');
+          assertNotNull(view);
+          assertEqual("search-alias", view.type());
+          let props = view.properties();
+          assertEqual(1, props.indexes.length);
+          assertEqual({ collection: cn, index: idxName }, props.indexes[0]);
+        }
+      );
+    },
 
     testViewBasic: function() {
       compare(
@@ -1961,7 +1989,7 @@ function BaseTestConfig() {
           }
 
           let view = db._view('UnitTestsSyncView');
-          assertTrue(view !== null);
+          assertNotNull(view);
           let props = view.properties();
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.hasOwnProperty('links'));
@@ -2120,6 +2148,7 @@ function ReplicationSuite() {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, {isSystem: true});
+      db._dropView("UnitTestsSyncSearchAlias");
       db._dropView("UnitTestsSyncView");
 
       connectToFollower();
@@ -2128,6 +2157,7 @@ function ReplicationSuite() {
       db._drop(cn);
       db._drop(cn2);
       db._drop(systemCn, {isSystem: true});
+      db._dropView("UnitTestsSyncSearchAlias");
       db._dropView("UnitTestsSyncView");
     }
   };

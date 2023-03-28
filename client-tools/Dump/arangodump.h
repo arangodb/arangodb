@@ -31,12 +31,12 @@ namespace arangodb {
 class DumpFeature;
 class EncryptionFeature;
 
-using ArangoDumpFeatures = ArangoClientFeatures<
+using ArangoDumpFeaturesList = ArangoClientFeaturesList<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
     BasicFeaturePhaseClient, DumpFeature>;
-
+struct ArangoDumpFeatures : ArangoDumpFeaturesList {};
 using ArangoDumpServer = ApplicationServerT<ArangoDumpFeatures>;
 using ArangoDumpFeature = ApplicationFeatureT<ArangoDumpServer>;
 

@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
+#include <cstddef>
 #include <map>
 #include <sstream>
 #include <vector>
@@ -35,13 +35,13 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 
-namespace arangodb {
-namespace options {
+namespace arangodb::options {
 
 IniFileParser::IniFileParser(ProgramOptions* options) : _options(options) {
   // a line with just comments, e.g. #... or ;...
@@ -71,15 +71,20 @@ IniFileParser::IniFileParser(ProgramOptions* options) : _options(options) {
 // errors that occur during parse are reported to _options
 bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
   if (filename.empty()) {
-    return _options->fail(
+    _options->fail(
+        TRI_EXIT_CONFIG_NOT_FOUND,
         "unable to open configuration file: no configuration file specified");
+    return false;
   }
+
   std::string buf;
   try {
     buf = arangodb::basics::FileUtils::slurp(filename);
   } catch (arangodb::basics::Exception const& ex) {
-    return _options->fail(std::string("Couldn't open configuration file: '") +
-                          filename + "' - " + ex.what());
+    _options->fail(TRI_EXIT_CONFIG_NOT_FOUND,
+                   std::string("Couldn't open configuration file: '") +
+                       filename + "' - " + ex.what());
+    return false;
   }
 
   return parseContent(filename, buf, endPassAfterwards);
@@ -136,7 +141,7 @@ bool IniFileParser::parseContent(std::string const& filename,
       if (_seen.find(include) != _seen.end()) {
         LOG_TOPIC("cc815", FATAL, Logger::CONFIG)
             << "recursive include of file '" << include << "'";
-        FATAL_ERROR_EXIT();
+        FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
       }
 
       _seen.insert(include);
@@ -149,7 +154,9 @@ bool IniFileParser::parseContent(std::string const& filename,
       LOG_TOPIC("36d6b", DEBUG, Logger::CONFIG)
           << "reading include file '" << include << "'";
 
-      parse(include, false);
+      if (!parse(include, false)) {
+        return false;
+      }
     } else if (std::regex_match(line, match, _matchers.assignment)) {
       // found assignment
       std::string option;
@@ -178,9 +185,10 @@ bool IniFileParser::parseContent(std::string const& filename,
       }
     } else {
       // unknown type of line. cannot handle it
-      return _options->fail("unknown line type in file '" + filename +
-                            "', line " + std::to_string(lineNumber) + ": '" +
-                            line + "'");
+      _options->fail(TRI_EXIT_CONFIG_NOT_FOUND,
+                     "unknown line type in file '" + filename + "', line " +
+                         std::to_string(lineNumber) + ": '" + line + "'");
+      return false;
     }
   }
 
@@ -196,5 +204,4 @@ bool IniFileParser::parseContent(std::string const& filename,
   return true;
 }
 
-}  // namespace options
-}  // namespace arangodb
+}  // namespace arangodb::options

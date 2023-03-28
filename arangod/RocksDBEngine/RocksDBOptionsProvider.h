@@ -50,6 +50,7 @@ struct RocksDBOptionsProvider {
   virtual uint64_t maxTotalWalSize() const noexcept = 0;
   virtual uint32_t numThreadsHigh() const noexcept = 0;
   virtual uint32_t numThreadsLow() const noexcept = 0;
+  virtual uint64_t periodicCompactionTtl() const noexcept = 0;
 
  protected:
   virtual rocksdb::Options doGetOptions() const = 0;

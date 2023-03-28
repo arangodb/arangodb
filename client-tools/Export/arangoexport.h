@@ -32,12 +32,12 @@ class ExportFeature;
 class TempFeature;
 class EncryptionFeature;
 
-using ArangoExportFeatures = ArangoClientFeatures<
+using ArangoExportFeaturesList = ArangoClientFeaturesList<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
     BasicFeaturePhaseClient, TempFeature, ExportFeature>;
-
+struct ArangoExportFeatures : ArangoExportFeaturesList {};
 using ArangoExportServer = ApplicationServerT<ArangoExportFeatures>;
 using ArangoExportFeature = ApplicationFeatureT<ArangoExportServer>;
 

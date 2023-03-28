@@ -249,7 +249,19 @@ function WindowTestSuite() {
           RETURN cnt`).toArray();
 
       assertEqual([1, 2, 2, 2], result);
-    }
+    },
+
+    testWindowAggregateNoArgumentsExecute : function () {
+      let res = db._query("FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1").toArray();
+      assertEqual(res.length, 0);
+    },
+
+    testWindowAggregateNoArgumentsExplain : function () {
+      let res = AQL_EXPLAIN("FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1");
+      const nodes = res.plan.nodes;
+      assertTrue(nodes.length > 0);
+    },
+
   };
 }
 

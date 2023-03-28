@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Containers/FlatHashMap.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -112,6 +113,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
     return empty;
   }
 
+  void handleIndexCacheRefills();
+
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
   void trackIndexInsert(IndexId iid, uint64_t hash);
@@ -119,6 +122,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
   void trackIndexRemove(IndexId iid, uint64_t hash);
+
+  void trackIndexCacheRefill(IndexId iid, std::string_view key);
 
   /// @brief tracked index operations
   struct TrackedIndexOperations {
@@ -161,6 +166,9 @@ class RocksDBTransactionCollection : public TransactionCollection {
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
   IndexOperationsMap _trackedIndexOperations;
+
+  containers::FlatHashMap<IndexId, std::vector<std::string>>
+      _trackedCacheRefills;
 
   bool _usageLocked;
   bool _exclusiveWrites;

@@ -13,12 +13,13 @@ Queries the statistics of the given DB-Server
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200} 
+@RESTRETURNCODE{200}
 is returned when everything went well.
 
-@RESTRETURNCODE{400} 
-the parameter DBserver was not given or is not the ID of a DB-Server
+@RESTRETURNCODE{400}
+The `DBserver` parameter was not specified or is not the ID of a DB-Server.
 
-@RESTRETURNCODE{403} 
-server is not a DB-Server.
+@RESTRETURNCODE{403}
+The specified server is not a DB-Server.
+
 @endDocuBlock

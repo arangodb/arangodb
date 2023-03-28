@@ -157,6 +157,10 @@ class Features {
   }
 
  private:
+  bool hasFeatures(irs::IndexFeatures test) const noexcept {
+    return (test == (_indexFeatures & test));
+  }
+
   FieldFeatures _fieldFeatures{FieldFeatures::NONE};
   irs::IndexFeatures _indexFeatures{irs::IndexFeatures::NONE};
 };  // Features
@@ -169,8 +173,8 @@ class AnalyzerPool : private irs::util::noncopyable {
  public:
   using ptr = std::shared_ptr<AnalyzerPool>;
 
-  using StoreFunc = VPackSlice (*)(irs::token_stream const* ctx,
-                                   VPackSlice slice, VPackBuffer<uint8_t>& buf);
+  using StoreFunc = irs::bytes_ref (*)(irs::token_stream* ctx,
+                                       velocypack::Slice slice);
 
   // type tags for primitive token streams
   struct NullStreamTag {};

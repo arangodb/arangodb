@@ -120,8 +120,8 @@ export const SaveButton = ({
   return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
     marginTop: 10,
     marginBottom: 10,
-    marginRight: 10,
-    float: 'right'
+    marginLeft: 0,
+    marginRight: 10
   }}>
     Save View
   </IconButton>;
@@ -165,8 +165,7 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         style={{
           marginTop: 10,
           marginBottom: 10,
-          marginRight: 10,
-          float: 'right'
+          marginLeft: 0
         }}
       >
         Delete

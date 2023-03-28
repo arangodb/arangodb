@@ -170,7 +170,7 @@ void V8SecurityFeature::collectOptions(
   options->addSection("javascript", "JavaScript engine and execution");
   options
       ->addOption("--javascript.allow-port-testing",
-                  "allow testing of ports from within JavaScript actions",
+                  "Allow the testing of ports from within JavaScript actions.",
                   new BooleanParameter(&_allowPortTesting),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -181,8 +181,8 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.allow-external-process-control",
-                  "allow execution and control of external processes from "
-                  "within JavaScript actions",
+                  "Allow the execution and control of external processes from "
+                  "within JavaScript actions.",
                   new BooleanParameter(&_allowProcessControl),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -193,8 +193,8 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.harden",
-                  "disables access to JavaScript functions in the internal "
-                  "module: getPid() and logLevel()",
+                  "Disable access to JavaScript functions in the internal "
+                  "module: getPid() and logLevel().",
                   new BooleanParameter(&_hardenInternalModule),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -205,8 +205,8 @@ void V8SecurityFeature::collectOptions(
   options
       ->addOption(
           "--javascript.startup-options-allowlist",
-          "startup options whose names match this regular "
-          "expression will be allowed and exposed to JavaScript",
+          "Startup options whose names match this regular "
+          "expression are allowed and exposed to JavaScript.",
           new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -217,9 +217,9 @@ void V8SecurityFeature::collectOptions(
   options
       ->addOption(
           "--javascript.startup-options-denylist",
-          "startup options whose names match this regular "
-          "expression will not be exposed (if not in allowlist) to "
-          "JavaScript actions",
+          "Startup options whose names match this regular "
+          "expression are not exposed (if not in the allowlist) to "
+          "JavaScript actions.",
           new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -229,7 +229,7 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.environment-variables-allowlist",
-                  "environment variables that will be accessible in JavaScript",
+                  "Environment variables that are accessible in JavaScript.",
                   new VectorParameter<StringParameter>(
                       &_environmentVariablesAllowListVec),
                   arangodb::options::makeFlags(
@@ -240,8 +240,8 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.environment-variables-denylist",
-                  "environment variables that will be inaccessible in "
-                  "JavaScript (if not in allowlist)",
+                  "Environment variables that are inaccessible in "
+                  "JavaScript (if not in the allowlist).",
                   new VectorParameter<StringParameter>(
                       &_environmentVariablesDenyListVec),
                   arangodb::options::makeFlags(
@@ -252,8 +252,8 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.endpoints-allowlist",
-                  "endpoints that can be connected to via "
-                  "@arangodb/request module in JavaScript actions",
+                  "Endpoints that can be connected to via the "
+                  "`@arangodb/request` module in JavaScript actions.",
                   new VectorParameter<StringParameter>(&_endpointsAllowListVec),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -263,8 +263,9 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.endpoints-denylist",
-                  "endpoints that cannot be connected to via @arangodb/request "
-                  "module in JavaScript actions (if not in allowlist)",
+                  "Endpoints that cannot be connected to via the "
+                  "`@arangodb/request` module in JavaScript actions "
+                  "(if not in the allowlist).",
                   new VectorParameter<StringParameter>(&_endpointsDenyListVec),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -274,8 +275,8 @@ void V8SecurityFeature::collectOptions(
 
   options
       ->addOption("--javascript.files-allowlist",
-                  "filesystem paths that will be accessible from within "
-                  "JavaScript actions",
+                  "Filesystem paths that are accessible from within "
+                  "JavaScript actions.",
                   new VectorParameter<StringParameter>(&_filesAllowListVec),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,

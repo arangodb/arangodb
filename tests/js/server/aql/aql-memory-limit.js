@@ -254,7 +254,22 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
-    
+
+    testAllShortestPaths : function () {
+      const query = "WITH " + vn + " FOR p IN OUTBOUND ALL_SHORTEST_PATHS '" + vn + "/test0' TO '" + vn + "/test11' " + en + " RETURN p";
+
+      let actual = AQL_EXECUTE(query, null, { memoryLimit: 250 * 1000 }).json;
+      // no shortest path available
+      assertEqual(1, actual.length);
+
+      try {
+        AQL_EXECUTE(query, null, { memoryLimit: 30 * 1000 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
     testKPaths : function () {
       const query = "WITH " + vn + " FOR p IN OUTBOUND K_PATHS '" + vn + "/test0' TO '" + vn + "/test317' " + en + " RETURN p";
       

@@ -161,7 +161,8 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector) override {
+  Result flushWal(bool /*waitForSync*/ = false,
+                  bool /*flushColumnFamilies*/ = false) override {
     return {};
   }
 
@@ -178,7 +179,6 @@ class ClusterEngine final : public StorageEngine {
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 
- public:
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -204,17 +204,6 @@ class ClusterEngine final : public StorageEngine {
   arangodb::Result compactAll(bool changeLevel,
                               bool compactBottomMostLevel) override;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result override;
-
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
@@ -233,6 +222,9 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
+
+  bool autoRefillIndexCaches() const override { return false; }
+  bool autoRefillIndexCachesOnFollowers() const override { return false; }
 
  public:
   static std::string const EngineName;

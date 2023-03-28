@@ -85,7 +85,7 @@ void OneSidedEnumerator<Configuration>::clear(bool keepPathStore) {
 
   if (!keepPathStore) {
     _interior.reset();
-    clearProvider();  // TODO: Check usage of keepPathStore (if necessary)
+    clearProvider();
   }
 }
 
@@ -121,7 +121,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
 
     // Will throw all network errors here
     std::vector<Step*> preparedEnds = std::move(futureEnds.get());
-
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }

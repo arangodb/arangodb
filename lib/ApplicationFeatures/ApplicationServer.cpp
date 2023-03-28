@@ -343,13 +343,15 @@ void ApplicationServer::collectOptions() {
       Section("", "general settings", "", "general options", false, false));
 
   _options->addOption(
-      "--dump-dependencies", "dump dependency graph",
+      "--dump-dependencies",
+      "Dump the dependency graph of the feature phases (internal) and exit.",
       new BooleanParameter(&_dumpDependencies),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   _options->addOption(
-      "--dump-options", "dump configuration options in JSON format",
+      "--dump-options",
+      "Dump all available startup options in JSON format and exit.",
       new BooleanParameter(&_dumpOptions),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
@@ -384,7 +386,7 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   if (!parser.parse(argc, argv)) {
     // command-line option parsing failed. an error was already printed
     // by now, so we can exit
-    exit(EXIT_FAILURE);
+    FATAL_ERROR_EXIT_CODE(_options->processingResult().exitCodeOrFailure());
   }
 
   if (_dumpDependencies) {

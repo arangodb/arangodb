@@ -53,10 +53,6 @@ class IResearchSortBase {
     return _fields == rhs._fields && _directions == rhs._directions;
   }
 
-  bool operator!=(IResearchSortBase const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   size_t size() const noexcept {
     TRI_ASSERT(_fields.size() == _directions.size());
     return _fields.size();

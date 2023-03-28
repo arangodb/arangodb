@@ -61,6 +61,8 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBGeoIndex.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
   RocksDBEngine/RocksDBIndex.cpp
+  RocksDBEngine/RocksDBIndexCacheRefillFeature.cpp
+  RocksDBEngine/RocksDBIndexCacheRefillThread.cpp
   RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBIterators.cpp
   RocksDBEngine/RocksDBKey.cpp
@@ -71,7 +73,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
   RocksDBEngine/RocksDBOptionsProvider.cpp
-  RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
@@ -99,8 +100,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
   RocksDBEngine/RocksDBZkdIndex.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionCollection.cpp
-  RocksDBEngine/ReplicatedRocksDBTransactionState.cpp
   RocksDBEngine/SimpleRocksDBTransactionState.cpp
   RocksDBEngine/SortedRowsStorageBackendRocksDB.cpp
 )

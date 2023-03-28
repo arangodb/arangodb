@@ -537,7 +537,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   size_t n = buffer.length();
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
+    auto m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
 
     if (m <= 0) {
       return false;

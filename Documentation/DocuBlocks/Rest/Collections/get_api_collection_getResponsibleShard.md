@@ -56,7 +56,7 @@ is returned.
     var response = logCurlRequestRaw('PUT', "/_api/collection/" + cn + "/responsibleShard", body);
 
     assert(response.code === 200);
-    assert(JSON.parse(response.body).hasOwnProperty("shardId"));
+    assert(response.parsedBody.hasOwnProperty("shardId"));
 
     logJsonResponse(response);
     db._drop(cn);

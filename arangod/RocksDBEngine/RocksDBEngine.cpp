@@ -51,7 +51,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -65,7 +64,6 @@
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
 #include "RocksDBEngine/Listeners/RocksDBThrottle.h"
-#include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -73,12 +71,12 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBIncrementalSync.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexCacheRefillFeature.h"
 #include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBPersistedLog.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -140,12 +138,20 @@ void cleanUpTempFiles(std::string_view path) {
 
 namespace arangodb {
 
+DECLARE_GAUGE(rocksdb_wal_released_tick_flush, uint64_t,
+              "Released tick for RocksDB WAL deletion (flush-induced)");
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
 DECLARE_GAUGE(
     rocksdb_wal_sequence_lower_bound, uint64_t,
     "RocksDB WAL sequence number until which background thread has caught up");
+DECLARE_GAUGE(rocksdb_live_wal_files, uint64_t,
+              "Number of live RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_live_wal_files_size, uint64_t,
+              "Cumulated size of live RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_archived_wal_files, uint64_t,
               "Number of archived RocksDB WAL files");
+DECLARE_GAUGE(rocksdb_archived_wal_files_size, uint64_t,
+              "Cumulated size of archived RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_prunable_wal_files, uint64_t,
               "Number of prunable RocksDB WAL files");
 DECLARE_GAUGE(rocksdb_wal_pruning_active, uint64_t,
@@ -231,7 +237,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
           transaction::Options::defaultIntermediateCommitCount),
       _maxParallelCompactions(2),
       _pruneWaitTime(10.0),
-      _pruneWaitTimeInitial(180.0),
+      _pruneWaitTimeInitial(60.0),
       _maxWalArchiveSizeLimit(0),
       _releasedTick(0),
       _syncInterval(100),
@@ -252,11 +258,23 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _dbExisted(false),
       _runningRebuilds(0),
       _runningCompactions(0),
+      _autoFlushCheckInterval(60.0 * 30.0),
+      _autoFlushMinWalFiles(20),
+      _metricsWalReleasedTickFlush(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
           server.getFeature<metrics::MetricsFeature>().add(
               rocksdb_wal_sequence_lower_bound{})),
+      _metricsLiveWalFiles(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files{})),
       _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_archived_wal_files{})),
+      _metricsLiveWalFilesSize(server.getFeature<metrics::MetricsFeature>().add(
+          rocksdb_live_wal_files_size{})),
+      _metricsArchivedWalFilesSize(
+          server.getFeature<metrics::MetricsFeature>().add(
+              rocksdb_archived_wal_files_size{})),
       _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
           rocksdb_prunable_wal_files{})),
       _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
@@ -342,6 +360,30 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
   _db = nullptr;
 }
 
+void RocksDBEngine::flushOpenFilesIfRequired() {
+  if (_metricsLiveWalFiles.load() < _autoFlushMinWalFiles) {
+    return;
+  }
+
+  auto now = std::chrono::steady_clock::now();
+  if (_autoFlushLastExecuted.time_since_epoch().count() == 0 ||
+      (now - _autoFlushLastExecuted) >=
+          std::chrono::duration<double>(_autoFlushCheckInterval)) {
+    LOG_TOPIC("9bf16", INFO, Logger::ENGINES)
+        << "auto flushing RocksDB wal and column families because number of "
+           "live WAL files is "
+        << _metricsLiveWalFiles.load();
+    Result res = flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ true);
+    if (res.fail()) {
+      LOG_TOPIC("e936c", WARN, Logger::ENGINES)
+          << "unable to flush RocksDB wal: " << res.errorMessage();
+    }
+    // set _autoFlushLastExecuted regardless of whether flushing has worked or
+    // not. we don't want to put too much stress onto the db
+    _autoFlushLastExecuted = now;
+  }
+}
+
 // inherited from ApplicationFeature
 // ---------------------------------
 
@@ -356,9 +398,8 @@ void RocksDBEngine::collectOptions(
   options
       ->addOption(
           "--rocksdb.minimum-disk-free-percent",
-          "minimum percentage of free disk space for considering the "
-          "server healthy in "
-          "health checks (set to 0 to disable the check)",
+          "The minimum percentage of free disk space for considering the "
+          "server healthy in health checks (0 = disable the check).",
           new DoubleParameter(&_requiredDiskFreePercentage, /*base*/ 1.0,
                               /*minValue*/ 0.0, /*maxValue*/ 1.0),
           arangodb::options::makeFlags(
@@ -372,9 +413,8 @@ void RocksDBEngine::collectOptions(
   /// checks.
   options
       ->addOption("--rocksdb.minimum-disk-free-bytes",
-                  "minimum number of free disk bytes for considering the "
-                  "server healthy in "
-                  "health checks (set to 0 to disable the check)",
+                  "The minimum number of free disk bytes for considering the "
+                  "server healthy in health checks (0 = disable the check).",
                   new UInt64Parameter(&_requiredDiskFreeBytes),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -383,43 +423,56 @@ void RocksDBEngine::collectOptions(
       .setIntroducedIn(30800);
 
   // control transaction size for RocksDB engine
-  options->addOption("--rocksdb.max-transaction-size",
-                     "transaction size limit (in bytes)",
-                     new UInt64Parameter(&_maxTransactionSize));
+  options
+      ->addOption("--rocksdb.max-transaction-size",
+                  "The transaction size limit (in bytes).",
+                  new UInt64Parameter(&_maxTransactionSize))
+      .setLongDescription(R"(Transactions store all keys and values in RAM, so
+large transactions run the risk of causing out-of-memory situations. This
+setting allows you to ensure that it does not happen by limiting the size of
+any individual transaction. Transactions whose operations would consume more
+RAM than this threshold value are aborted automatically with error 32
+("resource limit exceeded").)");
 
   options->addOption("--rocksdb.intermediate-commit-size",
-                     "an intermediate commit will be performed automatically "
-                     "when a transaction "
-                     "has accumulated operations of this size (in bytes)",
+                     "An intermediate commit is performed automatically "
+                     "when a transaction has accumulated operations of this "
+                     "size (in bytes), and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitSize));
 
   options->addOption("--rocksdb.intermediate-commit-count",
-                     "an intermediate commit will be performed automatically "
-                     "when this number of "
-                     "operations is reached in a transaction",
+                     "An intermediate commit is performed automatically "
+                     "when this number of operations is reached in a "
+                     "transaction, and a new transaction is started.",
                      new UInt64Parameter(&_intermediateCommitCount));
 
   options
       ->addOption("--rocksdb.max-parallel-compactions",
-                  "maximum number of parallel compactions jobs",
+                  "The maximum number of parallel compactions jobs.",
                   new UInt64Parameter(&_maxParallelCompactions))
       .setIntroducedIn(30711);
 
-  options->addOption("--rocksdb.sync-interval",
-                     "interval for automatic, non-requested disk syncs (in "
-                     "milliseconds, use 0 to turn automatic syncing off)",
-                     new UInt64Parameter(&_syncInterval),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle));
+  options
+      ->addOption(
+          "--rocksdb.sync-interval",
+          "The interval for automatic, non-requested disk syncs (in "
+          "milliseconds, 0 = turn automatic syncing off)",
+          new UInt64Parameter(&_syncInterval),
+          arangodb::options::makeFlags(arangodb::options::Flags::OsLinux,
+                                       arangodb::options::Flags::OsMac,
+                                       arangodb::options::Flags::OnDBServer,
+                                       arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(Automatic synchronization of data from RocksDB's
+write-ahead logs to disk is only performed for not-yet synchronized data, and
+only for operations that have been executed without the `waitForSync`
+attribute.)");
 
   options
       ->addOption(
           "--rocksdb.sync-delay-threshold",
-          "threshold value for self-observation of WAL disk syncs. "
-          "any WAL disk sync longer ago than this threshold will trigger "
-          "a warning (in milliseconds, use 0 for no warnings)",
+          "The threshold for self-observation of WAL disk syncs "
+          "(in milliseconds, 0 = no warnings). Any WAL disk sync longer ago "
+          "than this threshold triggers a warning ",
           new UInt64Parameter(&_syncDelayThreshold),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
@@ -429,95 +482,125 @@ void RocksDBEngine::collectOptions(
       .setIntroducedIn(30608)
       .setIntroducedIn(30705);
 
-  options->addOption("--rocksdb.wal-file-timeout",
-                     "timeout after which unused WAL files are deleted",
-                     new DoubleParameter(&_pruneWaitTime),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle));
+  options
+      ->addOption("--rocksdb.wal-file-timeout",
+                  "The timeout after which unused WAL files are deleted "
+                  "(in seconds).",
+                  new DoubleParameter(&_pruneWaitTime),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(Data of ongoing transactions is stored in RAM.
+Transactions that get too big (in terms of number of operations involved or the
+total size of data created or modified by the transaction) are committed
+automatically. Effectively, this means that big user transactions are split into
+multiple smaller RocksDB transactions that are committed individually.
+The entire user transaction does not necessarily have ACID properties in this
+case.)");
 
-  options->addOption(
-      "--rocksdb.wal-file-timeout-initial",
-      "initial timeout after which unused WAL files deletion kicks in after "
-      "server start",
-      new DoubleParameter(&_pruneWaitTimeInitial),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--rocksdb.wal-file-timeout-initial",
+                  "The initial timeout (in seconds) after which unused WAL "
+                  "files deletion kicks in after server start.",
+                  new DoubleParameter(&_pruneWaitTimeInitial),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(If you decrease the value, the server starts the
+removal of obsolete WAL files earlier after server start. This is useful in
+testing environments that are space-restricted and do not require keeping much
+WAL file data at all.)");
 
-  options->addOption("--rocksdb.throttle", "enable write-throttling",
-                     new BooleanParameter(&_useThrottle),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle));
+  options
+      ->addOption("--rocksdb.throttle", "Enable write-throttling.",
+                  new BooleanParameter(&_useThrottle),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setLongDescription(R"(If enabled, dynamically throttles the ingest rate
+of writes if necessary to reduce chances of compactions getting too far behind
+and blocking incoming writes.)");
 
   options
       ->addOption(
           "--rocksdb.throttle-slots",
-          "number of historic metrics to use for throttle value calculation",
+          "The number of historic metrics to use for throttle value "
+          "calculation.",
           new UInt64Parameter(&_throttleSlots, /*base*/ 1, /*minValue*/ 1),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle,
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(If throttling is enabled, this parameter controls
+the number of previous intervals to use for throttle value calculation.)");
 
   options
-      ->addOption("--rocksdb.throttle-frequency",
-                  "frequency for write-throttle calculations (in milliseconds)",
-                  new UInt64Parameter(&_throttleFrequency),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
+      ->addOption(
+          "--rocksdb.throttle-frequency",
+          "The frequency for write-throttle calculations (in milliseconds).",
+          new UInt64Parameter(&_throttleFrequency),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(If the throttling is enabled, it recalculates a new
+maximum ingestion rate with this frequency.)");
 
   options
-      ->addOption("--rocksdb.throttle-scaling-factor",
-                  "adaptiveness scaling factor for write-throttle calculations",
-                  new UInt64Parameter(&_throttleScalingFactor),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
+      ->addOption(
+          "--rocksdb.throttle-scaling-factor",
+          "The adaptiveness scaling factor for write-throttle calculations.",
+          new UInt64Parameter(&_throttleScalingFactor),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(There is normally no need to change this value.)");
 
   options
       ->addOption("--rocksdb.throttle-max-write-rate",
-                  "maximum write rate enforced by throttle (in bytes per "
-                  "second, 0 = unlimited)",
+                  "The maximum write rate enforced by throttle (in bytes per "
+                  "second, 0 = unlimited).",
                   new UInt64Parameter(&_throttleMaxWriteRate),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(The actual write rate established by the
+throttling is the minimum of this value and the value that the regular throttle
+calculation produces, i.e. this option can be used to set a fixed upper bound
+on the write rate.)");
 
   options
       ->addOption("--rocksdb.throttle-slow-down-writes-trigger",
-                  "number of level 0 files whose payload "
+                  "The number of level 0 files whose payload "
                   "is not considered in throttle calculations when penalizing "
-                  "the presence of L0 files",
+                  "the presence of L0 files.",
                   new UInt64Parameter(&_throttleSlowdownWritesTrigger),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(There is normally no need to change this value.)");
 
   options
       ->addOption("--rocksdb.throttle-lower-bound-bps",
-                  "lower bound for throttle's "
-                  "write bandwidth in bytes per second",
+                  "The lower bound for throttle's write bandwidth "
+                  "(in bytes per second).",
                   new UInt64Parameter(&_throttleLowerBoundBps),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -528,7 +611,8 @@ void RocksDBEngine::collectOptions(
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
-                     "enable generation of sha256 files for each .sst file",
+                     "Whether to enable the generation of sha256 files for "
+                     "each .sst file.",
                      new BooleanParameter(&_createShaFiles),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -539,26 +623,52 @@ void RocksDBEngine::collectOptions(
 
   options
       ->addOption("--rocksdb.use-range-delete-in-wal",
-                  "enable range delete markers in the write-ahead log (WAL). "
-                  "potentially incompatible with older arangosync versions",
+                  "Enable range delete markers in the write-ahead log (WAL). "
+                  "Potentially incompatible with older arangosync versions.",
                   new BooleanParameter(&_useRangeDeleteInWal),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30903);
+      .setIntroducedIn(30903)
+      .setLongDescription(R"(Controls whether the collection truncate operation
+in the cluster can use RangeDelete operations in RocksDB. Using RangeDeletes is
+fast and reduces the algorithmic complexity of the truncate operation to O(1),
+compared to O(n) for when this option is turned off (with n being the number of
+documents in the collection/shard).
 
-  options->addOption("--rocksdb.debug-logging",
-                     "true to enable rocksdb debug logging",
-                     new BooleanParameter(&_debugLogging),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnDBServer,
-                         arangodb::options::Flags::OnSingle,
-                         arangodb::options::Flags::Uncommon));
+Previous versions of ArangoDB used RangeDeletes only on a single server, but
+never in a cluster. 
+
+The default value for this option is `true`, and you should only change this
+value in case of emergency. This option is only honored in the cluster.
+Single server and Active Failover deployments do not use RangeDeletes regardless
+of the value of this option.
+
+Note that it is not guaranteed that all truncate operations use a RangeDelete
+operation. For collections containing a low number of documents, the O(n)
+truncate method may still be used.)");
 
   options
-      ->addOption("--rocksdb.edge-cache", "use in-memory cache for edges",
+      ->addOption("--rocksdb.debug-logging",
+                  "Whether to enable RocksDB debug logging.",
+                  new BooleanParameter(&_debugLogging),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(If set to `true`, enables verbose logging of
+RocksDB's actions into the logfile written by ArangoDB (if the
+`--rocksdb.use-file-logging` option is off), or RocksDB's own log (if the
+`--rocksdb.use-file-logging` option is on).
+
+This option is turned off by default, but you can enable it for debugging
+RocksDB internals and performance.)");
+
+  options
+      ->addOption("--rocksdb.edge-cache",
+                  "Whether to use the in-memory cache for edges",
                   new BooleanParameter(&_useEdgeCache),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
@@ -568,15 +678,64 @@ void RocksDBEngine::collectOptions(
       .setIntroducedIn(30604)
       .setDeprecatedIn(31000);
 
-  options->addOption(
-      "--rocksdb.wal-archive-size-limit",
-      "maximum total size (in bytes) of archived WAL files (0 = unlimited)",
-      new UInt64Parameter(&_maxWalArchiveSizeLimit),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::OnSingle,
-          arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--rocksdb.wal-archive-size-limit",
+                  "The maximum total size (in bytes) of archived WAL files to "
+                  "keep on the leader (0 = unlimited).",
+                  new UInt64Parameter(&_maxWalArchiveSizeLimit),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(A value of `0` does not restrict the size of the
+archive, so the leader removes archived WAL files when there are no replication
+clients needing them. Any non-zero value restricts the size of the WAL files
+archive to about the specified value and trigger WAL archive file deletion once
+the threshold is reached. You can use this to get rid of archived WAL files in
+a disk size-constrained environment.
+
+**Note**: The value is only a threshold, so the archive may get bigger than 
+the configured value until the background thread actually deletes files from
+the archive. Also note that deletion from the archive only kicks in after
+`--rocksdb.wal-file-timeout-initial` seconds have elapsed after server start.
+
+Archived WAL files are normally deleted automatically after a short while when
+there is no follower attached that may read from the archive. However, in case
+when there are followers attached that may read from the archive, WAL files
+normally remain in the archive until their contents have been streamed to the
+followers. In case there are slow followers that cannot catch up, this causes a
+growth of the WAL files archive over time.
+
+You can use the option to force a deletion of WAL files from the archive even if
+there are followers attached that may want to read the archive. In case the
+option is set and a leader deletes files from the archive that followers want to
+read, this aborts the replication on the followers. Followers can restart the
+replication doing a resync, however.)");
+
+  options
+      ->addOption("--rocksdb.auto-flush-min-live-wal-files",
+                  "The minimum number of live WAL files that triggers an "
+                  "auto-flush of WAL "
+                  "and column family data.",
+                  new UInt64Parameter(&_autoFlushMinWalFiles),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
+
+  options
+      ->addOption(
+          "--rocksdb.auto-flush-check-interval",
+          "The interval (in seconds) in which auto-flushes of WAL and column "
+          "family data is executed.",
+          new DoubleParameter(&_autoFlushCheckInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31005);
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -811,6 +970,9 @@ void RocksDBEngine::start() {
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
+  LOG_TOPIC("ab45b", DEBUG, Logger::STARTUP)
+      << "opening RocksDB instance in '" << _path << "'";
+
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status = rocksdb::TransactionDB::Open(
       _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
@@ -919,23 +1081,6 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
 
-  struct SchedulerExecutor : RocksDBLogPersistor::Executor {
-    explicit SchedulerExecutor(ArangodServer& server)
-        : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
-
-    void operator()(fu2::unique_function<void() noexcept> func) override {
-      _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
-    }
-
-    Scheduler* _scheduler;
-  };
-
-  _logPersistor = std::make_shared<RocksDBLogPersistor>(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-      _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
-      server().getFeature<ReplicatedLogFeature>().options());
-
   _settingsManager->retrieveInitialValues();
 
   double const counterSyncSeconds = 2.5;
@@ -943,7 +1088,7 @@ void RocksDBEngine::start() {
       std::make_unique<RocksDBBackgroundThread>(*this, counterSyncSeconds);
   if (!_backgroundThread->start()) {
     LOG_TOPIC("a5e96", FATAL, Logger::ENGINES)
-        << "could not start rocksdb counter manager";
+        << "could not start rocksdb counter manager thread";
     FATAL_ERROR_EXIT();
   }
 
@@ -961,6 +1106,11 @@ void RocksDBEngine::start() {
   if (hd.res.fail()) {
     LOG_TOPIC("4cf5b", ERR, Logger::ENGINES) << hd.res.errorMessage();
   }
+
+  // make an initial inventory of WAL files, so that all WAL files
+  // metrics are correctly populated once the HTTP interface comes
+  // up
+  determineWalFilesInitial();
 }
 
 void RocksDBEngine::beginShutdown() {
@@ -1059,13 +1209,6 @@ std::unique_ptr<transaction::Manager> RocksDBEngine::createTransactionManager(
 std::shared_ptr<TransactionState> RocksDBEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options) {
-  if (vocbase.replicationVersion() == replication::Version::TWO &&
-      (tid.isLeaderTransactionId() || tid.isLegacyTransactionId()) &&
-      ServerState::instance()->isRunningInCluster()) {
-    // TODO handle follower
-    return std::make_shared<ReplicatedRocksDBTransactionState>(vocbase, tid,
-                                                               options);
-  }
   return std::make_shared<SimpleRocksDBTransactionState>(vocbase, tid, options);
 }
 
@@ -1286,7 +1429,7 @@ ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
     if (ServerState::instance()->isDBServer() &&
         arangodb::basics::VelocyPackHelper::getStringView(
             slice, StaticStrings::DataSourceType, {}) !=
-            arangodb::iresearch::StaticStrings::ViewType) {
+            arangodb::iresearch::StaticStrings::ViewArangoSearchType) {
       continue;
     }
     result.add(slice);
@@ -2200,20 +2343,28 @@ void RocksDBEngine::determineWalFilesInitial() {
     return;
   }
 
+  size_t liveFiles = 0;
   size_t archivedFiles = 0;
+  uint64_t liveFilesSize = 0;
+  uint64_t archivedFilesSize = 0;
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
-    if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
-      continue;
+    if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
+      ++archivedFiles;
+      archivedFilesSize += f->SizeFileBytes();
+    } else if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
     }
-
-    ++archivedFiles;
   }
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
@@ -2223,9 +2374,17 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
                                 : std::numeric_limits<TRI_voc_tick_t>::max(),
                minTickExternal);
 
-  LOG_TOPIC("4673c", TRACE, Logger::ENGINES)
+  uint64_t minLogNumberToKeep = 0;
+  std::string v;
+  if (_db->GetProperty(rocksdb::DB::Properties::kMinLogNumberToKeep, &v)) {
+    minLogNumberToKeep = static_cast<uint64_t>(basics::StringUtils::int64(v));
+  }
+
+  LOG_TOPIC("4673c", DEBUG, Logger::ENGINES)
       << "determining prunable WAL files, minTickToKeep: " << minTickToKeep
-      << ", minTickExternal: " << minTickExternal;
+      << ", minTickExternal: " << minTickExternal
+      << ", releasedTick: " << _releasedTick
+      << ", minLogNumberToKeep: " << minLogNumberToKeep;
 
   // Retrieve the sorted list of all wal files with earliest file first
   rocksdb::VectorLogPtr files;
@@ -2236,23 +2395,35 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     return;
   }
 
+  // number of live WAL files
+  size_t liveFiles = 0;
+  // number of archived WAL files
   size_t archivedFiles = 0;
-  uint64_t totalArchiveSize = 0;
+  // cumulated size of live WAL files
+  uint64_t liveFilesSize = 0;
+  // cumulated size of archived WAL files
+  uint64_t archivedFilesSize = 0;
+
   for (size_t current = 0; current < files.size(); current++) {
     auto const& f = files[current].get();
 
+    if (f->Type() == rocksdb::WalFileType::kAliveLogFile) {
+      ++liveFiles;
+      liveFilesSize += f->SizeFileBytes();
+      LOG_TOPIC("dc472", TRACE, Logger::ENGINES)
+          << "live WAL file #" << current << "/" << files.size()
+          << ", filename: '" << f->PathName()
+          << "', start sequence: " << f->StartSequence();
+      continue;
+    }
+
     if (f->Type() != rocksdb::WalFileType::kArchivedLogFile) {
-      // we are only interested in files of the archive
+      // we are mostly interested in files of the archive
       continue;
     }
 
     ++archivedFiles;
-
-    // determine the size of the archive only if it there is a cap on the
-    // archive size otherwise we can save the underlying file access
-    if (_maxWalArchiveSizeLimit > 0) {
-      totalArchiveSize += f->SizeFileBytes();
-    }
+    archivedFilesSize += f->SizeFileBytes();
 
     // check if there is another WAL file coming after the currently-looked-at
     // There should be at least one live WAL file after it, however, let's be
@@ -2260,36 +2431,62 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
     // following, we need to take its start tick into account as well, because
     // the following file's start tick can be assumed to be the end tick of the
     // current file!
+    bool eligibleStep1 = false;
+    bool eligibleStep2 = false;
     if (f->StartSequence() < minTickToKeep && current < files.size() - 1) {
+      eligibleStep1 = true;
       auto const& n = files[current + 1].get();
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
         // still need
-        auto const [it, emplaced] = _prunableWalFiles.try_emplace(
-            f->PathName(), TRI_microtime() + _pruneWaitTime);
+        eligibleStep2 = true;
+
+        double stamp = TRI_microtime() + _pruneWaitTime;
+        auto const [it, emplaced] =
+            _prunableWalFiles.try_emplace(f->PathName(), stamp);
+
         if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
+              << ", expire stamp " << stamp
               << " added to prunable list because it is not needed anymore";
           TRI_ASSERT(it != _prunableWalFiles.end());
+        } else {
+          LOG_TOPIC("d2c9e", TRACE, Logger::ENGINES)
+              << "unable to add WAL file #" << current << "/" << files.size()
+              << ", filename: '" << f->PathName()
+              << "', start sequence: " << f->StartSequence()
+              << " to list of prunable WAL files. file already present in list "
+                 "with expire stamp "
+              << it->second;
         }
       }
     }
+
+    LOG_TOPIC("ec350", TRACE, Logger::ENGINES)
+        << "inspected WAL file #" << current << "/" << files.size()
+        << ", filename: '" << f->PathName()
+        << "', start sequence: " << f->StartSequence()
+        << ", eligible step1: " << eligibleStep1
+        << ", step2: " << eligibleStep2;
   }
 
-  LOG_TOPIC("01e20", TRACE, Logger::ENGINES)
-      << "found " << files.size() << " WAL file(s), with " << archivedFiles
-      << " files in the archive, "
-      << "number of prunable files: " << _prunableWalFiles.size();
+  LOG_TOPIC("01e20", DEBUG, Logger::ENGINES)
+      << "found " << files.size() << " WAL file(s), with " << liveFiles
+      << " live file(s) and " << archivedFiles << " file(s) in the archive, "
+      << "number of prunable files: " << _prunableWalFiles.size()
+      << ", live file size: " << liveFilesSize
+      << ", archived file size: " << archivedFilesSize;
 
   if (_maxWalArchiveSizeLimit > 0 &&
-      totalArchiveSize <= _maxWalArchiveSizeLimit) {
-    // size of the archive is restricted.
+      archivedFilesSize > _maxWalArchiveSizeLimit) {
+    // size of the archive is restricted, and we overflowed the limit.
 
     // print current archive size
     LOG_TOPIC("8d71b", TRACE, Logger::ENGINES)
-        << "total size of the RocksDB WAL file archive: " << totalArchiveSize;
+        << "total size of the RocksDB WAL file archive: " << archivedFilesSize
+        << ", limit: " << _maxWalArchiveSizeLimit;
 
     // we got more archived files than configured. time for purging some files!
     for (size_t current = 0; current < files.size(); current++) {
@@ -2317,30 +2514,41 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
 
       if (doPrint) {
+        TRI_ASSERT(archivedFilesSize > _maxWalArchiveSizeLimit);
+
+        // never change this id without adjusting wal-archive-size-limit tests
+        // in tests/js/client/server-parameters
         LOG_TOPIC("d9793", WARN, Logger::ENGINES)
             << "forcing removal of RocksDB WAL file '" << f->PathName()
             << "' with start sequence " << f->StartSequence()
             << " because of overflowing archive. configured maximum archive "
                "size is "
             << _maxWalArchiveSizeLimit
-            << ", actual archive size is: " << totalArchiveSize;
+            << ", actual archive size is: " << archivedFilesSize
+            << ". if these warnings persist, try to increase the value of "
+            << "the startup option `--rocksdb.wal-archive-size-limit`";
       }
 
-      TRI_ASSERT(totalArchiveSize >= f->SizeFileBytes());
-      totalArchiveSize -= f->SizeFileBytes();
+      TRI_ASSERT(archivedFilesSize >= f->SizeFileBytes());
+      archivedFilesSize -= f->SizeFileBytes();
 
-      if (totalArchiveSize <= _maxWalArchiveSizeLimit) {
+      if (archivedFilesSize <= _maxWalArchiveSizeLimit) {
         // got enough files to remove
         break;
       }
     }
   }
 
-  _metricsWalSequenceLowerBound.operator=(
-      _settingsManager->earliestSeqNeeded());
-  _metricsArchivedWalFiles.operator=(archivedFiles);
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
-  _metricsWalPruningActive.operator=(1);
+  _metricsWalSequenceLowerBound.store(_settingsManager->earliestSeqNeeded(),
+                                      std::memory_order_relaxed);
+  _metricsLiveWalFiles.store(liveFiles, std::memory_order_relaxed);
+  _metricsArchivedWalFiles.store(archivedFiles, std::memory_order_relaxed);
+  _metricsLiveWalFilesSize.store(liveFilesSize, std::memory_order_relaxed);
+  _metricsArchivedWalFilesSize.store(archivedFilesSize,
+                                     std::memory_order_relaxed);
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
+  _metricsWalPruningActive.store(1, std::memory_order_relaxed);
 }
 
 RocksDBFilePurgePreventer RocksDBEngine::disallowPurging() noexcept {
@@ -2375,9 +2583,15 @@ void RocksDBEngine::pruneWalFiles() {
       // but only if there are no other threads currently inside the WAL tailing
       // section
       deleteFile = purgeEnabler.canPurge();
+      LOG_TOPIC("817bc", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking overflowed file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     } else if ((*it).second < TRI_microtime()) {
       // file has expired, and it is always safe to delete it
       deleteFile = true;
+      LOG_TOPIC("e7674", TRACE, Logger::ENGINES)
+          << "pruneWalFiles checking expired file '" << (*it).first
+          << "', canPurge: " << deleteFile;
     }
 
     if (deleteFile) {
@@ -2390,6 +2604,9 @@ void RocksDBEngine::pruneWalFiles() {
         // otherwise RocksDB may complain about non-existing files and log a big
         // error message
         s = _db->DeleteFile((*it).first);
+        LOG_TOPIC("5b1ae", DEBUG, Logger::ENGINES)
+            << "calling RocksDB DeleteFile for WAL file '" << (*it).first
+            << "'. status: " << rocksutils::convertStatus(s).errorMessage();
       } else {
         LOG_TOPIC("c2cc9", DEBUG, Logger::ENGINES)
             << "to-be-deleted RocksDB WAL file '" << (*it).first
@@ -2414,7 +2631,8 @@ void RocksDBEngine::pruneWalFiles() {
     ++it;
   }
 
-  _metricsPrunableWalFiles.operator=(_prunableWalFiles.size());
+  _metricsPrunableWalFiles.store(_prunableWalFiles.size(),
+                                 std::memory_order_relaxed);
 
   LOG_TOPIC("82a4c", TRACE, Logger::ENGINES)
       << "prune WAL files started with " << initialSize
@@ -2599,6 +2817,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   auto vocbase =
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
+  LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
+      << "opening views and collections metadata in database '"
+      << vocbase->name() << "'";
+
   VPackBuilder builder;
   auto scanViews = [&](std::string_view type) {
     try {
@@ -2617,11 +2839,14 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           continue;
         }
         // we found a view that is still active
+        LOG_TOPIC("4dfdd", TRACE, arangodb::Logger::ENGINES)
+            << "processing view metadata in database '" << vocbase->name()
+            << "': " << it.toJson();
 
         TRI_ASSERT(!it.get("id").isNone());
 
         LogicalView::ptr view;
-        auto res = LogicalView::instantiate(view, *vocbase, it);
+        auto res = LogicalView::instantiate(view, *vocbase, it, false);
 
         if (!res.ok()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -2630,7 +2855,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
         if (!view) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL,
-              std::string("failed to instantiate view in vocbase'") +
+              std::string("failed to instantiate view in database '") +
                   vocbase->name() + "' from definition: " + it.toString());
         }
 
@@ -2640,48 +2865,19 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("584b1", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: " << ex.what();
+          << "error while opening database '" << vocbase->name()
+          << "': " << ex.what();
       throw;
     } catch (...) {
       LOG_TOPIC("593fd", ERR, arangodb::Logger::ENGINES)
-          << "error while opening database: unknown exception";
+          << "error while opening database '" << vocbase->name()
+          << "': unknown exception";
       throw;
     }
   };
 
   // scan the database path for "arangosearch" views
-  scanViews(iresearch::StaticStrings::ViewType);
-
-  // scan the database path for replicated logs
-  try {
-    VPackBuilder builder;
-    getReplicatedLogs(*vocbase, builder);
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (VPackSlice it : VPackArrayIterator(slice)) {
-      // we found a log that is still active
-      TRI_ASSERT(!it.get("id").isNone());
-
-      auto logId = arangodb::replication2::LogId{
-          it.get(StaticStrings::DataSourcePlanId).getNumericValue<uint64_t>()};
-      auto objectId =
-          it.get(StaticStrings::ObjectId).getNumericValue<uint64_t>();
-      auto log = std::make_shared<RocksDBPersistedLog>(
-          replication2::GlobalLogIdentifier(vocbase->name(), logId), objectId,
-          _logPersistor);
-      StorageEngine::registerReplicatedLog(*vocbase, logId, log);
-    }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
+  scanViews(iresearch::StaticStrings::ViewArangoSearchType);
 
   // scan the database path for collections
   try {
@@ -2698,6 +2894,10 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
+      LOG_TOPIC("b2ef2", TRACE, arangodb::Logger::ENGINES)
+          << "processing collection metadata in database '" << vocbase->name()
+          << "': " << it.toJson();
+
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
 
       auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
@@ -2709,30 +2909,60 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
       if (r.fail()) {
         LOG_TOPIC("4a404", ERR, arangodb::Logger::ENGINES)
             << "error while "
-            << "loading metadata of collection '" << collection->name()
-            << "': " << r.errorMessage();
+            << "loading metadata of collection '" << vocbase->name() << "/"
+            << collection->name() << "': " << r.errorMessage();
       }
 
       StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
-          << "added document collection '" << collection->name() << "'";
+          << "added document collection '" << vocbase->name() << "/"
+          << collection->name() << "'";
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("8d427", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
+        << "error while opening database '" << vocbase->name()
+        << "': " << ex.what();
     throw;
   } catch (...) {
     LOG_TOPIC("0268e", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
+        << "error while opening database '" << vocbase->name()
+        << "': unknown exception";
     throw;
   }
 
-  // scan the database path for "search" views
+  // scan the database path for "search-alias" views
   if (ServerState::instance()->isSingleServer()) {
-    scanViews(iresearch::StaticStrings::SearchType);
+    scanViews(iresearch::StaticStrings::ViewSearchAliasType);
   }
 
   return vocbase;
+}
+
+void RocksDBEngine::scheduleFullIndexRefill(std::string const& database,
+                                            std::string const& collection,
+                                            IndexId iid) {
+  // simply forward...
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.scheduleFullIndexRefill(database, collection, iid);
+}
+
+bool RocksDBEngine::autoRefillIndexCaches() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefill();
+}
+
+bool RocksDBEngine::autoRefillIndexCachesOnFollowers() const {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  return f.autoRefillOnFollowers();
+}
+
+void RocksDBEngine::syncIndexCaches() {
+  RocksDBIndexCacheRefillFeature& f =
+      server().getFeature<RocksDBIndexCacheRefillFeature>();
+  f.waitForCatchup();
 }
 
 DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
@@ -3119,15 +3349,15 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
     vocbase->replicationClients().toVelocyPack(builder);
   }
   builder.close();  // clients
-
   builder.close();  // base
 
-  return Result{};
+  return {};
 }
 
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
+
   Result res = rocksutils::convertStatus(s);
   if (res.fail()) {
     return res;
@@ -3156,21 +3386,22 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
     builder.close();
   }
   builder.close();
-  return Result{};
+
+  return {};
 }
 
 Result RocksDBEngine::firstTick(uint64_t& tick) {
-  Result res{};
   rocksdb::VectorLogPtr walFiles;
   rocksdb::Status s = _db->GetSortedWalFiles(walFiles);
 
+  Result res;
   if (!s.ok()) {
     res = rocksutils::convertStatus(s);
-    return res;
-  }
-  // read minium possible tick
-  if (!walFiles.empty()) {
-    tick = walFiles[0]->StartSequence();
+  } else {
+    // read minium possible tick
+    if (!walFiles.empty()) {
+      tick = walFiles[0]->StartSequence();
+    }
   }
   return res;
 }
@@ -3225,8 +3456,13 @@ TRI_voc_tick_t RocksDBEngine::releasedTick() const {
 
 void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   WRITE_LOCKER(lock, _walFileLock);
+
   if (tick > _releasedTick) {
     _releasedTick = tick;
+    lock.unlock();
+
+    // update metric for released tick
+    _metricsWalReleasedTickFlush.store(tick, std::memory_order_relaxed);
   }
 }
 
@@ -3357,53 +3593,6 @@ void RocksDBEngine::waitForCompactionJobsToFinish() {
 
   LOG_TOPIC("c537b", WARN, Logger::ENGINES)
       << "giving up waiting for pending compaction job(s)";
-}
-
-auto RocksDBEngine::dropReplicatedLog(
-    TRI_vocbase_t& vocbase,
-    std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog> const&
-        log) -> Result {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), log->id());
-
-  auto s = _db->Delete(rocksdb::WriteOptions{},
-                       RocksDBColumnFamilyManager::get(
-                           RocksDBColumnFamilyManager::Family::Definitions),
-                       key.string());
-  return rocksutils::convertStatus(s);
-}
-
-auto RocksDBEngine::createReplicatedLog(TRI_vocbase_t& vocbase,
-                                        arangodb::replication2::LogId logId)
-    -> ResultT<
-        std::shared_ptr<arangodb::replication2::replicated_log::PersistedLog>> {
-  auto key = RocksDBKey{};
-  key.constructReplicatedLog(vocbase.id(), logId);
-
-  auto objectId = TRI_NewTickServer();
-
-  VPackBuilder valueBuilder;
-  {
-    VPackObjectBuilder ob(&valueBuilder);
-    valueBuilder.add(StaticStrings::DataSourceId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::DataSourcePlanId, VPackValue(logId.id()));
-    valueBuilder.add(StaticStrings::ObjectId, VPackValue(objectId));
-  }
-  auto value = RocksDBValue::ReplicatedLog(valueBuilder.slice());
-
-  rocksdb::WriteOptions opts;
-  auto s = _db->GetRootDB()->Put(
-      opts,
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Definitions),
-      key.string(), value.string());
-  if (s.ok()) {
-    return {std::make_shared<RocksDBPersistedLog>(
-        replication2::GlobalLogIdentifier(vocbase.name(), logId), objectId,
-        _logPersistor)};
-  }
-
-  return rocksutils::convertStatus(s);
 }
 
 bool RocksDBEngine::checkExistingDB(

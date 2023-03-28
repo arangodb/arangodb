@@ -1,0 +1,19 @@
+name: rocksdb_wal_released_tick_replication
+introducedIn: "3.10.5"
+help: |
+  Lower bound sequence number from which WAL files need to be kept because
+  of replication.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric exposes the RocksDB WAL sequence number from which onwards 
+  WAL files have to kept in the archive because the WAL data could be used
+  by the replication.
+  WAL files with sequence numbers higher than this value are not 
+  garbage-collected.

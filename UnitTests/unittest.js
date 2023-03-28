@@ -5,6 +5,7 @@
 const _ = require('lodash');
 const internal = require('internal');
 const rp = require('@arangodb/testutils/result-processing');
+const cu = require('@arangodb/testutils/crash-utils');
 
 const unitTest = require('@arangodb/testutils/testing').unitTest;
 const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
@@ -113,12 +114,10 @@ function main (argv) {
   }
 
   rp.analyze.unitTestPrettyPrintResults(options, result);
-
-  return result.status;
+  return result.status && cu.GDB_OUTPUT === '';
 }
 
 let result = main(ARGUMENTS);
-
 if (!result) {
   // force an error in the console
   process.exit(1);
