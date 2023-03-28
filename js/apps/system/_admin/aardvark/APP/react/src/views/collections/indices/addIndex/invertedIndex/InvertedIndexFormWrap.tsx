@@ -1,6 +1,4 @@
-import {
-  Box
-} from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { Form, Formik } from "formik";
 import React from "react";
 import { Split } from "../../../../../components/split/Split";
@@ -88,5 +86,3 @@ export const InvertedIndexForm = ({
     </InvertedIndexProvider>
   );
 };
-
-
