@@ -93,7 +93,7 @@ export const fetchUserConfig = async () => {
     `/user/${username}/config`
   );
   console.log({ data });
-  return data.body.result.visgraphs;
+  return data.body.result?.visgraphs;
 };
 
 export const putUserConfig = async ({
