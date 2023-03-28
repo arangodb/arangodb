@@ -222,7 +222,7 @@ let aralyzersTest = {
     } else if (foundAnalyzers.length !== obj.analyzersBefore.length) {
       obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup removef analyzers:' + foundAnalyzers  + ' != ' + obj.analyzersBefore + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        message: 'Cleanup remove analyzers:' + foundAnalyzers  + ' != ' + obj.analyzersBefore + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
