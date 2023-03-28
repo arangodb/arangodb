@@ -82,7 +82,7 @@ auto CollectionStatusWriter::createResult(velocypack::Slice data)
     return OperationResult{std::move(transactionResult), options};
   }
 
-  auto payload = inspection::serializeWithErrorT(data.value());
+  auto payload = inspection::serializeWithErrorT(opData);
   return handleOperationResult(
       trx, options, transactionResult,
       trx.insert(StaticStrings::PregelCollection, payload->slice(), {}));
@@ -146,7 +146,7 @@ auto CollectionStatusWriter::updateResult(velocypack::Slice data)
   if (transactionResult.fail()) {
     return OperationResult{std::move(transactionResult), options};
   }
-  auto payload = inspection::serializeWithErrorT(data.value());
+  auto payload = inspection::serializeWithErrorT(opData);
   return handleOperationResult(
       trx, options, transactionResult,
       trx.update(StaticStrings::PregelCollection, payload->slice(), {}));
