@@ -9,7 +9,7 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, false>;
 };
 
 export const SelectControl = (props: InputControlProps) => {

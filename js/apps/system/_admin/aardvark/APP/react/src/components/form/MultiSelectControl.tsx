@@ -1,11 +1,7 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import {
-  MultiValue,
-  Props as ReactSelectProps,
-  PropsValue
-} from "react-select";
-import SelectBase from "../select/SelectBase";
+import Select, { Props as ReactSelectProps, PropsValue } from "react-select";
+import { getSelectBase } from "../select/SelectBase";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -13,9 +9,9 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, true>;
 };
-
+const SelectBase = getSelectBase<true>(Select);
 export const MultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
   const [field, , helper] = useField(name);
@@ -29,19 +25,17 @@ export const MultiSelectControl = (props: InputControlProps) => {
     <FormikFormControl name={name} label={label} {...rest}>
       <SelectBase
         {...field}
-        isMulti
         value={value}
         inputId={name}
         isDisabled={rest.isDisabled || isSubmitting}
         onChange={values => {
-          const valueStringArray = (values as MultiValue<OptionType>)?.map(
-            value => {
-              return value.value;
-            }
-          );
+          const valueStringArray = values?.map(value => {
+            return value.value;
+          });
           helper.setValue(valueStringArray);
         }}
         {...selectProps}
+        isMulti
       />
     </FormikFormControl>
   );

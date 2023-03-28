@@ -1,7 +1,6 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
 import {
-  MultiValue,
   Props as ReactSelectProps,
   PropsValue
 } from "react-select";
@@ -14,7 +13,7 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, true>;
 };
 
 const CreatableSelectBase = getSelectBase<true>(CreatableSelect);
