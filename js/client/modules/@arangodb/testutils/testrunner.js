@@ -375,7 +375,6 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(aralyzersTest);
     }
-    this.cleanupChecks.push(graphsTest);
     this.graphCount = 0;
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
