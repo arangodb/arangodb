@@ -28,7 +28,7 @@ export const useCreateIndex = <TValues extends unknown>() => {
     window.arangoHelper.checkDatabasePermissions(
       function() {
         window.arangoHelper.arangoError(
-          "You do not have permission to create indexes in this database."
+          "You do not have the permissions to create indexes in this database."
         );
       },
       async () => {

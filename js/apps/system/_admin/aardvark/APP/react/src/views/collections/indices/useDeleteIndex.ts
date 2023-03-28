@@ -51,7 +51,7 @@ const postDeleteIndex = async ({
   window.arangoHelper.checkDatabasePermissions(
     function() {
       window.arangoHelper.arangoError(
-        "You do not have permission to delete indexes in this database."
+        "You do not have the permissions to delete indexes in this database."
       );
     },
     async () => {
