@@ -1,7 +1,6 @@
 import React from "react";
 
 import Select, { components, OptionProps, Props } from "react-select";
-import CreatableSelect from "react-select/creatable";
 export type OptionType = {
   value: string;
   label: string;
@@ -44,8 +43,3 @@ export const getSelectBase = <IsMulti extends boolean = false>(
     }}
   />
 );
-
-const SelectBase = getSelectBase(Select);
-export const CreatableSelectBase = getSelectBase(CreatableSelect);
-
-export default SelectBase;

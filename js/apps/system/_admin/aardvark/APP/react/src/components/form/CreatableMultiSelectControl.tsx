@@ -1,11 +1,7 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import {
-  Props as ReactSelectProps,
-  PropsValue
-} from "react-select";
-import CreatableSelect from "react-select/creatable";
-import { getSelectBase } from "../select/SelectBase";
+import { Props as ReactSelectProps, PropsValue } from "react-select";
+import CreatableMultiSelect from "../select/CreatableMultiSelect";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -15,8 +11,6 @@ type OptionType = {
 export type InputControlProps = BaseFormControlProps & {
   selectProps?: ReactSelectProps<OptionType, true>;
 };
-
-const CreatableSelectBase = getSelectBase<true>(CreatableSelect);
 
 export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
@@ -38,7 +32,7 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
   }
   return (
     <FormikFormControl name={name} label={label} {...rest}>
-      <CreatableSelectBase
+      <CreatableMultiSelect
         {...field}
         value={value}
         inputId={name}

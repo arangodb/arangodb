@@ -1,17 +1,14 @@
 import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
-import Select, { components, MultiValueGenericProps } from "react-select";
-import {
-  getSelectBase,
-  OptionType
-} from "../../../../../components/select/SelectBase";
+import { components, MultiValueGenericProps } from "react-select";
+import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
+import { OptionType } from "../../../../../components/select/SelectBase";
 import { IndexFormFieldProps } from "../IndexFormField";
 import { InfoTooltip } from "../InfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
-const MultiCreatableSelectBase = getSelectBase<true>(Select);
 const MultiValueLabel = (
   props: MultiValueGenericProps<OptionType> & {
     fieldName: string;
@@ -59,7 +56,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
             alignItems="center"
           >
             <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
-            <MultiCreatableSelectBase
+            <CreatableMultiSelect
               isDisabled={field.isDisabled}
               isMulti
               name={field.name}
