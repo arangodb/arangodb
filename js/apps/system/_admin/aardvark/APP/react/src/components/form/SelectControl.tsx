@@ -32,7 +32,6 @@ export const SelectControl = (props: InputControlProps) => {
         value={value}
         inputId={name}
         {...selectProps}
-        isMulti={false}
         onChange={value => {
           helper.setValue((value as OptionType)?.value);
         }}
