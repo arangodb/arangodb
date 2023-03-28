@@ -97,16 +97,23 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
         "OLD is only available when using INSERT with overwriteModes "
         "'update' or 'replace'");
   }
+
   result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
                        _info._options);
   possibleWrites = inDocument.slice().length();
   // TODO consider the result of the operation
 
   // check operation result
-  if (!result.ok()) {
-    if (!_info._ignoreErrors) {  // TODO remove if
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
-                                     result.errorMessage());
+  if (!_info._ignoreErrors) {  // TODO remove if
+    if (result.ok() && result.hasSlice()) {
+      for (auto it : VPackArrayIterator(result.slice())) {
+        auto errorNum = it.get("errorNum");
+        auto errorMessage = it.get("errorMessage");
+        if (errorNum.isNumber() && errorMessage.isString()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(ErrorCode(errorNum.getInt()),
+                                         errorMessage.stringView());
+        }
+      }
     }
   }
 
