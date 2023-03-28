@@ -750,7 +750,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
   }
 
-  _stateHandle->updateCommitIndex(_commitIndex);
+  // Currently unused
+  //_stateHandle->updateCommitIndex(_commitIndex);
 
   try {
     WaitForQueue toBeResolved;

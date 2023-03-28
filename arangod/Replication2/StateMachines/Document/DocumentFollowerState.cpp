@@ -120,7 +120,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
             << " data transfer completed, sending finish request";
 
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
-            .thenValue([snapshotTransferResult](auto&& res) {
+            .then([snapshotTransferResult](auto&& tryRes) {
+              auto res = basics::catchToResult([&] { return tryRes.get(); });
               if (res.fail()) {
                 LOG_TOPIC("0e168", ERR, Logger::REPLICATION2)
                     << "Failed to finish snapshot "

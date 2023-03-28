@@ -582,18 +582,26 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
                       rttGuard = std::move(rttGuard)]() mutable {
-      // get an iterator for the range [last_applied + 1, commitIndex + 1)
-      auto logIter = stream->methods()->getCommittedLogIterator(range);
-      auto deserializedIter = std::make_unique<
-          LazyDeserializingIterator<EntryType const&, Deserializer>>(
-          std::move(logIter));
-      followerState->applyEntries(std::move(deserializedIter))
-          .thenFinal(
-              [promise = std::move(promise),
-               rttGuard = std::move(rttGuard)](auto&& tryResult) mutable {
-                rttGuard.fire();
-                promise.setTry(std::move(tryResult));
-              });
+      using IterType =
+          LazyDeserializingIterator<EntryType const&, Deserializer>;
+      auto iter = [&]() -> std::unique_ptr<IterType> {
+        auto methods = stream->methods();
+        if (methods.isResigned()) {
+          return nullptr;  // Nothing to do, follower already resigned
+        }
+        // get an iterator for the range [last_applied + 1, commitIndex + 1)
+        auto logIter = methods->getCommittedLogIterator(range);
+        return std::make_unique<IterType>(std::move(logIter));
+      }();
+      if (iter != nullptr) {
+        followerState->applyEntries(std::move(iter))
+            .thenFinal(
+                [promise = std::move(promise),
+                 rttGuard = std::move(rttGuard)](auto&& tryResult) mutable {
+                  rttGuard.fire();
+                  promise.setTry(std::move(tryResult));
+                });
+      }
     });
 
     return future;

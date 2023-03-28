@@ -143,6 +143,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   guard.unlock();
   action.fire();
+  requestGuard.reset();
   LOG_CTX("f5ecd", TRACE, lctx) << "append entries successful";
   co_return AppendEntriesResult::withOk(termInfo->term, request.messageId,
                                         hasSnapshot);
