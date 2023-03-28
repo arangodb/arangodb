@@ -103,12 +103,12 @@ export const GraphNetwork = () => {
       ref={containerRef}
       height={height}
       background="white"
+      position="relative"
     >
       <GraphRightClickMenu
         portalProps={{
           containerRef
         }}
-        visJsRef={visJsRef}
       />
       <div
         ref={visJsRef}

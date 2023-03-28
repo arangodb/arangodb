@@ -71,7 +71,7 @@ const SelectedEntityInfo = () => {
         <Text>Attributes</Text>
         {Object.keys(displayData).map(key => {
           return (
-            <Tooltip hasArrow label={displayData[key]}>
+            <Tooltip key={key} hasArrow label={displayData[key]}>
               <Tag size={"md"} background="gray.800" color="white">
                 {key}
               </Tag>

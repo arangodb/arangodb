@@ -16,10 +16,8 @@ import { fetchVisData, useGraph } from "./GraphContext";
 import { useUrlParameterContext } from "./UrlParametersContext";
 
 export const GraphRightClickMenu = ({
-  visJsRef,
   portalProps
 }: {
-  visJsRef: MutableRefObject<HTMLElement | null>;
   portalProps?: Omit<PortalProps, "children">;
 }) => {
   const [position, setPosition] = useState({ left: "0", top: "0" });
@@ -28,23 +26,15 @@ export const GraphRightClickMenu = ({
     if (!network) {
       return;
     }
-    network.on("oncontext", args => {
-      args.event.preventDefault();
-      const rect =
-        visJsRef &&
-        visJsRef.current &&
-        visJsRef.current.getBoundingClientRect();
-      const { left, top } = rect || {};
-      const { x, y } = args.pointer.DOM;
-
-      const finalX = x + left;
-      const finalY = y + top;
+    network.on("oncontext", ({ event, pointer }) => {
+      event.preventDefault();
+      const { x, y } = pointer.DOM;
       setPosition({
-        left: `${finalX}px`,
-        top: `${finalY}px`
+        left: `${x}px`,
+        top: `${y}px`
       });
-      const nodeId = network.getNodeAt(args.pointer.DOM) as string;
-      const edgeId = network.getEdgeAt(args.pointer.DOM) as string;
+      const nodeId = network.getNodeAt(pointer.DOM) as string;
+      const edgeId = network.getEdgeAt(pointer.DOM) as string;
       if (nodeId) {
         setRightClickedEntity({ type: "node", nodeId });
         network.selectNodes([nodeId]);
@@ -55,7 +45,7 @@ export const GraphRightClickMenu = ({
         setRightClickedEntity({ type: "canvas" });
       }
     });
-  }, [network, visJsRef, setRightClickedEntity]);
+  }, [network, setRightClickedEntity]);
   const renderMenu = (ref: MutableRefObject<HTMLDivElement>) => {
     if (rightClickedEntity && rightClickedEntity.type === "canvas") {
       return <CanvasContextMenu ref={ref} />;
