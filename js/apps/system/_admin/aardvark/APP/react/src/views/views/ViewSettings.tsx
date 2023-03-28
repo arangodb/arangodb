@@ -135,6 +135,7 @@ const ViewSettingsInner = ({
       height="calc(100vh - 60px)"
       display="grid"
       gridTemplateRows="120px 1fr"
+      width="full"
     >
       <ViewHeader
         formState={formState}

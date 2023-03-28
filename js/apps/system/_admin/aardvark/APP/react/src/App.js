@@ -15,6 +15,7 @@ require('./views/analyzers/AnalyzersReactView');
 require('./views/visgraphs/VisGraphReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
+require('./views/collections/indices/CollectionIndicesReactView');
 
 // old libraries
 const jQuery = require('jquery');
