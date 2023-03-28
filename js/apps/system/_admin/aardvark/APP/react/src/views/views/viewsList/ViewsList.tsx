@@ -14,7 +14,7 @@ export const ViewsList = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <HashRouter basename="/" hashType={"noslash"}>
         <ViewsListInner />
       </HashRouter>
@@ -35,7 +35,7 @@ const ViewsListInner = () => {
     return <>no views found</>;
   }
   return (
-    <Box display={"grid"} gridTemplateRows="48px 1fr" rowGap="5">
+    <Box width="full" display={"grid"} gridTemplateRows="48px 1fr" rowGap="5">
       <Box
         backgroundColor="white"
         boxShadow="md"
@@ -60,6 +60,7 @@ const ViewsListInner = () => {
         display={"grid"}
         gap="4"
         padding="4"
+        gridAutoRows="100px"
         gridTemplateColumns={"repeat(auto-fill, minmax(190px, 1fr))"}
       >
         <AddViewTile />
