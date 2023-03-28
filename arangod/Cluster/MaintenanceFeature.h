@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
@@ -119,7 +118,7 @@ class MaintenanceFeature : public ArangodFeature {
   virtual void beginShutdown() override;
 
   // stop the feature
-  virtual void stop() override;
+  void stop() final;
 
   void initializeMetrics();
   //
@@ -528,32 +527,32 @@ class MaintenanceFeature : public ArangodFeature {
   /// methods.
 
   /// @brief lock for index error bucket
-  mutable arangodb::Mutex _ieLock;
+  mutable std::mutex _ieLock;
   /// @brief pending errors raised by EnsureIndex
   std::map<std::string,
            std::map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>>
       _indexErrors;
 
   /// @brief lock for shard error bucket
-  mutable arangodb::Mutex _seLock;
+  mutable std::mutex _seLock;
   /// @brief pending errors raised by CreateCollection/UpdateCollection
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>
       _shardErrors;
 
   /// @brief lock for database error bucket
-  mutable arangodb::Mutex _dbeLock;
+  mutable std::mutex _dbeLock;
   /// @brief pending errors raised by CreateDatabase
   std::unordered_map<std::string, std::shared_ptr<VPackBuffer<uint8_t>>>
       _dbErrors;
 
   /// @brief lock for shard version map
-  mutable arangodb::Mutex _versionLock;
+  mutable std::mutex _versionLock;
   /// @brief shards have versions in order to be able to distinguish between
   /// independant actions
   std::unordered_map<std::string, size_t> _shardVersion;
 
   /// @brief lock for replication error bucket
-  mutable arangodb::Mutex _replLock;
+  mutable std::mutex _replLock;
   /// @brief shard replication errors { database => { shard => [ timestamps ] }
   /// } we store up to  maxReplicationErrorsPerShard  errors per shard. all
   /// errors for a shard will be cleared after a successful SynchronizeShard job

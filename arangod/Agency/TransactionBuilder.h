@@ -50,12 +50,14 @@ inline void add_to_builder(VPackBuilder& b, VPackSlice const& v) { b.add(v); }
 template<typename V>
 auto add_to_builder(VPackBuilder& b, V const& v)
     -> std::enable_if_t<std::is_constructible_v<velocypack::Value, V>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v));
 }
 
 template<typename Path>
 inline auto add_to_builder(VPackBuilder& b, Path const& v)
     -> std::enable_if_t<std::is_base_of_v<cluster::paths::Path, Path>, void> {
+  // cppcheck-suppress missingReturn
   b.add(VPackValue(v.str()));
 }
 
