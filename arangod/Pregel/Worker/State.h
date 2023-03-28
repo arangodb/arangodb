@@ -46,7 +46,7 @@ struct WorkerState {
               std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
               TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
-              actor::ActorPID resultActor)
+              actor::ActorPID resultActor, actor::ActorPID statusActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
         messageFormat{std::move(newMessageFormat)},
@@ -55,7 +55,8 @@ struct WorkerState {
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase},
         spawnActor(spawnActor),
-        resultActor(resultActor) {
+        resultActor(resultActor),
+        statusActor(statusActor) {
     config->updateConfig(specifications);
 
     if (messageCombiner) {
@@ -115,6 +116,7 @@ struct WorkerState {
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
+  const actor::ActorPID statusActor;
   std::shared_ptr<Quiver<V, E>> quiver = std::make_unique<Quiver<V, E>>();
   MessageStats messageStats;
   GssObservables currentGssObservables;
