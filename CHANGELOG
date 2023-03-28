@@ -4,7 +4,12 @@ v3.10.6 (XXXX-XX-XX)
 * SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
   
-  Fixed SEARCH-459 Fixed reporting ArangoSearch inverted index properties from ensureIndex request.
+* Fixed SEARCH-459 Fixed reporting ArangoSearch inverted index properties from
+  ensureIndex request.
+
+* Changed path where test scripts locate configuration files from `etc/relative`
+  to `etc/testing`. These paths contain `arangosh.conf`, which we were reading
+  from `etc/relative` in test environment.
 
 * Fix issues with deferred database creation:
 
