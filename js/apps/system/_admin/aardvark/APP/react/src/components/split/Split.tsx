@@ -9,11 +9,11 @@ import ReactSplit, {
 export const Split = (
   props: SplitGridProps &
     (ChildrenPattern | RenderPattern | ComponentPattern) & {
-      accessKey: string;
+      storageKey: string;
     }
 ) => {
-  const { accessKey, ...rest } = props;
-  const localStorageSplitSize = localStorage.getItem(accessKey);
+  const { storageKey, ...rest } = props;
+  const localStorageSplitSize = localStorage.getItem(storageKey);
   const [gridTemplateColumns, setGridTemplateColumns] = useState(
     localStorageSplitSize || "1fr 10px 1fr"
   );
@@ -24,7 +24,7 @@ export const Split = (
       cursor="col-resize"
       onDrag={(_direction, _track, gridTemplateStyle) => {
         setGridTemplateColumns(gridTemplateStyle);
-        localStorage.setItem(accessKey, gridTemplateStyle);
+        localStorage.setItem(storageKey, gridTemplateStyle);
       }}
       {...rest}
     />
