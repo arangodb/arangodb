@@ -26,177 +26,191 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const internal = require('internal');
 const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 
 function InsertMultipleDocumentsSuite() {
-    'use strict';
+  'use strict';
 
-    return {
+  return {
 
-        setUp: function () {
-            db._drop(cn);
-            db._create(cn);
-        },
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn);
+    },
 
-        tearDown: function () {
-            db._drop(cn);
-        },
+    tearDown: function () {
+      db._drop(cn);
+    },
 
-        testInsertMultipleDocumentsFromVariable: function () {
-            let docs = [];
-            for (let i = 0; i < numDocs; ++i) {
-                docs.push({d: i});
-            }
-            const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, {docs: docs});
-            const nodes = res.plan.nodes;
-            assertEqual(nodes.length, 3);
-            assertEqual(nodes[0].type, "SingletonNode");
-            assertEqual(nodes[0].dependencies.length, 0);
-            let dependencyId = nodes[0].id;
-            assertEqual(nodes[1].type, "CalculationNode");
-            assertEqual(nodes[1].dependencies.length, 1);
-            assertEqual(nodes[1].dependencies[0], dependencyId);
-            dependencyId = nodes[1].id;
-            assertEqual(nodes[1].outVariable.name, dependencyId);
-            assertEqual(nodes[1].expression.type, "array");
-            assertEqual(nodes[1].expression.raw.length, numDocs);
-            assertEqual(nodes[1].dependencies.length, 1);
-            assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
-            assertEqual(nodes[2].dependencies.length, 1);
-            assertEqual(nodes[2].dependencies[0], dependencyId);
-            assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
+    testInsertMultipleDocumentsFromVariable: function () {
+      let docs = [];
+      for (let i = 0; i < numDocs; ++i) {
+        docs.push({ d: i });
+      }
+      const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, { docs: docs });
+      const nodes = res.plan.nodes;
+      assertEqual(nodes.length, 3);
+      assertEqual(nodes[0].type, "SingletonNode");
+      assertEqual(nodes[0].dependencies.length, 0);
+      let dependencyId = nodes[0].id;
+      assertEqual(nodes[1].type, "CalculationNode");
+      assertEqual(nodes[1].dependencies.length, 1);
+      assertEqual(nodes[1].dependencies[0], dependencyId);
+      dependencyId = nodes[1].id;
+      assertEqual(nodes[1].outVariable.name, dependencyId);
+      assertEqual(nodes[1].expression.type, "array");
+      assertEqual(nodes[1].expression.raw.length, numDocs);
+      assertEqual(nodes[1].dependencies.length, 1);
+      assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+      assertEqual(nodes[2].dependencies.length, 1);
+      assertEqual(nodes[2].dependencies[0], dependencyId);
+      assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
 
-            const docsAfterInsertion = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
-            docsAfterInsertion.forEach((el, idx) => {
-                assertEqual(el, docs[idx]);
-            });
-        },
+      const docsAfterInsertion = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      docsAfterInsertion.forEach((el, idx) => {
+        assertEqual(el, docs[idx]);
+      });
+    },
 
-        testInsertMultipleDocumentsFromEnumerateList: function () {
-            const queries = [`LET list = [{value: 1}, {vale: 2}]  FOR d in list INSERT d INTO ${cn}`, `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`];
-            queries.forEach(query => {
-                const res = AQL_EXPLAIN(query);
-                const nodes = res.plan.nodes;
-                assertEqual(nodes.length, 3);
-                assertEqual(nodes[0].type, "SingletonNode");
-                assertEqual(nodes[0].dependencies.length, 0);
-                let dependencyId = nodes[0].id;
-                assertEqual(nodes[1].type, "CalculationNode");
-                assertEqual(nodes[1].dependencies.length, 1);
-                assertEqual(nodes[1].dependencies[0], dependencyId);
-                dependencyId = nodes[1].id;
-                assertEqual(nodes[1].expression.type, "array");
-                assertEqual(nodes[1].expression.raw.length, 2);
-                assertEqual(nodes[1].dependencies.length, 1);
-                assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
-                assertEqual(nodes[2].dependencies.length, 1);
-                assertEqual(nodes[2].dependencies[0], dependencyId);
-                assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
-            });
-        },
+    testInsertMultipleDocumentsFromEnumerateList: function () {
+      const queries = [`LET list = [{value: 1}, {vale: 2}]  FOR d in list INSERT d INTO ${cn}`, `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`];
+      queries.forEach(query => {
+        const res = AQL_EXPLAIN(query);
+        const nodes = res.plan.nodes;
+        assertEqual(nodes.length, 3);
+        assertEqual(nodes[0].type, "SingletonNode");
+        assertEqual(nodes[0].dependencies.length, 0);
+        let dependencyId = nodes[0].id;
+        assertEqual(nodes[1].type, "CalculationNode");
+        assertEqual(nodes[1].dependencies.length, 1);
+        assertEqual(nodes[1].dependencies[0], dependencyId);
+        dependencyId = nodes[1].id;
+        assertEqual(nodes[1].expression.type, "array");
+        assertEqual(nodes[1].expression.raw.length, 2);
+        assertEqual(nodes[1].dependencies.length, 1);
+        assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+        assertEqual(nodes[2].dependencies.length, 1);
+        assertEqual(nodes[2].dependencies[0], dependencyId);
+        assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
+      });
+    },
 
-        testInsertMultipleDocumentsRuleNoEffect: function () {
-            const ruleName = "optimize-cluster-multiple-document-operations";
-            const queries = [
-                `FOR d IN  ${cn} INSERT d INTO ${cn}`,
-                `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
-                `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
-                `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
-                `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
-                `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`
-            ];
-            queries.forEach(function (query) {
-                const result = AQL_EXPLAIN(query);
-                assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
-            });
-        },
-    };
+    testInsertMultipleDocumentsRuleNoEffect: function () {
+      const ruleName = "optimize-cluster-multiple-document-operations";
+      const queries = [
+        `FOR d IN  ${cn} INSERT d INTO ${cn}`,
+        `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
+        `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
+        `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
+        `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
+        `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`
+      ];
+      queries.forEach(function (query) {
+        const result = AQL_EXPLAIN(query);
+        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+      });
+    },
+
+    testInsertWithConflict: function () {
+      db[cn].insert({ _key: "foobar" });
+      assertEqual(1, db[cn].count());
+      try {
+        db._query(`FOR d IN [{}, {_key: "foobar"}] INSERT d INTO ${cn}`);
+        fail("query did not fail as expected");
+      } catch (err) {
+        assertTrue(err.errorNum !== undefined, 'unexpected error');
+        assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        assertEqual(1, db[cn].count());
+      }
+    }
+  };
 }
 
 function InsertMultipleDocumentsShardsSuite() {
-    'use strict';
+  'use strict';
 
-    return {
+  return {
 
-        setUp: function () {
-            db._drop(cn);
-            db._create(cn, {numberOfShards: 5, replicationFactor: 1});
-        },
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 5, replicationFactor: 1 });
+    },
 
-        tearDown: function () {
-            db._drop(cn);
-        },
+    tearDown: function () {
+      db._drop(cn);
+    },
 
-        testInsertMultipleDocumentsFromVariableWithShards: function () {
-            let docs = [];
-            for (let i = 0; i < numDocs; ++i) {
-                docs.push({d: i});
-            }
-            const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, {docs: docs});
-            const nodes = res.plan.nodes;
-            assertEqual(nodes.length, 3);
-            assertEqual(nodes[0].type, "SingletonNode");
-            assertEqual(nodes[0].dependencies.length, 0);
-            let dependencyId = nodes[0].id;
-            assertEqual(nodes[1].type, "CalculationNode");
-            assertEqual(nodes[1].dependencies.length, 1);
-            assertEqual(nodes[1].dependencies[0], dependencyId);
-            dependencyId = nodes[1].id;
-            assertEqual(nodes[1].expression.type, "array");
-            assertEqual(nodes[1].expression.raw.length, numDocs);
-            assertEqual(nodes[1].dependencies.length, 1);
-            assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
-            assertEqual(nodes[2].dependencies.length, 1);
-            assertEqual(nodes[2].dependencies[0], dependencyId);
-            assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
+    testInsertMultipleDocumentsFromVariableWithShards: function () {
+      let docs = [];
+      for (let i = 0; i < numDocs; ++i) {
+        docs.push({ d: i });
+      }
+      const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, { docs: docs });
+      const nodes = res.plan.nodes;
+      assertEqual(nodes.length, 3);
+      assertEqual(nodes[0].type, "SingletonNode");
+      assertEqual(nodes[0].dependencies.length, 0);
+      let dependencyId = nodes[0].id;
+      assertEqual(nodes[1].type, "CalculationNode");
+      assertEqual(nodes[1].dependencies.length, 1);
+      assertEqual(nodes[1].dependencies[0], dependencyId);
+      dependencyId = nodes[1].id;
+      assertEqual(nodes[1].expression.type, "array");
+      assertEqual(nodes[1].expression.raw.length, numDocs);
+      assertEqual(nodes[1].dependencies.length, 1);
+      assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+      assertEqual(nodes[2].dependencies.length, 1);
+      assertEqual(nodes[2].dependencies[0], dependencyId);
+      assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
 
-            const docsAfterInsertion = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
-            docsAfterInsertion.forEach((el, idx) => {
-                assertEqual(el, docs[idx]);
-            });
-        },
+      const docsAfterInsertion = db._query(`FOR doc IN ${cn} RETURN doc`).toArray();
+      docsAfterInsertion.forEach((el, idx) => {
+        assertEqual(el, docs[idx]);
+      });
+    },
 
-        testInsertMultipleDocumentsFromEnumerateListWithShards: function () {
-            const queries = [`LET list = [{value: 1}, {vale: 2}]  FOR d in list INSERT d INTO ${cn}`, `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`,];
-            queries.forEach(query => {
-                const res = AQL_EXPLAIN(query);
-                const nodes = res.plan.nodes;
-                assertEqual(nodes.length, 3);
-                assertEqual(nodes[0].type, "SingletonNode");
-                assertEqual(nodes[0].dependencies.length, 0);
-                let dependencyId = nodes[0].id;
-                assertEqual(nodes[1].type, "CalculationNode");
-                assertEqual(nodes[1].dependencies.length, 1);
-                assertEqual(nodes[1].dependencies[0], dependencyId);
-                dependencyId = nodes[1].id;
-                assertEqual(nodes[1].expression.type, "array");
-                assertEqual(nodes[1].expression.raw.length, 2);
-                assertEqual(nodes[1].dependencies.length, 1);
-                assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
-                assertEqual(nodes[2].dependencies.length, 1);
-                assertEqual(nodes[2].dependencies[0], dependencyId);
-                assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
-            });
-        },
+    testInsertMultipleDocumentsFromEnumerateListWithShards: function () {
+      const queries = [`LET list = [{value: 1}, {vale: 2}]  FOR d in list INSERT d INTO ${cn}`, `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`,];
+      queries.forEach(query => {
+        const res = AQL_EXPLAIN(query);
+        const nodes = res.plan.nodes;
+        assertEqual(nodes.length, 3);
+        assertEqual(nodes[0].type, "SingletonNode");
+        assertEqual(nodes[0].dependencies.length, 0);
+        let dependencyId = nodes[0].id;
+        assertEqual(nodes[1].type, "CalculationNode");
+        assertEqual(nodes[1].dependencies.length, 1);
+        assertEqual(nodes[1].dependencies[0], dependencyId);
+        dependencyId = nodes[1].id;
+        assertEqual(nodes[1].expression.type, "array");
+        assertEqual(nodes[1].expression.raw.length, 2);
+        assertEqual(nodes[1].dependencies.length, 1);
+        assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+        assertEqual(nodes[2].dependencies.length, 1);
+        assertEqual(nodes[2].dependencies[0], dependencyId);
+        assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
+      });
+    },
 
-        testInsertMultipleDocumentsRuleNoEffectWithShards: function () {
-            const ruleName = "optimize-cluster-multiple-document-operations";
-            const queries = [
-                `FOR d IN  ${cn} INSERT d INTO ${cn}`,
-                `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
-                `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
-                `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
-                `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
-                `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`
-            ];
-            queries.forEach(function (query) {
-                const result = AQL_EXPLAIN(query);
-                assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
-            });
-        },
-    };
+    testInsertMultipleDocumentsRuleNoEffectWithShards: function () {
+      const ruleName = "optimize-cluster-multiple-document-operations";
+      const queries = [
+        `FOR d IN  ${cn} INSERT d INTO ${cn}`,
+        `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
+        `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
+        `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
+        `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
+        `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`
+      ];
+      queries.forEach(function (query) {
+        const result = AQL_EXPLAIN(query);
+        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+      });
+    },
+  };
 }
 
 jsunity.run(InsertMultipleDocumentsSuite);
