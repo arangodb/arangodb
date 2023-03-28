@@ -536,7 +536,7 @@ function import_into_an_edge_collection__using_a_JSON_arraySuite () {
     },
 
     test_JSONA_multiple_docs__with_wrong_fromPrefix: function() {
-      let cmd = api + `?collection=${en}&createCollection=false&type=array&fromPrefix=a+b`;
+      let cmd = api + `?collection=${en}&createCollection=false&type=array&fromPrefix=a/b`;
       let body = "[\n";
       body += `{ \"a\" : 1, \"_from\" : \"vertex1\", \"_to\" : \"${vn}/vertex2\" }\n`;
       body += "]";;
@@ -552,7 +552,7 @@ function import_into_an_edge_collection__using_a_JSON_arraySuite () {
     },
 
     test_JSONA_multiple_docs__with_wrong_toPrefix: function() {
-      let cmd = api + `?collection=${en}&createCollection=false&type=array&toPrefix=a+b`;
+      let cmd = api + `?collection=${en}&createCollection=false&type=array&toPrefix=a/b`;
       let body = "[\n";
       body += `{ \"a\" : 1, \"_to\" : \"vertex1\", \"_from\" : \"${vn}/vertex2\" }\n`;
       body += "]";;
