@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -869,7 +868,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   auto& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  MUTEX_LOCKER(guard, _infoLock);  // prevent simultaneous updates
+  std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
   auto res = updateSchema(slice.get(StaticStrings::Schema));
   if (res.fail()) {

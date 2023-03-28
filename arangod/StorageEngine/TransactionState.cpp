@@ -493,7 +493,9 @@ char const* TransactionState::actorName() const noexcept {
 }
 
 void TransactionState::coordinatorRerollTransactionId() {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isRunning());
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
@@ -530,12 +532,12 @@ void TransactionState::chooseReplicasNolock(
 
 void TransactionState::chooseReplicas(
     containers::FlatHashSet<ShardID> const& shards) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   chooseReplicasNolock(shards);
 }
 
 ServerID TransactionState::whichReplica(ShardID const& shard) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   if (_chosenReplicas != nullptr) {
     auto it = _chosenReplicas->find(shard);
     if (it != _chosenReplicas->end()) {
@@ -546,14 +548,16 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   containers::FlatHashSet<ShardID> shards;
   shards.emplace(shard);
   chooseReplicasNolock(shards);
+  // cppcheck-suppress nullPointerRedundantCheck
   auto it = _chosenReplicas->find(shard);
+  // cppcheck-suppress nullPointerRedundantCheck
   TRI_ASSERT(it != _chosenReplicas->end());
   return it->second;
 }
 
 containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     containers::FlatHashSet<ShardID> const& shardIds) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   chooseReplicasNolock(shardIds);
   containers::FlatHashMap<ShardID, ServerID> result;
   for (auto const& shard : shardIds) {

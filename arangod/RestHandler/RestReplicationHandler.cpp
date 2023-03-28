@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"

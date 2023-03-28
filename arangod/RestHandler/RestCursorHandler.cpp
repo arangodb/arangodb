@@ -27,7 +27,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -438,7 +437,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
 
 void RestCursorHandler::registerQuery(
     std::shared_ptr<arangodb::aql::Query> query) {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
+  std::lock_guard mutexLocker{_queryLock};
 
   if (_queryKilled) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
@@ -458,7 +457,7 @@ void RestCursorHandler::unregisterQuery() noexcept {
       "RestCursorHandler::directKillBeforeQueryResultIsGettingHandled") {
     _query->debugKillQuery();
   }
-  MUTEX_LOCKER(mutexLocker, _queryLock);
+  std::lock_guard mutexLocker{_queryLock};
   _query.reset();
 }
 
@@ -467,7 +466,7 @@ void RestCursorHandler::unregisterQuery() noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestCursorHandler::cancelQuery() {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
+  std::lock_guard mutexLocker{_queryLock};
 
   if (_query != nullptr) {
     // cursor is canceled. now remove the continue handler we may have
@@ -489,7 +488,7 @@ void RestCursorHandler::cancelQuery() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestCursorHandler::wasCanceled() {
-  MUTEX_LOCKER(mutexLocker, _queryLock);
+  std::lock_guard mutexLocker{_queryLock};
   return _queryKilled;
 }
 

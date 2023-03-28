@@ -23,9 +23,10 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
@@ -97,7 +98,7 @@ class Worker : public IWorker {
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
-  mutable Mutex _commandMutex;
+  mutable std::mutex _commandMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 

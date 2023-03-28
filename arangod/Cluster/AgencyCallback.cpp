@@ -31,7 +31,6 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/AgencyCache.h"
@@ -74,7 +73,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
-      CONDITION_LOCKER(locker, _cv);
+      std::lock_guard locker{_cv.mutex};
       executeEmpty();
     } else {
       executeEmpty();
@@ -136,7 +135,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
   };
 
   if (needToAcquireMutex) {
-    CONDITION_LOCKER(locker, _cv);
+    std::lock_guard locker{_cv.mutex};
     callCheckValue();
   } else {
     callCheckValue();
@@ -179,7 +178,7 @@ bool AgencyCallback::execute(velocypack::Slice newData,
     bool result = _cb(newData, raftIndex);
     if (result) {
       _wasSignaled = true;
-      _cv.signal();
+      _cv.cv.notify_one();
     }
     return result;
   } catch (std::exception const& ex) {
@@ -203,7 +202,12 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
 
     // we haven't yet been signaled. so let's wait for a signal or
     // the timeout to occur
-    if (!_cv.wait(static_cast<uint64_t>(maxTimeout * 1000000.0))) {
+    std::unique_lock lock{_cv.mutex, std::adopt_lock};
+    auto const cv_status = _cv.cv.wait_for(
+        lock, std::chrono::microseconds{
+                  static_cast<uint64_t>(maxTimeout * 1000000.0)});
+    std::ignore = lock.release();
+    if (cv_status == std::cv_status::timeout) {
       LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
           << "Waiting done and nothing happended. Refetching to be sure";
       // mop: watches have not triggered during our sleep...recheck to be sure
