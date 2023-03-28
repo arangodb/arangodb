@@ -1,6 +1,8 @@
 v3.9.11 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.16.1.
+
 * SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
 
