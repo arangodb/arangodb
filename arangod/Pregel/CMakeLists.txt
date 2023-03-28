@@ -16,8 +16,7 @@ add_library(arango_pregel STATIC
   IndexHelpers.cpp
   OutgoingCache.cpp
   PregelFeature.cpp
-  PregelMetrics.cpp
-  ResolveShard.cpp)
+  PregelMetrics.cpp)
 target_link_libraries(arango_pregel
   arango
   arango_agency
