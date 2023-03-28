@@ -1,7 +1,8 @@
-import { Box, FormLabel, Spacer } from "@chakra-ui/react";
+import { Box, FormLabel } from "@chakra-ui/react";
 import { useField } from "formik";
 import React from "react";
 import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
+import { InfoTooltip } from "../InfoTooltip";
 
 //
 export const InvertedIndexConsolidationPolicy = ({
@@ -41,32 +42,15 @@ const ConsolidationPolicyFields = ({
       >
         <FormLabel>Type</FormLabel>
         <Box>{formikField.value.type}</Box>
-        <Spacer />
-
-        <IndexFormField
-          field={{
-            name: "consolidationPolicy.segmentsBytesFloor",
-            label: "Segments Bytes Floor",
-            type: "number",
-            isDisabled: field.isDisabled
-          }}
-        />
-
-        <IndexFormField
-          field={{
-            name: "consolidationPolicy.segmentsBytesMax",
-            label: "Segments Bytes Max",
-            type: "number",
-            isDisabled: field.isDisabled
-          }}
-        />
-
+        <InfoTooltip label="Represents the type of policy." />
         <IndexFormField
           field={{
             name: "consolidationPolicy.segmentsMin",
             label: "Segments Min",
             type: "number",
-            isDisabled: field.isDisabled
+            isDisabled: field.isDisabled,
+            tooltip:
+              "The minimum number of segments that will be evaluated as candidates for consolidation."
           }}
         />
         <IndexFormField
@@ -74,7 +58,29 @@ const ConsolidationPolicyFields = ({
             name: "consolidationPolicy.segmentsMax",
             label: "Segments Max",
             type: "number",
-            isDisabled: field.isDisabled
+            isDisabled: field.isDisabled,
+            tooltip:
+              "The maximum number of segments that will be evaluated as candidates for consolidation."
+          }}
+        />
+        <IndexFormField
+          field={{
+            name: "consolidationPolicy.segmentsBytesMax",
+            label: "Segments Bytes Max",
+            type: "number",
+            isDisabled: field.isDisabled,
+            tooltip:
+              "Maximum allowed size of all consolidated segments in bytes."
+          }}
+        />
+        <IndexFormField
+          field={{
+            name: "consolidationPolicy.segmentsBytesFloor",
+            label: "Segments Bytes Floor",
+            type: "number",
+            isDisabled: field.isDisabled,
+            tooltip:
+              "Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
           }}
         />
       </Box>

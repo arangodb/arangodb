@@ -2,55 +2,6 @@ import * as Yup from "yup";
 import { commonFieldsMap, commonSchema } from "../IndexFieldsHelper";
 import { useCreateIndex } from "../useCreateIndex";
 
-/**
- * Index definition could be split on several blocks.
- * 
- * 1. Commit/Consolidation properties - same as for ArangoSearch Views:  could be found here https://www.arangodb.com/docs/stable/arangosearch-views.html. Starting from “cleanupIntervalStep“ and below. Mutable!  For this I suggest to have something similar to what we already have for ArangoSearch Views.
-
- * 2. “root“ fields properties: 
-```
-  analyzer: <analyzerName:string>,
-  features: <analyzerFeatures: array, possible values [ "frequency", "position", "offset", "norm"], optional, default []>,
-  includeAllFields: <bool, optional, default: false>,
-  trackListPositions: <bool, optional, default: false>,
-  searchField: <bool, optional, deafult: false>
-```
- * 3. Fields definition.  In CE this is just an array of objects. But for EE we have “nested” fields with arbitrary nesting depth.  That is an array of fields objects.
-    ```
-        {
-          name: <name:string>,
-          analyzer: <analyzerName:string, optional>
-          searchField: <bool, optional>
-          features: <analyzerFeatures: array, possible values [ "frequency", "position", "offset", "norm"], optional, default []>   
-          includeAllFields: <bool, optional>
-          trackListPositions: <bool, optional>          
-          nested: [
-            // see below, EE only, optional
-            ],
-          },
-        }
-```
-    And nested fields definitons looks like - same nested structure as we have had for ArangoSearch views fields in general.
-```
-  nested: 
-        [ { "name":"subfoo",
-              analyzer: <analyzerName:string, optional>,
-              searchField: <bool, optional>,
-              features: <analyzerFeatures: array, possible values [ "frequency", "position", "offset", "norm"], optional, default []>
-              nested: [
-                //sub-nested fields (optional)
-              ]
-             },
-            .....
-          ]
-```
- * 4.Primary sort. Very like ArangoSearch views primary sort but defined a bit different - compression is moved inside primarySort object. Potentially there would be more fields.  
-```
-  primarySort: { fields: [
-    // fields array as for arangosearch views
-  ], compression: lz4}
-```
-*/
 type BytesAccumConsolidationPolicy = {
   type: string;
   threshold?: number;
@@ -186,14 +137,16 @@ export const invertedIndexFieldsMap = {
     name: "includeAllFields",
     type: "boolean",
     initialValue: false,
-    group: "fields"
+    group: "fields",
+    tooltip: "Process all document attributes."
   },
   trackListPositions: {
     label: "Track List Positions",
     name: "trackListPositions",
     type: "boolean",
     initialValue: false,
-    group: "fields"
+    group: "fields",
+    tooltip: "For array values track the value position in arrays."
   },
   searchField: {
     label: "Search Field",
@@ -212,41 +165,54 @@ export const invertedIndexFieldsMap = {
     name: "storedValues",
     type: "custom"
   },
-  cleanupIntervalStep: {
-    label: "Cleanup Interval Step",
-    name: "cleanupIntervalStep",
-    type: "number",
-    group: "general"
-  },
-  commitIntervalMsec: {
-    label: "Commit Interval (msec)",
-    name: "commitIntervalMsec",
-    type: "number",
-    group: "general"
-  },
-  consolidationIntervalMsec: {
-    label: "Consolidation Interval (msec)",
-    name: "consolidationIntervalMsec",
-    type: "number",
-    group: "general"
-  },
+
   writebufferIdle: {
     label: "Writebuffer Idle",
     name: "writebufferIdle",
     type: "number",
-    group: "general"
+    group: "general",
+    tooltip:
+      "Maximum number of writers (segments) cached in the pool (default: 64, use 0 to disable, immutable)."
   },
   writebufferActive: {
     label: "Writebuffer Active",
     name: "writebufferActive",
     type: "number",
-    group: "general"
+    group: "general",
+    tooltip:
+      "Maximum number of concurrent active writers (segments) that perform a transaction. Other writers (segments) wait till current active writers (segments) finish (default: 0, use 0 to disable, immutable)."
   },
   writebufferSizeMax: {
     label: "Writebuffer Size Max",
     name: "writebufferSizeMax",
     type: "number",
-    group: "general"
+    group: "general",
+    tooltip:
+      "Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered. 0 value turns off this limit for any writer (buffer) and data will be flushed periodically based on the value defined for the flush thread (ArangoDB server startup option). 0 value should be used carefully due to high potential memory consumption (default: 33554432, use 0 to disable, immutable)."
+  },
+  cleanupIntervalStep: {
+    label: "Cleanup Interval Step",
+    name: "cleanupIntervalStep",
+    type: "number",
+    group: "general",
+    tooltip:
+      "ArangoSearch waits at least this many commits between removing unused files in its data directory."
+  },
+  commitIntervalMsec: {
+    label: "Commit Interval (msec)",
+    name: "commitIntervalMsec",
+    type: "number",
+    group: "general",
+    tooltip:
+      "Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
+  },
+  consolidationIntervalMsec: {
+    label: "Consolidation Interval (msec)",
+    name: "consolidationIntervalMsec",
+    type: "number",
+    group: "general",
+    tooltip:
+      "Wait at least this many milliseconds between index segments consolidations."
   },
   consolidationPolicy: {
     label: "Consolidation Policy",
@@ -265,12 +231,12 @@ const invertedIndexFields = [
   invertedIndexFieldsMap.searchField,
   invertedIndexFieldsMap.primarySort,
   invertedIndexFieldsMap.storedValues,
-  invertedIndexFieldsMap.cleanupIntervalStep,
-  invertedIndexFieldsMap.commitIntervalMsec,
-  invertedIndexFieldsMap.consolidationIntervalMsec,
   invertedIndexFieldsMap.writebufferIdle,
   invertedIndexFieldsMap.writebufferActive,
   invertedIndexFieldsMap.writebufferSizeMax,
+  invertedIndexFieldsMap.cleanupIntervalStep,
+  invertedIndexFieldsMap.commitIntervalMsec,
+  invertedIndexFieldsMap.consolidationIntervalMsec,
   invertedIndexFieldsMap.consolidationPolicy,
   { ...commonFieldsMap.inBackground, group: "general" }
 ];
