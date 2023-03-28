@@ -64,7 +64,7 @@ const LinkPropertiesInput = ({
             <FormLabel margin="0" position="relative" top="1">
               Fields
             </FormLabel>
-            <InfoTooltip label="Add field names that you want to be indexed here. Click a field name to set field details" />
+            <InfoTooltip label="Add field names that you want to be indexed here. Click on a field name to set field details." />
           </HStack>
           <FieldsDropdown
             basePath={basePath}

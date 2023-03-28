@@ -164,7 +164,8 @@ export const invertedIndexFieldsMap = {
     name: "fields",
     isRequired: true,
     type: "custom",
-    tooltip: "A comma-separated list of attribute paths.",
+    tooltip:
+      "Add field names that you want to be indexed here. Click on a field name to set field details.",
     group: "fields"
   },
   analyzer: {

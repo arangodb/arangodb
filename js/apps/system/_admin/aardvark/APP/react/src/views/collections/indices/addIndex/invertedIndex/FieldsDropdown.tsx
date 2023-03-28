@@ -1,4 +1,4 @@
-import { Box, FormLabel } from "@chakra-ui/react";
+import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
@@ -98,7 +98,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
               }}
               value={dropdownValue}
             ></CreatableSelectBase>
-            <InfoTooltip label="Nested fields are avaiable on Enterprise plans" />
+            {field.tooltip ? <InfoTooltip label={field.tooltip} /> : <Spacer />}
           </Box>
         );
       }}
