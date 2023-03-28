@@ -1,9 +1,10 @@
 import React from "react";
 
-import { Props } from "react-select";
-import SelectBase, { OptionType } from "./SelectBase";
+import Select, { Props } from "react-select";
+import { getSelectBase, OptionType } from "./SelectBase";
 
+const MultiSelectBase = getSelectBase<true>(Select);
 const MultiSelect = (props: Props<OptionType>) => (
-  <SelectBase {...props} isMulti />
+  <MultiSelectBase {...props} isMulti />
 );
 export default MultiSelect;
