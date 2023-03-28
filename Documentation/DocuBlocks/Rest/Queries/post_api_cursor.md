@@ -634,6 +634,56 @@ Execute a data-modification query with option *ignoreErrors*
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
+The following example appends a value to the array `arrayValue` of the document
+with key `test` in the collection `documents`. The normal update behavior of the
+`UPDATE` operation is to replace the array attribute completely, but using the
+`PUSH()` function allows you to append to the array:
+
+@EXAMPLE_ARANGOSH_RUN{RestCursorModifyArray}
+    var cn = "documents";
+    db._drop(cn);
+    db._create(cn);
+
+    db.documents.save({ _key: "test", arrayValue: [1, 2, 3] });
+
+    var url = "/_api/cursor";
+    var body = {
+      query: "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { arrayValue: PUSH(doc.arrayValue, @value) } IN documents",
+      bindVars: { myKey: "test", value: 42 }
+    };
+
+    var response = logCurlRequest('POST', url, body);
+    assert(response.code === 201);
+    logJsonResponse(response);
+
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
+To set a memory limit for the query, the `memoryLimit` option can be passed to
+the server.
+
+The memory limit specifies the maximum number of bytes that the query is
+allowed to use. When a single AQL query reaches the specified limit value, 
+the query is aborted with a *resource limit exceeded* exception. In a 
+cluster, the memory accounting is done per server, so the limit value is 
+effectively a memory limit per query per server.
+
+If no memory limit is specified, then the server default value (controlled by
+startup option `--query.memory-limit`) is used for restricting the maximum amount
+of memory the query can use. A memory limit value of `0` means that the maximum
+amount of memory for the query is not restricted.
+
+@EXAMPLE_ARANGOSH_RUN{RestCursorMemoryLimit}
+    var url = "/_api/cursor";
+    var body = {
+      query: "FOR i IN 1..100000 SORT i RETURN i",
+      memoryLimit: 100000
+    }
+    var response = logCurlRequest('POST', url, body);
+    assert(response.code === 500);
+    logJsonResponse(response);
+@END_EXAMPLE_ARANGOSH_RUN
+
 Bad query - Missing body
 
 @EXAMPLE_ARANGOSH_RUN{RestCursorCreateCursorMissingBody}
