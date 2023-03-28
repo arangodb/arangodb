@@ -93,6 +93,22 @@ struct WorkerState {
                             : std::nullopt};
   }
 
+  auto getTotalAmountOfVertices() -> size_t {
+    size_t totalAmountOfVertices = 0;
+    for (auto& quiver : quivers) {
+      totalAmountOfVertices += quiver->numberOfVertices();
+    }
+    return totalAmountOfVertices;
+  }
+
+  auto getTotalAmountOfEdges() -> size_t {
+    size_t totalAmountOfEdges = 0;
+    for (auto& quiver : quivers) {
+      totalAmountOfEdges += quiver->numberOfEdges();
+    }
+    return totalAmountOfEdges;
+  }
+
   std::shared_ptr<WorkerConfig> config;
 
   // only needed in computing state
@@ -115,7 +131,7 @@ struct WorkerState {
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
-  std::shared_ptr<Quiver<V, E>> quiver = std::make_unique<Quiver<V, E>>();
+  std::vector<std::shared_ptr<Quiver<V, E>>> quivers;
   MessageStats messageStats;
   GssObservables currentGssObservables;
   AllGssStatus allGssStatus;

@@ -85,12 +85,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         auto loader = GraphLoader(this->state->config,
                                   this->state->algorithm->inputFormat(),
                                   std::move(statusUpdateCallback));
-        this->state->quiver = loader.load();
+        for (auto& quiver : this->state->quivers) {
+          quiver = loader.load();
+        }
 
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
-            .vertexCount = this->state->quiver->numberOfVertices(),
-            .edgeCount = this->state->quiver->numberOfEdges()}};
+            .vertexCount = this->state->getTotalAmountOfVertices(),
+            .edgeCount = this->state->getTotalAmountOfEdges()}};
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
       } catch (std::exception const& ex) {
@@ -137,7 +139,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_gss = this->state->config->globalSuperstep();
     ctx->_lss = this->state->config->localSuperstep();
     ctx->_context = this->state->workerContext.get();
-    ctx->_quiver = this->state->quiver;
+    ctx->_quivers = this->state->quivers;
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
@@ -160,30 +162,32 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     vertexComputation->_cache = outCache;
 
     size_t activeCount = 0;
-    for (auto& vertexEntry : *this->state->quiver) {
-      MessageIterator<M> messages = this->state->readCache->getMessages(
-          vertexEntry.shard(), vertexEntry.key());
-      this->state->currentGssObservables.messagesReceived += messages.size();
-      this->state->currentGssObservables.memoryBytesUsedForMessages +=
-          messages.size() * sizeof(M);
+    for (auto& quiver : this->state->quivers) {
+      for (auto& vertexEntry : *quiver) {
+        MessageIterator<M> messages = this->state->readCache->getMessages(
+            vertexEntry.shard(), vertexEntry.key());
+        this->state->currentGssObservables.messagesReceived += messages.size();
+        this->state->currentGssObservables.memoryBytesUsedForMessages +=
+            messages.size() * sizeof(M);
 
-      if (messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(messages);
-        if (vertexEntry.active()) {
-          activeCount++;
+        if (messages.size() > 0 || vertexEntry.active()) {
+          vertexComputation->_vertexEntry = &vertexEntry;
+          vertexComputation->compute(messages);
+          if (vertexEntry.active()) {
+            activeCount++;
+          }
         }
-      }
 
-      ++this->state->currentGssObservables.verticesProcessed;
-      if (this->state->currentGssObservables.verticesProcessed %
-              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-          0) {
-        this->dispatch(
-            this->state->conductor,
-            conductor::message::StatusUpdate{
-                .executionNumber = this->state->config->executionNumber(),
-                .status = this->state->observeStatus()});
+        ++this->state->currentGssObservables.verticesProcessed;
+        if (this->state->currentGssObservables.verticesProcessed %
+                Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+            0) {
+          this->dispatch(
+              this->state->conductor,
+              conductor::message::StatusUpdate{
+                  .executionNumber = this->state->config->executionNumber(),
+                  .status = this->state->observeStatus()});
+        }
       }
     }
 
@@ -249,8 +253,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->messageStats,
         verticesProcessed.sendCountPerActor,
         verticesProcessed.activeCount,
-        this->state->quiver->numberOfVertices(),
-        this->state->quiver->numberOfEdges(),
+        this->state->getTotalAmountOfVertices(),
+        this->state->getTotalAmountOfEdges(),
         aggregators};
     LOG_TOPIC("ade5b", DEBUG, Logger::PREGEL)
         << fmt::format("Finished GSS: {}", gssFinishedEvent);
@@ -364,7 +368,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                                         this->state->algorithm->inputFormat(),
                                         this->state->config->globalShardIDs(),
                                         std::move(statusUpdateCallback));
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->quivers) {
+          storer.store(quiver);
+        }
+
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
@@ -403,7 +410,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
                                           this->state->algorithm->inputFormat(),
                                           std::move(statusUpdateCallback));
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->quivers) {
+          storer.store(quiver);
+        }
+
         return PregelResults{*storer.result};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,

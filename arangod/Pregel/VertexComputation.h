@@ -48,7 +48,7 @@ class VertexContext {
   uint64_t _gss = 0;
   uint64_t _lss = 0;
   WorkerContext* _context = nullptr;
-  std::shared_ptr<Quiver<V, E>> _quiver = nullptr;
+  std::vector<std::shared_ptr<Quiver<V, E>>> _quivers = {};
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
   Vertex<V, E>* _vertexEntry = nullptr;
