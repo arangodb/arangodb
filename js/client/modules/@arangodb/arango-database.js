@@ -60,7 +60,7 @@ const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoP
 // / @brief index id regex
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
+ArangoDatabase.indexRegex = /^([^\/]+)\/([0-9]+)$/;
  
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief key regex

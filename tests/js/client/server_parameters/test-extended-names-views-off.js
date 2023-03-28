@@ -30,11 +30,12 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
-const traditionalName = "UnitTestsDatabase";
-const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const ArangoView = require("@arangodb").ArangoView;
+
+const traditionalName = "UnitTestsDatabase";
+const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 function testSuite() {
   return {

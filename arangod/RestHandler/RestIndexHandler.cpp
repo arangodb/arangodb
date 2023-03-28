@@ -153,7 +153,7 @@ std::shared_ptr<LogicalCollection> RestIndexHandler::collection(
 // //////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestIndexHandler::getIndexes() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     // .............................................................................
     // /_api/index?collection=<collection-name>
@@ -214,6 +214,7 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
+
     VPackBuilder tmp;
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
@@ -408,7 +409,7 @@ RestStatus RestIndexHandler::createIndex() {
 }
 
 RestStatus RestIndexHandler::dropIndex() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 2) {
     events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)",
                       TRI_ERROR_HTTP_BAD_PARAMETER);

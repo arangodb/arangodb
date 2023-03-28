@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -54,8 +55,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -78,8 +77,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     idSlice = idSlice.get(StaticStrings::IndexId);
   }
   if (idSlice.isString()) {
-    std::regex re = std::regex("^([a-zA-Z0-9\\-_]+)\\/([a-zA-Z0-9\\-_]+)$",
-                               std::regex::ECMAScript);
+    std::regex re = std::regex("^([^\\/]+)\\/(.+)$", std::regex::ECMAScript);
     if (std::regex_match(idSlice.copyString(), re)) {
       id = idSlice.copyString();
       name = id.substr(id.find('/') + 1);
@@ -92,6 +90,20 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     id = collection.name() + "/" + name;
   } else {
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+  }
+
+  if (!name.empty()) {
+    bool extendedNames = collection.vocbase()
+                             .server()
+                             .getFeature<DatabaseFeature>()
+                             .extendedNamesIndexes();
+    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
+      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    }
+    if (extendedNames && name != normalizeUtf8ToNFC(name)) {
+      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                    "index name is not properly UTF-8 NFC-normalized");
+    }
   }
 
   VPackBuilder tmp;
@@ -543,7 +555,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection& coll,
 /// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
+static bool ExtractIndexHandle(VPackSlice arg, bool extendedNames,
                                std::string& collectionName, IndexId& iid) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(iid.empty());
@@ -580,7 +592,7 @@ static bool ExtractIndexHandle(VPackSlice const& arg, bool extendedNames,
 /// @brief checks if argument is an index name
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ExtractIndexName(VPackSlice const& arg, bool extendedNames,
+static bool ExtractIndexName(VPackSlice arg, bool extendedNames,
                              std::string& collectionName, std::string& name) {
   TRI_ASSERT(collectionName.empty());
   TRI_ASSERT(name.empty());

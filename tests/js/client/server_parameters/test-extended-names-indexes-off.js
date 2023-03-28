@@ -1,9 +1,7 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, fail */
+/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server parameters
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -23,12 +21,12 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
-    'database.extended-names-databases': "false",
+    'database.extended-names-indexes': "false",
   };
 }
 const jsunity = require('jsunity');
@@ -41,25 +39,40 @@ const extendedName = "Десятую Международную Конферен
 function testSuite() {
   return {
     tearDown: function() {
-      try {
-        db._dropDatabase(traditionalName);
-      } catch (err) {}
-      try {
-        db._dropDatabase(extendedName);
-      } catch (err) {}
+      db._drop(traditionalName);
     },
 
-    testTraditionalName: function() {
-      let res = db._createDatabase(traditionalName);
-      assertTrue(res);
+    testCreateAndDropIndexTraditionalName: function() {
+      let c = db._create(traditionalName);
+      let idx = c.ensureIndex({ type: "persistent", fields: ["value"], name: traditionalName });
+      assertEqual(traditionalName, idx.name);
+
+      idx = c.index(traditionalName);
+      assertEqual(traditionalName, idx.name);
+
+      let indexes = c.indexes().map((idx) => idx.name);
+      assertNotEqual(-1, indexes.indexOf(traditionalName));
+
+      c.dropIndex(traditionalName);
+      
+      indexes = c.indexes().map((idx) => idx.name);
+      assertEqual(-1, indexes.indexOf(traditionalName));
     },
     
-    testExtendedName: function() {
+    testCreateAndDropIndexExtendedName: function() {
+      let c = db._create(traditionalName);
       try {
-        db._createDatabase(extendedName);
+        c.ensureIndex({ type: "persistent", fields: ["value"], name: extendedName });
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+
+      try {
+        c.index(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
   };

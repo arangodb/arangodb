@@ -28,6 +28,7 @@
 #include "Basics/FloatingPoint.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
@@ -277,6 +278,11 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
       } else {
         // generate a name
         name = absl::StrCat("idx_", TRI_HybridLogicalClock());
+      }
+    } else {
+      if (name != normalizeUtf8ToNFC(name)) {
+        return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                      "index name is not properly UTF-8 NFC-normalized");
       }
     }
 
