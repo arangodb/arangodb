@@ -32,11 +32,11 @@
 namespace arangodb::pregel {
 
 struct PrintableTiming {
-  PrintableTiming(uint64_t timingInMilliseconds)
-      : timing{message::TimingInMilliseconds{.value = timingInMilliseconds}} {}
-  PrintableTiming(message::TimingInMilliseconds timingInMilliseconds)
+  PrintableTiming(uint64_t timingInMicroseconds)
+      : timing{message::TimingInMicroseconds{.value = timingInMicroseconds}} {}
+  PrintableTiming(message::TimingInMicroseconds timingInMilliseconds)
       : timing{timingInMilliseconds} {}
-  message::TimingInMilliseconds timing;
+  message::TimingInMicroseconds timing;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PrintableTiming& x) {
@@ -48,16 +48,26 @@ auto inspect(Inspector& f, PrintableTiming& x) {
     }
     return res;
   } else {
-    // TODO add unit seconds at the end
-    return f.apply(fmt::format("{:.4f} s", x.timing.value / 1000.));
+    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
   }
 }
 struct PrintableDuration {
   std::optional<PrintableTiming> start;
   std::optional<PrintableTiming> stop;
-  auto setStart(message::TimingInMilliseconds timing) -> void {
+  static auto withStart(message::TimingInMicroseconds timing)
+      -> PrintableDuration {
+    auto duration = PrintableDuration{};
+    duration.setStart(timing);
+    return duration;
+  }
+  auto setStart(message::TimingInMicroseconds timing) -> void {
     if (not start.has_value()) {
       start = PrintableTiming{timing};
+    }
+  }
+  auto setStop(message::TimingInMicroseconds timing) -> void {
+    if (not stop.has_value()) {
+      stop = PrintableTiming{timing};
     }
   }
   auto duration() const -> PrintableTiming {
@@ -65,7 +75,7 @@ struct PrintableDuration {
       return 0;
     }
     if (not stop.has_value()) {
-      return PrintableTiming{message::TimingInMilliseconds::now().value -
+      return PrintableTiming{message::TimingInMicroseconds::now().value -
                              start.value().timing.value};
     }
     return PrintableTiming{stop.value().timing.value -
@@ -82,20 +92,27 @@ auto inspect(Inspector& f, PrintableDuration& x) {
 }
 struct PregelTimings {
   PrintableDuration loading;
+  std::vector<PrintableDuration> gss;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(f.field("loading", x.loading));
+  return f.object(x).fields(f.field("loading", x.loading),
+                            f.field("gss", x.gss));
 }
 
 struct StatusState {
   std::string stateName;
   PregelTimings timings;
+  uint64_t gss;
+  VPackBuilder aggregators;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
-  return f.object(x).fields(f.field("state", x.stateName),
-                            f.field("timings", x.timings));
+  return f.object(x).fields(
+      f.field("state", x.stateName), f.field("timings", x.timings),
+      f.field("gss", x.gss),
+      // TODO embed aggregators field (it already has "aggregators" as key)
+      f.field("aggregators", x.aggregators));
 }
 
 template<typename Runtime>
@@ -106,10 +123,22 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::LoadingStarted loading)
+  auto operator()(message::LoadingStarted msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.loading.setStart(msg.time);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GlobalSuperStepStarted msg)
       -> std::unique_ptr<StatusState> {
-    this->state->stateName = loading.state;
-    this->state->timings.loading.setStart(loading.time);
+    LOG_DEVEL << "received msg";
+    this->state->stateName = msg.state;
+    this->state->gss = msg.gss;
+    if (not this->state->timings.gss.empty()) {
+      this->state->timings.gss.back().setStop(msg.time);
+    }
+    this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
+    this->state->aggregators = std::move(msg.aggregators);
     return std::move(this->state);
   }
 

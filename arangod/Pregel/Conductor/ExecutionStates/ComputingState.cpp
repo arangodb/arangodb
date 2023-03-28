@@ -92,9 +92,20 @@ auto Computing::receive(actor::ActorPID sender,
 
     conductor.timing.gss.back().finish();
     masterContext->_globalSuperstep++;
-    return StateChange{.newState = std::make_unique<Computing>(
-                           conductor, std::move(masterContext),
-                           std::move(messageAccumulation.sendCountPerActor))};
+    auto gss = masterContext->_globalSuperstep;
+    VPackBuilder aggregators;
+    aggregators.openObject();
+    masterContext->_aggregators->serializeValues(aggregators);
+    aggregators.close();
+    auto newState = std::make_unique<Computing>(
+        conductor, std::move(masterContext),
+        std::move(messageAccumulation.sendCountPerActor));
+    return StateChange{.statusMessage =
+                           pregel::message::GlobalSuperStepStarted{
+                               .gss = gss,
+                               .aggregators = std::move(aggregators),
+                               .state = newState->name()},
+                       .newState = std::move(newState)};
   }
 
   return std::nullopt;
