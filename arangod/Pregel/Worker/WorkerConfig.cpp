@@ -93,7 +93,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
 }
 
 VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
-  size_t pos = documentID.find("/");
+  size_t pos = documentID.find('/');
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not a valid document id");
@@ -107,8 +107,9 @@ VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   } else {
     VPackBuilder partial;
     partial.openObject();
-    partial.add(collPart, VPackValuePair(keyPart.data(), keyPart.size(),
-                                         VPackValueType::String));
+    partial.add(
+        StaticStrings::KeyString,
+        VPackValuePair(keyPart.data(), keyPart.size(), VPackValueType::String));
     partial.close();
     auto& ci = vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollectionNT(database(), collPart);
