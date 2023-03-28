@@ -1,6 +1,7 @@
 import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { IndexType } from "./useFetchIndices";
 
 interface EngineResponse extends ArangojsResponse {
   body: {
@@ -31,7 +32,10 @@ export const useSupportedIndexTypes = () => {
   return { supported, indexTypeOptions: options, ...rest };
 };
 
-const indexTypeOptions = [
+const indexTypeOptions: {
+  label: string;
+  value: IndexType;
+}[] = [
   {
     label: "Persistent Index",
     value: "persistent"

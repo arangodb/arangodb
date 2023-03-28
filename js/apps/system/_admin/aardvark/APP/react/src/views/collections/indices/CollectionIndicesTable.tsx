@@ -10,7 +10,7 @@ import {
 import { isNumber } from "lodash";
 import React from "react";
 import { IndexActionCell } from "./IndexActionCell";
-import { IndexType } from "./useFetchIndices";
+import { IndexRowType } from "./useFetchIndices";
 import { useSyncIndexCreationJob } from "./useSyncIndexCreationJob";
 
 const TABLE_HEADERS = [
@@ -29,7 +29,7 @@ const TABLE_HEADERS = [
 export const CollectionIndicesTable = ({
   indices
 }: {
-  indices?: IndexType[];
+  indices?: IndexRowType[];
 }) => {
   useSyncIndexCreationJob();
   return (
@@ -70,7 +70,7 @@ export const CollectionIndicesTable = ({
   );
 };
 
-const getIndexRowData = (indexRow: IndexType) => {
+const getIndexRowData = (indexRow: IndexRowType) => {
   const {
     fields,
     storedValues,

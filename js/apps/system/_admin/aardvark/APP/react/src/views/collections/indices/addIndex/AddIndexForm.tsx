@@ -2,6 +2,7 @@ import { Box, Stack } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
+import { IndexType } from "../useFetchIndices";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { InfoTooltip } from "./InfoTooltip";
@@ -11,7 +12,9 @@ import { ZKDIndexForm } from "./ZKDIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
-  const [indexType, setIndexType] = useState(indexTypeOptions?.[0].value || "");
+  const [indexType, setIndexType] = useState<IndexType>(
+    indexTypeOptions[0].value
+  );
   let tooltipText = "Type of index to create.";
   if (!indexTypeOptions?.find(option => option.value === "hash")) {
     tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist" and "persistent" are identical, so that they are not offered separately here.`;
@@ -28,10 +31,12 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
         >
           <Box fontSize={"lg"}>Add new index</Box>
           <SingleSelect
-            defaultValue={indexTypeOptions?.[0]}
+            defaultValue={indexTypeOptions[0]}
             options={indexTypeOptions}
             onChange={value => {
-              setIndexType(value?.value || "");
+              if (value?.value) {
+                setIndexType(value.value as IndexType);
+              }
             }}
           />
           <InfoTooltip label={tooltipText} />
@@ -46,7 +51,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: string;
+  type: IndexType;
   onClose: () => void;
 }) => {
   if (type === "persistent") {

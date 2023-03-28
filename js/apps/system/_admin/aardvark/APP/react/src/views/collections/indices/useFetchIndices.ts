@@ -3,12 +3,21 @@ import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
-export type IndexType = {
+export type IndexType =
+  | "primary"
+  | "fulltext"
+  | "edge"
+  | "persistent"
+  | "ttl"
+  | "geo"
+  | "zkd"
+  | "hash";
+export type IndexRowType = {
   fields: string[] | { [key: string]: string }[];
   id: string;
   name: string;
   sparse: boolean;
-  type: "primary" | "fulltext" | "edge";
+  type: IndexType;
   unique: boolean;
   selectivityEstimate?: number;
   storedValues?: string[];
@@ -25,7 +34,7 @@ type InvertedIndexExtraFields = {
 };
 
 interface IndicesResponse extends ArangojsResponse {
-  body: { indexes: Array<IndexType> };
+  body: { indexes: Array<IndexRowType> };
 }
 
 export const useFetchIndices = ({
@@ -43,7 +52,7 @@ export const useFetchIndices = ({
     }
   );
   const result = data?.body.indexes;
-  const [indices, setIndexList] = useState<IndexType[] | undefined>(result);
+  const [indices, setIndexList] = useState<IndexRowType[] | undefined>(result);
 
   useEffect(() => {
     setIndexList(result);

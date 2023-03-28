@@ -13,9 +13,9 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
-import { IndexType } from "./useFetchIndices";
+import { IndexRowType } from "./useFetchIndices";
 
-export const IndexActionCell = ({ indexRow }: { indexRow: IndexType; }) => {
+export const IndexActionCell = ({ indexRow }: { indexRow: IndexRowType; }) => {
   const { type } = indexRow;
   if (type === "primary" || type === "edge") {
     return (
@@ -26,7 +26,7 @@ export const IndexActionCell = ({ indexRow }: { indexRow: IndexType; }) => {
   }
   return <DeleteIndexButton indexRow={indexRow} />;
 };
-const DeleteIndexButton = ({ indexRow }: { indexRow: IndexType; }) => {
+const DeleteIndexButton = ({ indexRow }: { indexRow: IndexRowType; }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
   const { readOnly } = useCollectionIndicesContext();
   return (
@@ -48,7 +48,7 @@ const DeleteModal = ({
 }: {
   onClose: () => void;
   isOpen: boolean;
-  indexRow: IndexType;
+  indexRow: IndexRowType;
 }) => {
   const { onDeleteIndex } = useCollectionIndicesContext();
   return (
