@@ -28,7 +28,7 @@ The encoded JWT session token.
 An HTTP `400 Bad Request` status code is returned if the request misses required
 attributes or if it is otherwise malformed.
 
-@RESTRETURNCODE{400}
+@RESTRETURNCODE{401}
 An HTTP `401 Unauthorized` status code is returned if the user credentials are
 incorrect.
 
