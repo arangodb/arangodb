@@ -420,6 +420,20 @@ class testRunner {
     }
   }
 
+  restartSniff(testCase) {
+    if (this.options.sniffFilter) {
+      this.instanceManager.stopTcpDump();
+      if (testCase.search(this.options.sniffFilter) >= 0){
+        let split = testCase.split(fs.pathSeparator);
+        let fn = testCase;
+        if (split.length > 0) {
+          fn = split[split.length - 1];
+        }
+        this.instanceManager.launchTcpDump(fn + "_");
+      }
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief hook to replace with your way to invoke one test; existing overloads:
   //   - tu.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
@@ -529,7 +543,7 @@ class testRunner {
             i = this.testList.length;
             break;
           }
-
+          this.restartSniff(te);
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           

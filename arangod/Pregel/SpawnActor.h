@@ -85,7 +85,8 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                 msg.message.userParameters.slice()),
             msg.conductor, msg.message, algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
-            this->state->vocbaseGuard.database(), this->state->resultActor),
+            this->state->vocbaseGuard.database(), this->self,
+            this->state->resultActor),
         worker::message::WorkerStart{});
   }
 
@@ -195,6 +196,11 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
                                      .id = {0}},
                      message::SpawnMessages{msg});
     }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::SpawnCleanup msg) -> std::unique_ptr<SpawnState> {
+    this->finish();
     return std::move(this->state);
   }
 

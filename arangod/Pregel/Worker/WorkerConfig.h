@@ -61,8 +61,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
 
   inline uint64_t localSuperstep() const { return _localSuperstep; }
 
-  inline bool useMemoryMaps() const { return _useMemoryMaps; }
-
   inline uint64_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
@@ -146,8 +144,6 @@ class WorkerConfig : std::enable_shared_from_this<WorkerConfig> {
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
 
-  // use memory mapping? will be updated by config later
-  bool _useMemoryMaps = true;
   // parallelism. will be updated by config later
   size_t _parallelism = 1;
 
