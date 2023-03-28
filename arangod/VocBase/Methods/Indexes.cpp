@@ -61,6 +61,8 @@
 #include <velocypack/Iterator.h>
 #include <regex>
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
@@ -72,9 +74,11 @@ Result Indexes::getIndex(LogicalCollection const& collection,
   std::string
       id;  // will (eventually) be fully-qualified; "collection/identifier"
   std::string name;  // will be just name or id (no "collection/")
+  bool hasName = true;
   VPackSlice idSlice = indexId;
   if (idSlice.isObject() && idSlice.hasKey(StaticStrings::IndexId)) {
     idSlice = idSlice.get(StaticStrings::IndexId);
+    hasName = false;
   }
   if (idSlice.isString()) {
     std::regex re = std::regex("^([^\\/]+)\\/(.+)$", std::regex::ECMAScript);
@@ -85,14 +89,18 @@ Result Indexes::getIndex(LogicalCollection const& collection,
       name = idSlice.copyString();
       id = collection.name() + "/" + name;
     }
+    uint64_t idValue = 0;
+    // if name is just a number (numeric id), we wont validate it
+    hasName = !absl::SimpleAtoi(name, &idValue);
   } else if (idSlice.isInteger()) {
     name = StringUtils::itoa(idSlice.getUInt());
     id = collection.name() + "/" + name;
+    hasName = false;
   } else {
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
-  if (!name.empty()) {
+  if (hasName && !name.empty()) {
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
@@ -114,7 +122,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
            index.get(StaticStrings::IndexId).compareString(id) == 0) ||
-          (index.hasKey(StaticStrings::IndexName) &&
+          (hasName && index.hasKey(StaticStrings::IndexName) &&
            index.get(StaticStrings::IndexName).compareString(name) == 0)) {
         out.add(index);
         return Result();

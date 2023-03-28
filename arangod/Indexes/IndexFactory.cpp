@@ -279,17 +279,18 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
         // generate a name
         name = absl::StrCat("idx_", TRI_HybridLogicalClock());
       }
-    } else {
-      if (name != normalizeUtf8ToNFC(name)) {
+    }
+
+    if (!name.empty()) {
+      bool extendedNames =
+          _server.getFeature<DatabaseFeature>().extendedNamesIndexes();
+      if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
+        return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      }
+      if (extendedNames && name != normalizeUtf8ToNFC(name)) {
         return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
                       "index name is not properly UTF-8 NFC-normalized");
       }
-    }
-
-    bool extendedNames =
-        _server.getFeature<DatabaseFeature>().extendedNamesIndexes();
-    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
-      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
     normalized.add(StaticStrings::IndexName, velocypack::Value(name));
