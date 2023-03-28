@@ -1692,7 +1692,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
                                         std::string const& collection) {
-  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+  std::lock_guard locker{_rebuildCollectionsLock};
   _rebuildCollections.emplace(std::make_pair(database, collection),
                               /*started*/ false);
 }
@@ -1714,7 +1714,7 @@ void RocksDBEngine::processTreeRebuilds() {
     std::pair<TRI_voc_tick_t, std::string> candidate{};
 
     {
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       if (_rebuildCollections.empty() ||
           _runningRebuilds >= maxParallelRebuilds) {
         // nothing to do, or too much to do
@@ -1778,7 +1778,7 @@ void RocksDBEngine::processTreeRebuilds() {
                 }
                 {
                   // mark as to-be-done again
-                  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+                  std::lock_guard locker{_rebuildCollectionsLock};
                   auto it = _rebuildCollections.find(candidate);
                   if (it != _rebuildCollections.end()) {
                     (*it).second = false;
@@ -1792,7 +1792,7 @@ void RocksDBEngine::processTreeRebuilds() {
 
           // tree rebuilding finished successfully. now remove from the list
           // to-be-rebuilt candidates
-          MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+          std::lock_guard locker{_rebuildCollectionsLock};
           _rebuildCollections.erase(candidate);
 
         } catch (std::exception const& ex) {
@@ -1805,7 +1805,7 @@ void RocksDBEngine::processTreeRebuilds() {
       }
 
       // always count down _runningRebuilds!
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       TRI_ASSERT(_runningRebuilds > 0);
       --_runningRebuilds;
     });
@@ -3602,7 +3602,7 @@ HealthData RocksDBEngine::healthCheck() {
   // in addition, serializing access to this function avoids stampedes
   // with multiple threads trying to calculate the free disk space
   // capacity at the same time, which could be expensive.
-  MUTEX_LOCKER(guard, _healthMutex);
+  std::lock_guard guard{_healthMutex};
 
   TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
     _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");
