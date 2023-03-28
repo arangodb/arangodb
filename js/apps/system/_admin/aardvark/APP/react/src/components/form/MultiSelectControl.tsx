@@ -34,7 +34,6 @@ export const MultiSelectControl = (props: InputControlProps) => {
           helper.setValue(valueStringArray);
         }}
         {...selectProps}
-        isMulti
       />
     </FormikFormControl>
   );

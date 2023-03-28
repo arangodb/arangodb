@@ -38,7 +38,6 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
         inputId={name}
         isDisabled={rest.isDisabled || isSubmitting}
         {...selectProps}
-        isMulti
         onChange={values => {
           const valueStringArray = values.map(value => {
             return value.value;

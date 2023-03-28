@@ -58,7 +58,6 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
             <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
             <CreatableMultiSelect
               isDisabled={field.isDisabled}
-              isMulti
               name={field.name}
               inputId={field.name}
               openMenuOnFocus
