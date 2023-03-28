@@ -13,7 +13,7 @@ export type InputControlProps = BaseFormControlProps & {
   selectProps?: ReactSelectProps<OptionType>;
 };
 
-const CreatableSelectBase = getSelectBase(CreatableSelect);
+const CreatableSelectBase = getSelectBase<true>(CreatableSelect);
 
 export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
@@ -26,11 +26,11 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
     <FormikFormControl name={name} label={label} {...rest}>
       <CreatableSelectBase
         {...field}
-        isMulti
         value={value}
         inputId={name}
         isDisabled={isSubmitting}
         {...selectProps}
+        isMulti
         onChange={values => {
           const valueStringArray = (values as MultiValue<OptionType>)?.map(value => {
             return value.value

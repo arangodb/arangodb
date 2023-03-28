@@ -1,7 +1,9 @@
 devel
 -----
 
-* FE-196: Add canvas interactions to Graph Viewer.
+* FE-200: Add canvas interactions to Graph Viewer.
+
+* FE-142: Updates indices view list & index addition to React.
 
 * A Pregel execution now stores it's state during and after execution
   into a system collection. To read or delete entries the new API

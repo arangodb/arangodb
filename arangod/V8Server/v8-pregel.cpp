@@ -40,6 +40,7 @@
 #include "V8/v8-vpack.h"
 
 #include "Utils/OperationResult.h"
+#include "Pregel/StatusWriter/CollectionStatusWriter.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -306,14 +307,17 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+  if (pregel.isStopping()) {
+    handlePregelHistoryV8Result({Result(TRI_ERROR_SHUTTING_DOWN)});
+    return;
+  }
 
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
     // Read all pregel history entries
-    auto result = pregel.handleHistoryRequest(
-        vocbase, arangodb::rest::RequestType::GET, std::nullopt);
-    handlePregelHistoryV8Result(result);
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    handlePregelHistoryV8Result(cWriter.readAllResults());
     return;
   }
 
@@ -326,9 +330,9 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
 
-  auto result = pregel.handleHistoryRequest(
-      vocbase, arangodb::rest::RequestType::GET, executionNumber);
-  handlePregelHistoryV8Result(result);
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
+                                                       executionNumber};
+  handlePregelHistoryV8Result(cWriter.readResult());
   return;
   TRI_V8_TRY_CATCH_END
 }
@@ -376,14 +380,17 @@ static void JS_PregelHistoryRemove(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "pregel is not enabled");
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
+  if (pregel.isStopping()) {
+    handlePregelHistoryV8Result({Result(TRI_ERROR_SHUTTING_DOWN)});
+    return;
+  }
 
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
-    // Read all pregel history entries
-    auto result = pregel.handleHistoryRequest(
-        vocbase, arangodb::rest::RequestType::DELETE_REQ, std::nullopt);
-    handlePregelHistoryV8Result(result);
+    // Delete all pregel history entries
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    handlePregelHistoryV8Result(cWriter.deleteAllResults());
     return;
   }
 
@@ -392,13 +399,12 @@ static void JS_PregelHistoryRemove(
     TRI_V8_THROW_EXCEPTION_USAGE("_pregelHistoryRemove(<executionNum>]");
   }
 
-  // Read single history entry
+  // Delete single history entry
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-
-  auto result = pregel.handleHistoryRequest(
-      vocbase, arangodb::rest::RequestType::DELETE_REQ, executionNumber);
-  handlePregelHistoryV8Result(result);
+  pregel::statuswriter::CollectionStatusWriter cWriter{vocbase,
+                                                       executionNumber};
+  handlePregelHistoryV8Result(cWriter.deleteResult());
   return;
   TRI_V8_TRY_CATCH_END
 }
