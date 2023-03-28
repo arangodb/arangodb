@@ -339,12 +339,7 @@ function BaseChaosSuite(testOpts) {
       print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
       print(Date() + " tearDown: done.");
-      try {
-        analyzers.remove('inverted');
-      } catch (ex) {}
-      try {
-        analyzers.remove('testAnalyzer');
-      } catch (ex) {}
+      analyzers.remove('testAnalyzer');
     },
     
     testWorkInParallel: function () {
