@@ -44,7 +44,7 @@ export const CollectionIndicesTable = ({
         </Thead>
         <Tbody>
           {indices?.map(indexRow => {
-            var indexRowData = getIndexRowData(indexRow);
+            const indexRowData = getIndexRowData(indexRow);
             return (
               <Tr>
                 {TABLE_HEADERS.map(tableHeader => {
@@ -102,7 +102,7 @@ const getIndexRowData = (indexRow: IndexType) => {
   const fieldsString = fields
     .map(field => {
       if (typeof field === "object") {
-        return (field as any).name;
+        return field.name;
       }
       return field;
     })

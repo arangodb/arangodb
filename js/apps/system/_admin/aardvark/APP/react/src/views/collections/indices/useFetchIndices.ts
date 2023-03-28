@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 export type IndexType = {
-  fields: string[];
+  fields: string[] | { [key: string]: string }[];
   id: string;
   name: string;
   sparse: boolean;
@@ -28,23 +28,6 @@ interface IndicesResponse extends ArangojsResponse {
   body: { indexes: Array<IndexType> };
 }
 
-/**
- * 
- * 
- *  $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/index/?collection=' + encodeURIComponent(this.get('name'))),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(false, data, self.get('id'));
-        },
-        error: function (data) {
-          callback(true, data, self.get('id'));
-        }
-      });
- */
 export const useFetchIndices = ({
   collectionName
 }: {
