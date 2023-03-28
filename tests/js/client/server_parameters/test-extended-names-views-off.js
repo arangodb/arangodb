@@ -67,6 +67,17 @@ function testSuite() {
       assertNull(v);
     },
     
+    testArangosearchExtendedCollectionName: function() {
+      let view = db._createView(traditionalName, "arangosearch", {});
+      let links = { [extendedName]: { includeAllFields: true } };
+      try {
+        view.properties({ links });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
+      }
+    },
+    
     testSearchAliasTraditionalName: function() {
       let res = db._createView(traditionalName, "search-alias", {});
       assertTrue(res);

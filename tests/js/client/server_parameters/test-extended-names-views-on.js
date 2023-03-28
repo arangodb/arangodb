@@ -63,6 +63,23 @@ function testSuite() {
   let checkExtendedName = () => {
     let view = db._view(extendedName);
     assertTrue(view instanceof ArangoView);
+    assertTrue(extendedName, view.name());
+
+    // check that we can retrieve properties for view
+    let properties = view.properties();
+    if (view.type() === "arangosearch") {
+      assertTrue(properties.hasOwnProperty("links"));
+    } else {
+      assertTrue(properties.hasOwnProperty("indexes"));
+    }
+    
+    if (view.type() === "arangosearch") {
+      let res = view.properties({ links: {} });
+      assertEqual(properties, res);
+    } else {
+      let res = view.properties({ indexes: [] });
+      assertEqual(properties, res);
+    }
 
     if (!isCluster()) {
       view.rename(traditionalName);

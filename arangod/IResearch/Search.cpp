@@ -523,6 +523,10 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   if (indexesSlice.isNone()) {
     indexesSlice = velocypack::Slice::emptyArraySlice();
   }
+  if (!indexesSlice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "search-alias view optional field 'indexes' should be array"};
+  }
   velocypack::ArrayIterator it{indexesSlice};
   if (it.size() == 0 && partialUpdate) {
     return {};
