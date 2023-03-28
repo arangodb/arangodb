@@ -40,6 +40,7 @@ struct IManager;
 
 namespace arangodb::replication2::replicated_state::document {
 
+struct IDocumentStateTransactionHandler;
 struct IDocumentStateSnapshotHandler;
 
 struct DocumentLeaderState
@@ -90,11 +91,13 @@ struct DocumentLeaderState
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+    explicit GuardedData(
+        std::unique_ptr<DocumentCore> core,
+        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
   };
 
   template<class ResultType, class GetFunc, class ProcessFunc>

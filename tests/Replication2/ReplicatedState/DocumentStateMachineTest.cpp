@@ -254,6 +254,12 @@ TEST_F(DocumentStateMachineTest,
        shard_is_dropped_and_transactions_aborted_during_cleanup) {
   using namespace testing;
 
+  // For simplicity, no shards for this snapshot.
+  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{SnapshotId{1}, {}}};
+  });
+
   auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
       globalId, shardHandlerMock);
   ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
@@ -267,8 +273,15 @@ TEST_F(DocumentStateMachineTest,
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
       factory.constructCore(vocbaseMock, globalId, coreParams),
       handlersFactoryMock);
+
+  // transaction should be aborted before the snapshot is acquired
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
+      .Times(1);
   auto res = follower->acquireSnapshot("participantId", LogIndex{1});
   EXPECT_TRUE(res.isReady() && res.get().ok());
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   EXPECT_CALL(
       *transactionHandlerMock,
@@ -937,12 +950,13 @@ TEST_F(DocumentStateMachineTest,
             transactionHandlerMock);
       });
 
+  // The first call to applyEntry should be AbortAllOngoingTrx
   // 3 transactions are expected to be applied
   // 1 CreateShard due to the snapshot transfer
   // 1 Insert and 1 Commit due to the first batch
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(Matcher<ReplicatedOperation>(_)))
-      .Times(3);
+      .Times(4);
   EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
   EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
@@ -1503,6 +1517,15 @@ TEST_F(DocumentStateMachineTest,
        leader_resign_should_abort_active_transactions) {
   using namespace testing;
 
+  auto transactionHandlerMock = handlersFactoryMock->makeRealTransactionHandler(
+      globalId, shardHandlerMock);
+  ON_CALL(*handlersFactoryMock, createTransactionHandler(_, _, _))
+      .WillByDefault([&](TRI_vocbase_t&, GlobalLogIdentifier const&,
+                         std::shared_ptr<IDocumentStateShardHandler> const&) {
+        return std::make_unique<NiceMock<MockDocumentStateTransactionHandler>>(
+            transactionHandlerMock);
+      });
+
   DocumentFactory factory =
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
@@ -1555,8 +1578,16 @@ TEST_F(DocumentStateMachineTest,
   EXPECT_CALL(transactionManagerMock,
               abortManagedTrx(TransactionId{13}, globalId.database))
       .Times(1);
+
+  // resigning should abort all ongoing transactions
+  EXPECT_CALL(
+      *transactionHandlerMock,
+      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
+      .Times(1);
+
   std::ignore = std::move(*leaderState).resign();
   Mock::VerifyAndClearExpectations(&transactionManagerMock);
+  Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 }
 
 TEST_F(DocumentStateMachineTest,
