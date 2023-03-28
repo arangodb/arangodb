@@ -791,6 +791,22 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
       fmt::format("Pregel results for run {} are not yet available.", execNr)};
 }
 
+ResultT<StatusState> PregelFeature::getStatus(ExecutionNumber execNr) {
+  auto statusActor = _statusActors.find(execNr);
+  if (statusActor == _statusActors.end()) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot locate status for pregel run {}.", execNr)};
+  }
+  auto state =
+      _actorRuntime->getActorStateByID<StatusActor>(statusActor->second.id);
+  if (!state.has_value()) {
+    return Result{TRI_ERROR_HTTP_NOT_FOUND,
+                  fmt::format("Cannot find status for pregel run {}.", execNr)};
+  }
+  return state.value();
+}
+
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
   MUTEX_LOCKER(guard, _mutex);
   _conductors.erase(executionNumber);

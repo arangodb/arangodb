@@ -173,24 +173,20 @@ void RestControlPregelHandler::handleGetRequest() {
     auto c = _pregel.conductor(executionNumber);
 
     if (nullptr == c) {
-      if (_pregel._statusActors.contains(executionNumber)) {
-        auto statusActor = _pregel._statusActors[executionNumber];
-        auto state =
-            _pregel._actorRuntime->getActorStateByID<pregel::StatusActor>(
-                statusActor.id);
-        auto serializedState = inspection::serializeWithErrorT(state);
-        if (!serializedState.ok()) {
-          generateError(rest::ResponseCode::NOT_FOUND,
-                        TRI_ERROR_CURSOR_NOT_FOUND,
-                        fmt::format("Cannot serialize status: {}",
-                                    serializedState.error().error()));
-          return;
-        }
-        generateResult(rest::ResponseCode::OK, serializedState.get().slice());
+      auto status = _pregel.getStatus(executionNumber);
+      if (not status.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, status.errorNumber(),
+                      status.errorMessage());
         return;
       }
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                    "Execution number is invalid");
+      auto serializedState = inspection::serializeWithErrorT(status.get());
+      if (!serializedState.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                      fmt::format("Cannot serialize status: {}",
+                                  serializedState.error().error()));
+        return;
+      }
+      generateResult(rest::ResponseCode::OK, serializedState.get().slice());
       return;
     }
 

@@ -41,6 +41,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -102,6 +103,7 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
+  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
