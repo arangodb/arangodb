@@ -108,10 +108,6 @@ class PregelFeature final : public ArangodFeature {
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-  ResultT<OperationResult> handleHistoryRequest(
-      TRI_vocbase_t& vocbase, arangodb::rest::RequestType requestType,
-      std::optional<ExecutionNumber> executionNumber);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
