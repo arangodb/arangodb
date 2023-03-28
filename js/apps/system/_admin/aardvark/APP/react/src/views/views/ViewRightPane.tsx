@@ -14,7 +14,7 @@ export const ViewRightPane = ({
   state: State<FormState>;
 }) => {
   return (
-    <Box minWidth="0" padding="4" height="full">
+    <Box minWidth="0" paddingY="4" height="full">
       <JsonForm
         formState={formState}
         dispatch={dispatch}
