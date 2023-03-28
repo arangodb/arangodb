@@ -1,4 +1,4 @@
-v3.9.10.1 (XXXX-XX-XX)
+v3.9.10.1 (2023-03-28)
 ----------------------
 
 * Fixed ES-1508: (EE only) when deleting edges in a SmartGraph via
