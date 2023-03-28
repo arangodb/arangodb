@@ -30,7 +30,6 @@
 #include <cstdint>
 #include <limits>
 #include <memory>
-#include <vector>
 
 namespace arangodb {
 namespace cache {

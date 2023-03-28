@@ -36,6 +36,11 @@ namespace arangodb {
 namespace cache {
 
 class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
+ private:
+  Manager::TaskEnvironment _environment;
+  Manager& _manager;
+  std::shared_ptr<Cache> _cache;
+
  public:
   FreeMemoryTask() = delete;
   FreeMemoryTask(FreeMemoryTask const&) = delete;
@@ -49,13 +54,15 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
 
  private:
   void run();
-
-  Manager::TaskEnvironment _environment;
-  Manager& _manager;
-  std::shared_ptr<Cache> _cache;
 };
 
 class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
+ private:
+  Manager::TaskEnvironment _environment;
+  Manager& _manager;
+  std::shared_ptr<Cache> _cache;
+  std::shared_ptr<Table> _table;
+
  public:
   MigrateTask() = delete;
   MigrateTask(MigrateTask const&) = delete;
@@ -69,11 +76,6 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
 
  private:
   void run();
-
-  Manager::TaskEnvironment _environment;
-  Manager& _manager;
-  std::shared_ptr<Cache> _cache;
-  std::shared_ptr<Table> _table;
 };
 
 };  // end namespace cache
