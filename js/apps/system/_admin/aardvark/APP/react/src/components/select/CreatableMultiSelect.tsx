@@ -4,7 +4,7 @@ import { Props } from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { getSelectBase, OptionType } from "./SelectBase";
 
-const CreatableSelectBase = getSelectBase(CreatableSelect);
+const CreatableSelectBase = getSelectBase<true>(CreatableSelect);
 const CreatableMultiSelect = (props: Props<OptionType>) => (
   <CreatableSelectBase {...props} isMulti />
 );

@@ -14,7 +14,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const [indexType, setIndexType] = useState(indexTypeOptions?.[0].value || "");
   let tooltipText = "Type of index to create.";
   if (!indexTypeOptions?.find(option => option.value === "hash")) {
-    tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist' and "persistent" are identical, so that they are not offered seperately here.`;
+    tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist" and "persistent" are identical, so that they are not offered separately here.`;
   }
   return (
     <Box width="100%" padding="4">
@@ -31,7 +31,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
             defaultValue={indexTypeOptions?.[0]}
             options={indexTypeOptions}
             onChange={value => {
-              setIndexType((value as any).value);
+              setIndexType(value?.value || "");
             }}
           />
           <InfoTooltip label={tooltipText} />
