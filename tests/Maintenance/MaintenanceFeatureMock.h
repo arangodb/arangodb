@@ -28,7 +28,6 @@
 #include <thread>
 #include <iostream>
 
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -65,9 +64,9 @@ class TestProgressHandler : public arangodb::application_features::
       arangodb::application_features::ApplicationServer::State newState) {
     if (arangodb::application_features::ApplicationServer::State::IN_WAIT ==
         newState) {
-      CONDITION_LOCKER(clock, _serverReadyCond);
+      std::lock_guard clock{_serverReadyCond.mutex};
       _serverReady = true;
-      _serverReadyCond.broadcast();
+      _serverReadyCond.cv.notify_all();
     }
   }
 
@@ -117,9 +116,9 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   ///   Code waits until background ApplicationServer known to have fully
   ///   started.
   void setMaintenanceThreadsMax(uint32_t threads) {
-    CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
+    std::unique_lock clock{_progressHandler._serverReadyCond.mutex};
     while (!_progressHandler._serverReady) {
-      _progressHandler._serverReadyCond.wait();
+      _progressHandler._serverReadyCond.cv.wait(clock);
     }  // while
 
     _maintenanceThreadsMax = threads;

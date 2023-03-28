@@ -47,7 +47,6 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
@@ -367,17 +366,16 @@ bool upgradeArangoSearchLinkCollectionName(
       ClusterMethods::realNameFromSmartName(clusterCollectionName);
 #endif
       for (auto& index : indexes) {
+        TRI_ASSERT(index != nullptr);
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
+          TRI_ASSERT(indexPtr != nullptr);
           auto id = indexPtr->index().id().id();
 #else
           auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
           auto const id = indexPtr->id().id();
 #endif
-          if (!indexPtr) {
-            continue;
-          }
           LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
               << "Checking collection name '" << clusterCollectionName
               << "' for link " << id;
@@ -841,6 +839,7 @@ class IResearchAsync {
 #endif
   {
     TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+      // cppcheck-suppress throwInNoexceptFunction
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -881,10 +880,12 @@ bool isFilter(aql::Function const& func) noexcept {
 }
 
 bool isScorer(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &dummyScorerFunc;
 }
 
 bool isOffsetInfo(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &offsetInfoFunc;
 }
 

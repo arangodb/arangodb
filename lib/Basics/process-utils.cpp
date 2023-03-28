@@ -76,7 +76,6 @@
 #include <unistd.h>
 #endif
 
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
 #include "Basics/StringBuffer.h"

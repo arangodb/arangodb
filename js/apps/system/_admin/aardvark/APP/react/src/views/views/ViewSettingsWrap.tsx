@@ -16,13 +16,13 @@ export const ViewSettingsWrap = ({ name }: { name: string }) => {
   }
   if (view?.type === "search-alias") {
     return (
-      <ChakraCustomProvider>
+      <ChakraCustomProvider overrideNonReact>
         <SearchAliasViewSettings view={view} />
       </ChakraCustomProvider>
     );
   }
   return (
-    <ChakraCustomProvider>
+    <ChakraCustomProvider overrideNonReact>
       <ViewSettings name={name} />
     </ChakraCustomProvider>
   );

@@ -33,7 +33,6 @@
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -576,7 +575,7 @@ void V8DealerFeature::start() {
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
   // setup instances
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
     _contexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _busyContexts.reserve(static_cast<size_t>(_nrMaxContexts));
     _idleContexts.reserve(static_cast<size_t>(_nrMaxContexts));
@@ -942,7 +941,7 @@ bool V8DealerFeature::addGlobalContextMethod(
     GlobalContextMethods::MethodType type) {
   bool result = true;
 
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   for (auto& context : _contexts) {
     try {
@@ -982,14 +981,16 @@ void V8DealerFeature::collectGarbage() {
       {
         bool gotSignal = false;
         preferFree = !preferFree;
-        CONDITION_LOCKER(guard, _contextCondition);
+        std::unique_lock guard{_contextCondition.mutex};
 
         if (_dirtyContexts.empty()) {
           uint64_t waitTime =
               useReducedWait ? reducedWaitTime : regularWaitTime;
 
           // we'll wait for a signal or a timeout
-          gotSignal = guard.wait(waitTime);
+          gotSignal = _contextCondition.cv.wait_for(
+                          guard, std::chrono::microseconds{waitTime}) ==
+                      std::cv_status::no_timeout;
         }
 
         if (preferFree && !_idleContexts.empty()) {
@@ -1068,7 +1069,7 @@ void V8DealerFeature::collectGarbage() {
         context->setCleaned(lastGc);
 
         {
-          CONDITION_LOCKER(guard, _contextCondition);
+          std::unique_lock guard{_contextCondition.mutex};
 
           if (_contexts.size() > _nrMinContexts && !context->isDefault() &&
               context->shouldBeRemoved(_maxContextAge,
@@ -1093,7 +1094,7 @@ void V8DealerFeature::collectGarbage() {
             } else {
               _idleContexts.insert(_idleContexts.begin(), context);
             }
-            guard.broadcast();
+            _contextCondition.cv.notify_all();
           }
         }
       } else {
@@ -1109,7 +1110,7 @@ void V8DealerFeature::collectGarbage() {
 }
 
 void V8DealerFeature::unblockDynamicContextCreation() {
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   TRI_ASSERT(_dynamicContextCreationBlockers > 0);
   --_dynamicContextCreationBlockers;
@@ -1125,11 +1126,11 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   std::vector<V8Context*> contexts;
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_nrInflightContexts > 0) {
       // wait until all pending context creation requests have been satisified
-      guard.wait(10000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
     }
 
     // copy the list of contexts into a local variable
@@ -1147,11 +1148,11 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
 
   // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_busyContexts.find(context) != _busyContexts.end()) {
       // we must not enter the context if another thread is also using it...
-      guard.wait(10000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{10});
     }
 
     auto it = std::find(_dirtyContexts.begin(), _dirtyContexts.end(), context);
@@ -1267,10 +1268,10 @@ V8Context* V8DealerFeature::enterContext(
 
   // look for a free context
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     while (_idleContexts.empty() && !_stopping) {
-      TRI_ASSERT(guard.isLocked());
+      TRI_ASSERT(guard.owns_lock());
 
       LOG_TOPIC("619ab", TRACE, arangodb::Logger::V8)
           << "waiting for unused V8 context";
@@ -1288,7 +1289,7 @@ V8Context* V8DealerFeature::enterContext(
       if (contextLimitNotExceeded && _dynamicContextCreationBlockers == 0) {
         ++_nrInflightContexts;
 
-        TRI_ASSERT(guard.isLocked());
+        TRI_ASSERT(guard.owns_lock());
         guard.unlock();
 
         try {
@@ -1304,7 +1305,7 @@ V8Context* V8DealerFeature::enterContext(
         }
 
         // must re-lock
-        TRI_ASSERT(!guard.isLocked());
+        TRI_ASSERT(!guard.owns_lock());
         guard.lock();
 
         --_nrInflightContexts;
@@ -1318,7 +1319,7 @@ V8Context* V8DealerFeature::enterContext(
           continue;
         }
 
-        TRI_ASSERT(guard.isLocked());
+        TRI_ASSERT(guard.owns_lock());
         try {
           _idleContexts.push_back(context);
           LOG_TOPIC("25f94", DEBUG, Logger::V8)
@@ -1332,11 +1333,11 @@ V8Context* V8DealerFeature::enterContext(
           ++_contextsDestroyed;
         }
 
-        guard.broadcast();
+        _contextCondition.cv.notify_all();
         continue;
       }
 
-      TRI_ASSERT(guard.isLocked());
+      TRI_ASSERT(guard.owns_lock());
 
       constexpr double maxWaitTime = 60.0;
       double const now = TRI_microtime();
@@ -1369,10 +1370,10 @@ V8Context* V8DealerFeature::enterContext(
         return nullptr;
       }
 
-      guard.wait(100000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
 
-    TRI_ASSERT(guard.isLocked());
+    TRI_ASSERT(guard.owns_lock());
 
     // in case we are in the shutdown phase, do not enter a context!
     // the context might have been deleted by the shutdown
@@ -1529,7 +1530,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
     }
 
     context->unlockAndExit();
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     context->clearDescription();
 
@@ -1551,10 +1552,10 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     LOG_TOPIC("fc763", TRACE, arangodb::Logger::V8)
         << "returned dirty V8 context #" << context->id();
-    guard.broadcast();
+    _contextCondition.cv.notify_all();
   } else {
     context->unlockAndExit();
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     context->clearDescription();
 
@@ -1565,7 +1566,7 @@ void V8DealerFeature::exitContext(V8Context* context) {
 
     LOG_TOPIC("82410", TRACE, arangodb::Logger::V8)
         << "returned dirty V8 context #" << context->id() << " back into free";
-    guard.broadcast();
+    _contextCondition.cv.notify_all();
   }
 
   ++_contextsExited;
@@ -1576,8 +1577,8 @@ void V8DealerFeature::shutdownContexts() {
 
   // wait for all contexts to finish
   {
-    CONDITION_LOCKER(guard, _contextCondition);
-    guard.broadcast();
+    std::unique_lock guard{_contextCondition.mutex};
+    _contextCondition.cv.notify_all();
 
     for (size_t n = 0; n < 10 * 5; ++n) {
       if (_busyContexts.empty()) {
@@ -1590,13 +1591,13 @@ void V8DealerFeature::shutdownContexts() {
           << "waiting for busy V8 contexts (" << _busyContexts.size()
           << ") to finish ";
 
-      guard.wait(100 * 1000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
   }
 
   // send all busy contexts a terminate signal
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
 
     for (auto& it : _busyContexts) {
       LOG_TOPIC("e907b", WARN, arangodb::Logger::V8)
@@ -1605,16 +1606,16 @@ void V8DealerFeature::shutdownContexts() {
     }
   }
 
-  // wait for one minute
+  // wait no more than one minute
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::unique_lock guard{_contextCondition.mutex};
 
     for (size_t n = 0; n < 10 * 60; ++n) {
       if (_busyContexts.empty()) {
         break;
       }
 
-      guard.wait(100000);
+      _contextCondition.cv.wait_for(guard, std::chrono::milliseconds{100});
     }
   }
 
@@ -1643,7 +1644,7 @@ void V8DealerFeature::shutdownContexts() {
   {
     std::vector<V8Context*> contexts;
     {
-      CONDITION_LOCKER(guard, _contextCondition);
+      std::lock_guard guard{_contextCondition.mutex};
       contexts = _contexts;
       _contexts.clear();
     }
@@ -1885,7 +1886,7 @@ std::unique_ptr<V8Context> V8DealerFeature::buildContext(TRI_vocbase_t* vocbase,
 }
 
 V8DealerFeature::Statistics V8DealerFeature::getCurrentContextNumbers() {
-  CONDITION_LOCKER(guard, _contextCondition);
+  std::lock_guard guard{_contextCondition.mutex};
 
   return {_contexts.size(),     _busyContexts.size(), _dirtyContexts.size(),
           _idleContexts.size(), _nrMaxContexts,       _nrMinContexts};
@@ -1895,7 +1896,7 @@ std::vector<V8DealerFeature::DetailedContextStatistics>
 V8DealerFeature::getCurrentContextDetails() {
   std::vector<V8DealerFeature::DetailedContextStatistics> result;
   {
-    CONDITION_LOCKER(guard, _contextCondition);
+    std::lock_guard guard{_contextCondition.mutex};
     result.reserve(_contexts.size());
     for (auto oneCtx : _contexts) {
       auto isolate = oneCtx->_isolate;

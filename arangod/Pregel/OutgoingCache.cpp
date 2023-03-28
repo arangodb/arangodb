@@ -36,7 +36,6 @@
 #include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"

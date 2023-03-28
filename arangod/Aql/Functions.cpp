@@ -37,8 +37,6 @@
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -180,7 +178,7 @@ std::regex const ipV4LeadingZerosRegex("^(.*?\\.)?0[0-9]+.*$",
 #endif
 
 /// @brief mutex used to protect UUID generation
-static Mutex uuidMutex;
+static std::mutex uuidMutex;
 
 enum DateSelectionModifier {
   INVALID = 0,
@@ -1591,7 +1589,7 @@ AqlValue functions::Uuid(ExpressionContext*, AstNode const&,
   boost::uuids::uuid uuid;
   {
     // must protect mutex generation from races
-    MUTEX_LOCKER(mutexLocker, ::uuidMutex);
+    std::lock_guard mutexLocker{::uuidMutex};
     uuid = boost::uuids::random_generator()();
   }
 
