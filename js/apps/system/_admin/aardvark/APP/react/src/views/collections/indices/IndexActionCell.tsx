@@ -2,10 +2,10 @@ import { LockIcon } from "@chakra-ui/icons";
 import { Box, HStack } from "@chakra-ui/react";
 import React from "react";
 import { DeleteIndexButton } from "./DeleteIndexButton";
-import { IndexType } from "./useFetchIndices";
+import { IndexRowType } from "./useFetchIndices";
 import { ViewIndexButton } from "./ViewIndexButton";
 
-export const IndexActionCell = ({ indexRow }: { indexRow: IndexType }) => {
+export const IndexActionCell = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { type } = indexRow;
   if (type === "primary" || type === "edge") {
     return (

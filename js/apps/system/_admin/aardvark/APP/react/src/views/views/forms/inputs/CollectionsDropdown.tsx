@@ -92,11 +92,11 @@ const CollectionsDropdown = () => {
       isDisabled={!isAdminUser}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeLink((action.removedValue as any).value as string);
+          removeLink(action.removedValue.value);
           return;
         }
-        if (action.action === "select-option") {
-          addLink((action.option as any).value as string);
+        if (action.action === "select-option" && action.option?.value) {
+          addLink(action.option.value);
         }
       }}
     />

@@ -14,9 +14,9 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
-import { IndexType } from "./useFetchIndices";
+import { IndexRowType } from "./useFetchIndices";
 
-export const DeleteIndexButton = ({ indexRow }: { indexRow: IndexType }) => {
+export const DeleteIndexButton = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
   const { readOnly } = useCollectionIndicesContext();
   return (
@@ -41,7 +41,7 @@ const DeleteModal = ({
 }: {
   onClose: () => void;
   isOpen: boolean;
-  indexRow: IndexType;
+  indexRow: IndexRowType;
 }) => {
   const { onDeleteIndex } = useCollectionIndicesContext();
   return (

@@ -1,5 +1,5 @@
 import React from "react";
-import { IndexType } from "../../useFetchIndices";
+import { IndexRowType } from "../../useFetchIndices";
 import { InvertedIndexForm } from "./InvertedIndexFormWrap";
 import {
   InvertedIndexValuesType,
@@ -11,7 +11,7 @@ export const InvertedIndexView = ({
   indexRow
 }: {
   onClose: () => void;
-  indexRow: IndexType;
+  indexRow: IndexRowType;
 }) => {
   const { schema, fields } = useInvertedIndexFieldsData();
   return (

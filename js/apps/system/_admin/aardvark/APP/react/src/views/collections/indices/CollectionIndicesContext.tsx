@@ -4,11 +4,12 @@ import { useDeleteIndex } from "./useDeleteIndex";
 import { useSupportedIndexTypes } from "./useSupportedIndexTypes";
 import { usePermissionsCheck } from "./usePermissionsCheck";
 import { useSetupBreadcrumbs } from "./useSetupBreadcrumbs";
+import { IndexType } from "./useFetchIndices";
 
 type CollectionIndicesContextType = {
   collectionName: string;
   collectionId: string;
-  indexTypeOptions?: { value: string; label: string }[];
+  indexTypeOptions: { value: IndexType; label: string }[];
   onDeleteIndex: (data: { id: string; onSuccess: () => void }) => void;
   onOpenForm: () => void;
   onCloseForm: () => void;

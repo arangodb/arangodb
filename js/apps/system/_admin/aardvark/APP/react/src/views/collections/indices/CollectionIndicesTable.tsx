@@ -10,7 +10,7 @@ import {
 import { isNumber } from "lodash";
 import React from "react";
 import { IndexActionCell } from "./IndexActionCell";
-import { IndexType, StoredValue } from "./useFetchIndices";
+import { IndexRowType, StoredValue } from "./useFetchIndices";
 import { useSyncIndexCreationJob } from "./useSyncIndexCreationJob";
 
 const TABLE_HEADERS = [
@@ -29,7 +29,7 @@ const TABLE_HEADERS = [
 export const CollectionIndicesTable = ({
   indices
 }: {
-  indices?: IndexType[];
+  indices?: IndexRowType[];
 }) => {
   useSyncIndexCreationJob();
   return (
@@ -44,7 +44,7 @@ export const CollectionIndicesTable = ({
         </Thead>
         <Tbody>
           {indices?.map(indexRow => {
-            var indexRowData = getIndexRowData(indexRow);
+            const indexRowData = getIndexRowData(indexRow);
             return (
               <Tr key={indexRow.id}>
                 {TABLE_HEADERS.map(tableHeader => {
@@ -70,7 +70,7 @@ export const CollectionIndicesTable = ({
   );
 };
 
-const getIndexRowData = (indexRow: IndexType) => {
+const getIndexRowData = (indexRow: IndexRowType) => {
   const {
     fields,
     storedValues,
@@ -102,7 +102,7 @@ const getIndexRowData = (indexRow: IndexType) => {
   const fieldsString = fields
     .map(field => {
       if (typeof field === "object") {
-        return (field as any).name;
+        return field.name;
       }
       return field;
     })

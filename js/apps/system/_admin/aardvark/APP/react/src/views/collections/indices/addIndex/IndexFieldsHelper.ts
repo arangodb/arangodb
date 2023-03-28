@@ -14,7 +14,7 @@ export const commonFieldsMap = {
     name: "name",
     type: "text",
     tooltip:
-      "Index name. If left blank, a name will be auto-generated. Example: byValue",
+      "Index name. If left blank, the name will be auto-generated. Example: byValue",
     initialValue: ""
   },
   inBackground: {

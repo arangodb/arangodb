@@ -4,9 +4,9 @@ import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { InvertedIndexView } from "./addIndex/invertedIndex/InvertedIndexView";
 import { useCollectionIndicesContext } from "./CollectionIndicesContext";
-import { IndexType } from "./useFetchIndices";
+import { IndexRowType } from "./useFetchIndices";
 
-export const ViewIndexButton = ({ indexRow }: { indexRow: IndexType }) => {
+export const ViewIndexButton = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
   const { readOnly } = useCollectionIndicesContext();
   return (
@@ -31,7 +31,7 @@ const ViewModal = ({
 }: {
   onClose: () => void;
   isOpen: boolean;
-  indexRow: IndexType;
+  indexRow: IndexRowType;
 }) => {
   return (
     <Modal size="max" onClose={onClose} isOpen={isOpen}>

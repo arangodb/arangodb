@@ -7,12 +7,22 @@ export type StoredValue = {
   fields: string[];
   compression: "lz4" | "none";
 };
-export type IndexType = {
-  fields: string[];
+export type IndexType =
+  | "primary"
+  | "fulltext"
+  | "edge"
+  | "persistent"
+  | "ttl"
+  | "geo"
+  | "zkd"
+  | "hash"
+  | "inverted";
+export type IndexRowType = {
+  fields: string[] | { [key: string]: string }[];
   id: string;
   name: string;
   sparse: boolean;
-  type: "primary" | "fulltext" | "edge" | "inverted" | "persistent" | "ttl";
+  type: IndexType;
   unique: boolean;
   selectivityEstimate?: number;
   storedValues?: string[] | StoredValue[];
@@ -29,26 +39,9 @@ type InvertedIndexExtraFields = {
 };
 
 interface IndicesResponse extends ArangojsResponse {
-  body: { indexes: Array<IndexType> };
+  body: { indexes: Array<IndexRowType> };
 }
 
-/**
- * 
- * 
- *  $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/index/?collection=' + encodeURIComponent(this.get('name'))),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(false, data, self.get('id'));
-        },
-        error: function (data) {
-          callback(true, data, self.get('id'));
-        }
-      });
- */
 export const useFetchIndices = ({
   collectionName
 }: {
@@ -64,7 +57,7 @@ export const useFetchIndices = ({
     }
   );
   const result = data?.body.indexes;
-  const [indices, setIndexList] = useState<IndexType[] | undefined>(result);
+  const [indices, setIndexList] = useState<IndexRowType[] | undefined>(result);
 
   useEffect(() => {
     setIndexList(result);

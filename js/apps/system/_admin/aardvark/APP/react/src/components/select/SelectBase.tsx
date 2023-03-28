@@ -7,7 +7,9 @@ export type OptionType = {
   label: string;
 };
 
-const Option = (props: OptionProps<OptionType>) => {
+const Option = <IsMulti extends boolean>(
+  props: OptionProps<OptionType, IsMulti>
+) => {
   return (
     <div title={props.data.value}>
       <components.Option {...props} />
@@ -15,9 +17,9 @@ const Option = (props: OptionProps<OptionType>) => {
   );
 };
 
-export const getSelectBase = (SelectComponent: Select) => (
-  props: Props<OptionType>
-) => (
+export const getSelectBase = <IsMulti extends boolean = false>(
+  SelectComponent: Select
+) => (props: Props<OptionType, IsMulti>) => (
   <SelectComponent
     {...props}
     menuPortalTarget={document.body}
