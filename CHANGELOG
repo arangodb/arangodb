@@ -18,9 +18,6 @@ v3.9.11 (XXXX-XX-XX)
   This can cause follow-up errors and the PlanSyncer complaining about missing
   databases for analyzers etc.
 
-* Fix potential memory under-accounting on cache shutdown for in-memory caches
-  for edge indexes.
-
 * Fixed single-to-single replication that used HTTP authentication to
   authenticate requests on the leader. This could be broken if the collections
   on the leader were created with 3.8 or later, and thus used the Merkle tree
