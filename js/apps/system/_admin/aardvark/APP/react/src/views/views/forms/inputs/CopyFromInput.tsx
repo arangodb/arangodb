@@ -87,7 +87,7 @@ const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
               option => option.value === selectedView.value
             )}
             onChange={value => {
-              updateSelectedView(value.value);
+              updateSelectedView(value?.value || viewOptions[0].value);
             }}
           />
         </Box>
