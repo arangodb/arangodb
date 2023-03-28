@@ -610,7 +610,7 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   auto slice = builder.slice();
 #ifdef USE_ENTERPRISE
   EXPECT_EQ(13, slice.length());
-  tmpSlice = slice.get("smartSort");
+  tmpSlice = slice.get("optimizeTopK");
   EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
   EXPECT_EQ(12, slice.length());
@@ -773,7 +773,7 @@ TEST_F(IResearchViewMetaTest, test_writeCustomizedValues) {
 
 #ifdef USE_ENTERPRISE
   EXPECT_EQ(14, slice.length());
-  tmpSlice = slice.get("smartSort");
+  tmpSlice = slice.get("optimizeTopK");
   EXPECT_TRUE(tmpSlice.isEmptyArray());
 #else
   EXPECT_EQ(12, slice.length());
@@ -951,7 +951,7 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
 
 #ifdef USE_ENTERPRISE
   EXPECT_EQ(13, slice.length());
-  EXPECT_TRUE(slice.hasKey("smartSort"));
+  EXPECT_TRUE(slice.hasKey("optimizeTopK"));
 #else
   EXPECT_EQ(12, slice.length());
 #endif

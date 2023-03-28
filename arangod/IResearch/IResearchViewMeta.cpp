@@ -47,7 +47,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
 #ifdef USE_ENTERPRISE
       _sortCache(mask),
       _pkCache(mask),
-      _smartSort(mask),
+      _optimizeTopK(mask),
 #endif
       _primarySortCompression(mask) {
 }
@@ -79,7 +79,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta const& other) {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
-  _smartSort = other._smartSort;
+  _optimizeTopK = other._optimizeTopK;
 #endif
   IResearchDataStoreMeta::storeFull(other);
 }
@@ -94,7 +94,7 @@ void IResearchViewMeta::storeFull(IResearchViewMeta&& other) noexcept {
 #ifdef USE_ENTERPRISE
   _sortCache = other._sortCache;
   _pkCache = other._pkCache;
-  _smartSort = std::move(other._smartSort);
+  _optimizeTopK = std::move(other._optimizeTopK);
 #endif
   IResearchDataStoreMeta::storeFull(std::move(other));
 }
@@ -111,7 +111,7 @@ bool IResearchViewMeta::operator==(
     return false;
   }
 #ifdef USE_ENTERPRISE
-  if (_sortCache != other._sortCache || _pkCache != other._pkCache || _smartSort != other._smartSort) {
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache || _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
@@ -229,22 +229,22 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
     }
   }
   {
-    auto const field = slice.get(StaticStrings::kSmartSortField);
-    mask->_smartSort = !field.isNone();
-    if (mask->_smartSort) {
+    auto const field = slice.get(StaticStrings::kOptimizeTopKField);
+    mask->_optimizeTopK = !field.isNone();
+    if (mask->_optimizeTopK) {
       std::string error;
-      if (!_smartSort.fromVelocyPack(field, error)) {
-        errorField = StaticStrings::kSmartSortField;
+      if (!_optimizeTopK.fromVelocyPack(field, error)) {
+        errorField = StaticStrings::kOptimizeTopKField;
         errorField += " ";
         errorField += error;
         return false;
       }
     } else {
-      _smartSort = defaults._smartSort;
+      _optimizeTopK = defaults._optimizeTopK;
     }
     // Do not bother copy ctor for smart sort. Defaults anyway should 
     // be empty
-    TRI_ASSERT(mask->_smartSort || defaults._smartSort.empty());
+    TRI_ASSERT(mask->_optimizeTopK || defaults._optimizeTopK.empty());
   }
 #endif
   return true;
@@ -300,11 +300,11 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
   }
 
   
-  if ((!mask || mask->_smartSort) &&
-      (!ignoreEqual || _smartSort != ignoreEqual->_smartSort)) {
+  if ((!mask || mask->_optimizeTopK) &&
+      (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
     velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::kSmartSortField);
-    if (!_smartSort.toVelocyPack(builder)) {
+                                        StaticStrings::kOptimizeTopKField);
+    if (!_optimizeTopK.toVelocyPack(builder)) {
       return false;
     }
   }

@@ -661,7 +661,7 @@ bool IResearchLinkMeta::operator==(
   }
 
 #ifdef USE_ENTERPRISE
-  if (_pkCache != other._pkCache || _sortCache != other._sortCache || _smartSort != other._smartSort) {
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache || _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
@@ -745,13 +745,13 @@ bool IResearchLinkMeta::init(
     }
   }
   {
-    auto const field = slice.get(StaticStrings::kSmartSortField);
-    mask->_smartSort = !field.isNone();
+    auto const field = slice.get(StaticStrings::kOptimizeTopKField);
+    mask->_optimizeTopK = !field.isNone();
     std::string err;
-    if (mask->_smartSort) {
-      if (!_smartSort.fromVelocyPack(field, err)) {
-        errorField = StaticStrings::kSmartSortField;
-        errorField = StaticStrings::kSmartSortField;
+    if (mask->_optimizeTopK) {
+      if (!_optimizeTopK.fromVelocyPack(field, err)) {
+        errorField = StaticStrings::kOptimizeTopKField;
+        errorField = StaticStrings::kOptimizeTopKField;
         absl::StrAppend(&errorField, ": ", err);
         return false;
       }
@@ -988,11 +988,11 @@ bool IResearchLinkMeta::json(ArangodServer& server,
        (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
     builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
   }
-  if (writeAnalyzerDefinition && (!mask || mask ->_smartSort) &&
-    (!ignoreEqual || _smartSort != ignoreEqual->_smartSort)) {
+  if (writeAnalyzerDefinition && (!mask || mask ->_optimizeTopK) &&
+    (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
     velocypack::ArrayBuilder arrayScope(&builder,
-                                        StaticStrings::kSmartSortField);
-    if (!_smartSort.toVelocyPack(builder)) {
+                                        StaticStrings::kOptimizeTopKField);
+    if (!_optimizeTopK.toVelocyPack(builder)) {
       return false;
     }
   }
@@ -1042,7 +1042,7 @@ size_t IResearchLinkMeta::memory() const noexcept {
   size += sizeof(_version);
   size += FieldMeta::memory();
 #ifdef USE_ENTERPRISE
-  size += _smartSort.memory();
+  size += _optimizeTopK.memory();
 #endif
 
   return size;

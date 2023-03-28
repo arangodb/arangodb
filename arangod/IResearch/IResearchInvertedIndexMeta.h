@@ -25,7 +25,7 @@
 
 #include "IResearch/IResearchDataStoreMeta.h"
 #ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/IResearchSmartSort.h"
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
 #endif
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewStoredValues.h"
@@ -259,7 +259,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta,
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
 #ifdef USE_ENTERPRISE
-  IResearchSmartSort _smartSort;
+  IResearchOptimizeTopK _optimizeTopK;
 #endif
   mutable std::string _collectionName;
   Consistency _consistency{Consistency::kEventual};
