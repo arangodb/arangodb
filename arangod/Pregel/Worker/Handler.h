@@ -87,12 +87,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                                   std::move(statusUpdateCallback));
         this->state->quiver = loader.load();
 
+        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
+            << fmt::format("Worker {} has finished loading.", this->self);
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
             .vertexCount = this->state->quiver->numberOfVertices(),
             .edgeCount = this->state->quiver->numberOfEdges()}};
-        LOG_TOPIC("5206c", WARN, Logger::PREGEL)
-            << fmt::format("Worker {} has finished loading.", this->self);
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_INTERNAL,
