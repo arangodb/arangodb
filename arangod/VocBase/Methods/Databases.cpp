@@ -185,7 +185,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNamesForDatabases();
+      info.server().getFeature<DatabaseFeature>().extendedNamesDatabases();
 
   if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
                                             extendedNames, info.getName())) {

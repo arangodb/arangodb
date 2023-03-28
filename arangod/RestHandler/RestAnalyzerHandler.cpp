@@ -93,7 +93,7 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server().getFeature<DatabaseFeature>().extendedNamesAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(
           extendedNames,
           std::string_view(splittedAnalyzerName.second.data(),
@@ -353,7 +353,7 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
   auto name = splittedAnalyzerName.second;
 
   bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server().getFeature<DatabaseFeature>().extendedNamesAnalyzers();
   if (!AnalyzerNameValidator::isAllowedName(
           extendedNames, std::string_view(name.data(), name.size()))) {
     generateError(

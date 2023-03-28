@@ -166,9 +166,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   TRI_ASSERT(info.isObject());
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
   if (!CollectionNameValidator::isAllowedName(system(), extendedNames,
                                               name())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);

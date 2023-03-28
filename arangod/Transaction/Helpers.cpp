@@ -508,7 +508,7 @@ Result transaction::helpers::mergeObjectsForUpdate(
     auto& server = trx.vocbase().server();
     bool extendedNames =
         server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+        server.getFeature<DatabaseFeature>().extendedNamesCollections();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -680,7 +680,7 @@ Result transaction::helpers::newObjectForInsert(
     auto& server = trx.vocbase().server();
     bool extendedNames =
         server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+        server.getFeature<DatabaseFeature>().extendedNamesCollections();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -784,7 +784,7 @@ Result transaction::helpers::newObjectForReplace(
     auto& server = trx.vocbase().server();
     bool extendedNames =
         server.hasFeature<DatabaseFeature>() &&
-        server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+        server.getFeature<DatabaseFeature>().extendedNamesCollections();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {

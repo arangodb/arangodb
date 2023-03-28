@@ -308,7 +308,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool extendedNames = v8g->server()
                            .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
+                           .extendedNamesAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,
           std::string_view(splittedAnalyzerName.second.data(),
@@ -606,7 +606,7 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool extendedNames = v8g->server()
                            .getFeature<arangodb::DatabaseFeature>()
-                           .extendedNamesForAnalyzers();
+                           .extendedNamesAnalyzers();
   if (!arangodb::AnalyzerNameValidator::isAllowedName(
           extendedNames,
           std::string_view(splittedAnalyzerName.second.data(),

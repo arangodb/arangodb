@@ -285,7 +285,7 @@ void DatabaseFeature::collectOptions(
       ->addOption("--database.extended-names-databases",
                   "Allow most UTF-8 characters in database names. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNamesForDatabases),
+                  new options::BooleanParameter(&_extendedNamesDatabases),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
@@ -295,7 +295,7 @@ void DatabaseFeature::collectOptions(
                   "Allow most UTF-8 characters in collection and index names. "
                   "Once in use, "
                   "this option cannot be turned off again.",
-                  new BooleanParameter(&_extendedNamesForCollections),
+                  new BooleanParameter(&_extendedNamesCollections),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
@@ -306,7 +306,18 @@ void DatabaseFeature::collectOptions(
                   "Allow most UTF-8 characters in view names. "
                   "Once in use, "
                   "this option cannot be turned off again.",
-                  new BooleanParameter(&_extendedNamesForViews),
+                  new BooleanParameter(&_extendedNamesViews),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental))
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption("--database.extended-names-indexes",
+                  "Allow most UTF-8 characters in index names. "
+                  "Once in use, "
+                  "this option cannot be turned off again.",
+                  new BooleanParameter(&_extendedNamesIndexes),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental))
@@ -377,14 +388,16 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 void DatabaseFeature::start() {
   std::vector<std::string> what;
 
-  if (_extendedNamesForDatabases) {
+  if (_extendedNamesDatabases) {
     what.push_back("databases");
   }
-  if (_extendedNamesForCollections) {
+  if (_extendedNamesCollections) {
     what.push_back("collections");
+  }
+  if (_extendedNamesIndexes) {
     what.push_back("indexes");
   }
-  if (_extendedNamesForViews) {
+  if (_extendedNamesViews) {
     what.push_back("views");
   }
 
@@ -680,7 +693,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = extendedNamesForDatabases();
+  bool extendedNames = extendedNamesDatabases();
   if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
                                             extendedNames, name)) {
     return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};

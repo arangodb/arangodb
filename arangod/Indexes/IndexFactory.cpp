@@ -281,7 +281,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     }
 
     bool extendedNames =
-        _server.getFeature<DatabaseFeature>().extendedNamesForCollections();
+        _server.getFeature<DatabaseFeature>().extendedNamesIndexes();
     if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
       return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }

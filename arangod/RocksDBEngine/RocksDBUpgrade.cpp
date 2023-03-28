@@ -234,18 +234,22 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
 
   // --database.extended-names-databases
   checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
-               "database.extended-names-databases",
-               df.extendedNamesForDatabases(),
-               [&df](bool value) { df.extendedNamesForDatabases(value); });
+               "database.extended-names-databases", df.extendedNamesDatabases(),
+               [&df](bool value) { df.extendedNamesDatabases(value); });
 
   // --database.extended-names-collections
   checkSetting(RocksDBSettingsType::ExtendedNamesCollections,
                "database.extended-names-collections",
-               df.extendedNamesForCollections(),
-               [&df](bool value) { df.extendedNamesForCollections(value); });
+               df.extendedNamesCollections(),
+               [&df](bool value) { df.extendedNamesCollections(value); });
+
+  // --database.extended-names-indexes
+  checkSetting(RocksDBSettingsType::ExtendedNamesIndexes,
+               "database.extended-names-indexes", df.extendedNamesIndexes(),
+               [&df](bool value) { df.extendedNamesIndexes(value); });
 
   // --database.extended-names-views
   checkSetting(RocksDBSettingsType::ExtendedNamesViews,
-               "database.extended-names-views", df.extendedNamesForViews(),
-               [&df](bool value) { df.extendedNamesForViews(value); });
+               "database.extended-names-views", df.extendedNamesViews(),
+               [&df](bool value) { df.extendedNamesViews(value); });
 }

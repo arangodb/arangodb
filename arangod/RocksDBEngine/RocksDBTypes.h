@@ -102,6 +102,7 @@ enum class RocksDBSettingsType : char {
   Version = 'V',
   ServerTick = 'S',
   Endianness = 'E',
+  ExtendedNamesIndexes = 'W',
   ExtendedNamesDatabases = 'X',
   ExtendedNamesCollections = 'Y',
   ExtendedNamesViews = 'Z',

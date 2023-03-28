@@ -71,6 +71,7 @@ std::regex const uuidRegex(
 constexpr std::string_view extendedNamesDatabasesKey = "extendedNamesDatabases";
 constexpr std::string_view extendedNamesCollectionsKey =
     "extendedNamesCollections";
+constexpr std::string_view extendedNamesIndexesKey = "extendedNamesIndexes";
 constexpr std::string_view extendedNamesViewsKey = "extendedNamesViews";
 
 constexpr char const* currentServersRegisteredPref =
@@ -774,20 +775,26 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     // --database.extended-names-databases
     if (!checkSetting(servers, "database.extended-names-databases",
                       ::extendedNamesDatabasesKey,
-                      df.extendedNamesForDatabases())) {
+                      df.extendedNamesDatabases())) {
       // settings mismatch
       return false;
     }
     // --database.extended-names-collections
     if (!checkSetting(servers, "database.extended-names-collections",
                       ::extendedNamesCollectionsKey,
-                      df.extendedNamesForCollections())) {
+                      df.extendedNamesCollections())) {
+      // settings mismatch
+      return false;
+    }
+    // --database.extended-names-indexes
+    if (!checkSetting(servers, "database.extended-names-indexes",
+                      ::extendedNamesIndexesKey, df.extendedNamesIndexes())) {
       // settings mismatch
       return false;
     }
     // --database.extended-names-views
     if (!checkSetting(servers, "database.extended-names-views",
-                      ::extendedNamesViewsKey, df.extendedNamesForViews())) {
+                      ::extendedNamesViewsKey, df.extendedNamesViews())) {
       // settings mismatch
       return false;
     }
@@ -1032,7 +1039,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
           "engine",
           VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
 
-      if (df.extendedNamesForDatabases()) {
+      if (df.extendedNamesDatabases()) {
         // only store value of this config variable when it is activated.
         // so whenever this variable was set to true, we store its value in
         // Current/ServersRegistered for ourselves.
@@ -1045,19 +1052,25 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
         // that way we can still upgrade the value from "not set" to true,
         // but never from "true" to "false" or "not set".
         builder.add(::extendedNamesDatabasesKey,
-                    VPackValue(df.extendedNamesForDatabases()));
+                    VPackValue(df.extendedNamesDatabases()));
       }
-      if (df.extendedNamesForCollections()) {
+      if (df.extendedNamesCollections()) {
         // we only store the value of this config variable when activated.
         // for the rationale behind this see above
         builder.add(::extendedNamesCollectionsKey,
-                    VPackValue(df.extendedNamesForCollections()));
+                    VPackValue(df.extendedNamesCollections()));
       }
-      if (df.extendedNamesForViews()) {
+      if (df.extendedNamesIndexes()) {
+        // we only store the value of this config variable when activated.
+        // for the rationale behind this see above
+        builder.add(::extendedNamesIndexesKey,
+                    VPackValue(df.extendedNamesIndexes()));
+      }
+      if (df.extendedNamesViews()) {
         // we only store the value of this config variable when activated.
         // for the rationale behind this see above
         builder.add(::extendedNamesViewsKey,
-                    VPackValue(df.extendedNamesForViews()));
+                    VPackValue(df.extendedNamesViews()));
       }
 
       builder.add(

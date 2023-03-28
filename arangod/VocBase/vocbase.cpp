@@ -1303,7 +1303,7 @@ Result TRI_vocbase_t::validateCollectionParameters(
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
   bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+      server().getFeature<DatabaseFeature>().extendedNamesCollections();
   if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
             "illegal collection name '" + name + "'"};
@@ -1372,7 +1372,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = databaseFeature.extendedNamesForViews();
+  bool extendedNames = databaseFeature.extendedNamesViews();
   if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
                                         newName)) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -1586,7 +1586,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
                                             StaticStrings::DataSourceName, "");
 
     bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForViews();
+        server().getFeature<DatabaseFeature>().extendedNamesViews();
     valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
                                               extendedNames, name);
   }
@@ -1996,7 +1996,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   });
 
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = db.extendedNamesForCollections();
+  config.allowExtendedNames = db.extendedNamesCollections();
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();

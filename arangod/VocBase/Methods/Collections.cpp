@@ -112,9 +112,8 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool isLocalCollection, bool isSystemName,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
   if (!CollectionNameValidator::isAllowedName(allowSystem, extendedNames,
                                               info.name)) {
     events::CreateCollection(vocbase.name(), info.name,
@@ -1072,7 +1071,7 @@ Result Collections::rename(LogicalCollection& collection,
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
+                             .extendedNamesCollections();
     if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames,
                                                 newName)) {
       return TRI_ERROR_ARANGO_ILLEGAL_NAME;

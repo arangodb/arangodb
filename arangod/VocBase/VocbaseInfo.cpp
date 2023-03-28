@@ -299,7 +299,7 @@ Result CreateDatabaseInfo::checkOptions() {
 
   bool isSystem = _name == StaticStrings::SystemDatabase;
   bool extendedNames =
-      _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
+      _server.getFeature<DatabaseFeature>().extendedNamesDatabases();
 
   Result res;
 

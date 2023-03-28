@@ -4257,7 +4257,7 @@ void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
   bool extendedNames = _query.vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   // common validation
   if (name.empty() ||

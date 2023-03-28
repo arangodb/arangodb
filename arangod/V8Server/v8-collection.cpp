@@ -411,7 +411,7 @@ static void ExistsVocbaseVPack(
 
   bool extendedNames = vocbase->server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   transaction::V8Context transactionContext(*vocbase, true);
   VPackBuilder builder;
@@ -513,7 +513,7 @@ static void DocumentVocbaseCol(
   bool extendedNames = col->vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   auto& collectionName = col->name();
   VPackBuilder searchBuilder;
@@ -598,9 +598,8 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
 
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
@@ -700,7 +699,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool extendedNames = col->vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   auto& collectionName = col->name();
   VPackBuilder searchBuilder;
@@ -807,9 +806,8 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
 
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder builder;
@@ -904,7 +902,7 @@ static void JS_BinaryDocumentVocbaseCol(
   bool extendedNames = col->vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   VPackBuilder searchBuilder;
   v8::Local<v8::Value> const searchValue = args[0];
@@ -1457,7 +1455,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   bool extendedNames = col->vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+                           .extendedNamesCollections();
 
   auto& collectionName = col->name();
   VPackBuilder updateBuilder;
@@ -1649,9 +1647,8 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   std::shared_ptr<arangodb::LogicalCollection> collection;
   std::string collectionName;
   auto& vocbase = GetContextVocBase(isolate);
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
   transaction::V8Context transactionContext(vocbase, true);
   VPackBuilder updateBuilder;
 
