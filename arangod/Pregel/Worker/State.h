@@ -93,7 +93,7 @@ struct WorkerState {
                             : std::nullopt};
   }
 
-  auto getTotalAmountOfVertices() -> size_t {
+  [[nodiscard]] auto getTotalAmountOfVertices() const -> size_t {
     size_t totalAmountOfVertices = 0;
     for (auto& quiver : quivers) {
       totalAmountOfVertices += quiver->numberOfVertices();
@@ -101,7 +101,7 @@ struct WorkerState {
     return totalAmountOfVertices;
   }
 
-  auto getTotalAmountOfEdges() -> size_t {
+  [[nodiscard]] auto getTotalAmountOfEdges() const -> size_t {
     size_t totalAmountOfEdges = 0;
     for (auto& quiver : quivers) {
       totalAmountOfEdges += quiver->numberOfEdges();

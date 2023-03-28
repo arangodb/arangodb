@@ -139,7 +139,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_gss = this->state->config->globalSuperstep();
     ctx->_lss = this->state->config->localSuperstep();
     ctx->_context = this->state->workerContext.get();
-    ctx->_quivers = this->state->quivers;
+    TRI_ASSERT(this->state->quivers.size() == 1);
+    ctx->_quiver = this->state->quivers.at(0);
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
