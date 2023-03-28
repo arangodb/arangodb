@@ -99,7 +99,6 @@ export const GraphNetwork = () => {
   const height = position ? `calc(100vh - ${position.top}px)` : "80vh";
   return (
     <Box
-      id="graphNetworkContainer"
       ref={containerRef}
       height={height}
       background="white"
@@ -110,16 +109,14 @@ export const GraphNetwork = () => {
           containerRef
         }}
       />
-      <div
-        ref={visJsRef}
-        style={{
-          height: "calc(100% - 40px)",
-          width: "100%",
-          background: "#fff",
-          margin: "auto"
-        }}
-      />
-      <GraphInfo />
+      <Box id="graphNetworkWrap" height="full">
+        <Box
+          ref={visJsRef}
+          height="calc(100% - 40px)"
+          width="full"
+        />
+        <GraphInfo />
+      </Box>
     </Box>
   );
 };
