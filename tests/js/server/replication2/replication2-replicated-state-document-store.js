@@ -786,7 +786,6 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       result = dh.allSnapshotsStatus(leaderUrl, database, logId);
       lh.checkRequestResult(result);
-      internal.print(result.json.result);
       assertEqual(Object.keys(result.json.result.snapshots).length, 0);
     }
   };

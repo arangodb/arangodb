@@ -36,13 +36,21 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
+DocumentFollowerState::GuardedData::GuardedData(
+    std::unique_ptr<DocumentCore> core,
+    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
+    : core(std::move(core)), currentSnapshotVersion{0} {
+  transactionHandler = handlersFactory->createTransactionHandler(
+      this->core->getVocbase(), this->core->gid, this->core->getShardHandler());
+}
+
 DocumentFollowerState::DocumentFollowerState(
     std::unique_ptr<DocumentCore> core,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory)
     : loggerContext(core->loggerContext.with<logContextKeyStateComponent>(
           "FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
-      _guardedData(std::move(core)) {}
+      _guardedData(std::move(core), handlersFactory) {}
 
 DocumentFollowerState::~DocumentFollowerState() = default;
 
@@ -52,6 +60,11 @@ auto DocumentFollowerState::resign() && noexcept
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_FOLLOWER);
     }
+
+    auto abortAllRes = data.transactionHandler->applyEntry(
+        ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+    ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
+
     return std::move(data.core);
   });
 }
@@ -81,9 +94,9 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        auto result = data.core->getTransactionHandler()->applyEntry(
+        auto abortAllRes = data.transactionHandler->applyEntry(
             ReplicatedOperation::buildAbortAllOngoingTrxOperation());
-        ADB_PROD_ASSERT(result.ok()) << result;
+        ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
 
         auto const& shardHandler = data.core->getShardHandler();
         if (auto dropAllRes = shardHandler->dropAllShards();
@@ -117,7 +130,8 @@ auto DocumentFollowerState::acquireSnapshot(ParticipantId const& destination,
 
         LOG_CTX("b4fcb", DEBUG, self->loggerContext)
             << "Snapshot " << *snapshotTransferResult.snapshotId
-            << " data transfer completed, sending finish request";
+            << " data transfer over, will send finish request: "
+            << snapshotTransferResult.res;
 
         return leader->finishSnapshot(*snapshotTransferResult.snapshotId)
             .thenValue([snapshotTransferResult](auto&& res) {
@@ -277,8 +291,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                         "new one was started!"};
               }
 
-              auto transactionHandler = data.core->getTransactionHandler();
-
               std::stringstream ss;
               for (auto const& [shardId, _] : shards) {
                 ss << shardId << " ";
@@ -289,7 +301,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   << ss.str();
 
               for (auto const& [shardId, properties] : shards) {
-                auto res = transactionHandler->applyEntry(
+                auto res = data.transactionHandler->applyEntry(
                     ReplicatedOperation::buildCreateShardOperation(
                         shardId, properties.collection, properties.properties));
                 if (res.fail()) {
@@ -413,7 +425,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                 << " bytes into shard " << *snapshotRes->shardId;
             if (auto localShardRes = self->populateLocalShard(
                     *snapshotRes->shardId, snapshotRes->payload,
-                    data.core->getTransactionHandler());
+                    data.transactionHandler);
                 localShardRes.fail()) {
               reportingFailure = true;
               return localShardRes;
@@ -452,7 +464,6 @@ auto DocumentFollowerState::handleSnapshotTransfer(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ModifiesUserTransaction auto const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  auto const& transactionHandler = core->getTransactionHandler();
   if (auto validationRes = transactionHandler->validate(op);
       validationRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     //  Even though a shard was dropped before acquiring the
@@ -484,7 +495,6 @@ auto DocumentFollowerState::GuardedData::applyEntry(
         << " because it is not active";
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
-  auto const& transactionHandler = core->getTransactionHandler();
   if (auto res = transactionHandler->applyEntry(op); res.fail()) {
     return res;
   }
@@ -506,7 +516,6 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     return ResultT<std::optional<LogIndex>>{std::nullopt};
   }
 
-  auto const& transactionHandler = core->getTransactionHandler();
   if (auto res = transactionHandler->applyEntry(op); res.fail()) {
     return res;
   }
@@ -520,7 +529,6 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::AbortAllOngoingTrx const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  auto const& transactionHandler = core->getTransactionHandler();
   if (auto res = transactionHandler->applyEntry(op); res.fail()) {
     return res;
   }
@@ -534,7 +542,6 @@ auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::DropShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
   // We first have to abort all transactions for this shard.
-  auto const& transactionHandler = core->getTransactionHandler();
   for (auto const& tid :
        transactionHandler->getTransactionsForShard(op.shard)) {
     auto abortRes = transactionHandler->applyEntry(
@@ -561,7 +568,6 @@ auto DocumentFollowerState::GuardedData::applyEntry(
 auto DocumentFollowerState::GuardedData::applyEntry(
     ReplicatedOperation::CreateShard const& op, LogIndex index)
     -> ResultT<std::optional<LogIndex>> {
-  auto const& transactionHandler = core->getTransactionHandler();
   if (auto res = transactionHandler->applyEntry(op); res.fail()) {
     return res;
   }
