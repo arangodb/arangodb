@@ -394,7 +394,7 @@ Result SearchFactory::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                              bool isUserRequest) const {
   if (!definition.isObject()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view definition should be a object"};
+            "search-alias view definition should be an object"};
   }
   auto const nameSlice = definition.get("name");
   if (nameSlice.isNone()) {
@@ -692,6 +692,10 @@ Result Search::updateProperties(CollectionNameResolver& resolver,
       frozen::make_unordered_set<frozen::string>({"", "add", "del"});
   for (; it.valid(); ++it) {
     auto value = *it;
+    if (!value.isObject()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "search-alias index definition should be an object"};
+    }
     auto collectionSlice = value.get("collection");
     if (!collectionSlice.isString()) {
       return {TRI_ERROR_BAD_PARAMETER, "'collection' should be a string"};

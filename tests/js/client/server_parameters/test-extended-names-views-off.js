@@ -48,10 +48,10 @@ function testSuite() {
     },
 
     testArangosearchTraditionalName: function() {
-      let res = db._createView(traditionalName, "arangosearch", {});
-      assertTrue(res);
+      let view = db._createView(traditionalName, "arangosearch", {});
+      assertTrue(view instanceof ArangoView);
 
-      let view = db._view(traditionalName);
+      view = db._view(traditionalName);
       assertTrue(view instanceof ArangoView);
     },
     
@@ -79,10 +79,10 @@ function testSuite() {
     },
     
     testSearchAliasTraditionalName: function() {
-      let res = db._createView(traditionalName, "search-alias", {});
-      assertTrue(res);
+      let view = db._createView(traditionalName, "search-alias", {});
+      assertTrue(view instanceof ArangoView);
 
-      let view = db._view(traditionalName);
+      view = db._view(traditionalName);
       assertTrue(view instanceof ArangoView);
     },
     

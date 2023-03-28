@@ -72,7 +72,8 @@ function testSuite() {
     } else {
       assertTrue(properties.hasOwnProperty("indexes"));
     }
-    
+   
+    // check that we can set the properties for view
     if (view.type() === "arangosearch") {
       let res = view.properties({ links: {} });
       assertEqual(properties, res);
@@ -102,19 +103,18 @@ function testSuite() {
     },
 
     testArangosearchTraditionalName: function() {
-      let res = db._createView(traditionalName, "arangosearch", {});
-      assertTrue(res);
+      let view = db._createView(traditionalName, "arangosearch", {});
+      assertTrue(view instanceof ArangoView);
       
       checkTraditionalName();
     },
     
     testArangosearchExtendedName: function() {
-      let res = db._createView(extendedName, "arangosearch", {});
-      assertTrue(res);
+      let view = db._createView(extendedName, "arangosearch", {});
+      assertTrue(view instanceof ArangoView);
 
       checkExtendedName();
     },
-
 
     testArangosearchInvalidUtf8Names: function() {
       invalidNames.forEach((name) => {
@@ -128,15 +128,15 @@ function testSuite() {
     },
     
     testSearchAliasTraditionalName: function() {
-      let res = db._createView(traditionalName, "search-alias", {});
-      assertTrue(res);
+      let view = db._createView(traditionalName, "search-alias", {});
+      assertTrue(view instanceof ArangoView);
 
       checkTraditionalName();
     },
     
     testSearchAliasExtendedName: function() {
-      let res = db._createView(extendedName, "search-alias", {});
-      assertTrue(res);
+      let view = db._createView(extendedName, "search-alias", {});
+      assertTrue(view instanceof ArangoView);
       
       checkExtendedName();
     },
