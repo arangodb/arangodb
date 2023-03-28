@@ -7,6 +7,8 @@ v3.10.5.1 (XXXX-XX-XX)
   Using a document like {_key: "xxxx"} as a selector was always correct. Now
   _key and _id variants are supported as intended.
 
+* Fix potential thread starvation in in-memory edge cache.
+
 * SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
 
