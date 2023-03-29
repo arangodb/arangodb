@@ -3,16 +3,13 @@ import { Box, IconButton, useDisclosure } from "@chakra-ui/react";
 import React from "react";
 import { Modal, ModalBody, ModalHeader } from "../../../components/modal";
 import { InvertedIndexView } from "./addIndex/invertedIndex/InvertedIndexView";
-import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 import { IndexRowType } from "./useFetchIndices";
 
 export const ViewIndexButton = ({ indexRow }: { indexRow: IndexRowType }) => {
   const { onOpen, onClose, isOpen } = useDisclosure();
-  const { readOnly } = useCollectionIndicesContext();
   return (
     <Box display="flex" justifyContent="center">
       <IconButton
-        isDisabled={readOnly}
         colorScheme="gray"
         variant="ghost"
         size="sm"
