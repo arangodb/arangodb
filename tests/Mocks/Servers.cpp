@@ -93,6 +93,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "V8/V8SecurityFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 

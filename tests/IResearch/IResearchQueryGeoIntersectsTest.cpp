@@ -27,6 +27,7 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/MakeViewSnapshot.h"
 #include "IResearchQueryCommon.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb::tests {

@@ -24,6 +24,7 @@
 #include "IResearch/IResearchInvertedClusterIndex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Metrics/ClusterMetricsFeature.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
 

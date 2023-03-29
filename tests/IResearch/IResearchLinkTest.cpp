@@ -27,11 +27,11 @@
 #include "store/fs_directory.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
-#include <filesystem>
 
 #include <velocypack/Parser.h>
 
 #include <filesystem>
+#include <fstream>
 #include <regex>
 
 #include "Basics/files.h"

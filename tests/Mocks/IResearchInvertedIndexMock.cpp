@@ -23,6 +23,7 @@
 
 #include "IResearchInvertedIndexMock.h"
 #include "IResearch/IResearchDataStore.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb::iresearch {
 

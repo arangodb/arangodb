@@ -116,6 +116,34 @@ struct OptionsValidator {
   }
 };
 
+using AnalyzerValueTypeEnumDeserializer =
+    arangodb::velocypack::deserializer::enum_deserializer<
+        arangodb::iresearch::AnalyzerValueType,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::String,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING>>,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::Number,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER>>,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::Bool,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL>>,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::Null,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_NULL>>,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::Array,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_ARRAY>>,
+        arangodb::velocypack::deserializer::enum_member<
+            arangodb::iresearch::AnalyzerValueType::Object,
+            arangodb::velocypack::deserializer::values::string_value<
+                arangodb::iresearch::ANALYZER_VALUE_TYPE_OBJECT>>>;
+
 using OptionsDeserializer = utilities::constructing_deserializer<
     Options,
     parameter_list<
@@ -131,8 +159,7 @@ using OptionsDeserializer = utilities::constructing_deserializer<
         factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false,
                                  values::numeric_value<uint32_t, 1048576U>>,
         factory_deserialized_default<
-            RETURN_TYPE_PARAM_NAME,
-            arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
+            RETURN_TYPE_PARAM_NAME, AnalyzerValueTypeEnumDeserializer,
             values::numeric_value<
                 arangodb::iresearch::AnalyzerValueType,
                 static_cast<std::underlying_type_t<

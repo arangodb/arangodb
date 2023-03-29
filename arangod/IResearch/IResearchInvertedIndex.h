@@ -48,9 +48,7 @@ class IResearchInvertedIndex : public IResearchDataStore {
                     velocypack::Builder& builder,
                     bool writeAnalyzerDefinition) const;
 
-  decltype(auto) getDbName() const noexcept {
-    return index().collection().vocbase().name();
-  }
+  std::string const& getDbName() const noexcept;
 
   bool isSorted() const { return !_meta._sort.empty(); }
 

@@ -46,6 +46,7 @@ struct FlushSubscription;
 class DatabasePathFeature;
 class StorageEngine;
 class StorageSnapshot;
+class ClusterInfo;
 
 namespace iresearch {
 

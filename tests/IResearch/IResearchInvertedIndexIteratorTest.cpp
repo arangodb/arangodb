@@ -47,6 +47,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
 namespace {
