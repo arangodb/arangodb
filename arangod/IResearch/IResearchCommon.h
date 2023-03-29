@@ -85,7 +85,7 @@ constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
   constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
       "1_3simd",  // the old storage format used with IResearch index
-      "1_4simd"   // the current storage format used with IResearch index
+      "1_5simd"   // the current storage format used with IResearch index
   };
 
   return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
