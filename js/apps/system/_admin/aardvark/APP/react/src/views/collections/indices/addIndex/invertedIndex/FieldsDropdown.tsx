@@ -75,6 +75,7 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
                   );
                 }
               }}
+              isClearable={false}
               noOptionsMessage={() => "Start typing to add a field"}
               onChange={(_, action) => {
                 if (action.action === "create-option") {
