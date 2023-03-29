@@ -46,7 +46,13 @@ function adminLogSuite() {
   return {
     setUpAll: function () {
       oldLogLevels = arango.GET("/_admin/log/level");
-      arango.PUT("/_admin/log/level", {general: "info", queries: "fatal"});
+      // set all log levels to "fatal" except for topic general
+      let adjusted = {};
+      Object.keys(oldLogLevels).forEach((k) => {
+        adjusted[k] = "fatal";
+      });
+      adjusted.general = "info";
+      arango.PUT("/_admin/log/level", adjusted);
     },
 
     tearDownAll: function () {
