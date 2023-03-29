@@ -1,7 +1,7 @@
 @startDocuBlock put_api_view_view_properties_searchalias
 @brief Changes the properties of a `search-alias` View
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#searchalias, Changes properties of a search-alias View, modifyViewSearchAlias}
+@RESTHEADER{PUT /_api/view/{view-name}/properties#searchalias, Changes properties of a search-alias View, replaceViewPropertiesSearchAlias}
 
 @RESTURLPARAMETERS
 

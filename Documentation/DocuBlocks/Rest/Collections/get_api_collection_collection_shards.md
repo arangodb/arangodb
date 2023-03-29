@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_collection_shards
 @brief Return the shard ids of a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/shards, Return the shard ids of a collection, shards:Collection}
+@RESTHEADER{GET /_api/collection/{collection-name}/shards, Return the shard ids of a collection, getCollectionShards}
 
 @RESTURLPARAMETERS
 

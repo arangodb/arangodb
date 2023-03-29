@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_analyzer_analyzer
 @brief removes an Analyzer configuration
 
-@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an Analyzer, RestAnalyzerHandler:Delete}
+@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an Analyzer, deleteAnalyzer}
 
 @RESTURLPARAMETERS
 

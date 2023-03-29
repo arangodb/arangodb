@@ -1,7 +1,7 @@
 @startDocuBlock post_api_gharial_graph_edge
 @brief Add a new edge definition to the graph
 
-@RESTHEADER{POST /_api/gharial/{graph}/edge, Add edge definition}
+@RESTHEADER{POST /_api/gharial/{graph}/edge, Add edge definition, createEdgeDefinition}
 
 @RESTDESCRIPTION
 Adds an additional edge definition to the graph.

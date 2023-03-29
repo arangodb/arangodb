@@ -1,7 +1,7 @@
 @startDocuBlock put_api_gharial_graph_edge_collection_edge
 @brief replace the content of an existing edge
 
-@RESTHEADER{PUT /_api/gharial/{graph}/edge/{collection}/{edge}, Replace an edge}
+@RESTHEADER{PUT /_api/gharial/{graph}/edge/{collection}/{edge}, Replace an edge, replaceEdge}
 
 @RESTDESCRIPTION
 Replaces the data of an edge in the collection.

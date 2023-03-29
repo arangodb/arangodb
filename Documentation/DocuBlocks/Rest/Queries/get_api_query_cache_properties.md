@@ -2,7 +2,7 @@
 @startDocuBlock get_api_query_cache_properties
 @brief returns the global configuration for the AQL query results cache
 
-@RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query results cache, readProperties}
+@RESTHEADER{GET /_api/query-cache/properties, Returns the global properties for the AQL query results cache, getQueryCacheProperties}
 
 @RESTDESCRIPTION
 Returns the global AQL query results cache configuration. The configuration is a

@@ -1,7 +1,7 @@
 @startDocuBlock get_api_foxx
 @brief list installed services
 
-@RESTHEADER{GET /_api/foxx, List installed services}
+@RESTHEADER{GET /_api/foxx, List installed services, listFoxxServices}
 
 @RESTDESCRIPTION
 Fetches a list of services installed in the current database.

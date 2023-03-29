@@ -2,7 +2,7 @@
 @startDocuBlock get_api_query_properties
 @brief returns the configuration for the AQL query tracking
 
-@RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking, readQueryProperties}
+@RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking, getAqlQueryTrackingProperties}
 
 @RESTDESCRIPTION
 Returns the current query tracking configuration. The configuration is a

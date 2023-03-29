@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_foxx_service
 @brief uninstall service
 
-@RESTHEADER{DELETE /_api/foxx/service, Uninstall service}
+@RESTHEADER{DELETE /_api/foxx/service, Uninstall service, deleteFoxxService}
 
 @RESTDESCRIPTION
 Removes the service at the given mount path from the database and file system.

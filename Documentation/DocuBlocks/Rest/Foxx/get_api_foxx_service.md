@@ -1,7 +1,7 @@
 @startDocuBlock get_api_foxx_service
 @brief service metadata
 
-@RESTHEADER{GET /_api/foxx/service, Service description}
+@RESTHEADER{GET /_api/foxx/service, Service description, getFoxxServiceDescription}
 
 @RESTDESCRIPTION
 Fetches detailed information for the service at the given mount path.

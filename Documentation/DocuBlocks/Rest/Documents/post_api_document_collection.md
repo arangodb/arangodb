@@ -1,7 +1,7 @@
 @startDocuBlock post_api_document_collection
 @brief creates documents
 
-@RESTHEADER{POST /_api/document/{collection},Create document,insertDocument}
+@RESTHEADER{POST /_api/document/{collection},Create document,createDocument}
 
 @RESTURLPARAMETERS
 

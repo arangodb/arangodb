@@ -1,7 +1,7 @@
 @startDocuBlock get_api_foxx_scripts
 @brief list service scripts
 
-@RESTHEADER{GET /_api/foxx/scripts, List service scripts}
+@RESTHEADER{GET /_api/foxx/scripts, List service scripts, listFoxxScripts}
 
 @RESTDESCRIPTION
 Fetches a list of the scripts defined by the service.

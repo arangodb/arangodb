@@ -2,7 +2,7 @@
 @startDocuBlock post_api_import
 @brief imports documents from JSON
 
-@RESTHEADER{POST /_api/import,Import JSON data as documents, RestImportHandler}
+@RESTHEADER{POST /_api/import,Import JSON data as documents, importData}
 
 @RESTDESCRIPTION
 Load JSON data and store it as documents into the specified collection.

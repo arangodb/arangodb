@@ -2,7 +2,7 @@
 @startDocuBlock post_api_query
 @brief parse an AQL query and return information about it
 
-@RESTHEADER{POST /_api/query, Parse an AQL query, parseQuery}
+@RESTHEADER{POST /_api/query, Parse an AQL query, parseAqlQuery}
 
 @RESTDESCRIPTION
 This endpoint is for query validation only. To actually query the database,

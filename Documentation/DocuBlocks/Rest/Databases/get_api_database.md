@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database
 @brief retrieves a list of all existing databases
 
-@RESTHEADER{GET /_api/database, List of databases, getDatabases:all}
+@RESTHEADER{GET /_api/database, List of databases, listDatabases}
 
 @RESTDESCRIPTION
 Retrieves the list of all existing databases

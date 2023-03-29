@@ -2,7 +2,7 @@
 @startDocuBlock post_api_cursor
 @brief create a cursor and return the first results
 
-@RESTHEADER{POST /_api/cursor, Create cursor, createQueryCursor}
+@RESTHEADER{POST /_api/cursor, Create cursor, createAqlQueryCursor}
 
 @RESTHEADERPARAMETERS
 

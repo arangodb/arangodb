@@ -1,7 +1,7 @@
 @startDocuBlock put_api_foxx_service
 @brief replace a service
 
-@RESTHEADER{PUT /_api/foxx/service, Replace service}
+@RESTHEADER{PUT /_api/foxx/service, Replace service, replaceFoxxService}
 
 @RESTDESCRIPTION
 Removes the service at the given mount path from the database and file system.

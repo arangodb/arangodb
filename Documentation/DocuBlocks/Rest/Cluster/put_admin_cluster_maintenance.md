@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_cluster_maintenance
 @brief Enable or disable the cluster supervision (Agency) maintenance mode
 
-@RESTHEADER{PUT /_admin/cluster/maintenance, Enable or disable the supervision maintenance mode}
+@RESTHEADER{PUT /_admin/cluster/maintenance, Enable or disable the supervision maintenance mode, setClusterMaintenance}
 
 @RESTDESCRIPTION
 This API allows to temporarily enable the supervision maintenance mode. Please be aware that no

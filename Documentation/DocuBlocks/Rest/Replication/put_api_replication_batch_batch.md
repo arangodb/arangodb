@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_batch_batch
 @brief handle a dump batch command
 
-@RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch, handleCommandBatch:Prolong}
+@RESTHEADER{PUT /_api/replication/batch/{id}, Prolong existing dump batch, extendReplicationBatch}
 
 @HINTS
 {% hint 'info' %}

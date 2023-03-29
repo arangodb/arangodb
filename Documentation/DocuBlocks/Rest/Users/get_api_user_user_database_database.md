@@ -1,7 +1,7 @@
 @startDocuBlock get_api_user_user_database_database
 @brief Get specific database access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{dbname}, Get the database access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}, Get the database access level, getUserDatabasePermissions}
 
 @RESTURLPARAMETERS
 

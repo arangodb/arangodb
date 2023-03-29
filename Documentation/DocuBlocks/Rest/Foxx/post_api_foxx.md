@@ -1,7 +1,7 @@
 @startDocuBlock post_api_foxx
 @brief install new service
 
-@RESTHEADER{POST /_api/foxx, Install new service}
+@RESTHEADER{POST /_api/foxx, Install new service, createFoxxService}
 
 @RESTDESCRIPTION
 Installs the given new service at the given mount path.

@@ -2,7 +2,7 @@
 @startDocuBlock post_api_cursor_cursor_batch
 @brief Return results from an existing cursor once more
 
-@RESTHEADER{POST /_api/cursor/{cursor-identifier}/{batch-identifier}, Read batch from cursor again, batchQueryCursorPost}
+@RESTHEADER{POST /_api/cursor/{cursor-identifier}/{batch-identifier}, Read batch from cursor again, getPreviousAqlQueryCursorBatch}
 
 @RESTURLPARAMETERS
 

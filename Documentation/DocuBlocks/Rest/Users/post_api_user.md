@@ -1,7 +1,7 @@
 @startDocuBlock post_api_user
 @brief Create a new user.
 
-@RESTHEADER{POST /_api/user, Create User}
+@RESTHEADER{POST /_api/user, Create User, createUser}
 
 @RESTBODYPARAM{user,string,required,string}
 The name of the user as a string. This is mandatory.

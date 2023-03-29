@@ -1,7 +1,7 @@
 @startDocuBlock put_api_foxx_configuration
 @brief replace configuration options
 
-@RESTHEADER{PUT /_api/foxx/configuration, Replace configuration options}
+@RESTHEADER{PUT /_api/foxx/configuration, Replace configuration options, replaceFoxxConfiguration}
 
 @RESTDESCRIPTION
 Replaces the given service's configuration completely.

@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_collection_recalculateCount
 @brief recalculates the document count of a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate count of a collection, handleCommandPut:recalculateCount}
+@RESTHEADER{PUT /_api/collection/{collection-name}/recalculateCount, Recalculate count of a collection, recalculateCollectionCount}
 
 @RESTURLPARAMETERS
 

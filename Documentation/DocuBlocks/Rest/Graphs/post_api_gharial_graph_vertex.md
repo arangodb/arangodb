@@ -1,7 +1,7 @@
 @startDocuBlock post_api_gharial_graph_vertex
 @brief Add an additional vertex collection to the graph.
 
-@RESTHEADER{POST /_api/gharial/{graph}/vertex, Add vertex collection}
+@RESTHEADER{POST /_api/gharial/{graph}/vertex, Add vertex collection, addVertexCollection}
 
 @RESTDESCRIPTION
 Adds a vertex collection to the set of orphan collections of the graph.

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_document_collection_key
 @brief reads a single document
 
-@RESTHEADER{GET /_api/document/{collection}/{key},Read document,readDocument}
+@RESTHEADER{GET /_api/document/{collection}/{key},Read document,getDocument}
 
 @RESTURLPARAMETERS
 

@@ -1,7 +1,7 @@
 @startDocuBlock put_admin_log_structured
 @brief modifies the current structured log settings
 
-@RESTHEADER{PUT /_admin/log/structured, Modify and return the current server log parameters}
+@RESTHEADER{PUT /_admin/log/structured, Modify and return the current server log parameters, setStructuredLog}
 
 @RESTDESCRIPTION
 Modifies and returns the server's current structured log settings.

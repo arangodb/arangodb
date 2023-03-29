@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_cluster_statistics
 @brief allows to query the statistics of a DB-Server in the cluster
 
-@RESTHEADER{GET /_admin/cluster/statistics, Queries statistics of a DB-Server}
+@RESTHEADER{GET /_admin/cluster/statistics, Queries statistics of a DB-Server, getClusterStatistics}
 
 @RESTQUERYPARAMETERS
 

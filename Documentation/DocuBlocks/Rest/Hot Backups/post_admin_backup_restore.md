@@ -1,7 +1,7 @@
 @startDocuBlock post_admin_backup_restore
 @brief restores from a local backup
 
-@RESTHEADER{POST /_admin/backup/restore, Restore backup}
+@RESTHEADER{POST /_admin/backup/restore, Restore backup, restoreBackup}
 
 @RESTDESCRIPTION
 Restores a consistent backup from a

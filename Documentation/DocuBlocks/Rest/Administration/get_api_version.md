@@ -2,7 +2,7 @@
 @startDocuBlock get_api_version
 @brief returns the server version number
 
-@RESTHEADER{GET /_api/version, Return server version, RestVersionHandler}
+@RESTHEADER{GET /_api/version, Return server version, getVersion}
 
 @RESTQUERYPARAMETERS
 

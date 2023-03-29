@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_collection_collection
 @brief drops a collection
 
-@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection, handleCommandDelete:collection}
+@RESTHEADER{DELETE /_api/collection/{collection-name}, Drops a collection, deleteCollection}
 
 @HINTS
 {% hint 'warning' %}

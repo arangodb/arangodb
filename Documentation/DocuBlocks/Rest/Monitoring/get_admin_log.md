@@ -1,7 +1,7 @@
 @startDocuBlock get_admin_log
 @brief returns the server logs
 
-@RESTHEADER{GET /_admin/log, Read global logs from the server (deprecated), setLogLevel:read}
+@RESTHEADER{GET /_admin/log, Read global logs from the server (deprecated), getLog}
 
 @HINTS
 {% hint 'warning' %}

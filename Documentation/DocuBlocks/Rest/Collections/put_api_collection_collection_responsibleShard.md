@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_collection_responsibleShard
 @brief Return the responsible shard for a document
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document, getResponsibleShard:Collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document, getResponsibleShard}
 
 @RESTALLBODYPARAM{document,json,required}
 The body must consist of a JSON object with at least the shard key

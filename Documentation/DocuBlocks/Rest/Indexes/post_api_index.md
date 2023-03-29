@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index
 @brief creates an index
 
-@RESTHEADER{POST /_api/index, Create index, createIndex:general}
+@RESTHEADER{POST /_api/index, Create index, createIndex}
 
 @RESTQUERYPARAMETERS
 

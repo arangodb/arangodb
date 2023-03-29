@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_view_view_properties_searchalias
 @brief Partially changes properties of a `search-alias` View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a search-alias View, modifyViewPartialSearchAlias}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties#searchalias, Partially changes properties of a search-alias View, updateViewPropertiesSearchAlias}
 
 @RESTURLPARAMETERS
 

@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_server_encryption
 @brief Rotate encryption at rest key
 
-@RESTHEADER{POST /_admin/server/encryption, Rotate the encryption at rest keystore, handleEncryption:post}
+@RESTHEADER{POST /_admin/server/encryption, Rotate the encryption at rest keystore, rotateEncryptionAtRestKey}
 
 @RESTDESCRIPTION
 Change the user supplied encryption at rest key by sending a request without

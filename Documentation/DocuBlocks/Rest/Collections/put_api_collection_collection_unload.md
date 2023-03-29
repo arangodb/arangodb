@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_collection_unload
 @brief unloads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection, handleCommandPut:collectionUnload}
+@RESTHEADER{PUT /_api/collection/{collection-name}/unload, Unload collection, unloadCollection}
 
 @HINTS
 {% hint 'warning' %}

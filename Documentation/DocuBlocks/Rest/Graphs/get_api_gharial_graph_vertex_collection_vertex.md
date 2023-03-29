@@ -1,7 +1,7 @@
 @startDocuBlock get_api_gharial_graph_vertex_collection_vertex
 @brief fetches an existing vertex
 
-@RESTHEADER{GET /_api/gharial/{graph}/vertex/{collection}/{vertex}, Get a vertex}
+@RESTHEADER{GET /_api/gharial/{graph}/vertex/{collection}/{vertex}, Get a vertex, getVertex}
 
 @RESTDESCRIPTION
 Gets a vertex from the given collection.

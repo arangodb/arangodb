@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_user_user_database_database_collection
 @brief Clear the collection access level, revert back to the default access level
 
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Clear the collection access level}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}/{collection}, Clear the collection access level, deleteUserCollectionPermissions}
 
 @RESTURLPARAMETERS
 

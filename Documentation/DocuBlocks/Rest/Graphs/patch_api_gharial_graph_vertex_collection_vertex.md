@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_gharial_graph_vertex_collection_vertex
 @brief update an existing vertex
 
-@RESTHEADER{PATCH /_api/gharial/{graph}/vertex/{collection}/{vertex}, Update a vertex}
+@RESTHEADER{PATCH /_api/gharial/{graph}/vertex/{collection}/{vertex}, Update a vertex, updateVertex}
 
 @RESTDESCRIPTION
 Updates the data of the specific vertex in the collection.

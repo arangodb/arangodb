@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_inverted
 @brief Creates an inverted index
 
-@RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndex:inverted}
+@RESTHEADER{POST /_api/index#inverted, Create an inverted index, createIndexInverted}
 
 @RESTQUERYPARAMETERS
 

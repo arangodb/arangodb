@@ -1,7 +1,7 @@
 @startDocuBlock post_api_foxx_scripts_script
 @brief run service script
 
-@RESTHEADER{POST /_api/foxx/scripts/{name}, Run service script}
+@RESTHEADER{POST /_api/foxx/scripts/{name}, Run service script, runFoxxScript}
 
 @RESTALLBODYPARAM{data,json,optional}
 An arbitrary JSON value that will be parsed and passed to the

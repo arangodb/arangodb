@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_foxx_service
 @brief upgrade a service
 
-@RESTHEADER{PATCH /_api/foxx/service, Upgrade service}
+@RESTHEADER{PATCH /_api/foxx/service, Upgrade service, upgradeFoxxService}
 
 @RESTDESCRIPTION
 Installs the given new service on top of the service currently installed at the given mount path.

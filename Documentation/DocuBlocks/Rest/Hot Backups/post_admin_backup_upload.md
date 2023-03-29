@@ -1,7 +1,7 @@
 @startDocuBlock post_admin_backup_upload
 @brief upload a specific local backup
 
-@RESTHEADER{POST /_admin/backup/upload, Upload a backup to a remote repository}
+@RESTHEADER{POST /_admin/backup/upload, Upload a backup to a remote repository, uploadBackup}
 
 @RESTDESCRIPTION
 Upload a specific local backup to a remote repository, or query

@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_server_jwt
 @brief Hot-reload JWT secrets
 
-@RESTHEADER{POST /_admin/server/jwt, Hot-reload the JWT secret(s) from disk, handleJWT:post}
+@RESTHEADER{POST /_admin/server/jwt, Hot-reload the JWT secret(s) from disk, reloadServerJwtSecrets}
 
 @RESTDESCRIPTION
 Sending a request without payload to this endpoint reloads the JWT secret(s)

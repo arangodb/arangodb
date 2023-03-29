@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_user_user_database_database
 @brief Clear the database access level, revert back to the default access level
 
-@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Clear the database access level}
+@RESTHEADER{DELETE /_api/user/{user}/database/{dbname}, Clear the database access level, deleteUserDatabasePermissions}
 
 @RESTURLPARAMETERS
 

@@ -1,7 +1,7 @@
 @startDocuBlock get_api_gharial_graph_edge_collection_edge
 @brief fetch an edge
 
-@RESTHEADER{GET /_api/gharial/{graph}/edge/{collection}/{edge}, Get an edge}
+@RESTHEADER{GET /_api/gharial/{graph}/edge/{collection}/{edge}, Get an edge, getEdge}
 
 @RESTDESCRIPTION
 Gets an edge from the given collection.

@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_view_view_properties_arangosearch
 @brief partially changes properties of an ArangoSearch View
 
-@RESTHEADER{PATCH /_api/view/{view-name}/properties#arangosearch, Partially changes properties of an ArangoSearch View, modifyViewPartial}
+@RESTHEADER{PATCH /_api/view/{view-name}/properties, Partially changes properties of an ArangoSearch View, updateViewProperties}
 
 @RESTURLPARAMETERS
 

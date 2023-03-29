@@ -1,7 +1,7 @@
 @startDocuBlock post_admin_backup_create
 @brief creates a local backup
 
-@RESTHEADER{POST /_admin/backup/create, Create backup}
+@RESTHEADER{POST /_admin/backup/create, Create backup, createBackup}
 
 @RESTDESCRIPTION
 Creates a consistent backup "as soon as possible", very much

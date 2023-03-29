@@ -1,7 +1,7 @@
 @startDocuBlock post_api_foxx_tests
 @brief run service tests
 
-@RESTHEADER{POST /_api/foxx/tests, Run service tests}
+@RESTHEADER{POST /_api/foxx/tests, Run service tests, runFoxxTests}
 
 @RESTDESCRIPTION
 Runs the tests for the service at the given mount path and returns the results.

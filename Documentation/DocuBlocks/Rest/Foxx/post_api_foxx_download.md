@@ -1,7 +1,7 @@
 @startDocuBlock post_api_foxx_download
 @brief download service bundle
 
-@RESTHEADER{POST /_api/foxx/download, Download service bundle}
+@RESTHEADER{POST /_api/foxx/download, Download service bundle, downloadFoxxService}
 
 @RESTDESCRIPTION
 Downloads a zip bundle of the service directory.

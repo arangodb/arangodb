@@ -2,7 +2,7 @@
 @startDocuBlock get_api_transaction
 @brief Return the currently running server-side transactions
 
-@RESTHEADER{GET /_api/transaction, Get currently running transactions, executeGetState:transactions}
+@RESTHEADER{GET /_api/transaction, Get currently running transactions, listStreamTransactions}
 
 @RESTDESCRIPTION
 The result is an object with the attribute *transactions*, which contains
