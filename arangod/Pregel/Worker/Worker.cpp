@@ -165,10 +165,11 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
-    auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
-                                   .sender = ServerState::instance()->getId(),
-                                   .vertexCount = _quivers.at(0)->numberOfVertices(),
-                                   .edgeCount = _quiver.at(0)->numberOfEdges()};
+    auto graphLoaded =
+        GraphLoaded{.executionNumber = _config->_executionNumber,
+                    .sender = ServerState::instance()->getId(),
+                    .vertexCount = _quivers.at(0)->numberOfVertices(),
+                    .edgeCount = _quivers.at(0)->numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -260,12 +261,13 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
     VPackObjectBuilder ob(&aggregators);
     _workerContext->_writeAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
-                                 .sender = ServerState::instance()->getId(),
-                                 .activeCount = _activeCount,
-                                 .vertexCount = _quivers.at(0)->numberOfVertices(),
-                                 .edgeCount = _quivers.at(0)->numberOfEdges(),
-                                 .aggregators = aggregators};
+  return GlobalSuperStepPrepared{
+      .executionNumber = _config->_executionNumber,
+      .sender = ServerState::instance()->getId(),
+      .activeCount = _activeCount,
+      .vertexCount = _quivers.at(0)->numberOfVertices(),
+      .edgeCount = _quivers.at(0)->numberOfEdges(),
+      .aggregators = aggregators};
 }
 
 template<typename V, typename E, typename M>
