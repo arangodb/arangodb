@@ -1,17 +1,5 @@
 import { JSONSchemaType } from "ajv";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
-/**
- * 
-  type: string;
-  name?: string;
-  inBackground: boolean;
-  analyzer?: string;
-  features: AnalyzerFeatures[];
-  includeAllFields: boolean;
-  trackListPositions: boolean;
-  searchField: boolean;
-  fields?: FieldType[] | null;
- */
 
 const invertedIndexJSONSchema: JSONSchemaType<InvertedIndexValuesType> = {
   $id: "https://arangodb.com/schemas/views/invertedIndex.json",
