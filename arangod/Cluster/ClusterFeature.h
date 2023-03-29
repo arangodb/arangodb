@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
@@ -258,7 +258,7 @@ class ClusterFeature : public ArangodFeature {
   std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback = nullptr;
 
   /// @brief lock for dirty database list
-  mutable arangodb::Mutex _dirtyLock;
+  mutable std::mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)
   containers::FlatHashSet<std::string> _dirtyDatabases;
 };
