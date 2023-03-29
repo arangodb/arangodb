@@ -25,6 +25,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Enumerate.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -105,8 +106,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
   _messageBatchSize = 5000;
-
-  _initializeMessageCaches();
 }
 
 template<typename V, typename E, typename M>
@@ -131,7 +130,7 @@ Worker<V, E, M>::~Worker() {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
-  const size_t p = _config->parallelism();
+  const size_t p = _quivers.size();
   if (_messageCombiner) {
     _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
                                          _messageCombiner.get());
@@ -334,6 +333,7 @@ void Worker<V, E, M>::_startProcessing() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
+  _initializeMessageCaches();
 
   auto self = shared_from_this();
   scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
@@ -362,75 +362,76 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 template<typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices() {
   double start = TRI_microtime();
+  for (auto [idx, quiver] : enumerate(_quivers)) {
+    // thread local caches
+    InCache<M>* inCache = _inCaches[idx];
+    OutCache<M>* outCache = _outCaches[idx];
+    outCache->setBatchSize(_messageBatchSize);
+    outCache->setLocalCache(inCache);
+    TRI_ASSERT(outCache->sendCount() == 0);
 
-  // thread local caches
-  InCache<M>* inCache = _inCaches[0];
-  OutCache<M>* outCache = _outCaches[0];
-  outCache->setBatchSize(_messageBatchSize);
-  outCache->setLocalCache(inCache);
-  TRI_ASSERT(outCache->sendCount() == 0);
+    AggregatorHandler workerAggregator(_algorithm.get());
 
-  AggregatorHandler workerAggregator(_algorithm.get());
+    std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
+        _algorithm->createComputation(_config));
+    _initializeVertexContext(vertexComputation.get());
+    vertexComputation->_writeAggregators = &workerAggregator;
+    vertexComputation->_cache = outCache;
 
-  std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-      _algorithm->createComputation(_config));
-  _initializeVertexContext(vertexComputation.get());
-  vertexComputation->_writeAggregators = &workerAggregator;
-  vertexComputation->_cache = outCache;
+    size_t activeCount = 0;
+    for (auto& vertexEntry : *quiver) {
+      MessageIterator<M> messages =
+          _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
+      _currentGssObservables.messagesReceived += messages.size();
+      _currentGssObservables.memoryBytesUsedForMessages +=
+          messages.size() * sizeof(M);
 
-  size_t activeCount = 0;
-  for (auto& vertexEntry : *_quivers.at(0)) {
-    MessageIterator<M> messages =
-        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
-    _currentGssObservables.messagesReceived += messages.size();
-    _currentGssObservables.memoryBytesUsedForMessages +=
-        messages.size() * sizeof(M);
+      if (messages.size() > 0 || vertexEntry.active()) {
+        vertexComputation->_vertexEntry = &vertexEntry;
+        vertexComputation->compute(messages);
+        if (vertexEntry.active()) {
+          activeCount++;
+        }
+      }
+      if (_state != WorkerState::COMPUTING) {
+        break;
+      }
 
-    if (messages.size() > 0 || vertexEntry.active()) {
-      vertexComputation->_vertexEntry = &vertexEntry;
-      vertexComputation->compute(messages);
-      if (vertexEntry.active()) {
-        activeCount++;
+      ++_currentGssObservables.verticesProcessed;
+      if (_currentGssObservables.verticesProcessed %
+              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+          0) {
+        _makeStatusCallback()();
       }
     }
-    if (_state != WorkerState::COMPUTING) {
-      break;
+
+    // ==================== send messages to other shards ====================
+    outCache->flushMessages();
+    if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
+      LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
+      return false;
     }
 
-    ++_currentGssObservables.verticesProcessed;
-    if (_currentGssObservables.verticesProcessed %
-            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-        0) {
-      _makeStatusCallback()();
+    // merge thread local messages, _writeCache does locking
+    _writeCache->mergeCache(_config, inCache);
+    _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
+
+    MessageStats stats;
+    stats.sendCount = outCache->sendCount();
+    _currentGssObservables.messagesSent += outCache->sendCount();
+    _currentGssObservables.memoryBytesUsedForMessages +=
+        outCache->sendCount() * sizeof(M);
+    stats.superstepRuntimeSecs = TRI_microtime() - start;
+    inCache->clear();
+    outCache->clear();
+
+    {
+      // merge the thread local stats and aggregators
+      _workerContext->_writeAggregators->aggregateValues(workerAggregator);
+      _messageStats.accumulate(stats);
+      _activeCount += activeCount;
+      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
     }
-  }
-
-  // ==================== send messages to other shards ====================
-  outCache->flushMessages();
-  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-    return false;
-  }
-
-  // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(_config, inCache);
-  _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
-
-  MessageStats stats;
-  stats.sendCount = outCache->sendCount();
-  _currentGssObservables.messagesSent += outCache->sendCount();
-  _currentGssObservables.memoryBytesUsedForMessages +=
-      outCache->sendCount() * sizeof(M);
-  stats.superstepRuntimeSecs = TRI_microtime() - start;
-  inCache->clear();
-  outCache->clear();
-
-  {
-    // merge the thread local stats and aggregators
-    _workerContext->_writeAggregators->aggregateValues(workerAggregator);
-    _messageStats.accumulate(stats);
-    _activeCount += activeCount;
-    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
   return true;
 }
