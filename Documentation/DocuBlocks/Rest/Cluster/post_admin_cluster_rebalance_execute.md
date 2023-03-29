@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_cluster_rebalance_execute
 @brief Executes the given set of move shard operations.
 
-@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute a set of move shard operations}
+@RESTHEADER{POST /_admin/cluster/rebalance/execute, Execute a set of move shard operations, executeClusterRebalancePlan}
 
 @RESTDESCRIPTION
 Execute the given set of move shard operations. You can use the

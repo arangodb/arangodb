@@ -2,7 +2,7 @@
 @startDocuBlock put_api_query_properties
 @brief changes the configuration for the AQL query tracking
 
-@RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking, replaceProperties}
+@RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking, setQueryCacheProperties}
 
 @RESTBODYPARAM{enabled,boolean,required,}
 If set to *true*, then queries will be tracked. If set to

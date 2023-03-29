@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_collection_figures
 @brief Fetch the statistics of a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection, handleCommandGet:collectionFigures}
+@RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection, getCollectionFigures}
 
 @HINTS
 {% hint 'warning' %}

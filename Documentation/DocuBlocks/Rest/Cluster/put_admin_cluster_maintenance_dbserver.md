@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_cluster_maintenance_dbserver
 @brief Enable or disable the maintenance mode of a DB-Server
 
-@RESTHEADER{PUT /_admin/cluster/maintenance/{DB-Server-ID}, Enable or disable the DB-Server maintenance mode}
+@RESTHEADER{PUT /_admin/cluster/maintenance/{DB-Server-ID}, Enable or disable the DB-Server maintenance mode, setDbserverMaintenance}
 
 @RESTDESCRIPTION
 For rolling upgrades or rolling restarts, DB-Servers can be put into

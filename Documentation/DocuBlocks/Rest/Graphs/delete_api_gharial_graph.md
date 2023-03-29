@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_gharial_graph
 @brief delete an existing graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}, Drop a graph}
+@RESTHEADER{DELETE /_api/gharial/{graph}, Drop a graph, deleteGraph}
 
 @RESTDESCRIPTION
 Drops an existing graph object by name.

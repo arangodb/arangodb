@@ -2,7 +2,7 @@
 @startDocuBlock get_api_endpoint
 @brief This API call returns the list of all endpoints (single server).
 
-@RESTHEADER{GET /_api/endpoint, Return list of all endpoints, retrieveEndpoints}
+@RESTHEADER{GET /_api/endpoint, Return list of all endpoints, listEndpoints}
 
 @HINTS
 {% hint 'warning' %}

@@ -2,7 +2,7 @@
 @startDocuBlock put_api_query_cache_properties
 @brief changes the configuration for the AQL query results cache
 
-@RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query results cache properties, replaceProperties:QueryCache}
+@RESTHEADER{PUT /_api/query-cache/properties, Globally adjusts the AQL query results cache properties, setQueryCacheProperties}
 
 @RESTDESCRIPTION
 After the properties have been changed, the current set of properties will

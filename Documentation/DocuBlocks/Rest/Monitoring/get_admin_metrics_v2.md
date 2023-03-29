@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_metrics_v2
 @brief return the current instance metrics
 
-@RESTHEADER{GET /_admin/metrics/v2, Read the metrics, getMetricsV2}
+@RESTHEADER{GET /_admin/metrics/v2, Read the metrics, getMetrics2}
 
 @RESTQUERYPARAMETERS
 

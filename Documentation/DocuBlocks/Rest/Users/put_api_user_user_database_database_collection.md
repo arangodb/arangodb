@@ -1,7 +1,7 @@
 @startDocuBlock put_api_user_user_database_database_collection
 @brief Set the collection access level.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Set the collection access level}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}/{collection}, Set the collection access level, setUserCollectionPermissions}
 
 @RESTBODYPARAM{grant,string,required,string}
 Use "rw" to set the collection level access to *Read/Write*.

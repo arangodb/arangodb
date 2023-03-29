@@ -1,7 +1,7 @@
 @startDocuBlock put_admin_log_level
 @brief modifies the current log level settings
 
-@RESTHEADER{PUT /_admin/log/level, Modify and return the current server log level}
+@RESTHEADER{PUT /_admin/log/level, Modify and return the current server log level, setLogLevel}
 
 @RESTQUERYPARAMETERS
 

@@ -1,7 +1,7 @@
 @startDocuBlock put_api_user_user_database_database
 @brief Set the database access level.
 
-@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level}
+@RESTHEADER{PUT /_api/user/{user}/database/{dbname}, Set the database access level, setUserDatabasePermissions}
 
 @RESTBODYPARAM{grant,string,required,string}
 - Use "rw" to set the database access level to *Administrate*.

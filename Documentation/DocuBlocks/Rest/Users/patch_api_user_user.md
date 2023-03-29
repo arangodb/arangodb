@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_user_user
 @brief Modify attributes of an existing user
 
-@RESTHEADER{PATCH /_api/user/{user}, Modify User}
+@RESTHEADER{PATCH /_api/user/{user}, Modify User, updateUserData}
 
 @RESTURLPARAMETERS
 

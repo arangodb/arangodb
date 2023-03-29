@@ -1,7 +1,7 @@
 @startDocuBlock get_api_view_view_properties
 @brief reads the properties of the specified View
 
-@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getView}
+@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getViewProperties}
 
 @RESTURLPARAMETERS
 

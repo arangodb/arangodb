@@ -1,7 +1,7 @@
 @startDocuBlock get_api_user_user_database_database_collection
 @brief Get the collection access level
 
-@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get the specific collection access level}
+@RESTHEADER{GET /_api/user/{user}/database/{dbname}/{collection}, Get the specific collection access level, getUserCollectionPermissions}
 
 @RESTURLPARAMETERS
 

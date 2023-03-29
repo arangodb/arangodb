@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_gharial_graph_vertex_collection_vertex
 @brief removes a vertex from a graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}/vertex/{collection}/{vertex}, Remove a vertex}
+@RESTHEADER{DELETE /_api/gharial/{graph}/vertex/{collection}/{vertex}, Remove a vertex, deleteVertex}
 
 @RESTDESCRIPTION
 Removes a vertex from the collection.

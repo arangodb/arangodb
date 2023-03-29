@@ -1,7 +1,7 @@
 @startDocuBlock post_api_gharial_graph_edge_collection
 @brief Creates an edge in an existing graph
 
-@RESTHEADER{POST /_api/gharial/{graph}/edge/{collection}, Create an edge}
+@RESTHEADER{POST /_api/gharial/{graph}/edge/{collection}, Create an edge, createEdge}
 
 @RESTDESCRIPTION
 Creates a new edge in the collection.

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_collection_count
 @brief Counts the documents in a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection, handleCommandGet:getCollectionCount}
+@RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection, getCollectionCount}
 
 @HINTS
 {% hint 'warning' %}

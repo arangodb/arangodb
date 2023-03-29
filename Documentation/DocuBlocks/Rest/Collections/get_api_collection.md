@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection
 @brief returns all collections
 
-@RESTHEADER{GET /_api/collection,reads all collections, handleCommandGet}
+@RESTHEADER{GET /_api/collection,reads all collections, listCollections}
 
 @RESTQUERYPARAMETERS
 

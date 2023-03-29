@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_foxx_dependencies
 @brief update dependencies options
 
-@RESTHEADER{PATCH /_api/foxx/dependencies, Update dependencies options}
+@RESTHEADER{PATCH /_api/foxx/dependencies, Update dependencies options, updateFoxxDependencies}
 
 @RESTDESCRIPTION
 Replaces the given service's dependencies.

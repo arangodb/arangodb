@@ -1,7 +1,7 @@
 @startDocuBlock patch_api_gharial_graph_edge_collection_edge
 @brief modify an existing edge
 
-@RESTHEADER{PATCH /_api/gharial/{graph}/edge/{collection}/{edge}, Modify an edge}
+@RESTHEADER{PATCH /_api/gharial/{graph}/edge/{collection}/{edge}, Modify an edge, updateEdge}
 
 @RESTDESCRIPTION
 Updates the data of the specific edge in the collection.

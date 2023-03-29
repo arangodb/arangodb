@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_cluster_health
 @brief Returns the health of the cluster as assessed by the supervision (Agency)
 
-@RESTHEADER{GET /_admin/cluster/health, Queries the health of cluster for monitoring}
+@RESTHEADER{GET /_admin/cluster/health, Queries the health of cluster for monitoring, getClusterHealth}
 
 @RESTDESCRIPTION
 Queries the health of the cluster for monitoring purposes. The response is a JSON object, containing the standard `code`, `error`, `errorNum`, and `errorMessage` fields as appropriate. The endpoint-specific fields are as follows:

@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_license
 @brief Set a new license
 
-@RESTHEADER{PUT /_admin/license, Set a new license, putLicense}
+@RESTHEADER{PUT /_admin/license, Set a new license, setLicense}
 
 @RESTQUERYPARAMETERS
 

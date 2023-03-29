@@ -2,7 +2,7 @@
 @startDocuBlock post_admin_server_tls
 @brief Trigger a reload of the TLS data of this server (server key, client-auth CA) and return the new data as a summary.
 
-@RESTHEADER{POST /_admin/server/tls, Trigger a reload of the TLS data and return a summary, handleTLS:post}
+@RESTHEADER{POST /_admin/server/tls, Trigger a reload of the TLS data and return a summary, reloadServerTls}
 
 @RESTDESCRIPTION
 This API call triggers a reload of all the TLS data and then

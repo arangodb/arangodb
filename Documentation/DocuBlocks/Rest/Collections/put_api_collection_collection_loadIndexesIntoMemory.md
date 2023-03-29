@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_collection_loadIndexesIntoMemory
 @brief Load Indexes into Memory
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory, handleCommandPut:loadIndexes}
+@RESTHEADER{PUT /_api/collection/{collection-name}/loadIndexesIntoMemory, Load Indexes into Memory, loadCollectionIndexes}
 
 @HINTS
 {% hint 'warning' %}

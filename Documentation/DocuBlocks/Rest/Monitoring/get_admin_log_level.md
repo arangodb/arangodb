@@ -1,7 +1,7 @@
 @startDocuBlock get_admin_log_level
 @brief returns the current log level settings
 
-@RESTHEADER{GET /_admin/log/level, Return the current server log level}
+@RESTHEADER{GET /_admin/log/level, Return the current server log level, getLogLevel}
 
 @RESTQUERYPARAMETERS
 

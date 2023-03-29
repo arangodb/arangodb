@@ -1,7 +1,7 @@
 @startDocuBlock put_api_view_view_properties_arangosearch
 @brief changes all properties of an ArangoSearch View
 
-@RESTHEADER{PUT /_api/view/{view-name}/properties#arangosearch, Change properties of an ArangoSearch View, modifyView}
+@RESTHEADER{PUT /_api/view/{view-name}/properties, Change properties of an ArangoSearch View, replaceViewProperties}
 
 @RESTURLPARAMETERS
 

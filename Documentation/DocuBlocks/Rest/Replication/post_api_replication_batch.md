@@ -2,7 +2,7 @@
 @startDocuBlock post_api_replication_batch
 @brief handle a dump batch command
 
-@RESTHEADER{POST /_api/replication/batch, Create new dump batch, handleCommandBatch:Create}
+@RESTHEADER{POST /_api/replication/batch, Create new dump batch, createReplicationBatch}
 
 @HINTS
 {% hint 'info' %}

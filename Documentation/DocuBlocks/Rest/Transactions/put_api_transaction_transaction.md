@@ -2,7 +2,7 @@
 @startDocuBlock put_api_transaction_transaction
 @brief commit a server-side transaction
 
-@RESTHEADER{PUT /_api/transaction/{transaction-id}, Commit transaction, executeCommit:Transaction}
+@RESTHEADER{PUT /_api/transaction/{transaction-id}, Commit transaction, commitStreamTransaction}
 
 @RESTURLPARAMETERS
 

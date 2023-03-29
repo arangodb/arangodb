@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_cursor_cursor
 @brief dispose an existing cursor
 
-@RESTHEADER{DELETE /_api/cursor/{cursor-identifier}, Delete cursor, deleteQueryCursor}
+@RESTHEADER{DELETE /_api/cursor/{cursor-identifier}, Delete cursor, deleteAqlQueryCursor}
 
 @RESTURLPARAMETERS
 

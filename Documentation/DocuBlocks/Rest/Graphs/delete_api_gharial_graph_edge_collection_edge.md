@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_gharial_graph_edge_collection_edge
 @brief removes an edge from graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{collection}/{edge}, Remove an edge}
+@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{collection}/{edge}, Remove an edge, deleteEdge}
 
 @RESTDESCRIPTION
 Removes an edge from the collection.

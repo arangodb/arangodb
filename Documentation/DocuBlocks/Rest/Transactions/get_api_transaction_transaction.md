@@ -2,7 +2,7 @@
 @startDocuBlock get_api_transaction_transaction
 @brief Fetch status of a server-side transaction
 
-@RESTHEADER{GET /_api/transaction/{transaction-id}, Get transaction status, executeGetState:transaction}
+@RESTHEADER{GET /_api/transaction/{transaction-id}, Get transaction status, getStreamTransaction}
 
 @RESTURLPARAMETERS
 

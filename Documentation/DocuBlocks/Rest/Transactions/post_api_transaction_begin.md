@@ -2,7 +2,7 @@
 @startDocuBlock post_api_transaction_begin
 @brief begin a server-side transaction
 
-@RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
+@RESTHEADER{POST /_api/transaction/begin, Begin transaction, beginStreamTransaction}
 
 @RESTHEADERPARAMETERS
 

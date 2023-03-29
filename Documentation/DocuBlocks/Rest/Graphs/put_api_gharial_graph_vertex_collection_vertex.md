@@ -1,7 +1,7 @@
 @startDocuBlock put_api_gharial_graph_vertex_collection_vertex
 @brief replaces an existing vertex
 
-@RESTHEADER{PUT /_api/gharial/{graph}/vertex/{collection}/{vertex}, Replace a vertex}
+@RESTHEADER{PUT /_api/gharial/{graph}/vertex/{collection}/{vertex}, Replace a vertex, replaceVertex}
 
 @RESTDESCRIPTION
 Replaces the data of a vertex in the collection.

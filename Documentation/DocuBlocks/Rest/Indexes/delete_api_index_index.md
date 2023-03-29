@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_index_index
 @brief deletes an index
 
-@RESTHEADER{DELETE /_api/index/{index-id}, Delete index, dropIndex}
+@RESTHEADER{DELETE /_api/index/{index-id}, Delete index, deleteIndex}
 
 @RESTURLPARAMETERS
 

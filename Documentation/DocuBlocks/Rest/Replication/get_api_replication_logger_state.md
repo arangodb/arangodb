@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_logger_state
 @brief returns the state of the replication logger
 
-@RESTHEADER{GET /_api/replication/logger-state, Return replication logger state, handleCommandLoggerState}
+@RESTHEADER{GET /_api/replication/logger-state, Return replication logger state, getReplicationLoggerState}
 
 @RESTDESCRIPTION
 Returns the current state of the server's replication logger. The state will

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_clusterInventory
 @brief returns an overview of collections and indexes in a cluster
 
-@RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes, handleCommandClusterInventory}
+@RESTHEADER{GET /_api/replication/clusterInventory, Return cluster inventory of collections and indexes, getReplicationClusterInventory}
 
 @RESTQUERYPARAMETERS
 

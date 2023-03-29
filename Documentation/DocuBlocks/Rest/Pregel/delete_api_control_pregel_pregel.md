@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_control_pregel_pregel
 @brief Cancel an ongoing Pregel execution
 
-@RESTHEADER{DELETE /_api/control_pregel/{id}, Cancel Pregel job execution}
+@RESTHEADER{DELETE /_api/control_pregel/{id}, Cancel Pregel job execution, deletePregelJob}
 
 @RESTURLPARAMETERS
 

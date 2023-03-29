@@ -2,7 +2,7 @@
 @startDocuBlock get_api_query_slow
 @brief returns a list of slow running AQL queries
 
-@RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries, readQuery:Slow}
+@RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries, listSlowAqlQueries}
 
 @RESTDESCRIPTION
 Returns an array containing the last AQL queries that are finished and

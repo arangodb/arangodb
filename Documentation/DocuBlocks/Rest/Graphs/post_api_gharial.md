@@ -1,7 +1,7 @@
 @startDocuBlock post_api_gharial
 @brief Create a new graph in the graph module.
 
-@RESTHEADER{POST /_api/gharial, Create a graph}
+@RESTHEADER{POST /_api/gharial, Create a graph, createGraph}
 
 @RESTDESCRIPTION
 The creation of a graph requires the name of the graph and a

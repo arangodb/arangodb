@@ -1,7 +1,7 @@
 @startDocuBlock get_api_cluster_endpoints
 @brief This API call returns information about all Coordinator endpoints (cluster only).
 
-@RESTHEADER{GET /_api/cluster/endpoints, Get information about all Coordinator endpoints, handleCommandEndpoints:listClusterEndpoints}
+@RESTHEADER{GET /_api/cluster/endpoints, Get information about all Coordinator endpoints, listClusterEndpoints}
 
 @RESTDESCRIPTION
 Returns an object with an attribute `endpoints`, which contains an

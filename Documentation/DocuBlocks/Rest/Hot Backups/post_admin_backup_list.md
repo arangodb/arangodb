@@ -1,7 +1,7 @@
 @startDocuBlock post_admin_backup_list
 @brief list all local backups
 
-@RESTHEADER{POST /_admin/backup/list, List backups}
+@RESTHEADER{POST /_admin/backup/list, List backups, listBackups}
 
 @RESTDESCRIPTION
 Lists all locally found backups.

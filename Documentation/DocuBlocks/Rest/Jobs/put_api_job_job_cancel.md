@@ -2,7 +2,7 @@
 @startDocuBlock put_api_job_job_cancel
 @brief cancels an async job
 
-@RESTHEADER{PUT /_api/job/{job-id}/cancel, Cancel async job, putJobMethod:cancel}
+@RESTHEADER{PUT /_api/job/{job-id}/cancel, Cancel async job, cancelJob}
 
 @RESTURLPARAMETERS
 

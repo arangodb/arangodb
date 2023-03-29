@@ -1,7 +1,7 @@
 @startDocuBlock get_api_foxx_swagger
 @brief swagger description
 
-@RESTHEADER{GET /_api/foxx/swagger, Swagger description}
+@RESTHEADER{GET /_api/foxx/swagger, Swagger description, getFoxxSwaggerDescription}
 
 @RESTDESCRIPTION
 Fetches the Swagger API description for the service at the given mount path.

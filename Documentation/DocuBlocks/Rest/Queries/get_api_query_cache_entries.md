@@ -2,7 +2,7 @@
 @startDocuBlock get_api_query_cache_entries
 @brief returns a list of the stored results in the AQL query results cache
 
-@RESTHEADER{GET /_api/query-cache/entries, Returns the currently cached query results, readQueries}
+@RESTHEADER{GET /_api/query-cache/entries, Returns the currently cached query results, listQueryCacheResults}
 
 @RESTDESCRIPTION
 Returns an array containing the AQL query results currently stored in the query results

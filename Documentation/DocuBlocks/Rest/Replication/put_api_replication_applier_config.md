@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_applier_config
 @brief set configuration values of an applier
 
-@RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier,handleCommandApplierSetConfig}
+@RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier, updateReplicationApplierConfig}
 
 @RESTQUERYPARAMETERS
 

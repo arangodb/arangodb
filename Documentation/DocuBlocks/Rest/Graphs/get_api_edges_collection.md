@@ -1,7 +1,7 @@
 @startDocuBlock get_api_edges_collection
 @brief get edges
 
-@RESTHEADER{GET /_api/edges/{collection-id}, Read in- or outbound edges}
+@RESTHEADER{GET /_api/edges/{collection-id}, Read in- or outbound edges, getVertexEdges}
 
 @RESTURLPARAMETERS
 
