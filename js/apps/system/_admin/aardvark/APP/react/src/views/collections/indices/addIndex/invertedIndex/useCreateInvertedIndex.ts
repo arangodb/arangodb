@@ -196,7 +196,7 @@ export const invertedIndexFieldsMap = {
     type: "number",
     group: "general",
     tooltip:
-      "ArangoSearch waits at least this many commits between removing unused files in its data directory."
+      "Index waits at least this many commits between removing unused files in its data directory."
   },
   commitIntervalMsec: {
     label: "Commit Interval (msec)",
@@ -204,7 +204,7 @@ export const invertedIndexFieldsMap = {
     type: "number",
     group: "general",
     tooltip:
-      "Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
+      "Wait at least this many milliseconds between committing data store changes and making documents visible to queries."
   },
   consolidationIntervalMsec: {
     label: "Consolidation Interval (msec)",
