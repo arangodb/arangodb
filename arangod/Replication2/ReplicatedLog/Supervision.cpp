@@ -505,16 +505,16 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
         }
       }
 
+      if (!planLeaderConfig.allowedAsLeader) {
+        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
+        return;
+      }
+
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;
         desiredFlags.forced = true;
         ctx.createAction<UpdateParticipantFlagsAction>(*target.leader,
                                                        desiredFlags);
-        return;
-      }
-
-      if (!planLeaderConfig.allowedAsLeader) {
-        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
         return;
       }
 
