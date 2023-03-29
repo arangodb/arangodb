@@ -551,6 +551,36 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+
+    // This tests makes a follower fail. Once it is declared as failed, we try to replace it with a new
+    // follower.
+    testReplaceFailedFollower: function () {
+      const {logId, servers, term, followers} = helper.createReplicatedLog(database, {
+        writeConcern: 2,
+        softWriteConcern: 3,
+        waitForSync: false,
+      });
+
+      const stoppedFollower = _.sample(followers);
+      stopServer(stoppedFollower);
+      waitFor(lpreds.serverFailed(stoppedFollower));
+
+      const replacement = _.sample(_.difference(dbservers, servers));
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [replacement]: {allowedInQuorum: true, allowedAsLeader: true},
+        [stoppedFollower]: null,
+      });
+
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [replacement]: {forced: false, allowedInQuorum: true, allowedAsLeader: true},
+            [stoppedFollower]: null,
+          })
+      );
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     // This test first makes a follower excluded and then asks for this follower
     // to become the leader. It then removed the excluded flag and expects the
     // leadership to be transferred.
