@@ -239,6 +239,18 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
 
   network::RequestOptions reqOpts;
+  // We intentionally choose the timeout to be 14 minutes on coordinators
+  // and 13 minutes on dbservers. It needs to be longer on the coordinator
+  // to give the leader a chance to time out earlier than the coordinator.
+  // In this case we need to drop a follower, but can proceed with the
+  // transaction. Both timeouts are intentionally smaller than the standard
+  // intra-cluster timeout of 15 minutes, but are large enough to withstand
+  // delays in the network infrastructure.
+  if (state->isCoordinator()) {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(14));
+  } else {
+    reqOpts.timeout = arangodb::network::Timeout(std::chrono::minutes(13));
+  }
   reqOpts.database = state->vocbase().name();
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
@@ -268,10 +280,15 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
+  VPackBuilder body;
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(server.substr(0, 7) != "server:");
-    requests.emplace_back(network::sendRequestRetry(
-        pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
+    // Include an empty body:
+    VPackBuilder bodyBuilder;
+    { VPackObjectBuilder emptyBody(&bodyBuilder); }
+    requests.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, verb, path,
+                                  std::move(bodyBuilder.bufferRef()), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(

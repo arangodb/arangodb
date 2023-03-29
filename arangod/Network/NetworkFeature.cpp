@@ -77,6 +77,12 @@ struct NetworkFeatureScale {
   }
 };
 
+struct NetworkFeatureSendScale {
+  static metrics::FixScale<double> scale() {
+    return {0.0, 1000.0, {0.01, 0.1, 1.0, 10.0, 100.0, 1000.0}};
+  }
+};
+
 DECLARE_COUNTER(arangodb_network_forwarded_requests_total,
                 "Number of requests forwarded to another coordinator");
 DECLARE_COUNTER(arangodb_network_request_timeouts_total,
@@ -85,6 +91,16 @@ DECLARE_HISTOGRAM(
     arangodb_network_request_duration_as_percentage_of_timeout,
     NetworkFeatureScale,
     "Internal request round-trip time as a percentage of timeout [%]");
+DECLARE_COUNTER(arangodb_network_delayed_dequeues_total,
+                "Number of times the dequeueing of a request was delayed");
+DECLARE_COUNTER(arangodb_network_unfinished_sends_total,
+                "Number of times the sending of a request remained unfinished");
+DECLARE_COUNTER(arangodb_network_delayed_sends_total,
+                "Number of times the sending of a request was delayed");
+DECLARE_COUNTER(arangodb_network_slow_responses_total,
+                "Number of times the response to a request was slow");
+DECLARE_HISTOGRAM(arangodb_network_send_duration, NetworkFeatureSendScale,
+                  "Time to send out internal requests in seconds");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
@@ -105,7 +121,17 @@ NetworkFeature::NetworkFeature(Server& server,
       _requestTimeouts(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_request_timeouts_total{})),
       _requestDurations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_request_duration_as_percentage_of_timeout{})) {
+          arangodb_network_request_duration_as_percentage_of_timeout{})),
+      _delayedDequeues(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_delayed_dequeues_total{})),
+      _unfinishedSends(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_unfinished_sends_total{})),
+      _delayedSends(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_delayed_sends_total{})),
+      _slowResponses(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_slow_responses_total{})),
+      _sendDurations(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_network_send_duration{})) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -391,6 +417,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             << ", request ptr: " << (void*)req.get()
             << ", response ptr: " << (void*)res.get()
             << ", error: " << uint16_t(err);
+        _delayedDequeues.count();
       }
       if (req->timeSent().time_since_epoch().count() == 0) {
         LOG_TOPIC("effc3", WARN, Logger::COMMUNICATION)
@@ -402,8 +429,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             << ", request ptr: " << (void*)req.get()
             << ", response ptr: " << (void*)res.get()
             << ", error: " << uint16_t(err);
+        _unfinishedSends.count();
       } else {
         dur = req->timeSent() - req->timeAsyncWrite();
+        _sendDurations.count(dur.count());
         if (dur > std::chrono::seconds(3)) {
           LOG_TOPIC("effc4", WARN, Logger::COMMUNICATION)
               << "Time to send request to " << endpoint << ": "
@@ -413,9 +442,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
               << ", request ptr: " << (void*)req.get()
               << ", response ptr: " << (void*)res.get()
               << ", error: " << uint16_t(err);
+          _delayedSends.count();
         }
         dur = std::chrono::steady_clock::now() - req->timeSent();
-        if (dur > std::chrono::seconds(60)) {
+        if (dur > std::chrono::seconds(61)) {
           LOG_TOPIC("effc5", WARN, Logger::COMMUNICATION)
               << "Time since request was sent out to " << endpoint
               << " until now was "
@@ -425,6 +455,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
               << ", request ptr: " << (void*)req.get()
               << ", response ptr: " << (void*)res.get()
               << ", error: " << uint16_t(err);
+          _slowResponses.count();
         }
       }
     }
