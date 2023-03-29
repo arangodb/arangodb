@@ -88,7 +88,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo),
-      _quiver(nullptr) {
+      _quivers({}) {
   _config->updateConfig(parameters);
 
   std::lock_guard guard{_commandMutex};
@@ -167,8 +167,8 @@ void Worker<V, E, M>::setupWorker() {
                        _config->executionNumber());
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
                                    .sender = ServerState::instance()->getId(),
-                                   .vertexCount = _quiver->numberOfVertices(),
-                                   .edgeCount = _quiver->numberOfEdges()};
+                                   .vertexCount = _quivers.at(0)->numberOfVertices(),
+                                   .edgeCount = _quiver.at(0)->numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -196,7 +196,7 @@ void Worker<V, E, M>::setupWorker() {
         try {
           auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
                                           statusUpdateCallback);
-          _quiver = loader.load();
+          _quivers.emplace_back(loader.load());
         } catch (std::exception const& ex) {
           LOG_PREGEL("a47c4", WARN)
               << "caught exception in loadShards: " << ex.what();
@@ -263,8 +263,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
-                                 .vertexCount = _quiver->numberOfVertices(),
-                                 .edgeCount = _quiver->numberOfEdges(),
+                                 .vertexCount = _quivers.at(0)->numberOfVertices(),
+                                 .edgeCount = _quivers.at(0)->numberOfEdges(),
                                  .aggregators = aggregators};
 }
 
@@ -352,7 +352,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_quiver = _quiver;
+  ctx->_quiver = _quivers.at(0);
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
@@ -377,7 +377,7 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& vertexEntry : *_quiver) {
+  for (auto& vertexEntry : *_quivers.at(0)) {
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
     _currentGssObservables.messagesReceived += messages.size();
@@ -529,7 +529,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                             _config->globalShardIDs(),
                                             std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            storer.store(_quiver);
+            storer.store(_quivers.at(0));
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -552,7 +552,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
 
-  storer.store(_quiver);
+  storer.store(_quivers.at(0));
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 
