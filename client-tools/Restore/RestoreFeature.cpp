@@ -37,8 +37,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -229,11 +227,6 @@ arangodb::Result tryCreateDatabase(
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
     httpClient = client.createHttpClient(0);  // thread number zero
-    httpClient->params().setLocationRewriter(
-        static_cast<void*>(&client), arangodb::ClientManager::rewriteLocation);
-    httpClient->params().setUserNamePassword("/", client.username(),
-                                             client.password());
-
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -1160,14 +1153,14 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
     // leave readOffset in place in readOffsets, because the job did not succeed
     {
       // store error
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->result = res;
     }
   } else {
     // no error
 
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       TRI_ASSERT(!sharedState->readOffsets.empty());
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -1199,7 +1192,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 }
 
 void RestoreFeature::RestoreJob::updateProgress() {
-  MUTEX_LOCKER(locker, sharedState->mutex);
+  std::unique_lock locker{sharedState->mutex};
 
   if (!sharedState->readOffsets.empty()) {
     auto it = sharedState->readOffsets.begin();
@@ -1339,7 +1332,7 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   {
     // insert the current readoffset
-    MUTEX_LOCKER(locker, sharedState->mutex);
+    std::lock_guard locker{sharedState->mutex};
     sharedState->readOffsets.emplace(readOffset, readLength);
   }
 
@@ -1523,7 +1516,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
       // check if our status was changed by background jobs
       if (result.ok()) {
-        MUTEX_LOCKER(locker, sharedState->mutex);
+        std::lock_guard locker{sharedState->mutex};
 
         if (sharedState->result.fail()) {
           // yes, something failed
@@ -1577,7 +1570,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   // end of main job
   if (result.ok()) {
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->readCompleteInputfile = true;
     }
 
@@ -2280,7 +2273,7 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 void RestoreFeature::reportError(Result const& error) {
   try {
     {
-      MUTEX_LOCKER(lock, _workerErrorLock);
+      std::lock_guard lock{_workerErrorLock};
       _workerErrors.emplace_back(error);
     }
     _clientTaskQueue.clearQueue();
@@ -2290,7 +2283,7 @@ void RestoreFeature::reportError(Result const& error) {
 
 Result RestoreFeature::getFirstError() const {
   {
-    MUTEX_LOCKER(lock, _workerErrorLock);
+    std::lock_guard lock{_workerErrorLock};
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
     }
@@ -2299,7 +2292,7 @@ Result RestoreFeature::getFirstError() const {
 }
 
 std::unique_ptr<basics::StringBuffer> RestoreFeature::leaseBuffer() {
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
 
   if (_buffers.empty()) {
     // no buffers present. now insert one
@@ -2321,7 +2314,7 @@ void RestoreFeature::returnBuffer(
   TRI_ASSERT(buffer != nullptr);
   buffer->clear();
 
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
   try {
     _buffers.emplace_back(std::move(buffer));
   } catch (...) {

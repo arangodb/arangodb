@@ -27,6 +27,8 @@
 #include "V8Server/V8Context.h"
 #include "RestServer/arangod.h"
 
+#include <mutex>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -45,7 +47,7 @@ class ConsoleThread final : public ServerThread<ArangodServer> {
 
  public:
   static arangodb::V8LineEditor* serverConsole;
-  static arangodb::Mutex serverConsoleMutex;
+  static std::mutex serverConsoleMutex;
 
  public:
   ConsoleThread(Server&, TRI_vocbase_t*);

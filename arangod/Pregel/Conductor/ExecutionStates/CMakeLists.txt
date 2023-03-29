@@ -1,4 +1,10 @@
 target_sources(arango_pregel_with_actors PRIVATE
   CreateWorkersState.cpp
   LoadingState.cpp
-  ComputingState.cpp)
+  ComputingState.cpp
+  StoringState.cpp
+  ProduceAQLResultsState.cpp
+	AQLResultsAvailableState.cpp
+  DoneState.cpp
+  CanceledState.cpp
+  FatalErrorState.cpp)

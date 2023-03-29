@@ -1590,7 +1590,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ss != nullptr);
 
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
 
     auto f =
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
@@ -1884,7 +1884,7 @@ void Query::debugKillQuery() {
 
   QueryRegistry* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
-    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+    isInRegistry = registry->queryIsRegistered(_queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
              _execState == QueryExecutionState::ValueType::FINALIZATION)

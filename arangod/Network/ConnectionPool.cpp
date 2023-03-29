@@ -127,11 +127,16 @@ struct ConnectionPool::Impl {
   /// @brief drain all connections
   void drainConnections() {
     WRITE_LOCKER(guard, _lock);
+    size_t n = 0;
     for (auto& pair : _connections) {
       Bucket& buck = *(pair.second);
       std::lock_guard<std::mutex> lock(buck.mutex);
+      n += buck.list.size();
       buck.list.clear();
     }
+    // We drop everything.
+    TRI_ASSERT(_totalConnectionsInPool.load() == n);
+    _totalConnectionsInPool -= n;
     _connections.clear();
   }
 
@@ -214,6 +219,10 @@ struct ConnectionPool::Impl {
         }
       }
       _connections.erase(it);
+      // We just erased `n` connections on the bucket.
+      // Let's count it.
+      TRI_ASSERT(_totalConnectionsInPool.load() >= n);
+      _totalConnectionsInPool -= n;
       return n;
     }
     return 0;
@@ -239,7 +248,7 @@ struct ConnectionPool::Impl {
     milliseconds const ttl(_config.idleConnectionMilli);
 
     auto start = steady_clock::now();
-    isFromPool = true;  // Will revert for new collections
+    isFromPool = true;  // Will revert for new connections
 
     // exclusively lock the bucket
     std::unique_lock<std::mutex> guard(bucket.mutex);
@@ -323,9 +332,6 @@ struct ConnectionPool::Impl {
         builder.authenticationType(fuerte::AuthenticationType::Jwt);
       }
     }
-    //  builder.onFailure([this](fuerte::Error error,
-    //                           const std::string& errorMessage) {
-    //  });
     return builder.connect(_loop);
   }
 

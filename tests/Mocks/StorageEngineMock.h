@@ -53,6 +53,8 @@ class IResearchInvertedIndexMock;
 
 }  // namespace arangodb
 
+class StorageEngineMock;
+
 class TransactionStateMock : public arangodb::TransactionState {
  public:
   static std::atomic_size_t abortTransactionCount;
@@ -60,7 +62,8 @@ class TransactionStateMock : public arangodb::TransactionState {
   static std::atomic_size_t commitTransactionCount;
 
   TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
-                       arangodb::transaction::Options const& options);
+                       arangodb::transaction::Options const& options,
+                       StorageEngineMock& engine);
   [[nodiscard]] bool ensureSnapshot() override { return false; }
   arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
@@ -70,7 +73,13 @@ class TransactionStateMock : public arangodb::TransactionState {
       arangodb::transaction::Methods* trx) override;
   arangodb::futures::Future<arangodb::Result>
   performIntermediateCommitIfRequired(arangodb::DataSourceId cid) override;
-  uint64_t numPrimitiveOperations() const noexcept override { return 0; }
+
+  void incrementInsert() noexcept { ++_numInserts; }
+  void incrementRemove() noexcept { ++_numRemoves; }
+  uint64_t numPrimitiveOperations() const noexcept override {
+    return _numInserts + _numRemoves;
+  }
+
   uint64_t numCommits() const noexcept override;
   uint64_t numIntermediateCommits() const noexcept override;
   void addIntermediateCommits(uint64_t value) override;
@@ -81,6 +90,11 @@ class TransactionStateMock : public arangodb::TransactionState {
   std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
       arangodb::DataSourceId cid,
       arangodb::AccessMode::Type accessType) override;
+
+ private:
+  uint64_t _numInserts{0};
+  uint64_t _numRemoves{0};
+  StorageEngineMock& _engine;
 };
 
 class StorageEngineMockSnapshot final : public arangodb::StorageSnapshot {
@@ -217,6 +231,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
     return std::make_shared<StorageEngineMockSnapshot>(currentTick());
   }
 
+  void incrementTick(uint64_t tick) { _engineTick.fetch_add(tick); }
+
  private:
   TRI_voc_tick_t _releasedTick;
+  std::atomic_uint64_t _engineTick{100};
 };

@@ -30,6 +30,7 @@ const _ = require('lodash');
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
@@ -133,14 +134,7 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    if (expected !== result) {
-      if (expected + 1 !== result) {
-        assertEqual(expected, result);
-      } else {
-        // TODO(MBkkt) Fix it
-        print("ArangoSearch inconsistent with RocksDB");
-      }
-    }
+    assertEqual(expected, result);
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
@@ -171,12 +165,11 @@ function BaseChaosSuite(testOpts) {
   const coordination_cn = cn + "_coord";
 
   const createAnalyzers = () => {
-    let a = require("@arangodb/analyzers");
     try {
-      a.remove("testAnalyzer", true);
+      analyzers.remove("testAnalyzer", true);
     } catch (e) {
     }
-    a.save("testAnalyzer", "delimiter", { delimiter: "/" });
+    analyzers.save("testAnalyzer", "delimiter", { delimiter: "/" });
   };
 
   const removeViews = (isSearchAlias) => {
@@ -346,6 +339,7 @@ function BaseChaosSuite(testOpts) {
       print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
       print(Date() + " tearDown: done.");
+      analyzers.remove('testAnalyzer');
     },
     
     testWorkInParallel: function () {

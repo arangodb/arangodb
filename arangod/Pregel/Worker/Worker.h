@@ -23,15 +23,16 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Guarded.h"
 #include "Basics/ReadWriteLock.h"
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/GraphStore.h"
+#include "Pregel/GraphStore/Quiver.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
@@ -59,14 +60,11 @@ class IWorker : public std::enable_shared_from_this<IWorker> {
       RunGlobalSuperStep const& data) = 0;  // called by coordinator
   virtual void cancelGlobalStep(
       VPackSlice const& data) = 0;  // called by coordinator
-  virtual void receivedMessages(PregelMessage const& data) = 0;
+  virtual void receivedMessages(worker::message::PregelMessage const& data) = 0;
   virtual void finalizeExecution(FinalizeExecution const& data,
                                  std::function<void()> cb) = 0;
   virtual auto aqlResult(bool withId) const -> PregelResults = 0;
 };
-
-template<typename V, typename E>
-class GraphStore;
 
 template<typename M>
 class InCache;
@@ -100,11 +98,13 @@ class Worker : public IWorker {
   std::unique_ptr<Algorithm<V, E, M>> _algorithm;
   std::unique_ptr<WorkerContext> _workerContext;
   // locks modifying member vars
-  mutable Mutex _commandMutex;
+  mutable std::mutex _commandMutex;
   // locks swapping
   mutable arangodb::basics::ReadWriteLock _cacheRWLock;
 
-  std::unique_ptr<GraphStore<V, E>> _graphStore;
+  std::unique_ptr<AggregatorHandler> _conductorAggregators;
+  std::unique_ptr<AggregatorHandler> _workerAggregators;
+  std::shared_ptr<Quiver<V, E>> _quiver;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 
@@ -135,13 +135,14 @@ class Worker : public IWorker {
   void _startProcessing();
   bool _processVertices();
   void _finishedProcessing();
-  void _callConductor(std::string const& path, VPackBuilder const& message);
-  [[nodiscard]] auto _observeStatus() -> Status const;
-  [[nodiscard]] auto _makeStatusCallback() -> std::function<void()>;
+  void _callConductor(std::string const& path,
+                      VPackBuilder const& message) const;
+  [[nodiscard]] auto _observeStatus() const -> Status const;
+  [[nodiscard]] auto _makeStatusCallback() const -> std::function<void()>;
 
  public:
   Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algorithm,
-         CreateWorker const& params, PregelFeature& feature);
+         worker::message::CreateWorker const& params, PregelFeature& feature);
   ~Worker();
 
   // ====== called by rest handler =====
@@ -150,7 +151,7 @@ class Worker : public IWorker {
       PrepareGlobalSuperStep const& data) override;
   void startGlobalStep(RunGlobalSuperStep const& data) override;
   void cancelGlobalStep(VPackSlice const& data) override;
-  void receivedMessages(PregelMessage const& data) override;
+  void receivedMessages(worker::message::PregelMessage const& data) override;
   void finalizeExecution(FinalizeExecution const& data,
                          std::function<void()> cb) override;
 

@@ -231,7 +231,9 @@ function saveToJunitXML(options, results) {
       }[c] + ';';
     });
   }
-
+  function stripAnsiColors(s) {
+    return s.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  }
   function buildXml () {
     let xml = ['<?xml version="1.0" encoding="UTF-8"?>\n'];
 
@@ -307,7 +309,7 @@ function saveToJunitXML(options, results) {
       state.seenTestCases = true;
       if (!success) {
         state.xml.elem('failure');
-        state.xml.text('<![CDATA[' + testCase.message + ']]>\n');
+        state.xml.text('<![CDATA[' + stripAnsiColors(testCase.message) + ']]>\n');
         state.xml.elem('/failure');
         state.xml.elem('/testcase');
       }

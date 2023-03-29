@@ -27,7 +27,6 @@
 #include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
@@ -35,6 +34,7 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -138,7 +138,6 @@ class DumpFeature final : public ArangoDumpFeature {
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
     std::shared_ptr<ManagedDirectory::File> file;
@@ -153,7 +152,7 @@ class DumpFeature final : public ArangoDumpFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex _workerErrorLock;
+  std::mutex _workerErrorLock;
   std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 

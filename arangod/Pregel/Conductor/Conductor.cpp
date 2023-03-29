@@ -44,7 +44,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -109,7 +108,7 @@ Conductor::~Conductor() {
 }
 
 void Conductor::start() {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
   _timing.total.start();
   _timing.loading.start();
 
@@ -134,8 +133,6 @@ bool Conductor::_startGlobalStep() {
   if (_feature.isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
-  _callbackMutex.assertLockedByCurrentThread();
 
   /// collect the aggregators
   _masterContext->_aggregators->resetValues();
@@ -273,7 +270,7 @@ bool Conductor::_startGlobalStep() {
 // The worker can (and should) periodically call back
 // to update its status
 void Conductor::workerStatusUpdate(StatusUpdated&& update) {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
 
   LOG_PREGEL("76632", TRACE) << fmt::format("Update received {}", update);
 
@@ -281,7 +278,7 @@ void Conductor::workerStatusUpdate(StatusUpdated&& update) {
 }
 
 void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
 
   _ensureUniqueResponse(graphLoaded.sender);
 
@@ -310,6 +307,7 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
   }
 
   _timing.loading.finish();
+  _graphLoaded = true;
   _timing.computation.start();
 
   _feature.metrics()->pregelConductorsLoadingNumber->fetch_sub(1);
@@ -320,7 +318,7 @@ void Conductor::finishedWorkerStartup(GraphLoaded const& graphLoaded) {
 /// Will optionally send a response, to notify the worker of converging
 /// aggregator values
 void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
   if (data.gss != _globalSuperstep || !(_state == ExecutionState::RUNNING ||
                                         _state == ExecutionState::CANCELED)) {
     LOG_PREGEL("dc904", WARN)
@@ -351,7 +349,7 @@ void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
   // this should allow workers to go into the IDLE state
   scheduler->queue(RequestLane::INTERNAL_LOW, [this,
                                                self = shared_from_this()] {
-    MUTEX_LOCKER(guard, _callbackMutex);
+    std::lock_guard guard{_callbackMutex};
 
     if (_state == ExecutionState::RUNNING) {
       _startGlobalStep();  // trigger next superstep
@@ -368,12 +366,11 @@ void Conductor::finishedWorkerStep(GlobalSuperStepFinished const& data) {
 }
 
 void Conductor::cancel() {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
   cancelNoLock();
 }
 
 void Conductor::cancelNoLock() {
-  _callbackMutex.assertLockedByCurrentThread();
   updateState(ExecutionState::CANCELED);
   bool ok = basics::function_utils::retryUntilTimeout(
       [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
@@ -436,8 +433,6 @@ static void resolveInfo(
 
 /// should cause workers to start a new execution
 ErrorCode Conductor::_initializeWorkers() {
-  _callbackMutex.assertLockedByCurrentThread();
-
   std::unordered_map<CollectionID, std::string> collectionPlanIdMap;
   std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
       edgeMap;
@@ -470,18 +465,18 @@ ErrorCode Conductor::_initializeWorkers() {
   for (auto const& [server, vertexShardMap] : vertexMap) {
     auto const& edgeShardMap = edgeMap[server];
 
-    auto createWorker =
-        CreateWorker{.executionNumber = _specifications.executionNumber,
-                     .algorithm = std::string{_algorithm->name()},
-                     .userParameters = _specifications.userParameters,
-                     .coordinatorId = coordinatorId,
-                     .useMemoryMaps = _specifications.useMemoryMaps,
-                     .edgeCollectionRestrictions =
-                         _specifications.edgeCollectionRestrictions,
-                     .vertexShards = vertexShardMap,
-                     .edgeShards = edgeShardMap,
-                     .collectionPlanIds = collectionPlanIdMap,
-                     .allShards = shardList};
+    auto createWorker = worker::message::CreateWorker{
+        .executionNumber = _specifications.executionNumber,
+        .algorithm = std::string{_algorithm->name()},
+        .userParameters = _specifications.userParameters,
+        .coordinatorId = coordinatorId,
+        .parallelism = _specifications.parallelism,
+        .edgeCollectionRestrictions =
+            _specifications.edgeCollectionRestrictions,
+        .vertexShards = vertexShardMap,
+        .edgeShards = edgeShardMap,
+        .collectionPlanIds = collectionPlanIdMap,
+        .allShards = shardList};
 
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
@@ -551,8 +546,6 @@ ErrorCode Conductor::_initializeWorkers() {
 }
 
 ErrorCode Conductor::_finalizeWorkers() {
-  _callbackMutex.assertLockedByCurrentThread();
-
   bool store = _state == ExecutionState::STORING;
 
   LOG_PREGEL("fc187", DEBUG) << "Finalizing workers";
@@ -567,7 +560,7 @@ ErrorCode Conductor::_finalizeWorkers() {
 }
 
 void Conductor::finishedWorkerFinalize(Finished const& data) {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
 
   LOG_PREGEL("60f0c", WARN) << fmt::format(
       "finishedWorkerFinalize, got response from {}.", data.sender);
@@ -630,9 +623,9 @@ bool Conductor::canBeGarbageCollected() const {
   // immediately acuqire the mutex here, we assume a conductor cannot be
   // garbage-collected. the same conductor will be probed later anyway, so we
   // should be fine
-  TRY_MUTEX_LOCKER(guard, _callbackMutex);
+  std::unique_lock guard{_callbackMutex, std::try_to_lock};
 
-  if (guard.isLocked()) {
+  if (guard.owns_lock()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
         _state == ExecutionState::FATAL_ERROR ||
         _state == ExecutionState::FATAL_ERROR) {
@@ -645,7 +638,7 @@ bool Conductor::canBeGarbageCollected() const {
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
 
   if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
     return;
@@ -686,7 +679,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
 }
 
 void Conductor::toVelocyPack(VPackBuilder& result) const {
-  MUTEX_LOCKER(guard, _callbackMutex);
+  std::lock_guard guard{_callbackMutex};
 
   result.openObject();
   result.add("id",
@@ -737,7 +730,6 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
-  result.add("useMemoryMaps", VPackValue(_specifications.useMemoryMaps));
 
   result.add(VPackValue("detail"));
   auto conductorStatus = _status.accumulate();
@@ -748,31 +740,78 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
 
 void Conductor::persistPregelState(ExecutionState state) {
   // Persist current pregel state into historic pregel system collection.
-
   statuswriter::CollectionStatusWriter cWriter{_vocbaseGuard.database(),
                                                _specifications.executionNumber};
-  // Replace this later
-  // TODO: ongoing <WIP>
-  // Note: I wanted to just use the toVelocyPack method. This fails because of
-  // the mutex there. Therefore temporarly, I'll write data that works for now.
-  // VPackBuilder b;
-  // toVelocyPack(b);
+  VPackBuilder stateBuilder;
 
-  VPackBuilder debugOut;
-  debugOut.openObject();
-  debugOut.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
-  debugOut.add("stats", VPackValue(VPackValueType::Object));
-  _statistics.serializeValues(debugOut);
-  debugOut.close();
-  _masterContext->_aggregators->serializeValues(debugOut);
-  debugOut.close();
-  // Replace this later
+  auto addMinimalOutputToBuilder = [&](VPackBuilder& stateBuilder) -> void {
+    TRI_ASSERT(stateBuilder.isOpenObject());
+    stateBuilder.add(
+        "id",
+        VPackValue(std::to_string(_specifications.executionNumber.value)));
+    stateBuilder.add("database", VPackValue(_vocbaseGuard.database().name()));
+    if (_algorithm != nullptr) {
+      stateBuilder.add("algorithm", VPackValue(_algorithm->name()));
+    }
+    stateBuilder.add("created", VPackValue(timepointToString(_created)));
+    stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+    stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
+    stateBuilder.add("gss", VPackValue(_globalSuperstep));
+  };
+  auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
+    TRI_ASSERT(builder.isOpenObject());
+    if (_timing.total.hasStarted()) {
+      builder.add("totalRuntime",
+                  VPackValue(_timing.total.elapsedSeconds().count()));
+    }
+    if (_timing.loading.hasStarted()) {
+      builder.add("startupTime",
+                  VPackValue(_timing.loading.elapsedSeconds().count()));
+    }
+    if (_timing.computation.hasStarted()) {
+      builder.add("computationTime",
+                  VPackValue(_timing.computation.elapsedSeconds().count()));
+    }
+    if (_timing.storing.hasStarted()) {
+      builder.add("storageTime",
+                  VPackValue(_timing.storing.elapsedSeconds().count()));
+    }
+    {
+      builder.add(VPackValue("gssTimes"));
+      VPackArrayBuilder array(&builder);
+      for (auto const& gssTime : _timing.gss) {
+        builder.add(VPackValue(gssTime.elapsedSeconds().count()));
+      }
+    }
+    _statistics.serializeValues(builder);
+  };
+
+  if (_state == ExecutionState::DONE) {
+    // TODO: What I wanted to do here is to just use the already available
+    // toVelocyPack() method. This fails currently because of the lock:
+    // "[void arangodb::Mutex::lock()]: _holder != Thread::currentThreadId()"
+    // Therefore, for now - do it manually. Let's clean this up ASAP.
+    // this->toVelocyPack(stateBuilder);
+    // After this works, we can remove all of that code below (same scope).
+    // Including those lambda helper methods.
+
+    stateBuilder.openObject();  // opens main builder
+    addMinimalOutputToBuilder(stateBuilder);
+    addAdditionalOutputToBuilder(stateBuilder);
+    stateBuilder.close();  // closes main builder
+  } else {
+    // minimalistic update during runs or errors (cancel, fatal)
+    // TODO: We should introduce an inspector here as well.
+    stateBuilder.openObject();  // opens main builder
+    addMinimalOutputToBuilder(stateBuilder);
+    stateBuilder.close();  // closes main builder
+  }
 
   TRI_ASSERT(state != ExecutionState::DEFAULT);
   if (state == ExecutionState::LOADING) {
     // During state LOADING we need to initially create the document in the
     // collection
-    auto storeResult = cWriter.createResult(debugOut.slice());
+    auto storeResult = cWriter.createResult(stateBuilder.slice());
     if (storeResult.ok()) {
       LOG_PREGEL("063x1", INFO)
           << "Stored result into: \"" << StaticStrings::PregelCollection
@@ -786,7 +825,7 @@ void Conductor::persistPregelState(ExecutionState state) {
   } else {
     // During all other states, we will just simply update the already created
     // document
-    auto updateResult = cWriter.updateResult(debugOut.slice());
+    auto updateResult = cWriter.updateResult(stateBuilder.slice());
     if (updateResult.ok()) {
       LOG_PREGEL("063x3", INFO)
           << "Updated state into: \"" << StaticStrings::PregelCollection
@@ -808,7 +847,6 @@ ErrorCode Conductor::_sendToAllDBServers(std::string const& path,
 ErrorCode Conductor::_sendToAllDBServers(
     std::string const& path, VPackBuilder const& message,
     std::function<void(VPackSlice)> handle) {
-  _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
 
   // to support the single server case, we handle it without optimizing it
@@ -878,8 +916,6 @@ ErrorCode Conductor::_sendToAllDBServers(
 }
 
 void Conductor::_ensureUniqueResponse(std::string const& sender) {
-  _callbackMutex.assertLockedByCurrentThread();
-
   // check if this the only time we received this
   if (_respondedServers.find(sender) != _respondedServers.end()) {
     LOG_PREGEL("c38b8", ERR) << "Received response already from " << sender;

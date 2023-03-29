@@ -29,9 +29,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -493,7 +491,7 @@ ClusterInfo::~ClusterInfo() = default;
 void ClusterInfo::cleanup() {
   while (true) {
     {
-      MUTEX_LOCKER(mutexLocker, _idLock);
+      std::lock_guard mutexLocker{_idLock};
       if (!_uniqid._backgroundJobIsRunning) {
         break;
       }
@@ -501,7 +499,7 @@ void ClusterInfo::cleanup() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);
+  std::lock_guard mutexLocker{_planProt.mutex};
 
   {
     WRITE_LOCKER(writeLocker, _planProt.lock);
@@ -523,14 +521,13 @@ void ClusterInfo::triggerBackgroundGetIds() {
   _uniqid._nextUpperValue = 0ULL;
 
   try {
-    _idLock.assertLockedByCurrentThread();
     if (_uniqid._backgroundJobIsRunning) {
       return;
     }
     _uniqid._backgroundJobIsRunning = true;
     std::thread([this] {
       auto guardRunning = scopeGuard([this]() noexcept {
-        MUTEX_LOCKER(mutexLocker, _idLock);
+        std::lock_guard mutexLocker{_idLock};
         _uniqid._backgroundJobIsRunning = false;
       });
 
@@ -542,7 +539,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
       }
 
       {
-        MUTEX_LOCKER(mutexLocker, _idLock);
+        std::lock_guard mutexLocker{_idLock};
 
         if (1ULL == _uniqid._nextBatchStart) {
           // Invalidate next batch
@@ -710,7 +707,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
-  MUTEX_LOCKER(mutexLocker, _idLock);
+  std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
     uint64_t result = _uniqid._currentValue;
@@ -998,7 +995,7 @@ void ClusterInfo::loadPlan() {
     THROW_ARANGO_EXCEPTION(r);
   }
 
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
+  std::lock_guard mutexLocker{_planProt.mutex};  // only one may work at a time
 
   // For ArangoSearch views we need to get access to immediately created views
   // in order to allow links to be created correctly.
@@ -1167,29 +1164,35 @@ void ClusterInfo::loadPlan() {
     // We create the database object on the coordinator here, because
     // it is used to create LogicalCollection instances further
     // down in this function.
-    if (isCoordinator && !isBuilding) {
-      TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
-      if (vocbase == nullptr) {
-        // database does not yet exist, create it now
+    if (isCoordinator && !isBuilding && !databaseFeature.existsDatabase(name)) {
+      // database does not yet exist, create it now
 
-        // create a local database object...
-        arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
-        Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
+      // create a local database object...
+      arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
+      // validation of the database creation parameters should have happened
+      // already when we get here. whenever we get here, we have a database
+      // in the plan with whatever settings.
+      // we should not make the validation fail here, because that can lead
+      // to all sorts of problems later on if _new_ servers join the cluster
+      // that validate _existing_ databases. this must not fail.
+      info.strictValidation(false);
+
+      Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
+
+      if (res.fail()) {
+        LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
+            << "validating data for local database '" << name
+            << "' failed: " << res.errorMessage();
+      } else {
+        std::string dbName = info.getName();
+        TRI_vocbase_t* vocbase = nullptr;
+        res = databaseFeature.createDatabase(std::move(info), vocbase);
+        events::CreateDatabase(dbName, res, ExecContext::current());
 
         if (res.fail()) {
-          LOG_TOPIC("94357", ERR, arangodb::Logger::AGENCY)
-              << "validating data for local database '" << name
+          LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
+              << "creating local database '" << name
               << "' failed: " << res.errorMessage();
-        } else {
-          std::string dbName = info.getName();
-          res = databaseFeature.createDatabase(std::move(info), vocbase);
-          events::CreateDatabase(dbName, res, ExecContext::current());
-
-          if (res.fail()) {
-            LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
-                << "creating local database '" << name
-                << "' failed: " << res.errorMessage();
-          }
         }
       }
     }
@@ -1238,7 +1241,7 @@ void ClusterInfo::loadPlan() {
         continue;
       }
 
-      auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+      auto vocbase = databaseFeature.useDatabase(databaseName);
 
       if (!vocbase) {
         // No database with this name found.
@@ -1351,7 +1354,7 @@ void ClusterInfo::loadPlan() {
     }
     analyzerSlice = analyzerSlice.get(analyzersPath);
 
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+    auto vocbase = databaseFeature.useDatabase(databaseName);
 
     if (!vocbase) {
       // No database with this name found.
@@ -1463,7 +1466,7 @@ void ClusterInfo::loadPlan() {
 
     collectionsSlice = collectionsSlice.get(collectionsPath);
 
-    auto* vocbase = databaseFeature.lookupDatabase(databaseName);
+    auto vocbase = databaseFeature.useDatabase(databaseName);
 
     if (!vocbase) {
       // No database with this name found.
@@ -1637,7 +1640,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;
@@ -1842,7 +1848,8 @@ void ClusterInfo::loadCurrent() {
   auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
 
   // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
+  std::lock_guard mutexLocker{
+      _currentProt.mutex};  // only one may work at a time
 
   uint64_t currentIndex;
   uint64_t currentVersion;
@@ -2694,7 +2701,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(
             getReloadServerListTimeout() / interval);
       }
@@ -3025,7 +3032,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
 
@@ -3150,7 +3157,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<Mutex>();
+  auto cacheMutex = std::make_shared<std::mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
   auto isCleaned = std::make_shared<bool>(false);
 
@@ -3802,7 +3809,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         bool gotTimeout;
         {
           // This one has not responded, wait for it.
-          CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+          std::lock_guard locker{agencyCallbacks[i]->_cv.mutex};
           gotTimeout =
               agencyCallbacks[i]->executeByCallbackOrTimeout(getPollInterval());
         }
@@ -4049,7 +4056,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     }
 
     {
-      CONDITION_LOCKER(locker, agencyCallback->_cv);
+      std::lock_guard locker{agencyCallback->_cv.mutex};
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
 
@@ -5139,7 +5146,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
           resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
 
         return Result(*tmpRes, *errMsg);
       }
@@ -5184,7 +5191,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
-            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            std::lock_guard locker{agencyCallback->_cv.mutex};
             return Result(*tmpRes, *errMsg);
           }
 
@@ -5207,7 +5214,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
-            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            std::lock_guard locker{agencyCallback->_cv.mutex};
             return Result(*tmpRes, *errMsg);
           }
 
@@ -5229,7 +5236,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
     }
@@ -5473,7 +5480,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
 
@@ -5496,7 +5503,7 @@ static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
 void ClusterInfo::loadServers() {
   ++_serversProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                  // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  std::lock_guard mutexLocker{_serversProt.mutex};
   uint64_t storedVersion = _serversProt.wantedVersion;  // this is the version
   // we will set in the end
   if (_serversProt.doneVersion == storedVersion) {
@@ -5622,7 +5629,7 @@ void ClusterInfo::loadServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 containers::FlatHashMap<ServerID, RebootId> ClusterInfo::rebootIds() const {
-  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  std::lock_guard mutexLocker{_serversProt.mutex};
   return _serversKnown.rebootIds();
 }
 
@@ -5773,7 +5780,7 @@ static std::string const prefixCurrentCoordinators = "Current/Coordinators";
 void ClusterInfo::loadCurrentCoordinators() {
   ++_coordinatorsProt.wantedVersion;  // Indicate that after *NOW* somebody
                                       // has to reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _coordinatorsProt.mutex);
+  std::lock_guard mutexLocker{_coordinatorsProt.mutex};
   uint64_t storedVersion = _coordinatorsProt.wantedVersion;  // this is the
   // version we will set in the end
   if (_coordinatorsProt.doneVersion == storedVersion) {
@@ -5821,7 +5828,7 @@ static std::string const prefixMappings = "Target/MapUniqueToShortID";
 void ClusterInfo::loadCurrentMappings() {
   ++_mappingsProt.wantedVersion;  // Indicate that after *NOW* somebody
                                   // has to reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _mappingsProt.mutex);
+  std::lock_guard mutexLocker{_mappingsProt.mutex};
   uint64_t storedVersion = _mappingsProt.wantedVersion;  // this is the
                                                          // version we will
                                                          // set in the end
@@ -5887,7 +5894,7 @@ static std::string const prefixTarget = "Target";
 void ClusterInfo::loadCurrentDBServers() {
   ++_dbServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                    // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _dbServersProt.mutex);
+  std::lock_guard mutexLocker{_dbServersProt.mutex};
   uint64_t storedVersion = _dbServersProt.wantedVersion;  // this is the version
   // we will set in the end
   if (_dbServersProt.doneVersion == storedVersion) {

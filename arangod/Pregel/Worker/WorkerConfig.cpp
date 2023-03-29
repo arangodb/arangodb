@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Pregel/Conductor/Messages.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/ResolveShard.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -42,15 +43,12 @@ WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
 std::string const& WorkerConfig::database() const { return _vocbase->name(); }
 
-void WorkerConfig::updateConfig(PregelFeature& feature,
-                                CreateWorker const& params) {
+void WorkerConfig::updateConfig(worker::message::CreateWorker const& params) {
   _executionNumber = params.executionNumber;
   _coordinatorId = params.coordinatorId;
-  _useMemoryMaps = params.useMemoryMaps;
-  VPackSlice userParams = params.userParameters.slice();
   _globalShardIDs = params.allShards;
 
-  _parallelism = feature.parallelism(userParams);
+  _parallelism = params.parallelism;
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
@@ -58,9 +56,6 @@ void WorkerConfig::updateConfig(PregelFeature& feature,
   for (uint16_t i = 0; auto const& shard : _globalShardIDs) {
     _pregelShardIDs.try_emplace(shard, PregelShard(i++));  // Cache these ids
   }
-
-  // To access information based on a user defined collection name we need the
-  _collectionPlanIdMap = params.collectionPlanIds;
 
   // Ordered list of shards for each vertex collection on the CURRENT db server
   // Order matters because the for example the third vertex shard, will only
@@ -98,7 +93,7 @@ std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
 }
 
 VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
-  size_t pos = documentID.find("/");
+  size_t pos = documentID.find('/');
   if (pos == std::string::npos) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not a valid document id");
@@ -107,12 +102,22 @@ VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
   std::string_view collPart = docRef.substr(0, pos);
   std::string_view keyPart = docRef.substr(pos + 1);
 
-  ShardID responsibleShard;
+  if (!ServerState::instance()->isRunningInCluster()) {
+    return VertexID(shardId(std::string{collPart}), std::string(keyPart));
+  } else {
+    VPackBuilder partial;
+    partial.openObject();
+    partial.add(
+        StaticStrings::KeyString,
+        VPackValuePair(keyPart.data(), keyPart.size(), VPackValueType::String));
+    partial.close();
+    auto& ci = vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
+    auto info = ci.getCollectionNT(database(), collPart);
 
-  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-  ResolveShard::resolve(ci, this, std::string(collPart),
-                        StaticStrings::KeyString, keyPart, responsibleShard);
+    ShardID responsibleShard;
+    info->getResponsibleShard(partial.slice(), false, responsibleShard);
 
-  PregelShard source = this->shardId(responsibleShard);
-  return VertexID(source, std::string(keyPart));
+    PregelShard source = this->shardId(responsibleShard);
+    return VertexID(source, std::string(keyPart));
+  }
 }

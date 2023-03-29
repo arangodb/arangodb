@@ -47,16 +47,16 @@ namespace arangodb {
 namespace tests {
 namespace remove_follower_test {
 
-const std::string PREFIX = "arango";
-const std::string DATABASE = "database";
-const std::string COLLECTION = "collection1";
-const std::string CLONE = "collection2";
-const std::string SHARD = "s1";
-const std::string SHARD_LEADER = "leader";
-const std::string SHARD_FOLLOWER1 = "follower1";
-const std::string SHARD_FOLLOWER2 = "follower2";
-const std::string FREE_SERVER = "free";
-const std::string FREE_SERVER2 = "free2";
+[[maybe_unused]] const std::string PREFIX = "arango";
+[[maybe_unused]] const std::string DATABASE = "database";
+[[maybe_unused]] const std::string COLLECTION = "collection1";
+[[maybe_unused]] const std::string CLONE = "collection2";
+[[maybe_unused]] const std::string SHARD = "s1";
+[[maybe_unused]] const std::string SHARD_LEADER = "leader";
+[[maybe_unused]] const std::string SHARD_FOLLOWER1 = "follower1";
+[[maybe_unused]] const std::string SHARD_FOLLOWER2 = "follower2";
+[[maybe_unused]] const std::string FREE_SERVER = "free";
+[[maybe_unused]] const std::string FREE_SERVER2 = "free2";
 
 bool aborts = false;
 

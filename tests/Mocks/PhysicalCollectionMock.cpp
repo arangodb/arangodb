@@ -25,6 +25,7 @@
 #include "PhysicalCollectionMock.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
@@ -1192,6 +1193,9 @@ arangodb::Result PhysicalCollectionMock::insert(
     }
     TRI_ASSERT(false);
   }
+  auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+  TRI_ASSERT(state != nullptr);
+  state->incrementInsert();
 
   return {};
 }
@@ -1361,6 +1365,9 @@ arangodb::Result PhysicalCollectionMock::remove(
     // does not remove it from any mock indexes
 
     // assume document was removed
+    auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
     return {};
   }
   return {TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND};
@@ -1448,6 +1455,11 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     auto const& [ref, didInsert] =
         _documents.emplace(key, DocElement{std::move(newBuffer), docId.id()});
     TRI_ASSERT(didInsert);
+
+    auto* state = arangodb::basics::downCast<TransactionStateMock>(trx.state());
+    TRI_ASSERT(state != nullptr);
+    state->incrementRemove();
+    state->incrementInsert();
 
     // TODO: mock index entries are not updated here
     return {};

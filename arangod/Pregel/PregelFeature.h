@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -37,7 +38,6 @@
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
@@ -48,6 +48,13 @@
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
+
+namespace arangodb {
+struct OperationResult;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
 
 namespace arangodb::pregel {
 
@@ -94,13 +101,13 @@ class PregelFeature final : public ArangodFeature {
 
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
+  [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
@@ -117,7 +124,6 @@ class PregelFeature final : public ArangodFeature {
   size_t parallelism(VPackSlice params) const noexcept;
 
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
@@ -133,18 +139,7 @@ class PregelFeature final : public ArangodFeature {
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
 
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
-
-  mutable Mutex _mutex;
+  mutable std::mutex _mutex;
 
   Scheduler::WorkHandle _gcHandle;
 
@@ -166,6 +161,8 @@ class PregelFeature final : public ArangodFeature {
  public:
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
+
+  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
 };
 
 }  // namespace arangodb::pregel
