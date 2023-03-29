@@ -634,7 +634,7 @@ Execute a data-modification query with option *ignoreErrors*
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-The following example appends a value to the array `arrayValue` of the document
+The following example appends a value to the array `arr` of the document
 with key `test` in the collection `documents`. The normal update behavior of the
 `UPDATE` operation is to replace the array attribute completely, but using the
 `PUSH()` function allows you to append to the array:
@@ -644,11 +644,11 @@ with key `test` in the collection `documents`. The normal update behavior of the
     db._drop(cn);
     db._create(cn);
 
-    db.documents.save({ _key: "test", arrayValue: [1, 2, 3] });
+    db.documents.save({ _key: "test", arr: [1, 2, 3] });
 
     var url = "/_api/cursor";
     var body = {
-      query: "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { arrayValue: PUSH(doc.arrayValue, @value) } IN documents",
+      query: "FOR doc IN documents FILTER doc._key == @myKey UPDATE doc._key WITH { arr: PUSH(doc.arr, @value) } IN documents RETURN NEW",
       bindVars: { myKey: "test", value: 42 }
     };
 
