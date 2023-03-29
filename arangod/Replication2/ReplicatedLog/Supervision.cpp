@@ -421,7 +421,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     }
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
-        current.leader->serverId, committedParticipants, current.localState);
+        leader.serverId, committedParticipants, current.localState);
 
     // If there's a new target, we don't want to switch to another server than
     // that to avoid switching the leader too often. Note that this doesn't
@@ -449,7 +449,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     for (auto const& participant : acceptableLeaderSet) {
       // both assertions are guaranteed by getParticipantsAcceptableAsLeaders()
       TRI_ASSERT(committedParticipants.contains(participant));
-      TRI_ASSERT(participant != current.leader->serverId);
+      TRI_ASSERT(participant != leader.serverId);
       auto const& flags = committedParticipants.at(participant);
 
       if (flags.forced) {
