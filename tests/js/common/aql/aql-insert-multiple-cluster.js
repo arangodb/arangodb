@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN, AQL_EXECUTE */
+/*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN, AQL_EXECUTE */
 
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -28,6 +28,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
+const isServer = require("@arangodb").isServer;
 const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
@@ -152,6 +153,32 @@ function InsertMultipleDocumentsSuite() {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
         assertEqual(1, db[cn].count());
       }
+    },
+
+    testInsertWithExclusive: function () {
+      if (isServer) {
+        return;
+      }
+      const query = `FOR d IN [{_key: '123'}] INSERT d INTO ${cn} OPTIONS {exclusive: true} RETURN d`;
+      const trx = db._createTransaction({collections: {write: cn}});
+      trx.collection(cn).insert({_key: '123'});
+      let res = arango.POST_RAW('/_api/cursor', JSON.stringify({query: query}), {'x-arango-async': 'store'});
+      assertEqual(res.code, 202);
+      assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
+      const jobId = res.headers["x-arango-async-id"];
+      // for the db server to have time to process the request
+      internal.sleep(0.5);
+      trx.abort();
+      for (let i = 0; i < 10; ++i) {
+        res = arango.PUT_RAW('/_api/job/' + jobId, "");
+        if (res.code === 201) {
+          break;
+        } else {
+          internal.sleep(0.1);
+        }
+      }
+      assertEqual(res.code, 201, "query not finished in time");
+      assertEqual(res.parsedBody.result[0]['_key'], '123');
     }
   };
 }
@@ -241,7 +268,7 @@ function InsertMultipleDocumentsExplainSuite() {
 }
 
 jsunity.run(InsertMultipleDocumentsSuite);
-if (require("@arangodb").isServer) {
+if (isServer) {
   jsunity.run(InsertMultipleDocumentsExplainSuite);
 }
 
