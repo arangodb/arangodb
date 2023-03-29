@@ -34,6 +34,7 @@
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
+#include "Metrics/Counter.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
@@ -90,12 +91,16 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 
   {
     auto store = guard->storage.transaction();
-    if (store->getLogBounds().to.saturatedDecrement() !=
-        request.prevLogEntry.index) {
+    auto bounds = store->getLogBounds();
+    if (bounds.to.saturatedDecrement() != request.prevLogEntry.index) {
       auto startRemoveIndex = request.prevLogEntry.index + 1;
+      auto removeRange = intersect(
+          LogRange{startRemoveIndex, LogIndex{static_cast<uint64_t>(-1)}},
+          bounds);
       LOG_CTX("9272b", DEBUG, lctx)
           << "log does not append cleanly, removing starting at "
           << startRemoveIndex;
+      metrics->replicatedLogFollowerEntryDropCount->count(removeRange.count());
       auto f = store->removeBack(startRemoveIndex);
       guard.unlock();
       auto result = co_await asResult(std::move(f));
