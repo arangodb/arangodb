@@ -815,6 +815,64 @@ const replicatedLogSuite = function () {
       assertEqual(actions, expected);
     },
 
+    // This test adds a new participant to the replicated log
+    // and requests that this new participant shall become the leader.
+    // As opposed to the previous test, it's not introduced with `allowedAsLeader: false`.
+    // It's also a regression test for CINFRA-717.
+    testChangeLeaderImmediatelyToNewFollower: function () {
+      const {logId, servers, term, leader, followers} =
+          createReplicatedLogAndWaitForLeader(database);
+
+      const newServer = _.sample(_.difference(dbservers, servers));
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // request this server to become leader
+        target.leader = newServer;
+        // delete old leader from target
+        delete target.participants[leader];
+        target.participants[newServer] = {};
+        replicatedLogSetTarget(database, logId, target);
+      }
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: true,
+              allowedAsLeader: true,
+              forced: false,
+            },
+            [leader]: null,
+          })
+      );
+      waitFor(
+          replicatedLogIsReady(
+              database,
+              logId,
+              term + 1,
+              [...followers, newServer],
+              newServer
+          )
+      );
+
+      const actions = helper.getSupervisionActionTypes(database, logId);
+      const expected = [
+        // - create log
+        'AddLogToPlanAction',
+        // - add new participant
+        'AddParticipantToPlanAction',
+        // - force new participant
+        'UpdateParticipantFlagsAction',
+        // - switch leader to new participant
+        'SwitchLeaderAction',
+        // - remove force flag of leader (new participant)
+        'UpdateParticipantFlagsAction',
+        // - disallow old leader from quorum
+        'UpdateParticipantFlagsAction',
+        // - remove old leader
+        'RemoveParticipantFromPlanAction',
+      ];
+      assertEqual(actions, expected);
+    },
+
     // This tests requests a non-server as leader and expects the
     // supervision to fail
     testChangeLeaderToNonServer: function () {
