@@ -997,12 +997,16 @@ TEST_F(DocumentStateMachineTest,
         std::in_place,
         SnapshotConfig{.snapshotId = SnapshotId{1}, .shards = shardMap}};
   });
+  auto emptyPayload = velocypack::SharedSlice(std::shared_ptr<uint8_t const>(
+      velocypack::Slice::emptyArraySliceData,
+      [](auto) { /* don't delete the pointer */ }));
   ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
       .WillByDefault([&](SnapshotId id) {
         return futures::Future<ResultT<SnapshotBatch>>{
-            std::in_place,
-            SnapshotBatch{
-                .snapshotId = id, .shardId = shardId, .hasMore = true}};
+            std::in_place, SnapshotBatch{.snapshotId = id,
+                                         .shardId = shardId,
+                                         .hasMore = true,
+                                         .payload = emptyPayload}};
       });
 
   std::thread t([follower]() {
