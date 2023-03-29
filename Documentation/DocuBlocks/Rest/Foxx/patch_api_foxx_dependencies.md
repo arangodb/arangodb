@@ -8,7 +8,7 @@ Replaces the given service's dependencies.
 
 Returns an object mapping all dependency names to their new mount paths.
 
-@RESTALLBODYPARAM{data,json,required}
+@RESTALLBODYPARAM{options,object,required}
 A JSON object mapping dependency names to their new mount paths.
 Any omitted dependencies will be ignored.
 

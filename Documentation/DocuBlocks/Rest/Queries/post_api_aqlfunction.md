@@ -18,7 +18,6 @@ input). The *isDeterministic* attribute is currently not used but may be
 used later for optimizations.
 
 @RESTDESCRIPTION
-
 In case of success, HTTP 200 is returned.
 If the function isn't valid etc. HTTP 400 including a detailed error message will be returned.
 

@@ -4,8 +4,8 @@
 
 @RESTHEADER{POST /_admin/echo, Return current request, echoRequest}
 
-@RESTALLBODYPARAM{body,object,required}
-The body can be any type and is simply forwarded.
+@RESTALLBODYPARAM{body,string,required}
+The request body can be of any type and is simply forwarded.
 
 @RESTDESCRIPTION
 The call returns an object with the servers request information
@@ -85,11 +85,11 @@ An object containing the query parameters
 @RESTREPLYBODY{cookies,object,required,}
 A list of the cookies you sent
 
-@RESTREPLYBODY{suffix,array,required,}
+@RESTREPLYBODY{suffix,array,required,string}
 A list of the decoded URL path suffixes. You can query the endpoint with
 arbitrary suffixes, e.g. `/_admin/echo/foo/123`
 
-@RESTREPLYBODY{rawSuffix,array,required,}
+@RESTREPLYBODY{rawSuffix,array,required,string}
 A list of the percent-encoded URL path suffixes
 
 @RESTREPLYBODY{path,string,required,}

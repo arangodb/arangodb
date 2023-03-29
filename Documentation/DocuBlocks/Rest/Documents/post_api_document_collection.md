@@ -8,7 +8,7 @@
 @RESTURLPARAM{collection,string,required}
 Name of the `collection` in which the document is to be created.
 
-@RESTALLBODYPARAM{data,json,required}
+@RESTALLBODYPARAM{document,object,required}
 A JSON representation of a single document.
 
 @RESTQUERYPARAMETERS

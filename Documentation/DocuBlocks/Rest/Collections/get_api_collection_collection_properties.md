@@ -30,6 +30,7 @@ is returned.
 @RESTREPLYBODY{,object,required,collection_info}
 
 @RESTDESCRIPTION
+Returns all properties of the specified collection.
 
 @EXAMPLES
 

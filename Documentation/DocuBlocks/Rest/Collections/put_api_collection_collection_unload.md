@@ -19,6 +19,7 @@ You should reference them via their names instead.
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection-name,string,required}
+The name of the collection.
 
 @RESTDESCRIPTION
 Since ArangoDB version 3.9.0 this API does nothing. Previously it used to

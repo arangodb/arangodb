@@ -39,7 +39,6 @@ a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. Ther
 also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTDESCRIPTION
-
 To explain how an AQL query would be executed on the server, the query string
 can be sent to the server via an HTTP POST request. The server will then validate
 the query and create an execution plan for it. The execution plan will be

@@ -4,7 +4,7 @@
 
 @RESTHEADER{PATCH /_api/document/{collection},Update documents,updateDocuments}
 
-@RESTALLBODYPARAM{documents,json,required}
+@RESTALLBODYPARAM{documents,array,required}
 A JSON representation of an array of document updates as objects.
 
 @RESTURLPARAMETERS

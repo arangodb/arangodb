@@ -20,9 +20,10 @@ It is false in this response.
 The response code.
 
 @RESTREPLYBODY{graphs,array,required,graph_list}
+A list of all named graphs.
 
 @RESTSTRUCT{graph,graph_list,object,optional,graph_representation}
-The information about the newly created graph
+The properties of the named graph.
 
 @EXAMPLES
 

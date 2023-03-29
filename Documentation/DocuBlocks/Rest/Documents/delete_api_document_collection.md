@@ -3,7 +3,7 @@
 
 @RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents,deleteDocuments}
 
-@RESTALLBODYPARAM{array,json,required}
+@RESTALLBODYPARAM{documents,array,required}
 A JSON array of strings or documents.
 
 @RESTURLPARAMETERS

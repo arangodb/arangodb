@@ -4,9 +4,9 @@
 
 @RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document, getResponsibleShard}
 
-@RESTALLBODYPARAM{document,json,required}
-The body must consist of a JSON object with at least the shard key
-attributes set to some values.
+@RESTALLBODYPARAM{document,object,required}
+The request body must be a JSON object with at least the shard key
+attributes set to some values, but it may also be a full document.
 
 @RESTURLPARAMETERS
 
