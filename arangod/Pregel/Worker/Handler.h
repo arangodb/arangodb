@@ -29,6 +29,7 @@
 #include "Pregel/GraphStore/GraphLoader.h"
 #include "Pregel/GraphStore/GraphStorer.h"
 #include "Pregel/GraphStore/GraphVPackBuilderStorer.h"
+#include "Pregel/StatusMessages.h"
 #include "Pregel/VertexComputation.h"
 #include "Pregel/Worker/Messages.h"
 #include "Pregel/Worker/State.h"
@@ -74,18 +75,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
 
     auto graphLoaded = [this]() -> ResultT<conductor::message::GraphLoaded> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     this->state->conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = this->state->config->executionNumber(),
-        //         .status = this->state->observeStatus()});
-      };
       try {
-        auto loader = GraphLoader(this->state->config,
-                                  this->state->algorithm->inputFormat(),
-                                  std::move(statusUpdateCallback));
+        auto loader = GraphLoader(
+            this->state->config, this->state->algorithm->inputFormat(),
+            ActorLoadingUpdate{
+                .fn =
+                    [this](pregel::message::GraphLoadingUpdate update) -> void {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor, update);
+                }});
         this->state->quiver = loader.load();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)

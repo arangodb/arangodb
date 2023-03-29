@@ -26,6 +26,7 @@
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/Status.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
 #include "fmt/core.h"
 
@@ -88,14 +89,64 @@ auto inspect(Inspector& f, PregelTimings& x) {
   return f.object(x).fields(f.field("loading", x.loading));
 }
 
+struct GraphLoadingDetails {
+  auto add(GraphLoadingDetails const& other) -> void {
+    verticesLoaded += other.verticesLoaded;
+    edgesLoaded += other.edgesLoaded;
+    memoryBytesUsed += other.memoryBytesUsed;
+  }
+  std::uint64_t verticesLoaded = 0;
+  std::uint64_t edgesLoaded = 0;
+  std::uint64_t memoryBytesUsed = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoadingDetails& x) {
+  return f.object(x).fields(f.field("verticesLoaded", x.verticesLoaded),
+                            f.field("edgesLoaded", x.edgesLoaded),
+                            f.field("memoryBytesUsed", x.memoryBytesUsed));
+}
+struct Details {
+  GraphLoadingDetails loading;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Details& x) {
+  return f.object(x).fields(f.field("graphLoading", x.loading));
+}
+struct StatusDetails {
+  auto aggregateLoading() -> Details {
+    GraphLoadingDetails loadingCombined;
+    for (auto& [server, details] : perWorker) {
+      loadingCombined.add(details.loading);
+    }
+    return Details{.loading =
+                       loadingCombined /* , and copy other properties */};
+  }
+  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+      -> void {
+    perWorker[server].loading = loadingDetails;
+    combined = aggregateLoading();
+  }
+  std::unordered_map<ServerID, Details> perWorker;
+  Details combined;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusDetails& x) {
+  return f.object(x).fields(f.field("total", x.combined),
+                            f.field("perWorker", x.perWorker));
+}
 struct StatusState {
   std::string stateName;
   PregelTimings timings;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  StatusDetails details;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
-  return f.object(x).fields(f.field("state", x.stateName),
-                            f.field("timings", x.timings));
+  return f.object(x).fields(
+      f.field("stateName", x.stateName), f.field("timings", x.timings),
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("details", x.details));
 }
 
 template<typename Runtime>
@@ -110,6 +161,15 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
       -> std::unique_ptr<StatusState> {
     this->state->stateName = loading.state;
     this->state->timings.loading.setStart(loading.time);
+    return std::move(this->state);
+  }
+  auto operator()(message::GraphLoadingUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server,
+        GraphLoadingDetails{.verticesLoaded = msg.verticesLoaded,
+                            .edgesLoaded = msg.edgesLoaded,
+                            .memoryBytesUsed = msg.memoryBytesUsed});
     return std::move(this->state);
   }
 

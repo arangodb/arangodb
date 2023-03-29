@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
@@ -41,6 +42,7 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -49,6 +51,17 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
+
+namespace {
+// helper type for the visitor
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+}  // namespace
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -138,11 +151,19 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
     }
   }
-  // TODO GORDO-1584 and when using actors: send message to status actor instead
-  // currently if statusUpdateCallback captures WorkerHandler by reference, this
-  // can lead to to a bad alloc
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
+
+  std::visit(overloaded{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result->numberOfVertices(),
+                              .edgesLoaded = result->numberOfEdges(),
+                              .memoryBytesUsed = 0  // TODO
+                          });
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+             updateCallback);
   return result;
 }
 
@@ -225,9 +246,18 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
       break;
     }
 
-    // log only every 10 seconds
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       statusUpdateCallback);
+    std::visit(overloaded{[&](ActorLoadingUpdate const& update) {
+                            update.fn(message::GraphLoadingUpdate{
+                                .verticesLoaded = result->numberOfVertices(),
+                                .edgesLoaded = result->numberOfEdges(),
+                                .memoryBytesUsed = 0  // TODO
+                            });
+                          },
+                          [](OldLoadingUpdate const& update) {
+                            SchedulerFeature::SCHEDULER->queue(
+                                RequestLane::INTERNAL_LOW, update.fn);
+                          }},
+               updateCallback);
   }
 }
 

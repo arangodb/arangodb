@@ -68,14 +68,28 @@ auto inspect(Inspector& f, LoadingStarted& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
-struct StatusMessages : std::variant<StatusStart, LoadingStarted> {
-  using std::variant<StatusStart, LoadingStarted>::variant;
+struct GraphLoadingUpdate {
+  std::uint64_t verticesLoaded;
+  std::uint64_t edgesLoaded;
+  std::uint64_t memoryBytesUsed;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoadingUpdate& x) {
+  return f.object(x).fields(f.field("verticesLoaded", x.verticesLoaded),
+                            f.field("edgesLoaded", x.edgesLoaded),
+                            f.field("memoryBytesUsed", x.memoryBytesUsed));
+}
+
+struct StatusMessages
+    : std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate> {
+  using std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<StatusStart>("Start"),
-      arangodb::inspection::type<LoadingStarted>("LoadingStarted"));
+      arangodb::inspection::type<LoadingStarted>("LoadingStarted"),
+      arangodb::inspection::type<GraphLoadingUpdate>("GraphLoadingUpdate"));
 }
 
 }  // namespace arangodb::pregel::message
