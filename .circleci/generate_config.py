@@ -25,6 +25,7 @@ known_flags = {
     "!mac": "test is excluded when launched on MacOS",
     "!arm": "test is excluded when launched on Arm Linux/MacOS hosts",
     "no_report": "disable reporting",
+    "allProtocols": "run the test suite(s) for all protocols (http, http2, vst)"
 }
 
 known_parameter = {
@@ -174,7 +175,6 @@ def read_definitions(filename):
                 continue  # ignore comments
             try:
                 test = read_definition_line(line)
-                test["lineNumber"] = line_no
                 tests.append(test)
             except Exception as exc:
                 print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
@@ -233,8 +233,11 @@ def create_test_job(test, cluster, edition):
         "suites": test["suites"],
         "size": test["size"],
         "cluster": cluster,
+        "allProtocols": "allProtocols" in test["flags"],
         "requires": [f"build-{edition}"],
     }
+    if suffix:
+        result["suffix"] = suffix
 
     extra_args = test["args"]
     if extra_args != []:

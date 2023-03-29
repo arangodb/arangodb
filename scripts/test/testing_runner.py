@@ -311,9 +311,6 @@ class TestingRunner:
             int((mem.total * 0.8) / 9)
         )
 
-        start_offset = 0
-        used_slots = 0
-        counter = 0
         if len(self.scenarios) == 0:
             raise Exception("no valid scenarios loaded")
         some_scenario = self.scenarios[0]
@@ -322,6 +319,29 @@ class TestingRunner:
         if not some_scenario.base_testdir.exists():
             some_scenario.base_testdir.mkdir()
         logging.info(self.cfg.deadline)
+
+        if self.cfg.serialize_execution:
+            self.run_in_serial()
+        else:
+            self.run_in_parallel()
+        
+        self.deadline_reached = datetime.now() > self.cfg.deadline
+        if self.deadline_reached:
+            self.handle_deadline()
+        for worker in self.workers:
+            if self.deadline_reached:
+                logging.info("Deadline: Joining threads of %s", worker.name)
+            worker.join()
+        if self.success:
+            for scenario in self.scenarios:
+                if not scenario.success:
+                    logging.info("Scenario %s failed", scenario.name)
+                    self.success = False
+
+    def run_in_parallel(self):
+        start_offset = 0
+        used_slots = 0
+        counter = 0
         parallelity = 0
         sleep_count = 0
         last_started_count = -1
@@ -383,18 +403,17 @@ class TestingRunner:
                 self.print_active()
                 time.sleep(self.cfg.loop_sleep)
                 sleep_count += 1
-        self.deadline_reached = datetime.now() > self.cfg.deadline
-        if self.deadline_reached:
-            self.handle_deadline()
-        for worker in self.workers:
-            if self.deadline_reached:
-                logging.info("Deadline: Joining threads of %s", worker.name)
-            worker.join()
-        if self.success:
-            for scenario in self.scenarios:
-                if not scenario.success:
-                    logging.info("Scenario %s failed", scenario.name)
-                    self.success = False
+
+    def run_in_serial(self):
+        start_offset = 0
+        counter = 0
+        while (datetime.now() < self.cfg.deadline) and (start_offset < len(self.scenarios)):
+            self.launch_next(start_offset, counter, False)
+            counter += 1
+            start_offset += 1
+            # wait for worker to finish before we launch the next one
+            for worker in self.workers:
+                worker.join()
 
     def generate_report_txt(self, moremsg):
         """create the summary testfailures.txt from all bits"""

@@ -114,6 +114,7 @@ class SiteConfig:
         elif "timeLimit" in os.environ:
             self.timeout = int(os.environ["timeLimit"])
         self.small_machine = False
+        self.serialize_execution = False
         self.extra_args = []
         if psutil.cpu_count(logical=False) <= 12:
             logging.info(
