@@ -107,11 +107,11 @@ const getIndexRowData = (indexRow: IndexRowType) => {
       return field;
     })
     .join(", ");
-  let storedValuesString = storedValues?.join(",");
+  let storedValuesString = storedValues?.join(", ");
   if (type === "inverted") {
-    storedValuesString = JSON.stringify(
-      storedValues?.map(value => (value as StoredValue).fields)
-    );
+    storedValuesString = (storedValues as StoredValue[])
+      ?.map(value => value.fields.join(", "))
+      .join(", ");
   }
   return {
     id: indexId,
