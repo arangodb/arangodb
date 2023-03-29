@@ -266,12 +266,12 @@
           (
             event.originalEvent.key &&
             (
-              event.originalEvent.key === 'Control' || 
-              event.originalEvent.key === 'Alt' || 
+              event.originalEvent.key === 'Control' ||
+              event.originalEvent.key === 'Alt' ||
               event.originalEvent.key === 'Shift'
             )
-          ) || 
-          event.originalEvent.ctrlKey || 
+          ) ||
+          event.originalEvent.ctrlKey ||
           event.originalEvent.altKey
         )
       ) {
@@ -444,7 +444,7 @@
 
             // If we are in a oneShardDB we are not allowed to set those values
             // They are always inferred
-            if (distributeShardsLike === '') {
+            if (distributeShardsLike === '' && window.App.isCluster) {
               // if we are not using distribute shards like
               // then we want to make use of the given shard information
               tmpObj.shards = shards;
@@ -566,10 +566,10 @@
                 false
               )
             );
-          
+
             if (window.App.isCluster) {
-              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
-              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1);
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10);
 
               // clamp replicationFactor between min & max allowed values
               var replicationFactor = '';
@@ -588,14 +588,14 @@
                   'new-replication-factor',
                   'Replication factor',
                   String(replicationFactor),
-                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' +
                   maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + minReplicationFactor +  
+                      msg: 'Must be a number between ' + minReplicationFactor +
                            ' and ' + maxReplicationFactor + '.'
                     }
                   ]
