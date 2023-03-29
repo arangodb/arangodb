@@ -750,7 +750,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
   }
 
-  // Currently unused
+  // Currently unused, and could deadlock with recoverEntries, because that in
+  // return calls insert
   //_stateHandle->updateCommitIndex(_commitIndex);
 
   try {
