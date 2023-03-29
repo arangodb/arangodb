@@ -155,6 +155,9 @@ auto getParticipantsAcceptableAsLeaders(
       continue;
     }
     // check has snapshot
+    // TODO the participant should also have the leader connection established;
+    //      otherwise, the "snapshot available" information may be outdated and
+    //      lead to a temporary stall
     auto iter = localStates.find(participant);
     if (iter == localStates.end() or not iter->second.snapshotAvailable) {
       continue;
@@ -403,6 +406,10 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (!log.current->leader.has_value()) {
+    return;
+  }
+
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
 
@@ -414,19 +421,38 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     }
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
-        current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants,
-        log.current->localState);
+        current.leader->serverId, committedParticipants, current.localState);
+
+    // If there's a new target, we don't want to switch to another server than
+    // that to avoid switching the leader too often. Note that this doesn't
+    // affect the situation where the current leader is unhealthy, which is
+    // handled in checkLeaderHealthy().
+    if (target.leader) {
+      // Unless the target leader is not permissible as a leader for some
+      // reason, we return and wait for checkLeaderSetInTarget() to do its work.
+      // Otherwise, we still continue as usual to possibly select some random
+      // participant as a follower, in order to make progress.
+      auto const& planParticipants = plan.participantsConfig.participants;
+      auto const targetLeaderConfigIt = planParticipants.find(*target.leader);
+      if (targetLeaderConfigIt != planParticipants.cend() &&
+          health.notIsFailed(*target.leader) &&
+          targetLeaderConfigIt->second.allowedAsLeader) {
+        // Let checkLeaderSetInTarget() do the work instead
+        return;
+      }
+    }
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
+      // both assertions are guaranteed by getParticipantsAcceptableAsLeaders()
       TRI_ASSERT(committedParticipants.contains(participant));
+      TRI_ASSERT(participant != current.leader->serverId);
       auto const& flags = committedParticipants.at(participant);
 
-      if (participant != current.leader->serverId and flags.forced) {
+      if (flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(

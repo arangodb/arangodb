@@ -186,6 +186,9 @@ void ReplaceServerTargetLog::apply(AgencyState& agency) const {
   auto& target = agency.replicatedLog->target;
   target.participants.erase(oldServer);
   target.participants[newServer];
+  if (target.leader == oldServer) {
+    target.leader = newServer;
+  }
   target.version.emplace(target.version.value_or(0) + 1);
 }
 

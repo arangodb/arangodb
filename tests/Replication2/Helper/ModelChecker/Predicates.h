@@ -106,7 +106,7 @@ static inline auto isParticipantCurrent(
   });
 }
 
-static inline auto serverIsLeader(std::string_view id) {
+static inline auto anyServerIsLeader(std::unordered_set<std::string_view> ids) {
   return MC_BOOL_PRED(global, {
     AgencyState const& state = global.state;
     if (state.replicatedLog && state.replicatedLog->plan &&
@@ -114,11 +114,15 @@ static inline auto serverIsLeader(std::string_view id) {
       auto const& term = *state.replicatedLog->plan->currentTerm;
       if (term.leader) {
         auto const& leader = *term.leader;
-        return leader.serverId == id;
+        return ids.contains(leader.serverId);
       }
     }
     return false;
   });
+}
+
+static inline auto serverIsLeader(std::string_view id) {
+  return anyServerIsLeader({id});
 }
 
 static inline auto
