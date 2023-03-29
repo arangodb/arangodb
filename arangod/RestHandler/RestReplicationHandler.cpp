@@ -3611,8 +3611,13 @@ Result RestReplicationHandler::createBlockingTransaction(
     TRI_ASSERT(access == AccessMode::Type::EXCLUSIVE);
     exc.push_back(col.name());
   }
-
-  TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  {
+    auto const lockHeld = isLockHeld(id);
+    TRI_ASSERT(lockHeld.is(TRI_ERROR_HTTP_NOT_FOUND))
+        << "Unexpected error code " << lockHeld;
+  }
+#endif
 
   transaction::Options opts;
   opts.lockTimeout = ttl;  // not sure if appropriate ?
