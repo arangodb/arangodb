@@ -97,7 +97,7 @@ std::unique_ptr<ExecutionBlock> MultipleRemoteOperationNode::createBlock(
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound),
-      this->hasParent());
+      this->hasParent(), this->_options.exclusive);
   return std::make_unique<
       ExecutionBlockImpl<MultipleRemoteModificationExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

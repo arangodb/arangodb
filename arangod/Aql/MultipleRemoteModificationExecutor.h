@@ -42,7 +42,8 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
       RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-      IgnoreDocumentNotFound ignoreDocumentNotFound, bool hasParent)
+      IgnoreDocumentNotFound ignoreDocumentNotFound, bool hasParent,
+      bool isExclusive)
       : ModificationExecutorInfos(
             engine, inputRegister, RegisterPlan::MaxRegisterId,
             RegisterPlan::MaxRegisterId, outputNewRegisterId,
@@ -50,9 +51,11 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
             aqlCollection, ProducesResults(false), consultAqlWriteFilter,
             ignoreErrors, DoCount(true), IsReplace(false),
             ignoreDocumentNotFound),
-        _hasParent(hasParent) {}
+        _hasParent(hasParent),
+        _isExclusive(isExclusive) {}
 
   bool _hasParent;  // node->hasParent();
+  bool _isExclusive;
 
   constexpr static double const defaultTimeOut = 3600.0;
 };
@@ -91,9 +94,11 @@ struct MultipleRemoteModificationExecutor {
                                           OperationResult&) -> void;
 
   std::shared_ptr<transaction::Context> _ctx;
-  transaction::Methods _trx;
+  // transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
+  // for late initialization
+  std::unique_ptr<transaction::Methods> _trx;
 };
 
 }  // namespace aql

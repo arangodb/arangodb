@@ -42,10 +42,21 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
     : _ctx(std::make_shared<transaction::StandaloneContext>(
           info._query.vocbase())),
-      _trx(_ctx, {}, {info._aqlCollection->name()}, {}, {}),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
-  _trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  // for the make_unique to deduce type
+  std::vector<std::string> emptyColls;
+  std::vector<std::string> colls = {info._aqlCollection->name()};
+  transaction::Options opts;
+  opts.waitForSync = _info._options.waitForSync;
+  if (_info._isExclusive) {
+    _trx = std::make_unique<transaction::Methods>(_ctx, emptyColls, emptyColls,
+                                                  colls, opts);
+  } else {
+    _trx = std::make_unique<transaction::Methods>(_ctx, emptyColls, colls,
+                                                  emptyColls, opts);
+  }
+  _trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -65,7 +76,6 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
 
   return {input.upstreamState(), stats, AqlCall{}};
 }
-
 [[nodiscard]] auto MultipleRemoteModificationExecutor::skipRowsRange(
     AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, MultipleRemoteModificationExecutor::Stats,
@@ -103,12 +113,12 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
         "'update' or 'replace'");
   }
 
-  auto res = _trx.begin();
+  auto res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
-                       _info._options);
+  result = _trx->insert(_info._aqlCollection->name(), inDocument.slice(),
+                        _info._options);
 
   // check operation result
   if (!_info._ignoreErrors) {
@@ -121,7 +131,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
     }
   }
 
-  res = _trx.commit();
+  res = _trx->commit();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
