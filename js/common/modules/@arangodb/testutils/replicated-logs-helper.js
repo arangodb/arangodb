@@ -565,10 +565,14 @@ const testHelperFunctions = function (database, databaseOptions = {}) {
   };
 };
 
-const getSupervisionActionTypes = function (database, logId) {
+const getSupervisionActions = function (database, logId) {
   const {current} = readReplicatedLogAgency(database, logId);
   // filter out all empty actions
-  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+};
+
+const getSupervisionActionTypes = function (database, logId) {
+  const actions = getSupervisionActions(database, logId);
   return _.map(actions, (a) => a.desc.type);
 };
 
@@ -711,6 +715,7 @@ exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;
+exports.getSupervisionActions = getSupervisionActions;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
