@@ -81,7 +81,7 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
+auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
@@ -125,7 +125,7 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
 
       try {
-        loadVertices(vertexShard, edges);
+        result.emplace_back(loadVertices(vertexShard, edges));
       } catch (basics::Exception const& ex) {
         LOG_PREGEL("8682a", WARN)
             << "caught exception while loading pregel graph: " << ex.what();
@@ -149,7 +149,9 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
 template<typename V, typename E>
 auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards)
-    -> void {
+    -> std::shared_ptr<Quiver<V, E>> {
+  auto resultQuiver = std::make_shared<Quiver<V, E>>();
+
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
   trxOpts.allowImplicitCollectionsForRead = true;
@@ -215,7 +217,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
       auto& info = *edgeCollectionInfos[i];
       loadEdges(trx, ventry, documentId, info);
     }
-    result->emplace(std::move(ventry));
+    resultQuiver->emplace(std::move(ventry));
     return true;
   };
 
@@ -229,6 +231,8 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
     SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                        statusUpdateCallback);
   }
+
+  return resultQuiver;
 }
 
 template<typename V, typename E>

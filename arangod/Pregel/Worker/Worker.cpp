@@ -196,7 +196,7 @@ void Worker<V, E, M>::setupWorker() {
         try {
           auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
                                           statusUpdateCallback);
-          _quivers.emplace_back(loader.load());
+          _quivers = loader.load();
         } catch (std::exception const& ex) {
           LOG_PREGEL("a47c4", WARN)
               << "caught exception in loadShards: " << ex.what();
@@ -532,7 +532,9 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                             _config->globalShardIDs(),
                                             std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            storer.store(_quivers.at(0));
+            for (auto& quiver : _quivers) {
+              storer.store(quiver);
+            }
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -554,8 +556,9 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer =
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
-
-  storer.store(_quivers.at(0));
+  for (auto& quiver : _quivers) {
+    storer.store(quiver);
+  }
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 
