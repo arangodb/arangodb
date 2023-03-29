@@ -433,8 +433,7 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            collType: collType,
-            shardKeys: shardKeys
+            collType: collType
           };
 
           if (!isOneShardDB) {
@@ -444,16 +443,21 @@
 
             // If we are in a oneShardDB we are not allowed to set those values
             // They are always inferred
-            if (distributeShardsLike === '' && window.App.isCluster) {
-              // if we are not using distribute shards like
-              // then we want to make use of the given shard information
-              tmpObj.shards = shards;
-              tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-              tmpObj.writeConcern = Number(writeConcern);
+            if (window.App.isCluster) {
+              tmpObj.shardKeys = shardKeys;
+              if (distributeShardsLike === '') {
+                // if we are not using distribute shards like
+                // then we want to make use of the given shard information
+                tmpObj.shards = shards;
+                tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+                tmpObj.writeConcern = Number(writeConcern);
+              } else {
+                // If we use distribute shards like on purpose do not add other
+                // sharding information. All of it will be deferred.
+                tmpObj.distributeShardsLike = distributeShardsLike;
+              }
             } else {
-              // If we use distribute shards like on purpose do not add other
-              // sharding information. All of it will be deferred.
-              tmpObj.distributeShardsLike = distributeShardsLike;
+              tmpObj.shards = shards;
             }
           }
 
