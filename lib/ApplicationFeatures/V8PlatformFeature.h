@@ -26,6 +26,7 @@
 #include <stddef.h>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -36,7 +37,6 @@
 #include "Basics/operating-system.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Mutex.h"
 
 namespace arangodb {
 namespace application_features {
@@ -98,7 +98,7 @@ class V8PlatformFeature final
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;
   std::string _v8CombinedOptions;
-  arangodb::Mutex _lock;  // to protect vector _isolateData
+  std::mutex _lock;  // to protect vector _isolateData
   std::unordered_map<v8::Isolate*, std::unique_ptr<IsolateData>> _isolateData;
 };
 

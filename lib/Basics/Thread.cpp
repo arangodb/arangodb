@@ -36,7 +36,7 @@
 #include "Thread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -361,9 +361,8 @@ void Thread::markAsStopped() noexcept {
   _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
-    // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(locker, *_finishedCondition);
-    locker.broadcast();
+    std::lock_guard locker{_finishedCondition->mutex};
+    _finishedCondition->cv.notify_all();
   }
 }
 

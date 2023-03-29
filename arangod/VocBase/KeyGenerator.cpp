@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Endian.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -645,7 +643,7 @@ class UuidKeyGenerator final : public KeyGenerator {
 
   /// @brief generate a key
   std::string generate(velocypack::Slice /*input*/) override {
-    MUTEX_LOCKER(locker, _lock);
+    std::lock_guard locker{_lock};
     return boost::uuids::to_string(_uuid());
   }
 
@@ -658,7 +656,7 @@ class UuidKeyGenerator final : public KeyGenerator {
   }
 
  private:
-  arangodb::Mutex _lock;
+  std::mutex _lock;
 
   boost::uuids::random_generator _uuid;
 };

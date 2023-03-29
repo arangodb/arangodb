@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -37,7 +38,6 @@
 #include "Pregel/ArangoExternalDispatcher.h"
 #include "Actor/Runtime.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
@@ -141,7 +141,7 @@ class PregelFeature final : public ArangodFeature {
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
 
-  mutable Mutex _mutex;
+  mutable std::mutex _mutex;
 
   Scheduler::WorkHandle _gcHandle;
 

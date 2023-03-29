@@ -239,17 +239,15 @@
                 this.saveModifiedCollection.bind(this)
               )
             );
-
-            var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
+            var templates = ['modalTable.ejs'];
 
             window.modalView.show(
               templates,
               'Modify Collection',
               buttons,
               tableContent, null, null,
-              this.events, null,
-              tabBar, 'content'
+              this.events, null, null,
+              'content'
             );
             $($('#infoTab').children()[1]).remove();
           }.bind(this);

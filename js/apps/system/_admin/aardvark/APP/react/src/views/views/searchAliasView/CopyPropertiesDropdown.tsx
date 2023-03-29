@@ -64,7 +64,7 @@ const CopyPropertiesInner = ({ views }: { views: SearchViewType[] }) => {
           options={options}
           value={options.find(option => option.value === selectedViewName)}
           onChange={value => {
-            setSelectedViewName((value as any).value);
+            setSelectedViewName(value?.value);
           }}
         />
       </Box>

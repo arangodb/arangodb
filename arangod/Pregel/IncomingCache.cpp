@@ -31,7 +31,6 @@
 #include "Pregel/Algos/DMID/DMIDMessage.h"
 #include "Pregel/Algos/EffectiveCloseness/HLLCounter.h"
 
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -39,6 +38,7 @@
 
 #include <algorithm>
 #include <random>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -186,7 +186,7 @@ MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard,
 template<typename M>
 void ArrayInCache<M>::clear() {
   for (auto& pair : _shardMap) {  // keep the keys
-    // MUTEX_LOCKER(guard, this->_bucketLocker[pair.first]);
+    // std::lock_guard guard{this->_bucketLocker[pair.first]};
     pair.second.clear();
   }
   this->_containedMessageCount = 0;

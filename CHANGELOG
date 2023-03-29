@@ -1,6 +1,10 @@
 devel
 -----
 
+* Updated arangosync to v2.16.1.
+
+* FE-142: Updates indices view list & index addition to React.
+
 * A Pregel execution now stores it's state during and after execution
   into a system collection. To read or delete entries the new API
   `/_api/control_pregel/history[/<id>]` has been added. Additionally, the Pregel JavaScript
