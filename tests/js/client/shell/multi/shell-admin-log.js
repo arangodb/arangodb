@@ -41,17 +41,17 @@ function adminLogSuite() {
     arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
   };
 
-  let oldLogLevel;
+  let oldLogLevels;
 
   return {
     setUpAll: function () {
-      oldLogLevel = arango.GET("/_admin/log/level").general;
-      arango.PUT("/_admin/log/level", {general: "info"});
+      oldLogLevels = arango.GET("/_admin/log/level");
+      arango.PUT("/_admin/log/level", {general: "info", queries: "fatal"});
     },
 
     tearDownAll: function () {
       // restore previous log level for "general" topic;
-      arango.PUT("/_admin/log/level", {general: oldLogLevel});
+      arango.PUT("/_admin/log/level", oldLogLevels);
     },
 
     setUp: function () {
