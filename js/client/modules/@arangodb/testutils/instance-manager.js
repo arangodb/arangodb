@@ -642,16 +642,24 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
     let obj = this;
-    netstat({platform: process.platform}, function (data) {
-      // skip server ports, we know what we bound.
-      if (data.state !== 'LISTEN') {
-        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+    try {
+      netstat({platform: process.platform}, function (data) {
+        // skip server ports, we know what we bound.
+        if (data.state !== 'LISTEN') {
+          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+        }
+      });
+      if (!this.options.noStartStopLogs) {
+        this.printNetstat();
       }
-    });
-    if (!this.options.noStartStopLogs) {
-      this.printNetstat();
+    } catch (ex) {
+      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      print(RED + 'netstat gathering has thrown: ' + (timeout? "because of timeout in execution":""));
+      print(ex, ex.stack);
+      print(RESET);
+      this.cleanup = false;
+      return this._forceTerminate(ex.message + " during health check");
     }
-    
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
         (this.url !== this.agencyConfig.urls[0])

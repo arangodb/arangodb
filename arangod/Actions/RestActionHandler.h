@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <mutex>
+
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include "Actions/actions.h"
@@ -48,7 +50,7 @@ class RestActionHandler : public RestVocbaseBaseHandler {
   std::shared_ptr<TRI_action_t> _action;
 
   // data lock
-  Mutex _dataLock;
+  std::mutex _dataLock;
 
   // data for cancelation
   void* _data;

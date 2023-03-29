@@ -27,7 +27,6 @@
 #include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogMacros.h"
@@ -51,7 +50,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 V8LineEditor* ConsoleThread::serverConsole = nullptr;
-Mutex ConsoleThread::serverConsoleMutex;
+std::mutex ConsoleThread::serverConsoleMutex;
 
 ConsoleThread::ConsoleThread(Server& applicationServer, TRI_vocbase_t* vocbase)
     : ServerThread<ArangodServer>(applicationServer, "Console"),
@@ -165,7 +164,7 @@ start_color_print('arangodb', true);
     console.open(true);
 
     {
-      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
+      std::lock_guard mutexLocker{serverConsoleMutex};
       serverConsole = &console;
     }
 
@@ -187,7 +186,7 @@ start_color_print('arangodb', true);
       isolate->CancelTerminateExecution();
 
       {
-        MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
+        std::lock_guard mutexLocker{serverConsoleMutex};
         input = console.prompt("arangod> ", "arangod>", eof);
       }
 
@@ -232,7 +231,7 @@ start_color_print('arangodb', true);
     }
 
     {
-      MUTEX_LOCKER(mutexLocker, serverConsoleMutex);
+      std::lock_guard mutexLocker{serverConsoleMutex};
       serverConsole = nullptr;
     }
   }

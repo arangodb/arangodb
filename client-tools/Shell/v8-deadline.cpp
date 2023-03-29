@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
 
 #include "V8/V8SecurityFeature.h"
@@ -47,7 +45,7 @@ using namespace arangodb;
 /// @brief set a point in time after which we will abort certain operations
 ////////////////////////////////////////////////////////////////////////////////
 static double executionDeadline = 0.0;
-static arangodb::Mutex singletonDeadlineMutex;
+static std::mutex singletonDeadlineMutex;
 
 const char* errorDeadline = "Execution deadline reached!";
 const char* errorExternalDeadline = "Signaled deadline from extern!";
@@ -65,7 +63,7 @@ static void JS_SetExecutionDeadlineTo(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("SetGlobalExecutionDeadlineTo(<timeout>)");
   }
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   auto now = TRI_microtime();
 
@@ -81,7 +79,7 @@ static void JS_SetExecutionDeadlineTo(
 }
 
 bool isExecutionDeadlineReached(v8::Isolate* isolate) {
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
     return false;
@@ -96,7 +94,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
 }
 
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
     return timeoutSeconds;
@@ -111,7 +109,7 @@ double correctTimeoutToExecutionDeadlineS(double timeoutSeconds) {
 
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(
     std::chrono::milliseconds timeout) {
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   using namespace std::chrono;
 
   double epochDoubleWhen = executionDeadline;
@@ -132,7 +130,7 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
 }
 
 uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   auto when = executionDeadline;
   if (when < 0.00001) {
     return timeoutMS;
@@ -147,7 +145,7 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
 
 void triggerV8DeadlineNow(bool fromSignal) {
   // Set the deadline to expired:
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
   executionDeadline = TRI_microtime() - 100;
 }
@@ -283,7 +281,7 @@ static void JS_GetDeadlineString(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  std::lock_guard mutex{singletonDeadlineMutex};
   TRI_V8_RETURN_STRING(errorState);
   TRI_V8_TRY_CATCH_END
 }
