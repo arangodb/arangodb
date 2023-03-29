@@ -8,7 +8,7 @@ Replaces the given service's configuration completely.
 
 Returns an object mapping all configuration option names to their new values.
 
-@RESTALLBODYPARAM{data,json,required}
+@RESTALLBODYPARAM{options,object,required}
 A JSON object mapping configuration option names to their new values.
 Any omitted options will be reset to their default values or marked as unconfigured.
 

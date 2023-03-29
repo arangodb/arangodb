@@ -7,6 +7,7 @@
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{DBserver,string,required}
+The ID of a DB-Server.
 
 @RESTDESCRIPTION
 Queries the statistics of the given DB-Server

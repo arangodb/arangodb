@@ -13,6 +13,7 @@ You should reference them via their names instead.
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection-name,string,required}
+The name of the collection.
 
 @RESTDESCRIPTION
 You can call this endpoint to try to cache this collection's index entries in

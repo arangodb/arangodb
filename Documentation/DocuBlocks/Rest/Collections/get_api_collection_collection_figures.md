@@ -39,9 +39,10 @@ Returns information about the collection:
 The number of documents currently present in the collection.
 
 @RESTREPLYBODY{figures,object,required,collection_figures}
-metrics of the collection
+The metrics of the collection.
 
 @RESTSTRUCT{indexes,collection_figures,object,required,collection_figures_indexes}
+The index metrics.
 
 @RESTSTRUCT{count,collection_figures_indexes,integer,required,int64}
 The total number of indexes defined for the collection, including the pre-defined

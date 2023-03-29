@@ -20,6 +20,7 @@ HTTP 200 is returned in case the job execution ID was valid and the state is
 returned along with the response.
 
 @RESTREPLYBODY{,object,required,get_api_control_pregel_struct}
+The information about the Pregel job.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number

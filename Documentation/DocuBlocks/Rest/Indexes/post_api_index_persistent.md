@@ -98,7 +98,6 @@ in the background, which will not write-lock the underlying collection for
 as long as if the index is built in the foreground. The default value is `false`.
 
 @RESTDESCRIPTION
-
 Creates a persistent index for the collection `collection-name`, if
 it does not already exist. The call expects an object containing the index
 details.

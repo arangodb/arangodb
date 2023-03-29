@@ -9,7 +9,8 @@
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-@RESTALLBODYPARAM{index-details,json,required}
+@RESTALLBODYPARAM{index-details,object,required}
+The options for the index.
 
 @RESTDESCRIPTION
 Creates a new index in the collection `collection`. Expects

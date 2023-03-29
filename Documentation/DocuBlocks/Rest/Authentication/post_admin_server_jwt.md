@@ -19,6 +19,7 @@ will be _HTTP 403 Forbidden_.
 @RESTRETURNCODE{200}
 
 @RESTREPLYBODY{,object,required,admin_server_jwt}
+The reply with the JWT secrets information.
 
 @RESTRETURNCODE{403}
 if the request was not authenticated as a user with sufficient rights

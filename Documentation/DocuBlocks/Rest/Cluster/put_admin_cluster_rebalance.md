@@ -5,6 +5,7 @@
 @RESTHEADER{PUT /_admin/cluster/rebalance, Compute and execute a set of move shard operations to improve balance, startClusterRebalance}
 
 @RESTBODYPARAM{,object,required,rebalance_compute}
+The options for the rebalancing.
 
 @RESTDESCRIPTION
 Compute a set of move shard operations to improve balance.
@@ -16,6 +17,6 @@ These moves are then immediately executed.
 This API returns HTTP 200.
 
 @RESTREPLYBODY{,object,required,rebalance_moves}
-Executed move shard operations.
+The executed move shard operations.
 
 @endDocuBlock
