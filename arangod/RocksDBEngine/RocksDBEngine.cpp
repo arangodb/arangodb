@@ -40,6 +40,7 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
@@ -3347,32 +3348,36 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                        : 100));
   }
 
-  cache::Manager* manager =
-      server().getFeature<CacheManagerFeature>().manager();
-  if (manager != nullptr) {
-    // cache turned on
-    cache::Manager::MemoryStats stats = manager->memoryStats();
-    auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(stats.globalLimit));
-    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats.activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+  {
+    // in-memory cache statistics
+    cache::Manager* manager =
+        server().getFeature<CacheManagerFeature>().manager();
+
+    std::optional<cache::Manager::MemoryStats> stats;
+    if (manager != nullptr) {
+      // cache turned on
+      stats = manager->memoryStats(cache::Cache::triesFast);
+    }
+    if (!stats.has_value()) {
+      stats = cache::Manager::MemoryStats{};
+    }
+    TRI_ASSERT(stats.has_value());
+
+    builder.add("cache.limit", VPackValue(stats->globalLimit));
+    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats->activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    std::pair<double, double> rates;
+    if (manager != nullptr) {
+      rates = manager->globalHitRates();
+    }
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
     builder.add("cache.hit-rate-recent",
                 VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
-  } else {
-    // cache turned off
-    builder.add("cache.limit", VPackValue(0));
-    builder.add("cache.allocated", VPackValue(0));
-    builder.add("cache.active-tables", VPackValue(0));
-    builder.add("cache.unused-memory", VPackValue(0));
-    builder.add("cache.unused-tables", VPackValue(0));
-    // handle NaN
-    builder.add("cache.hit-rate-lifetime", VPackValue(0));
-    builder.add("cache.hit-rate-recent", VPackValue(0));
   }
 
   // print column family statistics
