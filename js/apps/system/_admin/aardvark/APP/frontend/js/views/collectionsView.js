@@ -456,8 +456,6 @@
                 // sharding information. All of it will be deferred.
                 tmpObj.distributeShardsLike = distributeShardsLike;
               }
-            } else {
-              tmpObj.shards = shards;
             }
           }
 
