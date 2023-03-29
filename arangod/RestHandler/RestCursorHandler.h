@@ -25,13 +25,14 @@
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 #include "Scheduler/Scheduler.h"
+
+#include <mutex>
 
 namespace arangodb {
 namespace velocypack {
@@ -189,7 +190,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief lock for currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _queryLock;
+  std::mutex _queryLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not the query has already started executing

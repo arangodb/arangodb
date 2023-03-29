@@ -74,7 +74,7 @@ bool authorized(
 
 namespace arangodb {
 
-Mutex Task::_tasksLock;
+std::mutex Task::_tasksLock;
 std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>>
     Task::_tasks;
 
@@ -106,7 +106,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id,
   auto task =
       std::make_shared<Task>(id, name, *vocbase, command, allowUseDatabase);
 
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
@@ -124,7 +124,7 @@ ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
 
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   auto itr = _tasks.find(id);
 
@@ -142,7 +142,7 @@ ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
 }
 
 std::shared_ptr<VPackBuilder> Task::registeredTask(std::string const& id) {
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   auto itr = _tasks.find(id);
 
@@ -159,7 +159,7 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
   try {
     VPackArrayBuilder b1(builder.get());
 
-    MUTEX_LOCKER(guard, _tasksLock);
+    std::lock_guard guard{_tasksLock};
 
     for (auto& it : _tasks) {
       if (::authorized(it.second)) {
@@ -176,7 +176,7 @@ std::shared_ptr<VPackBuilder> Task::registeredTasks() {
 
 void Task::shutdownTasks() {
   {
-    MUTEX_LOCKER(guard, _tasksLock);
+    std::lock_guard guard{_tasksLock};
     for (auto& it : _tasks) {
       it.second.second->cancel();
     }
@@ -187,7 +187,7 @@ void Task::shutdownTasks() {
   while (true) {
     size_t size;
     {
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
       size = _tasks.size();
     }
 
@@ -201,7 +201,7 @@ void Task::shutdownTasks() {
     } else if (iterations >= 25) {
       LOG_TOPIC("54653", INFO, Logger::FIXME)
           << "giving up waiting for unfinished tasks";
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
       _tasks.clear();
       break;
     }
@@ -211,7 +211,7 @@ void Task::shutdownTasks() {
 }
 
 void Task::removeTasksForDatabase(std::string const& name) {
-  MUTEX_LOCKER(guard, _tasksLock);
+  std::lock_guard guard{_tasksLock};
 
   for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
     if (!(*it).second.second->databaseMatches(name)) {
@@ -293,7 +293,7 @@ void Task::setUser(std::string const& user) { _user = user; }
 std::function<void(bool cancelled)> Task::callbackFunction() {
   return [self = shared_from_this(), this](bool cancelled) {
     if (cancelled) {
-      MUTEX_LOCKER(guard, _tasksLock);
+      std::lock_guard guard{_tasksLock};
 
       auto itr = _tasks.find(_id);
 
@@ -355,7 +355,7 @@ void Task::start() {
   TRI_ASSERT(exec.isAdminUser() || (!_user.empty() && exec.user() == _user));
 
   {
-    MUTEX_LOCKER(lock, _taskHandleMutex);
+    std::lock_guard lock{_taskHandleMutex};
     _taskHandle.reset();
   }
 
@@ -382,7 +382,7 @@ bool Task::queue(std::chrono::microseconds offset) {
   if (server.isStopping()) {
     return false;
   }
-  MUTEX_LOCKER(lock, _taskHandleMutex);
+  std::lock_guard lock{_taskHandleMutex};
   _taskHandle = SchedulerFeature::SCHEDULER->queueDelayed(
       "v8-task", RequestLane::INTERNAL_LOW, offset, callbackFunction());
   return true;
@@ -391,7 +391,7 @@ bool Task::queue(std::chrono::microseconds offset) {
 void Task::cancel() {
   // this will prevent the task from dispatching itself again
   _periodic.store(false);
-  MUTEX_LOCKER(lock, _taskHandleMutex);
+  std::lock_guard lock{_taskHandleMutex};
   _taskHandle.reset();
 }
 

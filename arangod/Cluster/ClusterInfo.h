@@ -35,7 +35,6 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
@@ -1001,7 +1000,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    mutable Mutex mutex;
+    mutable std::mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     mutable arangodb::basics::ReadWriteLock lock;
@@ -1171,7 +1170,7 @@ class ClusterInfo final {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _idLock;
+  std::mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
