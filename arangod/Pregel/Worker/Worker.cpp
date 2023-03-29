@@ -362,6 +362,8 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 template<typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices() {
   double start = TRI_microtime();
+
+  // Note: async await outer loop around caller of processVertices
   for (auto [idx, quiver] : enumerate(_quivers)) {
     // thread local caches
     InCache<M>* inCache = _inCaches[idx];

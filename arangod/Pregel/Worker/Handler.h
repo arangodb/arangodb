@@ -85,7 +85,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         auto loader = GraphLoader(this->state->config,
                                   this->state->algorithm->inputFormat(),
                                   std::move(statusUpdateCallback));
-        this->state->quiver = loader.load();
+        this->state->quivers = loader.load();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
@@ -364,7 +364,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                                         this->state->algorithm->inputFormat(),
                                         this->state->config->globalShardIDs(),
                                         std::move(statusUpdateCallback));
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->quivers) {
+          storer.store(quiver);
+        }
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
