@@ -63,18 +63,19 @@ struct WorkerState {
           config, messageFormat.get(), messageCombiner.get());
       writeCache = std::make_unique<CombiningInCache<M>>(
           config, messageFormat.get(), messageCombiner.get());
-      inCache = std::make_unique<CombiningInCache<M>>(
-          nullptr, messageFormat.get(), messageCombiner.get());
-      outCache = std::make_unique<CombiningOutActorCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
+      inCaches.emplace_back(std::make_unique<CombiningInCache<M>>(
+          nullptr, messageFormat.get(), messageCombiner.get()));
+      outCaches.emplace_back(std::make_unique<CombiningOutActorCache<M>>(
+          config, messageFormat.get(), messageCombiner.get()));
     } else {
       readCache =
           std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
       writeCache =
           std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
-      inCache = std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
-      outCache =
-          std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
+      inCaches.emplace_back(
+          std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get()));
+      outCaches.emplace_back(
+          std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get()));
     }
   }
 
@@ -106,8 +107,8 @@ struct WorkerState {
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
   std::unique_ptr<InCache<M>> readCache = nullptr;
   std::unique_ptr<InCache<M>> writeCache = nullptr;
-  std::unique_ptr<InCache<M>> inCache = nullptr;
-  std::unique_ptr<OutCache<M>> outCache = nullptr;
+  std::vector<std::unique_ptr<InCache<M>>> inCaches = {};
+  std::vector<std::unique_ptr<OutCache<M>>> outCaches = {};
   uint32_t messageBatchSize = 500;
 
   actor::ActorPID conductor;

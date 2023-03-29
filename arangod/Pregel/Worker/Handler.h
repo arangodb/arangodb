@@ -25,6 +25,7 @@
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
+#include "Containers/Enumerate.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/GraphStore/GraphLoader.h"
 #include "Pregel/GraphStore/GraphStorer.h"
@@ -65,9 +66,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                            worker::message::PregelMessage message) -> void {
       this->template dispatch<worker::message::WorkerMessages>(actor, message);
     };
-    this->state->outCache->setDispatch(std::move(dispatch));
-    this->state->outCache->setResponsibleActorPerShard(
-        msg.responsibleActorPerShard);
+    for (auto& cache : this->state->outCaches) {
+      cache->setDispatch(dispatch);
+      cache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
+    }
 
     // TODO GORDO-1510
     // _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
@@ -89,10 +91,18 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
+
+        size_t totalAmountOfVertices = 0;
+        size_t totalAmountOfEdges = 0;
+        for (auto const& quiver : this->state->quivers) {
+          totalAmountOfVertices += quiver->numberOfVertices();
+          totalAmountOfEdges += quiver->numberOfEdges();
+        }
+
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
-            .vertexCount = this->state->quiver->numberOfVertices(),
-            .edgeCount = this->state->quiver->numberOfEdges()}};
+            .vertexCount = totalAmountOfVertices,
+            .edgeCount = totalAmountOfEdges}};
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_INTERNAL,
@@ -137,17 +147,19 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_gss = this->state->config->globalSuperstep();
     ctx->_lss = this->state->config->localSuperstep();
     ctx->_context = this->state->workerContext.get();
-    ctx->_quiver = this->state->quiver;
+    ctx->_quivers = this->state->quivers;
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
-  [[nodiscard]] auto processVertices() -> VerticesProcessed {
+  [[nodiscard]] auto processVertices(size_t idx,
+                                     std::shared_ptr<Quiver<V, E>> quiver)
+      -> futures::Future<ResultT<VerticesProcessed>> {
     // _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
 
     double start = TRI_microtime();
 
-    InCache<M>* inCache = this->state->inCache.get();
-    OutCache<M>* outCache = this->state->outCache.get();
+    InCache<M>* inCache = this->state->inCaches[idx].get();
+    OutCache<M>* outCache = this->state->outCaches[idx].get();
     outCache->setBatchSize(this->state->messageBatchSize);
     outCache->setLocalCache(inCache);
 
@@ -160,7 +172,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     vertexComputation->_cache = outCache;
 
     size_t activeCount = 0;
-    for (auto& vertexEntry : *this->state->quiver) {
+    for (auto& vertexEntry : *quiver) {
       MessageIterator<M> messages = this->state->readCache->getMessages(
           vertexEntry.shard(), vertexEntry.key());
       this->state->currentGssObservables.messagesReceived += messages.size();
@@ -214,7 +226,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     return out;
   }
 
-  [[nodiscard]] auto finishProcessing(VerticesProcessed verticesProcessed)
+  [[nodiscard]] auto finishProcessing(
+      std::vector<VerticesProcessed> verticesProcessed)
       -> conductor::message::GlobalSuperStepFinished {
     // _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
 
@@ -245,13 +258,34 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       this->state->workerContext->_writeAggregators->serializeValues(
           aggregators);
     }
+
+    size_t totalActiveCount = 0;
+    std::unordered_map<actor::ActorPID, uint64_t> totalSendCountPerActor = {};
+
+    for (auto vP : verticesProcessed) {
+      totalActiveCount += vP.activeCount;
+
+      for (auto [actorPid, count] : vP.sendCountPerActor) {
+        totalSendCountPerActor[actorPid] += count;
+        /*if (totalSendCountPerActor.contains(actorPid)) {
+          totalSendCountPerActor.at(actorPid) =
+              totalSendCountPerActor.at(actorPid) + count;
+        } else {
+          totalSendCountPerActor.emplace(actorPid, count);
+        }*/
+      }
+    }
+
+    size_t totalAmountOfVertices = 0;
+    size_t totalAmountOfEdges = 0;
+    for (auto const& quiver : this->state->quivers) {
+      totalAmountOfVertices += quiver->numberOfVertices();
+      totalAmountOfEdges += quiver->numberOfEdges();
+    }
+
     auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
-        this->state->messageStats,
-        verticesProcessed.sendCountPerActor,
-        verticesProcessed.activeCount,
-        this->state->quiver->numberOfVertices(),
-        this->state->quiver->numberOfEdges(),
-        aggregators};
+        this->state->messageStats, totalSendCountPerActor, totalActiveCount,
+        totalAmountOfVertices,     totalAmountOfEdges,     aggregators};
     LOG_TOPIC("ade5b", DEBUG, Logger::PREGEL)
         << fmt::format("Finished GSS: {}", gssFinishedEvent);
 
@@ -295,13 +329,43 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     prepareGlobalSuperStep(std::move(message));
 
     // resend all queued messages that were dedicatd to this gss
-    for (auto const& message : this->state->messagesForNextGss) {
+    for (auto const& messageNextGss : this->state->messagesForNextGss) {
       this->template dispatch<worker::message::PregelMessage>(this->self,
-                                                              message);
+                                                              messageNextGss);
     }
     this->state->messagesForNextGss.clear();
 
-    auto verticesProcessed = processVertices();
+    std::vector<futures::Future<ResultT<VerticesProcessed>>> futures;
+    // first build up all future requests
+    for (auto [idx, quiver] : enumerate(this->state->quivers)) {
+      futures.emplace_back(processVertices(idx, quiver));
+    }
+
+    std::vector<VerticesProcessed> verticesProcessed = {};
+
+    if (!futures.empty()) {
+      // wait for all futures to finalize
+      auto futureResponses = futures::collectAll(futures).get();
+      for (auto const& fResponse : futureResponses) {
+        auto& result = fResponse.get();
+        if (result.fail()) {
+          LOG_TOPIC("ee2ax", WARN, Logger::PREGEL) << fmt::format(
+              "Worker {} execution aborted prematurely.", this->self);
+          // TODO: How to handle an error here properly. Currently I do not see
+          //  any ConductorErrorState message been implemented.
+          this->template dispatch<conductor::message::ConductorMessages>(
+              this->state->conductor,
+              ResultT<conductor::message::GlobalSuperStepFinished>::error(
+                  TRI_ERROR_INTERNAL,
+                  fmt::format("Worker {} execution aborted prematurely.",
+                              this->self)));
+          return std::move(this->state);
+        } else {
+          verticesProcessed.emplace_back(result.get());
+        }
+      }
+    }
+
     auto out = finishProcessing(verticesProcessed);
     this->template dispatch<conductor::message::ConductorMessages>(
         this->state->conductor,
@@ -405,7 +469,11 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
                                           this->state->algorithm->inputFormat(),
                                           std::move(statusUpdateCallback));
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->quivers) {
+          // TODO GORDO-1599: Parallel store
+          storer.store(quiver);
+        }
+
         return PregelResults{*storer.result};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,

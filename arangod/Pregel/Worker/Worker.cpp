@@ -164,11 +164,18 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
-    auto graphLoaded =
-        GraphLoaded{.executionNumber = _config->_executionNumber,
-                    .sender = ServerState::instance()->getId(),
-                    .vertexCount = _quivers.at(0)->numberOfVertices(),
-                    .edgeCount = _quivers.at(0)->numberOfEdges()};
+
+    size_t totalAmountOfVertices = 0;
+    size_t totalAmountOfEdges = 0;
+    for (auto const& quiver : _quivers) {
+      totalAmountOfVertices += quiver->numberOfVertices();
+      totalAmountOfEdges += quiver->numberOfEdges();
+    }
+
+    auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
+                                   .sender = ServerState::instance()->getId(),
+                                   .vertexCount = totalAmountOfVertices,
+                                   .edgeCount = totalAmountOfEdges};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -341,9 +348,29 @@ void Worker<V, E, M>::_startProcessing() {
       LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
       return;
     }
-    if (_processVertices() && _state == WorkerState::COMPUTING) {
-      _finishedProcessing();  // last thread turns the lights out
+
+    std::vector<futures::Future<Result>> futures;
+    // first build up all future requests
+    for (auto [idx, quiver] : enumerate(_quivers)) {
+      TRI_ASSERT(_state == WorkerState::COMPUTING);
+      futures.emplace_back(_processVertices(idx, quiver));
     }
+
+    if (!futures.empty()) {
+      // wait for all futures to finalize
+      auto futureResponses = futures::collectAll(futures).get();
+      for (auto const& fResponse : futureResponses) {
+        auto& result = fResponse.get();
+        if (result.fail()) {
+          LOG_PREGEL("ee2ac", WARN) << "Execution aborted prematurely.";
+          return;
+        }
+      }
+    }
+
+    // after all futures finished
+    TRI_ASSERT(_state == WorkerState::COMPUTING);
+    _finishedProcessing();  // last thread turns the lights out
   });
 
   LOG_PREGEL("425c3", DEBUG) << "Starting processing using " << 1 << " threads";
@@ -354,88 +381,86 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_quiver = _quivers.at(0);
+  ctx->_quivers = _quivers;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices() {
+futures::Future<Result> Worker<V, E, M>::_processVertices(
+    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
-  // Note: async await outer loop around caller of processVertices
-  for (auto [idx, quiver] : enumerate(_quivers)) {
-    // thread local caches
-    InCache<M>* inCache = _inCaches[idx];
-    OutCache<M>* outCache = _outCaches[idx];
-    outCache->setBatchSize(_messageBatchSize);
-    outCache->setLocalCache(inCache);
-    TRI_ASSERT(outCache->sendCount() == 0);
+  // thread local caches
+  InCache<M>* inCache = _inCaches[idx];
+  OutCache<M>* outCache = _outCaches[idx];
+  outCache->setBatchSize(_messageBatchSize);
+  outCache->setLocalCache(inCache);
+  TRI_ASSERT(outCache->sendCount() == 0);
 
-    AggregatorHandler workerAggregator(_algorithm.get());
+  AggregatorHandler workerAggregator(_algorithm.get());
 
-    std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
-        _algorithm->createComputation(_config));
-    _initializeVertexContext(vertexComputation.get());
-    vertexComputation->_writeAggregators = &workerAggregator;
-    vertexComputation->_cache = outCache;
+  std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
+      _algorithm->createComputation(_config));
+  _initializeVertexContext(vertexComputation.get());
+  vertexComputation->_writeAggregators = &workerAggregator;
+  vertexComputation->_cache = outCache;
 
-    size_t activeCount = 0;
-    for (auto& vertexEntry : *quiver) {
-      MessageIterator<M> messages =
-          _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
-      _currentGssObservables.messagesReceived += messages.size();
-      _currentGssObservables.memoryBytesUsedForMessages +=
-          messages.size() * sizeof(M);
-
-      if (messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(messages);
-        if (vertexEntry.active()) {
-          activeCount++;
-        }
-      }
-      if (_state != WorkerState::COMPUTING) {
-        break;
-      }
-
-      ++_currentGssObservables.verticesProcessed;
-      if (_currentGssObservables.verticesProcessed %
-              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-          0) {
-        _makeStatusCallback()();
-      }
-    }
-
-    // ==================== send messages to other shards ====================
-    outCache->flushMessages();
-    if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-      LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-      return false;
-    }
-
-    // merge thread local messages, _writeCache does locking
-    _writeCache->mergeCache(_config, inCache);
-    _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
-
-    MessageStats stats;
-    stats.sendCount = outCache->sendCount();
-    _currentGssObservables.messagesSent += outCache->sendCount();
+  size_t activeCount = 0;
+  for (auto& vertexEntry : *quiver) {
+    MessageIterator<M> messages =
+        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
+    _currentGssObservables.messagesReceived += messages.size();
     _currentGssObservables.memoryBytesUsedForMessages +=
-        outCache->sendCount() * sizeof(M);
-    stats.superstepRuntimeSecs = TRI_microtime() - start;
-    inCache->clear();
-    outCache->clear();
+        messages.size() * sizeof(M);
 
-    {
-      // merge the thread local stats and aggregators
-      _workerContext->_writeAggregators->aggregateValues(workerAggregator);
-      _messageStats.accumulate(stats);
-      _activeCount += activeCount;
-      _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
+    if (messages.size() > 0 || vertexEntry.active()) {
+      vertexComputation->_vertexEntry = &vertexEntry;
+      vertexComputation->compute(messages);
+      if (vertexEntry.active()) {
+        activeCount++;
+      }
+    }
+    if (_state != WorkerState::COMPUTING) {
+      break;
+    }
+
+    ++_currentGssObservables.verticesProcessed;
+    if (_currentGssObservables.verticesProcessed %
+            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+        0) {
+      _makeStatusCallback()();
     }
   }
-  return true;
+
+  // ==================== send messages to other shards ====================
+  outCache->flushMessages();
+  if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
+    return futures::makeFuture(Result{TRI_ERROR_INTERNAL});
+  }
+
+  // merge thread local messages, _writeCache does locking
+  _writeCache->mergeCache(_config, inCache);
+  _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
+
+  MessageStats stats;
+  stats.sendCount = outCache->sendCount();
+  _currentGssObservables.messagesSent += outCache->sendCount();
+  _currentGssObservables.memoryBytesUsedForMessages +=
+      outCache->sendCount() * sizeof(M);
+  stats.superstepRuntimeSecs = TRI_microtime() - start;
+  inCache->clear();
+  outCache->clear();
+
+  {
+    // merge the thread local stats and aggregators
+    _workerContext->_writeAggregators->aggregateValues(workerAggregator);
+    _messageStats.accumulate(stats);
+    _activeCount += activeCount;
+    _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
+  }
+
+  return futures::makeFuture(Result{TRI_ERROR_NO_ERROR});
 }
 
 // called at the end of a worker thread, needs mutex
