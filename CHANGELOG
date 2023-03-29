@@ -1,6 +1,8 @@
 v3.10.6 (XXXX-XX-XX)
 --------------------
 
+* Updated arangosync to v2.16.1.
+
 * Fix potential thread starvation in in-memory edge cache.
 
 * SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
