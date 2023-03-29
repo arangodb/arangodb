@@ -29,6 +29,8 @@ const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
+let getMetric = null;
+let runWithRetry = null;
 const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
@@ -179,7 +181,34 @@ function InsertMultipleDocumentsSuite() {
       }
       assertEqual(res.code, 201, "query not finished in time");
       assertEqual(res.parsedBody.result[0]['_key'], '123');
-    }
+    },
+
+    testInsertWithFillIndexCache: function () {
+      if (isServer) {
+        return;
+      }
+      let {
+        getEndpointsByType,
+        debugCanUseFailAt,
+        debugSetFailAt,
+        debugClearFailAt,
+      } = require('@arangodb/test-helper');
+      let ep = getEndpointsByType('dbserver');
+      if (ep && debugCanUseFailAt(ep[0])) {
+        let docs = [];
+        for (let i = 0; i < numDocs; ++i) {
+          docs.push({d: i});
+        }
+        try {
+          getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfFalse"));
+          // insert should just work
+          db._query(`FOR d IN @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true} RETURN d`, {docs: docs});
+          assertEqual(db[cn].count(), numDocs);
+        } finally {
+          getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
+        }
+      }
+    },
   };
 }
 
