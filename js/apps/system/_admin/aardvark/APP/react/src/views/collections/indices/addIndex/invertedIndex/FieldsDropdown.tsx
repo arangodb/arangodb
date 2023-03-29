@@ -81,7 +81,10 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
                 if (action.action === "create-option") {
                   push({ name: action.option.value });
                 }
-                if (action.action === "remove-value") {
+                if (
+                  action.action === "remove-value" ||
+                  action.action === "pop-value"
+                ) {
                   const index = formikField.value?.findIndex(
                     fieldObj => fieldObj.name === action.removedValue.value
                   );
