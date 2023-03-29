@@ -1,4 +1,4 @@
-name: arangodb_network_request_delayed_dequeues_total
+name: arangodb_network_delayed_dequeues_total
 introducedIn: "3.10.6"
 help: |
   Number of internal requests that had a delay from submission to dequeuing.
