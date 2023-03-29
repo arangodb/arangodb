@@ -4125,9 +4125,12 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
   builder.close();
 }
 
-// Circumventing fakeit inability to build a mock
-// for class with pure virtual functions in base
-class mock_field_iterator : public irs::field_iterator {};
+// Circumventing fakeit inability to run a mock
+// for class with private virtual functions
+class mock_field_iterator : public irs::field_iterator {
+ public:
+  void Destroy() const noexcept override {}
+};
 
 class mock_term_reader : public irs::term_reader {
  public:
@@ -4188,6 +4191,7 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
   mock_term_reader mockTermReader;
 
   fakeit::Mock<mock_field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, Destroy)).AlwaysReturn();
   fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
     if (field == mockedFields.end()) {
       field = mockedFields.begin();

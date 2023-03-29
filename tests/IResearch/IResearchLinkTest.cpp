@@ -138,11 +138,8 @@ class IResearchLinkTest
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchLinkTest, test_format_id) {
-  using namespace arangodb::iresearch;
-  static_assert("1_3simd" == getFormat(LinkVersion::MIN));
-  static_assert("1_4simd" == getFormat(LinkVersion::MAX));
-}
+static_assert("1_3simd" == getFormat(arangodb::iresearch::LinkVersion::MIN));
+static_assert("1_5simd" == getFormat(arangodb::iresearch::LinkVersion::MAX));
 
 TEST_F(IResearchLinkTest, test_defaults) {
   // no view specified
