@@ -27,6 +27,8 @@
 if (getOptions === true) {
   return {
     'database.extended-names-views': "true",
+    'database.extended-names-indexes': "true",
+    'database.extended-names-collections': "true",
   };
 }
 const jsunity = require('jsunity');
@@ -108,12 +110,43 @@ function testSuite() {
       
       checkTraditionalName();
     },
+
+    testArangosearchTraditionalNameWithExtendedCollectionNames: function() {
+      let view = db._createView(traditionalName, "arangosearch", {});
+      assertTrue(view instanceof ArangoView);
+
+      // create a collection with an extended name
+      db._create(extendedName);
+      try {
+        // and create a link on it
+        let properties = view.properties({ links: { [extendedName]: { includeAllFields: true } } });
+        assertTrue(properties.links.hasOwnProperty(extendedName));
+      } finally {
+        db._drop(extendedName);
+      }
+    },
     
     testArangosearchExtendedName: function() {
       let view = db._createView(extendedName, "arangosearch", {});
       assertTrue(view instanceof ArangoView);
 
       checkExtendedName();
+    },
+    
+    testArangosearchExtendedNameWithExtendedCollectionNames: function() {
+      let view = db._createView(extendedName, "arangosearch", {});
+      assertTrue(view instanceof ArangoView);
+
+      const otherExtendedName = extendedName + " !";
+      // create a collection with an extended name
+      db._create(otherExtendedName);
+      try {
+        // and create a link on it
+        let properties = view.properties({ links: { [otherExtendedName]: { includeAllFields: true } } });
+        assertTrue(properties.links.hasOwnProperty(otherExtendedName));
+      } finally {
+        db._drop(otherExtendedName);
+      }
     },
 
     testArangosearchInvalidUtf8Names: function() {
@@ -134,11 +167,51 @@ function testSuite() {
       checkTraditionalName();
     },
     
+    testSearchAliasTraditionalNameWithExtendedIndexName: function() {
+      let view = db._createView(traditionalName, "search-alias", {});
+      assertTrue(view instanceof ArangoView);
+
+      // create an index with an extended name
+      const otherTraditionalName = traditionalName + "2";
+
+      let c = db._create(otherTraditionalName);
+      try {
+        c.ensureIndex({ fields: ["value"], type: "inverted", name: extendedName });
+        let indexes = [{collection: otherTraditionalName, index: extendedName}];
+        
+        // and create indexes property
+        let properties = view.properties({ indexes });
+        assertEqual(indexes, properties.indexes);
+      } finally {
+        db._drop(otherTraditionalName);
+      }
+    },
+    
     testSearchAliasExtendedName: function() {
       let view = db._createView(extendedName, "search-alias", {});
       assertTrue(view instanceof ArangoView);
       
       checkExtendedName();
+    },
+    
+    testSearchAliasExtendedNameWithExtendedCollectionName: function() {
+      let view = db._createView(extendedName, "search-alias", {});
+      assertTrue(view instanceof ArangoView);
+
+      // create a collection with an extended name
+      const otherExtendedName = extendedName + "2!";
+
+      let c = db._create(otherExtendedName);
+      try {
+        c.ensureIndex({ fields: ["value"], type: "inverted", name: extendedName });
+        let indexes = [{collection: otherExtendedName, index: extendedName}];
+        
+        // and create indexes property
+        let properties = view.properties({ indexes });
+        assertEqual(indexes, properties.indexes);
+      } finally {
+        db._drop(otherExtendedName);
+      }
     },
     
     testSearchAliasInvalidUtf8Names: function() {

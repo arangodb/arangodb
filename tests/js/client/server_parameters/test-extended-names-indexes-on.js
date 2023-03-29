@@ -36,6 +36,13 @@ const errors = require('@arangodb').errors;
 const traditionalName = "UnitTestsDatabase";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
+const invalidNames = [
+  "\u212b", // Angstrom, not normalized;
+  "\u0041\u030a", // Angstrom, NFD-normalized;
+  "\u0073\u0323\u0307", // s with two combining marks, NFD-normalized;
+  "\u006e\u0303\u00f1", // non-normalized sequence;
+];
+
 function testSuite() {
   return {
     tearDown: function() {
@@ -75,6 +82,18 @@ function testSuite() {
       
       indexes = c.indexes().map((idx) => idx.name);
       assertEqual(-1, indexes.indexOf(extendedName));
+    },
+    
+    testCreateWithInvalidUtf8Names: function() {
+      let c = db._create(traditionalName);
+      invalidNames.forEach((name) => {
+        try {
+          c.ensureIndex({ type: "persistent", fields: ["value"], name: name });
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        }
+      });
     },
   };
 }

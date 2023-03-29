@@ -307,7 +307,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
