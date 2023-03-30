@@ -13,6 +13,9 @@ const ajv = new Ajv({
   $data: true
 });
 
+/**
+ * used to remove the schema on unmount, to avoid issues in next usage
+ */
 const useResetSchema = (schema: JSONSchemaType<ViewPropertiesType>) => {
   useEffect(() => {
     return () => {

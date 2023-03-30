@@ -33,7 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
-const versionHas = require("@arangodb/test-helper").versionHas;
+const {versionHas, flushInstanceInfo} = require("@arangodb/test-helper");
 const internal = require('internal');
 const platform = internal.platform;
 
@@ -513,6 +513,9 @@ function iterateTests(cases, options) {
   }
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
+    // required, because each different test suite may operate with a different set of servers!
+    flushInstanceInfo();
+
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     if (localOptions.failed) {

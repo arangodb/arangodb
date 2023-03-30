@@ -23,7 +23,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RequestLane.h"
@@ -92,7 +91,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _quiver(nullptr) {
   _config->updateConfig(parameters);
 
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
 
   _workerContext.reset(
       algo->workerContext(std::make_unique<AggregatorHandler>(algo),
@@ -215,7 +214,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
     PrepareGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
   if (_state != WorkerState::IDLE) {
     LOG_PREGEL("b8506", ERR)
         << "Cannot prepare a gss when the worker is not idle";
@@ -294,7 +293,7 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
   if (_state != WorkerState::PREPARING) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -318,7 +317,7 @@ void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
   _state = WorkerState::DONE;
   _workHandle.reset();
 }
@@ -438,7 +437,7 @@ bool Worker<V, E, M>::_processVertices() {
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_finishedProcessing() {
   // only lock after there are no more processing threads
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
   _feature.metrics()->pregelWorkersRunningNumber->fetch_sub(1);
   if (_state != WorkerState::COMPUTING) {
     return;  // probably canceled
@@ -489,7 +488,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                         std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicious activity
-  MUTEX_LOCKER(guard, _commandMutex);
+  std::lock_guard guard{_commandMutex};
   if (_state == WorkerState::DONE) {
     LOG_PREGEL("4067a", DEBUG) << "removing worker";
     cb();

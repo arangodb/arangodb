@@ -10,38 +10,24 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
   const match = useRouteMatch();
 
   const formState = fs as FormState;
-  const link = get(match.params, 'link')!;
+  const link = get(match.params, "link")!;
   const disabled = !isAdminUser;
 
-  return <div
-    id={'modal-dialog'}
-    className={'createModalDialog'}
-    tabIndex={-1}
-    role={'dialog'}
-    aria-labelledby={'myModalLabel'}
-    aria-hidden={'true'}
-    style={{
-      marginLeft: 'auto',
-      marginRight: 'auto'
-    }}
-  >
-    <div className="modal-body" style={{ overflowY: 'visible' }}>
-      <div className={'tab-content'}>
-        <div className="tab-pane tab-pane-modal active" id="Links">
-          <main>
-            <Switch>
-              <Route path={`${match.path}/:field+`}>
-                <FieldView disabled={disabled} name={name}/>
-              </Route>
-              <Route exact path={`${match.path}`}>
-                <LinkView link={link} links={formState.links} disabled={disabled} name={name}/>
-              </Route>
-            </Switch>
-          </main>
-        </div>
-      </div>
-    </div>
-  </div>;
+  return (
+    <Switch>
+      <Route path={`${match.path}/:field+`}>
+        <FieldView disabled={disabled} name={name} />
+      </Route>
+      <Route exact path={`${match.path}`}>
+        <LinkView
+          link={link}
+          links={formState.links}
+          disabled={disabled}
+          name={name}
+        />
+      </Route>
+    </Switch>
+  );
 };
 
 export default LinkPropertiesForm;

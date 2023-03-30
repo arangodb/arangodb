@@ -96,8 +96,8 @@ Please note that keys are only guaranteed to be truly ascending in single
 server deployments and for collections that only have a single shard (that includes
 collections in a OneShard database).
 The reason is that for collections with more than a single shard, document keys
-are generated on coordinator(s). For collections with a single shard, the document
-keys are generated on the leader DB server, which has full control over the key
+are generated on Coordinator(s). For collections with a single shard, the document
+keys are generated on the leader DB-Server, which has full control over the key
 sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}

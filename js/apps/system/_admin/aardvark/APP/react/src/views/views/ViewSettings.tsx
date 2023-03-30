@@ -9,7 +9,6 @@ import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
 import { postProcessor, useView } from "./helpers";
-import "./split-pane-styles.css";
 import { ViewHeader } from "./ViewHeader";
 import { ViewSection } from "./ViewSection";
 
@@ -135,6 +134,7 @@ const ViewSettingsInner = ({
       height="calc(100vh - 60px)"
       display="grid"
       gridTemplateRows="120px 1fr"
+      width="full"
     >
       <ViewHeader
         formState={formState}

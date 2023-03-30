@@ -35,7 +35,6 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
@@ -1001,7 +1000,7 @@ class ClusterInfo final {
 
   struct ProtectionData {
     std::atomic<bool> isValid;
-    mutable Mutex mutex;
+    mutable std::mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
     mutable arangodb::basics::ReadWriteLock lock;
@@ -1084,7 +1083,7 @@ class ClusterInfo final {
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
+  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardsToPlanServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
 
@@ -1139,7 +1138,7 @@ class ClusterInfo final {
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-      _shardIds;  // from Current/Collections/
+      _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
   containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
@@ -1171,7 +1170,7 @@ class ClusterInfo final {
   /// @brief lock for uniqid sequence
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _idLock;
+  std::mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids

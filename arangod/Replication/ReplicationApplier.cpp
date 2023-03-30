@@ -25,8 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -82,7 +80,7 @@ struct ApplierThread : public Thread {
     }
 
     {
-      MUTEX_LOCKER(locker, _syncerMutex);
+      std::lock_guard locker{_syncerMutex};
       _syncer->setAborted(false);
       _syncer.reset();
     }
@@ -93,7 +91,7 @@ struct ApplierThread : public Thread {
   virtual Result runApplier() = 0;
 
   void setAborted(bool value) {
-    MUTEX_LOCKER(locker, _syncerMutex);
+    std::lock_guard locker{_syncerMutex};
     if (_syncer) {
       _syncer->setAborted(value);
     }
@@ -101,7 +99,7 @@ struct ApplierThread : public Thread {
 
  protected:
   ReplicationApplier* _applier;
-  Mutex _syncerMutex;
+  std::mutex _syncerMutex;
   std::shared_ptr<Syncer> _syncer;
 };
 
@@ -127,7 +125,7 @@ struct FullApplierThread final : public ApplierThread {
     TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
 
     {
-      MUTEX_LOCKER(locker, _syncerMutex);
+      std::lock_guard locker{_syncerMutex};
       auto tailer = _applier->buildTailingSyncer(lastLogTick, true);
       _syncer.reset();
       _syncer = std::move(tailer);
