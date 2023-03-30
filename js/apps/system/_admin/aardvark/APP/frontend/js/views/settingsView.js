@@ -239,10 +239,8 @@
                 this.saveModifiedCollection.bind(this)
               )
             );
-
+            var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
-            var templates = ['modalTable.ejs', 'indicesView.ejs'];
-
             window.modalView.show(
               templates,
               'Modify Collection',

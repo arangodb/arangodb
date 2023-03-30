@@ -24,7 +24,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
@@ -122,7 +121,7 @@ auto waitForCurrentToCatchUp(
           bool gotTimeout;
           {
             // This one has not responded, wait for it.
-            CONDITION_LOCKER(locker, cb->_cv);
+            std::unique_lock guard(cb->_cv.mutex);
             gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
           }
           if (gotTimeout) {
@@ -360,7 +359,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
               bool gotTimeout;
               {
                 // This one has not responded, wait for it.
-                CONDITION_LOCKER(locker, cb->_cv);
+                std::unique_lock guard(cb->_cv.mutex);
                 gotTimeout = cb->executeByCallbackOrTimeout(pollInterval);
               }
               if (gotTimeout) {

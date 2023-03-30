@@ -61,47 +61,47 @@ TEST(CacheManagerTest, test_create_and_destroy_caches) {
   std::vector<std::shared_ptr<Cache>> caches;
 
   for (size_t i = 0; i < 8; ++i) {
-    Manager::MemoryStats beforeStats = manager.memoryStats();
-    ASSERT_EQ(i, beforeStats.activeTables);
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(i, beforeStats->activeTables);
 
     auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional);
     ASSERT_NE(nullptr, cache);
     ASSERT_GT(cache->size(), 80 * 1024);  // size of each cache is about 80kb
 
-    Manager::MemoryStats afterStats = manager.memoryStats();
-    ASSERT_EQ(beforeStats.globalAllocation + cache->size(),
-              afterStats.globalAllocation);
-    ASSERT_EQ(i + 1, afterStats.activeTables);
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(beforeStats->globalAllocation + cache->size(),
+              afterStats->globalAllocation);
+    ASSERT_EQ(i + 1, afterStats->activeTables);
 
-    ASSERT_EQ(0, afterStats.spareAllocation);
-    ASSERT_EQ(0, afterStats.spareTables);
+    ASSERT_EQ(0, afterStats->spareAllocation);
+    ASSERT_EQ(0, afterStats->spareTables);
 
     caches.emplace_back(std::move(cache));
   }
 
   std::uint64_t spareTables = 0;
   while (!caches.empty()) {
-    Manager::MemoryStats beforeStats = manager.memoryStats();
-    ASSERT_EQ(spareTables, beforeStats.spareTables);
+    auto beforeStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    ASSERT_EQ(spareTables, beforeStats->spareTables);
 
     auto cache = caches.back();
     std::uint64_t size = cache->size();
     ASSERT_GT(size, 80 * 1024);  // size of each cache is about 80kb
     manager.destroyCache(cache);
 
-    Manager::MemoryStats afterStats = manager.memoryStats();
-    if (afterStats.spareTables == beforeStats.spareTables) {
+    auto afterStats = manager.memoryStats(cache::Cache::triesGuarantee);
+    if (afterStats->spareTables == beforeStats->spareTables) {
       // table deleted
-      ASSERT_EQ(beforeStats.globalAllocation,
-                afterStats.globalAllocation + size);
-      ASSERT_EQ(spareTables, afterStats.spareTables);
+      ASSERT_EQ(beforeStats->globalAllocation,
+                afterStats->globalAllocation + size);
+      ASSERT_EQ(spareTables, afterStats->spareTables);
     } else {
       // table recycled
       ++spareTables;
       // ASSERT_EQ(spareTables * 80 * 1024, afterStats.spareAllocation);
-      ASSERT_EQ(spareTables, afterStats.spareTables);
+      ASSERT_EQ(spareTables, afterStats->spareTables);
     }
-    ASSERT_EQ(caches.size() - 1, afterStats.activeTables);
+    ASSERT_EQ(caches.size() - 1, afterStats->activeTables);
 
     caches.pop_back();
   }

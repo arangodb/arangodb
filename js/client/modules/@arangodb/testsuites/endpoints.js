@@ -71,8 +71,9 @@ class endpointRunner extends tu.runInArangoshRunner {
     this.instance = new inst.instance(this.options,
                                       inst.instanceRole.single,
                                       {
-                                        'log.level': 'startup=trace',
-                                        'log.force-direct': 'true'
+                                        'log.level': ['startup=trace', 'rocksdb=trace'],
+                                        'log.force-direct': 'true',
+                                        'rocksdb.debug-logging': 'true',
                                       },
                                       {}, 'tcp', this.dummyDir, '',
                                       new inst.agencyConfig(this.options, null));

@@ -68,6 +68,9 @@ exports.flushInstanceInfo = () => {
 };
 
 function getInstanceInfo() {
+  if (global.hasOwnProperty('instanceManger')) {
+    return global.instanceManger;
+  }
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
@@ -187,10 +190,14 @@ exports.getChecksum = function (endpoint, name) {
 exports.getRawMetric = function (endpoint, tags) {
   const primaryEndpoint = arango.getEndpoint();
   try {
-    reconnectRetry(endpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(endpoint, db._name(), "root", "");
+    }
     return arango.GET_RAW('/_admin/metrics' + tags);
   } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    if (endpoint !== primaryEndpoint) {
+      reconnectRetry(primaryEndpoint, db._name(), "root", "");
+    }
   }
 };
 

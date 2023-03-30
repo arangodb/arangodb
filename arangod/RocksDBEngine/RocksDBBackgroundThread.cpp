@@ -24,7 +24,6 @@
 #include "RocksDBBackgroundThread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -59,8 +58,8 @@ void RocksDBBackgroundThread::beginShutdown() {
   Thread::beginShutdown();
 
   // wake up the thread that may be waiting in run()
-  CONDITION_LOCKER(guard, _condition);
-  guard.broadcast();
+  std::lock_guard guard{_condition.mutex};
+  _condition.cv.notify_all();
 }
 
 void RocksDBBackgroundThread::run() {
@@ -72,8 +71,10 @@ void RocksDBBackgroundThread::run() {
 
   while (!isStopping()) {
     {
-      CONDITION_LOCKER(guard, _condition);
-      guard.wait(static_cast<uint64_t>(_interval * 1000000.0));
+      std::unique_lock guard{_condition.mutex};
+      _condition.cv.wait_for(guard,
+                             std::chrono::microseconds{
+                                 static_cast<uint64_t>(_interval * 1000000.0)});
     }
 
     if (_engine.inRecovery()) {
