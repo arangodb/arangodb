@@ -480,7 +480,7 @@ function testSuite() {
       res = c.insert(docs);
       assertEqual(100, res.length);
       res.forEach((res) => {
-        assertEqual(1210, res.errorNum);
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, res.errorNum);
       });
       
       // use overwriteMode update
@@ -529,6 +529,49 @@ function testSuite() {
       assertEqual(42, doc.value2);
       assertEqual(23, doc.value3);
       assertEqual(666, doc.value4);
+    },
+    
+    testCollectionBatchUpdate: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      docs = [];
+      let keys = [];
+      for (let i = 50; i < 102; ++i) {
+        keys.push({ _key: "test" + i });
+        docs.push({ value2: i });
+      }
+      let res = c.update(keys, docs);
+      assertEqual(52, res.length);
+      res.forEach((res, i) => {
+        if (i < 50) {
+          assertEqual(extendedName + "/test" + (50 + i), res._id);
+        } else {
+          assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, res.errorNum);
+        }
+      });
+     
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') SORT doc.value1 RETURN doc").toArray();
+      assertEqual(50, res.length);
+      
+      // update by id
+      docs = [];
+      keys = [];
+      for (let i = 0; i < 50; ++i) {
+        keys.push(extendedName + "/test" + i);
+        docs.push({ value2: i });
+      }
+      res = c.update(keys, docs);
+      assertEqual(50, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') SORT doc.value1 RETURN doc").toArray();
+      assertEqual(100, res.length);
     },
     
     testCollectionSingleReplace: function() {
@@ -594,6 +637,45 @@ function testSuite() {
       assertEqual(extendedName + "/test1", doc._id);
 
       assertFalse(c.exists("test1"));
+    },
+    
+    testCollectionBatchRemove: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      // remove by key, cause a few errors
+      docs = [];
+      for (let i = 50; i < 102; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      let res = c.remove(docs);
+      assertEqual(52, res.length);
+      res.forEach((res, i) => {
+        if (i < 50) {
+          assertEqual(extendedName + "/test" + (50 + i), res._id);
+        } else {
+          assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, res.errorNum);
+        }
+      });
+     
+      assertEqual(50, c.count());
+      
+      // remove by id
+      docs = [];
+      for (let i = 0; i < 50; ++i) {
+        docs.push(extendedName + "/test" + i);
+      }
+      res = c.remove(docs);
+      assertEqual(50, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+      
+      assertEqual(0, c.count());
     },
     
     testCollectionCount: function() {
