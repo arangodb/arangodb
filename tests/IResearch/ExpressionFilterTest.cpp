@@ -505,9 +505,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
 
     auto prepared =
         filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -578,9 +581,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     FilterCtx queryCtx(execCtx);
 
     auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -662,9 +668,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, columnValues);
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -757,9 +766,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, columnValues);
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -850,9 +862,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
     execCtx.ctx = &ctx;  // fix context
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
@@ -937,9 +952,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto prepared = filter.prepare(
         *reader, irs::Scorers::kUnordered);       // no context provided
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
     EXPECT_FALSE(docs->next());
   }
@@ -1012,9 +1030,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     auto prepared = filter.prepare(
         *reader, irs::Scorers::kUnordered);       // no context provided
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_TRUE(irs::doc_limits::eof(docs->value()));
     EXPECT_FALSE(docs->next());
   }
@@ -1087,9 +1108,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, columnValues);
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
@@ -1351,9 +1375,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, columnValues);
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
-    auto docs = prepared->execute({.segment = segment,
-                                   .scorers = irs::Scorers::kUnordered,
-                                   .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = irs::Scorers::kUnordered,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);

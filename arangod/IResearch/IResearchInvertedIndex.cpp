@@ -391,13 +391,13 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           irs::proxy_filter::cache_ptr newCache;
           if (condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND) {
             auto res = proxy_filter.set_filter<irs::And>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           } else {
             TRI_ASSERT((condition->type == aql::NODE_TYPE_OPERATOR_NARY_OR));
             auto res = proxy_filter.set_filter<irs::Or>();
-            _immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
+            _immutablePartCache[condition] = std::move(res.second);
           }
 
           auto const conditionSize =
@@ -405,6 +405,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
+              // cppcheck-suppress invalidLifetime
               auto& tmp_root = append<irs::Or>(*immutableRoot, filterCtx);
               auto rv = FilterFactory::filter(&tmp_root, filterCtx,
                                               *condition->getMember(i));

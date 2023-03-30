@@ -1025,9 +1025,12 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skipAll(
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      auto itr = this->_filter->execute({.segment = segmentReader,
-                                         .scorers = this->_scorers,
-                                         .ctx = &this->_filterCtx});
+      auto itr = this->_filter->execute({
+          .segment = segmentReader,
+          .scorers = this->_scorers,
+          .ctx = &this->_filterCtx,
+          .wand = {},
+      });
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1130,9 +1133,12 @@ bool IResearchViewHeapSortExecutor<ExecutionTraits>::fillBufferInternal(
   for (size_t readerOffset = 0; readerOffset < count;) {
     if (!itr) {
       auto& segmentReader = (*this->_reader)[readerOffset];
-      itr = this->_filter->execute({.segment = segmentReader,
-                                    .scorers = this->_scorers,
-                                    .ctx = &this->_filterCtx});
+      itr = this->_filter->execute({
+          .segment = segmentReader,
+          .scorers = this->_scorers,
+          .ctx = &this->_filterCtx,
+          .wand = {},
+      });
       TRI_ASSERT(itr);
       doc = irs::get<irs::document>(*itr);
       TRI_ASSERT(doc);
@@ -1427,9 +1433,12 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
     }
   }
 
-  _itr = this->_filter->execute({.segment = segmentReader,
-                                 .scorers = this->_scorers,
-                                 .ctx = &this->_filterCtx});
+  _itr = this->_filter->execute({
+      .segment = segmentReader,
+      .scorers = this->_scorers,
+      .ctx = &this->_filterCtx,
+      .wand = {},
+  });
   TRI_ASSERT(_itr);
   _doc = irs::get<irs::document>(*_itr);
   TRI_ASSERT(_doc);
@@ -1655,9 +1664,12 @@ void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
   for (size_t i = 0; i < size; ++i) {
     auto& segment = (*this->_reader)[i];
 
-    auto it = segment.mask(this->_filter->execute({.segment = segment,
-                                                   .scorers = this->_scorers,
-                                                   .ctx = &this->_filterCtx}));
+    auto it = segment.mask(this->_filter->execute({
+        .segment = segment,
+        .scorers = this->_scorers,
+        .ctx = &this->_filterCtx,
+        .wand = {},
+    }));
     TRI_ASSERT(it);
 
     auto const* doc = irs::get<irs::document>(*it);
