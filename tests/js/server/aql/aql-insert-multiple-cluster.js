@@ -554,6 +554,8 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
 
     testRuleNoEffect: function () {
       const queries = [
+        `FOR d IN 1..1 INSERT d INTO ${cn}`,
+        `LET docs = (FOR doc IN ${cn} RETURN doc) FOR d IN docs INSERT d INTO ${cn}`,
         `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
         `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
         `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`,
@@ -562,6 +564,8 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN 1`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN true`,
         `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN d`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1 INSERT d INTO ${cn}`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1, 1 INSERT d INTO ${cn}`,
       ];
       queries.forEach((query, idx) => {
         assertRuleIsNotUsed(query);
