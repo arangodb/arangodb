@@ -884,6 +884,7 @@ class instance {
     }
   }
   killWithCoreDump (message) {
+    internal.removePidFromMonitor(this.pid);
     this.getInstanceProcessStatus();
     this.serverCrashedLocal = true;
     if (this.pid === null) {
