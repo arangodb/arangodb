@@ -267,16 +267,48 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
   }
 }
 
-bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
-                                     AstNode* parent, size_t testIndex,
-                                     TraversalNode* tn, Variable const* pathVar,
-                                     bool& conditionIsImpossible,
-                                     size_t& swappedIndex,
-                                     int64_t& indexedAccessDepth) {
+struct PathVariableAccess {
+  struct AllAccess{};
+  enum class AccessType {VERTEX, EDGE};
+
+  std::variant<int64_t, AllAccess> index{0};
+  AccessType type{AccessType::VERTEX};
+  AstNode* parentOfReplace{nullptr};
+  size_t replaceIdx{0};
+
+  bool isLast() {
+    return std::visit(overload{[](AllAccess const&) { return false; },
+                               [](int64_t const& i) { return i == -1; }},
+                      index);
+  }
+
+  int64_t getDepth() {
+    ADB_PROD_ASSERT(std::holds_alternative<int64_t>(index));
+    return std::get<int64_t>(index);
+  }
+
+  bool isAllAccess() {
+    return std::holds_alternative<AllAccess>(index);
+  }
+
+  bool isEdgeAccess() {
+    return type == AccessType::EDGE;
+  }
+
+  bool isVertexAccess() {
+    return type == AccessType::EDGE;
+  }
+};
+
+auto maybeExtractPathAccess(Ast* ast, Variable const* pathVar, AstNode* parent, size_t testIndex)
+    -> std::optional<PathVariableAccess> {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!isSupportedNode(ast, pathVar, node)) {
-    return false;
+    return std::nullopt;
   }
+
+  int64_t indexedAccessDepth = 0;
+
   // We need to walk through each branch and validate:
   // 1. It does not contain unsupported types
   // 2. Only one contains var
@@ -473,7 +505,7 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
     Ast::traverseAndModify(node->getMemberUnchecked(i), supportedGuard,
                            searchPattern, unusedWalker);
     if (notSupported) {
-      return false;
+      return std::nullopt;
     }
     if (patternStep == 5) {
       // The first item is direct child of the parent.
@@ -484,7 +516,7 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
       if (parentOfReplace != node->getMemberUnchecked(0)) {
         // We found a right hand side of x ALL == p.edges[*]
         // Cannot optimize
-        return false;
+        return std::nullopt;
       }
       parentOfReplace = node;
       replaceIdx = 0;
@@ -502,7 +534,6 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
       patternStep++;
     }
     if (patternStep == 7) {
-      swappedIndex = i;
       patternStep++;
     }
   }
@@ -510,41 +541,75 @@ bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
   if (patternStep < 8) {
     // We found sth. that is not matching the pattern complete.
     // => Do not optimize
-    return false;
+    return std::nullopt;
   }
 
+  // If we get here we found a proper PathAccess, let's build it
+  PathVariableAccess pathAccess{};
+  if (isEdge) {
+    pathAccess.type = PathVariableAccess::AccessType::EDGE;
+  } else {
+    pathAccess.type = PathVariableAccess::AccessType::VERTEX;
+  }
+  if (depth == UINT64_MAX) {
+    pathAccess.index = PathVariableAccess::AllAccess{};
+  } else {
+    // TODO: Fix ME:
+    pathAccess.index = static_cast<int64_t>(depth);
+  }
+  pathAccess.parentOfReplace = parentOfReplace;
+  pathAccess.replaceIdx = replaceIdx;
+  return pathAccess;
+
+}
+
+bool checkPathVariableAccessFeasible(Ast* ast, ExecutionPlan* plan,
+                                     AstNode* parent, size_t testIndex,
+                                     TraversalNode* tn, Variable const* pathVar,
+                                     bool& conditionIsImpossible,
+                                     int64_t& indexedAccessDepth) {
+  auto pathAccess = maybeExtractPathAccess(ast, pathVar, parent, testIndex);
+  if (!pathAccess.has_value()) {
+    return false;
+  }
   // If we get here we can optimize this condition
   // As we modify the condition we need to clone it
   auto tempNode = tn->getTemporaryRefNode();
-  TRI_ASSERT(parentOfReplace != nullptr);
-  if (depth == UINT64_MAX) {
+  TRI_ASSERT(pathAccess->parentOfReplace != nullptr);
+  if (pathAccess->isAllAccess()) {
     // Global Case
     auto replaceNode = buildExpansionReplacement(
-        ast, parentOfReplace->getMemberUnchecked(replaceIdx), tempNode);
-    parentOfReplace->changeMember(replaceIdx, replaceNode);
+        ast,
+        pathAccess->parentOfReplace->getMemberUnchecked(pathAccess->replaceIdx),
+        tempNode);
+    pathAccess->parentOfReplace->changeMember(pathAccess->replaceIdx,
+                                              replaceNode);
     ///////////
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
     ///////////
     auto cond = conditionWithInlineCalculations(
         plan, parent->getMemberUnchecked(testIndex));
-    tn->registerGlobalCondition(isEdge, cond);
+    tn->registerGlobalCondition(pathAccess->isEdgeAccess(), cond);
   } else {
-    conditionIsImpossible = !tn->isInRange(depth, isEdge);
-    if (conditionIsImpossible) {
+    if (pathAccess->getDepth() < 0) {
+      return false;
+    }
+    if (!tn->isInRange(pathAccess->getDepth(), pathAccess->isEdgeAccess())) {
+      conditionIsImpossible = true;
       return false;
     }
     // edit in-place; TODO replace instead?
-    TEMPORARILY_UNLOCK_NODE(parentOfReplace);
+    TEMPORARILY_UNLOCK_NODE(pathAccess->parentOfReplace);
     // Point Access
-    parentOfReplace->changeMember(replaceIdx, tempNode);
+    pathAccess->parentOfReplace->changeMember(pathAccess->replaceIdx, tempNode);
 
     auto cond = conditionWithInlineCalculations(
         plan, parent->getMemberUnchecked(testIndex));
 
     // NOTE: We have to reload the NODE here, because we may have replaced
     // it entirely
-    tn->registerCondition(isEdge, depth, cond);
+    tn->registerCondition(pathAccess->isEdgeAccess(), pathAccess->getDepth(), cond);
   }
   return true;
 }
@@ -715,11 +780,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
             int64_t indexedAccessDepth = -1;
 
-            size_t swappedIndex = 0;
             // If we get here we can optimize this condition
             if (!checkPathVariableAccessFeasible(
                     _plan->getAst(), _plan, andNode, i - 1, node, pathVar,
-                    conditionIsImpossible, swappedIndex, indexedAccessDepth)) {
+                    conditionIsImpossible, indexedAccessDepth)) {
               if (conditionIsImpossible) {
                 // If we get here we cannot fulfill the condition
                 // So clear
