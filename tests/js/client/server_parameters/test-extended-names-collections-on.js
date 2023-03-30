@@ -406,6 +406,64 @@ function testSuite() {
       }
     },
     
+    testCollectionSingleInsert: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let res = c.insert({ _key: "test1", value: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+
+      let doc = c.document(extendedName + "/test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      
+      try {
+        c.insert({ _key: "test1", value: 1 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+      }
+      
+      res = c.insert({ _key: "test2", value: 1 });
+      assertEqual(extendedName + "/test2", res._id);
+      
+      doc = c.document(extendedName + "/test2");
+      assertEqual(extendedName + "/test2", doc._id);
+    },
+    
+    testCollectionBatchInsert: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      let res = c.insert(docs);
+      assertEqual(100, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+
+      // cause unique constraint violations
+      res = c.insert(docs);
+      assertEqual(100, res.length);
+      res.forEach((res) => {
+        assertEqual(1210, res.errorNum);
+      });
+      
+      // use overwriteMode update
+      docs = docs.map((doc) => { doc.value2 = "test" + doc.value1; return doc; });
+      res = c.insert(docs, { overwriteMode: "update" });
+      assertEqual(100, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+      
+      // use overwriteMode replace
+      docs = docs.map((doc) => { doc.value3 = doc.value2; return doc; });
+      res = c.insert(docs, { overwriteMode: "replace" });
+      assertEqual(100, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+    },
+    
     testCollectionCount: function() {
       let c = db._create(extendedName);
       assertEqual(0, c.count());

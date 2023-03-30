@@ -309,9 +309,22 @@ authRouter.get('/query/download/:user', function (req, res) {
 `);
 
 authRouter.get('/query/result/download/:query', function (req, res) {
+  const fromBinary = (binary) => {
+    const bytes = Uint8Array.from({ length: binary.length }, (element, index) =>
+      binary.charCodeAt(index)
+    );
+    const charCodes = new Uint16Array(bytes.buffer);
+
+    let result = "";
+    charCodes.forEach((char) => {
+      result += String.fromCharCode(char);
+    });
+    return result;
+  };
+
   let query;
   try {
-    query = internal.base64Decode(req.pathParams.query);
+    query = fromBinary(req.pathParams.query);
     query = JSON.parse(query);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});

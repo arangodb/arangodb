@@ -1939,8 +1939,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
-        std::move(headers));
+        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/truncate",
+        std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
