@@ -33,54 +33,13 @@
 #include "Replication2/ReplicatedLog/Components/FollowerCommitManager.h"
 #include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
+#include "Replication2/ReplicatedLog/Components/FollowerMethodsProvider.h"
+#include "Replication2/ReplicatedLog/Components/WaitQueueManager.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 
 namespace arangodb::replication2::replicated_log {
-
-struct MethodsProvider : IReplicatedLogFollowerMethods {
-  explicit MethodsProvider(FollowerManager& fm) : follower(fm) {}
-  auto releaseIndex(LogIndex index) -> void override {
-    follower.compaction->updateReleaseIndex(index);
-  }
-
-  auto getCommittedLogIterator(std::optional<LogRange> range)
-      -> std::unique_ptr<LogRangeIterator> override {
-    return follower.storage->getCommittedLogIterator(range);
-  }
-
-  auto waitFor(LogIndex index) -> ILogParticipant::WaitForFuture override {
-    return follower.commit->waitFor(index);
-  }
-
-  auto waitForIterator(LogIndex index)
-      -> ILogParticipant::WaitForIteratorFuture override {
-    return follower.commit->waitForIterator(index);
-  }
-
-  auto snapshotCompleted(std::uint64_t version) -> Result override {
-    return follower.snapshot->setSnapshotStateAvailable(
-        follower.appendEntriesManager->getLastReceivedMessageId(), version);
-  }
-
-  [[nodiscard]] auto leaderConnectionEstablished() const -> bool override {
-    // Having a commit index means we've got at least one append entries request
-    // which was also applied *successfully*.
-    // Note that this is pessimistic, in the sense that it actually waits for an
-    // append entries request that was sent after leadership was established,
-    // which we don't necessarily need.
-    return follower.commit->getCommitIndex() > LogIndex{0};
-  }
-
-  auto checkSnapshotState() const noexcept
-      -> replicated_log::SnapshotState override {
-    return follower.snapshot->checkSnapshotState();
-  }
-
- private:
-  FollowerManager& follower;
-};
 
 namespace {
 
@@ -108,19 +67,21 @@ FollowerManager::FollowerManager(
           std::make_shared<StorageManager>(std::move(methods), loggerContext)),
       compaction(std::make_shared<CompactionManager>(*storage, options,
                                                      loggerContext)),
-      stateHandle(
-          std::make_shared<StateHandleManager>(std::move(stateHandlePtr))),
+      waitQueue(std::make_shared<WaitQueueManager>(storage)),
+      methodsProvider(std::make_shared<FollowerMethodsProvider>(
+          storage, compaction, waitQueue)),
+      stateHandle(std::make_shared<StateHandleManager>(
+          std::move(stateHandlePtr), methodsProvider)),
       snapshot(std::make_shared<SnapshotManager>(
           *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
-                                                     loggerContext)),
+                                                     waitQueue, loggerContext)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit, metrics,
           loggerContext)),
       termInfo(termInfo) {
   metrics->replicatedLogFollowerNumber->operator++();
-  auto provider = std::make_unique<MethodsProvider>(*this);
-  stateHandle->becomeFollower(std::move(provider));
+  stateHandle->becomeFollower();
   // Follower state manager is there, now get a snapshot if we need one.
   snapshot->acquireSnapshotIfNecessary();
 }
@@ -239,7 +200,7 @@ auto FollowerManager::resign()
   // don't try to access other managers after this
   std::move((*appendEntriesManager)).resign();
   // 4. abort all wait for promises.
-  commit->resign();
+  waitQueue->resign();
   return std::make_tuple(std::move(methods), std::move(handle),
                          DeferredAction{});
 }
@@ -265,12 +226,12 @@ auto LogFollowerImpl::resign() && -> std::tuple<
 
 auto LogFollowerImpl::waitFor(LogIndex index)
     -> ILogParticipant::WaitForFuture {
-  return guarded.getLockedGuard()->commit->waitFor(index);
+  return guarded.getLockedGuard()->waitQueue->waitFor(index);
 }
 
 auto LogFollowerImpl::waitForIterator(LogIndex index)
     -> ILogParticipant::WaitForIteratorFuture {
-  return guarded.getLockedGuard()->commit->waitForIterator(index);
+  return guarded.getLockedGuard()->waitQueue->waitForIterator(index);
 }
 
 auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)

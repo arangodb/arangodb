@@ -25,19 +25,13 @@
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "WaitQueueManager.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     -> DeferredAction {
-  struct ResolveContext {
-    WaitForResult result;
-    WaitForQueue queue;
-  };
-
-  auto ctx = std::make_unique<ResolveContext>();
   auto guard = guardedData.getLockedGuard();
 
   LOG_CTX("d2083", TRACE, loggerContext)
@@ -58,79 +52,22 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     guard->stateHandle.updateCommitIndex(guard->resolveIndex);
   }
 
-  ctx->result = WaitForResult(guard->commitIndex, nullptr);
-
-  auto const end = guard->waitQueue.upper_bound(guard->resolveIndex);
-  for (auto it = guard->waitQueue.begin(); it != end;) {
-    ctx->queue.insert(guard->waitQueue.extract(it++));
-  }
-
-  return DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
-    for (auto& it : ctx->queue) {
-      if (!it.second.isFulfilled()) {
-        // This only throws if promise was fulfilled earlier.
-        it.second.setValue(ctx->result);
-      }
-    }
-  });
+  auto result = WaitForResult(guard->commitIndex, nullptr);
+  return waitQueue->resolveIndex(newResolveIndex, result);
 }
 
 auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {
   return guardedData.getLockedGuard()->commitIndex;
 }
 
-FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
-                                             IStateHandleManager& stateHandle,
-                                             LoggerContext const& loggerContext)
+FollowerCommitManager::FollowerCommitManager(
+    IStorageManager& storage, IStateHandleManager& stateHandle,
+    std::shared_ptr<IWaitQueueManager> waitQueue,
+    LoggerContext const& loggerContext)
     : guardedData(storage, stateHandle),
       loggerContext(loggerContext.with<logContextKeyLogComponent>(
-          "follower-commit-manager")) {}
-
-auto FollowerCommitManager::waitFor(LogIndex index) noexcept
-    -> ILogParticipant::WaitForFuture {
-  auto guard = guardedData.getLockedGuard();
-
-  if (guard->isResigned) {
-    auto promise = ResolvePromise{};
-    promise.setException(ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
-    return promise.getFuture();
-  }
-
-  if (index <= guard->resolveIndex) {
-    // resolve immediately
-    return WaitForResult(guard->commitIndex, nullptr);
-  }
-
-  return guard->waitQueue.emplace(index, ResolvePromise{})->second.getFuture();
-}
-
-auto FollowerCommitManager::waitForIterator(LogIndex index) noexcept
-    -> ILogParticipant::WaitForIteratorFuture {
-  return waitFor(index).thenValue(
-      [index,
-       weak = weak_from_this()](auto&&) -> std::unique_ptr<LogRangeIterator> {
-        if (auto self = weak.lock(); self) {
-          auto guard = self->guardedData.getLockedGuard();
-          return guard->storage.getCommittedLogIterator(
-              LogRange{index, guard->resolveIndex + 1});
-        }
-
-        THROW_ARANGO_EXCEPTION(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
-      });
-}
-
-void FollowerCommitManager::resign() noexcept {
-  auto guard = guardedData.getLockedGuard();
-  ADB_PROD_ASSERT(not guard->isResigned);
-  guard->isResigned = true;
-  for (auto& [idx, promise] : guard->waitQueue) {
-    promise.setException(ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
-  }
-  guard->waitQueue.clear();
-}
+          "follower-commit-manager")),
+      waitQueue(std::move(waitQueue)) {}
 
 FollowerCommitManager::GuardedData::GuardedData(
     IStorageManager& storage, IStateHandleManager& stateHandle)

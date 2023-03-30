@@ -23,6 +23,7 @@
 
 #include "StateHandleManager.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
+#include "FollowerMethodsProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -52,13 +53,14 @@ void StateHandleManager::updateCommitIndex(LogIndex index) noexcept {
 }
 
 StateHandleManager::StateHandleManager(
-    std::unique_ptr<IReplicatedStateHandle> stateHandle)
-    : guardedData(std::move(stateHandle)) {}
+    std::unique_ptr<IReplicatedStateHandle> stateHandle,
+    std::shared_ptr<IFollowerMethodsProvider> methodsProvider)
+    : guardedData(std::move(stateHandle)),
+      methodsProvider(std::move(methodsProvider)) {}
 
-void StateHandleManager::becomeFollower(
-    std::unique_ptr<IReplicatedLogFollowerMethods> ptr) {
+void StateHandleManager::becomeFollower() {
   auto guard = guardedData.getLockedGuard();
-  guard->stateHandle->becomeFollower(std::move(ptr));
+  guard->stateHandle->becomeFollower(methodsProvider->getMethods());
 }
 
 void StateHandleManager::acquireSnapshot(const ParticipantId& leader,

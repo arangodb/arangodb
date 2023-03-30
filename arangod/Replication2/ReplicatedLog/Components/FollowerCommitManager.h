@@ -31,33 +31,20 @@ namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
 struct IStorageManager;
+struct IWaitQueueManager;
 
-struct FollowerCommitManager
-    : IFollowerCommitManager,
-      std::enable_shared_from_this<FollowerCommitManager> {
+struct FollowerCommitManager : IFollowerCommitManager {
   explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&,
+                                 std::shared_ptr<IWaitQueueManager>,
                                  LoggerContext const& loggerContext);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
-  auto waitFor(LogIndex index) noexcept
-      -> ILogParticipant::WaitForFuture override;
-  auto waitForIterator(LogIndex index) noexcept
-      -> ILogParticipant::WaitForIteratorFuture override;
-
-  void resign() noexcept;
-
  private:
-  using ResolvePromise = futures::Promise<WaitForResult>;
-  using ResolveFuture = futures::Future<WaitForResult>;
-  using WaitForQueue = std::multimap<LogIndex, ResolvePromise>;
-
   struct GuardedData {
     explicit GuardedData(IStorageManager&, IStateHandleManager&);
     LogIndex commitIndex{0};
     LogIndex resolveIndex{0};
-    WaitForQueue waitQueue;
-    bool isResigned{false};
 
     IStorageManager& storage;
     IStateHandleManager& stateHandle;
@@ -65,6 +52,7 @@ struct FollowerCommitManager
 
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
+  std::shared_ptr<IWaitQueueManager> const waitQueue;
 };
 
 }  // namespace comp

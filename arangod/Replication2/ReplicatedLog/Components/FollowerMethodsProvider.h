@@ -21,24 +21,37 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <memory>
-#include <string>
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
-namespace arangodb::replication2 {
+namespace arangodb {
+
+namespace replication2 {
 struct LogIndex;
-using ParticipantId = std::string;
 namespace replicated_log {
-struct IReplicatedStateHandle;
-struct IReplicatedLogFollowerMethods;
 inline namespace comp {
-struct IStateHandleManager {
-  virtual ~IStateHandleManager() = default;
-  virtual void updateCommitIndex(LogIndex) noexcept = 0;
-  virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
-  virtual void becomeFollower() = 0;
-  virtual void acquireSnapshot(ParticipantId const& leader,
-                               std::uint64_t version) noexcept = 0;
+struct IStorageManager;
+struct ICompactionManager;
+struct IWaitQueueManager;
+
+struct IFollowerMethodsProvider {
+  virtual ~IFollowerMethodsProvider() = default;
+  virtual auto getMethods()
+      -> std::unique_ptr<IReplicatedLogFollowerMethods> = 0;
 };
+
+struct FollowerMethodsProvider : IFollowerMethodsProvider {
+  FollowerMethodsProvider(std::shared_ptr<IStorageManager> storage,
+                          std::shared_ptr<ICompactionManager> compaction,
+                          std::shared_ptr<IWaitQueueManager> waitQueue);
+  auto getMethods() -> std::unique_ptr<IReplicatedLogFollowerMethods> override;
+
+ private:
+  std::shared_ptr<IStorageManager> const storage;
+  std::shared_ptr<ICompactionManager> const compaction;
+  std::shared_ptr<IWaitQueueManager> const waitQueue;
+};
+
 }  // namespace comp
 }  // namespace replicated_log
-}  // namespace arangodb::replication2
+}  // namespace replication2
+}  // namespace arangodb

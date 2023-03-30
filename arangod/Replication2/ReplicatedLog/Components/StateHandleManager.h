@@ -29,14 +29,16 @@
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
+struct IFollowerMethodsProvider;
+
 struct StateHandleManager : IStateHandleManager {
   explicit StateHandleManager(
-      std::unique_ptr<IReplicatedStateHandle> stateHandle);
+      std::unique_ptr<IReplicatedStateHandle> stateHandle,
+      std::shared_ptr<IFollowerMethodsProvider> methodsProvider);
 
   auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> override;
   void updateCommitIndex(LogIndex index) noexcept override;
-  void becomeFollower(
-      std::unique_ptr<IReplicatedLogFollowerMethods> ptr) override;
+  void becomeFollower() override;
 
   void acquireSnapshot(ParticipantId const& leader,
                        std::uint64_t version) noexcept override;
@@ -50,6 +52,7 @@ struct StateHandleManager : IStateHandleManager {
   };
 
   Guarded<GuardedData> guardedData;
+  std::shared_ptr<IFollowerMethodsProvider> const methodsProvider;
 };
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
