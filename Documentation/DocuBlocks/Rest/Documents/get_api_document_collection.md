@@ -35,7 +35,7 @@ about dirty reads for the entire transaction, not the individual read operations
 To make this operation a part of a Stream Transaction, set this header to the
 transaction ID returned by the `POST /_api/transaction/begin` call.
 
-@RESTALLBODYPARAM{documents,array,required}
+@RESTALLBODYPARAM{documents,json,required}
 An array of documents to retrieve.
 
 @RESTDESCRIPTION

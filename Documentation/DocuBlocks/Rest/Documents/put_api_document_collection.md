@@ -4,7 +4,7 @@
 
 @RESTHEADER{PUT /_api/document/{collection},Replace documents,replaceDocuments}
 
-@RESTALLBODYPARAM{documents,array,required}
+@RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of documents.
 
 @RESTURLPARAMETERS
