@@ -73,11 +73,11 @@ export const AnalyzersDropdown = ({
       isDisabled={isDisabled}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeAnalyzer((action.removedValue as any).value as string);
+          removeAnalyzer(action.removedValue.value);
           return;
         }
-        if (action.action === "select-option") {
-          addAnalyzer((action.option as any).value as string);
+        if (action.action === "select-option" && action.option) {
+          addAnalyzer(action.option.value);
         }
       }}
     />
