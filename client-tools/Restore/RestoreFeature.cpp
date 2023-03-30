@@ -74,7 +74,17 @@ std::string escapedCollectionName(std::string const& name,
   std::string escapedName = name;
   if (!arangodb::CollectionNameValidator::isAllowedName(/*isSystem*/ true,
                                                         false, name)) {
+    // we have a collection name with special characters.
+    // we should not try to save the collection under its name in the
+    // filesystem. instead, we will use the collection id as part of the
+    // filename. try looking up collection id in "cid"
     VPackSlice idSlice = parameters.get(arangodb::StaticStrings::DataSourceCid);
+    if (idSlice.isNone() &&
+        parameters.hasKey(arangodb::StaticStrings::DataSourceId)) {
+      // "cid" not present, try "id" (there seems to be difference between
+      // cluster and single server about which attribute is present)
+      idSlice = parameters.get(arangodb::StaticStrings::DataSourceId);
+    }
     if (idSlice.isString()) {
       escapedName = idSlice.copyString();
     } else if (idSlice.isNumber<uint64_t>()) {
