@@ -76,7 +76,11 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <memory>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <absl/strings/str_cat.h>
 
