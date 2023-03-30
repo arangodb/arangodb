@@ -33,7 +33,7 @@ const jsunity = require('jsunity');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 
-const traditionalName = "UnitTestsDatabase";
+const traditionalName = "UnitTestsIndex";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 const invalidNames = [

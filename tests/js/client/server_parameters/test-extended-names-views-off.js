@@ -35,7 +35,7 @@ const errors = require('@arangodb').errors;
 const ArangoView = require("@arangodb").ArangoView;
 const isCluster = require("internal").isCluster;
 
-const traditionalName = "UnitTestsDatabase";
+const traditionalName = "UnitTestsView";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 function testSuite() {

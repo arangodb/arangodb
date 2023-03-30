@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNull, assertNotNull, fail */
+/* global getOptions, assertEqual, assertTrue, assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -26,55 +26,63 @@
 
 if (getOptions === true) {
   return {
-    'database.extended-names-indexes': "false",
+    'database.extended-names-collections': "false",
   };
 }
 const jsunity = require('jsunity');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
+const isCluster = require("internal").isCluster;
 
-const traditionalName = "UnitTestsIndex";
+const traditionalName = "UnitTestsCollection";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 function testSuite() {
   return {
     tearDown: function() {
       db._drop(traditionalName);
+      db._drop(extendedName);
     },
 
-    testCreateAndDropIndexTraditionalName: function() {
-      let c = db._create(traditionalName);
-      let idx = c.ensureIndex({ type: "persistent", fields: ["value"], name: traditionalName });
-      assertEqual(traditionalName, idx.name);
-
-      idx = c.index(traditionalName);
-      assertEqual(traditionalName, idx.name);
-
-      let indexes = c.indexes().map((idx) => idx.name);
-      assertNotEqual(-1, indexes.indexOf(traditionalName));
-
-      c.dropIndex(traditionalName);
+    testCreateExtendedName: function() {
+      try {
+        db._create(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
       
-      indexes = c.indexes().map((idx) => idx.name);
-      assertEqual(-1, indexes.indexOf(traditionalName));
+      let c = db._collection(extendedName);
+      assertNull(c);
     },
     
-    testCreateAndDropIndexExtendedName: function() {
-      let c = db._create(traditionalName);
+    testCreateEdgeExtendedName: function() {
       try {
-        c.ensureIndex({ type: "persistent", fields: ["value"], name: extendedName });
+        db._createEdgeCollection(extendedName);
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
-
+      
+      let c = db._collection(extendedName);
+      assertNull(c);
+    },
+    
+    testRenameToExtendedName: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+        
+      let c = db._create(traditionalName);
       try {
-        c.index(extendedName);
+        c.rename(extendedName);
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
+    
   };
 }
 
