@@ -322,6 +322,9 @@ void Query::prepareQuery(SerializationFormat format) {
     TRI_ASSERT(plan != nullptr);
     plan->findVarUsage();
 
+    TRI_ASSERT(_trx != nullptr);
+    TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
+
     // keep serialized copy of unchanged plan to include in query profile
     // necessary because instantiate / execution replace vars and blocks
     bool const keepPlan =
@@ -407,19 +410,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
     _queryOptions.transactionOptions.intermediateCommitCount = UINT64_MAX;
   }
 
-  // We need a transaction while optimizing the plan because we need to fetch
-  // some collection counts. However, this is a different transaction than the
-  // one that is used to execute the query.
-  auto ctx = std::make_shared<transaction::StandaloneContext>(
-      _transactionContext->vocbase());
-
-  // TODO - this is currently very hacky! Nedd to clean this up!
-  _trx = AqlTransaction::create(ctx, _collections,
-                                _queryOptions.transactionOptions, {});
-  // create the transaction object, but do not start it yet
-  _trx->addHint(
-      transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-
+  TRI_ASSERT(_trx == nullptr);
   // needs to be created after the AST collected all collections
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
@@ -427,17 +418,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif
-  // TODO - we need to create the execution transaction _HERE_, because if we
-  // create it later this causes an assertion error. ATM it is still unclear why
-  // - this needs more investigation!
-  auto executionTrx = AqlTransaction::create(
-      _transactionContext, _collections, _queryOptions.transactionOptions,
-      std::move(inaccessibleCollections));
+
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions,
+                                std::move(inaccessibleCollections));
+  // create the transaction object, but do not start it yet
+  _trx->addHint(
+      transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
 
   // We need to preserve the information about dirty reads, since the
   // transaction who knows might be gone before we have produced the
   // result:
-  _allowDirtyReads = executionTrx->state()->options().allowDirtyReads;
+  _allowDirtyReads = _trx->state()->options().allowDirtyReads;
 
   // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
@@ -450,6 +442,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
   Result res = _trx->begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -469,25 +462,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
-
-  // we now delete the transaction that was used for optimization and replace it
-  // with our actual execution transaction
-  _trx.reset();
-  TRI_ASSERT(_trx == nullptr);
-  _trx = std::move(executionTrx);
-
-  if (plan->needsElCheapoTransaction()) {
-    _trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  } else {
-    _trx->addHint(
-        transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-  }
-
-  res = _trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
   TRI_ASSERT(plan != nullptr);
 
