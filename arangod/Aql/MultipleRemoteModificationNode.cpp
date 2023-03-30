@@ -38,7 +38,6 @@
 #include "Aql/SortRegister.h"
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
-#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -106,8 +105,6 @@ std::unique_ptr<ExecutionBlock> MultipleRemoteModificationNode::createBlock(
 /// @brief doToVelocyPack, for MultipleRemoteModificationNode
 void MultipleRemoteModificationNode::doToVelocyPack(VPackBuilder& nodes,
                                                     unsigned flags) const {
-  CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
-
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
 
@@ -137,10 +134,6 @@ void MultipleRemoteModificationNode::doToVelocyPack(VPackBuilder& nodes,
   nodes.add(StaticStrings::ProducesResult, VPackValue(isAnyVarUsedLater));
   nodes.add(VPackValue("modificationFlags"));
   _options.toVelocyPack(nodes);
-
-  nodes.add("projections", VPackValue(VPackValueType::Array));
-  // TODO: support projections?
-  nodes.close();
 }
 
 /// @brief estimateCost
