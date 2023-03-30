@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_gharial_graph_edge_definition
 @brief Remove an edge definition form the graph
 
-@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{definition}, Remove an edge definition from the graph, deleteEdgeDefinition}
+@RESTHEADER{DELETE /_api/gharial/{graph}/edge/{collection}, Remove an edge definition from the graph, deleteEdgeDefinition}
 
 @RESTDESCRIPTION
 Remove one edge definition from the graph.  This will only remove the
@@ -13,8 +13,8 @@ be used in your queries.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{definition,string,required}
-The name of the edge collection used in the definition.
+@RESTURLPARAM{collection,string,required}
+The name of the edge collection used in the edge definition.
 
 @RESTQUERYPARAMETERS
 

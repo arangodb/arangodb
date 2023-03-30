@@ -2,25 +2,26 @@
 @startDocuBlock delete_api_job_type
 @brief deletes an async job result
 
-@RESTHEADER{DELETE /_api/job/{type}, Deletes async job, deleteJob}
+@RESTHEADER{DELETE /_api/job/{job-id}, Deletes async job, deleteJob}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{type,string,required}
-The type of jobs to delete. type can be:
-* *all*: Deletes all jobs results. Currently executing or queued async
-  jobs will not be stopped by this call.
-* *expired*: Deletes expired results. To determine the expiration status of a
-  result, pass the stamp query parameter. stamp needs to be a UNIX timestamp,
-  and all async job results created at a lower timestamp will be deleted.
-* *an actual job-id*: In this case, the call will remove the result of the
-  specified async job. If the job is currently executing or queued, it will
-  not be aborted.
+@RESTURLPARAM{job-id,string,required}
+The ID of the job to delete. The ID can be:
+- `all`: Deletes all jobs results. Currently executing or queued async
+  jobs are not stopped by this call.
+- `expired`: Deletes expired results. To determine the expiration status of a
+  result, pass the stamp query parameter. stamp needs to be a Unix timestamp,
+  and all async job results created before this time are deleted.
+- **A numeric job ID**: In this case, the call removes the result of the
+  specified async job. If the job is currently executing or queued, it is
+  not aborted.
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{stamp,number,optional}
-A UNIX timestamp specifying the expiration threshold when type is expired.
+A Unix timestamp specifying the expiration threshold for when the `job-id` is
+set to `expired`.
 
 @RESTDESCRIPTION
 Deletes either all job results, expired job results, or the result of a
@@ -35,11 +36,11 @@ is returned if the deletion operation was carried out successfully.
 This code will also be returned if no results were deleted.
 
 @RESTRETURNCODE{400}
-is returned if type is not specified or has an invalid value.
+is returned if `job-id` is not specified or has an invalid value.
 
 @RESTRETURNCODE{404}
-is returned if type is a job-id but no async job with the specified id was
-found.
+is returned if `job-id` is a syntactically valid job ID but no async job with
+the specified ID is found.
 
 @EXAMPLES
 
