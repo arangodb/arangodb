@@ -809,6 +809,23 @@ function testSuite() {
       assertEqual(0, c.count());
     },
     
+    testExtendedNameInBindParameters: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN @@collection SORT doc.value1 RETURN doc", { "@collection": extendedName }).toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual("test" + i, res[i]._key);
+        assertEqual(extendedName + "/test" + i, res[i]._id);
+        assertEqual(i, res[i].value1);
+      }
+    },
+    
     testQueryIdValues: function() {
       let c = db._create(extendedName);
       let docs = [];
