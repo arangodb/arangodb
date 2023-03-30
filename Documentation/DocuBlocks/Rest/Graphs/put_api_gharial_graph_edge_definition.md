@@ -1,7 +1,7 @@
 @startDocuBlock put_api_gharial_graph_edge_definition
 @brief Replace an existing edge definition
 
-@RESTHEADER{PUT /_api/gharial/{graph}/edge/{definition}, Replace an edge definition, replaceEdgeDefinition}
+@RESTHEADER{PUT /_api/gharial/{graph}/edge/{collection}, Replace an edge definition, replaceEdgeDefinition}
 
 @RESTDESCRIPTION
 Change one specific edge definition.
@@ -12,8 +12,8 @@ This will modify all occurrences of this definition in all graphs known to your 
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{definition,string,required}
-The name of the edge collection used in the definition.
+@RESTURLPARAM{collection,string,required}
+The name of the edge collection used in the edge definition.
 
 @RESTQUERYPARAMETERS
 
