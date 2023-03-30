@@ -103,10 +103,6 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
   TRI_ASSERT(!_info._options.returnOld);
   TRI_ASSERT(!_info._options.returnNew);
 
-  OperationResult result(Result(), _info._options);
-
-  size_t possibleWrites = 0;  // TODO - get real statistic values!
-
   TRI_ASSERT(_info._input1RegisterId.isValid());
   AqlValue const& inDocument = input.getValue(_info._input1RegisterId);
   if (_info._options.returnOld &&
@@ -121,17 +117,30 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
-                       _info._options);
+
+  auto result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
+                            _info._options);
 
   // check operation result
   if (!_info._ignoreErrors) {
     if (!result.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
-                                     result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result.result);
     }
     if (!result.countErrorCodes.empty()) {
       THROW_ARANGO_EXCEPTION(result.countErrorCodes.begin()->first);
+    }
+  }
+
+  uint64_t writesExecuted = 0;
+  uint64_t writesIgnored = 0;
+
+  if (result.hasSlice()) {
+    for (auto it : VPackArrayIterator(result.slice())) {
+      if (it.isObject() && it.get("error").isTrue()) {
+        ++writesIgnored;
+      } else {
+        ++writesExecuted;
+      }
     }
   }
 
@@ -140,9 +149,8 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  possibleWrites = inDocument.slice().length();
-  stats.incrWritesExecuted(possibleWrites);
-  stats.incrScannedIndex();
+  stats.incrWritesExecuted(writesExecuted);
+  stats.incrWritesIgnored(writesIgnored);
   return result;
 }
 
@@ -185,6 +193,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     output.moveValueInto(_info._outputRegisterId, input, guard);
   }
 
+  // RETURN OLD: current unsupported
   if (_info._outputOldRegisterId.isValid()) {
     TRI_ASSERT(options.returnOld);
     AqlValue value(oldDocument);
@@ -192,6 +201,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     output.moveValueInto(_info._outputOldRegisterId, input, guard);
   }
 
+  // RETURN NEW: current unsupported
   if (_info._outputNewRegisterId.isValid()) {
     TRI_ASSERT(options.returnNew);
     AqlValue value(newDocument);

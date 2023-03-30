@@ -97,8 +97,8 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
         
       const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
       try {
-        db._query(query, {docs});
         assertRuleIsUsed(query, {docs});
+        db._query(query, {docs});
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
@@ -106,6 +106,58 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       }
 
       assertEqual(0, db[cn].count());
+    },
+    
+    testTransactionalBehaviorWithIgnoreErrors: function () {
+      let docs = [];
+      for (let i = 0; i < 1001; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      docs.push({ _key: "test0" });
+        
+      const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
+      assertRuleIsUsed(query, {docs});
+      let res = db._query(query, {docs});
+      assertEqual([], res.toArray());
+
+      assertEqual(1001, db[cn].count());
+    },
+    
+    testStatsWithoutErrors: function () {
+      let docs = [];
+      for (let i = 0; i < 1005; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+        
+      const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
+      assertRuleIsUsed(query, {docs});
+      let res = db._query(query, {docs});
+      assertEqual([], res.toArray());
+      
+      assertEqual(1005, db[cn].count());
+
+      let stats = res.getExtra().stats;
+      assertEqual(1005, stats.writesExecuted);
+      assertEqual(0, stats.writesIgnored);
+    },
+    
+    testStatsWithIgnoreErrors: function () {
+      let docs = [];
+      for (let i = 0; i < 1001; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      docs.push({ _key: "test0" });
+        
+      const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
+      assertRuleIsUsed(query, {docs});
+      let res = db._query(query, {docs});
+      assertEqual([], res.toArray());
+      
+      assertEqual(1001, db[cn].count());
+
+      let stats = res.getExtra().stats;
+      assertEqual(1001, stats.writesExecuted);
+      assertEqual(1, stats.writesIgnored);
     },
     
     testReturnOld: function () {
