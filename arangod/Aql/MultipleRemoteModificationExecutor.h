@@ -56,8 +56,6 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
 
   bool _hasParent;  // node->hasParent();
   bool _isExclusive;
-
-  constexpr static double const defaultTimeOut = 3600.0;
 };
 
 struct MultipleRemoteModificationExecutor {

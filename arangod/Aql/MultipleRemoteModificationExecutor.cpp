@@ -54,10 +54,13 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
   transaction::Options opts;
   opts.waitForSync = info._options.waitForSync;
   if (info._isExclusive) {
-    return {std::move(ctx), {}, {}, {info._aqlCollection->name()}, opts};
-  } else {
-    return {std::move(ctx), {}, {info._aqlCollection->name()}, {}, opts};
+    // exclusive transaction
+    return {std::move(ctx), /*read*/ {}, /*write*/ {},
+            /*exclusive*/ {info._aqlCollection->name()}, opts};
   }
+  // write transaction
+  return {std::move(ctx), /*read*/ {}, /*write*/ {info._aqlCollection->name()},
+          /*exclusive*/ {}, opts};
 }
 
 [[nodiscard]] auto MultipleRemoteModificationExecutor::produceRows(
@@ -80,6 +83,9 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
     AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, MultipleRemoteModificationExecutor::Stats,
                   size_t, AqlCall> {
+  // note: this code currently is never triggered, because the optimizer
+  // rule is not firing when the query uses a LIMIT
+  TRI_ASSERT(false);
   auto stats = Stats{};
 
   if (input.hasDataRow()) {
@@ -136,7 +142,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
 
   if (result.hasSlice()) {
     for (auto it : VPackArrayIterator(result.slice())) {
-      if (it.isObject() && it.get("error").isTrue()) {
+      if (it.isObject() && it.get(StaticStrings::Error).isTrue()) {
         ++writesIgnored;
       } else {
         ++writesExecuted;
@@ -165,7 +171,7 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     if (_info._hasParent) {
       output.copyRow(input);
     }
-    return;  //  _info._hasParent;
+    return;
   }
 
   // Fill itemblock
