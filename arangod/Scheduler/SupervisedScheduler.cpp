@@ -324,6 +324,9 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
     if (bounded) {
       queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
     }
+    [[maybe_unused]] uint64_t oldSubmitted =
+        _jobsSubmitted.fetch_sub(1, std::memory_order_relaxed);
+    TRI_ASSERT(oldSubmitted > 0);
     throw;
   }
   std::ignore = work.release();  // queue now has ownership for the WorkItemBase
