@@ -2,8 +2,6 @@
 /* global getOptions, assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server parameters
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -96,6 +94,19 @@ function testSuite() {
           assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
         }
       });
+    },
+    
+    testCurrentDatabaseAQLFunction: function() {
+      db._createDatabase(extendedName);
+
+      db._useDatabase(extendedName);
+      try {
+        let res = db._query("RETURN CURRENT_DATABASE()").toArray();
+        assertEqual(1, res.length);
+        assertEqual(extendedName, res[0]);
+      } finally {
+        db._useDatabase("_system");
+      }
     },
   };
 }

@@ -177,6 +177,64 @@ function testSuite() {
         }
       });
     },
+
+    testArangosearchExtendedViewNameUseInQuery1: function() {
+      let c = db._create(traditionalName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: "testmann" + i });
+      }
+      c.insert(docs);
+
+      try {
+        let view = db._createView(extendedName, "arangosearch", {});
+        view.properties({ links: { [traditionalName]: { includeAllFields: true } } });
+
+        let res = db._query("FOR doc IN `" + extendedName + "` SEARCH doc.value1 >= 0 OPTIONS { waitForSync: true } SORT doc.value1 RETURN doc").toArray();
+        assertEqual(100, res.length);
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(i, res[i].value1);
+          assertTrue(res[i]._id.startsWith(traditionalName + "/"));
+        }
+        
+        res = db._query("FOR doc IN `" + extendedName + "` SEARCH doc.value1 >= 0 OPTIONS { waitForSync: true } SORT doc.value1 RETURN doc.value1").toArray();
+        assertEqual(100, res.length);
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(i, res[i]);
+        }
+      } finally {
+        db._drop(traditionalName);
+      }
+    },
+    
+    testArangosearchExtendedViewNameUseInQuery2: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i, value2: "testmann" + i });
+      }
+      c.insert(docs);
+
+      try {
+        let view = db._createView(traditionalName, "arangosearch", {});
+        view.properties({ links: { [extendedName]: { includeAllFields: true } } });
+
+        let res = db._query("FOR doc IN `" + traditionalName + "` SEARCH doc.value1 >= 0 OPTIONS { waitForSync: true } SORT doc.value1 RETURN doc").toArray();
+        assertEqual(100, res.length);
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(i, res[i].value1);
+          assertTrue(res[i]._id.startsWith(extendedName + "/"));
+        }
+        
+        res = db._query("FOR doc IN `" + traditionalName + "` SEARCH doc.value1 >= 0 OPTIONS { waitForSync: true } SORT doc.value1 RETURN doc.value1").toArray();
+        assertEqual(100, res.length);
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(i, res[i]);
+        }
+      } finally {
+        db._drop(extendedName);
+      }
+    },
     
     testSearchAliasTraditionalName: function() {
       let view = db._createView(traditionalName, "search-alias", {});
