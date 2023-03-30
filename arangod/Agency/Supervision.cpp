@@ -31,6 +31,7 @@
 #include "Agency/Helpers.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Agency/ReconfigureReplicatedLog.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/Store.h"
 #include "Agency/NodeLoadInspector.h"
@@ -3640,33 +3641,69 @@ void Supervision::checkUndoLeaderChangeActions() {
         // jobId.
       }
     }
-    auto jobOpt = entry.hasAsNode("moveShard");
-    if (!jobOpt) {
-      return true;
-    }
-    Node const& job(jobOpt.value());
-    auto database = job.hasAsString("database");
-    auto collection = job.hasAsString("collection");
-    auto server = job.hasAsString("fromServer");
+
+    auto server = entry.hasAsString("fromServer");
     if (!server) {
       return true;
-    } else {
-      if (isReplication2(*database)) {
+    }
+
+    auto database = entry.hasAsString("database").value();
+    auto jobType = entry.hasAsString("type").value();
+
+    if (jobType == "moveShard") {
+      auto collection = entry.hasAsString("collection").value();
+      if (isReplication2(database)) {
         auto stateId =
-            Job::getReplicatedStateId(*_snapshot, database.value(),
-                                      collection.value(), shard)
-                .value_or(LogicalCollection::shardIdToStateId(shard));
-        auto target = Job::readStateTarget(snapshot(), *database, stateId);
-        if (!target.has_value() || !target->participants.contains(*server)) {
+            Job::getReplicatedStateId(*_snapshot, database, collection, shard);
+        if (!stateId.has_value()) {
+          LOG_TOPIC("030d0", WARN, Logger::SUPERVISION)
+              << "Failed to lookup replicated log: database " << database
+              << "; collection: " << collection << "; shard: " << shard;
+          return true;
+        }
+
+        // Check that the removed server is not already in target.
+        auto target =
+            Job::readStateTarget(snapshot(), database, stateId.value());
+        if (!target.has_value() ||
+            !target->participants.contains(server.value())) {
+          LOG_TOPIC("39e32", DEBUG, Logger::SUPERVISION)
+              << "deleting undo job because server " << server.value()
+              << " is not in target";
           return true;
         }
       } else {
-        if (!isServerInPlan(database.value(), collection.value(), shard,
-                            server.value())) {
+        if (!isServerInPlan(database, collection, shard, server.value())) {
+          LOG_TOPIC("739bb", DEBUG, Logger::SUPERVISION)
+              << "deleting undo job because server " << server.value()
+              << " is not in plan";
           return true;
         }
       }
+    } else if (jobType == "reconfigureReplicatedLog") {
+      if (!isReplication2(database)) {
+        TRI_ASSERT(false)
+            << "reconfigureReplicatedLog job for non-replication2 "
+               "database: "
+            << entry.toJson();
+        return true;
+      }
+
+      auto logId =
+          replication2::LogId::fromString(entry.hasAsString("logId").value());
+      // Check that the removed server is not already leader in target.
+      auto target = Job::readStateTarget(snapshot(), database, logId.value());
+      if (!target.has_value() || target->leader == server.value()) {
+        LOG_TOPIC("308c0", DEBUG, Logger::SUPERVISION)
+            << "deleting job because server " << server.value()
+            << " is already leader in target";
+        return true;
+      }
+    } else {
+      TRI_ASSERT(false) << "Unknown job type: " << entry.toJson();
+      return true;
     }
+
     return false;
   };
 
@@ -3687,6 +3724,24 @@ void Supervision::checkUndoLeaderChangeActions() {
         trx->add(path + "jobId", VPackValue(std::to_string(jobId)));
       };
 
+  auto const undoLogLeadership = [&](std::shared_ptr<VPackBuilder> const& trx,
+                                     std::string const& database,
+                                     replication2::LogId const& logId,
+                                     std::string const& server) {
+    uint64_t jobId = _jobId++;
+    ReconfigureReplicatedLog(
+        *_snapshot, _agent, std::to_string(jobId), "supervision", database,
+        logId,
+        {consensus::ReconfigureOperation{
+            consensus::ReconfigureOperation::SetLeader{.participant = server}}})
+        .create(trx);
+
+    std::string now(timepointToString(std::chrono::system_clock::now()));
+    std::string path = returnLeadershipPrefix + to_string(logId) + "/";
+    trx->add(path + "started", VPackValue(now));
+    trx->add(path + "jobId", VPackValue(std::to_string(jobId)));
+  };
+
   auto undos = snapshot().hasAsChildren("Target/ReturnLeadership");
   if (not undos) {
     return;
@@ -3698,16 +3753,20 @@ void Supervision::checkUndoLeaderChangeActions() {
     VPackArrayBuilder guard(trx.get());
     VPackObjectBuilder guard2(trx.get());
 
-    for (auto const& [shard, entry] : undos->get()) {
+    // For replication1, id is always the shard id.
+    // For replication2, id could be a shard id or a log id, depending on the
+    // job type.
+    for (auto const& [id, entry] : undos->get()) {
       // First check some conditions under which we simply get rid of the
       // entry:
       //  - deadline exceeded (and not yet started)
       //  - dependent MoveShard gone (and started)
       //  - fromServer no longer in Plan
       TRI_ASSERT(entry != nullptr);
-      if (checkDeletion(shard, *entry)) {
+
+      if (checkDeletion(id, *entry)) {
         // Let's remove the entry:
-        trx->add(VPackValue(returnLeadershipPrefix + shard));
+        trx->add(VPackValue(returnLeadershipPrefix + id));
         {
           VPackObjectBuilder guard3(trx.get());
           trx->add("op", VPackValue("delete"));
@@ -3717,9 +3776,9 @@ void Supervision::checkUndoLeaderChangeActions() {
 
       // Now the job is still valid, let's see if it fires. Note that we
       // do not get here, if the job is not found!
-      auto jobOpt = entry->hasAsNode("moveShard");
-      TRI_ASSERT(jobOpt);
-      Node const& job = jobOpt.value();
+      // The job type could be "moveShard" or "reconfigureReplicatedLog".
+      auto jobType = entry->hasAsString("type");
+      TRI_ASSERT(jobType);
 
       // We need to check if:
       //  - it is not yet started
@@ -3731,22 +3790,13 @@ void Supervision::checkUndoLeaderChangeActions() {
         continue;
       }
 
-      auto database = job.hasAsString("database");
-      auto collection = job.hasAsString("collection");
-      auto fromServer = job.hasAsString("fromServer");
-      auto toServer = job.hasAsString("toServer");
-      TRI_ASSERT(fromServer && toServer && database && collection);
+      auto database = entry->hasAsString("database");
+      auto fromServer = entry->hasAsString("fromServer");
+      TRI_ASSERT(fromServer && database);
 
-      // get server health
+      // make sure server is GOOD
       if (serverHealth(fromServer.value()) != HEALTH_STATUS_GOOD) {
         continue;
-      }
-
-      if (not isReplication2(*database)) {
-        if (!isServerInSync(database.value(), collection.value(), shard,
-                            fromServer.value())) {
-          continue;
-        }
       }
 
       // get current reboot id
@@ -3755,12 +3805,47 @@ void Supervision::checkUndoLeaderChangeActions() {
       if (!rebootId) {
         continue;
       }
-
-      // check if reboot id is bigger than the stored one
+      // for the undo operation to continue, the current reboot ID must be
+      // greater than the stored one
       auto storedRebootId = entry->hasAsUInt("rebootId");
-      if (!storedRebootId || storedRebootId.value() < rebootId.value()) {
-        reclaimShard(trx, database.value(), collection.value(), shard,
+      if (storedRebootId.has_value() &&
+          storedRebootId.value() >= rebootId.value()) {
+        continue;
+      }
+
+      // For the MoveShard job, both replication 1 and 2 support the undo
+      // operation. However, for the ResignLeadership job, replication1 does a
+      // MoveShard job, while replication2 does a ReconfigureReplicatedLog job,
+      // hence the undo operation is different. The undo job has to be the
+      // same as the original job.
+      if (jobType == "moveShard") {
+        auto collection = entry->hasAsString("collection");
+        auto toServer = entry->hasAsString("toServer");
+        TRI_ASSERT(collection && toServer);
+
+        // For replication1, make sure the server is in sync
+        if (not isReplication2(*database)) {
+          if (!isServerInSync(database.value(), collection.value(), id,
+                              fromServer.value())) {
+            continue;
+          }
+        }
+
+        reclaimShard(trx, database.value(), collection.value(), id,
                      toServer.value(), fromServer.value());
+      } else if (jobType == "reconfigureReplicatedLog") {
+        auto logId = replication2::LogId::fromString(
+            entry->hasAsString("logId").value());
+        if (!logId.has_value()) {
+          LOG_TOPIC("f0acc", ERR, Logger::SUPERVISION)
+              << "Invalid log id: " << entry->hasAsString("logId").value();
+          continue;
+        }
+        undoLogLeadership(trx, database.value(), logId.value(),
+                          fromServer.value());
+      } else {
+        TRI_ASSERT(false) << "Unknown job type: " << jobType.value();
+        continue;
       }
     }
   }

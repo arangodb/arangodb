@@ -41,6 +41,7 @@ class Slice;
 }
 namespace replication2 {
 class LogId;
+struct GlobalLogIdentifier;
 namespace agency {
 struct LogPlanSpecification;
 struct LogTarget;
