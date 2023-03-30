@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/MultipleRemoteModificationExecutor.h"
@@ -40,23 +40,10 @@ namespace arangodb::aql {
 
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
-    : _ctx(std::make_shared<transaction::StandaloneContext>(
-          info._query.vocbase())),
+    : _trx(info._query.newTrxContext()),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
-  // for the make_unique to deduce type
-  std::vector<std::string> emptyColls;
-  std::vector<std::string> colls = {info._aqlCollection->name()};
-  transaction::Options opts;
-  opts.waitForSync = _info._options.waitForSync;
-  if (_info._isExclusive) {
-    _trx = std::make_unique<transaction::Methods>(_ctx, emptyColls, emptyColls,
-                                                  colls, opts);
-  } else {
-    _trx = std::make_unique<transaction::Methods>(_ctx, emptyColls, colls,
-                                                  emptyColls, opts);
-  }
-  _trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  _trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
 
@@ -68,7 +55,7 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
 
   if (input.hasDataRow()) {
     auto [state, row] = input.nextDataRow();
-    auto result = doMultipleRemoteModificationOperation(row, stats);
+    auto result = doMultipleRemoteOperations(row, stats);
     if (result.ok()) {
       doMultipleRemoteModificationOutput(row, output, result);
     }
@@ -84,7 +71,7 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
 
   if (input.hasDataRow()) {
     auto [state, row] = input.nextDataRow();
-    auto result = doMultipleRemoteModificationOperation(row, stats);
+    auto result = doMultipleRemoteOperations(row, stats);
     if (result.ok()) {
       call.didSkip(1);
       return {input.upstreamState(), stats, 1, AqlCall{}};
@@ -93,7 +80,7 @@ MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
   return {input.upstreamState(), stats, 0, AqlCall{}};
 }
 
-auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
+auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
     InputAqlItemRow& input, Stats& stats) -> OperationResult {
   _info._options.silent = false;
   _info._options.returnOld =
@@ -113,12 +100,8 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
         "'update' or 'replace'");
   }
 
-  auto res = _trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  result = _trx->insert(_info._aqlCollection->name(), inDocument.slice(),
-                        _info._options);
+  result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
+                       _info._options);
 
   // check operation result
   if (!_info._ignoreErrors) {
@@ -129,11 +112,6 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOperation(
     if (!result.countErrorCodes.empty()) {
       THROW_ARANGO_EXCEPTION(result.countErrorCodes.begin()->first);
     }
-  }
-
-  res = _trx->commit();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
   }
 
   possibleWrites = inDocument.slice().length();
@@ -193,10 +171,6 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteModificationOutput(
     AqlValue value(newDocument);
     AqlValueGuard guard(value, true);
     output.moveValueInto(_info._outputNewRegisterId, input, guard);
-  }
-
-  TRI_IF_FAILURE("MultipleRemoteModificationOperationBlock::moreDocuments") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 }
 }  // namespace arangodb::aql

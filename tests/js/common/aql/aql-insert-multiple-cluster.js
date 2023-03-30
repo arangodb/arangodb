@@ -245,7 +245,7 @@ function InsertMultipleDocumentsExplainSuite() {
       assertEqual(nodes[1].expression.type, "array");
       assertEqual(nodes[1].expression.raw.length, numDocs);
       assertEqual(nodes[1].dependencies.length, 1);
-      assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+      assertEqual(nodes[2].type, "MultipleRemoteModificationNode");
       assertEqual(nodes[2].dependencies.length, 1);
       assertEqual(nodes[2].dependencies[0], dependencyId);
       assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
@@ -272,7 +272,7 @@ function InsertMultipleDocumentsExplainSuite() {
         assertEqual(nodes[1].expression.type, "array");
         assertEqual(nodes[1].expression.raw.length, 2);
         assertEqual(nodes[1].dependencies.length, 1);
-        assertEqual(nodes[2].type, "MultipleRemoteOperationNode");
+        assertEqual(nodes[2].type, "MultipleRemoteModificationNode");
         assertEqual(nodes[2].dependencies.length, 1);
         assertEqual(nodes[2].dependencies[0], dependencyId);
         assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);

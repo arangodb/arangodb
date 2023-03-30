@@ -46,7 +46,7 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/MultipleRemoteOperationNode.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
@@ -113,7 +113,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::REMOTE_MULTIPLE),
-     "MultipleRemoteOperationNode"},
+     "MultipleRemoteModificationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY_START), "SubqueryStartNode"},
@@ -360,7 +360,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case REMOTE_MULTIPLE:
-      return new MultipleRemoteOperationNode(plan, slice);
+      return new MultipleRemoteModificationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
     case SUBQUERY_START:

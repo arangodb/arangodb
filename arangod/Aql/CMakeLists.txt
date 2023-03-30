@@ -94,7 +94,7 @@ add_library(arango_aql STATIC
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
-  MultipleRemoteOperationNode.cpp
+  MultipleRemoteModificationNode.cpp
   MultipleRemoteModificationExecutor.cpp
   MutexExecutor.cpp
   MutexNode.cpp

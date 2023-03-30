@@ -2045,7 +2045,7 @@ function processQuery(query, explain, planIndex) {
         }
       }
         break;
-      case 'MultipleRemoteOperationNode': {
+      case 'MultipleRemoteModificationNode': {
         modificationFlags = node.modificationFlags;
         collectionVariables[node.inVariable.id] = node.collection;
         let indexRef = `${variableName(node.inVariable)}`;

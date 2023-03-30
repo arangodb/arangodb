@@ -112,6 +112,12 @@ class ExecutionPlan {
 
   bool hasForcedIndexHints() const noexcept { return _hasForcedIndexHints; }
 
+  void setNeedsElCheapoTransaction() noexcept {
+    TRI_ASSERT(!_needsElCheapoTrx);  // must be called at most once
+    _needsElCheapoTrx = true;
+  }
+  bool needsElCheapoTransaction() const noexcept { return _needsElCheapoTrx; }
+
   /// @brief enable a specific rule
   void enableRule(int rule);
 
@@ -437,6 +443,8 @@ class ExecutionPlan {
 
   // Flag there are collection nodes with forceIndexHint:true
   bool _hasForcedIndexHints{false};
+
+  bool _needsElCheapoTrx{false};
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;
