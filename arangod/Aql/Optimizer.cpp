@@ -42,7 +42,7 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
 void Optimizer::disableRules(
     ExecutionPlan* plan,
     std::function<bool(OptimizerRule const&)> const& predicate) {
-  for (auto& it : _rules) {
+  for (auto const& it : _rules) {
     auto const& rule = OptimizerRulesFeature::ruleByIndex(it);
     if (predicate(rule)) {
       plan->disableRule(rule.level);
