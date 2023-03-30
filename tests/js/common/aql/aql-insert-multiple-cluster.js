@@ -286,10 +286,15 @@ function InsertMultipleDocumentsExplainSuite() {
         `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
         `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
         `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
-        `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`
+        `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`,
+        `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
       ];
-      queries.forEach(function (query) {
-        const result = AQL_EXPLAIN(query);
+      queries.forEach((query, idx) => {
+        let rules = {};
+        if (idx === queries.length - 1) {
+          rules = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+        }
+        const result = AQL_EXPLAIN(query, {}, rules);
         assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
       });
     },
