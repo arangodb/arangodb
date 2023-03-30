@@ -18,8 +18,26 @@ Earlier batches are not kept on the server-side.
 You can use this endpoint to retry fetching the latest batch from a cursor.
 The endpoint requires the `allowRetry` query option to be enabled for the cursor.
 
-If the cursor is still alive, returns an object with a batch of query results.
-Calling this endpoint does not advance the cursor.
+Calling this endpoint with the last returned batch-identifier will return the
+query results for that same batch again. This will not advance the cursor.
+Client applications can use this to re-transfer a batch again in case of
+transfer errors.
+
+Calling this endpoint with the next batch-identifier, i.e. the value returned
+in the `nextBatchId` attribute of a previous request will advance the cursor
+and return the results for the next batch.
+
+Note that it is only supported to query the last returned batch id or the directly
+following batch id. Querying the directly following batch id is only supported
+if there are more results in the cursor (i.e. `hasMore` contains a value of
+`true`).
+
+Using any other batch identifier will return HTTP 404.
+
+Note that when the last batch has been consumed successfully by a client
+application, it should explicitly destroy the cursor with an HTTP DELETE
+request, as it is unclear to the server if the client has received and
+processed the batch successfully.
 
 @RESTRETURNCODES
 
