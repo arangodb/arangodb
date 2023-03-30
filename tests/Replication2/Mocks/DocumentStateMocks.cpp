@@ -129,12 +129,12 @@ auto MockDocumentStateHandlersFactory::makeRealSnapshotHandler(
 }
 
 auto MockDocumentStateHandlersFactory::makeRealTransactionHandler(
-    GlobalLogIdentifier const& gid,
+    TRI_vocbase_t* vocbase, GlobalLogIdentifier const& gid,
     std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>
         shardHandler) -> std::shared_ptr<MockDocumentStateTransactionHandler> {
   auto real = std::make_shared<
       replicated_state::document::DocumentStateTransactionHandler>(
-      gid, nullptr, shared_from_this(), std::move(shardHandler));
+      gid, vocbase, shared_from_this(), std::move(shardHandler));
   return std::make_shared<
       testing::NiceMock<MockDocumentStateTransactionHandler>>(std::move(real));
 }
