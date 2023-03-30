@@ -46,6 +46,7 @@ type GraphContextType = {
   graphData: VisGraphData | undefined;
   graphName: string;
   onApplySettings: (updatedParams?: { [key: string]: string }) => void;
+  onRestoreDefaults: () => void;
   network?: Network;
   isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
@@ -172,7 +173,13 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const onApplySettings = async (updatedParams?: { [key: string]: string }) => {
+  const onRestoreDefaults = async () => {
+    setUrlParams(DEFAULT_URL_PARAMETERS);
+    await onApplySettings(DEFAULT_URL_PARAMETERS);
+  };
+  const onApplySettings = async (updatedParams?: {
+    [key: string]: string | number | boolean;
+  }) => {
     const newParams = {
       ...urlParams,
       ...(updatedParams ? updatedParams : {})
@@ -232,7 +239,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         setDatasets,
         fetchDuration,
         selectedEntity,
-        onSelectEntity
+        onSelectEntity,
+        onRestoreDefaults
       }}
     >
       <UrlParametersContext.Provider value={{ urlParams, setUrlParams }}>

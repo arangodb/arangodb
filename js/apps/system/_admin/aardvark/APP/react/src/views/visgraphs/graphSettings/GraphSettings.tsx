@@ -7,7 +7,7 @@ import {
   AccordionPanel,
   Box,
   Button,
-  Flex,
+  HStack,
   Menu,
   MenuButton,
   useMenuContext,
@@ -15,10 +15,10 @@ import {
   useMultiStyleConfig
 } from "@chakra-ui/react";
 import React, { ReactNode } from "react";
+import { useGraph } from "../GraphContext";
 import { AccordionEdgesContent } from "./AccordionEdgesContent";
 import { AccordionGraphContent } from "./AccordionGraphContent";
 import { AccordionNodesContent } from "./AccordionNodesContent";
-import { useGraph } from "../GraphContext";
 
 export const GraphSettings = () => {
   return (
@@ -67,7 +67,7 @@ const SettingsMenuContent = () => {
           <AccordionEdgesContent />
         </GraphAccordionItem>
       </Accordion>
-      <Flex
+      <HStack
         background="white"
         borderTop="1px solid"
         borderColor="gray.300"
@@ -75,9 +75,11 @@ const SettingsMenuContent = () => {
         bottom="0"
         justifyContent="end"
         padding="3"
+        paddingRight="5"
       >
+        <RestoreDefaultsButton />
         <ApplyButton />
-      </Flex>
+      </HStack>
     </Box>
   );
 };
@@ -99,6 +101,14 @@ const GraphAccordionItem = ({
 
       <AccordionPanel pb={4}>{children}</AccordionPanel>
     </AccordionItem>
+  );
+};
+const RestoreDefaultsButton = () => {
+  const { onRestoreDefaults } = useGraph();
+  return (
+    <Button colorScheme="gray" variant="ghost" onClick={() => onRestoreDefaults()}>
+      Restore defaults
+    </Button>
   );
 };
 const ApplyButton = () => {
