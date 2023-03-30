@@ -31,10 +31,11 @@ if (getOptions === true) {
   };
 }
 const jsunity = require('jsunity');
-const db = require('internal').db;
-const errors = require('internal').errors;
+const internal = require('internal');
+const db = internal.db;
+const errors = internal.errors;
 const ArangoCollection = require("@arangodb").ArangoCollection;
-const isCluster = require('internal').isCluster;
+const isCluster = internal.isCluster;
 
 const traditionalName = "UnitTestsCollection";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
@@ -825,6 +826,74 @@ function testSuite() {
       }
     },
     
+    testQueryIdViaPrimaryIndex: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + extendedName + "` SORT doc._id RETURN doc._id").toArray();
+      // sort by the numeric part of _id
+      res.sort((l, r) => {
+        return parseInt(l.replace(/^.*\/test/, '')) - parseInt(r.replace(/^.*\/test/, ''));
+      });
+
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(extendedName + "/test" + i, res[i]);
+      }
+    },
+    
+    testQueryIdViaPrimaryIndexWithEqFilter: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + extendedName + "` FILTER doc._id == '" + extendedName + "/test42' SORT doc._id RETURN doc._id").toArray();
+      assertEqual(1, res.length);
+      assertEqual(extendedName + "/test42", res[0]);
+      
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER doc._id == '" + extendedName + "/test42' SORT doc._id RETURN doc").toArray();
+      assertEqual(1, res.length);
+      assertEqual(extendedName + "/test42", res[0]._id);
+    },
+    
+    testQueryIdViaPrimaryIndexWithGtFilter: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + extendedName + "` FILTER doc._id >= '" + extendedName + "/test90' SORT doc._id RETURN doc._id").toArray();
+      // sort by the numeric part of _id
+      res.sort((l, r) => {
+        return parseInt(l.replace(/^.*\/test/, '')) - parseInt(r.replace(/^.*\/test/, ''));
+      });
+
+      assertEqual(10, res.length);
+      for (let i = 0; i < 10; ++i) {
+        assertEqual(extendedName + "/test" + (i + 90), res[i]);
+      }
+      
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER doc._id >= '" + extendedName + "/test90' SORT doc._id RETURN doc").toArray();
+      // sort by the numeric part of _id
+      res.sort((l, r) => {
+        return parseInt(l._id.replace(/^.*\/test/, '')) - parseInt(r._id.replace(/^.*\/test/, ''));
+      });
+
+      assertEqual(10, res.length);
+      for (let i = 0; i < 10; ++i) {
+        assertEqual(extendedName + "/test" + (i + 90), res[i]._id);
+      }
+    },
+    
     testParseIdentifierAqlFunction: function() {
       let c = db._create(extendedName);
       let docs = [];
@@ -903,7 +972,91 @@ function testSuite() {
         assertEqual(i * 10, edges[i].value);
       }
     },
+    
+    testEdgeIndex: function() {
+      let c = db._createEdgeCollection(extendedName);
+      
+      let indexes = c.indexes();
+      assertEqual(2, indexes.length);
+
+      assertEqual("primary", indexes[0].type);
+      assertEqual("edge", indexes[1].type);
+      assertEqual(extendedName + "/2", indexes[1].id);
+    },
   
+    testEdgeQueriesUsingExtendedVertices: function() {
+      // vertices
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+
+      // edges
+      c = db._createEdgeCollection(traditionalName);
+      docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, _from: extendedName + "/test" + i, _to: extendedName + "/test" + (i % 10), value: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._from == '" + extendedName + "/test0' RETURN doc").toArray();
+      assertEqual(1, res.length);
+      assertEqual(extendedName + "/test0", res[0]._from);
+      assertEqual(extendedName + "/test0", res[0]._to);
+      
+      // query again until we have a cache hit in the in-memory cache for edges
+      let tries = 0;
+      while (++tries < 60) {
+        let res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._from == '" + extendedName + "/test0' RETURN doc");
+        let stats = res.getExtra().stats;
+        res = res.toArray();
+        assertEqual(1, res.length);
+        assertEqual(extendedName + "/test0", res[0]._from);
+        assertEqual(extendedName + "/test0", res[0]._to);
+        if (stats.cacheHits > 0) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertTrue(tries < 60);
+
+      res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._to == '" + extendedName + "/test0' RETURN doc").toArray();
+      assertEqual(10, res.length);
+      // sort by the numeric part of _from
+      res.sort((l, r) => {
+        return parseInt(l._from.replace(/^.*\/test/, '')) - parseInt(r._from.replace(/^.*\/test/, ''));
+      });
+
+      for (let i = 0; i < 10; ++i) {
+        assertEqual(extendedName + "/test" + (i * 10), res[i]._from);
+        assertEqual(extendedName + "/test0", res[i]._to);
+      }
+      
+      // query again until we have a cache hit in the in-memory cache for edges
+      tries = 0;
+      while (++tries < 60) {
+        let res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._to == '" + extendedName + "/test0' RETURN doc");
+        let stats = res.getExtra().stats;
+        res = res.toArray();
+        assertEqual(10, res.length);
+        // sort by the numeric part of _from
+        res.sort((l, r) => {
+          return parseInt(l._from.replace(/^.*\/test/, '')) - parseInt(r._from.replace(/^.*\/test/, ''));
+        });
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(extendedName + "/test" + (i * 10), res[i]._from);
+          assertEqual(extendedName + "/test0", res[i]._to);
+        }
+        if (stats.cacheHits > 0) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertTrue(tries < 60);
+    },
+
   };
 }
 
