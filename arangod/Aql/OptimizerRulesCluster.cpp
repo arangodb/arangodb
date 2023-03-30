@@ -465,6 +465,10 @@ bool substituteClusterMultipleDocumentInsertOperations(
     return false;
   }
 
+  if (enumerateNode->isInInnerLoop()) {
+    return false;
+  }
+
   auto setterNode = plan->getVarSetBy(enumerateNode->inVariable()->id);
   if (setterNode == nullptr || setterNode->getType() != EN::CALCULATION) {
     return false;
