@@ -322,30 +322,7 @@ void Query::prepareQuery(SerializationFormat format) {
     TRI_ASSERT(plan != nullptr);
     plan->findVarUsage();
 
-    // needs to be created after the AST collected all collections
-    std::unordered_set<std::string> inaccessibleCollections;
-#ifdef USE_ENTERPRISE
-    if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
-      inaccessibleCollections = _queryOptions.inaccessibleCollections;
-    }
-#endif
-    TRI_ASSERT(_trx == nullptr);
-    _trx = AqlTransaction::create(_transactionContext, _collections,
-                                  _queryOptions.transactionOptions,
-                                  std::move(inaccessibleCollections));
-
-    if (plan->needsElCheapoTransaction()) {
-      _trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    } else {
-      _trx->addHint(
-          transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on
-                                                         // toplevel
-    }
-
-    auto res = _trx->begin();
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
+    TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
 
     // keep serialized copy of unchanged plan to include in query profile
@@ -433,15 +410,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
     _queryOptions.transactionOptions.intermediateCommitCount = UINT64_MAX;
   }
 
-  // We need a transaction while optimizing the plan because we need to fetch
-  // some collection counts. However, this is a different transaction than the
-  // one that is used to execute the query.
-  auto ctx = std::make_shared<transaction::StandaloneContext>(
-      _transactionContext->vocbase());
+  TRI_ASSERT(_trx == nullptr);
+  // needs to be created after the AST collected all collections
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
+  }
+#endif
 
-  // TODO - this is currently very hacky! Nedd to clean this up!
-  _trx = AqlTransaction::create(ctx, _collections,
-                                _queryOptions.transactionOptions, {});
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions,
+                                std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
@@ -462,6 +442,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
 
   Result res = _trx->begin();
+
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -481,8 +462,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
   plan = opt.stealBest();  // Now we own the best one again
-
-  _trx.reset();
 
   TRI_ASSERT(plan != nullptr);
 

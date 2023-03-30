@@ -40,12 +40,25 @@ namespace arangodb::aql {
 
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)
-    : _trx(info._query.newTrxContext()),
+    : _ctx(std::make_shared<transaction::StandaloneContext>(
+          info._query.vocbase())),
+      _trx(createTransaction(_ctx, info)),
       _info(info),
       _upstreamState(ExecutionState::HASMORE) {
   _trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
 };
+
+transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
+    std::shared_ptr<transaction::Context> ctx, Infos& info) {
+  transaction::Options opts;
+  opts.waitForSync = info._options.waitForSync;
+  if (info._isExclusive) {
+    return {std::move(ctx), {}, {}, {info._aqlCollection->name()}, opts};
+  } else {
+    return {std::move(ctx), {}, {info._aqlCollection->name()}, {}, opts};
+  }
+}
 
 [[nodiscard]] auto MultipleRemoteModificationExecutor::produceRows(
     AqlItemBlockInputRange& input, OutputAqlItemRow& output)
@@ -100,6 +113,10 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
         "'update' or 'replace'");
   }
 
+  auto res = _trx.begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
                        _info._options);
 
@@ -112,6 +129,11 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
     if (!result.countErrorCodes.empty()) {
       THROW_ARANGO_EXCEPTION(result.countErrorCodes.begin()->first);
     }
+  }
+
+  res = _trx.commit();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   possibleWrites = inDocument.slice().length();

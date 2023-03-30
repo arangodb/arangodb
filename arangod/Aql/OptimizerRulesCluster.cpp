@@ -527,9 +527,6 @@ void substituteClusterMultipleDocumentOperationsRule(
   auto fun = &::substituteClusterMultipleDocumentInsertOperations;
 
   modified = fun(opt, plan.get(), rule);
-  if (modified) {
-    plan->setNeedsElCheapoTransaction();
-  }
 
   opt->addPlan(std::move(plan), rule, modified);
 }
