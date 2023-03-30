@@ -902,6 +902,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       }
     }
     req.entries = std::move(transientEntries).persistent();
+
+    _self._logMetrics->replicatedLogAppendEntriesNumEntries->count(
+        req.entries.size());
+    _self._logMetrics->replicatedLogAppendEntriesSize->count(sizeCounter);
   }
 
   auto isEmptyAppendEntries = req.entries.empty();
@@ -1002,6 +1006,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
                 << to_string(response.reason.error)
                 << " message id = " << messageId;
             ++follower.numErrorsSinceLastAnswer;
+            _self._logMetrics->replicatedLogLeaderAppendEntriesErrorCount
+                ->count();
         }
       }
     } else {
@@ -1013,6 +1019,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;
+    _self._logMetrics->replicatedLogLeaderAppendEntriesErrorCount->count();
     follower.lastErrorReason = {
         AppendEntriesErrorReason::ErrorType::kCommunicationError};
     try {
