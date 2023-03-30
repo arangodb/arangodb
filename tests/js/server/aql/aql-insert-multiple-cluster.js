@@ -88,6 +88,26 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       }
     },
     
+    testTransactionalBehavior: function () {
+      let docs = [];
+      for (let i = 0; i < 1001; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      docs.push({ _key: "test0" });
+        
+      const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
+      try {
+        db._query(query, {docs});
+        assertRuleIsUsed(query, {docs});
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+        assertTrue(err.errorMessage.includes("unique constraint violated"));
+      }
+
+      assertEqual(0, db[cn].count());
+    },
+    
     testReturnOld: function () {
       // initial document
       let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false }`;
