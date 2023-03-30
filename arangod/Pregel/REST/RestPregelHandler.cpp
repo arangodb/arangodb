@@ -106,8 +106,11 @@ RestStatus RestPregelHandler::execute() {
             actor::ActorPID{.server = ServerState::instance()->getId(),
                             .database = _vocbase.name(),
                             .id = resultActorID};
-        _pregel._resultActor.emplace(spawnWorkerMsg.message.executionNumber,
-                                     resultActorPID);
+        _pregel._resultActor.doUnderLock(
+            [&spawnWorkerMsg, &resultActorPID](auto& actors) {
+              actors.emplace(spawnWorkerMsg.message.executionNumber,
+                             resultActorPID);
+            });
         _pregel._actorRuntime->dispatch<message::ResultMessages>(
             resultActorPID, spawnWorkerMsg.resultActorOnCoordinator,
             message::OtherResultActorStarted{});

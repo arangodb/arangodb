@@ -166,9 +166,9 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
   // conductor actor is only used on the coordinator
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _conductorActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
 };
 
 }  // namespace arangodb::pregel
