@@ -1,8 +1,7 @@
 import { useField, useFormikContext } from "formik";
 import React from "react";
-import { MultiValue, Props as ReactSelectProps, PropsValue } from "react-select";
-import CreatableSelect from "react-select/creatable";
-import { getSelectBase } from "../select/SelectBase";
+import { Props as ReactSelectProps, PropsValue } from "react-select";
+import CreatableMultiSelect from "../select/CreatableMultiSelect";
 import { BaseFormControlProps, FormikFormControl } from "./FormikFormControl";
 
 type OptionType = {
@@ -10,30 +9,38 @@ type OptionType = {
   value: string;
 };
 export type InputControlProps = BaseFormControlProps & {
-  selectProps?: ReactSelectProps<OptionType>;
+  selectProps?: ReactSelectProps<OptionType, true>;
 };
-
-const CreatableSelectBase = getSelectBase<true>(CreatableSelect);
 
 export const CreatableMultiSelectControl = (props: InputControlProps) => {
   const { name, label, selectProps, ...rest } = props;
   const [field, , helper] = useField(name);
   const { isSubmitting } = useFormikContext();
-  const value = selectProps?.options?.find(option => {
+
+  let value = selectProps?.options?.filter(option => {
     return (option as OptionType).value === field.value;
   }) as PropsValue<OptionType>;
+
+  // this is when a value is newly created
+  if (!selectProps?.options && field.value) {
+    value = field.value.map((value: any) => {
+      return {
+        value,
+        label: value
+      };
+    });
+  }
   return (
     <FormikFormControl name={name} label={label} {...rest}>
-      <CreatableSelectBase
+      <CreatableMultiSelect
         {...field}
         value={value}
         inputId={name}
-        isDisabled={isSubmitting}
+        isDisabled={rest.isDisabled || isSubmitting}
         {...selectProps}
-        isMulti
         onChange={values => {
-          const valueStringArray = (values as MultiValue<OptionType>)?.map(value => {
-            return value.value
+          const valueStringArray = values.map(value => {
+            return value.value;
           });
           helper.setValue(valueStringArray);
         }}
@@ -41,4 +48,3 @@ export const CreatableMultiSelectControl = (props: InputControlProps) => {
     </FormikFormControl>
   );
 };
-

@@ -3,6 +3,8 @@ devel
 
 * FE-200: Add canvas interactions to Graph Viewer.
 
+* Updated arangosync to v2.16.1.
+
 * FE-142: Updates indices view list & index addition to React.
 
 * A Pregel execution now stores it's state during and after execution

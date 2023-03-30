@@ -53,9 +53,9 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   aql::QueryResult const* result() const { return &_result; }
 
-  bool hasNext();
+  bool hasNext() const noexcept;
 
-  arangodb::velocypack::Slice next();
+  velocypack::Slice next();
 
   size_t count() const override final;
 
@@ -71,10 +71,10 @@ class QueryResultCursor final : public arangodb::Cursor {
   /// @brief Returns a slice to read the extra values.
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
-  arangodb::velocypack::Slice extra() const;
+  velocypack::Slice extra() const;
 
   /// @brief Remember, if dirty reads were allowed:
-  bool allowDirtyReads() const override final {
+  bool allowDirtyReads() const noexcept override final {
     return _result.allowDirtyReads;
   }
 
@@ -118,7 +118,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
 
   // The following method returns, if the transaction the query is using
   // allows dirty reads (reads from followers).
-  virtual bool allowDirtyReads() const override final {
+  bool allowDirtyReads() const noexcept override final {
     // We got this information from the query directly in the constructor,
     // when `prepareQuery` has been called:
     return _allowDirtyReads;

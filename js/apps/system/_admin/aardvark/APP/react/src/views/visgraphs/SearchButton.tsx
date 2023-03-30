@@ -8,7 +8,7 @@ import {
   Tooltip
 } from "@chakra-ui/react";
 import React from "react";
-import SelectBase from "../../components/select/SelectBase";
+import SingleSelect from "../../components/select/SingleSelect";
 import { useGraph } from "./GraphContext";
 
 export const SearchButton = () => {
@@ -29,7 +29,7 @@ export const SearchButton = () => {
       <MenuList>
         <Box padding={"4"}>
           <FormLabel htmlFor="nodeSearch">Search for a node</FormLabel>
-          <SelectBase
+          <SingleSelect
             inputId="nodeSearch"
             placeholder="Start typing to search in nodes"
             options={options}
