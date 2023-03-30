@@ -53,10 +53,22 @@ auto inspect(Inspector& f, TimingInMicroseconds& x) {
   }
 }
 
-struct StatusStart {};
+struct StatusStart {
+  ExecutionNumber id;
+  std::string database;
+  std::string algorithm;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+  std::string state;
+  TTL ttl;
+  size_t parallelism;
+};
 template<typename Inspector>
 auto inspect(Inspector& f, StatusStart& x) {
-  return f.object(x).fields();
+  return f.object(x).fields(
+      f.field("id", x.id), f.field("database", x.database),
+      f.field("algorithm", x.algorithm), f.field("created", x.time),
+      f.field("ttl", x.ttl), f.field("state", x.state),
+      f.field("parallelism", x.parallelism));
 }
 
 struct LoadingStarted {
