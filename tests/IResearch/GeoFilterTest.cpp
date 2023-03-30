@@ -871,19 +871,19 @@ TEST(GeoFilterTest, checkScorer) {
     ::custom_sort sort;
 
     sort.fieldCollectorCollect = [&collector_collect_field_count, &q](
-                                       const irs::SubReader&,
-                                       const irs::term_reader& field) -> void {
+                                     const irs::SubReader&,
+                                     const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
     sort.termCollectorCollect = [&collector_collect_term_count, &q](
-                                      const irs::SubReader&,
-                                      const irs::term_reader& field,
-                                      const irs::attribute_provider&) -> void {
+                                    const irs::SubReader&,
+                                    const irs::term_reader& field,
+                                    const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
     sort.collectorFinish = [&collector_finish_count](
-                                irs::byte_type*, irs::FieldCollector const*,
-                                irs::TermCollector const*) -> void {
+                               irs::byte_type*, irs::FieldCollector const*,
+                               irs::TermCollector const*) -> void {
       ++collector_finish_count;
     };
     sort.prepareScorer =
@@ -897,7 +897,7 @@ TEST(GeoFilterTest, checkScorer) {
         };
 
     sort.scorerScore = [&scorer_score_count](irs::doc_id_t& score,
-                                              irs::score_t* res) -> void {
+                                             irs::score_t* res) -> void {
       ASSERT_TRUE(res);
       *res = score;
       ++scorer_score_count;
@@ -946,19 +946,19 @@ TEST(GeoFilterTest, checkScorer) {
     ::custom_sort sort;
 
     sort.fieldCollectorCollect = [&collector_collect_field_count, &q](
-                                       const irs::SubReader&,
-                                       const irs::term_reader& field) -> void {
+                                     const irs::SubReader&,
+                                     const irs::term_reader& field) -> void {
       collector_collect_field_count += (q.field() == field.meta().name);
     };
     sort.termCollectorCollect = [&collector_collect_term_count, &q](
-                                      const irs::SubReader&,
-                                      const irs::term_reader& field,
-                                      const irs::attribute_provider&) -> void {
+                                    const irs::SubReader&,
+                                    const irs::term_reader& field,
+                                    const irs::attribute_provider&) -> void {
       collector_collect_term_count += (q.field() == field.meta().name);
     };
     sort.collectorFinish = [&collector_finish_count](
-                                irs::byte_type*, const irs::FieldCollector*,
-                                const irs::TermCollector*) -> void {
+                               irs::byte_type*, const irs::FieldCollector*,
+                               const irs::TermCollector*) -> void {
       ++collector_finish_count;
     };
     sort.prepareScorer =
@@ -972,7 +972,7 @@ TEST(GeoFilterTest, checkScorer) {
         };
 
     sort.scorerScore = [&scorer_score_count](irs::doc_id_t& score,
-                                              irs::score_t* res) -> void {
+                                             irs::score_t* res) -> void {
       ASSERT_TRUE(res != nullptr);
       *res = score;
       ++scorer_score_count;

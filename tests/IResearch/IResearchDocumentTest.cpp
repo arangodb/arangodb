@@ -228,7 +228,8 @@ class VPackAnalyzer final : public irs::analysis::TypedAnalyzer<VPackAnalyzer> {
 REGISTER_ANALYZER_VPACK(VPackAnalyzer, VPackAnalyzer::make,
                         VPackAnalyzer::normalize);
 
-class InvalidAnalyzer final : public irs::analysis::TypedAnalyzer<InvalidAnalyzer> {
+class InvalidAnalyzer final
+    : public irs::analysis::TypedAnalyzer<InvalidAnalyzer> {
  public:
   static bool returnNullFromMake;
   static bool returnFalseFromToString;
@@ -251,15 +252,14 @@ class InvalidAnalyzer final : public irs::analysis::TypedAnalyzer<InvalidAnalyze
   }
 
   InvalidAnalyzer() = default;
-   irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept final {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttribute>::id()) {
       return &_attr;
     }
     return nullptr;
   }
-   bool next() final { return false; }
-   bool reset(std::string_view) final { return true; }
+  bool next() final { return false; }
+  bool reset(std::string_view) final { return true; }
 
  private:
   TestAttribute _attr;
@@ -310,12 +310,12 @@ class TypedAnalyzer final : public irs::analysis::TypedAnalyzer<TypedAnalyzer> {
     }
   }
 
-   bool reset(std::string_view) final {
+  bool reset(std::string_view) final {
     _resetted = true;
     return true;
   }
 
-   bool next() final {
+  bool next() final {
     if (_resetted) {
       _resetted = false;
       return true;
@@ -324,8 +324,7 @@ class TypedAnalyzer final : public irs::analysis::TypedAnalyzer<TypedAnalyzer> {
     }
   }
 
-   irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept final {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
@@ -355,7 +354,8 @@ class TypedAnalyzer final : public irs::analysis::TypedAnalyzer<TypedAnalyzer> {
 REGISTER_ANALYZER_VPACK(TypedAnalyzer, TypedAnalyzer::make,
                         TypedAnalyzer::normalize);
 
-class TypedArrayAnalyzer final : public irs::analysis::TypedAnalyzer<TypedArrayAnalyzer> {
+class TypedArrayAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TypedArrayAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "iresearch-document-typed-array";
@@ -374,7 +374,7 @@ class TypedArrayAnalyzer final : public irs::analysis::TypedAnalyzer<TypedArrayA
     _returnType.value = arangodb::iresearch::AnalyzerValueType::Number;
   }
 
-   bool reset(std::string_view data) final {
+  bool reset(std::string_view data) final {
     auto value = std::string(data);
     _values.clear();
     _current = 0;
@@ -384,7 +384,7 @@ class TypedArrayAnalyzer final : public irs::analysis::TypedAnalyzer<TypedArrayA
     return true;
   }
 
-   bool next() final {
+  bool next() final {
     if (_current < _values.size()) {
       _typedValue = arangodb::aql::AqlValue(
           arangodb::aql::AqlValueHintDouble(_values[_current++]));
@@ -395,8 +395,7 @@ class TypedArrayAnalyzer final : public irs::analysis::TypedAnalyzer<TypedArrayA
     }
   }
 
-   irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept final {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::increment>::id()) {
       return &_inc;
     }
@@ -962,7 +961,7 @@ TEST_F(IResearchDocumentTest,
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._analyzers.clear();        // clear all analyzers
+  linkMeta._analyzers.clear();  // clear all analyzers
   linkMeta._primitiveOffset = 0;
   linkMeta._includeAllFields = true;  // include all fields
 
@@ -2767,7 +2766,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
   store.reader = store.reader->Reopen();
   EXPECT_EQ(1, store.reader->size());
   EXPECT_EQ(expectedDocs + 1,
-            store.reader->docs_count());       // +1 for keep-alive doc
+            store.reader->docs_count());  // +1 for keep-alive doc
   EXPECT_EQ(expectedLiveDocs + 1,
             store.reader->live_docs_count());  // +1 for keep-alive doc
 
@@ -2968,7 +2967,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_concurrent_use_typed_analyzer) {
                     arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
       "iresearch-document-number-array"));  // add analyzer
   ASSERT_TRUE(linkMeta._analyzers.front()._pool);
-  linkMeta._includeAllFields = true;        // include all fields
+  linkMeta._includeAllFields = true;  // include all fields
   linkMeta._primitiveOffset = linkMeta._analyzers.size();
   std::string error;
   std::vector<std::string> EMPTY;

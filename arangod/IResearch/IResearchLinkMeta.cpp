@@ -661,7 +661,8 @@ bool IResearchLinkMeta::operator==(
   }
 
 #ifdef USE_ENTERPRISE
-  if (_pkCache != other._pkCache || _sortCache != other._sortCache || _optimizeTopK != other._optimizeTopK) {
+  if (_pkCache != other._pkCache || _sortCache != other._sortCache ||
+      _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
@@ -988,8 +989,8 @@ bool IResearchLinkMeta::json(ArangodServer& server,
        (ignoreEqual && _sortCache != ignoreEqual->_sortCache))) {
     builder.add(StaticStrings::kPrimarySortCacheField, VPackValue(_sortCache));
   }
-  if (writeAnalyzerDefinition && (!mask || mask ->_optimizeTopK) &&
-    (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
+  if (writeAnalyzerDefinition && (!mask || mask->_optimizeTopK) &&
+      (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
     velocypack::ArrayBuilder arrayScope(&builder,
                                         StaticStrings::kOptimizeTopKField);
     if (!_optimizeTopK.toVelocyPack(builder)) {

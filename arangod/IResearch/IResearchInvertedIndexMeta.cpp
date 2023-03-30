@@ -360,7 +360,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       _pkCache = pkCacheSlice.getBool();
     }
   }
-  { 
+  {
     auto optimizeTopKSlice = slice.get(StaticStrings::kOptimizeTopKField);
     if (!optimizeTopKSlice.isNone()) {
       std::string err;
@@ -444,7 +444,7 @@ bool IResearchInvertedIndexMeta::json(
   if (_pkCache) {
     builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
   }
-  { 
+  {
     VPackArrayBuilder arrayScope(&builder, StaticStrings::kOptimizeTopKField);
     _optimizeTopK.toVelocyPack(builder);
   }

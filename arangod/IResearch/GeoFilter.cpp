@@ -434,9 +434,8 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
 
 irs::filter::prepared::ptr prepareOpenInterval(
     irs::IndexReader const& index, irs::Scorers const& order,
-    irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options,
-    bool greater) {
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options, bool greater) {
   auto const& range = options.range;
   auto const& origin = options.origin;
 
@@ -540,8 +539,8 @@ irs::filter::prepared::ptr prepareOpenInterval(
 
 irs::filter::prepared::ptr prepareInterval(
     irs::IndexReader const& index, irs::Scorers const& order,
-    irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options) {
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options) {
   auto const& range = options.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);
@@ -637,8 +636,8 @@ irs::filter::prepared::ptr prepareInterval(
 }  // namespace
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    irs::IndexReader const& index, irs::Scorers const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
   if (shape.empty()) {
     return prepared::empty();
@@ -689,8 +688,8 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 }
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
-    irs::IndexReader const& index, irs::Scorers const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto const& options = this->options();
   auto const& range = options.range;
   auto const lowerBound = irs::BoundType::UNBOUNDED != range.min_type;

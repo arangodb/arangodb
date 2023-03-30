@@ -100,7 +100,8 @@ struct dummy_scorer final : public irs::ScorerBase<void> {
   irs::ScoreFunction prepare_scorer(
       const irs::ColumnProvider& /*segment*/,
       const std::map<irs::type_info::type_id, irs::field_id>& /*features*/,
-      const irs::byte_type* /*stats*/, const irs::attribute_provider& /*doc_attrs*/,
+      const irs::byte_type* /*stats*/,
+      const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const noexcept final {
     return irs::ScoreFunction::Empty();
   }

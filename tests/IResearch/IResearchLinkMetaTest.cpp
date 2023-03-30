@@ -2655,9 +2655,9 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
         analyzerCustomInTestVocbase + "\"" +  // local analyzer by full name
         ", \"" + analyzerCustomName + "\"" +  // local analyzer by short name
         ", \"::" + analyzerCustomName +
-        "\"" +                                // _system analyzer by short name
+        "\"" +  // _system analyzer by short name
         ", \"" + analyzerCustomInSystem +
-        "\"" +                                // _system analyzer by full name
+        "\"" +  // _system analyzer by full name
         " ] \
         }");
 
