@@ -29,21 +29,48 @@ const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-let getMetric = null;
-let runWithRetry = null;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
 
-function InsertMultipleDocumentsSuite() {
+function InsertMultipleDocumentsSuite(nShards, repFactor) {
   'use strict';
+
+  let smartGraphs = require("@arangodb/smart-graph");
+  const edges = "SmartEdges";
+  const vertex = "SmartVertices";
+  const graph = "TestSmartGraph";
 
   return {
 
+    setUpAll: function () {
+      smartGraphs._create(graph, [smartGraphs._relation(edges, vertex, vertex)], null, {
+        numberOfShards: nShards,
+        smartGraphAttribute: "value"
+      });
+
+
+      for (let i = 0; i < 10; ++i) {
+        db[vertex].insert({_key: "value" + i + ":abc" + i, value: "value" + i});
+      }
+      for (let i = 0; i < 10; ++i) {
+        db[edges].insert({
+          _from: vertex + "/value" + i + ":abc" + i,
+          _to: vertex + "/value" + (9 - i) + ":abc" + i,
+          value: "value" + i
+        });
+      }
+    },
+
+    tearDownAll: function () {
+      smartGraphs._drop(graph, true);
+    },
+
     setUp: function () {
       db._drop(cn);
-      db._create(cn);
+      db._create(cn, {numberOfShards: nShards, replicationFactor: repFactor});
     },
 
     tearDown: function () {
@@ -161,7 +188,7 @@ function InsertMultipleDocumentsSuite() {
       if (isServer) {
         return;
       }
-      const query = `FOR d IN [{_key: '123'}] INSERT d INTO ${cn} OPTIONS {exclusive: true} RETURN d`;
+      const query = `FOR d IN [{_key: '123', value: "a"}] INSERT d INTO ${cn} OPTIONS {exclusive: true}`;
       const trx = db._createTransaction({collections: {write: cn}});
       trx.collection(cn).insert({_key: '123'});
       let res = arango.POST_RAW('/_api/cursor', JSON.stringify({query: query}), {'x-arango-async': 'store'});
@@ -180,7 +207,8 @@ function InsertMultipleDocumentsSuite() {
         }
       }
       assertEqual(res.code, 201, "query not finished in time");
-      assertEqual(res.parsedBody.result[0]['_key'], '123');
+      assertTrue(db[cn].document('123').hasOwnProperty("value"));
+      assertEqual(db[cn].document('123').value, "a");
     },
 
     testInsertWithFillIndexCache: function () {
@@ -209,17 +237,43 @@ function InsertMultipleDocumentsSuite() {
         }
       }
     },
+
+    testInsertWithSmartGraph: function () {
+      const verticesCount = db[vertex].count();
+      let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex} RETURN d`;
+      let res = db._query(query);
+      assertEqual(db[vertex].count(), verticesCount + 1);
+      let docInfo = res.toArray()[0];
+      assertEqual(docInfo._key, 'value123:abc123');
+
+      const edgesCount = db[edges].count();
+      query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges} RETURN d`;
+      res = db._query(query);
+      assertEqual(db[edges].count(), edgesCount + 1);
+      docInfo = res.toArray()[0];
+      assertEqual(docInfo["_from"], vertex + '/value3:abc3');
+      assertEqual(docInfo["_to"], vertex + '/value6:abc3');
+
+      try {
+        query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges} RETURN d`;
+        db._query(query);
+        fail();
+      } catch (err) {
+        assertTrue(err.errorMessage.includes("edge attribute missing"));
+        assertEqual(db[edges].count(), edgesCount + 1);
+      }
+    }
   };
 }
 
-function InsertMultipleDocumentsExplainSuite() {
+function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
   'use strict';
 
   return {
 
     setUp: function () {
       db._drop(cn);
-      db._create(cn);
+      db._create(cn, {numberOfShards: nShards, replicationFactor: repFactor});
     },
 
     tearDown: function () {
@@ -288,6 +342,10 @@ function InsertMultipleDocumentsExplainSuite() {
         `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
         `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`,
         `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN {old: OLD, new: NEW}`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN NEW`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN 1`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN true`,
         `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN d`,
       ];
       queries.forEach((query, idx) => {
@@ -312,20 +370,80 @@ function InsertMultipleDocumentsExplainSuite() {
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'conflict'}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: true}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: false}`,
-        `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN OLD`,
-        `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN NEW`,
+      ];
+      const queriesWithVariables = [
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: false}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwrite: true}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwrite: false}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'replace'}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'update'}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'ignore'}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {overwriteMode: 'conflict'}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {exclusive: true}`,
+        `FOR d in @docs INSERT d INTO ${cn} OPTIONS {exclusive: false}`,
       ];
       queries.forEach(function (query) {
         const result = AQL_EXPLAIN(query);
+        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
+      });
+      let docs = [];
+      for (let i = 0; i < numDocs; ++i) {
+        docs.push({d: i});
+      }
+      queriesWithVariables.forEach(function (query) {
+        const result = AQL_EXPLAIN(query, {docs: docs});
         assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
       });
     },
   };
 }
 
-jsunity.run(InsertMultipleDocumentsSuite);
+function InsertMultipleDocumentsParameters1Suite() {
+  let suite = {};
+  deriveTestSuite(
+    InsertMultipleDocumentsSuite(1, 1),
+    suite,
+    "_insertMultiple1"
+  );
+  return suite;
+}
+
+function InsertMultipleDocumentsParameters2Suite() {
+  let suite = {};
+  deriveTestSuite(
+    InsertMultipleDocumentsSuite(3, 3),
+    suite,
+    "_insertMultiple2"
+  );
+  return suite;
+}
+
+function InsertMultipleDocumentsExplainParameters1Suite() {
+  let suite = {};
+  deriveTestSuite(
+    InsertMultipleDocumentsExplainSuite(1, 1),
+    suite,
+    "_insertMultipleExplain1"
+  );
+  return suite;
+}
+
+function InsertMultipleDocumentsExplainParameters2Suite() {
+  let suite = {};
+  deriveTestSuite(
+    InsertMultipleDocumentsExplainSuite(3, 3),
+    suite,
+    "_insertMultipleExplain2"
+  );
+  return suite;
+}
+
+jsunity.run(InsertMultipleDocumentsParameters1Suite);
+jsunity.run(InsertMultipleDocumentsParameters2Suite);
 if (isServer) {
-  jsunity.run(InsertMultipleDocumentsExplainSuite);
+  jsunity.run(InsertMultipleDocumentsExplainParameters1Suite);
+  jsunity.run(InsertMultipleDocumentsExplainParameters2Suite);
 }
 
 return jsunity.done();

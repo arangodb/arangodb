@@ -490,9 +490,12 @@ bool substituteClusterMultipleDocumentInsertOperations(
 
   auto* calcSetterNode =
       ExecutionNode::castTo<CalculationNode const*>(setterNode);
-  if (!calcSetterNode->expression()->isConstant()) {
+
+  if (!calcSetterNode->expression()->isConstant() ||
+      !calcSetterNode->expression()->isDeterministic()) {
     return false;
   }
+
   // deal with dependency of enumerate list needing to be singleton or const
   // calculation
 
