@@ -428,7 +428,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_missing_snapshot) {
   checkReplicatedLog(ctx, log, health);
 
   // no action is expected.
-  EXPECT_FALSE(ctx.hasAction());
+  EXPECT_FALSE(ctx.hasAction()) << fmt::format("{}", ctx.getAction());
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
