@@ -91,17 +91,24 @@ auto inspect(Inspector& f, PrintableDuration& x) {
   }
 }
 struct PregelTimings {
+  PrintableDuration running;
   PrintableDuration loading;
   std::vector<PrintableDuration> gss;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(f.field("loading", x.loading),
+  return f.object(x).fields(f.field("running", x.running),
+                            f.field("loading", x.loading),
                             f.field("gss", x.gss));
 }
 
 struct StatusState {
   std::string stateName;
+  ExecutionNumber id;
+  std::string database;
+  std::string algorithm;
+  TTL ttl;
+  size_t parallelism;
   PregelTimings timings;
   uint64_t gss;
   VPackBuilder aggregators;
@@ -109,15 +116,25 @@ struct StatusState {
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
   return f.object(x).fields(
-      f.field("state", x.stateName), f.field("timings", x.timings),
-      f.field("gss", x.gss),
+      f.field("state", x.stateName), f.field("id", x.id),
+      f.field("database", x.database), f.field("algorithm", x.algorithm),
+      f.field("ttl", x.ttl), f.field("parallelism", x.parallelism),
+      f.field("timings", x.timings), f.field("gss", x.gss),
       // TODO embed aggregators field (it already has "aggregators" as key)
       f.field("aggregators", x.aggregators));
 }
 
 template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
-  auto operator()(message::StatusStart start) -> std::unique_ptr<StatusState> {
+  auto operator()(message::StatusStart msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->id = msg.id;
+    this->state->database = msg.database;
+    this->state->algorithm = msg.algorithm;
+    this->state->ttl = msg.ttl;
+    this->state->parallelism = msg.parallelism;
+    this->state->timings.running.setStart(msg.time);
+
     LOG_TOPIC("ea4f4", INFO, Logger::PREGEL)
         << fmt::format("Status Actor {} started", this->self);
     return std::move(this->state);
