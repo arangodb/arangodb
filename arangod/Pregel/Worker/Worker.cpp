@@ -25,6 +25,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Enumerate.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -106,7 +107,15 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   _messageBatchSize = 5000;
 
-  _initializeMessageCaches();
+  if (_messageCombiner) {
+    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
+                                         _messageCombiner.get());
+    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
+                                          _messageCombiner.get());
+  } else {
+    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
+  }
 }
 
 template<typename V, typename E, typename M>
@@ -131,12 +140,8 @@ Worker<V, E, M>::~Worker() {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
-  const size_t p = _config->parallelism();
+  const size_t p = _quivers.size();
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                          _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
           nullptr, _messageFormat.get(), _messageCombiner.get());
@@ -146,8 +151,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming =
           std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
@@ -165,11 +168,18 @@ void Worker<V, E, M>::setupWorker() {
     LOG_PREGEL("52062", WARN)
         << fmt::format("Worker for execution number {} has finished loading.",
                        _config->executionNumber());
-    auto graphLoaded =
-        GraphLoaded{.executionNumber = _config->_executionNumber,
-                    .sender = ServerState::instance()->getId(),
-                    .vertexCount = _quivers.at(0)->numberOfVertices(),
-                    .edgeCount = _quivers.at(0)->numberOfEdges()};
+
+    size_t totalAmountOfVertices = 0;
+    size_t totalAmountOfEdges = 0;
+    for (auto const& quiver : _quivers) {
+      totalAmountOfVertices += quiver->numberOfVertices();
+      totalAmountOfEdges += quiver->numberOfEdges();
+    }
+
+    auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
+                                   .sender = ServerState::instance()->getId(),
+                                   .vertexCount = totalAmountOfVertices,
+                                   .edgeCount = totalAmountOfEdges};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -197,7 +207,7 @@ void Worker<V, E, M>::setupWorker() {
         try {
           auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
                                           statusUpdateCallback);
-          _quivers.emplace_back(loader.load());
+          _quivers = loader.load();
         } catch (std::exception const& ex) {
           LOG_PREGEL("a47c4", WARN)
               << "caught exception in loadShards: " << ex.what();
@@ -244,6 +254,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   _config->_globalSuperstep = gss;
   // write cache becomes the readable cache
   MY_WRITE_LOCKER(wguard, _cacheRWLock);
+  ADB_PROD_ASSERT(_readCache != nullptr);
   TRI_ASSERT(_readCache->containedMessageCount() == 0);
   std::swap(_readCache, _writeCache);
   _config->_localSuperstep = gss;
@@ -261,13 +272,20 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
     VPackObjectBuilder ob(&aggregators);
     _workerContext->_writeAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{
-      .executionNumber = _config->_executionNumber,
-      .sender = ServerState::instance()->getId(),
-      .activeCount = _activeCount,
-      .vertexCount = _quivers.at(0)->numberOfVertices(),
-      .edgeCount = _quivers.at(0)->numberOfEdges(),
-      .aggregators = aggregators};
+
+  size_t totalAmountOfVertices = 0;
+  size_t totalAmountOfEdges = 0;
+  for (auto const& quiver : _quivers) {
+    totalAmountOfVertices += quiver->numberOfVertices();
+    totalAmountOfEdges += quiver->numberOfEdges();
+  }
+
+  return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
+                                 .sender = ServerState::instance()->getId(),
+                                 .activeCount = _activeCount,
+                                 .vertexCount = totalAmountOfVertices,
+                                 .edgeCount = totalAmountOfEdges,
+                                 .aggregators = aggregators};
 }
 
 template<typename V, typename E, typename M>
@@ -334,6 +352,7 @@ void Worker<V, E, M>::_startProcessing() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
+  _initializeMessageCaches();
 
   auto self = shared_from_this();
   scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
@@ -341,9 +360,29 @@ void Worker<V, E, M>::_startProcessing() {
       LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
       return;
     }
-    if (_processVertices() && _state == WorkerState::COMPUTING) {
-      _finishedProcessing();  // last thread turns the lights out
+
+    std::vector<futures::Future<Result>> futures;
+    // first build up all future requests
+    for (auto [idx, quiver] : enumerate(_quivers)) {
+      TRI_ASSERT(_state == WorkerState::COMPUTING);
+      futures.emplace_back(_processVertices(idx, quiver));
     }
+
+    if (!futures.empty()) {
+      // wait for all futures to finalize
+      auto futureResponses = futures::collectAll(futures).get();
+      for (auto const& fResponse : futureResponses) {
+        auto& result = fResponse.get();
+        if (result.fail()) {
+          LOG_PREGEL("ee2ac", WARN) << "Execution aborted prematurely.";
+          return;
+        }
+      }
+    }
+
+    // after all futures finished
+    TRI_ASSERT(_state == WorkerState::COMPUTING);
+    _finishedProcessing();  // last thread turns the lights out
   });
 
   LOG_PREGEL("425c3", DEBUG) << "Starting processing using " << 1 << " threads";
@@ -354,18 +393,19 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_quiver = _quivers.at(0);
+  ctx->_quivers = _quivers;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices() {
+futures::Future<Result> Worker<V, E, M>::_processVertices(
+    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[0];
-  OutCache<M>* outCache = _outCaches[0];
+  InCache<M>* inCache = _inCaches[idx];
+  OutCache<M>* outCache = _outCaches[idx];
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
@@ -379,7 +419,7 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& vertexEntry : *_quivers.at(0)) {
+  for (auto& vertexEntry : *quiver) {
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
     _currentGssObservables.messagesReceived += messages.size();
@@ -408,8 +448,7 @@ bool Worker<V, E, M>::_processVertices() {
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_PREGEL("ee2ab", WARN) << "Execution aborted prematurely.";
-    return false;
+    return futures::makeFuture(Result{TRI_ERROR_INTERNAL});
   }
 
   // merge thread local messages, _writeCache does locking
@@ -432,7 +471,8 @@ bool Worker<V, E, M>::_processVertices() {
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
-  return true;
+
+  return futures::makeFuture(Result{TRI_ERROR_NO_ERROR});
 }
 
 // called at the end of a worker thread, needs mutex
@@ -531,7 +571,9 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                             _config->globalShardIDs(),
                                             std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            storer.store(_quivers.at(0));
+            for (auto& quiver : _quivers) {
+              storer.store(quiver);
+            }
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -553,8 +595,9 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer =
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
-
-  storer.store(_quivers.at(0));
+  for (auto& quiver : _quivers) {
+    storer.store(quiver);
+  }
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 

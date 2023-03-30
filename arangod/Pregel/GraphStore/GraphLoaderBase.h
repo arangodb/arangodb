@@ -37,7 +37,7 @@ struct Quiver;
 
 template<typename V, typename E>
 struct GraphLoaderBase {
-  virtual auto load() -> std::shared_ptr<Quiver<V, E>> = 0;
+  virtual auto load() -> std::vector<std::shared_ptr<Quiver<V, E>>> = 0;
   virtual ~GraphLoaderBase() = default;
 };
 
