@@ -95,7 +95,6 @@ export const fetchUserConfig = async () => {
   const data = await getRouteForDB(window.frontendConfig.db, "_api").get(
     `/user/${username}/config`
   );
-  console.log({ data });
   return data.body.result?.visgraphs;
 };
 
