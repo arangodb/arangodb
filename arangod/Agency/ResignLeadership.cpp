@@ -347,25 +347,23 @@ bool ResignLeadership::start(bool& aborts) {
         return false;
       }
 
-      // Creating a copy, because this is an array with one element, and we need
-      // to add the replicatedLogs property to it.
-      todo = std::invoke(
-          [todo = std::move(todo), &logs = this->_replicatedLogs]() {
-            VPackBuilder tmp;
-            {
-              VPackObjectBuilder guard(&tmp);
-              for (auto const& i : VPackObjectIterator(todo.slice()[0])) {
-                tmp.add(i.key.copyString(), i.value);
-              }
-              if (!logs.empty()) {
-                tmp.add(VPackValue("replicatedLogs"));
-                velocypack::serialize(tmp, logs);
-              }
-            }
-            return tmp;
-          });
+      if (_undoMoves && !_replicatedLogs.empty()) {
+        // Doing a copy here, because we need to add the replicatedLogs.
+        VPackBuilder tmp;
+        {
+          VPackObjectBuilder guard(&tmp);
+          for (auto const& i : VPackObjectIterator(todo.slice()[0])) {
+            tmp.add(i.key.copyString(), i.value);
+          }
+          tmp.add(VPackValue("replicatedLogs"));
+          velocypack::serialize(tmp, _replicatedLogs);
+        }
+        todo = std::move(tmp);
+        addPutJobIntoSomewhere(*pending, "Pending", todo.slice());
+      } else {
+        addPutJobIntoSomewhere(*pending, "Pending", todo.slice()[0]);
+      }
 
-      addPutJobIntoSomewhere(*pending, "Pending", todo.slice());
       addRemoveJobFromSomewhere(*pending, "ToDo", _jobId);
 
       addBlockServer(*pending, _server, _jobId);
