@@ -106,6 +106,16 @@ auto inspect(Inspector& f, GraphLoadingDetails& x) {
                             f.field("edgesLoaded", x.edgesLoaded),
                             f.field("memoryBytesUsed", x.memoryBytesUsed));
 }
+struct GraphStoringDetails {
+  auto add(GraphStoringDetails const& other) -> void {
+    verticesStored += other.verticesStored;
+  }
+  uint64_t verticesStored = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphStoringDetails& x) {
+  return f.object(x).fields(f.field("verticesStored", x.verticesStored));
+}
 struct GlobalSuperStepDetails {
   auto add(GlobalSuperStepDetails const& other) -> void {
     verticesProcessed += other.verticesProcessed;
@@ -129,13 +139,14 @@ auto inspect(Inspector& f, GlobalSuperStepDetails& x) {
 
 struct Details {
   GraphLoadingDetails loading;
+  GraphStoringDetails storing;
   std::unordered_map<std::string, GlobalSuperStepDetails> computing;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Details& x) {
-  return f.object(x).fields(
-      f.field("graphLoading", x.loading),
-      f.field("globalSuperStepsDuringComputing", x.computing));
+  return f.object(x).fields(f.field("graphLoading", x.loading),
+                            f.field("computing", x.computing),
+                            f.field("graphStoring", x.storing));
 }
 struct StatusDetails {
   auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
@@ -147,6 +158,16 @@ struct StatusDetails {
       loadingCombined.add(details.loading);
     }
     combined.loading = loadingCombined;
+  }
+  auto update(ServerID server, GraphStoringDetails const& storingDetails)
+      -> void {
+    perWorker[server].storing = storingDetails;
+    // update combined
+    GraphStoringDetails storingCombined;
+    for (auto& [server, details] : perWorker) {
+      storingCombined.add(details.storing);
+    }
+    combined.storing = storingCombined;
   }
   auto update(ServerID server, uint64_t gss,
               GlobalSuperStepDetails const& gssDetails) -> void {
@@ -219,6 +240,14 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
             .messagesSent = msg.messagesSent,
             .messagesReceived = msg.messagesReceived,
             .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GraphStoringUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server,
+        GraphStoringDetails{.verticesStored = msg.verticesStored});
     return std::move(this->state);
   }
 

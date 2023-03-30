@@ -35,6 +35,7 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
 #include "Logger/LogMacros.h"
@@ -47,6 +48,17 @@
 #include "VocBase/vocbase.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+
+namespace {
+// helper type for the visitor
+template<class... Ts>
+struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+// explicit deduction guide (not needed as of C++20)
+template<class... Ts>
+overloaded(Ts...) -> overloaded<Ts...>;
+}  // namespace
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -146,13 +158,29 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
     builder.close();
     ++numDocs;
     if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      std::visit(overloaded{[&](ActorStoringUpdate const& update) {
+                              update.fn(message::GraphStoringUpdate{
+                                  .verticesStored = 0  // TODO
+                              });
+                            },
+                            [](OldStoringUpdate const& update) {
+                              SchedulerFeature::SCHEDULER->queue(
+                                  RequestLane::INTERNAL_LOW, update.fn);
+                            }},
+                 updateCallback);
     }
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
+  std::visit(overloaded{[&](ActorStoringUpdate const& update) {
+                          update.fn(message::GraphStoringUpdate{
+                              .verticesStored = 0  // TODO
+                          });
+                        },
+                        [](OldStoringUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+             updateCallback);
 
   // commit the remainders in our buffer
   // will throw if it fails

@@ -348,19 +348,16 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
-      std::function<void()> statusUpdateCallback = [] {
-        // TODO GORDO-1584 send update to status actor
-        // this->template dispatch<conductor::message::ConductorMessages>(
-        //     this->state->conductor,
-        //     conductor::message::StatusUpdate{
-        //         .executionNumber = this->state->config->executionNumber(),
-        //         .status = this->state->observeStatus()});
-      };
       try {
-        auto storer = GraphStorer<V, E>(this->state->config,
-                                        this->state->algorithm->inputFormat(),
-                                        this->state->config->globalShardIDs(),
-                                        std::move(statusUpdateCallback));
+        auto storer = GraphStorer<V, E>(
+            this->state->config, this->state->algorithm->inputFormat(),
+            this->state->config->globalShardIDs(),
+            ActorStoringUpdate{
+                .fn =
+                    [this](pregel::message::GraphStoringUpdate update) -> void {
+                  this->template dispatch<pregel::message::StatusMessages>(
+                      this->state->statusActor, update);
+                }});
         storer.store(this->state->quiver);
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {

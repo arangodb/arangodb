@@ -80,6 +80,14 @@ auto inspect(Inspector& f, GraphLoadingUpdate& x) {
                             f.field("memoryBytesUsed", x.memoryBytesUsed));
 }
 
+struct GraphStoringUpdate {
+  uint64_t verticesStored;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphStoringUpdate& x) {
+  return f.object(x).fields(f.field("verticesStored", x.verticesStored));
+}
+
 struct GlobalSuperStepUpdate {
   std::uint64_t gss;
   std::uint64_t verticesProcessed = 0;
@@ -97,10 +105,10 @@ auto inspect(Inspector& f, GlobalSuperStepUpdate& x) {
 }
 
 struct StatusMessages
-    : std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate,
-                   GlobalSuperStepUpdate> {
-  using std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate,
-                     GlobalSuperStepUpdate>::variant;
+    : std::variant<StatusStart, GraphLoadingUpdate, GlobalSuperStepUpdate,
+                   GraphStoringUpdate> {
+  using std::variant<StatusStart, GraphLoadingUpdate, GlobalSuperStepUpdate,
+                     GraphStoringUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
@@ -109,7 +117,8 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<LoadingStarted>("LoadingStarted"),
       arangodb::inspection::type<GraphLoadingUpdate>("GraphLoadingUpdate"),
       arangodb::inspection::type<GlobalSuperStepUpdate>(
-          "GlobalSuperStepUpdate"));
+          "GlobalSuperStepUpdate"),
+      arangodb::inspection::type<GraphStoringUpdate>("GraphStoringUpdate"));
 }
 
 }  // namespace arangodb::pregel::message
