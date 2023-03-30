@@ -74,11 +74,11 @@ export const FieldsDropdown = ({
       }}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeField((action.removedValue as any).value as string);
+          removeField(action.removedValue.value);
           return;
         }
         if (action.action === "create-option") {
-          addField((action.option as any).value as string);
+          addField(action.option.value);
         }
       }}
       isDisabled={isDisabled}
