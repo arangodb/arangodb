@@ -1619,7 +1619,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
           hierarchical: false
       },
       edges: {
-        smooth: false,
+        smooth: { type:"dynamic" },
         arrows: {
           to: {
             enabled: (config.edgeDirection === "true"),
@@ -1649,7 +1649,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
           },
         },
         edges: {
-          smooth: false,
+          smooth: { type:"dynamic" },
           arrows: {
             to: {
               enabled: (config.edgeDirection === "true"),
@@ -1674,7 +1674,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
               hierarchical: false
           },
           edges: {
-            smooth: false,
+            smooth: { type:"dynamic" },
             arrows: {
               to: {
                 enabled: (config.edgeDirection === "true"),

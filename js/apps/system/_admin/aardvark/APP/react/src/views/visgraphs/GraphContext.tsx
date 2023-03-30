@@ -1,9 +1,11 @@
 import { useDisclosure } from "@chakra-ui/react";
 import React, {
   createContext,
+  MutableRefObject,
   ReactNode,
   useContext,
   useEffect,
+  useRef,
   useState
 } from "react";
 import useSWR from "swr";
@@ -66,6 +68,7 @@ type GraphContextType = {
   onAddEdge: (args: AddEdgeArgs) => void;
   selectedEntity?: SelectedEntityType;
   onSelectEntity: (data: SelectedEntityType) => void;
+  hasDrawnOnce: MutableRefObject<boolean>;
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -144,13 +147,13 @@ const useSetupParams = ({ graphName }: { graphName: string }) => {
 export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
-  let [network, setNetwork] = useState<Network>();
+  const [network, setNetwork] = useState<Network>();
+  const hasDrawnOnce = useRef(false);
   const [datasets, setDatasets] = useState<DatasetsType>();
   const [fetchDuration, setFetchDuration] = useState<number>();
-  let [rightClickedEntity, setRightClickedEntity] = useState<
+  const [rightClickedEntity, setRightClickedEntity] = useState<
     ActionEntityType
   >();
-
   const { setUrlParams, setParams, params, urlParams } = useSetupParams({
     graphName
   });
@@ -191,6 +194,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     await putUserConfig({ params: newParams, fullConfig, graphName });
     const finalParams = { ...newParams, nodeStart };
     setParams(finalParams);
+    hasDrawnOnce.current = false;
   };
   const {
     onOpen: onOpenSettings,
@@ -239,7 +243,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         fetchDuration,
         selectedEntity,
         onSelectEntity,
-        onRestoreDefaults
+        onRestoreDefaults,
+        hasDrawnOnce
       }}
     >
       <UrlParametersContext.Provider value={{ urlParams, setUrlParams }}>

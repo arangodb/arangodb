@@ -1,5 +1,5 @@
 import { Box } from "@chakra-ui/react";
-import React, { useEffect, useRef } from "react";
+import React, { MutableRefObject, useEffect, useRef } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
 import { useElementPosition } from "../../components/hooks/useElementPosition";
@@ -8,13 +8,14 @@ import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
 
 let timer: number;
-let hasDrawnOnce = false;
 function registerNetwork({
   newNetwork,
-  onSelectEntity
+  onSelectEntity,
+  hasDrawnOnce
 }: {
   newNetwork: Network;
   onSelectEntity: (data: { entityId: string; type: "node" | "edge" }) => void;
+  hasDrawnOnce: MutableRefObject<boolean>;
 }) {
   newNetwork.on("stabilizationIterationsDone", function() {
     newNetwork.fit();
@@ -23,10 +24,10 @@ function registerNetwork({
     });
   });
   newNetwork.on("startStabilizing", function() {
-    if (hasDrawnOnce) {
+    if (hasDrawnOnce.current) {
       newNetwork.stopSimulation();
     }
-    hasDrawnOnce = true;
+    hasDrawnOnce.current = true;
   });
   newNetwork.on("stabilized", () => {
     clearTimeout(timer);
@@ -63,7 +64,8 @@ export const GraphNetwork = () => {
     setNetwork,
     setDatasets,
     onAddEdge,
-    onSelectEntity
+    onSelectEntity,
+    hasDrawnOnce
   } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
@@ -92,7 +94,11 @@ export const GraphNetwork = () => {
       newOptions
     );
     setNetwork(newNetwork);
-    registerNetwork({ newNetwork, onSelectEntity });
+    registerNetwork({
+      newNetwork,
+      onSelectEntity,
+      hasDrawnOnce
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
   const position = useElementPosition(visJsRef);
@@ -109,12 +115,8 @@ export const GraphNetwork = () => {
           containerRef
         }}
       />
-      <Box id="graphNetworkWrap" height="full">
-        <Box
-          ref={visJsRef}
-          height="calc(100% - 40px)"
-          width="full"
-        />
+      <Box id="graphNetworkWrap" height="full" backgroundColor="white">
+        <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
         <GraphInfo />
       </Box>
     </Box>
