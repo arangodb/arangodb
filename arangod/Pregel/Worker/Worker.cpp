@@ -176,6 +176,9 @@ void Worker<V, E, M>::setupWorker() {
       totalAmountOfEdges += quiver->numberOfEdges();
     }
 
+    LOG_DEVEL << "Total vertices: " << totalAmountOfVertices;
+    LOG_DEVEL << "Total edges: " << totalAmountOfEdges;
+
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
                                    .sender = ServerState::instance()->getId(),
                                    .vertexCount = totalAmountOfVertices,
@@ -272,13 +275,20 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
     VPackObjectBuilder ob(&aggregators);
     _workerContext->_writeAggregators->serializeValues(aggregators);
   }
-  return GlobalSuperStepPrepared{
-      .executionNumber = _config->_executionNumber,
-      .sender = ServerState::instance()->getId(),
-      .activeCount = _activeCount,
-      .vertexCount = _quivers.at(0)->numberOfVertices(),
-      .edgeCount = _quivers.at(0)->numberOfEdges(),
-      .aggregators = aggregators};
+
+  size_t totalAmountOfVertices = 0;
+  size_t totalAmountOfEdges = 0;
+  for (auto const& quiver : _quivers) {
+    totalAmountOfVertices += quiver->numberOfVertices();
+    totalAmountOfEdges += quiver->numberOfEdges();
+  }
+
+  return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
+                                 .sender = ServerState::instance()->getId(),
+                                 .activeCount = _activeCount,
+                                 .vertexCount = totalAmountOfVertices,
+                                 .edgeCount = totalAmountOfEdges,
+                                 .aggregators = aggregators};
 }
 
 template<typename V, typename E, typename M>
