@@ -22,14 +22,43 @@
 
 #pragma once
 
+#include <optional>
 #include <memory>
+#include <variant>
 
 namespace arangodb {
 namespace aql {
 
+class Ast;
+struct AstNode;
 class Optimizer;
 class ExecutionPlan;
 struct OptimizerRule;
+struct Variable;
+
+struct PathVariableAccess {
+  struct AllAccess {};
+  enum class AccessType { VERTEX, EDGE };
+
+  std::variant<int64_t, AllAccess> index{0};
+  AccessType type{AccessType::VERTEX};
+  AstNode* parentOfReplace{nullptr};
+  size_t replaceIdx{0};
+
+  auto isLast() const noexcept -> bool;
+
+  auto getDepth() const noexcept -> int64_t;
+
+  auto isAllAccess() const noexcept -> bool;
+
+  auto isEdgeAccess() const noexcept -> bool;
+
+  auto isVertexAccess() const noexcept -> bool;
+};
+
+auto maybeExtractPathAccess(Ast* ast, Variable const* pathVar, AstNode* parent,
+                            size_t testIndex)
+    -> std::optional<PathVariableAccess>;
 
 /// @brief replaces the last element on path access with the direct output of
 /// vertex/edge
