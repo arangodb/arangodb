@@ -163,7 +163,7 @@ function InsertMultipleDocumentsSuite() {
         docs.push({d: i});
       }
       const expected = {writesExecuted: numDocs, writesIgnored: 0};
-      const query = `FOR d IN @docs INSERT d INTO ${cn} OPTIONS { waitForSync: false } RETURN d`;
+      const query = `FOR d IN @docs INSERT d INTO ${cn} OPTIONS { waitForSync: false } RETURN 1`;
       const res = db._query(query, {docs: docs});
       assertEqual(res.toArray().length, numDocs);
       const stats = res.getExtra().stats;
@@ -342,10 +342,14 @@ function InsertMultipleDocumentsExplainSuite() {
         `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
         `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`,
         `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
+<<<<<<< HEAD
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN {old: OLD, new: NEW}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN NEW`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN 1`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN true`,
+=======
+        `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN d`,
+>>>>>>> 15f00f738cfc1e5094c2d7f513035f4f20a6b8c1
       ];
       queries.forEach((query, idx) => {
         let rules = {};
@@ -369,6 +373,8 @@ function InsertMultipleDocumentsExplainSuite() {
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'conflict'}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: true}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: false}`,
+        `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN OLD`,
+        `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN NEW`,
       ];
       const queriesWithVariables = [
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
