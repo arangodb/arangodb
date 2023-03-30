@@ -1354,14 +1354,21 @@ authRouter.get('/visgraph/:name', function (req, res) {
           vadjust: -7
         }
       };
-
       if (config.nodeColorByCollection === 'true') {
         var coll = node._id.split('/')[0];
-        nodeObj.group = coll;
-        nodeObj.color = "";
+        if (tmpObjNodes.hasOwnProperty(coll)) {
+          nodeObj.color = tmpObjNodes[coll];
+        } else {
+          tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
+          nodeObj.color = tmpObjNodes[coll];
+        }
       } else if (config.nodeColorAttribute !== '') {
-        nodeObj.group = JSON.stringify(node[config.nodeColorAttribute]);
-        nodeObj.color = "";
+        var attr = node[config.nodeColorAttribute];
+        if (attr !== undefined && attr !== null) {
+            nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
+            nodeObj['nodeColorAttributeValue'] = attr;
+            nodeObj.color = tmpObjNodes[attr];
+        }
       }
 
       nodeObj.sortColor = nodeObj.color;
@@ -1533,7 +1540,6 @@ authRouter.get('/visgraph/:name', function (req, res) {
         node.nodeEdgesCount = nodeEdgesCount[node.id];
         node.value = nodeEdgesCount[node.id];
         connectionsCounts.push(nodeEdgesCount[node.id]);
-
         // if a node without edges is found, use def. size 10
         if (Number.isNaN(node.size)) {
           node.size = 10;
