@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,8 +66,13 @@ class RocksDBTempStorage {
 
   std::string const _basePath;
   StorageUsageTracker& _usageTracker;
+
+#ifdef USE_ENTERPRISE
+  // whether or not to use encryption for the temporary data
   bool const _useEncryption;
+  // whether or not to use hardware acceleration for encryption/decryption
   bool const _allowHWAcceleration;
+#endif
 
   std::string _tempFilesPath;
 

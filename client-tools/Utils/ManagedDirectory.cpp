@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/voc-errors.h"
@@ -172,7 +171,7 @@ inline void rawWrite(int fd, char const* data, size_t length,
                      arangodb::Result& status, std::string const& path,
                      int flags) {
   while (length > 0) {
-    ssize_t written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
+    auto written = TRI_WRITE(fd, data, static_cast<TRI_write_t>(length));
     if (written < 0) {
       status = ::genericError(path, flags);
       break;
@@ -516,7 +515,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory, int fd,
 }
 
 ManagedDirectory::File::~File() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   try {
     if (_gzfd >= 0) {
       gzclose(_gzFile);
@@ -558,7 +557,7 @@ Result const& ManagedDirectory::File::status() const { return _status; }
 std::string const& ManagedDirectory::File::path() const { return _path; }
 
 void ManagedDirectory::File::write(char const* data, size_t length) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   writeNoLock(data, length);
 }
 
@@ -589,7 +588,7 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
 }
 
 TRI_read_return_t ManagedDirectory::File::read(char* buffer, size_t length) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
   return readNoLock(buffer, length);
 }
 
@@ -619,7 +618,7 @@ TRI_read_return_t ManagedDirectory::File::readNoLock(char* buffer,
 }
 
 std::string ManagedDirectory::File::slurp() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   std::string content;
   if (::isReadable(_fd, _flags, _path, _status)) {
@@ -638,7 +637,7 @@ std::string ManagedDirectory::File::slurp() {
 }
 
 void ManagedDirectory::File::spit(std::string const& content) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   if (!::isWritable(_fd, _flags, _path, _status)) {
     return;
@@ -661,7 +660,7 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   if (_gzfd >= 0) {
     gzclose(_gzFile);
@@ -676,7 +675,7 @@ Result const& ManagedDirectory::File::close() {
 }
 
 std::int64_t ManagedDirectory::File::offset() const {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   std::int64_t fileBytesRead = -1;
 
@@ -690,7 +689,7 @@ std::int64_t ManagedDirectory::File::offset() const {
 }
 
 void ManagedDirectory::File::skip(size_t count) {
-  MUTEX_LOCKER(lock, _mutex);
+  std::lock_guard lock{_mutex};
 
   // TODO is there a better implementation than just read count bytes?
   // how does this work with gzip?

@@ -53,6 +53,7 @@ replication2::LogIndex test::AsyncLeader::getCommitIndex() const noexcept {
 Result test::AsyncLeader::release(replication2::LogIndex doneWithIdx) {
   return _leader->release(doneWithIdx);
 }
+Result test::AsyncLeader::compact() { return _leader->compact(); }
 replication2::LogIndex test::AsyncLeader::insert(
     replication2::LogPayload payload, bool waitForSync) {
   return _leader->insert(payload, waitForSync);

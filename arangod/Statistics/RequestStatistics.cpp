@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +23,8 @@
 
 #include "RequestStatistics.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-
 #include <iomanip>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -46,7 +41,7 @@ namespace {
 constexpr size_t kInitialQueueSize = 64;
 
 // protects statisticsItems
-Mutex statisticsMutex;
+std::mutex statisticsMutex;
 
 // a container of RequestStatistics objects. the vector is populated initially
 // with kInitialQueueSize items. It can grow at runtime. The addresses of
@@ -95,7 +90,7 @@ bool enqueueItem(boost::lockfree::queue<RequestStatistics*>& queue,
 // -----------------------------------------------------------------------------
 
 void RequestStatistics::initialize() {
-  MUTEX_LOCKER(guard, ::statisticsMutex);
+  std::lock_guard guard{::statisticsMutex};
 
   ::freeList.reserve(kInitialQueueSize * 2);
   ::finishedList.reserve(kInitialQueueSize * 2);
@@ -144,7 +139,7 @@ RequestStatistics::Item RequestStatistics::acquire() noexcept {
     // store pointer for just-created item
     statistics = cs.get();
 
-    MUTEX_LOCKER(guard, ::statisticsMutex);
+    std::lock_guard guard{::statisticsMutex};
     ::statisticsItems.emplace_back(std::move(cs));
   } catch (...) {
     statistics = nullptr;
@@ -164,56 +159,54 @@ void RequestStatistics::release() noexcept {
 void RequestStatistics::process(RequestStatistics* statistics) {
   TRI_ASSERT(statistics != nullptr);
 
-  {
-    statistics::TotalRequests.incCounter();
+  statistics::TotalRequests.incCounter();
+
+  if (statistics->_async) {
+    statistics::AsyncRequests.incCounter();
+  }
+
+  statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
+
+  // check that the request was completely received and transmitted
+  if (statistics->_readStart != 0.0 &&
+      (statistics->_async || statistics->_writeEnd != 0.0)) {
+    double totalTime;
 
     if (statistics->_async) {
-      statistics::AsyncRequests.incCounter();
+      totalTime = statistics->_requestEnd - statistics->_readStart;
+    } else {
+      totalTime = statistics->_writeEnd - statistics->_readStart;
     }
 
-    statistics::MethodRequests[(size_t)statistics->_requestType].incCounter();
-
-    // check that the request was completely received and transmitted
-    if (statistics->_readStart != 0.0 &&
-        (statistics->_async || statistics->_writeEnd != 0.0)) {
-      double totalTime;
-
-      if (statistics->_async) {
-        totalTime = statistics->_requestEnd - statistics->_readStart;
-      } else {
-        totalTime = statistics->_writeEnd - statistics->_readStart;
-      }
-
-      bool const isSuperuser = statistics->_superuser;
-      if (isSuperuser) {
-        statistics::TotalRequestsSuperuser.incCounter();
-      } else {
-        statistics::TotalRequestsUser.incCounter();
-      }
-
-      statistics::RequestFigures& figures =
-          isSuperuser ? statistics::SuperuserRequestFigures
-                      : statistics::UserRequestFigures;
-
-      figures.totalTimeDistribution.addFigure(totalTime);
-
-      double requestTime = statistics->_requestEnd - statistics->_requestStart;
-      figures.requestTimeDistribution.addFigure(requestTime);
-
-      double queueTime = 0.0;
-      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-        queueTime = statistics->_queueEnd - statistics->_queueStart;
-        figures.queueTimeDistribution.addFigure(queueTime);
-      }
-
-      double ioTime = totalTime - requestTime - queueTime;
-      if (ioTime >= 0.0) {
-        figures.ioTimeDistribution.addFigure(ioTime);
-      }
-
-      figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
-      figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
+    bool const isSuperuser = statistics->_superuser;
+    if (isSuperuser) {
+      statistics::TotalRequestsSuperuser.incCounter();
+    } else {
+      statistics::TotalRequestsUser.incCounter();
     }
+
+    statistics::RequestFigures& figures =
+        isSuperuser ? statistics::SuperuserRequestFigures
+                    : statistics::UserRequestFigures;
+
+    figures.totalTimeDistribution.addFigure(totalTime);
+
+    double requestTime = statistics->_requestEnd - statistics->_requestStart;
+    figures.requestTimeDistribution.addFigure(requestTime);
+
+    double queueTime = 0.0;
+    if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+      queueTime = statistics->_queueEnd - statistics->_queueStart;
+      figures.queueTimeDistribution.addFigure(queueTime);
+    }
+
+    double ioTime = totalTime - requestTime - queueTime;
+    if (ioTime >= 0.0) {
+      figures.ioTimeDistribution.addFigure(ioTime);
+    }
+
+    figures.bytesSentDistribution.addFigure(statistics->_sentBytes);
+    figures.bytesReceivedDistribution.addFigure(statistics->_receivedBytes);
   }
 
   // clear statistics

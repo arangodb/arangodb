@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,10 @@
 #include "Agency/MoveShard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "VocBase/LogicalCollection.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::consensus;
 
@@ -149,7 +152,7 @@ JOB_STATUS CleanOutServer::status() {
 
 bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("8a94c", DEBUG, Logger::SUPERVISION)
-      << "Todo: Clean out server " + _server + " for shrinkage";
+      << "Todo: Clean out server " << _server << " for shrinkage";
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -191,7 +194,7 @@ bool CleanOutServer::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("525fa", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -219,7 +222,7 @@ bool CleanOutServer::start(bool& aborts) {
 
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
-  if (health != "GOOD") {
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC("a7580", DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
         << ", not starting CleanOutServer job " << _jobId;
@@ -239,7 +242,7 @@ bool CleanOutServer::start(bool& aborts) {
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
     for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
-      if (x.isString() && x.copyString() == _server) {
+      if (x.isString() && x.stringView() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
       }
@@ -296,8 +299,8 @@ bool CleanOutServer::start(bool& aborts) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
         LOG_TOPIC("1e9a9", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -344,7 +347,8 @@ bool CleanOutServer::start(bool& aborts) {
     {
       VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
-      addPreconditionServerHealth(*pending, _server, "GOOD");
+      addPreconditionServerHealth(*pending, _server,
+                                  Supervision::HEALTH_STATUS_GOOD);
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
       addPreconditionUnchanged(
@@ -358,13 +362,13 @@ bool CleanOutServer::start(bool& aborts) {
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     LOG_TOPIC("e341c", DEBUG, Logger::SUPERVISION)
-        << "Pending: Clean out server " + _server;
+        << "Pending: Clean out server " << _server;
 
     return true;
   }
 
   LOG_TOPIC("3a348", INFO, Logger::SUPERVISION)
-      << "Precondition failed for starting CleanOutServer job " + _jobId;
+      << "Precondition failed for starting CleanOutServer job " << _jobId;
 
   return false;
 }
@@ -379,9 +383,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   size_t sub = 0;
 
   for (auto const& database : databases) {
-    if (isReplicationTwoDB(databaseProperties, database.first)) {
-      continue;
-    }
+    const bool isRepl2 = isReplicationTwoDB(databaseProperties, database.first);
 
     // Find shardsLike dependencies
     for (auto const& collptr : database.second->children()) {
@@ -395,13 +397,22 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
            collection.hasAsChildren("shards").value().get()) {
         // Only shards, which are affected
         int found = -1;
-        int count = 0;
-        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
-          if (dbserver.copyString() == _server) {
-            found = count;
-            break;
+        if (!isRepl2) {
+          int count = 0;
+          for (VPackSlice dbserver :
+               VPackArrayIterator(shard.second->slice())) {
+            if (dbserver.stringView() == _server) {
+              found = count;
+              break;
+            }
+            count++;
           }
-          count++;
+        } else {
+          auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+          if (isServerLeaderForState(_snapshot, database.first, stateId,
+                                     _server)) {
+            found = 0;
+          }
         }
         if (found == -1) {
           continue;
@@ -415,10 +426,16 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
         if (isSatellite) {
           if (isLeader) {
-            std::string toServer =
-                Job::findNonblockedCommonHealthyInSyncFollower(
-                    _snapshot, database.first, collptr.first, shard.first,
-                    _server);
+            std::string toServer;
+            if (isRepl2) {
+              auto stateId = LogicalCollection::shardIdToStateId(shard.first);
+              toServer = Job::findOtherHealthyParticipant(
+                  _snapshot, database.first, stateId, _server);
+            } else {
+              toServer = Job::findNonblockedCommonHealthyInSyncFollower(
+                  _snapshot, database.first, collptr.first, shard.first,
+                  _server);
+            }
 
             MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +52,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -226,11 +227,6 @@ arangodb::Result tryCreateDatabase(
   std::unique_ptr<SimpleHttpClient> httpClient;
   try {
     httpClient = client.createHttpClient(0);  // thread number zero
-    httpClient->params().setLocationRewriter(
-        static_cast<void*>(&client), arangodb::ClientManager::rewriteLocation);
-    httpClient->params().setUserNamePassword("/", client.username(),
-                                             client.password());
-
   } catch (...) {
     LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
@@ -819,20 +815,31 @@ arangodb::Result processInputDirectory(
       jobQueue.waitForIdle();
     }
 
-    // Step 5: create arangosearch views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+    auto createViews = [&](std::string_view type) {
+      if (options.importStructure && !views.empty()) {
+        LOG_TOPIC("f723c", INFO, Logger::RESTORE)
+            << "# Creating " << type << " views...";
 
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
+        for (auto const& viewDefinition : views) {
+          auto slice = viewDefinition.slice();
+          LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+              << "# Creating view: " << slice.toJson();
+          if (auto viewType = slice.get("type");
+              !viewType.isString() || viewType.stringView() != type) {
+            continue;
+          }
+          if (auto r = ::restoreView(httpClient, options, slice); !r.ok()) {
+            return r;
+          }
         }
       }
+      return Result{};
+    };
+
+    // Step 5: create arangosearch views
+    auto r = createViews("arangosearch");
+    if (!r.ok()) {
+      return r;
     }
 
     // Step 6: fire up data transfer
@@ -881,6 +888,12 @@ arangodb::Result processInputDirectory(
 
     jobQueue.waitForIdle();
     jobs.clear();
+
+    // Step 7: create search-alias views
+    r = createViews("search-alias");
+    if (!r.ok()) {
+      return r;
+    }
 
     Result firstError = feature.getFirstError();
     if (firstError.fail()) {
@@ -1100,14 +1113,12 @@ RestoreFeature::RestoreJob::RestoreJob(RestoreFeature& feature,
                                        RestoreProgressTracker& progressTracker,
                                        RestoreFeature::Options const& options,
                                        RestoreFeature::Stats& stats,
-                                       bool useEnvelope,
                                        std::string const& collectionName,
                                        std::shared_ptr<SharedState> sharedState)
     : feature{feature},
       progressTracker{progressTracker},
       options{options},
       stats{stats},
-      useEnvelope{useEnvelope},
       collectionName(collectionName),
       sharedState(std::move(sharedState)) {}
 
@@ -1121,8 +1132,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 
   std::string const url =
       "/_api/replication/restore-data?collection=" + urlEncode(collectionName) +
-      "&force=" + (options.force ? "true" : "false") +
-      "&useEnvelope=" + (useEnvelope ? "true" : "false");
+      "&force=" + (options.force ? "true" : "false");
 
   std::unordered_map<std::string, std::string> headers;
   headers.emplace(arangodb::StaticStrings::ContentTypeHeader,
@@ -1143,14 +1153,14 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
     // leave readOffset in place in readOffsets, because the job did not succeed
     {
       // store error
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->result = res;
     }
   } else {
     // no error
 
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       TRI_ASSERT(!sharedState->readOffsets.empty());
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -1182,7 +1192,7 @@ Result RestoreFeature::RestoreJob::sendRestoreData(
 }
 
 void RestoreFeature::RestoreJob::updateProgress() {
-  MUTEX_LOCKER(locker, sharedState->mutex);
+  std::unique_lock locker{sharedState->mutex};
 
   if (!sharedState->readOffsets.empty()) {
     auto it = sharedState->readOffsets.begin();
@@ -1211,11 +1221,12 @@ RestoreFeature::RestoreMainJob::RestoreMainJob(
     RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
     VPackSlice parameters, bool useEnvelope)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
+    : RestoreJob(feature, progressTracker, options, stats,
                  parameters.get({"parameters", "name"}).copyString(),
                  std::make_shared<SharedState>()),
       directory{directory},
-      parameters{parameters} {}
+      parameters{parameters},
+      useEnvelope{useEnvelope} {}
 
 Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -1321,7 +1332,7 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   {
     // insert the current readoffset
-    MUTEX_LOCKER(locker, sharedState->mutex);
+    std::lock_guard locker{sharedState->mutex};
     sharedState->readOffsets.emplace(readOffset, readLength);
   }
 
@@ -1345,8 +1356,8 @@ Result RestoreFeature::RestoreMainJob::dispatchRestoreData(
 
   feature.taskQueue().queueJob(
       std::make_unique<arangodb::RestoreFeature::RestoreSendJob>(
-          feature, progressTracker, options, stats, useEnvelope, collectionName,
-          sharedState, readOffset, std::move(buffer)));
+          feature, progressTracker, options, stats, collectionName, sharedState,
+          readOffset, std::move(buffer)));
 
   // we just scheduled an async job, and no result will be returned from here
   return {};
@@ -1453,7 +1464,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       return {TRI_ERROR_OUT_OF_MEMORY, "out of memory"};
     }
 
-    ssize_t numRead = datafile->read(buffer->end(), bufferSize);
+    auto numRead = datafile->read(buffer->end(), bufferSize);
     if (datafile->status().fail()) {  // error while reading
       return datafile->status();
     }
@@ -1505,7 +1516,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
       // check if our status was changed by background jobs
       if (result.ok()) {
-        MUTEX_LOCKER(locker, sharedState->mutex);
+        std::lock_guard locker{sharedState->mutex};
 
         if (sharedState->result.fail()) {
           // yes, something failed
@@ -1559,7 +1570,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   // end of main job
   if (result.ok()) {
     {
-      MUTEX_LOCKER(locker, sharedState->mutex);
+      std::lock_guard locker{sharedState->mutex};
       sharedState->readCompleteInputfile = true;
     }
 
@@ -1621,11 +1632,10 @@ Result RestoreFeature::RestoreMainJob::sendRestoreIndexes(
 RestoreFeature::RestoreSendJob::RestoreSendJob(
     RestoreFeature& feature, RestoreProgressTracker& progressTracker,
     RestoreFeature::Options const& options, RestoreFeature::Stats& stats,
-    bool useEnvelope, std::string const& collectionName,
-    std::shared_ptr<SharedState> sharedState, size_t readOffset,
-    std::unique_ptr<basics::StringBuffer> buffer)
-    : RestoreJob(feature, progressTracker, options, stats, useEnvelope,
-                 collectionName, std::move(sharedState)),
+    std::string const& collectionName, std::shared_ptr<SharedState> sharedState,
+    size_t readOffset, std::unique_ptr<basics::StringBuffer> buffer)
+    : RestoreJob(feature, progressTracker, options, stats, collectionName,
+                 std::move(sharedState)),
       readOffset(readOffset),
       buffer(std::move(buffer)) {}
 
@@ -1668,23 +1678,25 @@ void RestoreFeature::collectOptions(
 
   options->addOption(
       "--collection",
-      "restrict to collection name (can be specified multiple times)",
+      "Restrict the restore to this collection name (can be specified multiple "
+      "times).",
       new VectorParameter<StringParameter>(&_options.collections));
 
   options->addOption("--view",
-                     "restrict to view name (can be specified multiple times)",
+                     "Restrict the restore to this view name (can be specified "
+                     "multiple times).",
                      new VectorParameter<StringParameter>(&_options.views));
 
   options->addObsoleteOption(
       "--recycle-ids", "collection ids are now handled automatically", false);
 
   options->addOption("--batch-size",
-                     "maximum size for individual data batches (in bytes)",
+                     "The maximum size for individual data batches (in bytes).",
                      new UInt64Parameter(&_options.chunkSize));
 
   options
       ->addOption("--threads",
-                  "maximum number of collections to process in parallel",
+                  "The maximum number of collections to process in parallel.",
                   new UInt32Parameter(&_options.threadCount),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Dynamic))
@@ -1692,70 +1704,70 @@ void RestoreFeature::collectOptions(
 
   options
       ->addOption("--initial-connect-retries",
-                  "number of connect retries for initial connection",
+                  "The number of connect retries for the initial connection.",
                   new UInt32Parameter(&_options.initialConnectRetries))
       .setIntroducedIn(30713)
       .setIntroducedIn(30801);
 
   options->addOption("--include-system-collections",
-                     "include system collections",
+                     "Include system collections.",
                      new BooleanParameter(&_options.includeSystemCollections));
 
   options->addOption("--create-database",
-                     "create the target database if it does not exist",
+                     "Create the target database if it does not exist.",
                      new BooleanParameter(&_options.createDatabase));
 
   options->addOption(
       "--force-same-database",
-      "force usage of the same database name as in the source dump.json file",
+      "Force the same database name as in the source `dump.json` file.",
       new BooleanParameter(&_options.forceSameDatabase));
 
   options
-      ->addOption("--all-databases", "restore data to all databases",
+      ->addOption("--all-databases", "Restore the data of all databases.",
                   new BooleanParameter(&_options.allDatabases))
       .setIntroducedIn(30500);
 
-  options->addOption("--input-directory", "input directory",
+  options->addOption("--input-directory", "The input directory.",
                      new StringParameter(&_options.inputPath));
 
   options
       ->addOption(
           "--cleanup-duplicate-attributes",
-          "clean up duplicate attributes (use first specified value) in input "
-          "documents instead of making the restore operation fail",
+          "Clean up duplicate attributes (use first specified value) in input "
+          "documents instead of making the restore operation fail.",
           new BooleanParameter(&_options.cleanupDuplicateAttributes),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
-  options->addOption("--import-data", "import data into collection",
+  options->addOption("--import-data", "Import data into collection.",
                      new BooleanParameter(&_options.importData));
 
-  options->addOption("--create-collection", "create collection structure",
+  options->addOption("--create-collection", "Create collection structure.",
                      new BooleanParameter(&_options.importStructure));
 
-  options->addOption("--progress", "show progress",
+  options->addOption("--progress", "Show the progress.",
                      new BooleanParameter(&_options.progress));
 
-  options->addOption("--overwrite", "overwrite collections if they exist",
+  options->addOption("--overwrite", "Overwrite collections if they exist.",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--continue", "continue restore operation",
+  options->addOption("--continue", "Continue the restore operation.",
                      new BooleanParameter(&_options.continueRestore));
 
   options
       ->addOption("--envelope",
                   "wrap each document into a {type, data} envelope "
-                  "(this is required from compatibility with v3.7 and before)",
+                  "(this is required for compatibility with v3.7 and before).",
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
 
   options
       ->addOption("--enable-revision-trees",
-                  "enable revision trees for new collections if the collection "
-                  "attributes 'syncByRevision' and "
-                  "'usesRevisionsAsDocumentIds' are missing",
+                  "Enable revision trees for new collections if the collection "
+                  "attributes `syncByRevision` and "
+                  "`usesRevisionsAsDocumentIds` are missing.",
                   new BooleanParameter(&_options.enableRevisionTrees))
       .setIntroducedIn(30807);
 
@@ -1769,8 +1781,9 @@ void RestoreFeature::collectOptions(
   options
       ->addOption(
           "--number-of-shards",
-          "override value for numberOfShards (can be specified multiple times, "
-          "e.g. --number-of-shards 2 --number-of-shards myCollection=3)",
+          "Override the `numberOfShards` value (can be specified multiple "
+          "times, e.g. --number-of-shards 2 --number-of-shards "
+          "myCollection=3).",
           new VectorParameter<StringParameter>(&_options.numberOfShards))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
@@ -1778,36 +1791,39 @@ void RestoreFeature::collectOptions(
   options
       ->addOption(
           "--replication-factor",
-          "override value for replicationFactor (can be specified "
+          "Override the `replicationFactor` value (can be specified "
           "multiple times, e.g. --replication-factor 2 "
-          "--replication-factor myCollection=3)",
+          "--replication-factor myCollection=3).",
           new VectorParameter<StringParameter>(&_options.replicationFactor))
       .setIntroducedIn(30322)
       .setIntroducedIn(30402);
 
   options->addOption(
       "--ignore-distribute-shards-like-errors",
-      "continue restore even if sharding prototype collection is missing",
+      "Continue the restore even if the sharding prototype collection is "
+      "missing.",
       new BooleanParameter(&_options.ignoreDistributeShardsLikeErrors));
 
   options->addOption(
-      "--force", "continue restore even in the face of some server-side errors",
+      "--force",
+      "Continue the restore even in the face of some server-side errors.",
       new BooleanParameter(&_options.force));
 
   // deprecated options
   options
-      ->addOption("--default-number-of-shards",
-                  "default value for numberOfShards if not specified in dump",
-                  new UInt64Parameter(&_options.defaultNumberOfShards),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+      ->addOption(
+          "--default-number-of-shards",
+          "The default `numberOfShards` value if not specified in the dump.",
+          new UInt64Parameter(&_options.defaultNumberOfShards),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
       .setDeprecatedIn(30322)
       .setDeprecatedIn(30402);
 
   options
       ->addOption(
           "--default-replication-factor",
-          "default value for replicationFactor if not specified in dump",
+          "The default `replicationFactor` value if not specified in the dump.",
           new UInt64Parameter(&_options.defaultReplicationFactor),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
@@ -2256,8 +2272,10 @@ ClientTaskQueue<RestoreFeature::RestoreJob>& RestoreFeature::taskQueue() {
 
 void RestoreFeature::reportError(Result const& error) {
   try {
-    MUTEX_LOCKER(lock, _workerErrorLock);
-    _workerErrors.emplace(error);
+    {
+      std::lock_guard lock{_workerErrorLock};
+      _workerErrors.emplace_back(error);
+    }
     _clientTaskQueue.clearQueue();
   } catch (...) {
   }
@@ -2265,7 +2283,7 @@ void RestoreFeature::reportError(Result const& error) {
 
 Result RestoreFeature::getFirstError() const {
   {
-    MUTEX_LOCKER(lock, _workerErrorLock);
+    std::lock_guard lock{_workerErrorLock};
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
     }
@@ -2274,7 +2292,7 @@ Result RestoreFeature::getFirstError() const {
 }
 
 std::unique_ptr<basics::StringBuffer> RestoreFeature::leaseBuffer() {
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
 
   if (_buffers.empty()) {
     // no buffers present. now insert one
@@ -2296,7 +2314,7 @@ void RestoreFeature::returnBuffer(
   TRI_ASSERT(buffer != nullptr);
   buffer->clear();
 
-  MUTEX_LOCKER(lock, _buffersLock);
+  std::lock_guard lock{_buffersLock};
   try {
     _buffers.emplace_back(std::move(buffer));
   } catch (...) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,15 +23,16 @@
 
 #include "ShellFeature.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "FeaturePhases/V8ShellFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ShellConsoleFeature.h"
+#include "Shell/TelemetricsHandler.h"
 #include "Shell/V8ShellFeature.h"
+#include <velocypack/Builder.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -47,37 +48,40 @@ ShellFeature::ShellFeature(Server& server, int* result)
   startsAfter<application_features::V8ShellFeaturePhase>();
 }
 
+ShellFeature::~ShellFeature() = default;
+
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--jslint", "do not start as shell, run jslint instead",
+  options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
                      new VectorParameter<StringParameter>(&_jslint));
 
   options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.execute",
-                     "execute JavaScript code from file",
+                     "Execute the JavaScript code from the specified file.",
                      new VectorParameter<StringParameter>(&_executeScripts));
 
   options->addOption("--javascript.execute-string",
-                     "execute JavaScript code from string",
+                     "Execute the JavaScript code from the specified string.",
                      new VectorParameter<StringParameter>(&_executeStrings));
 
-  options->addOption("--javascript.check-syntax",
-                     "syntax check code JavaScript code from file",
-                     new VectorParameter<StringParameter>(&_checkSyntaxFiles));
+  options->addOption(
+      "--javascript.check-syntax",
+      "Check the syntax of the JavaScript code from the specified file.",
+      new VectorParameter<StringParameter>(&_checkSyntaxFiles));
 
   options->addOption("--javascript.unit-tests",
-                     "do not start as shell, run unit tests instead",
+                     "Do not start as a shell, run unit tests instead.",
                      new VectorParameter<StringParameter>(&_unitTests));
 
   options->addOption("--javascript.unit-test-filter",
-                     "filter testcases in suite",
+                     "Filter the test cases in the test suite.",
                      new StringParameter(&_unitTestFilter));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  options->addOption("--javascript.script-parameter", "script parameter",
+  options->addOption("--javascript.script-parameter", "Script parameter.",
                      new VectorParameter<StringParameter>(&_scriptParameters));
 
-  options->addOption("--javascript.run-main", "execute function main",
+  options->addOption("--javascript.run-main", "Execute main function.",
                      new BooleanParameter(&_runMain));
 #endif
 }
@@ -145,14 +149,19 @@ void ShellFeature::start() {
   V8ShellFeature& shell = server().getFeature<V8ShellFeature>();
 
   bool ok = false;
-
   try {
     switch (_runMode) {
       case RunMode::INTERACTIVE:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
         ok = (shell.runShell(_positionals) == TRI_ERROR_NO_ERROR);
         break;
 
       case RunMode::EXECUTE_SCRIPT:
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+        startTelemetrics();
+#endif
         ok = shell.runScript(_executeScripts, _positionals, true,
                              _scriptParameters, _runMain);
         break;
@@ -187,6 +196,45 @@ void ShellFeature::start() {
   if (*_result == EXIT_SUCCESS && !ok) {
     *_result = EXIT_FAILURE;
   }
+}
+
+void ShellFeature::beginShutdown() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+  }
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+void ShellFeature::getTelemetricsInfo(VPackBuilder& builder) {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->getTelemetricsInfo(builder);
+  }
+}
+VPackBuilder ShellFeature::sendTelemetricsToEndpoint(std::string const& url) {
+  if (_telemetricsHandler != nullptr) {
+    return _telemetricsHandler->sendTelemetricsToEndpoint(url);
+  }
+  return VPackBuilder();
+}
+#endif
+
+void ShellFeature::startTelemetrics() {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(
+      server(), _automaticallySendTelemetricsToEndpoint);
+#else
+  _telemetricsHandler = std::make_unique<TelemetricsHandler>(server(), true);
+#endif
+  _telemetricsHandler->runTelemetrics();
+}
+
+void ShellFeature::restartTelemetrics() {
+  if (_telemetricsHandler != nullptr) {
+    _telemetricsHandler->beginShutdown();
+    _telemetricsHandler.reset();
+  }
+  startTelemetrics();
 }
 
 }  // namespace arangodb

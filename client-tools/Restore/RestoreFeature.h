@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -107,7 +108,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
-    bool useEnvelope{true};
+    bool useEnvelope{false};
     bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -151,7 +152,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   struct SharedState {
     SharedState() : readCompleteInputfile(false) {}
 
-    Mutex mutex;
+    std::mutex mutex;
 
     /// @brief this contains errors produced by background send operations
     /// (i.e. RestoreSendJobs)
@@ -171,7 +172,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
   /// @brief Stores all necessary data to restore a single collection or shard
   struct RestoreJob {
     RestoreJob(RestoreFeature& feature, RestoreProgressTracker& progressTracker,
-               Options const& options, Stats& stats, bool useEnvelope,
+               Options const& options, Stats& stats,
                std::string const& collectionName,
                std::shared_ptr<SharedState> sharedState);
 
@@ -189,7 +190,6 @@ class RestoreFeature final : public ArangoRestoreFeature {
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-    bool useEnvelope;
     std::string const collectionName;
     std::shared_ptr<SharedState> sharedState;
   };
@@ -217,12 +217,13 @@ class RestoreFeature final : public ArangoRestoreFeature {
 
     ManagedDirectory& directory;
     VPackSlice parameters;
+    bool useEnvelope;
   };
 
   struct RestoreSendJob : public RestoreJob {
     RestoreSendJob(RestoreFeature& feature,
                    RestoreProgressTracker& progressTracker,
-                   Options const& options, Stats& stats, bool useEnvelope,
+                   Options const& options, Stats& stats,
                    std::string const& collectionName,
                    std::shared_ptr<SharedState> sharedState, size_t readOffset,
                    std::unique_ptr<basics::StringBuffer> buffer);
@@ -255,10 +256,10 @@ class RestoreFeature final : public ArangoRestoreFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex mutable _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::mutex mutable _workerErrorLock;
+  std::vector<Result> _workerErrors;
 
-  Mutex _buffersLock;
+  std::mutex _buffersLock;
   std::vector<std::unique_ptr<basics::StringBuffer>> _buffers;
 };
 

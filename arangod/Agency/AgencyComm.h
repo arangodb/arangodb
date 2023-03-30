@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -36,9 +37,6 @@
 #include <velocypack/Slice.h>
 
 #include "Agency/PathComponent.h"
-#include "AgencyComm.h"
-#include "Basics/Mutex.h"
-#include "Basics/Result.h"
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
@@ -46,6 +44,7 @@
 
 namespace arangodb {
 class Endpoint;
+class Result;
 
 namespace application_features {
 class ApplicationServer;
@@ -191,7 +190,6 @@ class AgencyCommHelper {
 
  public:
   static void initialize(std::string const& prefix);
-  static void shutdown();
 
   static std::string const& path() noexcept;
   static std::string path(std::string const&);
@@ -637,14 +635,6 @@ class AgencyComm {
   AgencyCommResult unregisterCallback(std::string const& key,
                                       std::string const& endpoint);
 
-  bool lockRead(std::string const&, double, double);
-
-  bool lockWrite(std::string const&, double, double);
-
-  bool unlockRead(std::string const&, double);
-
-  bool unlockWrite(std::string const&, double);
-
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
@@ -671,8 +661,7 @@ class AgencyComm {
   ArangodServer& _server;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
-}  // namespace arangodb
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
-}
+std::ostream& operator<<(std::ostream& o, AgencyCommResult const& a);
+
+}  // namespace arangodb

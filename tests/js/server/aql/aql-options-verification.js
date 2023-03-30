@@ -30,8 +30,10 @@ const internal = require("internal");
 const db = internal.db;
 const jsunity = require("jsunity");
 const errors = internal.errors;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
-function aqlOptionsVerificationSuite() {
+function aqlOptionsVerificationSuite(isSearchAlias) {
   const cn = 'UnitTestsCollection';
 
   let checkQueries = (operation, queries) => {
@@ -53,13 +55,30 @@ function aqlOptionsVerificationSuite() {
 
     setUpAll: function () {
       db._drop(cn);
-      db._create(cn);
+      let c = db._create(cn);
 
       db._drop(cn + "Edge");
       db._createEdgeCollection(cn + "Edge");
 
       db._dropView(cn + "View");
-      db._createView(cn + "View", "arangosearch", {links: {[cn]: {includeAllFields: true}}});
+      if (isSearchAlias) {
+        let indexMeta = {};
+        if (isEnterprise) {
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}]};
+        } else {
+          indexMeta = {type: "inverted", name: "inverted", includeAllFields: true, fields: [{"name": "value[*]"}]};
+        }
+        let i1 = c.ensureIndex(indexMeta);
+        db._createView(cn + "View", "search-alias", {indexes: [{collection: c.name(), index: i1.name}]});
+      } else {
+        let viewMeta = {};
+        if (isEnterprise) {
+          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}}}}};
+        } else {
+          viewMeta = {links: {[cn]: {includeAllFields: true, "fields": {}}}};
+        }
+        db._createView(cn + "View", "arangosearch", viewMeta);
+      }
     },
 
     tearDownAll: function () {
@@ -82,6 +101,7 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ indexHint: ['primary'] } RETURN 1"],
         [prefix + "{ indexHint: ['primary'], forceIndexHint: false } RETURN 1"],
         [prefix + "{ forceIndexHint: false } RETURN 1"],
+        [prefix + "{ indexHint: 'inverted'} RETURN 1"],
 
         [prefix + "{ forceIndexHint: 'meow' } RETURN 1", "forceIndexHint"],
         [prefix + "{ indexHint: false } RETURN 1", "indexHint"],
@@ -90,13 +110,15 @@ function aqlOptionsVerificationSuite() {
         [prefix + "{ useCache: 'piff' } RETURN 1", "useCache"],
         [prefix + "{ lookahead: 'meow' } RETURN 1", "lookahead"],
         [prefix + "{ lookahead: false } RETURN 1", "lookahead"],
-        [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
-        [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
-        
+
+        // valid waitForSync option
+        [prefix + "{ waitForSync: true } RETURN 1"],
+        [prefix + "{ waitForSync: false } RETURN 1"],
+
         // valid combinations of indexHint and disableIndex
         [prefix + "{ indexHint: 'primary', disableIndex: false } RETURN 1"],
         [prefix + "{ indexHint: ['primary'], disableIndex: false } RETURN 1"],
@@ -233,7 +255,7 @@ function aqlOptionsVerificationSuite() {
     },
 
     testInsert: function () {
-      const prefix = "FOR doc IN " + cn + " INSERT {} INTO " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " INSERT {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} INTO " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
@@ -263,7 +285,7 @@ function aqlOptionsVerificationSuite() {
     },
 
     testUpdate: function () {
-      const prefix = "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " UPDATE doc WITH {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} IN " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
@@ -293,7 +315,7 @@ function aqlOptionsVerificationSuite() {
     },
 
     testReplace: function () {
-      const prefix = "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn + " OPTIONS ";
+      const prefix = "FOR doc IN " + cn + " REPLACE doc WITH {'value_nested': [{'nested_1': [{'nested_2': 'foo'}]}]} IN " + cn + " OPTIONS ";
       const queries = [
         [prefix + "{ waitForSync: false }"],
         [prefix + "{ waitForSync: true }"],
@@ -416,5 +438,27 @@ function aqlOptionsVerificationSuite() {
   };
 }
 
-jsunity.run(aqlOptionsVerificationSuite);
+function aqlOptionsVerificationArangoSearchSuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlOptionsVerificationSuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function aqlOptionsVerificationSearchAliasSuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlOptionsVerificationSuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(aqlOptionsVerificationArangoSearchSuite);
+jsunity.run(aqlOptionsVerificationSearchAliasSuite);
+
 return jsunity.done();

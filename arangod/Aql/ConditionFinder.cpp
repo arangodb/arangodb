@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -154,6 +154,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
         IndexIteratorOptions opts;
         opts.ascending = !descending;
         opts.lookahead = node->hint().getLookahead();
+        opts.waitForSync = node->hint().waitForSync();
         opts.useCache = node->useCache();
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

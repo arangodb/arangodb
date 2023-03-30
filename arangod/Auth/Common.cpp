@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,6 @@
 
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 
@@ -31,27 +30,23 @@ static_assert(auth::Level::UNDEFINED < auth::Level::NONE, "undefined < none");
 static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
 static_assert(auth::Level::RO < auth::Level::RW, "none < ro");
 
-static auth::Level _convertToAuthLevel(std::string_view ref) {
-  if (ref.compare("rw") == 0) {
+auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
+  return convertToAuthLevel(grants.stringView());
+}
+
+auth::Level arangodb::auth::convertToAuthLevel(std::string_view grants) {
+  if (grants == "rw") {
     return auth::Level::RW;
-  } else if (ref.compare("ro") == 0) {
+  } else if (grants == "ro") {
     return auth::Level::RO;
-  } else if (ref.compare("none") == 0 || ref.empty()) {
+  } else if (grants == "none" || grants.empty()) {
     return auth::Level::NONE;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "expecting access type 'rw', 'ro' or 'none'");
 }
 
-auth::Level arangodb::auth::convertToAuthLevel(velocypack::Slice grants) {
-  return _convertToAuthLevel(grants.stringView());
-}
-
-auth::Level arangodb::auth::convertToAuthLevel(std::string const& grants) {
-  return _convertToAuthLevel(grants);
-}
-
-std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
+std::string_view arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
   if (lvl == auth::Level::RW) {
     return "rw";
   } else if (lvl == auth::Level::RO) {

@@ -31,7 +31,8 @@
 
 module.isSystem = true;
 
-var internal = require('internal');
+const internal = require('internal');
+const _ = require('lodash');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructor
@@ -39,13 +40,12 @@ var internal = require('internal');
 
 exports.ArangoDatabase = internal.ArangoDatabase;
 
-var ArangoDatabase = exports.ArangoDatabase;
+let ArangoDatabase = exports.ArangoDatabase;
 
 // must be called after export
-var ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
-var ArangoView = require('@arangodb/arango-view').ArangoView;
-var ArangoError = require('@arangodb').ArangoError;
-var ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
+const ArangoCollection = require('@arangodb/arango-collection').ArangoCollection;
+const ArangoError = require('@arangodb').ArangoError;
+const ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief prints a database
@@ -76,7 +76,7 @@ ArangoDatabase.prototype._createStatement = function (data) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
-  var payload = {
+  let payload = {
     query,
     bindVars: bindVars || undefined
   };
@@ -102,15 +102,35 @@ ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, opti
   return new ArangoStatement(this, payload).execute();
 };
 
+const buildQueryPayload = (query, bindVars, options) => { 
+  let payload = {};
+  
+  if (typeof query === 'object' && query.hasOwnProperty('query')) {
+    payload = query;
+  } else {
+    payload = { query, bindVars, options };
+  }
+  // query
+  if (typeof payload.query === 'object' && typeof payload.query.toAQL === 'function') {
+    payload.query = payload.query.toAQL();
+  }
+  if (payload.options) {
+    // options may be modified by the caller later
+    payload.options = _.clone(payload.options);
+  } else {
+    payload.options = {};
+  }
+  return payload;
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief queryProfile execute a query with profiling information
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._profileQuery = function (query, bindVars, options) {
-  options = options || {};
-  options.profile = 2;
-  query = { query: query, bindVars: bindVars, options: options };
-  require('@arangodb/aql/explainer').profileQuery(query);
+  let payload = buildQueryPayload(query, bindVars, options);
+  payload.options.profile = 2;
+  require('@arangodb/aql/explainer').profileQuery(payload);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -118,15 +138,8 @@ ArangoDatabase.prototype._profileQuery = function (query, bindVars, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._explain = function (query, bindVars, options) {
-  if (typeof query === 'object' && typeof query.toAQL === 'function') {
-    query = { query: query.toAQL() };
-  }
-
-  if (arguments.length > 1) {
-    query = { query, bindVars, options };
-  }
-
-  require('@arangodb/aql/explainer').explain(query);
+  let payload = buildQueryPayload(query, bindVars, options);
+  require('@arangodb/aql/explainer').explain(payload);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

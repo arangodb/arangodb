@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,14 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 
+#include <string_view>
+
+namespace rocksdb {
+struct CompactionJobInfo;
+class DB;
+struct FlushJobInfo;
+}  // namespace rocksdb
+
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -40,7 +48,22 @@ class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
   explicit RocksDBMetricsListener(ArangodServer&);
 
-  void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
+  void OnFlushBegin(rocksdb::DB*, rocksdb::FlushJobInfo const& info) override;
+  void OnFlushCompleted(rocksdb::DB*,
+                        rocksdb::FlushJobInfo const& info) override;
+
+  void OnCompactionBegin(rocksdb::DB*,
+                         rocksdb::CompactionJobInfo const&) override;
+  void OnCompactionCompleted(rocksdb::DB*,
+                             rocksdb::CompactionJobInfo const&) override;
+  void OnStallConditionsChanged(rocksdb::WriteStallInfo const& info) override;
+
+ private:
+  void handleFlush(std::string_view phase,
+                   rocksdb::FlushJobInfo const& info) const;
+
+  void handleCompaction(std::string_view phase,
+                        rocksdb::CompactionJobInfo const& info) const;
 
  protected:
   metrics::Counter& _writeStalls;

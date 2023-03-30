@@ -26,7 +26,6 @@
 #include <fmt/ostream.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
@@ -93,6 +92,49 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
   };
 
   auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+  };
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+// Create a log with waitForSync = false in the configuration and
+// check that assumedWaitForSync is never true
+TEST_F(ReplicatedLogSupervisionSimulationTest,
+       check_log_created_with_correct_assumedwaitforsync) {
+  AgencyLogBuilder log;
+  log.setTargetConfig(LogTargetConfig(2, 2, false))
+      .setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState = makeAgencyState(log.get(), std::move(health));
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},
+      DBServerActor{"A"},
+      DBServerActor{"B"},
+      DBServerActor{"C"},
+  };
+
+  auto allTests = model_checker::combined{
+      MC_ALWAYS(mcpreds::isAssumedWaitForSyncFalse()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
@@ -448,16 +490,16 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
       MC_EVENTUALLY_ALWAYS(mcpreds::isPlannedWriteConcern(false)),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth())};
   // Unfortunately the deterministic checker takes too long
-  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                          AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
                                             AgencyState, AgencyTransition>;
-  // using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
-  //                                           AgencyState, AgencyTransition>;
   //
   auto result =
       Engine::run(driver, allTests, initState,
                   {.iterations = 20000, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
+  // std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
@@ -551,10 +593,13 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("A"))};
-  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                           AgencyState, AgencyTransition>;
+  //
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
                                             AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
+  // std::cout << result.stats << std::endl;
 }

@@ -35,7 +35,11 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/EnumeratePathsExecutor.h"
+
+// Unfortunately we need to include this as we declare a tests-based template
+// at the end of this file.
+#include "Aql/EnumeratePathsExecutor.cpp"
+
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
@@ -45,9 +49,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
@@ -115,11 +117,14 @@ PathSequence const somePaths = {
 // is merely initialized with a set of "paths" and then outputs them, keeping a
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
-class FakeKShortestPathsFinder : public KShortestPathsFinder {
+
+class FakeKShortestPathsFinder {
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options,
                            PathSequence const& kpaths)
-      : KShortestPathsFinder(options), _kpaths(kpaths), _traversalDone(true) {}
+      : _kpaths(kpaths), _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -136,10 +141,19 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     return false;
   }
 
-  bool startKShortestPathsTraversal(Slice const& start,
-                                    Slice const& end) override {
-    _source = std::string{start.copyString()};
-    _target = std::string{end.copyString()};
+  bool skipPath() {
+    Builder builder{};
+    return getNextPath(builder);
+  }
+
+  bool isDone() const { return _traversalDone; }
+
+  // not required here inside the test itself, but necessary by interface
+  void clear() {}
+  void destroyEngines() {}
+  void reset(VertexRef source, VertexRef target, size_t depth = 0) {
+    _source = source.toString();
+    _target = target.toString();
 
     _calledWith.emplace_back(std::make_pair(_source, _target));
 
@@ -148,10 +162,9 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     EXPECT_NE(_source, _target);
 
     _finder = _kpaths.begin();
-    return true;
   }
 
-  bool getNextPathAql(Builder& builder) override {
+  bool getNextPath(arangodb::velocypack::Builder& result) {
     _traversalDone = !gotoNextPath();
 
     if (_traversalDone) {
@@ -159,11 +172,11 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     } else {
       _pathsProduced.emplace_back(*_finder);
       // fill builder with something sensible?
-      builder.openArray();
+      result.openArray();
       for (auto&& v : *_finder) {
-        builder.add(VPackValue(v));
+        result.add(VPackValue(v));
       }
-      builder.close();
+      result.close();
 
       // HACK
       _finder++;
@@ -171,12 +184,7 @@ class FakeKShortestPathsFinder : public KShortestPathsFinder {
     }
   }
 
-  bool skipPath() override {
-    Builder builder{};
-    return getNextPathAql(builder);
-  }
-
-  bool isDone() const override { return _traversalDone; }
+  aql::TraversalStats stealStats() { return {}; }
 
   PathSequence& getPathsProduced() noexcept { return _pathsProduced; }
   std::vector<std::pair<std::string, std::string>> getCalledWith() noexcept {
@@ -232,7 +240,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   // and that doesn't mix with std::move
   KShortestPathsTestParameters parameters;
 
-  MockAqlServer server;
+  MockAqlServer server{};
   ExecutionState state;
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
@@ -241,24 +249,20 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
-
   RegisterInfos registerInfos;
-  EnumeratePathsExecutorInfos<KShortestPathsFinder> executorInfos;
-
+  EnumeratePathsExecutorInfos<FakeKShortestPathsFinder> executorInfos;
   FakeKShortestPathsFinder& finder;
-
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
 
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  EnumeratePathsExecutor<KShortestPathsFinder> testee;
+  EnumeratePathsExecutor<FakeKShortestPathsFinder> testee;
   OutputAqlItemRow output;
 
   EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
       : parameters(std::move(parameters__)),
-        server{},
         itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         fakedQuery(server.createFakeQuery()),
         options(*fakedQuery.get()),
@@ -359,8 +363,8 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
           while (verticesExpected != std::end(pathExpected) &&
                  verticesResult != verticesResult.end()) {
             ASSERT_EQ((*verticesResult).copyString(), *verticesExpected);
-            verticesResult++;
-            verticesExpected++;
+            ++verticesResult;
+            ++verticesExpected;
           }
           ASSERT_TRUE((verticesExpected == std::end(pathExpected)) &&
                       // Yes, really, they didn't implement == for iterators
@@ -382,7 +386,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   void TestExecutor(
       RegisterInfos& registerInfos,
-      EnumeratePathsExecutorInfos<KShortestPathsFinder>& executorInfos,
+      EnumeratePathsExecutorInfos<FakeKShortestPathsFinder>& executorInfos,
       AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
@@ -490,3 +494,6 @@ INSTANTIATE_TEST_CASE_P(KShortestPathExecutorPathsTestInstance,
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
+
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    arangodb::tests::aql::FakeKShortestPathsFinder>;

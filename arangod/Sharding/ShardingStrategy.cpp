@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 
 using namespace arangodb;
 
@@ -33,9 +34,9 @@ bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
   return name() == other->name();
 }
 
-void ShardingStrategy::toVelocyPack(VPackBuilder& result) const {
+void ShardingStrategy::toVelocyPack(velocypack::Builder& result) const {
   // only need to print sharding strategy if we are in a cluster
   if (ServerState::instance()->isRunningInCluster()) {
-    result.add(StaticStrings::ShardingStrategy, VPackValue(name()));
+    result.add(StaticStrings::ShardingStrategy, velocypack::Value(name()));
   }
 }

@@ -33,6 +33,8 @@ const _ = require('lodash');
 const analyzers = require("@arangodb/analyzers");
 const internal = require("internal");
 const jsunity = require("jsunity");
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = require("internal").isEnterprise();
 
 const db = internal.db;
 
@@ -455,8 +457,8 @@ function aqlSkippingIndexTestsuite () {
 
 }
 
-function aqlSkippingIResearchTestsuite () {
-  var c;
+function aqlSkippingIResearchTestsuite (isSearchAlias) {
+  var c1;
   var c2;
   var v;
   var v2;
@@ -468,8 +470,8 @@ function aqlSkippingIResearchTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll : function () {
-      db._drop("UnitTestsCollection");
-      c = db._create("UnitTestsCollection");
+      db._drop("UnitTestsCollection1");
+      c1 = db._create("UnitTestsCollection1");
 
       db._drop("UnitTestsCollection2");
       c2 = db._create("UnitTestsCollection2");
@@ -478,27 +480,79 @@ function aqlSkippingIResearchTestsuite () {
       var ac = db._create("AnotherUnitTestsCollection");
 
       db._dropView("UnitTestsView");
-      v = db._createView("UnitTestsView", "arangosearch", {});
-      var meta = {
-        links: {
-          "UnitTestsCollection": {
-            includeAllFields: true,
-            storeValues: "id",
-            fields: {
-              text: { analyzers: [ "text_en" ] }
-            }
-          }
-        }
-      };
-      v.properties(meta);
-
       db._dropView("CompoundView");
-      v2 = db._createView("CompoundView", "arangosearch",
-        { links : {
-          UnitTestsCollection: { includeAllFields: true },
-          UnitTestsCollection2 : { includeAllFields: true }
-        }}
-      );
+      if (isSearchAlias) {
+        let indexFields = [];
+        if (isEnterprise) {
+          indexFields = [
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]},
+            {"name": "text", "analyzer": "text_en"},
+            "a"
+          ];
+        } else {
+          indexFields = [
+            {"name": "value[*]"},
+            {"name": "text", "analyzer": "text_en"},
+            "a"
+          ];
+        }
+        let i = c1.ensureIndex({
+          type: "inverted",
+          includeAllFields: true,
+          fields: [{name: "text", analyzer: "text_en"}, {"name": "value[*]"}, "a", "b", "c", "anotherNullField"] 
+        });
+        v = db._createView("UnitTestView", "search-alias", {});
+        v.properties({indexes: [{collection: c1.name(), index: i.name}]});
+        let i1 = c1.ensureIndex({type: "inverted", name: "inverted", includeAllFields: true, fields: indexFields});
+        let i2 = c2.ensureIndex({type: "inverted", name: "inverted", includeAllFields: true, fields: indexFields});
+        v2 = db._createView("CompoundView", "search-alias", {
+          indexes: [
+            {collection: c1.name(), index: i1.name},
+            {collection: c2.name(), index: i2.name}]
+        });
+      } else {
+        v = db._createView("UnitTestsView", "arangosearch", {});
+        var meta = {};
+        if (isEnterprise) {
+          meta = {
+            links: {
+              "UnitTestsCollection1": {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [ "text_en" ] },
+                  "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}
+                }
+              }
+            }
+          };
+        } else {
+          meta = {
+            links: {
+              "UnitTestsCollection1": {
+                includeAllFields: true,
+                storeValues: "id",
+                fields: {
+                  text: { analyzers: [ "text_en" ] }
+                }
+              }
+            }
+          };
+        }
+        v.properties(meta);
+        if (isEnterprise) {
+          meta = { links : {
+            UnitTestsCollection1: { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} },
+            UnitTestsCollection2 : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}} }
+          }};
+        } else {
+          meta = { links : {
+            UnitTestsCollection1: { includeAllFields: true },
+            UnitTestsCollection2 : { includeAllFields: true }
+          }};
+        }
+        v2 = db._createView("CompoundView", "arangosearch", meta);
+      }
 
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
@@ -510,10 +564,12 @@ function aqlSkippingIResearchTestsuite () {
         docs.push({ a: "foo", b: "baz", c: i });
         docs.push({ a: "bar", b: "foo", c: i });
         docs.push({ a: "baz", b: "foo", c: i });
+        docs.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `foo${i}`}]}]});
 
         docs2.push({ a: "foo", b: "bar", c: i });
         docs2.push({ a: "bar", b: "foo", c: i });
         docs2.push({ a: "baz", b: "foo", c: i });
+        docs2.push({ name_1: i.toString(), "value": [{ "nested_1": [{ "nested_2": `${i}foo`}]}]});
       }
 
       docs.push({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
@@ -525,7 +581,7 @@ function aqlSkippingIResearchTestsuite () {
       docs2.push({ name: "null", anotherNullField: null });
       docs2.push({ name: "bool", anotherBoolField: true });
       docs2.push({ _key: "foo", xyz: 1 });
-      c.insert(docs);
+      c1.insert(docs);
       c2.insert(docs2);
     },
 
@@ -534,55 +590,92 @@ function aqlSkippingIResearchTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
-      var meta = { links : { "UnitTestsCollection": null } };
+      var meta = { links : { "UnitTestsCollection1": null } };
       v.properties(meta);
       v.drop();
       v2.drop();
-      db._drop("UnitTestsCollection");
+      db._drop("UnitTestsCollection1");
       db._drop("UnitTestsCollection2");
       db._drop("AnotherUnitTestsCollection");
     },
 
     testPassSkipArangoSearch: function () {
       // skip 3, return 3, out of 10
-      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
         + "LIMIT 3,3 RETURN doc");
 
       assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
         assertEqual("foo", res.a);
-        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
+
+      if (isSearchAlias) {
+        result = AQL_EXECUTE(`FOR doc IN UnitTestsCollection1 
+        OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+        FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`);
+  
+        assertEqual(3, result.json.length);
+        result.json.forEach(function(res) {
+          assertEqual("foo", res.a);
+          assertTrue(res._id.startsWith('UnitTestsCollection1/'));
+        });
+      }
     },
 
     testPassSkipArangoSearchSorted: function () {
       // skip 3, return 3, out of 10
-      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+      let result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
         + "SORT BM25(doc) "
         + "LIMIT 3,3 RETURN doc");
 
       assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
         assertEqual("foo", res.a);
-        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
+
+      if (isSearchAlias) {
+        result = AQL_EXECUTE(`FOR doc IN UnitTestsCollection1 
+        OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+        FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`);
+
+        assertEqual(3, result.json.length);
+        result.json.forEach(function(res) {
+          assertEqual("foo", res.a);
+          assertTrue(res._id.startsWith('UnitTestsCollection1/'));
+        });
+      }
     },
 
     testPassSkipArangoSearchFullCount: function () {
       const opts = {fullCount: true};
       // skip 3, return 3, out of 10
       var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
         + "LIMIT 3,3 RETURN doc", {}, opts);
 
       assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
         assertEqual("foo", res.a);
-        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
       assertEqual(10, result.stats.fullCount);
+
+      if (isSearchAlias) {
+        result = AQL_EXECUTE(`FOR doc IN UnitTestsCollection1 
+        OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+        FILTER doc.a == 'foo' LIMIT 3,3 RETURN doc`, {}, opts);
+
+        assertEqual(3, result.json.length);
+        result.json.forEach(function(res) {
+          assertEqual("foo", res.a);
+          assertTrue(res._id.startsWith('UnitTestsCollection1/'));
+        });
+        assertEqual(10, result.stats.fullCount);
+      }
     },
 
     //FIXME uncomment
@@ -615,7 +708,7 @@ function aqlSkippingIResearchTestsuite () {
       };
 
       const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
-        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection1' ] } "
         + "SORT doc.a "
         + "LIMIT 3,3 RETURN doc";
 
@@ -628,13 +721,24 @@ function aqlSkippingIResearchTestsuite () {
       assertEqual(3, result.json.length);
       result.json.forEach(function(res) {
         assertEqual("foo", res.a);
-        assertTrue(res._id.startsWith('UnitTestsCollection/'));
+        assertTrue(res._id.startsWith('UnitTestsCollection1/'));
       });
       assertEqual(10, result.stats.fullCount);
+
+      if (isSearchAlias) {
+        result = AQL_EXECUTE(`FOR doc IN UnitTestsCollection1 
+        OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true}
+        FILTER doc.a == 'foo' SORT doc.a LIMIT 3,3 RETURN doc`, {}, opts);
+
+        assertEqual(3, result.json.length);
+        result.json.forEach(function(res) {
+          assertEqual("foo", res.a);
+          assertTrue(res._id.startsWith('UnitTestsCollection1/'));
+        });
+        assertEqual(10, result.stats.fullCount);
+      }
     },
-
   };
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -643,6 +747,28 @@ function aqlSkippingIResearchTestsuite () {
 
 jsunity.run(aqlSkippingTestsuite);
 jsunity.run(aqlSkippingIndexTestsuite);
-jsunity.run(aqlSkippingIResearchTestsuite);
+
+function aqlSkippingArangoSearchTestsuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlSkippingIResearchTestsuite(false),
+    suite,
+    "_arangosearch"
+  );
+  return suite;
+}
+
+function aqlSkippingSearchAliasTestsuite() {
+  let suite = {};
+  deriveTestSuite(
+    aqlSkippingIResearchTestsuite(true),
+    suite,
+    "_search-alias"
+  );
+  return suite;
+}
+
+jsunity.run(aqlSkippingArangoSearchTestsuite);
+jsunity.run(aqlSkippingSearchAliasTestsuite);
 
 return jsunity.done();

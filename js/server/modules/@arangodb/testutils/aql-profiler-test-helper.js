@@ -1,5 +1,4 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/* global global */
 
 "use strict";
 
@@ -267,6 +266,7 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
     'filtered',
     'httpRequests',
     'peakMemoryUsage',
+    'intermediateCommits',
     'executionTime',
   ];
 
@@ -318,6 +318,7 @@ function assertIsProfileProfileObject (profile) {
     'loading collections',
     'instantiating plan',
     'optimizing plan',
+    'instantiating executors',
     'executing',
     'finalizing',
   ]);
@@ -387,7 +388,7 @@ function assertIsProfilePlanObject (plan) {
     expect(variable).to.include.all.keys([
       'id',
       'name',
-      'isDataFromCollection',
+      'isFullDocumentFromCollection',
     ]);
 
     expect(variable.id).to.be.a('number');
@@ -490,10 +491,16 @@ function assertStatsMatchGenStats(profile, expectedStats) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function assertNodesItemsAndCalls (expected, actual, details = {}) {
+  const normalize = (type) => { 
+    // SortLimitNode and SortNode are both SortNodes, so treat them as being
+    // identical here for the comparisons
+    return (type === 'SortLimitNode') ? 'SortNode' : type;
+  };
+
   // assert node types first
   assert.assertEqual(
-    expected.map(node => node.type),
-    actual.map(node => node.type),
+    expected.map(node => normalize(node.type)),
+    actual.map(node => normalize(node.type)),
     details
   );
 

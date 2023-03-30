@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #include "FollowerInfo.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -33,8 +34,10 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
+#include "Random/RandomGenerator.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -114,6 +117,17 @@ VPackSlice planShardEntry(arangodb::LogicalCollection const& col,
 
 }  // namespace
 
+FollowerInfo::FollowerInfo(arangodb::LogicalCollection* d)
+    : _followers(std::make_shared<std::vector<ServerID>>()),
+      _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
+      _docColl(d),
+      _theLeader(""),
+      _theLeaderTouched(false),
+      _canWrite(_docColl->replicationFactor() <= 1) {
+  // On replicationfactor 1 we do not have any failover servers to maintain.
+  // This should also disable satellite tracking.
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
 /// of the "get-in-sync" capabilities. This reports to the agency under
@@ -126,7 +140,7 @@ Result FollowerInfo::add(ServerID const& sid) {
             "unable to add follower"};
   }
 
-  MUTEX_LOCKER(locker, _agencyMutex);
+  std::lock_guard locker{_agencyMutex};
 
   std::shared_ptr<std::vector<ServerID>> v;
 
@@ -258,7 +272,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
   LOG_TOPIC("ce460", DEBUG, Logger::CLUSTER)
       << "Removing follower " << sid << " from " << _docColl->name();
 
-  MUTEX_LOCKER(locker, _agencyMutex);
+  std::lock_guard locker{_agencyMutex};
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(
       writeLocker,
@@ -446,7 +460,7 @@ void FollowerInfo::takeOverLeadership(
 ///        _followers == _failoverCandidates
 ////////////////////////////////////////////////////////////////////////////////
 bool FollowerInfo::updateFailoverCandidates() {
-  MUTEX_LOCKER(agencyLocker, _agencyMutex);
+  std::lock_guard agencyLocker{_agencyMutex};
   // Acquire _canWriteLock first
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   // Next acquire _dataLock

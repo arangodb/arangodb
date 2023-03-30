@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -64,7 +65,6 @@ namespace {
 arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
                                   arangodb::RocksDBIndex* oldIndex) {
-  arangodb::Result res;
   IndexId iid = oldIndex->id();
 
   VPackBuilder oldDesc;
@@ -79,11 +79,9 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   VPackBuilder newDesc =
       VPackCollection::merge(oldDesc.slice(), overw.slice(), false);
-  bool dropped = collection.dropIndex(iid);
+  arangodb::Result res = collection.dropIndex(iid);
 
-  if (!dropped) {
-    res.reset(TRI_ERROR_INTERNAL);
-
+  if (res.fail()) {
     return res;
   }
 
@@ -191,6 +189,7 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::PregelCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     VPackBuilder testOptions;
@@ -510,8 +509,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
   auto res = arangodb::methods::Collections::lookup(
       vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
-    res = arangodb::methods::Collections::drop(
-        *col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+    res = arangodb::methods::Collections::drop(*col, true);
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -576,7 +574,7 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   StorageEngine& engine =
       vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  std::string const path = engine.databasePath(&vocbase);
+  std::string const path = engine.databasePath();
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
       path, "REPLICATION-APPLIER-STATE");

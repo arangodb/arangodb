@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +27,12 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -40,6 +43,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
 
@@ -140,7 +144,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   TransactionId tid = state.id().child();
   TRI_ASSERT(!tid.isLegacyTransactionId());
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   double const lockTimeout = state.options().lockTimeout;
 
@@ -269,7 +273,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
   }
@@ -568,7 +572,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     return;
   }
 
-  TRI_ASSERT(server.substr(0, 7) != "server:");
+  TRI_ASSERT(!server.starts_with("server:"));
 
   std::string value = std::to_string(state.id().child().id());
   bool const addBegin = !state.knowsServer(server);

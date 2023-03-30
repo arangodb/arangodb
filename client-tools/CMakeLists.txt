@@ -2,6 +2,8 @@
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
+add_compile_warnings_flags()
+
 ################################################################################
 ## shell common
 ################################################################################
@@ -11,7 +13,7 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
+  ../cmake/activeCodePage.manifest
 )
 
 add_library(arango_shell STATIC
@@ -52,6 +54,7 @@ add_executable(${BIN_ARANGOBENCH}
   Benchmark/BenchFeature.cpp
   Benchmark/BenchmarkOperation.cpp
   Benchmark/testcases/helpers.cpp
+  ../cmake/activeCodePage.manifest
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
@@ -157,7 +160,6 @@ add_executable(${BIN_ARANGODUMP}
   ../cmake/activeCodePage.manifest
   Dump/DumpFeature.cpp
   Dump/arangodump.cpp
-  ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
@@ -377,9 +379,12 @@ add_executable(${BIN_ARANGOSH}
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ShellFeature.cpp
+  Shell/TelemetricsHandler.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
+  Shell/ProcessMonitoringFeature.cpp
   Shell/arangosh.cpp
+  Shell/v8-deadline.cpp
   ${FUZZER}
 )
 
@@ -388,7 +393,6 @@ target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-
 target_link_libraries(${BIN_ARANGOSH}
   arango
   arango_v8
-  arango_v8_deadline
   ${V8_LIBS}
   fuerte
   ${MSVC_LIBS}
@@ -461,35 +465,6 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc_build)
 endif ()
-
-################################################################################
-## common target compile options
-################################################################################
-SET(TARGETS
-  arangobench
-  arangodump
-  arangoexport
-  arangoimport
-  arangorestore
-  arangosh
-  arangovpack)
-if (USE_ENTERPRISE)
-  LIST(APPEND TARGETS arangobackup)
-endif()
-
-foreach (TARGET IN LISTS TARGETS)
-  if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        target_compile_options(${TARGET} PRIVATE -Wno-unused-command-line-argument)
-      endif()
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
-  endif ()
-endforeach ()
 
 ################################################################################
 ## foxx-manager

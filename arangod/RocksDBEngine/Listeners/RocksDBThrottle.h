@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,12 +38,12 @@
 #include <chrono>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 
 // public rocksdb headers
 #include <rocksdb/db.h>
@@ -74,16 +74,16 @@ class RocksDBThrottle : public rocksdb::EventListener {
   virtual ~RocksDBThrottle();
 
   void OnFlushBegin(rocksdb::DB* db,
-                    const rocksdb::FlushJobInfo& flush_job_info) override;
+                    rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnFlushCompleted(rocksdb::DB* db,
-                        const rocksdb::FlushJobInfo& flush_job_info) override;
+                        rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnCompactionCompleted(rocksdb::DB* db,
-                             const rocksdb::CompactionJobInfo& ci) override;
+                             rocksdb::CompactionJobInfo const& ci) override;
 
-  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& Families) {
-    _families = Families;
+  void setFamilies(std::vector<rocksdb::ColumnFamilyHandle*>& families) {
+    _families = families;
   }
 
   void stopThread();
@@ -93,8 +93,8 @@ class RocksDBThrottle : public rocksdb::EventListener {
  private:
   void startup(rocksdb::DB* db);
 
-  void setThrottleWriteRate(std::chrono::microseconds Micros, uint64_t Keys,
-                            uint64_t Bytes, bool IsLevel0);
+  void setThrottleWriteRate(std::chrono::microseconds micros, uint64_t keys,
+                            uint64_t bytes, bool isLevel0);
 
   void threadLoop();
 
@@ -130,7 +130,7 @@ class RocksDBThrottle : public rocksdb::EventListener {
   };
   std::atomic<ThrottleState> _throttleState;
 
-  Mutex _threadMutex;
+  std::mutex _threadMutex;
   basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.

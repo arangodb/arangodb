@@ -45,6 +45,11 @@ auto FakeLeader::getStatus() const -> replicated_log::LogStatus {
           },
       .term = term,
       .lowestIndexToKeep = LogIndex{0},
+      .follower = {},
+      .commitLagMS = {},
+      .lastCommitStatus = {},
+      .activeParticipantsConfig = {},
+      .committedParticipantsConfig = {},
   }};
 }
 

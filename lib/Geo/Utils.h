@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,23 +32,21 @@
 
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Shapes.h"
 
 class S2Region;
 class S2RegionCoverer;
 
-namespace arangodb {
-namespace geo {
+namespace arangodb::geo {
 
 /// interval to scan over for near / within /intersect queries.
 /// Bounds are INCLUSIVE! It may hold true that min === max,
 /// in that case a lookup is completely valid. Do not use these
 /// bounds for any kind of arithmetics
 struct Interval {
-  Interval(S2CellId mn, S2CellId mx) noexcept : range_min(mn), range_max(mx) {}
+  Interval(S2CellId mn, S2CellId mx) noexcept : range_min{mn}, range_max{mx} {}
   S2CellId range_min;  /// @brief inclusive minimum cell id
   S2CellId range_max;  /// @brief inclusive maximum cell id
-  static bool compare(const Interval& a, const Interval& b) {
+  static bool compare(const Interval& a, const Interval& b) noexcept {
     return a.range_min < b.range_min;
   }
 };
@@ -61,31 +59,20 @@ class Ellipsoid;
 namespace utils {
 
 /// Generate a cover cell from an array [lat, lng] or [lng, lat]
-Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
+Result indexCellsLatLng(velocypack::Slice data, bool geoJson,
                         std::vector<S2CellId>& cells, S2Point& centroid);
-
-/// generate intervalls of list of intervals to scan
-void scanIntervals(QueryParams const& params, S2RegionCoverer* coverer,
-                   S2Region const& region,
-                   std::vector<geo::Interval>& sortedIntervals);
 
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
 void scanIntervals(QueryParams const& params,
                    std::vector<S2CellId> const& cover,
-                   std::vector<geo::Interval>& sortedIntervals);
+                   std::vector<Interval>& sortedIntervals);
 
 /// Returns the ellipsoidal distance between p1 and p2 on e (in meters).
 /// (solves the inverse geodesic problem)
 double geodesicDistance(S2LatLng const& p1, S2LatLng const& p2,
-                        geo::Ellipsoid const& e);
+                        Ellipsoid const& e);
 
-/// Returns a point at distance `dist` (in meters) of `p` in direction `azimuth`
-/// (in degrees between -180 and 180)
-/// (solves the direct geodesic problem)
-S2LatLng geodesicPointAtDist(S2LatLng const& p, double dist, double azimuth,
-                             geo::Ellipsoid const& e);
 }  // namespace utils
-}  // namespace geo
-}  // namespace arangodb
+}  // namespace arangodb::geo

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,25 +68,23 @@ arangodb::Result HotBackup::executeRocksDB(std::string const& command,
                                            VPackSlice const payload,
                                            VPackBuilder& report) {
 #ifdef USE_ENTERPRISE
-  std::shared_ptr<RocksDBHotBackup> operation;
   auto& feature = _server.getFeature<HotBackupFeature>();
-  operation =
+  auto operation =
       RocksDBHotBackup::operationFactory(feature, command, payload, report);
 
   if (operation->valid()) {
     operation->execute();
-  }  // if
+  }
 
   operation->doAuditLog();
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(operation->restResponseError(),
-                            operation->errorMessage());
+    return {operation->restResponseError(), operation->errorMessage()};
   }
 #endif
 
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result HotBackup::executeCoordinator(std::string const& command,

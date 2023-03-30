@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
+/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -79,7 +79,9 @@ const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, inc
     endpoint: leaderEndpoint,
     verbose: true,
     includeSystem: true,
-    incremental
+    incremental,
+    username: "root",
+    password: "",
   });
 
   db._flushCache();
@@ -134,7 +136,10 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
+
           });
           // collection present on follower now
           var c = db._collection(cn);
@@ -196,7 +201,9 @@ function BaseTestConfig () {
             //  already create the collection on the follower
             replication.syncCollection(cn, {
               endpoint: leaderEndpoint,
-              incremental: false
+              incremental: false,
+              username: "root",
+              password: "",
             });
 
             // collection present on follower now
@@ -431,7 +438,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -488,7 +497,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -561,7 +572,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -626,7 +639,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -711,7 +726,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -804,7 +821,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       assertEqual(st.count, collectionCount(cn));
@@ -835,7 +854,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
      
       // add a lot more data on the leader
@@ -864,7 +885,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -906,7 +929,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
      
       // update documents on the leader
@@ -927,7 +952,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -969,7 +996,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
      
       // remove half the documents on the leader
@@ -990,7 +1019,9 @@ function BaseTestConfig () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -1100,7 +1131,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1159,13 +1192,15 @@ function BaseTestConfig () {
       connectToFollower();
       internal.wait(0.1, false);
       //  sync on follower
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       db._flushCache();
       {
         //  check state is the same
         let view = db._view(cn + 'View');
-        assertTrue(view !== null);
+        assertNotNull(view);
+        assertEqual(cn + "View", view.name());
+        assertEqual("arangosearch", view.type());
         let props = view.properties();
         assertTrue(props.hasOwnProperty('links'));
         assertEqual(0, props.consolidationIntervalMsec);
@@ -1190,7 +1225,7 @@ function BaseTestConfig () {
       db._flushCache();
       connectToFollower();
 
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       // check replicated analyzer
       {
@@ -1204,6 +1239,8 @@ function BaseTestConfig () {
       {
         let view = db._view(cn + 'View');
         assertNotEqual(view, null);
+        assertEqual(cn + "View", view.name());
+        assertEqual("arangosearch", view.type());
         let props = view.properties();
         assertEqual(0, props.consolidationIntervalMsec);
         assertTrue(props.hasOwnProperty('links'));
@@ -1239,7 +1276,7 @@ function BaseTestConfig () {
       connectToFollower();
       internal.wait(0.1, false);
       //  sync on follower
-      replication.sync({ endpoint: leaderEndpoint });
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
 
       db._flushCache();
 
@@ -1255,7 +1292,7 @@ function BaseTestConfig () {
       {
         //  check state is the same
         let view = db._view('analyzersView');
-        assertTrue(view !== null);
+        assertNotNull(view);
         let props = view.properties();
         assertTrue(props.hasOwnProperty('links'));
         assertEqual(0, props.consolidationIntervalMsec);
@@ -1264,6 +1301,112 @@ function BaseTestConfig () {
         assertTrue(props.links['_analyzers'].includeAllFields);
         assertTrue(props.links['_analyzers'].analyzers.length, 1);
         assertTrue(props.links['_analyzers'].analyzers[0], 'custom');
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test with search-alias views
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testSyncSearchAliasViewWithIndexes: function () {
+      connectToLeader();
+
+      //  create view & collection on leader
+      db._flushCache();
+      let c = db._create(cn);
+      let idx = c.ensureIndex({ type: "inverted", fields: [ { name: "value" } ], name: "inverted_idx" });
+      let view = db._createView(cn + 'View', 'search-alias', {
+        indexes: [
+          { 
+            collection: cn,
+            index: idx.name
+          }
+        ]
+      });
+      assertEqual(1, view.properties().indexes.length);
+
+      db._flushCache();
+      connectToFollower();
+      internal.wait(0.1, false);
+      //  sync on follower
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
+
+      db._flushCache();
+      {
+        //  check state is the same
+        let view = db._view(cn + 'View');
+        assertNotNull(view);
+        assertEqual(cn + "View", view.name());
+        assertEqual("search-alias", view.type());
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('indexes'));
+        assertEqual(1, props.indexes.length);
+        assertEqual({ collection: cn, index: idx.name }, props.indexes[0]);
+      }
+    },
+    
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test with search-alias views
+    // //////////////////////////////////////////////////////////////////////////////
+
+    testSyncSearchAliasViewChange: function () {
+      connectToLeader();
+
+      //  create view & collection on leader
+      db._flushCache();
+      let c = db._create(cn);
+      let idx = c.ensureIndex({ type: "inverted", fields: [ { name: "value" } ], name: "inverted_idx" });
+      let view = db._createView(cn + 'View', 'search-alias', {});
+      assertEqual(0, view.properties().indexes.length);
+
+      db._flushCache();
+      connectToFollower();
+      internal.wait(0.1, false);
+      //  sync on follower
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
+
+      db._flushCache();
+      {
+        //  check state is the same
+        let view = db._view(cn + 'View');
+        assertNotNull(view);
+        assertEqual(cn + "View", view.name());
+        assertEqual("search-alias", view.type());
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('indexes'));
+        assertEqual(0, props.indexes.length);
+      }
+
+      connectToLeader();
+
+      //  update view properties
+      {
+        let view = db._view(cn + 'View');
+        view.properties({ 
+          indexes: [
+            { 
+              collection: cn,
+              index: idx.name
+            }
+          ]
+        });
+        assertEqual(1, view.properties().indexes.length);
+      }
+
+      db._flushCache();
+      connectToFollower();
+
+      replication.sync({ endpoint: leaderEndpoint, username: "root", password: "" });
+
+      {
+        let view = db._view(cn + 'View');
+        assertNotEqual(view, null);
+        assertEqual(cn + "View", view.name());
+        assertEqual("search-alias", view.type());
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('indexes'));
+        assertEqual(1, props.indexes.length, props.indexes);
+        assertEqual({ collection: cn, index: idx.name }, props.indexes[0]);
       }
     },
 
@@ -1295,7 +1438,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1357,7 +1502,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1479,7 +1626,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1517,7 +1666,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1549,7 +1700,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1588,7 +1741,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1633,7 +1788,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1677,7 +1834,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           var c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1721,7 +1880,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1765,7 +1926,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate(); // but empty it
@@ -1812,7 +1975,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1863,7 +2028,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1913,7 +2080,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -1962,7 +2131,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -2013,7 +2184,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -2065,7 +2238,9 @@ function BaseTestConfig () {
           //  already create the collection on the follower
           replication.syncCollection(cn, {
             endpoint: leaderEndpoint,
-            incremental: false
+            incremental: false,
+            username: "root",
+            password: "",
           });
           let c = db._collection(cn);
           c.truncate({ compact: false }); // but empty it
@@ -2099,10 +2274,6 @@ function ReplicationSuite () {
   'use strict';
 
   let suite = {
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
-
     setUp: function () {
       connectToLeader();
       arango.DELETE_RAW("/_admin/debug/failat", "");
@@ -2115,10 +2286,6 @@ function ReplicationSuite () {
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
     },
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       connectToLeader();
@@ -2138,7 +2305,7 @@ function ReplicationSuite () {
         analyzers.remove('smartCustom');
       } catch (e) { }
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2161,7 +2328,7 @@ function ReplicationSuite () {
         analyzers.remove('smartCustom');
       } catch (e) { }
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2207,7 +2374,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
       } catch (e) {
       }
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2219,7 +2386,7 @@ function ReplicationOtherDBSuiteBase (dbName) {
       } catch (e) {
       }
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2265,7 +2432,7 @@ function ReplicationIncrementalKeyConflict () {
       connectToLeader();
       db._drop(cn);
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2274,7 +2441,7 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       db._drop(cn);
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2305,7 +2472,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2336,7 +2505,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2370,7 +2541,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2393,7 +2566,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2430,7 +2605,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2454,7 +2631,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2478,7 +2657,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2510,7 +2691,9 @@ function ReplicationIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2552,7 +2735,9 @@ function ReplicationIncrementalKeyConflict () {
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
-        incremental: true
+        incremental: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2584,7 +2769,7 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToLeader();
       db._drop(cn);
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2593,7 +2778,7 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToFollower();
       db._drop(cn);
       db._flushCache();
-      db._users.toArray().forEach(user => {
+      userManager.all().forEach(user => {
         if (user.user !== "root") {
           userManager.remove(user.user);
         }
@@ -2624,7 +2809,9 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2656,7 +2843,9 @@ function ReplicationNonIncrementalKeyConflict () {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
-        skipCreateDrop: true
+        skipCreateDrop: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();
@@ -2690,7 +2879,9 @@ function ReplicationNonIncrementalKeyConflict () {
       connectToFollower();
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
-        verbose: true
+        verbose: true,
+        username: "root",
+        password: "",
       });
       db._flushCache();
       c = db._collection(cn);
@@ -2733,7 +2924,9 @@ function ReplicationNonIncrementalKeyConflict () {
         endpoint: leaderEndpoint,
         verbose: true,
         incremental: false,
-        skipCreateDrop: true
+        skipCreateDrop: true,
+        username: "root",
+        password: "",
       });
 
       db._flushCache();

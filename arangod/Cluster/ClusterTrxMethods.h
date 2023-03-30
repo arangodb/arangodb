@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 #include "Transaction/MethodsApi.h"
-#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -35,8 +35,12 @@
 namespace arangodb {
 
 struct OperationOptions;
+class Result;
 class TransactionState;
 
+namespace transaction {
+class Methods;
+}
 namespace ClusterTrxMethods {
 using arangodb::futures::Future;
 

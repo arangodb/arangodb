@@ -68,7 +68,7 @@ class QueryFilter : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -115,7 +115,7 @@ class QueryFilter : public QueryTest {
       EXPECT_TRUE(assertRules(
           _vocbase, query, {aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-      std::map<irs::string_ref, std::shared_ptr<velocypack::Buffer<uint8_t>>>
+      std::map<std::string_view, std::shared_ptr<velocypack::Buffer<uint8_t>>>
           expectedDocs{{"A", insertedDocs[0]}};
 
       auto queryResult = executeQuery(_vocbase, query);
@@ -155,12 +155,12 @@ class QueryFilter : public QueryTest {
 
 class QueryFilterView : public QueryFilter {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryFilterSearch : public QueryFilter {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryFilterView, Test) {

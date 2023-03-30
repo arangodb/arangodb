@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,14 +32,14 @@
 #include "Agency/MoveShard.h"
 #include "Agency/RemoveFollower.h"
 #include "Agency/ResignLeadership.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
 
-JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
-                       AgentInterface* agent)
+JobContext::JobContext(JOB_STATUS status, std::string const& id,
+                       Node const& snapshot, AgentInterface* agent)
     : _job(nullptr) {
-  std::string path = pos[status] + id;
-  auto typePair = snapshot.hasAsString(path + "/type");
+  auto typePair = snapshot.hasAsString(pos[status] + id + "/type");
   std::string type;
 
   if (typePair) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +24,9 @@
 #include "ScatterExecutor.h"
 
 #include "Aql/AqlCallStack.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
-#include "Basics/Exceptions.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;

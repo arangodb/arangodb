@@ -4,8 +4,9 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -25,13 +26,6 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
-
-message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
-  set(BUILDING_FOR_ARM64 ON)
-else()
-  set(BUILDING_FOR_ARM64 OFF)
-endif()
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -63,11 +57,6 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 
 find_package(Git 1.5.3 REQUIRED)
 
-# don't use standalone boost asio
-# use this when asio is included outside of Boost
-# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
-# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
-
 # ------------------------------------------------------------------------------
 # VERSION information
 # ------------------------------------------------------------------------------
@@ -88,14 +77,6 @@ find_package(Git 1.5.3 REQUIRED)
 # ARANGODB_VERSION_PRELEASE_TYPE   = TYPE
 # ARANGODB_VERSION_PRELEASE_NUMBER = NUMBER
 #
-# This will set the following variables
-#
-# ARANGODB_DEBIAN_UPSTREAM
-# ARANGODB_DEBIAN_REVISION
-#
-# ARANGODB_RPM_UPSTREAM
-# ARANGODB_RPM_REVISION
-
 set(ARANGODB_VERSION_MAJOR "3")
 set(ARANGODB_VERSION_MINOR "11")
 
@@ -144,100 +125,6 @@ message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
 ################################################################################
-# DEBIAN, RPM, MacOS version
-################################################################################
-
-if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
-
-  # devel
-  if (ARANGODB_VERSION_PATCH STREQUAL "0" AND ARANGODB_VERSION_RELEASE_TYPE STREQUAL "devel")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.1.devel")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "devel")
-
-  # nightly
-  elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "nightly")
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.2.nightly")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "nightly")
-
-  # unstable version
-  elseif (   ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview"
-          OR ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-    if (NOT DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER is missing")
-    endif()
-
-    if (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "alpha")
-      set(ARANGODB_RPM_REVISION_NUMBER 100)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "beta")
-      set(ARANGODB_RPM_REVISION_NUMBER 200)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "milestone")
-      set(ARANGODB_RPM_REVISION_NUMBER 300)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "preview")
-      set(ARANGODB_RPM_REVISION_NUMBER 400)
-    elseif (ARANGODB_VERSION_RELEASE_TYPE STREQUAL "rc")
-      set(ARANGODB_RPM_REVISION_NUMBER 500)
-    endif()
-
-    MATH(EXPR ARANGODB_RPM_REVISION_NUMBER "${ARANGODB_RPM_REVISION_NUMBER}+${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}~${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "0.${ARANGODB_RPM_REVISION_NUMBER}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_DARWIN_REVISION "${ARANGODB_VERSION_RELEASE_TYPE}.${ARANGODB_VERSION_RELEASE_NUMBER}")
-
-  # hot-fix
-  else()
-    if (DEFINED ARANGODB_VERSION_RELEASE_NUMBER)
-      message(FATAL_ERROR "ARANGODB_VERSION_RELEASE_NUMBER must be empty for type ${ARANGODB_VERSION_RELEASE_TYPE}")
-    endif()
-
-    set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DEBIAN_REVISION "1")
-
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-    set(ARANGODB_RPM_REVISION "1.${ARANGODB_VERSION_RELEASE_TYPE}")
-
-    set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}.${ARANGODB_VERSION_RELEASE_TYPE}")
-    set(ARANGODB_DARWIN_REVISION "")
-  endif()
-else()
-
-  # stable version
-  set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DEBIAN_REVISION "1")
-
-  set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_RPM_REVISION "1.0")
-
-  set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
-  set(ARANGODB_DARWIN_REVISION "")
-endif()
-
-message(STATUS "DEBIAN VERSION: ${ARANGODB_DEBIAN_UPSTREAM} / ${ARANGODB_DEBIAN_REVISION}")
-message(STATUS "RPM VERSION:    ${ARANGODB_RPM_UPSTREAM} / ${ARANGODB_RPM_REVISION}")
-message(STATUS "DARWIN VERSION: ${ARANGODB_DARWIN_UPSTREAM} / ${ARANGODB_DARWIN_REVISION}")
-
-
-################################################################################
 # Windows version
 ################################################################################
 
@@ -277,6 +164,14 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+# Enable CMake's Testing facilities.
+#
+# This enables you to use the add_test cmake command to add a test which is
+# automatically run by executing ctest
+enable_testing()
+
+set(BUILD_SHARED_LIBS OFF)
+
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -307,14 +202,17 @@ if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
 endif ()
 
+# enable code coverage
+option(USE_COVERAGE "enable gcov code coverage" OFF)
+if (USE_COVERAGE)
+  add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
+  add_link_options(--coverage)
+  add_definitions("-DUSE_COVERAGE=1")
+endif ()
+
 # enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  add_subdirectory(enterprise)
-endif ()
 
 # we want the following definitions to be in effect for both rocksdb and arangodb
 add_definitions("-DNROCKSDB_THREAD_STATUS")
@@ -362,11 +260,7 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-if (${CMAKE_MAJOR_VERSION} EQUAL 2)
-  set(ARANGODB_BUILD_DATE "YYYY-MM-DD HH:MM:SS")
-else ()
-  string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-endif ()
+string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
@@ -580,7 +474,6 @@ endif()
 ################################################################################
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DARANGODB_BITS=${BITS}")
 
 ################################################################################
 ## COMPILER FEATURES
@@ -598,7 +491,16 @@ set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ fl
 set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
 set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 
+include(CheckCompilerVersion)
+
+CheckCompilerVersion(
+  11.2 # GCC
+  14.0 # Clang
+  19.32 # MSVC
+)
+
 if (MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
   set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
   set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
   # Increase the reserved stack size for all threads to 4MB
@@ -611,6 +513,7 @@ if (MSVC)
   endif()
 endif ()
 
+# FIXME: refactor/cleanup check below
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
     message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
@@ -654,7 +557,7 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
 endif ()
 
 # need c++20
-# XXX this should really be set on a per target level using cmake compile_features capabilties
+# XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
@@ -694,32 +597,12 @@ else ()
   )
 endif ()
 
-# broken clock_gettime on MacOSX
-SET(USE_LOCAL_CLOCK_GETTIME FALSE)
-
-if (APPLE)
-  TRY_RUN(RUN_CLOCK_GETTIME
-          COMPILE_CLOCK_GETTIME
-          ${PROJECT_BINARY_DIR}/test_clock_gettime
-          ${CMAKE_SOURCE_DIR}/cmake/test_clock_gettime.c
-          OUTPUT_VARIABLE OUTPUT_CLOCK_GETTIME)
-
-  if (${COMPILE_CLOCK_GETTIME})
-    if (${RUN_CLOCK_GETTIME} STREQUAL "FAILED_TO_RUN")
-      set(USE_LOCAL_CLOCK_GETTIME TRUE)
-    endif ()
-  endif ()
-
-  if (USE_LOCAL_CLOCK_GETTIME)
-    message(STATUS "using a home-made clock_gettime")
-  endif ()
-endif ()
-
 ################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
+set(BUILDING_FOR_ARM64 OFF)
 if (NOT WINDOWS)
   include(TargetArch)
 
@@ -734,6 +617,12 @@ if (NOT WINDOWS)
     set(CMAKE_TARGET_ARCHITECTURE_CODE "${CMAKE_TARGET_ARCHITECTURES}")
   endif ()
 
+  if (NOT CMAKE_SYSTEM_PROCESSOR STREQUAL CMAKE_TARGET_ARCHITECTURE_CODE)
+    # Probably we are cross-compiling or CMAKE_SYSTEM_PROCESSOR is an empty string.
+    message(WARNING "Changing CMAKE_SYSTEM_PROCESSOR from ${CMAKE_SYSTEM_PROCESSOR} to ${CMAKE_TARGET_ARCHITECTURE_CODE}")
+    set(CMAKE_SYSTEM_PROCESSOR "${CMAKE_TARGET_ARCHITECTURE_CODE}")
+  endif()
+
   include(VcMacros)
 
   # Detect target architecture properties. This honors
@@ -747,6 +636,14 @@ if (NOT WINDOWS)
 
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*|arm64.*|ARM64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
 
 set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
@@ -796,6 +693,8 @@ option(USE_MAINTAINER_MODE
 )
 
 if (USE_MAINTAINER_MODE)
+  add_definitions("-DIRESEARCH_DEBUG")
+
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
@@ -884,7 +783,7 @@ if (NOT WINDOWS)
 endif ()
 
 # ------------------------------------------------------------------------------
-# IMPLICIT INCLUDES AND LIBIRARY DIRECTORIES
+# IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
 # ------------------------------------------------------------------------------
 
 function(CREATE_FLAGS OUTPUT GLUE)
@@ -896,9 +795,6 @@ function(CREATE_FLAGS OUTPUT GLUE)
 
   set(${OUTPUT} "${_TMP_RESULT}" PARENT_SCOPE)
 endfunction()
-
-# CREATE_FLAGS(IMPLICIT_C_INCLUDES "${CMAKE_C_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
-# CREATE_FLAGS(IMPLICIT_CXX_INCLUDES "${CMAKE_CXX_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
 
 # ------------------------------------------------------------------------------
 # JEMALLOC
@@ -979,13 +875,31 @@ function(add_cxx_flags_if_supported var)
   set(${var} "${${var}}" PARENT_SCOPE)
 endfunction()
 
+function(add_compile_warnings_flags)
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      add_compile_options(/WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
+        # There's a warning about /MP being unused if compiling only a single file
+        add_compile_options(-Wno-unused-command-line-argument)
+      endif()
+    else ()
+      add_compile_options(-Werror -Wno-error=deprecated-declarations)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # This option has too many false positives
+        add_compile_options(-Wno-error=maybe-uninitialized)
+      endif()
+    endif ()
+  endif ()
+endfunction()
+
 if (VERBOSE)
   message(STATUS)
 endif ()
 
 
 # compiler options
-if (MSVC) 
+if (MSVC)
   message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
 
   if (USE_MINIMAL_DEBUGINFO)
@@ -1019,14 +933,14 @@ else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
 
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
-  elseif (CMAKE_COMPILER_IS_CLANG)
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
@@ -1071,7 +985,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
   # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
@@ -1082,7 +996,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
   # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
@@ -1098,8 +1012,8 @@ else () # NOT MSVC
 endif ()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -1107,6 +1021,10 @@ if (VERBOSE)
   message(STATUS "Info BASE_CXX_FLAGS: ${BASE_CXX_FLAGS}")
   message(STATUS "Info BASE_LD_FLAGS:  ${BASE_LD_FLAGS}")
   message(STATUS "Info BASE_LIBS:      ${BASE_LIBS}")
+  message(STATUS)
+
+  message(STATUS "Info EXTRA_C_FLAGS:   ${EXTRA_C_FLAGS}")
+  message(STATUS "Info EXTRA_CXX_FLAGS: ${EXTRA_CXX_FLAGS}")
   message(STATUS)
 
   if (NOT CMAKE_BUILD_TYPE STREQUAL "None")
@@ -1147,7 +1065,7 @@ else ()
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
   else ()
-    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([0-9]\.[0-9]\.[^0-9\"]*).*")
   endif ()
   string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
@@ -1172,7 +1090,7 @@ if (NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
     set (OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
   endif ()
 else ()
-  set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+  set (ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
 endif ()
 
 unset (OPENSSL_FOUND CACHE)
@@ -1188,7 +1106,9 @@ endif ()
 
 if (WIN32)
   # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
+  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
+  set (OPENSSL_USE_STATIC_LIBS TRUE)
+  set (OPENSSL_MSVC_STATIC_RT TRUE)
   include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
   if (NOT OPENSSL_FOUND)
     message ("System-wide attempt to find OpenSSL:")
@@ -1207,8 +1127,8 @@ endif ()
 message(${OPENSSL_INCLUDE_DIR})
 
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
 
 if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
@@ -1236,40 +1156,15 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-# 3rdParty exports:
-#
-# V8_VERSION
-# V8_LIBS
-# V8_INCLUDE_DIR
-#
-# ICU_VERSION
-# ICU_LIBS
-# ICU_INCLUDE_DIR
-#
-# ZLIB_VERSION
-# ZLIB_LIBS
-# ZLIB_INCLUDE_DIR
-
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
-add_subdirectory(3rdParty)
-link_libraries(
-  absl::flat_hash_set
-  absl::flat_hash_map
-  absl::node_hash_set
-  absl::node_hash_map
-  absl::synchronization
-  absl::strings
-)
-
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
-
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
 
 add_dependencies(rocksdb snappy)
 
@@ -1412,41 +1307,6 @@ if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
 
-option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
-
-if (BUILD_SEPP)
-  set(ARANGODB_SEPP_SOURCES
-    tests/sepp/main.cpp
-    tests/sepp/Execution.cpp
-    tests/sepp/ExecutionThread.cpp
-    tests/sepp/Runner.cpp
-    tests/sepp/RocksDBOptions.cpp
-    tests/sepp/Server.cpp
-    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
-    tests/sepp/Workloads/GetByPrimaryKey.cpp
-    tests/sepp/Workloads/InsertDocuments.cpp
-    tests/sepp/Workloads/IterateDocuments.cpp
-  )
-
-  add_executable(
-    sepp
-    ${ARANGODB_SEPP_SOURCES}
-  )
-
-  target_include_directories(sepp PRIVATE
-    ${PROJECT_SOURCE_DIR}/arangod
-    ${PROJECT_SOURCE_DIR}/tests/sepp
-  )
-
-  target_link_libraries(sepp
-    arango_rocksdb
-    arangoserver
-    rocksdb
-    snappy
-    boost_boost
-  )
-endif()
-
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)
   add_dependencies(arangobackup  zlibstatic)
@@ -1507,13 +1367,14 @@ add_custom_target(clean_autogenerated_files
 
 message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
-# if (VERBOSE)
-#   get_cmake_property(_variableNames VARIABLES)
-#
-#   foreach (_variableName ${_variableNames})
-#     message(STATUS "${_variableName}=${${_variableName}}")
-#   endforeach ()
-# endif ()
+if (USE_ENTERPRISE)
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench arangobackup)
+  add_definitions("-DUSE_ENTERPRISE=1")
+  add_subdirectory(enterprise)
+else ()
+  add_custom_target(arangodb
+    DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
+endif ()
 
-add_custom_target(arangodb
-        DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
+add_subdirectory(utils/gdb-pretty-printers/immer/test)

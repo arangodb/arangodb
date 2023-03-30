@@ -569,9 +569,8 @@ function VPackIndexRearmingSuite (unique) {
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
-      // no rearming used here, because IN creates a MultiIndexIterator
-      assertEqual(n - 1, stats.cursorsCreated);
-      assertEqual(0, stats.cursorsRearmed);
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
       let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
@@ -595,9 +594,8 @@ function VPackIndexRearmingSuite (unique) {
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
-      // no rearming used here, because IN creates a MultiIndexIterator
-      assertEqual(n - 1, stats.cursorsCreated);
-      assertEqual(0, stats.cursorsRearmed);
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
       let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
@@ -621,9 +619,8 @@ function VPackIndexRearmingSuite (unique) {
 
       let qr = db._query(q, null, opts);
       let stats = qr.getExtra().stats;
-      // no rearming used here, because IN creates a MultiIndexIterator
-      assertEqual(n - 1, stats.cursorsCreated);
-      assertEqual(0, stats.cursorsRearmed);
+      assertEqual(1, stats.cursorsCreated);
+      assertEqual(n - 2, stats.cursorsRearmed);
       let results = qr.toArray();
       assertEqual(n - 1, results.length);
 
@@ -693,7 +690,7 @@ function VPackIndexRearmingSuite (unique) {
         assertEqual(i, doc.value2);
       }
     },
-
+  
   };
 }
 

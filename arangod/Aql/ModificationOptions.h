@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +34,11 @@ class Slice;
 
 namespace aql {
 
-/// @brief ModificationOptions
 struct ModificationOptions : OperationOptions {
-  /// @brief constructor, using default values
-  explicit ModificationOptions(arangodb::velocypack::Slice const&);
+  // constructor, using velocypack input
+  explicit ModificationOptions(velocypack::Slice slice);
 
+  // constructor, using default values
   ModificationOptions()
       : OperationOptions(),
         ignoreErrors(false),
@@ -46,7 +46,7 @@ struct ModificationOptions : OperationOptions {
         consultAqlWriteFilter(false),
         exclusive(false) {}
 
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Builder&) const;
 
   bool ignoreErrors;
   bool ignoreDocumentNotFound;

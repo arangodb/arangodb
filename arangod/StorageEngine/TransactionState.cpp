@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -97,7 +98,7 @@ TransactionCollection* TransactionState::collection(
 
 /// @brief return the collection from a transaction
 TransactionCollection* TransactionState::collection(
-    std::string const& name, AccessMode::Type accessType) const {
+    std::string_view name, AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
@@ -412,7 +413,7 @@ Result TransactionState::checkCollectionPermission(
 
 /// @brief clear the query cache for all collections that were modified by
 /// the transaction
-void TransactionState::clearQueryCache() {
+void TransactionState::clearQueryCache() const {
   if (_collections.empty()) {
     return;
   }
@@ -492,7 +493,9 @@ char const* TransactionState::actorName() const noexcept {
 }
 
 void TransactionState::coordinatorRerollTransactionId() {
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
+  // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isRunning());
   auto old = _id;
   _id = transaction::Context::makeTransactionId();
@@ -504,7 +507,7 @@ void TransactionState::coordinatorRerollTransactionId() {
 }
 
 /// @brief return a reference to the global transaction statistics
-TransactionStatistics& TransactionState::statistics() noexcept {
+TransactionStatistics& TransactionState::statistics() const noexcept {
   return _vocbase.server()
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()
@@ -529,12 +532,12 @@ void TransactionState::chooseReplicasNolock(
 
 void TransactionState::chooseReplicas(
     containers::FlatHashSet<ShardID> const& shards) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   chooseReplicasNolock(shards);
 }
 
 ServerID TransactionState::whichReplica(ShardID const& shard) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   if (_chosenReplicas != nullptr) {
     auto it = _chosenReplicas->find(shard);
     if (it != _chosenReplicas->end()) {
@@ -545,14 +548,16 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   containers::FlatHashSet<ShardID> shards;
   shards.emplace(shard);
   chooseReplicasNolock(shards);
+  // cppcheck-suppress nullPointerRedundantCheck
   auto it = _chosenReplicas->find(shard);
+  // cppcheck-suppress nullPointerRedundantCheck
   TRI_ASSERT(it != _chosenReplicas->end());
   return it->second;
 }
 
 containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
     containers::FlatHashSet<ShardID> const& shardIds) {
-  MUTEX_LOCKER(guard, _replicaMutex);
+  std::lock_guard guard{_replicaMutex};
   chooseReplicasNolock(shardIds);
   containers::FlatHashMap<ShardID, ServerID> result;
   for (auto const& shard : shardIds) {

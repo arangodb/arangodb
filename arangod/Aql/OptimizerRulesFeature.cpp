@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<std::string_view, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(Server& server)
-    : ArangodFeature{server, *this}, _parallelizeGatherWrites(true) {
+    : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -58,20 +58,37 @@ void OptimizerRulesFeature::collectOptions(
     std::shared_ptr<arangodb::options::ProgramOptions> options) {
   options
       ->addOption("--query.optimizer-rules",
-                  "enable or disable specific optimizer rules (use rule name "
-                  "prefixed with '-' for disabling, '+' for enabling)",
+                  "Enable or disable specific optimizer rules by default. "
+                  "Specify the rule name prefixed with `-` for disabling, or "
+                  "`+` for enabling.",
                   new arangodb::options::VectorParameter<
                       arangodb::options::StringParameter>(&_optimizerRules),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30600)
+      .setLongDescription(R"(You can use this option to selectively enable or
+disable AQL query optimizer rules by default. You can specify the option
+multiple times.
+
+For example, to turn off the rules `use-indexes-for-sort` and
+`reduce-extraction-to-projection` by default, use the following:
+
+```
+--query.optimizer-rules "-use-indexes-for-sort" --query.optimizer-rules "-reduce-extraction-to-projection"
+```
+
+The purpose of this startup option is to be able to enable potential future
+experimental optimizer rules, which may be shipped in a disabled-by-default
+state.)");
 
   options
-      ->addOption(
+      ->addObsoleteOption(
           "--query.parallelize-gather-writes",
-          "enable write parallelization for gather nodes",
-          new arangodb::options::BooleanParameter(&_parallelizeGatherWrites))
-      .setIntroducedIn(30600);
+          "Whether to enable write parallelization for gather nodes.", false)
+      .setIntroducedIn(30600)
+      .setLongDescription(
+          "Starting with 3.11 almost all queries support parallelization of "
+          "gather nodes, making this option obsolete.");
 }
 
 void OptimizerRulesFeature::prepare() {
@@ -306,13 +323,18 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::optimizeTraversalsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // optimize K_PATHS
+  registerRule("optimize-paths", optimizePathsRule,
+               OptimizerRule::optimizePathsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // optimize unneccessary filters already applied by the traversal
   registerRule("remove-filter-covered-by-traversal",
                removeFiltersCoveredByTraversal,
                OptimizerRule::removeFiltersCoveredByTraversal,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // move filters and sort conditions into views
+  // move search and scorers into views
   registerRule(
       "handle-arangosearch-views", arangodb::iresearch::handleViewsRule,
       OptimizerRule::handleArangoSearchViewsRule, OptimizerRule::makeFlags());
@@ -390,7 +412,14 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
-  // distribute operations in cluster
+#ifdef USE_ENTERPRISE
+  registerRule("distribute-offset-info-to-cluster",
+               distributeOffsetInfoToClusterRule,
+               OptimizerRule::distributeOffsetInfoToClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
+
   registerRule("distribute-filtercalc-to-cluster",
                distributeFilterCalcToClusterRule,
                OptimizerRule::distributeFilterCalcToClusterRule,
@@ -478,16 +507,25 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::EnterpriseOnly));
 #endif
 
+  // apply late materialization for view queries
+  registerRule("late-document-materialization-arangosearch",
+               iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
   // apply late materialization for index queries
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch",
-               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+#ifdef USE_ENTERPRISE
+  // apply late materialization for offset infos
+  registerRule("late-materialization-offset-info",
+               lateMaterialiationOffsetInfoRule,
+               OptimizerRule::lateMaterialiationOffsetInfoRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::EnterpriseOnly));
+#endif
 
   // add the storage-engine specific rules
   addStorageEngineRules();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,14 +27,19 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Metrics/Fwd.h"
 
 #include <velocypack/Slice.h>
+
+#include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
 
 namespace arangodb {
 namespace application_features {
@@ -48,7 +53,7 @@ struct AgencyVersions {
   AgencyVersions(uint64_t _plan, uint64_t _current)
       : plan(_plan), current(_plan) {}
 
-  explicit AgencyVersions(const DBServerAgencySyncResult& result)
+  explicit AgencyVersions(DBServerAgencySyncResult const& result)
       : plan(result.planIndex), current(result.currentIndex) {}
 };
 
@@ -62,7 +67,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
                   uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes the heartbeat
   //////////////////////////////////////////////////////////////////////////////
@@ -90,8 +94,8 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static bool hasRunOnce() {
-    return HasRunOnce.load(std::memory_order_acquire);
+  bool hasRunOnce() const noexcept {
+    return _hasRunOnce.load(std::memory_order_acquire);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,6 +106,12 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
 
   /// @brief Reference to agency sync job
   DBServerAgencySync& agencySync();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief bring the db server in sync with the desired state
+  //////////////////////////////////////////////////////////////////////////////
+
+  void notify();
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -182,13 +192,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   void handleFoxxQueueVersionChange(
       arangodb::velocypack::Slice foxxQueueVersion);
 
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief bring the db server in sync with the desired state
-  //////////////////////////////////////////////////////////////////////////////
-
-  void notify();
-
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
@@ -212,7 +215,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief status lock
   //////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<arangodb::Mutex> _statusLock;
+  std::shared_ptr<std::mutex> _statusLock;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief AgencyComm instance
@@ -273,7 +276,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// this is used on the coordinator only
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::atomic<bool> HasRunOnce;
+  std::atomic<bool> _hasRunOnce;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief keeps track of the currently installed versions

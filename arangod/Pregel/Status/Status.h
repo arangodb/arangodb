@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@
 #include <optional>
 #include <string>
 
-#include <Inspection/VPack.h>
+#include <Inspection/VPackWithErrorT.h>
 #include <Inspection/Transformers.h>
 
 #include <Pregel/Common.h>

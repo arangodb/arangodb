@@ -84,6 +84,7 @@ function ahuacatlDateFunctionsTestSuite () {
         "DATE_MILLISECOND",
         "DATE_DAYOFYEAR",
         "DATE_ISOWEEK",
+        "DATE_ISOWEEKYEAR",
         "DATE_LEAPYEAR",
         "DATE_QUARTER",
         "DATE_DAYS_IN_MONTH",
@@ -1232,6 +1233,25 @@ function ahuacatlDateFunctionsTestSuite () {
     },
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief test date_isoweekyear function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDateISOWeekYearInvalid: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR()");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(1, 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR([])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR({})");
+    },
+
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief test date_isoweek function
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1287,6 +1307,66 @@ function ahuacatlDateFunctionsTestSuite () {
 
       values.forEach(function (value) {
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISOWEEK(@value)", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
+      });
+    },
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test date_isoweekyear function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testDateISOWeekYear: function () {
+      const values = [
+        [ "2000-04-29", 17, 2000 ],
+        [ "2000-04-29Z", 17, 2000 ],
+        [ "2000-12-31", 52, 2000 ],
+        [ "2000-12-31Z", 52, 2000 ],
+        [ "2100-12-31", 52, 2100 ],
+        [ "2100-12-31Z", 52, 2100 ],
+        [ "2400-12-31", 52, 2400 ],
+        [ "2400-12-31Z", 52, 2400 ],
+        [ "2012-02-12 13:24:12", 6, 2012 ],
+        [ "2012-02-12 13:24:12Z", 6, 2012 ],
+        [ "2012-02-12 23:59:59.991", 6, 2012 ],
+        [ "2012-02-12 23:59:59.991Z", 6, 2012 ],
+        [ "2012-02-12", 6, 2012 ],
+        [ "2012-02-12Z", 6, 2012 ],
+        [ "2012-02-12T13:24:12Z", 6, 2012 ],
+        [ "2012-02-12Z", 6, 2012 ],
+        [ "2012-2-12Z", 6, 2012 ],
+        [ "1910-01-02T03:04:05Z", 52, 1909 ],
+        [ "1910-01-02 03:04:05Z", 52, 1909 ],
+        [ "1910-01-02", 52, 1909 ],
+        [ "1910-01-02Z", 52, 1909 ],
+        [ "1970-01-01T01:05:27", 1, 1970 ],
+        [ "1970-01-01T01:05:27Z", 1, 1970 ],
+        [ "1970-01-01 01:05:27Z", 1, 1970 ],
+        [ "1970-1-1Z", 1, 1970 ],
+        [ "1221-02-28T23:59:59Z", 8, 1221 ],
+        [ "1221-02-28 23:59:59Z", 8, 1221 ],
+        [ "1221-02-28Z", 8, 1221 ],
+        [ "1221-2-28Z", 8, 1221 ],
+        [ "1000-12-24T04:12:00Z", 52, 1000 ],
+        [ "1000-12-24Z", 52, 1000 ],
+        [ "1000-12-24 04:12:00Z", 52, 1000 ],
+        [ "2016Z", 53, 2015 ],
+        [ "2016z", 53, 2015 ],
+        [ "2016", 53, 2015 ],
+        [ "2016-1Z", 53, 2015 ],
+        [ "2016-1z", 53, 2015 ],
+        [ "2016-1-1z", 53, 2015 ],
+        [ "2016-01-01Z", 53, 2015 ],
+        [ "2016-01-01Z", 53, 2015 ],
+        [ "  2016-01-01Z", 53, 2015 ],
+        [ "  2016-01-01z", 53, 2015 ],
+        [ 1399395674000, 19, 2014],
+        [ 60123, 1, 1970],
+        [ 1, 1, 1970 ],
+        [ 0, 1, 1970 ]
+      ];
+
+      values.forEach(function (value) {
+        assertEqual([{week: value[1], year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
         assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
       });
     },

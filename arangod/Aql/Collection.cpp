@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -82,7 +83,7 @@ Collection::Collection(std::string const& name, TRI_vocbase_t* vocbase,
 }
 
 /// @brief upgrade the access type to exclusive
-void Collection::setExclusiveAccess() {
+void Collection::setExclusiveAccess() noexcept {
   TRI_ASSERT(AccessMode::isWriteOrExclusive(_accessType));
   _accessType = AccessMode::Type::EXCLUSIVE;
 }
@@ -222,15 +223,19 @@ std::string const& Collection::smartJoinAttribute() const {
   return getCollection()->smartJoinAttribute();
 }
 
-TRI_vocbase_t* Collection::vocbase() const { return _vocbase; }
+TRI_vocbase_t* Collection::vocbase() const noexcept { return _vocbase; }
 
-AccessMode::Type Collection::accessType() const { return _accessType; }
+AccessMode::Type Collection::accessType() const noexcept { return _accessType; }
 
-void Collection::accessType(AccessMode::Type type) { _accessType = type; }
+void Collection::accessType(AccessMode::Type type) noexcept {
+  _accessType = type;
+}
 
-bool Collection::isReadWrite() const { return _isReadWrite; }
+bool Collection::isReadWrite() const noexcept { return _isReadWrite; }
 
-void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+void Collection::isReadWrite(bool isReadWrite) noexcept {
+  _isReadWrite = isReadWrite;
+}
 
 std::string const& Collection::name() const {
   if (!_currentShard.empty()) {
@@ -273,7 +278,8 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
 
   // update selectivity estimates if they were expired
   if (ServerState::instance()->isCoordinator()) {
-    coll->clusterIndexEstimates(true);
+    coll->getPhysical()->clusterIndexEstimates(true,
+                                               /*tid*/ TransactionId::none());
   }
 
   std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();

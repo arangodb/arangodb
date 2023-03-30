@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,6 +50,8 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/SslServerFeature.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
+#include "Pregel/REST/RestControlPregelHandler.h"
+#include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -68,11 +70,11 @@
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCompactHandler.h"
-#include "RestHandler/RestControlPregelHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
+#include "RestHandler/RestDocumentStateHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -86,16 +88,15 @@
 #include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
-#include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestPrototypeStateHandler.h"
-#include "RestHandler/RestReplicatedStateHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestSupervisionStateHandler.h"
+#include "RestHandler/RestTelemetricsHandler.h"
 #include "RestHandler/RestSupportInfoHandler.h"
 #include "RestHandler/RestSystemReportHandler.h"
 #include "RestHandler/RestTasksHandler.h"
@@ -142,6 +143,8 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
                   "Body size of HTTP/2 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
                   "Body size of VST requests");
+DECLARE_COUNTER(arangodb_http1_connections_total,
+                "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
 DECLARE_COUNTER(arangodb_vst_connections_total,
@@ -149,11 +152,17 @@ DECLARE_COUNTER(arangodb_vst_connections_total,
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
+      _telemetricsMaxRequestsPerInterval(3),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
       _allowMethodOverride(false),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _enableTelemetrics(false),
+#else
+      _enableTelemetrics(true),
+#endif
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
@@ -166,6 +175,8 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
           arangodb_request_body_size_http2{})),
       _requestBodySizeVst(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_vst{})),
+      _http1Connections(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_http1_connections_total{})),
       _http2Connections(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_http2_connections_total{})),
       _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
@@ -198,14 +209,51 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
   options->addOldOption("no-server", "server.rest-server");
 
+  options
+      ->addOption("--server.telemetrics-api",
+                  "Whether to enable the telemetrics API.",
+                  new options::BooleanParameter(&_enableTelemetrics),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100);
+
+  options
+      ->addOption(
+          "--server.telemetrics-api-max-requests",
+          "Maximum number of requests from the arangosh that the telemetrics "
+          "API will respond without rate-limiting.",
+          new options::UInt64Parameter(&_telemetricsMaxRequestsPerInterval),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31100)
+      .setLongDescription(R"(This option controls the maximum 
+number of requests that the telemetrics API will respond to before
+it rate-limits. Note that only requests from the arangosh to the
+telemetrics API will be rate-limited, but not any other requests
+to the telemetrics API.
+Requests to the telemetrics API will be counted for every 2 hour
+interval, and then resetted. That means after a period of at most
+2 hours, the telemetrics API will become usable again.
+The purpose of this option is to keep a deployment from being
+overwhelmed by too many telemetrics requests, issued by arangosh
+instances that are used for batch processing.)");
+
   options->addOption(
-      "--server.io-threads", "number of threads used to handle IO",
+      "--server.io-threads", "The number of threads used to handle I/O.",
       new UInt64Parameter(&_numIoThreads),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
       ->addOption("--server.support-info-api",
-                  "policy for exposing support info API",
+                  "The policy for exposing the support info and also the "
+                  "telemetrics API.",
                   new DiscreteValuesParameter<StringParameter>(
                       &_supportInfoApiPolicy,
                       std::unordered_set<std::string>{"disabled", "jwt",
@@ -216,49 +264,74 @@ void GeneralServerFeature::collectOptions(
 
   options
       ->addOption("--http.allow-method-override",
-                  "allow HTTP method override using special headers",
+                  "Allow HTTP method override using special headers.",
                   new BooleanParameter(&_allowMethodOverride),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(30800);
+      .setDeprecatedIn(30800)
+      .setLongDescription(R"(If you set this option to `true`, the HTTP request
+method is optionally fetched from one of the following HTTP request headers if
+present in the request:
 
-  options->addOption("--http.keep-alive-timeout",
-                     "keep-alive timeout in seconds",
-                     new DoubleParameter(&_keepAliveTimeout));
+- `x-http-method`
+- `x-http-method-override`
+- `x-method-override`
+
+If the option is enabled and any of these headers is set, the request method is
+overridden by the value of the header. For example, this allows you to issue an
+HTTP DELETE request which, to the outside world, looks like an HTTP GET request.
+This allows you to bypass proxies and tools that only let certain request types
+pass.
+
+Enabling this option may impose a security risk. You should only use it in
+controlled environments.)");
 
   options
-      ->addOption("--http.hide-product-header",
-                  "do not expose \"Server: ArangoDB\" header in HTTP responses",
-                  new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
+      ->addOption("--http.keep-alive-timeout",
+                  "The keep-alive timeout for HTTP connections (in seconds).",
+                  new DoubleParameter(&_keepAliveTimeout))
+      .setLongDescription(R"(Idle keep-alive connections are closed by the
+server automatically when the timeout is reached. A keep-alive-timeout value of
+`0` disables the keep-alive feature entirely.)");
+
+  options
+      ->addOption(
+          "--http.hide-product-header",
+          "Whether to omit the `Server: ArangoDB` header in HTTP responses.",
+          new BooleanParameter(&HttpResponse::HIDE_PRODUCT_HEADER))
       .setDeprecatedIn(30800);
 
   options->addOption(
       "--http.trusted-origin",
-      "trusted origin URLs for CORS requests with credentials",
+      "The trusted origin URLs for CORS requests with credentials.",
       new VectorParameter<StringParameter>(&_accessControlAllowOrigins));
 
   options
-      ->addOption("--http.redirect-root-to", "redirect of root URL",
+      ->addOption("--http.redirect-root-to", "Redirect of the root URL.",
                   new StringParameter(&_redirectRootTo))
       .setIntroducedIn(30712);
 
   options
-      ->addOption(
-          "--http.permanently-redirect-root",
-          "if true, use a permanent redirect. If false, use a temporary",
-          new BooleanParameter(&_permanentRootRedirect))
+      ->addOption("--http.permanently-redirect-root",
+                  "Whether to use a permanent or temporary redirect.",
+                  new BooleanParameter(&_permanentRootRedirect))
       .setIntroducedIn(30712);
 
   options
       ->addOption("--http.return-queue-time-header",
-                  "if true, return the 'x-arango-queue-time-seconds' header in "
-                  "responses",
+                  "Whether to return the `x-arango-queue-time-seconds` header "
+                  "in all responses.",
                   new BooleanParameter(&_returnQueueTimeHeader))
-      .setIntroducedIn(30900);
+      .setIntroducedIn(30900)
+      .setLongDescription(R"(The value contained in this header indicates the
+current queueing/dequeuing time for requests in the scheduler (in seconds).
+Client applications and drivers can use this value to control the server load
+and also react on overload.)");
 
   options
       ->addOption("--server.early-connections",
-                  "allow requests to limited APIs early during server startup",
+                  "Allow requests to a limited set of APIs early during the "
+                  "server startup.",
                   new BooleanParameter(&_allowEarlyConnections))
       .setIntroducedIn(31000);
 
@@ -266,7 +339,7 @@ void GeneralServerFeature::collectOptions(
                         "web-interface.proxy-request-check");
 
   options->addOption("--web-interface.proxy-request-check",
-                     "enable proxy request checking",
+                     "Enable proxy request checking.",
                      new BooleanParameter(&_proxyCheck),
                      arangodb::options::makeFlags(
                          arangodb::options::Flags::DefaultNoComponents,
@@ -276,20 +349,21 @@ void GeneralServerFeature::collectOptions(
   options->addOldOption("frontend.trusted-proxy",
                         "web-interface.trusted-proxy");
 
-  options->addOption("--web-interface.trusted-proxy",
-                     "list of proxies to trust (may be IP or network). Make "
-                     "sure --web-interface.proxy-request-check is enabled",
-                     new VectorParameter<StringParameter>(&_trustedProxies),
-                     arangodb::options::makeFlags(
-                         arangodb::options::Flags::DefaultNoComponents,
-                         arangodb::options::Flags::OnCoordinator,
-                         arangodb::options::Flags::OnSingle));
+  options->addOption(
+      "--web-interface.trusted-proxy",
+      "The list of proxies to trust (can be IP or network). Make "
+      "sure `--web-interface.proxy-request-check` is enabled.",
+      new VectorParameter<StringParameter>(&_trustedProxies),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnCoordinator,
+          arangodb::options::Flags::OnSingle));
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
       "--server.failure-point",
-      "failure point to set during server startup (requires compilation with "
-      "failure points support)",
+      "The failure point to set during server startup (requires compilation "
+      "with failure points support).",
       new VectorParameter<StringParameter>(&_failurePoints),
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
@@ -344,6 +418,11 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void GeneralServerFeature::prepare() {
   ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
+
+  if (ServerState::instance()->isAgent()) {
+    // telemetrics automatically and always turned off on agents
+    _enableTelemetrics = false;
+  }
 
   if (ServerState::instance()->isDBServer() &&
       !server().options()->processingResult().touched(
@@ -651,11 +730,11 @@ void GeneralServerFeature::defineRemainingHandlers(
         std::string{StaticStrings::ApiLogInternal},
         RestHandlerCreator<RestLogInternalHandler>::createNoData);
     f.addPrefixHandler(
-        std::string{StaticStrings::ApiReplicatedStateExternal},
-        RestHandlerCreator<RestReplicatedStateHandler>::createNoData);
-    f.addPrefixHandler(
         "/_api/prototype-state",
         RestHandlerCreator<RestPrototypeStateHandler>::createNoData);
+    f.addPrefixHandler(
+        std::string{StaticStrings::ApiDocumentStateExternal},
+        RestHandlerCreator<RestDocumentStateHandler>::createNoData);
   }
 
   // This is the only handler were we need to inject
@@ -767,6 +846,9 @@ void GeneralServerFeature::defineRemainingHandlers(
   if (_supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
                  RestHandlerCreator<RestSupportInfoHandler>::createNoData);
+
+    f.addHandler("/_admin/telemetrics",
+                 RestHandlerCreator<RestTelemetricsHandler>::createNoData);
   }
 
   f.addHandler("/_admin/system-report",

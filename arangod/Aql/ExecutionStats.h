@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +51,9 @@ struct ExecutionStats {
 
   /// @brief sets the peak memory usage from the outside
   void setPeakMemoryUsage(size_t value);
+
+  /// @brief set the number of intermediate commits
+  void setIntermediateCommits(uint64_t value);
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
@@ -109,6 +112,9 @@ struct ExecutionStats {
 
   /// @brief peak memory usage of the query
   size_t peakMemoryUsage = 0;
+
+  /// @brief number of commits that happened for the query
+  uint64_t intermediateCommits = 0;
 
  private:
   /// @brief Node aliases, source => target.

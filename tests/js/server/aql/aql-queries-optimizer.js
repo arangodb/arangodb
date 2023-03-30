@@ -53,6 +53,12 @@ function ahuacatlOptimizerTestSuite () {
       assertEqual([ 'baz' ], actual);
     },
 
+    testAttributeAccessOptimizationWithIndexLookup : function () {
+      let query = `LET data = { "a": [ { "id":123,"search":"","data":[] }, { "id":456,"search":"","data":[] } ], "b": [] } FOR d IN data["a"] RETURN d`;
+      let actual = getQueryResults(query);
+      assertEqual([ { "data" : [ ], "id" : 123, "search" : "" }, { "data" : [ ], "id" : 456, "search" : "" } ], actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test special case "empty for loop"
 ////////////////////////////////////////////////////////////////////////////////

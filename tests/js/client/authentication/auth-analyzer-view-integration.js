@@ -1,16 +1,12 @@
 /*jshint globalstrict:false, strict:false */
-/* global assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global assertTrue, assertFalse, assertEqual, fail */
 
 const jsunity = require('jsunity');
-const internal = require('internal');
-const error = internal.errors;
-const print = internal.print;
-const arango = internal.arango;
-
+const analyzers = require("@arangodb/analyzers");
 const db = require("@arangodb").db;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/testutils/user-helper');
-const endpoint = arango.getEndpoint();
+const internal = require('internal');
 
 function testSuite() {
   const user = 'bob';
@@ -42,16 +38,40 @@ function testSuite() {
     },
 
     testIntegration : function() {
-      db._createDatabase(name);
-      users.save(user, "", true); 
-      users.grantDatabase(user, name, "rw"); 
+      const analyzerName = "more_text_de";
 
-      helper.switchUser(user, name);
-    
-      db._createView("test", "arangosearch", {});
-    
-      let view = db._view("test");
-      view.properties({links:{}});
+      analyzers.save(analyzerName, "text",
+                   { locale: "de.UTF-8", stopwords: [ ] },
+                   [ "frequency", "norm", "position" ]);
+
+      try {
+        db._createDatabase(name);
+        // create new user for new database.
+        // user does not have any permissions on _system database, thus
+        // no permissions on the above analyzer
+        users.save(user, "", true); 
+        users.grantDatabase(user, name, "rw"); 
+
+        helper.switchUser(user, name);
+
+        db._createView("test1", "arangosearch", {});
+        let view = db._view("test1");
+        view.properties({links:{}});
+        
+        db._createView("test2", "search-alias", {});
+        view = db._view("test2");
+        view.properties({indexes:[]});
+       
+        try {
+          analyzers.remove(analyzerName);
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+        }
+      } finally {
+        helper.switchUser("root", system);
+        analyzers.remove(analyzerName);
+      }
     },
 
   };

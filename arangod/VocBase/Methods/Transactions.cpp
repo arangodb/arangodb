@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 #include "Transactions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "V8/V8SecurityFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
@@ -395,6 +395,10 @@ Result executeTransactionJS(v8::Isolate* isolate,
 
   auto& vocbase = GetContextVocBase(isolate);
   transaction::V8Context ctx(vocbase, embed);
+  if (writeCollections.empty() && exclusiveCollections.empty()) {
+    ctx.setReadOnly();
+  }
+  ctx.setJStransaction();
 
   // start actual transaction
   transaction::Methods trx(std::shared_ptr<transaction::Context>(

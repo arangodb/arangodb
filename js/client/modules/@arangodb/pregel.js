@@ -22,21 +22,22 @@
 // / @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
-var arangodb = require('@arangodb');
-var throwBadParameter = arangodb.throwBadParameter;
-var db = internal.db;
+const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
+const arangodb = require('@arangodb');
+const throwBadParameter = arangodb.throwBadParameter;
+const db = internal.db;
 
-var API = '/_api/control_pregel';
+const API = '/_api/control_pregel';
+const HISTORY_API = '/_api/control_pregel/history';
 
-let buildMessage = function(algo, second, params) {
+let buildMessage = function (algo, second, params) {
   let valid = false;
-  let message = { algorithm: algo };
+  let message = {algorithm: algo};
 
   if (typeof algo === 'string' && second) {
     var first = second.vertexCollections && second.vertexCollections instanceof Array
-                && second.edgeCollections && second.edgeCollections instanceof Array;
+      && second.edgeCollections && second.edgeCollections instanceof Array;
     if (first) {
       message.vertexCollections = second.vertexCollections;
       message.edgeCollections = second.edgeCollections;
@@ -89,7 +90,56 @@ var cancelExecution = function (executionID) {
   return requestResult;
 };
 
+// Test whether the pregel execution with executionID
+// is still busy.
+//
+// With the current API this the only sensible test
+// that can be offered: the executionID might have
+// disappeared or never existed, but then the execution
+// is not busy.
+const isBusy = function (executionID) {
+  let status = getExecutionStatus(executionID);
+  return status === status.state === "loading" ||
+    status.state === "running" ||
+    status.state === "storing";
+};
+
+/*
+ * Pregel History module section
+ */
+const getExecutionHistory = (executionID) => {
+  let URL = HISTORY_API;
+  if (executionID !== undefined) {
+    URL += '/' + encodeURIComponent(executionID);
+  }
+  let requestResult = db._connection.GET(URL);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+const removeExecutionHistory = (executionID) => {
+  let URL = HISTORY_API;
+  if (executionID !== undefined) {
+    URL += '/' + encodeURIComponent(executionID);
+  }
+  let requestResult = db._connection.DELETE(URL);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
+/*
+ * Exports section
+ */
+
 exports.buildMessage = buildMessage;
 exports.start = startExecution;
 exports.status = getExecutionStatus;
 exports.cancel = cancelExecution;
+exports.isBusy = isBusy;
+
+/*
+ * Exports pregel history section
+ */
+
+exports.history = getExecutionHistory;
+exports.removeHistory = removeExecutionHistory;

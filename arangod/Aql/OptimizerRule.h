@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +23,12 @@
 
 #pragma once
 
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 
 #include "Basics/Common.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class ExecutionPlan;
 class Optimizer;
 struct OptimizerRule;
@@ -58,34 +57,39 @@ struct OptimizerRule {
 
   /// @brief helper for building flags
   template<typename... Args>
-  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+  static constexpr std::underlying_type<Flags>::type makeFlags(
+      Flags flag, Args... args) noexcept {
     return static_cast<std::underlying_type<Flags>::type>(flag) +
            makeFlags(args...);
   }
 
-  static std::underlying_type<Flags>::type makeFlags() {
+  static constexpr std::underlying_type<Flags>::type makeFlags() noexcept {
     return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
   }
 
   /// @brief check a flag for the rule
-  bool hasFlag(Flags flag) const {
+  constexpr bool hasFlag(Flags flag) const noexcept {
     return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) !=
             0);
   }
 
-  bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
+  bool canBeDisabled() const noexcept { return hasFlag(Flags::CanBeDisabled); }
 
-  bool isClusterOnly() const { return hasFlag(Flags::ClusterOnly); }
+  bool isClusterOnly() const noexcept { return hasFlag(Flags::ClusterOnly); }
 
-  bool isHidden() const { return hasFlag(Flags::Hidden); }
+  bool isHidden() const noexcept { return hasFlag(Flags::Hidden); }
 
-  bool canCreateAdditionalPlans() const {
+  bool canCreateAdditionalPlans() const noexcept {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
 
-  bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
+  bool isDisabledByDefault() const noexcept {
+    return hasFlag(Flags::DisabledByDefault);
+  }
 
-  bool isEnterpriseOnly() const { return hasFlag(Flags::EnterpriseOnly); }
+  bool isEnterpriseOnly() const noexcept {
+    return hasFlag(Flags::EnterpriseOnly);
+  }
 
   /// @brief optimizer rules
   enum RuleLevel : int {
@@ -202,6 +206,10 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // optimize K_PATHS
+    optimizePathsRule,
+
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
@@ -252,10 +260,6 @@ struct OptimizerRule {
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-    // FIXME order-???
-    // make operations on sharded IResearch views use scatter / gather / remote
-    scatterIResearchViewInClusterRule,
-
 #ifdef USE_ENTERPRISE
     // move traversal on SatelliteGraph to db server and add scatter / gather /
     // remote
@@ -271,6 +275,13 @@ struct OptimizerRule {
     // remove multiple remote <-> distribute snippets if we are able
     // to combine multiple in only one
     removeDistributeNodesRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // move OffsetInfoMaterialize in between
+    // scatter(remote) <-> gather(remote) so they're
+    // distributed to the cluster nodes.
+    distributeOffsetInfoToClusterRule,
 #endif
 
     // move FilterNodes & Calculation nodes in between
@@ -347,6 +358,10 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+#ifdef USE_ENTERPRISE
+    lateMaterialiationOffsetInfoRule,
+#endif
+
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
@@ -404,5 +419,4 @@ struct OptimizerRule {
   }
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

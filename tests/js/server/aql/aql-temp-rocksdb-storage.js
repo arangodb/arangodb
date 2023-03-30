@@ -248,7 +248,10 @@ function StorageForQueryCleanUpWhenFailureSuite() {
     },
 
     testQueryFailureIngestAll1ExtraSst: function() {
-      const tempFileName = "1111111111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222222222233333333333333333333.sst";
+      // use an .sst filename that doesn't exist under normal circumstances.
+      // filename shouldn't get too long because of lovely Windows' path
+      // name length restriction
+      const tempFileName = "999999999999.sst";
       const tempFileNameData = "123456789123456789123456789";
       fs.writeFileSync(fs.join(tempDir, tempFileName), tempFileNameData);
       internal.debugSetFailAt("failOnIngestAll1");
@@ -277,7 +280,10 @@ function StorageForQueryCleanUpWhenFailureSuite() {
     },
 
     testQueryFailureIngestAll2ExtraSst: function() {
-      const tempFileName = "1111111111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222222222233333333333333333333.sst";
+      // use an .sst filename that doesn't exist under normal circumstances.
+      // filename shouldn't get too long because of lovely Windows' path
+      // name length restriction
+      const tempFileName = "999999999999.sst";
       const tempFileNameData = "123456789123456789123456789";
       fs.writeFileSync(fs.join(tempDir, tempFileName), tempFileNameData);
       internal.debugSetFailAt("failOnIngestAll2");

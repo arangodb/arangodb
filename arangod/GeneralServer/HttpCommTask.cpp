@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +73,21 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
 }  // namespace
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_began(llhttp_t* p) {
+bool HttpCommTask<T>::transferEncodingContainsChunked(
+    HttpCommTask<T>& commTask, std::string const& encoding) {
+  if (basics::StringUtils::tolower(encoding).find("chunked") !=
+      std::string::npos) {
+    commTask.sendErrorResponse(
+        rest::ResponseCode::NOT_IMPLEMENTED, rest::ContentType::UNSET, 1,
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "Parsing for transfer-encoding of type chunked not implemented.");
+    return true;
+  }
+  return false;
+}
+
+template<SocketType T>
+int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_lastHeaderField.clear();
   me->_lastHeaderValue.clear();
@@ -88,12 +102,15 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
 
   // acquire a new statistics entry for the request
   me->acquireStatistics(1UL).SET_READ_START(TRI_microtime());
-
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->setRequestType(llhttpToRequestType(p));
   if (me->_request->requestType() == RequestType::ILLEGAL) {
@@ -105,6 +122,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
 
   me->_url.append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -114,7 +135,8 @@ int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at,
+                                     size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
@@ -125,10 +147,15 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = false;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at,
+                                     size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   if (me->_lastHeaderWasValue) {
     me->_lastHeaderValue.append(at, len);
@@ -137,15 +164,29 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   }
   me->_lastHeaderWasValue = true;
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_header_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_response.reset();
   if (!me->_lastHeaderField.empty()) {
     me->_request->setHeaderV2(std::move(me->_lastHeaderField),
                               std::move(me->_lastHeaderValue));
+  }
+
+  bool found;
+  std::string const& encoding =
+      me->_request->header(StaticStrings::TransferEncoding, found);
+
+  if (found) {
+    if (transferEncodingContainsChunked(*me, encoding)) {
+      return HPE_USER;
+    }
   }
 
   if ((p->http_major != 1 || p->http_minor != 0) &&
@@ -161,7 +202,6 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   }
   me->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
-  bool found;
   std::string const& expect =
       me->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
@@ -185,17 +225,25 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return 1;  // 1 is defined by parser
   }
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
+int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->body().append(at, len);
   return HPE_OK;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
   me->_request->parseUrl(me->_url.data(), me->_url.size());
 
@@ -203,6 +251,10 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   me->_messageDone = true;
 
   return HPE_PAUSED;
+} catch (...) {
+  // the caller of this function is a C function, which doesn't know
+  // exceptions. we must not let an exception escape from here.
+  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -227,6 +279,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
   _parserSettings.on_message_complete = HttpCommTask<T>::on_message_complete;
   llhttp_init(&_parser, HTTP_REQUEST, &_parserSettings);
   _parser.data = this;
+
+  this->_generalServerFeature.countHttp1Connection();
 }
 
 template<SocketType T>
@@ -250,8 +304,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // Inspect the received data
     size_t nparsed = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
-      const char* data = reinterpret_cast<const char*>(buffer.data());
-      const char* end = data + buffer.size();
+      char const* data = reinterpret_cast<char const*>(buffer.data());
+      char const* end = data + buffer.size();
       do {
         size_t datasize = end - data;
 
@@ -370,6 +424,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_0);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.0
@@ -380,6 +435,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       auto commTask = std::make_unique<VstCommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol),
           fuerte::vst::VST1_1);
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // vst 1.1
@@ -389,6 +445,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol));
+      commTask->setStatistics(1UL, me.stealStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
       return;  // http2 upgrade
@@ -466,6 +523,7 @@ void HttpCommTask<T>::doProcessRequest() {
     if (h2 == "h2c" && found && !settings.empty()) {
       auto task = std::make_shared<H2CommTask<T>>(
           this->_server, this->_connectionInfo, std::move(this->_protocol));
+      task->setStatistics(1UL, this->stealStatistics(1UL));
       task->upgradeHttp1(std::move(_request));
       this->close();
       return;
@@ -485,11 +543,15 @@ void HttpCommTask<T>::doProcessRequest() {
 
     std::string_view body = _request->rawPayload();
     this->_generalServerFeature.countHttp1Request(body.size());
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+
+    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
-      LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
-          << "\"http-request-body\",\"" << (void*)this << "\",\""
-          << StringUtils::escapeUnicode(std::string(body)) << "\"";
+      // Log HTTP headers:
+      this->logRequestHeaders("http", _request->headers());
+
+      if (!body.empty()) {
+        this->logRequestBody("http", _request->contentType(), body);
+      }
     }
   }
 
@@ -669,6 +731,18 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _response = response.stealBody();
   // append write buffer and statistics
 
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters()) {
+    // Log HTTP headers:
+    this->logResponseHeaders("http", response.headers());
+
+    if (!_response->empty()) {
+      std::string_view body(_response->data(), _response->size());
+      this->logRequestBody("http", response.contentType(), body,
+                           true /* isResponse */);
+    }
+  }
+
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
@@ -718,7 +792,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics::Item stat) {
   }
 
   this->_writing = true;
-  // FIXME measure performance w/o sync write
   asio_ns::async_write(
       this->_protocol->socket, buffers,
       withLogContext([self = this->shared_from_this(), stat = std::move(stat)](

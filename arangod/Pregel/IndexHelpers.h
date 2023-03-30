@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@ namespace arangodb {
 class Index;
 class IndexIterator;
 class LogicalCollection;
+struct ResourceMonitor;
 
 namespace transaction {
 class Methods;
@@ -48,6 +49,7 @@ namespace traverser {
 
 class EdgeCollectionInfo {
  private:
+  ResourceMonitor& _monitor;
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying transaction
   //////////////////////////////////////////////////////////////////////////////
@@ -80,7 +82,8 @@ class EdgeCollectionInfo {
   IndexIteratorOptions _indexIteratorOptions;
 
  public:
-  EdgeCollectionInfo(transaction::Methods* trx, std::string const& cname);
+  EdgeCollectionInfo(ResourceMonitor& monitor, transaction::Methods* trx,
+                     std::string const& cname);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex.

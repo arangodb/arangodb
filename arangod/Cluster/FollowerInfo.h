@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,22 +24,20 @@
 
 #pragma once
 
-#include "ClusterInfo.h"
+#include <mutex>
 
-#include "Basics/Mutex.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/LogicalCollection.h"
+#include "Cluster/ClusterTypes.h"
 
 namespace arangodb {
 
 namespace velocypack {
 class Slice;
 }
+
+class LogicalCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a class to track followers that are in sync for a shard
@@ -75,7 +73,7 @@ class FollowerInfo {
   // 1.) _agencyMutex
   // 2.) _canWriteLock
   // 3.) _dataLock
-  mutable Mutex _agencyMutex;
+  mutable std::mutex _agencyMutex;
   mutable arangodb::basics::ReadWriteLock _canWriteLock;
   mutable arangodb::basics::ReadWriteLock _dataLock;
 
@@ -87,16 +85,7 @@ class FollowerInfo {
   bool _canWrite;
 
  public:
-  explicit FollowerInfo(arangodb::LogicalCollection* d)
-      : _followers(std::make_shared<std::vector<ServerID>>()),
-        _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
-        _docColl(d),
-        _theLeader(""),
-        _theLeaderTouched(false),
-        _canWrite(_docColl->replicationFactor() <= 1) {
-    // On replicationfactor 1 we do not have any failover servers to maintain.
-    // This should also disable satellite tracking.
-  }
+  explicit FollowerInfo(arangodb::LogicalCollection* d);
 
   enum class WriteState { ALLOWED = 0, FORBIDDEN, STARTUP, UNAVAILABLE };
 

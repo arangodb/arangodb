@@ -46,7 +46,7 @@ function replication2Client(options) {
 
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
-
+  opts.enableAliveMonitor = false;
   return new tu.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
 }
 
@@ -61,7 +61,7 @@ function replication2Server(options) {
   const opts = _.clone(options);
   opts.cluster = true;
   opts.dbServers = Math.max(opts.dbServers, 6);
-
+  opts.enableAliveMonitor = false;
   return new tu.runOnArangodRunner(opts, 'replication2_server', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
@@ -72,15 +72,14 @@ function replication2Server(options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
   testFns.replication2_server = replication2Server;
   for (const [key, value] of Object.entries(functionsDocumentation)) {
     fnDocs[key] = value;
   }
-  defaultFns.push('replication2_client');
-  defaultFns.push('replication2_server');
+
   for (let i = 0; i < optionsDocumentation.length; i++) {
     optionsDoc.push(optionsDocumentation[i]);
   }

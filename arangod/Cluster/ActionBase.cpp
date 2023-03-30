@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -96,8 +95,8 @@ bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
   return true;
 }
 
-bool ActionBase::fastTrack() const {
-  return _labels.find(FAST_TRACK) != _labels.end();
+bool ActionBase::fastTrack() const noexcept {
+  return _labels.contains(FAST_TRACK);
 }
 
 /// @brief execution finished successfully or failed ... and race timer expired

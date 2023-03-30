@@ -24,11 +24,13 @@
 #include "./MockGraphProvider.h"
 #include "Graph/Enumerators/OneSidedEnumerator.cpp"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
+#include "Graph/Enumerators/WeightedTwoSidedEnumerator.cpp"
 #include "Graph/PathManagement/PathResult.cpp"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/PathManagement/SingleProviderPathResult.cpp"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
+#include "Graph/Queues/WeightedQueue.h"
 
 #include "Graph/PathManagement/PathStoreTracer.cpp"
 #include "Graph/PathManagement/PathStoreTracer.h"
@@ -77,6 +79,12 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
 
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
+    MockGraphProvider,
+    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
 template class arangodb::graph::PathValidatorTracer<
     arangodb::graph::PathValidator<
         arangodb::graph::ProviderTracer<MockGraphProvider>,
@@ -107,6 +115,9 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     LifoQueue<MockGraphProvider::Step>>;
 
+template class ::arangodb::graph::QueueTracer<
+    WeightedQueue<MockGraphProvider::Step>>;
+
 template class ::arangodb::graph::TwoSidedEnumerator<
     QueueTracer<FifoQueue<MockGraphProvider::Step>>,
     PathStore<MockGraphProvider::Step>, MockGraphProvider,
@@ -115,6 +126,20 @@ template class ::arangodb::graph::TwoSidedEnumerator<
 
 template class ::arangodb::graph::TwoSidedEnumerator<
     QueueTracer<FifoQueue<MockGraphProvider::Step>>,
+    PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider,
+    PathValidator<
+        MockGraphProvider,
+        PathStoreTracer<::arangodb::graph::PathStore<MockGraphProvider::Step>>,
+        VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<MockGraphProvider::Step>>,
+    PathStore<MockGraphProvider::Step>, MockGraphProvider,
+    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
+                  VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedTwoSidedEnumerator<
+    QueueTracer<WeightedQueue<MockGraphProvider::Step>>,
     PathStoreTracer<PathStore<MockGraphProvider::Step>>, MockGraphProvider,
     PathValidator<
         MockGraphProvider,

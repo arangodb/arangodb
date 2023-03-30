@@ -39,7 +39,7 @@ const arango = internal.arango;
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.getIdString = function (object, typeName) {
-  var result = '[object ' + typeName;
+  let result = '[object ' + typeName;
 
   if (object._id) {
     result += ':' + object._id;
@@ -57,14 +57,8 @@ exports.getIdString = function (object, typeName) {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.createHelpHeadline = function (text) {
-  var i;
-  var p = '';
-  var x = Math.abs(78 - text.length) / 2;
-
-  for (i = 0; i < x; ++i) {
-    p += '-';
-  }
-
+  const x = Math.abs(78 - text.length) / 2;
+  let p = '-'.repeat(x);
   return '\n' + p + ' ' + text + ' ' + p + '\n';
 };
 
@@ -74,7 +68,7 @@ exports.createHelpHeadline = function (text) {
 // / throws an exception in case of an an error
 // //////////////////////////////////////////////////////////////////////////////
 
-// must came after the export of createHelpHeadline
+// must come after the export of createHelpHeadline
 var arangodb = require('@arangodb');
 var ArangoError = arangodb.ArangoError;
 

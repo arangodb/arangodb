@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $ */
+/* global frontendConfig, _, Backbone, templateEngine, window, arangoHelper, Joi, $ */
 
 (function () {
   'use strict';
@@ -260,7 +260,23 @@
       searchOptions.searchPhrase = null;
     },
 
-    restrictToSearchPhraseKey: function () {
+    restrictToSearchPhraseKey: function (event) {
+      if (
+        event && event.originalEvent && (
+          (
+            event.originalEvent.key &&
+            (
+              event.originalEvent.key === 'Control' ||
+              event.originalEvent.key === 'Alt' ||
+              event.originalEvent.key === 'Shift'
+            )
+          ) ||
+          event.originalEvent.ctrlKey ||
+          event.originalEvent.altKey
+        )
+      ) {
+        return;
+      }
       // key pressed in search box
       var self = this;
 
@@ -302,7 +318,7 @@
       }
     },
 
-    submitCreateCollection: function () {
+    submitCreateCollection: function (isOneShardDB) {
       var self = this;
       var callbackCoord = function (error, isCoordinator) {
         if (error) {
@@ -417,21 +433,30 @@
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
-            collType: collType,
-            shards: shards,
-            shardKeys: shardKeys
+            collType: collType
           };
 
-          if (smartJoinAttribute !== '') {
-            tmpObj.smartJoinAttribute = smartJoinAttribute;
-          }
+          if (!isOneShardDB) {
+            if (smartJoinAttribute !== '') {
+              tmpObj.smartJoinAttribute = smartJoinAttribute;
+            }
 
-          tmpObj.distributeShardsLike = distributeShardsLike;
-          if (distributeShardsLike === '' && window.App.isCluster) {
-            // if we are in the cluster and are not using distribute shards like
-            // then we want to make use of the replication factor
-            tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
-            tmpObj.writeConcern = Number(writeConcern);
+            // If we are in a oneShardDB we are not allowed to set those values
+            // They are always inferred
+            if (window.App.isCluster) {
+              tmpObj.shardKeys = shardKeys;
+              if (distributeShardsLike === '') {
+                // if we are not using distribute shards like
+                // then we want to make use of the given shard information
+                tmpObj.shards = shards;
+                tmpObj.replicationFactor = replicationFactor === "satellite" ? replicationFactor : Number(replicationFactor);
+                tmpObj.writeConcern = Number(writeConcern);
+              } else {
+                // If we use distribute shards like on purpose do not add other
+                // sharding information. All of it will be deferred.
+                tmpObj.distributeShardsLike = distributeShardsLike;
+              }
+            }
           }
 
           if (!abort) {
@@ -504,7 +529,7 @@
               'new-collection-type',
               'Type',
               '',
-              'The type of the collection to create.',
+              'Use the Document type to store json documents with unique _key attributes. Can be used as nodes in a graph. <br> Use the Edge type to store documents with special edge attributes (_to, _from), which represent relations. Can be used as edges in a graph.',
               [{value: 2, label: 'Document'}, {value: 3, label: 'Edge'}]
             )
           );
@@ -543,10 +568,10 @@
                 false
               )
             );
-          
+
             if (window.App.isCluster) {
-              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1); 
-              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10); 
+              var minReplicationFactor = (this.minReplicationFactor ? this.minReplicationFactor : 1);
+              var maxReplicationFactor = (this.maxReplicationFactor ? this.maxReplicationFactor : 10);
 
               // clamp replicationFactor between min & max allowed values
               var replicationFactor = '';
@@ -565,14 +590,14 @@
                   'new-replication-factor',
                   'Replication factor',
                   String(replicationFactor),
-                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' + 
+                  'Numeric value. Must be between ' + minReplicationFactor + ' and ' +
                   maxReplicationFactor + '. Total number of copies of the data in the cluster',
                   '',
                   false,
                   [
                     {
                       rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
-                      msg: 'Must be a number between ' + minReplicationFactor +  
+                      msg: 'Must be a number between ' + minReplicationFactor +
                            ' and ' + maxReplicationFactor + '.'
                     }
                   ]
@@ -584,7 +609,7 @@
           buttons.push(
             window.modalView.createSuccessButton(
               'Save',
-              this.submitCreateCollection.bind(this)
+              this.submitCreateCollection.bind(this, properties.sharding === 'single' || frontendConfig.forceOneShard)
             )
           );
           if (window.App.isCluster) {
@@ -608,7 +633,7 @@
                   'is-satellite-collection',
                   'SatelliteCollection',
                   '',
-                  'Create SatelliteCollection? This will disable replication factor.',
+                  'Use this option for smaller data sets that will be synchronously replicated to each DB-Server, facilitating local join operations. Selecting it will disable the replication factor above.',
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
                 )
               );
@@ -696,6 +721,11 @@
               _.each(handleSatelliteIds, function(id) {
                 $(id).val('').focus().focusout();
               });
+            });
+
+            $('#distribute-shards-like').on('input', function (element) {
+              $('#new-collection-shards').prop('disabled', element.target.value !== '');
+              $('#new-replication-factor').prop('disabled', element.target.value !== '');
             });
           }
         }

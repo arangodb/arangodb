@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -33,6 +34,7 @@
 #include "Network/Utils.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Types.h"
 
@@ -68,10 +70,8 @@ network::Headers buildHeaders(
 bool isOutdated(
     GeneralRequest const& oldData,
     std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
-  if (!data || !data->packed) {
-    TRI_ASSERT(!data);
-    return false;
-  }
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(data->packed != nullptr);
   velocypack::Slice newData{data->packed->data()};
   auto const& oldVersion = oldData.value("MetricsVersion");
   TRI_ASSERT(!oldVersion.empty());
@@ -209,7 +209,7 @@ RestStatus RestMetricsHandler::execute() {
     if (isOutdated(*_request, data)) {
       _response->addPayload(VPackSlice{data->packed->data()});
     } else {
-      _response->addPayload(VPackSlice::noneSlice());
+      _response->addPayload(VPackSlice::nullSlice());
     }
     return RestStatus::DONE;
   }

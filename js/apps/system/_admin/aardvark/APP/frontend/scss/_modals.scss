@@ -64,7 +64,7 @@
   color: $c-btn-inverse;
   font-size: 14px;
   font-weight: 300;
-  max-height: 600px;
+  max-height: 450px;
 
   input {
     height: 20px;
@@ -427,13 +427,13 @@
   width: 700px;
   z-index: 9999999;
 
-  .fade.in {
-    top: 12.1% !important;
-  }
-
   table tr:last-child {
     border-bottom: 0 !important;
   }
+}
+
+.modal.fade.in {
+  top: 5% !important;
 }
 
 .waitModal {

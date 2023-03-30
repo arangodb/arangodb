@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,7 +99,15 @@ RequestLane RestWalAccessHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
+  } else if (server()
+                 .getFeature<ReplicationFeature>()
+                 .isActiveFailoverEnabled()) {
+    // prioritize catch-up requests by active failover followers over other
+    // requests, so that followers have a better chance of catching up with the
+    // leader
+    return RequestLane::SERVER_REPLICATION_CATCHUP;
   }
+
   return RequestLane::SERVER_REPLICATION;
 }
 
@@ -341,17 +349,16 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   size_t length = 0;
 
   if (useVst) {
-    result =
-        wal->tail(filter, chunkSize,
-                  [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                    length++;
+    result = wal->tail(
+        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
+          length++;
 
-                    if (vocbase != nullptr) {  // database drop has no vocbase
-                      prepOpts(*vocbase);
-                    }
+          if (vocbase != nullptr) {  // database drop has no vocbase
+            prepOpts(*vocbase);
+          }
 
-                    _response->addPayload(marker, &opts, true);
-                  });
+          _response->addPayload(marker, &opts, true);
+        });
   } else {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     TRI_ASSERT(httpResponse);
@@ -363,20 +370,19 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result =
-        wal->tail(filter, chunkSize,
-                  [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                    length++;
+    result = wal->tail(
+        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
+          length++;
 
-                    if (vocbase != nullptr) {  // database drop has no vocbase
-                      prepOpts(*vocbase);
-                    }
+          if (vocbase != nullptr) {  // database drop has no vocbase
+            prepOpts(*vocbase);
+          }
 
-                    dumper.dump(marker);
-                    buffer.appendChar('\n');
-                    // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
-                    // marker.toJson(&opts);
-                  });
+          dumper.dump(marker);
+          buffer.appendChar('\n');
+          // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
+          // marker.toJson(&opts);
+        });
   }
 
   if (result.fail()) {

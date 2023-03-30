@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,14 +26,13 @@
 
 #pragma once
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/RegisterInfos.h"
 
 #include <cstddef>
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -41,6 +40,10 @@ class TemporaryStorageFeature;
 
 namespace transaction {
 class Methods;
+}
+
+namespace velocypack {
+struct Options;
 }
 
 namespace aql {
@@ -65,7 +68,7 @@ class SortExecutorInfos {
                     AqlItemBlockManager& manager,
                     TemporaryStorageFeature& tempStorage,
                     velocypack::Options const* options,
-                    arangodb::ResourceMonitor& resourceMonitor,
+                    ResourceMonitor& resourceMonitor,
                     size_t spillOverThresholdNumRows,
                     size_t spillOverThresholdMemoryUsage, bool stable);
 
@@ -84,7 +87,7 @@ class SortExecutorInfos {
 
   [[nodiscard]] std::vector<SortRegister> const& sortRegisters() const noexcept;
 
-  [[nodiscard]] arangodb::ResourceMonitor& getResourceMonitor() const;
+  [[nodiscard]] ResourceMonitor& getResourceMonitor() const;
 
   [[nodiscard]] bool stable() const;
 
@@ -106,7 +109,7 @@ class SortExecutorInfos {
   AqlItemBlockManager& _manager;
   TemporaryStorageFeature& _tempStorage;
   velocypack::Options const* _vpackOptions;
-  arangodb::ResourceMonitor& _resourceMonitor;
+  ResourceMonitor& _resourceMonitor;
   std::vector<SortRegister> _sortRegisters;
   size_t _spillOverThresholdNumRows;
   size_t _spillOverThresholdMemoryUsage;

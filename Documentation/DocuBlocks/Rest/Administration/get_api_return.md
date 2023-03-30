@@ -43,9 +43,6 @@ The CPU architecture, i.e. *64bit*
 @RESTSTRUCT{asan,version_details_struct,string,optional,}
 has this been compiled with the asan address sanitizer turned on? (should be false)
 
-@RESTSTRUCT{asm-crc32,version_details_struct,string,optional,}
-do we have assembler implemented CRC functions?
-
 @RESTSTRUCT{assertions,version_details_struct,string,optional,}
 do we have assertions compiled in (=> developer version)
 
@@ -77,7 +74,7 @@ currently only *little* is supported
 which method do we use to handle fd-sets, *poll* should be here on linux.
 
 @RESTSTRUCT{fd-setsize,version_details_struct,string,optional,}
-if not *poll* the fd setsize is valid for the maximum number of filedescriptors
+if not *poll* the fd setsize is valid for the maximum number of file descriptors
 
 @RESTSTRUCT{full-version-string,version_details_struct,string,optional,}
 The full version string
@@ -128,7 +125,7 @@ the version of the used velocypack implementation
 the version of the bundled zlib
 
 @RESTSTRUCT{mode,version_details_struct,string,optional,}
-the mode we're runnig as - one of [*server*, *console*, *script*]
+the mode we're running as - one of [*server*, *console*, *script*]
 
 @RESTSTRUCT{host,version_details_struct,string,optional,}
 the host ID

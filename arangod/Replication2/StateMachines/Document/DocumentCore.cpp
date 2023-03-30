@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,11 @@
 
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 
+#include "Replication2/StateMachines/Document/DocumentStateAgencyHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Basics/application-exit.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -57,3 +61,13 @@ DocumentCore::DocumentCore(
 auto DocumentCore::getShardId() -> std::string_view { return _shardId; }
 
 auto DocumentCore::getGid() -> GlobalLogIdentifier { return _gid; }
+
+void DocumentCore::drop() {
+  auto result = _shardHandler->dropLocalShard(_params.collectionId);
+  if (result.fail()) {
+    LOG_CTX("b7f0d", FATAL, this->loggerContext)
+        << "Failed to drop shard " << _shardId << " for replicated state "
+        << _gid << ": " << result;
+    FATAL_ERROR_EXIT();
+  }
+}

@@ -16,10 +16,9 @@ You should reference them via their names instead.
 The name of the collection.
 
 @RESTDESCRIPTION
-In addition to the above, the result will also contain the
-collection's revision id. The revision id is a server-generated
-string that clients can use to check whether data in a collection
-has changed since the last revision check.
+The response will contain the collection's latest used revision id. 
+The revision id is a server-generated string that clients can use to 
+check whether data in a collection has changed since the last revision check.
 
 - *revision*: The collection revision id as a string.
 

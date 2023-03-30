@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Agency/Store.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/voc-types.h"
 
 using namespace arangodb;
@@ -68,7 +69,7 @@ void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION)
-      << "Todo: Handle failover for leader " + _server;
+      << "Todo: Handle failover for leader " << _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -138,7 +139,7 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
   _status = NOTFOUND;
 
   LOG_TOPIC("3e5b0", INFO, Logger::SUPERVISION)
-      << "Failed to insert job " + _jobId;
+      << "Failed to insert job " << _jobId;
   return false;
 }
 
@@ -181,8 +182,8 @@ bool ActiveFailoverJob::start(bool&) {
         _snapshot.get(toDoPrefix + _jobId).value().get().toBuilder(todo);
       } catch (std::exception const&) {
         LOG_TOPIC("26fec", INFO, Logger::SUPERVISION)
-            << "Failed to get key " + toDoPrefix + _jobId +
-                   " from agency snapshot";
+            << "Failed to get key " << toDoPrefix << _jobId
+            << " from agency snapshot";
         return false;
       }
     } else {
@@ -240,7 +241,7 @@ bool ActiveFailoverJob::start(bool&) {
   }
 
   LOG_TOPIC("bcf05", INFO, Logger::SUPERVISION)
-      << "Precondition failed for ActiveFailoverJob " + _jobId;
+      << "Precondition failed for ActiveFailoverJob " << _jobId;
   return false;
 }
 
@@ -292,13 +293,13 @@ std::string ActiveFailoverJob::findBestFollower() {
   std::vector<ServerTick> ticks;
   try {
     // collect tick values from transient state
-    query_t trx = std::make_unique<VPackBuilder>();
+    velocypack::Builder trx;
     {
-      VPackArrayBuilder transactions(trx.get());
-      VPackArrayBuilder operations(trx.get());
-      trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
+      VPackArrayBuilder transactions(&trx);
+      VPackArrayBuilder operations(&trx);
+      trx.add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
     }
-    trans_ret_t res = _agent->transient(std::move(trx));
+    trans_ret_t res = _agent->transient(trx.slice());
     if (!res.accepted) {
       LOG_TOPIC("dbce2", ERR, Logger::SUPERVISION)
           << "could not read from transient while"
@@ -347,8 +348,23 @@ std::string ActiveFailoverJob::findBestFollower() {
             });
   if (!ticks.empty()) {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
+
+    // log information about follower states
+    VPackBuilder b;
+    b.openArray();
+    for (auto const& it : ticks) {
+      b.openObject();
+      b.add("server", VPackValue(it.first));
+      b.add("tick", VPackValue(it.second));
+      b.close();
+    }
+    b.close();
+    LOG_TOPIC("27a94", INFO, Logger::SUPERVISION)
+        << "follower states: " << b.slice().toJson();
+
     return ticks[0].first;
   }
+
   LOG_TOPIC("f94ec", ERR, Logger::SUPERVISION) << "no follower ticks available";
   return "";  // fallback to any available server
 }

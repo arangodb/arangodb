@@ -139,9 +139,21 @@ ArangoReplicatedLog.prototype.release = function(index) {
   arangosh.checkRequestResult(requestResult);
 };
 
+ArangoReplicatedLog.prototype.compact = function() {
+  let requestResult = this._database._connection.POST(this._baseurl() + `/compact`, {});
+  arangosh.checkRequestResult(requestResult);
+};
+
 ArangoReplicatedLog.prototype.insert = function (payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/insert?waitForSync=${waitForSync}&dontWaitForCommit=${dontWaitForCommit}`, str);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
+ArangoReplicatedLog.prototype.ping = function (message) {
+  let str = JSON.stringify({message});
+  let requestResult = this._database._connection.POST(this._baseurl() + `/ping`, str);
   arangosh.checkRequestResult(requestResult);
   return requestResult.result;
 };

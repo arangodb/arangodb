@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -34,20 +35,39 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include "Pregel/ArangoExternalDispatcher.h"
+#include "Actor/Runtime.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
+#include "Pregel/ExecutionNumber.h"
+#include "Pregel/SpawnMessages.h"
+#include "Pregel/PregelOptions.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Pregel/PregelMetrics.h"
 
 struct TRI_vocbase_t;
 
+namespace arangodb {
+struct OperationResult;
+namespace rest {
+enum class RequestType;
+}
+}  // namespace arangodb
+
 namespace arangodb::pregel {
+
+struct PregelScheduler {
+  auto operator()(auto fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+  }
+};
 
 class Conductor;
 class IWorker;
-class RecoveryManager;
 
 class PregelFeature final : public ArangodFeature {
  public:
@@ -56,13 +76,8 @@ class PregelFeature final : public ArangodFeature {
   explicit PregelFeature(Server& server);
   ~PregelFeature();
 
-  std::pair<Result, uint64_t> startExecution(
-      TRI_vocbase_t& vocbase, std::string algorithm,
-      std::vector<std::string> const& vertexCollections,
-      std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          edgeCollectionRestrictions,
-      VPackSlice const& params);
+  ResultT<ExecutionNumber> startExecution(TRI_vocbase_t& vocbase,
+                                          PregelOptions options);
 
   void collectOptions(std::shared_ptr<arangodb::options::ProgramOptions>
                           options) override final;
@@ -74,28 +89,25 @@ class PregelFeature final : public ArangodFeature {
 
   bool isStopping() const noexcept;
 
-  uint64_t createExecutionNumber();
-  void addConductor(std::shared_ptr<Conductor>&&, uint64_t executionNumber);
-  std::shared_ptr<Conductor> conductor(uint64_t executionNumber);
+  ExecutionNumber createExecutionNumber();
+  void addConductor(std::shared_ptr<Conductor>&&,
+                    ExecutionNumber executionNumber);
+  std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
 
-  void addWorker(std::shared_ptr<IWorker>&&, uint64_t executionNumber);
-  std::shared_ptr<IWorker> worker(uint64_t executionNumber);
+  void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
+  std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
 
-  void cleanupConductor(uint64_t executionNumber);
-  void cleanupWorker(uint64_t executionNumber);
-
-  RecoveryManager* recoveryManager() {
-    return _recoveryManagerPtr.load(std::memory_order_acquire);
-  }
+  void cleanupConductor(ExecutionNumber executionNumber);
+  void cleanupWorker(ExecutionNumber executionNumber);
+  [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
                               VPackBuilder& outResponse);
   void handleWorkerRequest(TRI_vocbase_t& vocbase, std::string const& path,
                            VPackSlice const& body, VPackBuilder& outBuilder);
-
   uint64_t numberOfActiveConductors() const;
 
   void initiateSoftShutdown() override final {
@@ -109,8 +121,9 @@ class PregelFeature final : public ArangodFeature {
   size_t defaultParallelism() const noexcept;
   size_t minParallelism() const noexcept;
   size_t maxParallelism() const noexcept;
+  size_t parallelism(VPackSlice params) const noexcept;
+
   std::string tempPath() const;
-  bool useMemoryMaps() const noexcept;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
 
@@ -126,27 +139,7 @@ class PregelFeature final : public ArangodFeature {
   // max parallelism usable per Pregel job
   size_t _maxParallelism;
 
-  // type of temporary directory location ("custom", "temp-directory",
-  // "database-directory")
-  std::string _tempLocationType;
-
-  // custom path for temporary directory. only populated if _tempLocationType ==
-  // "custom"
-  std::string _tempLocationCustomPath;
-
-  // default "useMemoryMaps" value per Pregel job
-  bool _useMemoryMaps;
-
-  mutable Mutex _mutex;
-
-  std::unique_ptr<RecoveryManager> _recoveryManager;
-  /// @brief _recoveryManagerPtr always points to the same object as
-  /// _recoveryManager, but allows the pointer to be read atomically. This is
-  /// necessary because _recoveryManager is initialized lazily at a time when
-  /// other threads are already running and potentially trying to read the
-  /// pointer. This only works because _recoveryManager is only initialzed once
-  /// and lives until the owning PregelFeature instance is also destroyed.
-  std::atomic<RecoveryManager*> _recoveryManagerPtr{nullptr};
+  mutable std::mutex _mutex;
 
   Scheduler::WorkHandle _gcHandle;
 
@@ -156,13 +149,20 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+  std::unordered_map<ExecutionNumber, ConductorEntry> _conductors;
+  std::unordered_map<ExecutionNumber,
+                     std::pair<std::string, std::shared_ptr<IWorker>>>
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;
 
   std::shared_ptr<PregelMetrics> _metrics;
+
+ public:
+  std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
+      _actorRuntime;
+
+  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
 };
 
 }  // namespace arangodb::pregel

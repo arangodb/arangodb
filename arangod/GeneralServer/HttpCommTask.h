@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +66,11 @@ class HttpCommTask final : public GeneralCommTask<T> {
   static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
 
- private:
+  /// verify if the transfer-encoding in the header is chunked, which is not
+  /// implemented
+  static bool transferEncodingContainsChunked(HttpCommTask<T>& commTask,
+                                              std::string const& encoding);
+
   void checkVSTPrefix();
 
   void processRequest();

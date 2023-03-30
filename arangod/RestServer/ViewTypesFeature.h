@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,8 @@ struct ViewFactory {
 
   // LogicalView factory for internal instantiation only
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                             velocypack::Slice definition) const = 0;
+                             velocypack::Slice definition,
+                             bool isUserRequest) const = 0;
 };
 
 class ViewTypesFeature final : public ArangodFeature {

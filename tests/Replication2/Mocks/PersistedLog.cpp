@@ -78,6 +78,9 @@ void MockLog::setEntry(replication2::LogIndex idx, replication2::LogTerm term,
 
 MockLog::MockLog(replication2::LogId id) : MockLog(id, {}) {}
 
+MockLog::MockLog(replication2::GlobalLogIdentifier gid)
+    : PersistedLog(std::move(gid)) {}
+
 MockLog::MockLog(replication2::LogId id, MockLog::storeType storage)
     : PersistedLog(GlobalLogIdentifier("", id)), _storage(std::move(storage)) {}
 

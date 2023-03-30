@@ -27,6 +27,10 @@
 
 #include "gtest/gtest.h"
 #include "ConnectionTest.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/ThreadGuard.h"
+
+using namespace arangodb;
 
 // Tesuite checks the thread-safety properties of the connection
 // implementations. Try to send requests on the same connection object
@@ -48,11 +52,11 @@ class ConcurrentConnectionF : public ConnectionTestF {
 };
 
 TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
-  fu::WaitGroup wg;
+  auto wg = std::make_shared<fu::WaitGroup>();
   std::atomic<size_t> counter(0);
-  auto cb = [&](fu::Error error, std::unique_ptr<fu::Request> req,
-                std::unique_ptr<fu::Response> res) {
-    fu::WaitGroupDone done(wg);
+  auto cb = [&, wg](fu::Error error, std::unique_ptr<fu::Request> req,
+                    std::unique_ptr<fu::Response> res) {
+    fu::WaitGroupDone done(*wg);
     if (error != fu::Error::NoError) {
       ASSERT_TRUE(false) << fu::to_string(error);
     } else {
@@ -61,7 +65,7 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       auto version = slice.get("version").copyString();
       auto server = slice.get("server").copyString();
       ASSERT_EQ(server, "arango");
-      ASSERT_EQ(version[0], _major_arango_version);
+      ASSERT_EQ(version[0], kMajorArangoVersion);
       counter.fetch_add(1, std::memory_order_relaxed);
     }
   };
@@ -72,11 +76,18 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
     connections.push_back(createConnection());
   }
 
-  std::vector<std::thread> joins;
+  auto guard = scopeGuard([&]() noexcept {
+    for (auto& c : connections) {
+      c.reset();
+    }
+  });
+
+  auto joins = ThreadGuard(threads());
+
+  const size_t rep = repeat();
   for (size_t t = 0; t < threads(); t++) {
-    const size_t rep = repeat();
-    wg.add((unsigned)rep);
-    joins.emplace_back([=] {
+    wg->add(static_cast<unsigned>(rep));
+    joins.emplace([&connections, rep, &cb] {
       for (size_t i = 0; i < rep; i++) {
         auto request = fu::createRequest(fu::RestVerb::Get, "/_api/version");
         auto& conn = *connections[i % connections.size()];
@@ -87,24 +98,22 @@ TEST_P(ConcurrentConnectionF, ApiVersionParallel) {
       }
     });
   }
-  ASSERT_TRUE(wg.wait_for(
+  ASSERT_TRUE(wg->wait_for(
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  for (std::thread& t : joins) {
-    t.join();
-  }
+  joins.joinAll();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }
 
 TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
   std::atomic<size_t> counter(0);
-  fu::WaitGroup wg;
-  auto cb = [&](fu::Error error, std::unique_ptr<fu::Request> req,
-                std::unique_ptr<fu::Response> res) {
+  auto wg = std::make_shared<fu::WaitGroup>();
+  auto cb = [&, wg](fu::Error error, std::unique_ptr<fu::Request> req,
+                    std::unique_ptr<fu::Response> res) {
     counter.fetch_add(1, std::memory_order_relaxed);
-    fu::WaitGroupDone done(wg);
+    fu::WaitGroupDone done(*wg);
     if (error != fu::Error::NoError) {
       ASSERT_TRUE(false) << fu::to_string(error);
     } else {
@@ -127,10 +136,17 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
     connections.push_back(createConnection());
   }
 
-  std::vector<std::thread> joins;
+  auto guard = scopeGuard([&]() noexcept {
+    for (auto& c : connections) {
+      c.reset();
+    }
+  });
+
+  auto joins = ThreadGuard(threads());
+
   for (size_t t = 0; t < threads(); t++) {
-    wg.add(repeat());
-    joins.emplace_back([=, this] {
+    wg->add(static_cast<unsigned>(repeat()));
+    joins.emplace([=, this] {
       for (size_t i = 0; i < repeat(); i++) {
         auto request =
             fu::createRequest(fu::RestVerb::Post, "/_api/document/concurrent");
@@ -143,13 +159,11 @@ TEST_P(ConcurrentConnectionF, CreateDocumentsParallel) {
       }
     });
   }
-  ASSERT_TRUE(wg.wait_for(
+  ASSERT_TRUE(wg->wait_for(
       std::chrono::seconds(300)));  // wait for all threads to return
 
   // wait for all threads to end
-  for (std::thread& t : joins) {
-    t.join();
-  }
+  joins.joinAll();
 
   ASSERT_EQ(repeat() * threads(), counter);
 }

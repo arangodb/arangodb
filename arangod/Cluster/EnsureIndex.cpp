@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -111,8 +111,8 @@ bool EnsureIndex::first() {
     auto col = vocbase->lookupCollection(shard);
     if (col == nullptr) {
       std::stringstream error;
-      error << "failed to lookup local collection " << shard
-            << " in database " + database;
+      error << "failed to lookup local collection " << shard << " in database "
+            << database;
       LOG_TOPIC("12767", ERR, Logger::MAINTENANCE)
           << "EnsureIndex: " << error.str();
       result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
@@ -142,7 +142,7 @@ bool EnsureIndex::first() {
       if (docCount > 100000) {
         // This could be a larger job, let's reschedule ourselves with
         // priority SLOW_OP_PRIORITY:
-        LOG_TOPIC("25a63", INFO, Logger::MAINTENANCE)
+        LOG_TOPIC("25a63", DEBUG, Logger::MAINTENANCE)
             << "EnsureIndex action found a shard with more than 100000 "
                "documents, "
                "will reschedule with slow priority, database: "

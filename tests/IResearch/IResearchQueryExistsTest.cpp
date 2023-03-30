@@ -30,412 +30,141 @@ namespace {
 class QueryExists : public QueryTest {
  protected:
   void queryTests() {
+    std::vector<velocypack::Slice> empty;
     // test non-existent (any)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH EXISTS(d.missing) SORT BM25(d) ASC, "
           "TFIDF(d) "
-          "DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (any) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH EXISTS(d['missing']) SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (bool)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH EXISTS(d.name, 'bool') SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (bool) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['name'], 'bool') SORT BM25(d) "
-          "ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['name'], 'bool')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (boolean)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.name, 'boolean') SORT BM25(d) "
-          "ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.name, 'boolean')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (boolean) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['name'], 'boolean') SORT BM25(d) "
-          "ASC, TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['name'], 'boolean')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (numeric)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.name, 'numeric') SORT BM25(d) "
-          "ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.name, 'numeric')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (numeric) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['name'], 'numeric') SORT BM25(d) "
-          "ASC, TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['name'], 'numeric')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (null)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.name, 'null') SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.name, 'null')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (null) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['name'], 'null') SORT BM25(d) "
-          "ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['name'], 'null')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (string)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.seq, 'string') SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.seq, 'string')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (string) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['seq'], 'string') SORT BM25(d) "
-          "ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['seq'], 'string')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (text analyzer)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en') SORT "
-          "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(runQuery(
+          "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en')"
+          " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (text analyzer)
-    {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), "
-          "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (analyzer) via []
-    {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+    if (type() == ViewType::kArangoSearch) {  // TODO kSearch check error
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), "
-          "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (array)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.value[2]) SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.value[2])"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (array) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['value'][2]) SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['value'][2])"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test non-existent (object)
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
+      EXPECT_TRUE(runQuery(
           "FOR d IN testView SEARCH EXISTS(d.value.d) SORT BM25(d) ASC, "
-          "TFIDF(d) "
-          "DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+          "TFIDF(d) DESC, d.seq RETURN d",
+          empty));
     }
-
     // test non-existent (object) via []
     {
-      std::vector<velocypack::Slice> expected = {};
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['value']['d']) SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['value']['d'])"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   empty));
     }
-
     // test existent (any)
     {
       std::vector<velocypack::Slice> expected = {
@@ -452,22 +181,10 @@ class QueryExists : public QueryTest {
           _insertedDocs[20].slice(), _insertedDocs[21].slice(),
           _insertedDocs[22].slice(),
       };
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) "
-          "DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.value)"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   expected));
     }
 
     // test existent (any) via []
@@ -486,47 +203,21 @@ class QueryExists : public QueryTest {
           _insertedDocs[20].slice(), _insertedDocs[21].slice(),
           _insertedDocs[22].slice(),
       };
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d['value']) SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d['value'])"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   expected));
     }
-
     // test existent (bool)
     {
       std::vector<velocypack::Slice> expected = {
           _insertedDocs[1].slice(),
       };
-      auto result = executeQuery(
-          _vocbase,
-          "FOR d IN testView SEARCH EXISTS(d.value, 'bool') SORT BM25(d) ASC, "
-          "TFIDF(d) DESC, d.seq RETURN d");
-      ASSERT_TRUE(result.result.ok());
-      auto slice = result.data->slice();
-      EXPECT_TRUE(slice.isArray());
-      size_t i = 0;
-
-      for (velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-        auto const resolved = itr.value().resolveExternals();
-        ASSERT_TRUE(i < expected.size());
-        EXPECT_EQUAL_SLICES(expected[i++], resolved);
-      }
-
-      EXPECT_EQ(i, expected.size());
+      EXPECT_TRUE(
+          runQuery("FOR d IN testView SEARCH EXISTS(d.value, 'bool')"
+                   " SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+                   expected));
     }
-
     // test existent (bool) with bound params
     {
       std::vector<velocypack::Slice> expected = {
@@ -1620,7 +1311,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with bound params
@@ -1633,7 +1324,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with bound view name
@@ -1649,7 +1340,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (bool) with invalid bound view name
@@ -1674,7 +1365,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (boolean)
@@ -1686,7 +1377,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (boolean) via []
@@ -1698,7 +1389,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (numeric)
@@ -1797,7 +1488,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (null) via []
@@ -1809,7 +1500,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1821,7 +1512,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1833,7 +1524,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (string)
@@ -1845,7 +1536,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string)
@@ -1857,7 +1548,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string)
@@ -1869,7 +1560,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (any string) via []
@@ -1881,7 +1572,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1893,7 +1584,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer)
@@ -1905,7 +1596,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1917,7 +1608,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1929,7 +1620,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (identity analyzer) via []
@@ -1941,7 +1632,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (array)
@@ -1953,7 +1644,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (array) via []
@@ -1965,7 +1656,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (object)
@@ -1977,7 +1668,7 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
 
     // test existent (object) via []
@@ -1989,19 +1680,19 @@ class QueryExists : public QueryTest {
       ASSERT_TRUE(result.result.ok());
       auto slice = result.data->slice();
       EXPECT_TRUE(slice.isArray());
-      EXPECT_EQ(0, slice.length());
+      EXPECT_EQ(0U, slice.length());
     }
   }
 };
 
 class QueryExistsView : public QueryExists {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 };
 
 class QueryExistsSearch : public QueryExists {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 };
 
 TEST_P(QueryExistsView, Test) {

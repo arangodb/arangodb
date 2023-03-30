@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,7 @@
 
 #include "Basics/system-compiler.h"
 
-#include <algorithm>
 #include <condition_variable>
-#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -83,8 +81,6 @@ namespace basics {
 class UnshackledMutex;
 }
 
-class Mutex;
-
 template<class T, class L>
 class MutexGuard {
  public:
@@ -124,6 +120,8 @@ class MutexGuard {
        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv, Predicate stop_waiting);
 
+  auto isLocked() const noexcept -> bool;
+
  private:
   struct nop {
     void operator()(T*) {}
@@ -157,6 +155,11 @@ void MutexGuard<T, L>::unlock() noexcept(noexcept(std::declval<L>().unlock())) {
   _value.reset();
   _mutexLock.unlock();
   _mutexLock.release();
+}
+
+template<class T, class L>
+auto MutexGuard<T, L>::isLocked() const noexcept -> bool {
+  return _value != nullptr;
 }
 
 template<class T, class L>
@@ -234,7 +237,7 @@ class Guarded {
  private:
   template<class F, class R = std::invoke_result_t<F, value_type&>,
            class Q = std::conditional_t<std::is_void_v<R>, std::monostate, R>>
-  [[nodiscard]] static auto tryCallUnderLock(M& Mutex, F&& callback, T& value)
+  [[nodiscard]] static auto tryCallUnderLock(M& mutex, F&& callback, T& value)
       -> std::optional<Q>;
 
   value_type _value;
@@ -253,14 +256,14 @@ template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>
 template<class F, class R>
 auto Guarded<T, M, L>::doUnderLock(F&& callback) const -> R {
   auto guard = lock_type(_mutex);
-  return std::invoke(std::forward<F>(callback), _value);
+  return std::forward<F>(callback)(_value);
 }
 
 template<class T, class M, template<class> class L>

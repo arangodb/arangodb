@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -136,7 +137,9 @@ GeneralClientConnection* GeneralClientConnection::factory(
                                    connectTimeout, numRetries, sslProtocol);
   }
 
-  return nullptr;
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid encryption type for connection");
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(

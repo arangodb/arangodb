@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,8 +61,8 @@ auto mergeInto(VarSet& target, VarSet const& source) {
 template<class T>
 bool VarUsageFinderT<T>::before(T* en) {
   // count the type of node found
-  en->plan()->increaseCounter(en->getType());
-
+  TRI_ASSERT(en);
+  en->plan()->increaseCounter(*en);
   en->invalidateVarUsage();
   en->setVarsUsedLater(_usedLaterStack);
   switch (en->getType()) {
@@ -114,7 +114,7 @@ void VarUsageFinderT<T>::after(T* en) {
   // Add variables set here to _valid:
   for (auto const& v : en->getVariablesSetHere()) {
     _varsValidStack.back().emplace(v);
-    _varSetBy->insert({v->id, en});
+    _varSetBy->emplace(v->id, en);
   }
 
   en->setVarsValid(_varsValidStack);

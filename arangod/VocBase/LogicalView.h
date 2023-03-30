@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,9 +27,6 @@
 #include "Basics/Result.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/SmallVector.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Meta/utility.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalDataSource.h"
@@ -116,7 +113,7 @@ class LogicalView : public LogicalDataSource {
   /// @return view instance or nullptr on error
   //////////////////////////////////////////////////////////////////////////////
   static Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                            velocypack::Slice definition);
+                            velocypack::Slice definition, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -133,6 +130,8 @@ class LogicalView : public LogicalDataSource {
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
+
+  [[nodiscard]] virtual bool isBuilding() const { return false; }
 
  protected:
   template<typename Impl, typename... Args>
@@ -161,12 +160,6 @@ class LogicalView : public LogicalDataSource {
   LogicalView(std::pair<ViewType, std::string_view> typeInfo,
               TRI_vocbase_t& vocbase, velocypack::Slice definition);
 
-  // TODO seems to be ugly
-  friend struct ::TRI_vocbase_t;
-  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified
-  // asynchronously
-  mutable basics::ReadWriteLock _lock;
-
   std::pair<ViewType, std::string_view> _typeInfo;
 };
 
@@ -176,7 +169,7 @@ class LogicalView : public LogicalDataSource {
 namespace cluster_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept;
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;
 
@@ -190,7 +183,7 @@ Result properties(LogicalView const& view, bool safe) noexcept;
 namespace storage_helper {
 
 Result construct(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                 velocypack::Slice definition) noexcept;
+                 velocypack::Slice definition, bool isUserRequest) noexcept;
 
 Result drop(LogicalView const& view) noexcept;
 

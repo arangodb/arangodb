@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,8 +38,8 @@ class Builder;
 namespace iresearch {
 
 // FIXME would be simpler to use instead:
-//   typedef std::pair<std::vector<basics::AttributeName>, bool> SortEntry;
-//   typedef std::vector<SortEntry> Sort;
+//   using SortEntry = std::pair<std::vector<basics::AttributeName>, bool>;
+//   using Sort = std::vector<SortEntry>;
 // but currently SortCondition API is not ready for that
 class IResearchSortBase {
  public:
@@ -51,10 +51,6 @@ class IResearchSortBase {
 
   bool operator==(IResearchSortBase const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions;
-  }
-
-  bool operator!=(IResearchSortBase const& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
   size_t size() const noexcept {

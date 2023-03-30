@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,12 @@
 
 #include <cstdint>
 #include <map>
+#include <string>
 #include <type_traits>
+#include <vector>
 
 #include "LogTopic.h"
 
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -54,7 +54,7 @@ class Topics {
 
   template<typename Visitor>
   bool visit(Visitor const& visitor) const {
-    MUTEX_LOCKER(guard, _namesLock);
+    std::lock_guard guard{_namesLock};
 
     for (auto const& topic : _names) {
       if (!visitor(topic.first, topic.second)) {
@@ -66,7 +66,7 @@ class Topics {
   }
 
   bool setLogLevel(std::string const& name, LogLevel level) {
-    MUTEX_LOCKER(guard, _namesLock);
+    std::lock_guard guard{_namesLock};
 
     auto const it = _names.find(name);
 
@@ -85,21 +85,21 @@ class Topics {
   }
 
   LogTopic* find(std::string const& name) const noexcept {
-    MUTEX_LOCKER(guard, _namesLock);
+    std::lock_guard guard{_namesLock};
     auto const it = _names.find(name);
     return it == _names.end() ? nullptr : it->second;
   }
 
   void emplace(std::string const& name, LogTopic* topic) noexcept {
     try {
-      MUTEX_LOCKER(guard, _namesLock);
+      std::lock_guard guard{_namesLock};
       _names[name] = topic;
     } catch (...) {
     }
   }
 
  private:
-  mutable Mutex _namesLock;
+  mutable std::mutex _namesLock;
   std::map<std::string, LogTopic*> _names;
 
   Topics() = default;
@@ -140,8 +140,8 @@ LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
-LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::DEBUG);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);

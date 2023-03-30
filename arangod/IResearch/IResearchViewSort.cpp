@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 #include <absl/strings/str_cat.h>
 
 #include "VelocyPackHelper.h"
-#include "Basics/StringUtils.h"
 
 #include "utils/math_utils.hpp"
 
@@ -106,7 +105,7 @@ bool IResearchSortBase::fromVelocyPack(velocypack::Slice slice,
     std::vector<arangodb::basics::AttributeName> field;
 
     try {
-      basics::TRI_ParseAttributeString(getStringRef(fieldSlice), field, false);
+      basics::TRI_ParseAttributeString(fieldSlice.stringView(), field, false);
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
       error = absl::StrCat("[", size(), "].", kFieldName);

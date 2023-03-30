@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
 #include <atomic>
 #include <chrono>
-#include <exception>
+#include <cstdlib>
 #include <iostream>
 #include <new>
-#include <unordered_set>
 #include <utility>
 
 #include <boost/range/adaptor/filtered.hpp>
@@ -40,7 +38,6 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -282,10 +279,10 @@ void ApplicationServer::beginShutdown() {
 
   // make sure that we advance the state when we get out of here
   auto waitAborter = scopeGuard([this]() noexcept {
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::lock_guard guard{_shutdownCondition.mutex};
 
     _abortWaiting = true;
-    guard.signal();
+    _shutdownCondition.cv.notify_one();
   });
 
   // now we can execute the actual shutdown sequence
@@ -343,13 +340,15 @@ void ApplicationServer::collectOptions() {
       Section("", "general settings", "", "general options", false, false));
 
   _options->addOption(
-      "--dump-dependencies", "dump dependency graph",
+      "--dump-dependencies",
+      "Dump the dependency graph of the feature phases (internal) and exit.",
       new BooleanParameter(&_dumpDependencies),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   _options->addOption(
-      "--dump-options", "dump configuration options in JSON format",
+      "--dump-options",
+      "Dump all available startup options in JSON format and exit.",
       new BooleanParameter(&_dumpOptions),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
@@ -437,31 +436,6 @@ void ApplicationServer::validateOptions() {
       feature.state(ApplicationFeature::State::VALIDATED);
     }
   }
-
-  auto const& modernizedOptions = _options->modernizedOptions();
-  if (!modernizedOptions.empty()) {
-    for (auto const& it : modernizedOptions) {
-      LOG_TOPIC("3e342", WARN, Logger::STARTUP)
-          << "please note that the specified option '--" << it.first
-          << " has been renamed to '--" << it.second
-          << "' in this ArangoDB version";
-    }
-
-    LOG_TOPIC("27c9c", INFO, Logger::STARTUP)
-        << "please be sure to read the manual section about changed options";
-  }
-
-  // inform about obsolete options
-  _options->walk(
-      [](Section const&, Option const& option) {
-        if (option.hasFlag(arangodb::options::Flags::Obsolete)) {
-          LOG_TOPIC("6843e", WARN, Logger::STARTUP)
-              << "obsolete option '" << option.displayName()
-              << "' used in configuration. "
-              << "setting this option will not have any effect.";
-        }
-      },
-      true, true);
 }
 
 // setup and validate all feature dependencies, determine feature order
@@ -843,7 +817,7 @@ void ApplicationServer::wait() {
     }
 
     // wait until somebody calls beginShutdown and it finishes
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::unique_lock guard{_shutdownCondition.mutex};
 
     if (_abortWaiting) {
       // yippieh!
@@ -851,7 +825,7 @@ void ApplicationServer::wait() {
     }
 
     using namespace std::chrono_literals;
-    guard.wait(100ms);
+    _shutdownCondition.cv.wait_for(guard, 100ms);
   }
 }
 

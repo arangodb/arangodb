@@ -24,21 +24,8 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/SupervisionAction.h"
 
 namespace arangodb::test {
-
-struct SupervisionStateAction {
-  void apply(AgencyState& agency);
-
-  explicit SupervisionStateAction(
-      replication2::replicated_state::Action action);
-
-  auto toString() const -> std::string;
-
-  replication2::replicated_state::Action _action;
-};
 
 struct KillServerAction {
   void apply(AgencyState& agency);
@@ -59,15 +46,12 @@ struct SupervisionLogAction {
 };
 
 struct DBServerSnapshotCompleteAction {
-  explicit DBServerSnapshotCompleteAction(
-      replication2::ParticipantId name,
-      replication2::replicated_state::StateGeneration generation);
+  explicit DBServerSnapshotCompleteAction(replication2::ParticipantId name);
 
   void apply(AgencyState& agency);
   auto toString() const -> std::string;
 
   replication2::ParticipantId name;
-  replication2::replicated_state::StateGeneration generation;
 };
 
 struct DBServerReportTermAction {
@@ -163,14 +147,13 @@ struct RemoveLogParticipantAction {
 };
 
 using AgencyTransition =
-    std::variant<SupervisionStateAction, SupervisionLogAction,
-                 DBServerSnapshotCompleteAction, DBServerReportTermAction,
-                 DBServerCommitConfigAction, KillServerAction,
-                 ReplaceServerTargetState, AddLogParticipantAction,
-                 SetLeaderInTargetAction, RemoveLogParticipantAction,
-                 SetWriteConcernAction, SetSoftWriteConcernAction,
-                 SetBothWriteConcernAction, ReplaceServerTargetLog,
-                 SetWaitForSyncAction>;
+    std::variant<SupervisionLogAction, DBServerSnapshotCompleteAction,
+                 DBServerReportTermAction, DBServerCommitConfigAction,
+                 KillServerAction, ReplaceServerTargetState,
+                 AddLogParticipantAction, SetLeaderInTargetAction,
+                 RemoveLogParticipantAction, SetWriteConcernAction,
+                 SetSoftWriteConcernAction, SetBothWriteConcernAction,
+                 ReplaceServerTargetLog, SetWaitForSyncAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

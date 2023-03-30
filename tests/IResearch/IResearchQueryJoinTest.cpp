@@ -22,11 +22,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchQueryCommon.h"
-
-#include "Aql/OptimizerRule.h"
+#include <absl/strings/str_replace.h>
 
 #include <regex>
+
+#include "Aql/OptimizerRule.h"
+#include "IResearchQueryCommon.h"
 
 namespace arangodb::tests {
 namespace {
@@ -234,7 +235,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -257,7 +258,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -333,7 +334,7 @@ class QueryJoin : public QueryTest {
 
       // insert into collections
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential.json");
 
@@ -360,7 +361,7 @@ class QueryJoin : public QueryTest {
 
       // insert into testCollection2
       {
-        irs::utf8_path resource;
+        std::filesystem::path resource;
         resource /= std::string_view(testResourceDir);
         resource /= std::string_view("simple_sequential_order.json");
 
@@ -452,7 +453,7 @@ class QueryJoin : public QueryTest {
       EXPECT_TRUE(result.isArray());
 
       velocypack::ArrayIterator resultIt(result);
-      ASSERT_EQ(10000, resultIt.size());
+      ASSERT_EQ(10000U, resultIt.size());
 
       // Check documents
       for (; resultIt.valid(); resultIt.next()) {
@@ -1434,7 +1435,7 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
+          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1653,7 +1654,7 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
+          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1672,7 +1673,7 @@ class QueryJoin : public QueryTest {
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
       ASSERT_TRUE(std::regex_search(
           std::string(queryResult.errorMessage()),
-          std::regex("variable 'x' is used in scorer function.*CUSTOMSCORER")));
+          std::regex("variable 'x' is used in search function.*CUSTOMSCORER")));
 
       queryResult = executeQuery(_vocbase, query);
       ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
@@ -1682,7 +1683,7 @@ class QueryJoin : public QueryTest {
 
 class QueryJoinView : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kView; }
+  ViewType type() const final { return ViewType::kArangoSearch; }
 
   void createView1() {
     {
@@ -1750,7 +1751,7 @@ class QueryJoinView : public QueryJoin {
 
 class QueryJoinSearch : public QueryJoin {
  protected:
-  ViewType type() const final { return ViewType::kSearch; }
+  ViewType type() const final { return ViewType::kSearchAlias; }
 
   void createSearch1() {
     auto createIndexName = [&](std::string_view name) {
@@ -1767,9 +1768,9 @@ class QueryJoinSearch : public QueryJoin {
       ASSERT_TRUE(created);
     };
     auto createSearchName = [&](std::string_view name) {
-      auto createJson = velocypack::Parser::fromJson(
-          absl::Substitute(R"({ "name": "$0_view", "type": "search" })", name));
-      auto logicalView = _vocbase.createView(createJson->slice());
+      auto createJson = velocypack::Parser::fromJson(absl::Substitute(
+          R"({ "name": "$0_view", "type": "search-alias" })", name));
+      auto logicalView = _vocbase.createView(createJson->slice(), false);
       ASSERT_FALSE(!logicalView);
       auto& implView = basics::downCast<iresearch::Search>(*logicalView);
       auto updateJson = velocypack::Parser::fromJson(absl::Substitute(

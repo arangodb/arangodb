@@ -28,7 +28,6 @@
 #include "VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"

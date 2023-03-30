@@ -36,6 +36,7 @@
 #include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
+#include "Workloads/WriteWriteConflict.h"
 
 namespace arangodb::sepp {
 
@@ -76,15 +77,16 @@ auto inspect(Inspector& f, Setup& o) {
                             f.field("prefill", o.prefill).fallback(f.keep()));
 }
 
-using WorkloadVariants = std::variant<workloads::GetByPrimaryKey::Options,
-                                      workloads::InsertDocuments::Options,
-                                      workloads::IterateDocuments::Options>;
+using WorkloadVariants = std::variant<
+    workloads::WriteWriteConflict::Options, workloads::GetByPrimaryKey::Options,
+    workloads::InsertDocuments::Options, workloads::IterateDocuments::Options>;
 namespace workloads {
 // this inspect function must be in namespace workloads for ADL to pick it up
 template<class Inspector>
 inline auto inspect(Inspector& f, WorkloadVariants& o) {
   namespace insp = arangodb::inspection;
   return f.variant(o).unqualified().alternatives(
+      insp::type<workloads::WriteWriteConflict::Options>("writeWriteConflict"),
       insp::type<workloads::GetByPrimaryKey::Options>("getByPrimaryKey"),
       insp::type<workloads::InsertDocuments::Options>("insert"),
       insp::type<workloads::IterateDocuments::Options>("iterate"));

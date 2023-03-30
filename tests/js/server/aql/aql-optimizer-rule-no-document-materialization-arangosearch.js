@@ -31,8 +31,9 @@
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
-function noDocumentMaterializationArangoSearchRuleTestSuite () {
+function noDocumentMaterializationViewRuleTestSuite(isSearchAlias) {
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
@@ -41,7 +42,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
   const systemvn = "UnitTestsSystemFieldsView";
   const edgeIndexCollectionName = "UnitTestsEdgeCollection";
   return {
-    setUpAll : function () {
+    setUpAll: function () {
       db._dropView(vn);
       db._dropView(svn);
       db._dropView(vvn);
@@ -50,46 +51,107 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       db._drop(cn1);
       db._drop(edgeIndexCollectionName);
 
-      let c = db._create(cn, { numberOfShards: 3 });
-      let c1 = db._create(cn1, { numberOfShards: 3 });
-      let edgeCollection = db._createEdgeCollection(edgeIndexCollectionName, { numberOfShards: 3 });
+      let c = db._create(cn, {numberOfShards: 3});
+      let c1 = db._create(cn1, {numberOfShards: 3});
+      let edgeCollection = db._createEdgeCollection(edgeIndexCollectionName, {numberOfShards: 3});
+      if (isSearchAlias) {
+        let props = {
+          type: "inverted", includeAllFields: true,
+          consolidationIntervalMsec: 5000,
+          primarySort: {
+            fields: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+            compression: "none"
+          },
+          storedValues: [["obj.a.a1"], {fields: ["obj.c"], compression: "none"}, ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
+        };
+        let i = c.ensureIndex(props);
+        let i1 = c1.ensureIndex(props);
+        db._createView(vn, "search-alias", {
+          indexes: [
+            {collection: cn, index: i.name},
+            {collection: cn1, index: i1.name},
+          ]
+        });
 
-      db._createView(vn, "arangosearch", {
-        consolidationIntervalMsec: 5000,
-        primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
-        primarySortCompression: "none",
-        storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
-        links: {
-          [cn] : { includeAllFields: true },
-          [cn1] : { includeAllFields: true },
-        }});
+        let props2 = Object.assign({}, props);
+        delete props2.storedValues;
+        i = c.ensureIndex(props2);
+        i1 = c1.ensureIndex(props2);
+        db._createView(svn, "search-alias", {
+          indexes: [
+            {collection: cn, index: i.name},
+            {collection: cn1, index: i1.name},
+          ]
+        });
 
-      db._createView(svn, "arangosearch", {
-        consolidationIntervalMsec: 5000,
-        primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
-        storedValues: [],
-        links: {
-          [cn] : { includeAllFields: true },
-          [cn1] : { includeAllFields: true }
-        }});
+        let props3 = Object.assign({}, props);
+        delete props3.primarySort;
+        i = c.ensureIndex(props3);
+        i1 = c1.ensureIndex(props3);
+        db._createView(vvn, "search-alias", {
+          indexes: [
+            {collection: cn, index: i.name},
+            {collection: cn1, index: i1.name},
+          ]
+        });
+        props.primarySort = { fields: [{"field": "_key", "direction": "asc"}, {"field": "_rev", "direction": "desc"}]};
+        props.storedValues = [["_key"], {fields: ["_id", "_key"], compression: "none"}, ["_from", "_to", "_id"]];
+        i = c.ensureIndex(props);
+        i1 = edgeCollection.ensureIndex(props);
+        db._createView(systemvn, "search-alias", {
+          indexes: [
+            {collection: cn, index: i.name},
+            {collection: edgeIndexCollectionName, index: i1.name},
+          ]
+        });
+      } else {
+        db._createView(vn, "arangosearch", {
+          consolidationIntervalMsec: 5000,
+          primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+          primarySortCompression: "none",
+          storedValues: [["obj.a.a1"], {
+            fields: ["obj.c"],
+            compression: "none"
+          }, ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
+          links: {
+            [cn]: {includeAllFields: true},
+            [cn1]: {includeAllFields: true},
+          }
+        });
 
-      db._createView(vvn, "arangosearch", {
-        consolidationIntervalMsec: 5000,
-        primarySort: [],
-        storedValues: [["obj.a.a1"], ["obj.c"], ["obj.d.d1", "obj.e.e1"], {fields:["obj.f", "obj.g", "obj.h"], compression:"none"}],
-        links: {
-          [cn] : { includeAllFields: true },
-          [cn1] : { includeAllFields: true }
-        }});
+        db._createView(svn, "arangosearch", {
+          consolidationIntervalMsec: 5000,
+          primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
+          storedValues: [],
+          links: {
+            [cn]: {includeAllFields: true},
+            [cn1]: {includeAllFields: true}
+          }
+        });
 
-      db._createView(systemvn, "arangosearch", {
-        consolidationIntervalMsec: 5000,
-        primarySort: [{"field": "_key", "direction": "asc"}, {"field": "_rev", "direction": "desc"}],
-        storedValues: [["_key"], {fields:["_id", "_key"], compression:"none"}, ["_from", "_to", "_id"]],
-        links: {
-          [cn] : { includeAllFields: true },
-          [edgeIndexCollectionName] : { includeAllFields: true }
-        }});
+        db._createView(vvn, "arangosearch", {
+          consolidationIntervalMsec: 5000,
+          primarySort: [],
+          storedValues: [["obj.a.a1"], ["obj.c"], ["obj.d.d1", "obj.e.e1"], {
+            fields: ["obj.f", "obj.g", "obj.h"],
+            compression: "none"
+          }],
+          links: {
+            [cn]: {includeAllFields: true},
+            [cn1]: {includeAllFields: true}
+          }
+        });
+
+        db._createView(systemvn, "arangosearch", {
+          consolidationIntervalMsec: 5000,
+          primarySort: [{"field": "_key", "direction": "asc"}, {"field": "_rev", "direction": "desc"}],
+          storedValues: [["_key"], {fields: ["_id", "_key"], compression: "none"}, ["_from", "_to", "_id"]],
+          links: {
+            [cn]: {includeAllFields: true},
+            [edgeIndexCollectionName]: {includeAllFields: true}
+          }
+        });
+      }
 
       c.save({ _key: 'c0', obj: {a: {a1: 0}, b: {b1: 1}, c: 2, d: {d1: 3}, e: {e1: 4}, f: 5, g: 6, h: 7, j: 8 } });
       c1.save({ _key: 'c_0', obj: {a: {a1: 10}, b: {b1: 11}, c: 12, d: {d1: 13}, e: {e1: 14}, f: 15, g: 16, h: 17, j: 18 } });
@@ -314,7 +376,7 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(2, result.json.length);
       let expectedKeys = new Set([25, 35]);
-      result.json.forEach(function(doc) {
+      result.json.forEach(function (doc) {
         assertTrue(expectedKeys.has(doc));
         expectedKeys.delete(doc);
       });
@@ -323,6 +385,25 @@ function noDocumentMaterializationArangoSearchRuleTestSuite () {
   };
 }
 
+function noDocumentMaterializationArangoSearchRuleTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    noDocumentMaterializationViewRuleTestSuite(false),
+    suite,
+    "_arangosearch");
+  return suite;
+}
+
+function noDocumentMaterializationSearchAliasRuleTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    noDocumentMaterializationViewRuleTestSuite(true),
+    suite,
+    "_search-alias");
+  return suite;
+}
+
 jsunity.run(noDocumentMaterializationArangoSearchRuleTestSuite);
+jsunity.run(noDocumentMaterializationSearchAliasRuleTestSuite);
 
 return jsunity.done();

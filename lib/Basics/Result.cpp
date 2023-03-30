@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -158,6 +158,17 @@ auto Result::errorMessage() && noexcept -> std::string {
   } else {
     return std::move(*_error).errorMessage();
   }
+}
+
+bool Result::operator==(const Result& other) const {
+  if (ok() && other.ok()) {
+    return true;
+  }
+  if (errorMessage() == other.errorMessage() &&
+      errorNumber() == other.errorNumber()) {
+    return true;
+  }
+  return false;
 }
 
 auto arangodb::operator<<(std::ostream& out, arangodb::Result const& result)

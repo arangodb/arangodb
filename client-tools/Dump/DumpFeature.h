@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "Dump/arangodump.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Maskings/Maskings.h"
 #include "Utils/ClientManager.h"
@@ -35,7 +34,9 @@
 #include "Utils/ManagedDirectory.h"
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace arangodb {
 namespace httpclient {
@@ -137,7 +138,6 @@ class DumpFeature final : public ArangoDumpFeature {
 
     Result run(arangodb::httpclient::SimpleHttpClient& client) override;
 
-    VPackSlice const collectionInfo;
     std::string const shardName;
     std::string const server;
     std::shared_ptr<ManagedDirectory::File> file;
@@ -152,8 +152,8 @@ class DumpFeature final : public ArangoDumpFeature {
   int& _exitCode;
   Options _options;
   Stats _stats;
-  Mutex _workerErrorLock;
-  std::queue<Result> _workerErrors;
+  std::mutex _workerErrorLock;
+  std::vector<Result> _workerErrors;
   std::unique_ptr<maskings::Maskings> _maskings;
 
   Result runClusterDump(httpclient::SimpleHttpClient& client,

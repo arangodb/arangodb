@@ -31,20 +31,31 @@
 const jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const base = require("fs").join(require('internal').pathForTesting('server'),
-             'aql', 'aql-arangosearch-constrained-sort-optimization.inc');
+  'aql', 'aql-arangosearch-constrained-sort-optimization.inc');
 const ArangoSearchConstrainedSortTestSuite = require("internal").load(base);
 const isCluster = require("internal").isCluster();
 
-function arangoSearchConstrainedSortRuleTestSuite () {
+function arangoSearchConstrainedSortRuleTestSuite() {
   let suite = {};
   deriveTestSuite(
-    ArangoSearchConstrainedSortTestSuite(isCluster, "UnitTestsDB", {}),
+    ArangoSearchConstrainedSortTestSuite(false, isCluster, "UnitTestsDB", {}),
     suite,
-    "_NonOneShard"
+    "_arangosearch_NonOneShard"
+  );
+  return suite;
+}
+
+function searchAliasConstrainedSortRuleTestSuite() {
+  let suite = {};
+  deriveTestSuite(
+    ArangoSearchConstrainedSortTestSuite(true, isCluster, "UnitTestsDB", {}),
+    suite,
+    "_search-alias_NonOneShard"
   );
   return suite;
 }
 
 jsunity.run(arangoSearchConstrainedSortRuleTestSuite);
+jsunity.run(searchAliasConstrainedSortRuleTestSuite);
 
 return jsunity.done();

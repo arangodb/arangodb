@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
@@ -74,7 +73,7 @@ class ClusterEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) override;
+      LogicalCollection& collection, velocypack::Slice info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
 
@@ -97,14 +96,6 @@ class ClusterEngine final : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
-    return std::string();
-  }
-  std::string dataPath() const override {
-    // the cluster engine does not have any data path
-    return std::string();
-  }
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
-    // the cluster engine does not have any database path
     return std::string();
   }
 
@@ -161,7 +152,8 @@ class ClusterEngine final : public StorageEngine {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector) override {
+  Result flushWal(bool /*waitForSync*/ = false,
+                  bool /*flushColumnFamilies*/ = false) override {
     return {};
   }
 
@@ -169,8 +161,6 @@ class ClusterEngine final : public StorageEngine {
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
       arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(
-      arangodb::CreateDatabaseInfo&& info, ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
@@ -178,7 +168,6 @@ class ClusterEngine final : public StorageEngine {
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
 
- public:
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -186,8 +175,7 @@ class ClusterEngine final : public StorageEngine {
                                   LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection,
-                        bool doSync) override;
+                        LogicalCollection const& collection) override;
 
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                     LogicalCollection const& collection,
@@ -204,16 +192,16 @@ class ClusterEngine final : public StorageEngine {
   arangodb::Result compactAll(bool changeLevel,
                               bool compactBottomMostLevel) override;
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
+  auto dropReplicatedState(
+      TRI_vocbase_t& vocbase,
+      std::unique_ptr<
+          arangodb::replication2::replicated_state::IStorageEngineMethods>& ptr)
       -> Result override;
+  auto createReplicatedState(
+      TRI_vocbase_t& vocbase, arangodb::replication2::LogId id,
+      const replication2::replicated_state::PersistedStateInfo& info)
+      -> ResultT<std::unique_ptr<arangodb::replication2::replicated_state::
+                                     IStorageEngineMethods>> override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
@@ -233,6 +221,11 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
+
+  bool autoRefillIndexCaches() const override { return false; }
+  bool autoRefillIndexCachesOnFollowers() const override { return false; }
+
+  std::shared_ptr<StorageSnapshot> currentSnapshot() final { return nullptr; }
 
  public:
   static std::string const EngineName;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,17 +36,19 @@ PathValidatorOptions::PathValidatorOptions(
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(false),
-      _isSatelliteLeader(false) {}
+      _isSatelliteLeader(false),
+      _enabledClusterOneShardRule(false) {}
 
 PathValidatorOptions::PathValidatorOptions(
     aql::Variable const* tmpVar,
     arangodb::aql::FixedVarExpressionContext& expressionContext,
-    bool isDisjoint, bool isSatelliteLeader)
+    bool isDisjoint, bool isSatelliteLeader, bool enabledClusterOneShardRule)
     : _allowedVertexCollections{},
       _tmpVar(tmpVar),
       _expressionCtx(expressionContext),
       _isDisjoint(isDisjoint),
-      _isSatelliteLeader(isSatelliteLeader) {}
+      _isSatelliteLeader(isSatelliteLeader),
+      _enabledClusterOneShardRule(enabledClusterOneShardRule) {}
 
 void PathValidatorOptions::setAllVerticesExpression(
     std::unique_ptr<aql::Expression> expression) {

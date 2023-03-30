@@ -31,6 +31,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
+const analyzers = require("@arangodb/analyzers");
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -51,7 +52,7 @@ let usersTests = {
     try {
       this.usersCount = userManager.all().length;
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
       };
@@ -63,17 +64,17 @@ let usersTests = {
   runCheck: function (obj, te) {
     try {
       if (userManager.all().length !== this.usersCount) {
-        obj.results[te] = {
+        obj.results[obj.translateResult(te)] = {
           status: false,
           message: 'Cleanup of users missing - found users left over: [ ' +
             JSON.stringify(userManager.all()) +
             ' ] - Original test status: ' +
-            JSON.stringify(obj.results[te])
+            JSON.stringify(obj.results[obj.translateResult(te)])
         };
         return false;
       }
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
       };
@@ -95,7 +96,7 @@ let collectionsTest = {
         obj.collectionsBefore.push(collection._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the previously available collections: ' + x.message
       };
@@ -111,9 +112,9 @@ let collectionsTest = {
         collectionsAfter.push(collection._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -123,9 +124,9 @@ let collectionsTest = {
       return (name[0] !== '_'); // exclude system collections from the comparison
     });
     if (delta.length !== 0) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'Cleanup missing - test left over collection:' + delta + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -144,7 +145,7 @@ let viewsTest = {
         obj.viewsBefore.push(view._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'failed to fetch the previously available views: ' + x.message
       };
@@ -160,9 +161,9 @@ let viewsTest = {
         viewsAfter.push(view._name);
       });
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
@@ -171,12 +172,61 @@ let viewsTest = {
                 || (name === "log")); // exclude system/agency collections from the comparison
     });
     if (delta.length !== 0) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'Cleanup missing - test left over view:' + delta + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new analyzers were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let aralyzersTest = {
+  name: 'analyzers',
+  setUp: function(obj, te) {
+    analyzers.toArray().forEach(oneAnalyzer => {
+      obj.analyzersBefore.push(oneAnalyzer.name());
+    });
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let leftover = [];
+    let foundAnalyzers = [];
+    try {
+      analyzers.toArray().forEach(oneAnalyzer => {
+        let name = oneAnalyzer.name();
+        let found = obj.analyzersBefore.find(oneAnalyzer => oneAnalyzer === name);
+        if (found === name) {
+          foundAnalyzers.push(name);
+        } else {
+          leftover.push(name);
+        }
+      });
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the currently available analyzers: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    if (leftover.length !== 0) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup missing - test left over analyzer:' + leftover + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    } else if (foundAnalyzers.length !== obj.analyzersBefore.length) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup remove analyzers:' + foundAnalyzers  + ' != ' + obj.analyzersBefore + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    obj.analyzersBefore = [];
     return true;
   }
 };
@@ -195,19 +245,19 @@ let graphsTest = {
     try {
       graphs = db._collection('_graphs');
     } catch (x) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
     if (graphs && graphs.count() !== obj.graphCount) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'Cleanup of graphs missing - found graph definitions: [ ' +
           JSON.stringify(graphs.toArray()) +
           ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+          JSON.stringify(obj.results[obj.translateResult(te)])
       };
       obj.graphCount = graphs.count();
       return false;
@@ -226,16 +276,24 @@ let databasesTest = {
     // TODO: we are currently filtering out the UnitTestDB here because it is 
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
-    db._useDatabase('_system');
-    let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
-    if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
-      obj.results[te] = {
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        obj.results[obj.translateResult(te)] = {
+          status: false,
+          message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+        };
+        return false;
+      }
+      return true;
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
         status: false,
-        message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
+        message: 'failed to fetch the databases list: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
       };
-      return false;
     }
-    return true;
+    return false;
   }
 };
 
@@ -248,21 +306,35 @@ let failurePointsCheck = {
   runCheck: function(obj, te) {
     let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
-      obj.results[te] = {
+      obj.results[obj.translateResult(te)] = {
         status: false,
         message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
           JSON.stringify(failurePoints) +
           ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+          JSON.stringify(obj.results[obj.translateResult(te)])
       };
       return false;
     }
   }
 };
 
+function isBucketized(testBuckets) {
+  if (testBuckets === undefined || testBuckets === null) {
+    return false;
+  }
+  let n = testBuckets.split('/');
+  let r = parseInt(n[0]);
+  let s = parseInt(n[1]);
+  if (r === 1 && s === 0) {
+    // we only have a single bucket - this is equivalent to not using bucketizing at all
+    return false;
+  }
+  return true;
+}
+
 class testRunner {
   constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
-    if (options.testBuckets && !didSplitBuckets) {
+    if (isBucketized(options.testBuckets) && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
     this.addArgs = undefined;
@@ -299,6 +371,10 @@ class testRunner {
     if (checkCollections) {
       this.cleanupChecks.push(viewsTest);
     }
+    this.analyzersBefore = [];
+    if (checkCollections) {
+      this.cleanupChecks.push(aralyzersTest);
+    }
     this.graphCount = 0;
     if (checkCollections) {
       this.cleanupChecks.push(graphsTest);
@@ -318,7 +394,7 @@ class testRunner {
   preStop() { return {state: true}; } // before shutting down the SUT
   postStop() { return {state: true}; } // after shutting down the SUT
   alive() { return true; } // after each testrun, check whether the SUT is alaive and well
-  
+  translateResult(testName) { return testName; } // if you want to manipulate test file names...
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
@@ -339,14 +415,14 @@ class testRunner {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
       let originalMessage;
-      if (this.results.hasOwnProperty(te) && this.results[te].hasOwnProperty('message')) {
-        originalMessage = this.results[te].message;
+      if (this.results.hasOwnProperty(te) && this.results[this.translateResult(te)].hasOwnProperty('message')) {
+        originalMessage = this.results[this.translateResult(te)].message;
       }
       this.results['SKIPPED'] = {
         status: false,
         message: ""
       };
-      this.results[te] = {
+      this.results[this.translateResult(te)] = {
         status: false,
         message: 'server unavailable for testing. ' + originalMessage
       };
@@ -398,6 +474,20 @@ class testRunner {
     }
   }
 
+  restartSniff(testCase) {
+    if (this.options.sniffFilter) {
+      this.instanceManager.stopTcpDump();
+      if (testCase.search(this.options.sniffFilter) >= 0){
+        let split = testCase.split(fs.pathSeparator);
+        let fn = testCase;
+        if (split.length > 0) {
+          fn = split[split.length - 1];
+        }
+        this.instanceManager.launchTcpDump(fn + "_");
+      }
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief hook to replace with your way to invoke one test; existing overloads:
   //   - tu.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
@@ -406,6 +496,10 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   runOneTest(testCase) {
     throw new Error("must overload the runOneTest function!");
+  }
+
+  filter(te, filtered) {
+    return tu.filterTestcaseByOptions(te, this.options, filtered);
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -478,11 +572,12 @@ class testRunner {
     let serverDead = false;
     let count = 0;
     let forceTerminate = false;
+    let moreReason = "";
     for (let i = 0; i < this.testList.length; i++) {
       let te = this.testList[i];
       let filtered = {};
 
-      if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
+      if (this.filter(te, filtered)) {
         let first = true;
         let loopCount = 0;
         count += 1;
@@ -490,7 +585,8 @@ class testRunner {
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
-            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            print(RED + Date() + ' server pretest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
+            moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
           }
@@ -501,26 +597,27 @@ class testRunner {
             i = this.testList.length;
             break;
           }
-
+          this.restartSniff(te);
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
           if (reply.hasOwnProperty('forceTerminate') && reply.forceTerminate) {
-            this.results[te] = reply;
+            moreReason += "test told us that we should forceTerminate.";
+            this.results[this.translateResult(te)] = reply;
             this.continueTesting = false;
             forceTerminate = true;
             continue;
           }
 
           if (reply.hasOwnProperty('status')) {
-            this.results[te] = reply;
+            this.results[this.translateResult(te)] = reply;
             if (!this.options.disableClusterMonitor) {
-              this.results[te]['processStats'] = this.instanceManager.getDeltaProcessStats();
+              this.results[this.translateResult(te)]['processStats'] = this.instanceManager.getDeltaProcessStats();
             }
 
-            if (this.results[te].status === false) {
+            if (this.results[this.translateResult(te)].status === false) {
               this.results.failed ++;
               this.options.cleanup = false;
             }
@@ -529,7 +626,7 @@ class testRunner {
               break;
             }
           } else {
-            this.results[te] = {
+            this.results[this.translateResult(te)] = {
               status: false,
               message: reply
             };
@@ -540,14 +637,15 @@ class testRunner {
           }
 
           if (this.healthCheck()) {
-            if (!this.results[te].hasOwnProperty('processStats')) {
-              this.results[te]['processStats'] = {};
+            if (!this.results[this.translateResult(te)].hasOwnProperty('processStats')) {
+              this.results[this.translateResult(te)]['processStats'] = {};
             }
-            this.results[te]['processStats']['netstat'] = this.instanceManager.getNetstat();
+            this.results[this.translateResult(te)]['processStats']['netstat'] = this.instanceManager.getNetstat();
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
+                moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;
                 continue;
@@ -555,7 +653,7 @@ class testRunner {
             }
             
           } else {
-            this.results[te].message = "Instance not healthy! " + JSON.stringify(reply);
+            this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
             continue;
           }
           first = false;
@@ -617,7 +715,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate, moreReason);
     if (!this.results.shutdown) {
       this.results.status = false;
     }

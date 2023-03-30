@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +24,18 @@
 
 #pragma once
 
+#include <chrono>
+#include <deque>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
-#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
@@ -42,18 +50,19 @@
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
+#include <rocksdb/snapshot.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-
-class TransactionDB;
 class EncryptionProvider;
+class Env;
+class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
 
-struct RocksDBLogPersistor;
+struct RocksDBAsyncLogWriteBatcher;
 class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
@@ -130,6 +139,8 @@ class RocksDBEngine final : public StorageEngine {
   friend class RocksDBFilePurgeEnabler;
 
  public:
+  static constexpr std::string_view kEngineName = "rocksdb";
+
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
@@ -153,6 +164,7 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
+  void flushOpenFilesIfRequired();
   HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(
@@ -163,7 +175,7 @@ class RocksDBEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
-      LogicalCollection& collection, velocypack::Slice const& info) override;
+      LogicalCollection& collection, velocypack::Slice info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
   void getStatistics(std::string& result) const override;
@@ -171,29 +183,23 @@ class RocksDBEngine final : public StorageEngine {
   // inventory functionality
   // -----------------------
 
-  void getDatabases(arangodb::velocypack::Builder& result) override;
+  void getDatabases(velocypack::Builder& result) override;
 
   void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
-                         arangodb::velocypack::Builder& result,
-                         bool includeIndexes, TRI_voc_tick_t maxTick) override;
+                         velocypack::Builder& result, bool includeIndexes,
+                         TRI_voc_tick_t maxTick) override;
 
   ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Builder& result,
+                                     velocypack::Builder& result,
                                      bool wasCleanShutdown,
                                      bool isUpgrade) override;
 
-  void getReplicatedLogs(TRI_vocbase_t& vocbase,
-                         arangodb::velocypack::Builder& result);
   ErrorCode getViews(TRI_vocbase_t& vocbase,
-                     arangodb::velocypack::Builder& result) override;
+                     velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
-  std::string dataPath() const override {
-    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb";
-  }
-  std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
-    return _basePath;
-  }
+  std::string databasePath() const override { return _basePath; }
+  std::string path() const { return _path; }
   std::string idxPath() const { return _idxPath; }
 
   void cleanupReplicationContexts() override;
@@ -208,8 +214,8 @@ class RocksDBEngine final : public StorageEngine {
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                 velocypack::Slice slice,
                                                 bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(
-      arangodb::velocypack::Slice slice, bool doSync) override;
+  ErrorCode saveReplicationApplierConfiguration(velocypack::Slice slice,
+                                                bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;
@@ -229,22 +235,21 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief flushes the RocksDB WAL.
   /// the optional parameter "waitForSync" is currently only used when the
-  /// "waitForCollector" parameter is also set to true. If "waitForCollector"
-  /// is true, all the RocksDB column family memtables are flushed, and, if
-  /// "waitForSync" is set, additionally synced to disk. The only call site
-  /// that uses "waitForCollector" currently is hot backup.
+  /// "flushColumnFamilies" parameter is also set to true. If
+  /// "flushColumnFamilies" is true, all the RocksDB column family memtables are
+  /// flushed, and, if "waitForSync" is set, additionally synced to disk. The
+  /// only call site that uses "flushColumnFamilies" currently is hot backup.
   /// The function parameter name are a remainder from MMFiles times, when
   /// they made more sense. This can be refactored at any point, so that
   /// flushing column families becomes a separate API.
-  Result flushWal(bool waitForSync, bool waitForCollector) override;
+  Result flushWal(bool waitForSync = false,
+                  bool flushColumnFamilies = false) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(
-      arangodb::CreateDatabaseInfo&& info, bool isUpgrade) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                ErrorCode& status) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                   velocypack::Slice const& slice) override;
+                                   velocypack::Slice slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
@@ -269,42 +274,41 @@ class RocksDBEngine final : public StorageEngine {
   void compactRange(RocksDBKeyBounds bounds);
   void processCompactions();
 
-  virtual auto createReplicatedLog(TRI_vocbase_t&,
-                                   arangodb::replication2::LogId)
-      -> ResultT<std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog>> override;
-  virtual auto dropReplicatedLog(
-      TRI_vocbase_t&,
-      std::shared_ptr<
-          arangodb::replication2::replicated_log::PersistedLog> const&)
-      -> Result override;
+  auto dropReplicatedState(
+      TRI_vocbase_t& vocbase,
+      std::unique_ptr<replication2::replicated_state::IStorageEngineMethods>&
+          ptr) -> Result override;
+
+  auto createReplicatedState(
+      TRI_vocbase_t& vocbase, replication2::LogId id,
+      replication2::replicated_state::PersistedStateInfo const& info)
+      -> ResultT<std::unique_ptr<
+          replication2::replicated_state::IStorageEngineMethods>> override;
 
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
   void prepareDropCollection(TRI_vocbase_t& vocbase,
                              LogicalCollection& collection) override;
-  arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
-                                  LogicalCollection& collection) override;
+  Result dropCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
-                        LogicalCollection const& collection,
-                        bool doSync) override;
+                        LogicalCollection const& collection) override;
 
-  arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
-                                    LogicalCollection const& collection,
-                                    std::string const& oldName) override;
+  Result renameCollection(TRI_vocbase_t& vocbase,
+                          LogicalCollection const& collection,
+                          std::string const& oldName) override;
 
   Result changeView(LogicalView const& view, velocypack::Slice update) final;
 
-  arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
-                              arangodb::LogicalView const& view) override;
+  Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
+                    LogicalView const& view) override;
 
-  arangodb::Result dropView(TRI_vocbase_t const& vocbase,
-                            LogicalView const& view) override;
+  Result dropView(TRI_vocbase_t const& vocbase,
+                  LogicalView const& view) override;
 
-  arangodb::Result compactAll(bool changeLevel,
-                              bool compactBottomMostLevel) override;
+  Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
@@ -315,15 +319,15 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief Add engine-specific REST handlers
   void addRestHandlers(rest::RestHandlerFactory& handlerFactory) override;
 
-  void addParametersForNewCollection(arangodb::velocypack::Builder& builder,
-                                     arangodb::velocypack::Slice info) override;
+  void addParametersForNewCollection(velocypack::Builder& builder,
+                                     velocypack::Slice info) override;
 
   rocksdb::TransactionDB* db() const { return _db; }
 
-  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
+  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice slice,
                              RocksDBLogValue&& logValue);
   Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                     velocypack::Slice const& slice,
+                                     velocypack::Slice slice,
                                      RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
@@ -358,9 +362,18 @@ class RocksDBEngine final : public StorageEngine {
   bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
   // management methods for synchronizing with external persistent stores
-  virtual TRI_voc_tick_t currentTick() const override;
-  virtual TRI_voc_tick_t releasedTick() const override;
-  virtual void releaseTick(TRI_voc_tick_t) override;
+  TRI_voc_tick_t currentTick() const override;
+  TRI_voc_tick_t releasedTick() const override;
+  void releaseTick(TRI_voc_tick_t) override;
+
+  void scheduleFullIndexRefill(std::string const& database,
+                               std::string const& collection,
+                               IndexId iid) override;
+
+  bool autoRefillIndexCaches() const override;
+  bool autoRefillIndexCachesOnFollowers() const override;
+
+  void syncIndexCaches() override;
 
   /// @brief whether or not the database existed at startup. this function
   /// provides a valid answer only after start() has successfully finished,
@@ -434,7 +447,7 @@ class RocksDBEngine final : public StorageEngine {
 
   bool hasBackgroundError() const;
 
-  static arangodb::Result registerRecoveryHelper(
+  static Result registerRecoveryHelper(
       std::shared_ptr<RocksDBRecoveryHelper> helper);
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
   recoveryHelpers();
@@ -449,23 +462,43 @@ class RocksDBEngine final : public StorageEngine {
   }
 #endif
 
+  class RocksDBSnapshot final : public StorageSnapshot {
+   public:
+    explicit RocksDBSnapshot(rocksdb::DB& db) : _snapshot(&db) {}
+
+    TRI_voc_tick_t tick() const noexcept override {
+      return _snapshot.snapshot()->GetSequenceNumber();
+    }
+
+    decltype(auto) getSnapshot() const { return _snapshot.snapshot(); }
+
+   private:
+    mutable rocksdb::ManagedSnapshot _snapshot;
+  };
+
+  std::shared_ptr<StorageSnapshot> currentSnapshot() override;
+
  private:
+  void loadReplicatedStates(TRI_vocbase_t& vocbase);
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);
   ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
-  ErrorCode saveReplicationApplierConfiguration(
-      RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
+  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                velocypack::Slice slice,
+                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(
-      arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown,
-      bool isUpgrade);
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(CreateDatabaseInfo&& info,
+                                                      bool wasCleanShutdown,
+                                                      bool isUpgrade);
 
   std::string getCompressionSupport() const;
+
+  [[noreturn]] void verifySstFiles(rocksdb::Options const& options) const;
 
 #ifdef USE_ENTERPRISE
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
@@ -485,12 +518,10 @@ class RocksDBEngine final : public StorageEngine {
   Result encryptInternalKeystore();
 #endif
 
- public:
-  static constexpr std::string_view kEngineName = "rocksdb";
-
- private:
   bool checkExistingDB(
       std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  void removeEmptyJournalFilesFromArchive();
 
   RocksDBOptionsProvider const& _optionsProvider;
 
@@ -587,7 +618,10 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not the in-memory cache for edges is used
   bool _useEdgeCache;
 
-  /// @brief activate generation of SHA256 files to parallel .sst files
+  /// @brief whether or not to verify the sst files present in the db path
+  bool _verifySst;
+
+  /// @brief activate generation of SHA256 files for .sst and .blob files
   bool _createShaFiles;
 
   // whether or not to issue range delete markers in the write-ahead log
@@ -610,10 +644,10 @@ class RocksDBEngine final : public StorageEngine {
   /// a non-recoverable error
   std::shared_ptr<RocksDBBackgroundErrorListener> _errorListener;
 
-  arangodb::basics::ReadWriteLock _purgeLock;
+  basics::ReadWriteLock _purgeLock;
 
   /// @brief mutex that protects the storage engine health check
-  arangodb::Mutex _healthMutex;
+  std::mutex _healthMutex;
 
   /// @brief timestamp of last health check log message. we only log health
   /// check errors every so often, in order to prevent log spamming
@@ -627,14 +661,14 @@ class RocksDBEngine final : public StorageEngine {
   HealthData _healthData;
 
   /// @brief lock for _rebuildCollections
-  arangodb::Mutex _rebuildCollectionsLock;
+  std::mutex _rebuildCollectionsLock;
   /// @brief map of database/collection-guids for which we need to repair trees
   std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
   /// @brief number of currently running tree rebuild jobs jobs
   size_t _runningRebuilds;
 
   /// @brief lock for _pendingCompactions and _runningCompactions
-  arangodb::basics::ReadWriteLock _pendingCompactionsLock;
+  basics::ReadWriteLock _pendingCompactionsLock;
   /// @brief bounds for compactions that we have to process
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
@@ -665,8 +699,20 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _recoveryStartSequence = 0;
 #endif
 
+  // last point in time when an auto-flush happened
+  std::chrono::steady_clock::time_point _autoFlushLastExecuted;
+  // interval (in s) in which auto-flushing is tried
+  double _autoFlushCheckInterval;
+  // minimum number of live WAL files that need to be present to trigger
+  // an auto-flush
+  uint64_t _autoFlushMinWalFiles;
+
+  metrics::Gauge<uint64_t>& _metricsWalReleasedTickFlush;
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
+  metrics::Gauge<uint64_t>& _metricsLiveWalFiles;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;
+  metrics::Gauge<uint64_t>& _metricsLiveWalFilesSize;
+  metrics::Gauge<uint64_t>& _metricsArchivedWalFilesSize;
   metrics::Gauge<uint64_t>& _metricsPrunableWalFiles;
   metrics::Gauge<uint64_t>& _metricsWalPruningActive;
   metrics::Gauge<uint64_t>& _metricsTreeMemoryUsage;
@@ -676,15 +722,12 @@ class RocksDBEngine final : public StorageEngine {
   metrics::Counter& _metricsTreeResurrections;
 
   // @brief persistor for replicated logs
-  std::shared_ptr<RocksDBLogPersistor> _logPersistor;
+  std::shared_ptr<RocksDBAsyncLogWriteBatcher> _logPersistor;
 
   // Checksum env for when creation of sha files is enabled
   // this is for when encryption is enabled, sha files will be created
-  // after the encryption of the .sst files
+  // after the encryption of the .sst and .blob files
   std::unique_ptr<rocksdb::Env> _checksumEnv;
-
-  std::unique_ptr<rocksdb::Env> NewChecksumEnv(rocksdb::Env* base_env,
-                                               std::string const& path);
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

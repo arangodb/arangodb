@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,12 +27,15 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -40,12 +43,9 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
+#include "Utils/ClientManager.h"
 
-#include <chrono>
-#include <iostream>
-#include <thread>
-
-#include <Logger/LogMacros.h>
+#include <fuerte/jwt.h>
 
 using namespace arangodb::application_features;
 using namespace arangodb::httpclient;
@@ -61,12 +61,10 @@ ClientFeature::ClientFeature(ApplicationServer& server,
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
-      _databaseName(StaticStrings::SystemDatabase),
       _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
       _maxNumEndpoints(maxNumEndpoints),
+      _databaseName(StaticStrings::SystemDatabase),
       _username("root"),
-      _password(""),
-      _jwtSecret(""),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
@@ -90,15 +88,16 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("server", "server connection");
 
   options->addOption("--server.database",
-                     "database name to use when connecting",
+                     "The database name to use when connecting.",
                      new StringParameter(&_databaseName));
 
   options->addOption("--server.authentication",
-                     "require authentication credentials when connecting (does "
-                     "not affect the server-side authentication settings)",
+                     "Require authentication credentials when connecting (does "
+                     "not affect the server-side authentication settings).",
                      new BooleanParameter(&_authentication));
 
-  options->addOption("--server.username", "username to use when connecting",
+  options->addOption("--server.username",
+                     "The username to use when connecting.",
                      new StringParameter(&_username));
 
   bool isArangosh = false;
@@ -110,32 +109,36 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   char const* endpointHelp;
   if (isArangosh) {
     endpointHelp =
-        "endpoint to connect to. Use 'none' to start without a server. "
+        "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://";
+        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://.";
   } else {
     endpointHelp =
-        "endpoint to connect to. Use 'none' to start without a server. "
+        "The endpoint to connect to. Use 'none' to start without a server. "
         "Use http+ssl:// as schema to connect to an SSL-secured "
         "server endpoint, otherwise http+tcp:// or unix://";
   }
 
-  options->addOption(
+  auto& opt = options->addOption(
       "--server.endpoint", endpointHelp,
       new VectorParameter<StringParameter>(&_endpoints),
       arangodb::options::makeFlags(Flags::FlushOnFirst, Flags::Default));
+  if (isArangosh) {
+    opt.setLongDescription(R"(You can use `--server.endpoint none` to start
+arangosh without connecting to a server.)");
+  }
 
   options->addOption("--server.password",
-                     "password to use when connecting. If not specified and "
-                     "authentication is required, the user will be prompted "
-                     "for a password",
+                     "The password to use when connecting. If not specified "
+                     "and authentication is required, the user is prompted for "
+                     "a password",
                      new StringParameter(&_password));
 
   if (isArangosh) {
     // this option is only available in arangosh
     options
         ->addOption("--server.force-json",
-                    "force to not use VelocyPack for easier debugging",
+                    "Force to not use VelocyPack for easier debugging.",
                     new BooleanParameter(&_forceJson),
                     arangodb::options::makeDefaultFlags(
                         arangodb::options::Flags::Uncommon))
@@ -147,41 +150,38 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
     // of the other client tools
     options->addOption(
         "--server.ask-jwt-secret",
-        "if this option is specified, the user will be prompted "
-        "for a JWT secret. This option is not compatible with "
-        "--server.username or --server.password. If specified, it will be used "
-        "for all "
-        "connections - even when a new connection to another server is "
-        "created",
+        "If enabled, you are prompted for a JWT secret. This option is not "
+        "compatible with --server.username and --server.password. "
+        "If specified, it is used for all connections - even if a new "
+        "connection to another server is created.",
         new BooleanParameter(&_askJwtSecret),
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
 
     options->addOption(
         "--server.jwt-secret-keyfile",
-        "if this option is specified, the jwt secret will be loaded "
-        "from the given file. This option is not compatible with "
-        "--server.ask-jwt-secret, --server.username or --server.password. "
-        "If specified, it will be used for all "
-        "connections - even when a new connection to another server is "
-        "created",
+        "If enabled, the JWT secret is loaded from the given file. This option "
+        "is not compatible with --server.ask-jwt-secret, --server.username and "
+        "--server.password. If specified, it is used for all connections - "
+        "even if a new connection to another server is created.",
         new StringParameter(&_jwtSecretFile),
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
   }
 
   options->addOption("--server.connection-timeout",
-                     "connection timeout in seconds",
+                     "The connection timeout (in seconds).",
                      new DoubleParameter(&_connectionTimeout));
 
-  options->addOption("--server.request-timeout", "request timeout in seconds",
+  options->addOption("--server.request-timeout",
+                     "The request timeout (in seconds).",
                      new DoubleParameter(&_requestTimeout));
 
   // note: the max-packet-size is used for all client tools that use the
   // SimpleHttpClient. fuerte does not use this
   options->addOption(
       "--server.max-packet-size",
-      "maximum packet size (in bytes) for client/server communication",
+      "The maximum packet size (in bytes) for client/server communication.",
       new UInt64Parameter(&_maxPacketSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
@@ -193,7 +193,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                          &_sslProtocol, sslProtocols));
 #if _WIN32
   options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF8",
+      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
       new UInt16Parameter(&_codePage),
       arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
                                    arangodb::options::Flags::OsWindows,
@@ -317,7 +317,7 @@ void ClientFeature::readPassword() {
   }
 
   std::cout << "Please specify a password: " << std::flush;
-  _password = ShellConsoleFeature::readPassword();
+  setPassword(ShellConsoleFeature::readPassword());
   std::cout << std::endl << std::flush;
 }
 
@@ -325,12 +325,12 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   if (_console && _console->isEnabled()) {
-    _jwtSecret = _console->readPassword("Please specify the JWT secret: ");
+    setJwtSecret(_console->readPassword("Please specify the JWT secret: "));
     return;
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
-  _jwtSecret = ShellConsoleFeature::readPassword();
+  setJwtSecret(ShellConsoleFeature::readPassword());
   std::cout << std::endl << std::flush;
 }
 
@@ -340,8 +340,8 @@ void ClientFeature::loadJwtSecretFile() {
     // at the end of a file can easily happen. We do not base64-encode,
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
-    _jwtSecret = basics::StringUtils::trim(
-        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r");
+    setJwtSecret(basics::StringUtils::trim(
+        basics::FileUtils::slurp(_jwtSecretFile), " \t\n\r"));
   } catch (std::exception const& ex) {
     LOG_TOPIC("aeaec", FATAL, Logger::STARTUP)
         << "unable to read content of jwt-secret file '" << _jwtSecretFile
@@ -353,7 +353,7 @@ void ClientFeature::loadJwtSecretFile() {
 }
 
 void ClientFeature::prepare() {
-  _databaseName = normalizeUtf8ToNFC(_databaseName);
+  setDatabaseName(normalizeUtf8ToNFC(_databaseName));
 
   if (!isEnabled()) {
     return;
@@ -372,35 +372,65 @@ void ClientFeature::prepare() {
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     size_t threadNumber) const {
-  return createHttpClient(_endpoints[threadNumber % _endpoints.size()]);
+  std::string endpoint;
+  {
+    READ_LOCKER(locker, _settingsLock);
+    endpoint = _endpoints[threadNumber % _endpoints.size()];
+  }
+  return createHttpClient(endpoint);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition) const {
+  double requestTimeout;
+  bool warn;
+  {
+    READ_LOCKER(locker, _settingsLock);
+    requestTimeout = _requestTimeout;
+    warn = _warn;
+  }
   return createHttpClient(definition,
-                          SimpleHttpClientParams(_requestTimeout, _warn));
+                          SimpleHttpClientParams(requestTimeout, warn));
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
     std::string const& definition, SimpleHttpClientParams const& params) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
-  if (endpoint.get() == nullptr) {
-    LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
-        << "invalid value for --server.endpoint ('" << definition << "')";
+  if (endpoint == nullptr) {
+    if (definition != "none") {
+      LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
+          << "invalid value for --server.endpoint ('" << definition << "')";
+    }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+
+  READ_LOCKER(locker, _settingsLock);
 
   std::unique_ptr<GeneralClientConnection> connection(
       GeneralClientConnection::factory(_comm, endpoint, _requestTimeout,
                                        _connectionTimeout, _retries,
                                        _sslProtocol));
 
-  return std::make_unique<SimpleHttpClient>(connection, params);
+  // takes over ownership for the connection object
+  auto httpClient = std::make_unique<SimpleHttpClient>(connection, params);
+  // set client parameters
+  httpClient->params().setLocationRewriter(static_cast<void const*>(this),
+                                           &ClientManager::rewriteLocation);
+  httpClient->params().setUserNamePassword("/", _username, _password);
+  if (!_jwtSecret.empty()) {
+    TRI_ASSERT(!_endpoints.empty());
+    httpClient->params().setJwt(
+        fuerte::jwt::generateInternalToken(_jwtSecret, _endpoints[0]));
+  }
+
+  return httpClient;
 }
 
 std::vector<std::string> ClientFeature::httpEndpoints() {
   std::vector<std::string> httpEndpoints;
+
+  READ_LOCKER(locker, _settingsLock);
   std::for_each(_endpoints.begin(), _endpoints.end(),
                 [&httpEndpoints](std::string const& endpoint) {
                   if (std::string http = Endpoint::uriForm(endpoint);
@@ -428,8 +458,126 @@ void ClientFeature::stop() {
 #endif
 }
 
-void ClientFeature::setDatabaseName(std::string const& databaseName) {
+std::string ClientFeature::databaseName() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _databaseName;
+}
+
+void ClientFeature::setDatabaseName(std::string_view databaseName) {
+  WRITE_LOCKER(locker, _settingsLock);
   _databaseName = normalizeUtf8ToNFC(databaseName);
+}
+
+bool ClientFeature::authentication() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _authentication;
+}
+
+// get single endpoint. used by client tools that can handle only one endpoint
+std::string ClientFeature::endpoint() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _endpoints[0];
+}
+
+// set single endpoint
+void ClientFeature::setEndpoint(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _endpoints[0] = value;
+}
+
+std::string ClientFeature::username() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _username;
+}
+
+void ClientFeature::setUsername(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _username = value;
+}
+
+std::string ClientFeature::password() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _password;
+}
+
+void ClientFeature::setPassword(std::string_view value) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _password = value;
+}
+
+std::string ClientFeature::jwtSecret() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _jwtSecret;
+}
+
+void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _jwtSecret = jwtSecret;
+}
+
+double ClientFeature::connectionTimeout() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _connectionTimeout;
+}
+
+double ClientFeature::requestTimeout() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _requestTimeout;
+}
+
+void ClientFeature::requestTimeout(double value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _requestTimeout = value;
+}
+
+uint64_t ClientFeature::maxPacketSize() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _maxPacketSize;
+}
+
+uint64_t ClientFeature::sslProtocol() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _sslProtocol;
+}
+
+bool ClientFeature::askJwtSecret() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _askJwtSecret;
+}
+
+bool ClientFeature::forceJson() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _forceJson;
+}
+
+void ClientFeature::setForceJson(bool value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _forceJson = value;
+}
+
+void ClientFeature::setRetries(size_t retries) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _retries = retries;
+}
+
+void ClientFeature::setWarn(bool warn) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _warn = warn;
+}
+
+bool ClientFeature::getWarn() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _warn;
+}
+
+void ClientFeature::setWarnConnect(bool warnConnect) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _warnConnect = warnConnect;
+}
+
+bool ClientFeature::getWarnConnect() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _warnConnect;
 }
 
 ApplicationServer& ClientFeature::server() const noexcept {

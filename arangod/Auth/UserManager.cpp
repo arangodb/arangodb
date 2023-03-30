@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -72,16 +73,16 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
   return server.getFeature<arangodb::SystemDatabaseFeature>().use();
 }
 
+bool isRole(std::string const& name) noexcept {
+  return name.starts_with(":role:");
+}
+
 }  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
-
-static bool inline IsRole(std::string const& name) {
-  return StringUtils::isPrefix(name, ":role:");
-}
 
 #ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(ArangodServer& server)
@@ -206,7 +207,7 @@ void auth::UserManager::loadFromDB() {
   if (_internalVersion.load(std::memory_order_acquire) == globalVersion()) {
     return;
   }
-  MUTEX_LOCKER(guard, _loadFromDBLock);
+  std::lock_guard guard{_loadFromDBLock};
   uint64_t tmp = globalVersion();
   if (_internalVersion.load(std::memory_order_acquire) == tmp) {
     return;
@@ -270,7 +271,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
   if (entry.source() != auth::Source::Local) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
-  if (!IsRole(entry.username()) && entry.username() != "root") {
+  if (!::isRole(entry.username()) && entry.username() != "root") {
     AuthenticationFeature* af = AuthenticationFeature::instance();
     TRI_ASSERT(af != nullptr);
     if (af != nullptr && !af->localAuthentication()) {
@@ -336,7 +337,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
                                auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
-      if (IsRole(entry.username())) {
+      if (::isRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
           if (pair.second.source() != auth::Source::Local &&
               pair.second.roles().find(entry.username()) !=
@@ -365,7 +366,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 void auth::UserManager::createRootUser() {
   loadFromDB();
 
-  MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+  std::lock_guard guard{_loadFromDBLock};    // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
@@ -714,7 +715,7 @@ Result auth::UserManager::removeAllUsers() {
   Result res;
   {
     // do not get into race conditions with loadFromDB
-    MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+    std::lock_guard guard{_loadFromDBLock};    // must be first
     WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
@@ -737,7 +738,7 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  if (username.empty() || IsRole(username)) {
+  if (username.empty() || ::isRole(username)) {
     return false;  // we cannot authenticate during bootstrap
   }
 
@@ -844,7 +845,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 /// Only used for testing
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
-  MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
+  std::lock_guard guard{_loadFromDBLock};    // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   _userCache = newMap;
   _internalVersion.store(_globalVersion.load());

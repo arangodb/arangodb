@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,7 +272,7 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     return ContainsNonAsciiSlow(src, len);
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned unaligned = reinterpret_cast<uintptr_t>(src) & align_mask;
 
@@ -287,13 +287,8 @@ static bool ContainsNonAscii(char const* src, size_t len) {
     len -= n;
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = 0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = 0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
 
@@ -334,7 +329,7 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     return;
   }
 
-  const unsigned bytes_per_word = ARANGODB_BITS / (8 * sizeof(char));
+  const unsigned bytes_per_word = 64 / (8 * sizeof(char));
   const unsigned align_mask = bytes_per_word - 1;
   const unsigned src_unalign = reinterpret_cast<uintptr_t>(src) & align_mask;
   const unsigned dst_unalign = reinterpret_cast<uintptr_t>(dst) & align_mask;
@@ -352,13 +347,8 @@ static void ForceAscii(char const* src, char* dst, size_t len) {
     }
   }
 
-#if ARANGODB_BITS == 64
   typedef uint64_t word;
   uint64_t const mask = ~0x8080808080808080ll;
-#else
-  typedef uint32_t word;
-  const uint32_t mask = ~0x80808080l;
-#endif
 
   const word* srcw = reinterpret_cast<const word*>(src);
   word* dstw = reinterpret_cast<word*>(dst);
@@ -399,9 +389,9 @@ static unsigned hex2bin(char c) {
 /// Returns number of bytes written.
 ////////////////////////////////////////////////////////////////////////////////
 
-static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
-                           v8::Handle<v8::Value> val,
-                           TRI_V8_encoding_t encoding) {
+static std::ptrdiff_t DecodeWrite(v8::Isolate* isolate, char* buf,
+                                  size_t buflen, v8::Handle<v8::Value> val,
+                                  TRI_V8_encoding_t encoding) {
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
@@ -422,7 +412,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
     size_t size = V8Buffer::length(isolate, val.As<v8::Object>());
     size_t len = size < buflen ? size : buflen;
     memcpy(buf, data, len);
-    return (ssize_t)len;
+    return static_cast<std::ptrdiff_t>(len);
   }
 
   v8::Local<v8::String> str;
@@ -443,13 +433,13 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
   if (encoding == UTF8) {
     str->WriteUtf8(isolate, buf, (int)buflen, NULL,
                    v8::String::HINT_MANY_WRITES_EXPECTED);
-    return (ssize_t)buflen;
+    return static_cast<std::ptrdiff_t>(buflen);
   }
 
   if (encoding == ASCII) {
     str->WriteOneByte(isolate, reinterpret_cast<uint8_t*>(buf), 0, (int)buflen,
                       v8::String::HINT_MANY_WRITES_EXPECTED);
-    return (ssize_t)buflen;
+    return static_cast<std::ptrdiff_t>(buflen);
   }
 
   // THIS IS AWFUL!!! FIXME
@@ -467,7 +457,7 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
 
   delete[] twobytebuf;
 
-  return (ssize_t)buflen;
+  return static_cast<std::ptrdiff_t>(buflen);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1317,9 +1307,9 @@ static void JS_BinaryWrite(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   max_length = MIN(length, MIN(buffer->_length - offset, max_length));
 
-  ssize_t written = DecodeWrite(isolate, p, max_length, s, BINARY);
+  auto written = DecodeWrite(isolate, p, max_length, s, BINARY);
 
-  TRI_V8_RETURN(v8::Integer::New(isolate, (int32_t)written));
+  TRI_V8_RETURN(v8::Integer::New(isolate, static_cast<int32_t>(written)));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

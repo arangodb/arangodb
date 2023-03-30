@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -602,6 +603,12 @@ void RestHandler::compressResponse() {
         _response->deflate();
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingDeflate);
+        break;
+
+      case rest::EncodingType::GZIP:
+        _response->gzip();
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingGzip);
         break;
 
       default:

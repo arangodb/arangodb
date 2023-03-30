@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,7 @@
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -81,7 +82,7 @@ Result Indexes::getIndex(LogicalCollection const* collection,
                                std::regex::ECMAScript);
     if (std::regex_match(idSlice.copyString(), re)) {
       id = idSlice.copyString();
-      name = id.substr(id.find_first_of("/") + 1);
+      name = id.substr(id.find('/') + 1);
     } else {
       name = idSlice.copyString();
       id = collection->name() + "/" + name;
@@ -94,10 +95,11 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(),
-                               /*withHidden*/ true, tmp, trx);
+  Result res =
+      Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
+                      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
-    for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
+    for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
            index.get(StaticStrings::IndexId).compareString(id) == 0) ||
           (index.hasKey(StaticStrings::IndexName) &&
@@ -346,8 +348,8 @@ static Result EnsureIndexLocal(
 }
 
 Result Indexes::ensureIndexCoordinator(
-    arangodb::LogicalCollection const* collection, VPackSlice const& indexDef,
-    bool create, VPackBuilder& resultBuilder) {
+    arangodb::LogicalCollection const* collection, velocypack::Slice indexDef,
+    bool create, velocypack::Builder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
   auto& cluster = collection->vocbase().server().getFeature<ClusterFeature>();
 
@@ -399,6 +401,21 @@ Result Indexes::ensureIndex(
   }
 
   VPackSlice indexDef = normalized.slice();
+  // for single server or for cluster when the instance is coordinator,
+  // indexes cannot be created covering fields that have preceding or trailing
+  // ":", because the case of preceding or trailing ":" is treated as a special
+  // case for shardKeys, in which the value of the attribute is read until or
+  // starting from where the character ":" of the string is reached, and it
+  // doesn't happen for index fields. We don't disallow this usage for dbservers
+  // because this check must be only done for indexes that will be created, not
+  // for indexes that already exist. Example for shardKeys: ["value:"], if the
+  // document has an attribute {"value": "123:abc"}, the shard key would cover
+  // "123", which is the substring read until we reach a ":"
+  if (create && (ServerState::instance()->isSingleServer() ||
+                 ServerState::instance()->isCoordinator())) {
+    Index::validateFieldsWithSpecialCase(
+        indexDef.get(arangodb::StaticStrings::IndexFields));
+  }
 
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
@@ -480,7 +497,7 @@ Result Indexes::ensureIndex(
         res.reset(code);
       } else {
         // flush estimates
-        collection->flushClusterIndexEstimates();
+        collection->getPhysical()->flushClusterIndexEstimates();
 
         // the cluster won't set a proper id value
         std::string iid = tmp.slice().get(StaticStrings::IndexId).copyString();
@@ -644,8 +661,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   return Result();
 }
 
-arangodb::Result Indexes::drop(LogicalCollection* collection,
-                               VPackSlice const& indexArg) {
+Result Indexes::drop(LogicalCollection* collection,
+                     velocypack::Slice indexArg) {
   TRI_ASSERT(collection != nullptr);
 
   ExecContext const& exec = ExecContext::current();
@@ -702,7 +719,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
     }
 
     // flush estimates
-    collection->flushClusterIndexEstimates();
+    collection->getPhysical()->flushClusterIndexEstimates();
 
 #ifdef USE_ENTERPRISE
     res = Indexes::dropCoordinatorEE(collection, iid);
@@ -720,9 +737,12 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
 
+    transaction::Options trxOpts;
+    trxOpts.requiresReplication = false;
     SingleCollectionTransaction trx(transaction::V8Context::CreateWhenRequired(
                                         collection->vocbase(), false),
-                                    *collection, AccessMode::Type::EXCLUSIVE);
+                                    *collection, AccessMode::Type::EXCLUSIVE,
+                                    trxOpts);
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -750,10 +770,9 @@ arangodb::Result Indexes::drop(LogicalCollection* collection,
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
-    bool ok = col->dropIndex(idx->id());
-    auto code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+    res = col->dropIndex(idx->id());
     events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid.id()), code);
-    return Result(code);
+                      std::to_string(iid.id()), res.errorNumber());
+    return res;
   }
 }

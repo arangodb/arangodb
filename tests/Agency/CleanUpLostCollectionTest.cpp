@@ -31,17 +31,12 @@
 
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::consensus;
-using namespace fakeit;
-
-const std::string PREFIX = "arango";
-const std::string DATABASE = "database";
-const std::string COLLECTION = "collection";
-const std::string SHARD = "s99";
-const std::string SHARD_LEADER = "leader";
-const std::string SHARD_FOLLOWER1 = "follower1";
+[[maybe_unused]] const std::string PREFIX = "arango";
+[[maybe_unused]] const std::string DATABASE = "database";
+[[maybe_unused]] const std::string COLLECTION = "collection";
+[[maybe_unused]] const std::string SHARD = "s99";
+[[maybe_unused]] const std::string SHARD_LEADER = "leader";
+[[maybe_unused]] const std::string SHARD_FOLLOWER1 = "follower1";
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -91,7 +86,7 @@ TEST_F(CleanUpLostCollectionTest,
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write))
-      .AlwaysDo([&](query_t const& q,
+      .AlwaysDo([&](velocypack::Slice trxs,
                     consensus::AgentInterface::WriteMode w) -> write_ret_t {
         // What do we expect here:
         // We expect two transactions:
@@ -110,7 +105,6 @@ TEST_F(CleanUpLostCollectionTest,
         //        empty: /arango/Plan/Collections/database/collection/shards/s99
         //        old: /arango/Supervision/Health/leader/Status == "FAILED"
 
-        auto const& trxs = q->slice();
         EXPECT_EQ(trxs.length(), 1);
 
         auto const& trx1 = trxs[0];

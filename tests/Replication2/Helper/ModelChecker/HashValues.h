@@ -24,53 +24,9 @@
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 
-namespace arangodb::replication2::replicated_state::agency {
-static inline std::size_t hash_value(Target const& s) {
-  std::size_t seed = 0;
-  boost::hash_combine(seed, s.id.id());
-  boost::hash_combine(seed, s.version);
-  boost::hash_combine(seed, s.leader);
-  boost::hash_combine(seed, s.participants);
-  return seed;
-}
-static inline std::size_t hash_value(Target::Participant const& s) { return 1; }
-static inline std::size_t hash_value(Plan::Participant const& p) {
-  return boost::hash_value(p.generation.value);
-}
-static inline std::size_t hash_value(Plan const& s) {
-  std::size_t seed = 0;
-  boost::hash_combine(seed, s.id.id());
-  boost::hash_combine(seed, s.generation.value);
-  boost::hash_combine(seed, s.participants);
-  return seed;
-}
-static inline std::size_t hash_value(Current::ParticipantStatus const& s) {
-  std::size_t seed = 0;
-  boost::hash_combine(seed, s.generation.value);
-  boost::hash_combine(seed, s.snapshot.status);
-  return seed;
-}
-static inline std::size_t hash_value(Current::Supervision const& s) {
-  return boost::hash_value(s.version);
-}
-static inline std::size_t hash_value(Current const& s) {
-  std::size_t seed = 0;
-  boost::hash_combine(seed, s.supervision);
-  boost::hash_combine(seed, s.participants);
-  return seed;
-}
-static inline std::size_t hash_value(State const& s) {
-  std::size_t seed = 0;
-  boost::hash_combine(seed, s.target);
-  boost::hash_combine(seed, s.plan);
-  boost::hash_combine(seed, s.current);
-  return seed;
-}
-}  // namespace arangodb::replication2::replicated_state::agency
 namespace std {
 template<typename T, typename K>
 auto hash_value(std::unordered_map<K, T> const& m) {
@@ -113,6 +69,7 @@ static inline std::size_t hash_value(LogTarget const& s) {
   boost::hash_combine(seed, s.version);
   boost::hash_combine(seed, s.leader);
   boost::hash_combine(seed, s.participants);
+  // boost::hash_combine(seed, s.properties);
   return seed;
 }
 static inline std::size_t hash_value(LogCurrent::Leader const& s) {
@@ -144,8 +101,7 @@ static inline std::size_t hash_value(LogCurrent const& s) {
   boost::hash_combine(seed, s.leader);
   return seed;
 }
-static inline std::size_t hash_value(
-    LogPlanTermSpecification::Leader const& s) {
+static inline std::size_t hash_value(ServerInstanceReference const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.serverId);
   boost::hash_combine(seed, s.rebootId.value());

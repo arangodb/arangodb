@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,8 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -38,10 +40,17 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+DECLARE_GAUGE(arangodb_flush_subscriptions, uint64_t,
+              "Number of active flush subscriptions");
+
 namespace arangodb {
 
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this}, _stopped(false) {
+    : ArangodFeature{server, *this},
+      _stopped(false),
+      _metricsFlushSubscriptions(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_flush_subscriptions{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<StorageEngineFeature>();
@@ -50,9 +59,9 @@ FlushFeature::FlushFeature(Server& server)
 FlushFeature::~FlushFeature() = default;
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addObsoleteOption("--server.flush-interval",
-                             "interval (in microseconds) for flushing data",
-                             true);
+  options->addObsoleteOption(
+      "--server.flush-interval",
+      "The interval (in microseconds) for flushing data.", true);
 }
 
 void FlushFeature::registerFlushSubscription(
@@ -69,6 +78,10 @@ void FlushFeature::registerFlushSubscription(
   }
 
   _flushSubscriptions.emplace_back(subscription);
+
+  LOG_TOPIC("8bbbc", DEBUG, arangodb::Logger::FLUSH)
+      << "registered flush subscription: " << subscription->name() << ", tick "
+      << subscription->tick();
 }
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
@@ -81,22 +94,21 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
 
   {
     std::lock_guard lock{_flushSubscriptionsMutex};
-
-    // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin();
-         itr != _flushSubscriptions.end();) {
-      auto entry = itr->lock();
-
-      if (!entry) {
-        // remove stale
-        itr = _flushSubscriptions.erase(itr);
-        ++stale;
-      } else {
+    auto begin = _flushSubscriptions.begin();
+    auto end = _flushSubscriptions.end();
+    auto it = std::remove_if(begin, end, [&](auto& e) noexcept {
+      if (auto entry = e.lock(); entry) {
+        LOG_TOPIC("5a4fb", TRACE, Logger::FLUSH)
+            << "found flush subscription: " << entry->name() << ", tick "
+            << entry->tick();
         minTick = std::min(minTick, entry->tick());
-        ++active;
-        ++itr;
+        return false;
       }
-    }
+      return true;
+    });
+    stale = static_cast<size_t>(end - it);
+    active = static_cast<size_t>(it - begin);
+    _flushSubscriptions.erase(it, end);
   }
 
   TRI_ASSERT(minTick <= engine.currentTick());
@@ -118,10 +130,12 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   }
 
   LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
-      << "Flush tick released: '" << minTick << "'"
+      << "Flush tick released: " << minTick
       << ", stale flush subscription(s) released: " << stale
-      << ", active flush subscription(s) released: " << active
+      << ", active flush subscription(s): " << active
       << ", initial engine tick: " << initialTick;
+
+  _metricsFlushSubscriptions.store(active, std::memory_order_relaxed);
 
   return std::tuple{active, stale, minTick};
 }

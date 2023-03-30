@@ -47,7 +47,6 @@ namespace aql {
 class AqlItemBlock;
 class AqlItemBlockManager;
 class InputAqlItemRow;
-class AqlItemMatrix;
 }  // namespace aql
 
 namespace tests {

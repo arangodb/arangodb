@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,6 @@
 #include "V8PlatformFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
@@ -162,12 +161,39 @@ void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
 
-  options->addOption(
-      "--javascript.v8-options", "options to pass to v8",
-      new VectorParameter<StringParameter>(&_v8Options),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options
+      ->addOption("--javascript.v8-options", "Options to pass to V8.",
+                  new VectorParameter<StringParameter>(&_v8Options),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setLongDescription(R"(You can optionally pass arguments to the V8
+JavaScript engine. The V8 engine runs with the default settings unless you
+explicitly specify them. The options are forwarded to the V8 engine, which
+parses them on its own. Passing invalid options may result in an error being
+printed on stderr and the option being ignored.
 
-  options->addOption("--javascript.v8-max-heap", "maximal heap size (in MB)",
+You need to pass the options as one string, with V8 option names being prefixed
+with two hyphens. Multiple options need to be separated by whitespace. To get
+a list of all available V8 options, you can use the value `"--help"` as follows:
+
+```
+--javascript.v8-options="--help"
+```
+
+Another example of specific V8 options being set at startup:
+
+```
+--javascript.v8-options="--log --no-logfile-per-isolate --logfile=v8.log"
+```
+
+Names and features or usable options depend on the version of V8 being used, and
+might change in the future if a different version of V8 is being used in
+ArangoDB. Not all options offered by V8 might be sensible to use in the context
+of ArangoDB. Use the specific options only if you are sure that they are not
+harmful for the regular database operation.)");
+
+  options->addOption("--javascript.v8-max-heap",
+                     "The maximal heap size (in MiB).",
                      new UInt64Parameter(&_v8MaxHeap));
 }
 
@@ -244,7 +270,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   isolate->SetData(V8_INFO, data.get());
 
   {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     try {
       _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
@@ -260,7 +286,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
 void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   // must first remove from isolate-data map
   {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _isolateData.erase(isolate);
   }
   // because Isolate::Dispose() will delete isolate!

@@ -35,6 +35,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
+#include "Replication2/Mocks/MockStatePersistorInterface.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -50,6 +51,7 @@ struct FollowerWaitForAppliedTest
     using FactoryType = test::RecordingFactory<LeaderType, FollowerType>;
     using CoreType = test::TestCoreType;
     using CoreParameterType = void;
+    using CleanupHandlerType = void;
   };
 
   std::shared_ptr<State::FactoryType> factory =
@@ -58,6 +60,8 @@ struct FollowerWaitForAppliedTest
   LoggerContext const loggerCtx{Logger::REPLICATED_STATE};
   std::shared_ptr<ReplicatedStateMetrics> _metrics =
       std::make_shared<ReplicatedStateMetricsMock>("foo");
+  std::shared_ptr<test::MockStatePersistorInterface> _persistor =
+      std::make_shared<test::MockStatePersistorInterface>();
 };
 
 TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
@@ -70,7 +74,7 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_future_test) {
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      _metrics, _persistor);
   manager->run();
   follower->triggerLeaderAcked();
 
@@ -110,7 +114,7 @@ TEST_F(FollowerWaitForAppliedTest, wait_for_applied_resign_resolve) {
   auto manager = std::make_shared<FollowerStateManager<State>>(
       loggerCtx, nullptr, follower, std::move(core),
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), factory,
-      _metrics);
+      _metrics, _persistor);
   manager->run();
   follower->triggerLeaderAcked();
 

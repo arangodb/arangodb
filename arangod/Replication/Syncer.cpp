@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,9 +23,7 @@
 
 #include "Syncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -315,7 +313,7 @@ Syncer::JobSynchronizer::~JobSynchronizer() {
 }
 
 bool Syncer::JobSynchronizer::gotResponse() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   return _gotResponse;
 }
 
@@ -323,13 +321,13 @@ bool Syncer::JobSynchronizer::gotResponse() const noexcept {
 void Syncer::JobSynchronizer::gotResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response,
     double time) noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res.reset();  // no error!
   _response = std::move(response);
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief will be called whenever an error occurred
@@ -338,13 +336,13 @@ void Syncer::JobSynchronizer::gotResponse(arangodb::Result&& res,
                                           double time) noexcept {
   TRI_ASSERT(res.fail());
 
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
   _res = std::move(res);
   _response.reset();
   _gotResponse = true;
   _time = time;
 
-  guard.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief the calling Syncer will call and block inside this function until
@@ -353,10 +351,10 @@ Result Syncer::JobSynchronizer::waitForResponse(
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult>& response) {
   while (true) {
     {
-      CONDITION_LOCKER(guard, _condition);
+      std::unique_lock guard{_condition.mutex};
 
       if (!_gotResponse) {
-        guard.wait(1 * 1000 * 1000);
+        _condition.cv.wait_for(guard, std::chrono::seconds{1});
       }
 
       // check again, _gotResponse may have changed
@@ -371,7 +369,7 @@ Result Syncer::JobSynchronizer::waitForResponse(
       // clear result response
       response.reset();
 
-      CONDITION_LOCKER(guard, _condition);
+      std::lock_guard guard{_condition.mutex};
       _gotResponse = false;
       _response.reset();
       _res.reset();
@@ -408,7 +406,7 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
 /// the syncer was stopped/aborted already)
 bool Syncer::JobSynchronizer::jobPosted() {
   while (true) {
-    CONDITION_LOCKER(guard, _condition);
+    std::unique_lock guard{_condition.mutex};
 
     // _jobsInFlight should be 0 in almost all cases, however, there
     // is a small window in which the request has been processed already
@@ -424,22 +422,22 @@ bool Syncer::JobSynchronizer::jobPosted() {
       // syncer already stopped... no need to carry on here
       return false;
     }
-    guard.wait(10 * 1000);
+    _condition.cv.wait_for(guard, std::chrono::milliseconds{10});
   }
 }
 
 /// @brief notifies that a job was done
 void Syncer::JobSynchronizer::jobDone() noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight == 1);
   --_jobsInFlight;
-  _condition.signal();
+  _condition.cv.notify_one();
 }
 
 /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
 bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
-  CONDITION_LOCKER(guard, _condition);
+  std::lock_guard guard{_condition.mutex};
 
   TRI_ASSERT(_jobsInFlight <= 1);
   return _jobsInFlight > 0;
@@ -512,15 +510,16 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
 Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
-std::string Syncer::rewriteLocation(void* data, std::string const& location) {
-  Syncer* s = static_cast<Syncer*>(data);
+std::string Syncer::rewriteLocation(void const* data,
+                                    std::string const& location) {
+  auto s = static_cast<Syncer const*>(data);
   TRI_ASSERT(s != nullptr);
   if (location.starts_with("/_db/")) {
     // location already contains /_db/
     return location;
   }
   TRI_ASSERT(!s->_state.databaseName.empty());
-  if (location[0] == '/') {
+  if (location.starts_with('/')) {
     return "/_db/" + basics::StringUtils::urlEncode(s->_state.databaseName) +
            location;
   }
@@ -532,7 +531,7 @@ void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
 
 bool Syncer::isAborted() const { return _state.connection.isAborted(); }
 
-TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
+TRI_vocbase_t* Syncer::resolveVocbase(velocypack::Slice slice) {
   std::string name;
   if (slice.isObject()) {
     VPackSlice tmp;
@@ -550,32 +549,32 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
                                    "could not resolve vocbase id / name");
   }
 
-  // will work with either names or id's
-  auto const& it = _state.vocbases.find(name);
+  // database names with a number in front are invalid names and
+  // cannot be handled here
+  TRI_ASSERT(name[0] < '0' || name[0] > '9');
+
+  // will work with either names or ids
+  auto it = _state.vocbases.find(name);
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
     auto& server = _state.applier._server;
-    TRI_vocbase_t* vocbase =
-        server.getFeature<DatabaseFeature>().lookupDatabase(name);
+    auto vocbase = server.getFeature<DatabaseFeature>().useDatabase(name);
 
-    if (vocbase != nullptr) {
-      _state.vocbases.try_emplace(name,
-                                  *vocbase);  // we can not be lazy because of
-                                              // the guard requires a valid ref
-    } else {
+    if (vocbase == nullptr) {
       LOG_TOPIC("9bb38", DEBUG, Logger::REPLICATION)
           << "could not find database '" << name << "'";
+      return nullptr;
     }
-
-    return vocbase;
-  } else {
-    return &(it->second.database());
+    it = _state.vocbases.try_emplace(name, std::move(vocbase)).first;
   }
+
+  TRI_ASSERT(it != _state.vocbases.end());
+  return &(it->second.database());
 }
 
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   VPackSlice uuid;
 
   if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -608,7 +607,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
                                          LogicalCollection* coll,
                                          TRI_replication_operation_e type,
-                                         VPackSlice const& slice,
+                                         velocypack::Slice slice,
                                          std::string& conflictingDocumentKey) {
   if (_state.applier._lockTimeoutRetries > 0) {
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
@@ -640,8 +639,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
-Result Syncer::createCollection(TRI_vocbase_t& vocbase,
-                                arangodb::velocypack::Slice const& slice,
+Result Syncer::createCollection(TRI_vocbase_t& vocbase, velocypack::Slice slice,
                                 LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -697,7 +695,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
       return trx.finish(opRes.result);
     } else {
-      vocbase.dropCollection(col->id(), false, -1.0);
+      vocbase.dropCollection(col->id(), false);
     }
   }
 
@@ -747,7 +745,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 }
 
 /// @brief drops a collection, based on the VelocyPack provided
-Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
+Result Syncer::dropCollection(velocypack::Slice slice, bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
   if (vocbase == nullptr) {
@@ -764,11 +762,11 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result();
   }
 
-  return vocbase->dropCollection(col->id(), true, -1.0);
+  return vocbase->dropCollection(col->id(), true);
 }
 
 /// @brief creates an index, based on the VelocyPack provided
-Result Syncer::createIndex(VPackSlice const& slice) {
+Result Syncer::createIndex(velocypack::Slice slice) {
   VPackSlice indexSlice = slice.get("index");
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
@@ -817,7 +815,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   return Result();
 }
 
-void Syncer::createIndexInternal(VPackSlice const& idxDef,
+void Syncer::createIndexInternal(velocypack::Slice idxDef,
                                  LogicalCollection& col) {
   std::shared_ptr<arangodb::Index> idx;
   auto physical = col.getPhysical();
@@ -875,8 +873,8 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef,
   TRI_ASSERT(idx != nullptr);
 }
 
-Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  auto cb = [&](VPackSlice const& slice) {
+Result Syncer::dropIndex(velocypack::Slice slice) {
+  auto cb = [&](velocypack::Slice slice) {
     std::string id;
 
     if (slice.hasKey("data")) {
@@ -906,13 +904,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     try {
       CollectionGuard guard(vocbase, col->id());
-      bool result = guard.collection()->dropIndex(iid);
-
-      if (!result) {
-        return Result();  // TODO: why do we ignore failures here?
-      }
-
-      return Result();
+      return guard.collection()->dropIndex(iid);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -928,15 +920,14 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
                    r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
     // if dropping an index for a non-existing database or collection fails,
     // this is not a real problem
-    return Result();
+    r.reset();
   }
 
   return r;
 }
 
 /// @brief creates a view, based on the VelocyPack provided
-Result Syncer::createView(TRI_vocbase_t& vocbase,
-                          arangodb::velocypack::Slice const& slice) {
+Result Syncer::createView(TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   "collection slice is no object");
@@ -1010,8 +1001,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase,
 }
 
 /// @brief drops a view, based on the VelocyPack provided
-Result Syncer::dropView(arangodb::velocypack::Slice const& slice,
-                        bool /*reportError*/) {
+Result Syncer::dropView(velocypack::Slice slice, bool /*reportError*/) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

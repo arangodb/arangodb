@@ -1,7 +1,7 @@
 /* jshint unused: false */
 // eslint-disable-next-line no-unused-vars
 /* global window, $, Backbone, document, d3, ReactDOM, React */
-/* global arangoHelper, btoa, atob, _, frontendConfig */
+/* global arangoHelper, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -45,6 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
+      'visgraphs/:name': 'showVisGraph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
@@ -62,11 +63,7 @@
       'helpus': 'helpUs',
       'views': 'views',
       'view/:name': 'viewSettings',
-      'view/:name/info': 'viewInfo',
-      'view/:name/consolidation': 'viewConsolidation',
-      'view/:name/links': 'viewLinks',
-      'view/:name/links/*link': 'viewLinks',
-      'view/:name/json': 'viewJSON',
+      'view/:name/*link': 'viewSettings',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -118,7 +115,7 @@
         }
 
         $('#modal-dialog').on('hide', function () {
-          if (goBack) {
+          if (goBack && replaceUrlFirst === '#view') {
             window.history.back();
           }
         });
@@ -162,6 +159,7 @@
           }
 
           // react unmounting
+          ReactDOM.unmountComponentAtNode(document.getElementById('content-react'));
           ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
       }
@@ -276,15 +274,6 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      if (frontendConfig.foxxStoreEnabled) {
-        this.foxxRepo.fetch({
-          success: function () {
-            if (self.serviceInstallView) {
-              self.serviceInstallView.collection = self.foxxRepo;
-            }
-          }
-        });
-      }
 
       window.progressView = new window.ProgressView();
 
@@ -316,7 +305,6 @@
 
         this.arangoCollectionsStore = new window.ArangoCollections();
         this.arangoDocumentStore = new window.ArangoDocument();
-        this.arangoViewsStore = new window.ArangoViews();
 
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
@@ -331,9 +319,6 @@
           cache: false
         });
 
-        this.footerView = new window.FooterView({
-          collection: self.coordinatorCollection
-        });
         this.notificationList = new window.NotificationCollection();
 
         this.currentDB.fetch({
@@ -354,8 +339,6 @@
 
         this.queryCollection = new window.ArangoQueries();
 
-        this.footerView.render();
-
         window.checkVersion();
 
         this.userConfig = new window.UserConfig({
@@ -370,6 +353,16 @@
         });
 
         arangoHelper.initSigma();
+
+        if (frontendConfig.foxxStoreEnabled) {
+          this.foxxRepo.fetch({
+            success: function () {
+              if (self.serviceInstallView) {
+                self.serviceInstallView.collection = self.foxxRepo;
+              }
+            }
+          });
+        }
       }).bind(this);
 
       $(window).on('resize', function () {
@@ -383,6 +376,14 @@
 
       this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
         document.getElementById('content')));
+    },
+
+    showVisGraph: function (name) {
+      this.checkUser();
+
+      this.init.then(() => ReactDOM.render(React.createElement(window.VisGraphReactView),
+        document.getElementById('content'))
+      );
     },
 
     cluster: function () {
@@ -635,25 +636,41 @@
       const user = u.name;
       const pass = u.passwd;
       const token = user.concat(':', pass);
-      xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
+      xhr.setRequestHeader('Authorization', 'Basic ' + window.btoa(token));
     },
 
-    logger: function () {
+    logger: function() {
       this.checkUser();
 
       this.init.then(() => {
-        if (this.loggerView) {
-          this.loggerView.remove();
-        }
+        const redirectCallback = function() {
+          this.navigate('#collections', {trigger: true});
+        }.bind(this);
 
-        const co = new window.ArangoLogs({
-          upto: true,
-          loglevel: 4
-        });
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
-        this.loggerView.render(true);
+
+        const loggerCallback = function() {
+          if (this.loggerView) {
+            this.loggerView.remove();
+          }
+          const co = new window.ArangoLogs({
+            upto: true,
+            loglevel: 4
+          });
+          this.loggerView = new window.LoggerView({
+            collection: co
+          });
+          this.loggerView.render(true);
+        }.bind(this);
+
+        if (!this.isCluster) {
+          if (this.currentDB.get('name') === '_system') {
+            arangoHelper.checkDatabasePermissions(redirectCallback, loggerCallback);
+          } else {
+            redirectCallback();
+          }
+        } else {
+          redirectCallback();
+        }
       });
     },
 
@@ -770,20 +787,20 @@
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            if (self.indicesView) {
-              self.indicesView.remove();
-            }
-            self.indicesView = new window.IndicesView({
-              collectionName: colname,
-              collection: self.arangoCollectionsStore.findWhere({
-                name: colname
-              })
-            });
-            self.indicesView.render();
-          }
+            ReactDOM.render(
+              React.createElement(window.CollectionIndicesReactView, {
+                collectionName: colname,
+                collection: self.arangoCollectionsStore.findWhere({
+                  name: colname,
+                }),
+              }),
+              document.getElementById("content-react")
+            );
+          },
         });
       });
     },
+
 
     cSettings: function (colname) {
       const self = this;
@@ -805,7 +822,7 @@
         });
       });
     },
-    
+
     cComputedValues: function (colname) {
       const self = this;
 
@@ -1072,8 +1089,8 @@
         if (this.applierView === undefined) {
           this.applierView = new window.ApplierView({});
         }
-        this.applierView.endpoint = atob(endpoint);
-        this.applierView.database = atob(database);
+        this.applierView.endpoint = window.atob(endpoint);
+        this.applierView.database = window.atob(database);
         this.applierView.render();
       });
     },
@@ -1329,60 +1346,19 @@
         this.userManagementView.render(true);
       });
     },
-
-    viewInfo: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewInfoReactView, { name }),
-          document.getElementById('content')));
-    },
-
     viewSettings: function (name) {
       this.checkUser();
 
       this.init.then(
         () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content')));
+          document.getElementById('content-react')));
     },
-
-    viewConsolidation: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewConsolidationReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewLinks: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewLinksReactView, { name }),
-          document.getElementById('content')));
-    },
-
-    viewJSON: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewJSONReactView, { name }),
-          document.getElementById('content')));
-    },
-
     views: function () {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.viewsView) {
-          this.viewsView.remove();
-        }
-
-        this.viewsView = new window.ViewsView({
-          collection: this.arangoViewsStore
-        });
-        this.viewsView.render();
-      });
+      
+      this.init.then(
+       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
+         document.getElementById('content-react')));
     },
 
     fetchDBS: function (callback) {

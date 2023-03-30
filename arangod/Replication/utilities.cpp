@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include <velocypack/Parser.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Mutex.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -474,7 +473,7 @@ LeaderInfo::LeaderInfo(
     ReplicationApplierConfiguration const& /*applierConfig*/) {}
 
 uint64_t LeaderInfo::version() const {
-  return majorVersion * 10000 + minorVersion * 100;
+  return majorVersion * 10000 + minorVersion * 100 + patchVersion;
 }
 
 /// @brief get leader state

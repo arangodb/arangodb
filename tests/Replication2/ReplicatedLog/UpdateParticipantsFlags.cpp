@@ -75,8 +75,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 1);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 1U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -98,8 +98,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
@@ -116,8 +116,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 2);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 2U);
   }
 }
 
@@ -133,8 +133,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 1);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 1U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -156,8 +156,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
@@ -174,8 +174,8 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 2);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 2U);
   }
 }
 
@@ -183,7 +183,7 @@ TEST_F(UpdateParticipantsFlagsTest,
        wc2_but_server_excluded_leadership_is_established) {
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(accepted, 1U);
     EXPECT_EQ(committed, std::nullopt);
   }
 
@@ -200,7 +200,7 @@ TEST_F(UpdateParticipantsFlagsTest,
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
+    EXPECT_EQ(accepted, 2U);
     EXPECT_EQ(committed, std::nullopt);
   }
 
@@ -212,7 +212,7 @@ TEST_F(UpdateParticipantsFlagsTest,
   EXPECT_NE(leader->getCommitIndex(), idx2);
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
+    EXPECT_EQ(accepted, 2U);
     EXPECT_EQ(committed, std::nullopt);
   }
 
@@ -223,8 +223,8 @@ TEST_F(UpdateParticipantsFlagsTest,
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 2);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 2U);
   }
 }
 
@@ -259,8 +259,8 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 1U);
   }
 
   // change configuration back to non-forced follower 2
@@ -275,8 +275,8 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx2 = leader->insert(LogPayload::createFromString("entry #2"));
@@ -287,8 +287,8 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 3);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 3U);
   }
 }
 
@@ -315,16 +315,16 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 1U);
   }
   // now run all followers
   runAllAsyncAppendEntries();
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 2);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 2U);
   }
 }
 
@@ -658,7 +658,7 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
   {  // set a new config
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    EXPECT_EQ(oldConfig.generation, 1);
+    EXPECT_EQ(oldConfig.generation, 1U);
     auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
 
@@ -694,8 +694,8 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 1);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 1U);
+    EXPECT_EQ(committed, 1U);
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -717,8 +717,8 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
   runAllAsyncAppendEntries();
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 2);
-    EXPECT_EQ(committed, 2);
+    EXPECT_EQ(accepted, 2U);
+    EXPECT_EQ(committed, 2U);
   }
 
   ASSERT_EQ(leader->getCommitIndex(), LogIndex{3});
@@ -748,8 +748,8 @@ TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 1);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 1U);
+    EXPECT_EQ(committed, 1U);
   }
 
   {
@@ -763,8 +763,8 @@ TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 1U);
   }
 
   {
@@ -778,16 +778,16 @@ TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 1);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 1U);
   }
 
   runAllAsyncAppendEntries();
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 3);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 3U);
   }
 
   {
@@ -803,7 +803,7 @@ TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
 
   {
     auto [accepted, committed] = leader->getParticipantConfigGenerations();
-    EXPECT_EQ(accepted, 3);
-    EXPECT_EQ(committed, 3);
+    EXPECT_EQ(accepted, 3U);
+    EXPECT_EQ(committed, 3U);
   }
 }

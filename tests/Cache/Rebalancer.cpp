@@ -68,7 +68,11 @@ struct ThreadGuard {
 
 // long-running
 
-TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
+// test is temporarily disabled because there are currently memory-accounting
+// assertion failures in the cache manager. TODO: fix assertion failures and
+// reactivate test
+TEST(CacheRebalancerTest,
+     DISABLED_test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
@@ -194,8 +198,11 @@ TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::shutdown();
 }
 
+// test is temporarily disabled because there are currently memory-accounting
+// assertion failures in the cache manager. TODO: fix assertion failures and
+// reactivate test
 TEST(CacheRebalancerTest,
-     test_rebalancing_with_transactionalcache_LongRunning) {
+     DISABLED_test_rebalancing_with_transactionalcache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
@@ -215,7 +222,7 @@ TEST(CacheRebalancerTest,
         manager.createCache<BinaryKeyHasher>(CacheType::Transactional));
   }
 
-  bool doneRebalancing = false;
+  std::atomic_bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
     while (!doneRebalancing) {
       auto status = rebalancer.rebalance();

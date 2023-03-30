@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,13 @@ Function::Function(std::string const& name, char const* arguments,
   // functions that read documents are not usable in analyzers.
   TRI_ASSERT(!hasFlag(Flags::CanReadDocuments) ||
              !hasFlag(Flags::CanUseInAnalyzer));
+
+  // only the V8 function does not have a C++ implementation.
+  // don't ever change this!
+  // note: CUSTOMSCORER and INVALID are only used by unit tests
+  TRI_ASSERT(hasCxxImplementation() || name == "V8" || name == "CUSTOMSCORER" ||
+             name == "INVALID")
+      << "unexpected AQL function without C++ implementation: " << name;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

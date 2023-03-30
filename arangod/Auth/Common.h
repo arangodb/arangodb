@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +25,12 @@
 #pragma once
 
 #include "Basics/Common.h"
+
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace auth {
+#include <string_view>
+
+namespace arangodb::auth {
 
 /// Supported access levels for data
 enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
@@ -37,8 +39,7 @@ enum class Level : char { UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
 enum class Source : char { Local, LDAP };
 
 auth::Level convertToAuthLevel(velocypack::Slice grants);
-auth::Level convertToAuthLevel(std::string const& grant);
-std::string convertFromAuthLevel(auth::Level lvl);
+auth::Level convertToAuthLevel(std::string_view grant);
+std::string_view convertFromAuthLevel(auth::Level lvl);
 
-}  // namespace auth
-}  // namespace arangodb
+}  // namespace arangodb::auth

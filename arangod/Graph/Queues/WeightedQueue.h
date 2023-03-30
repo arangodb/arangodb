@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,6 +115,16 @@ class WeightedQueue {
     }
 
     return steps;
+  }
+
+  Step const& peek() const {
+    TRI_ASSERT(!_queue.empty());
+    // will return a pointer to the step with the lowest weight amount possible.
+    // The heap structure guarantees that the first element in the queue
+    // is the "largest" element (in our case it is the smallest, as we
+    // inverted the comperator)
+    auto const& first = _queue.front();
+    return first;
   }
 
   Step pop() {

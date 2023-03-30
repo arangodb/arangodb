@@ -60,10 +60,12 @@ function BaseTestConfig () {
   
   return {
     testFailureOnLeaderNoManagedTrx : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 200; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(200, c.count());
       assertEqual(200, c.toArray().length);
 
@@ -124,10 +126,12 @@ function BaseTestConfig () {
     },
 
     testWrongCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -247,10 +251,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnLeaderFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -384,10 +390,12 @@ function BaseTestConfig () {
         // we need at least 3 DB servers
         return;
       }
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -582,10 +590,12 @@ function BaseTestConfig () {
     },
     
     testWrongCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1, syncByRevision: false, usesRevisionsAsDocumentIds: false });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -638,10 +648,12 @@ function BaseTestConfig () {
     },
     
     testRandomCountOnFollowerFullSync : function () {
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 }); 
+      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       assertEqual(100, c.toArray().length);
 
@@ -702,10 +714,11 @@ function BaseTestConfig () {
       assertEqual(2, shardInfo[shard].length);
       let leader = shardInfo[shard][0];
       let leaderUrl = servers.filter((server) => server.id === leader)[0].url;
-
+      let docs = [];
       for (let i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i }); 
+        docs.push({ _key: "test" + i }); 
       }
+      c.insert(docs);
       
       waitForShardsInSync(cn, 60); 
       
@@ -935,7 +948,7 @@ function BaseTestConfig () {
       }
       assertEqual(2 * 101, total);
     },
-    
+   
     testWrongCountOnFollowerIncrementalSyncManyFailures : function () {
       let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 }); 
 
@@ -974,7 +987,6 @@ function BaseTestConfig () {
       assertEqual(200, result.status);
       assertEqual(0, result.json.count);
       
-      let rebuildFailuresBefore = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
       let checksumFailuresBefore = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
       
       // set a failure point on the leader to drop the follower
@@ -993,22 +1005,35 @@ function BaseTestConfig () {
 
       assertEqual(101, c.toArray().length);
       assertEqual(101, c.count());
-    
+   
+      let cleanup = () => {
+        let result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/SynchronizeShard%3A%3AwrongChecksum" });
+        assertEqual(200, result.status);
+        result = request({ method: "DELETE", url: followerUrl + "/_admin/debug/failat/disableCountAdjustment" });
+        assertEqual(200, result.status);
+      };
+
       tries = 0;
-      let rebuildFailuresAfter;
-      let checksumFailuresAfter;
-      while (tries++ < 120) {
-        rebuildFailuresAfter = getMetric(followerUrl, "arangodb_sync_rebuilds_total");
-        checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
+      try {
+        let checksumFailuresAfter;
+        while (tries++ < 120) {
+          checksumFailuresAfter = getMetric(followerUrl, "arangodb_sync_wrong_checksum_total");
 
-        if (rebuildFailuresAfter > rebuildFailuresBefore) {
-          break;
+          if (checksumFailuresAfter > checksumFailuresBefore) {
+            break;
+          }
+
+          if (tries === 15) {
+            cleanup();
+          }
+
+          require("internal").sleep(0.25);
         }
-        require("internal").sleep(0.25);
+          
+        assertTrue(checksumFailuresAfter > checksumFailuresBefore);
+      } finally {
+        cleanup();
       }
-
-      assertTrue(rebuildFailuresAfter > rebuildFailuresBefore);
-      assertTrue(checksumFailuresAfter > checksumFailuresBefore);
 
       // follower count must be ok now
       tries = 0;
@@ -1069,7 +1094,8 @@ function collectionCountsSuiteNewFormat () {
 }
 
 let res = request({ method: "GET", url: getCoordinators()[0].url + "/_admin/debug/failat" });
-if (res.body === "true") {
+// these tests only make sense with the old replication protocol
+if (res.body === "true" && db._properties().replicationVersion !== "2") {
   jsunity.run(collectionCountsSuiteOldFormat);
   jsunity.run(collectionCountsSuiteNewFormat);
 }

@@ -23,11 +23,8 @@
 #pragma once
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 
 namespace RLA = arangodb::replication2::agency;
-namespace RSA = arangodb::replication2::replicated_state::agency;
 
 namespace arangodb::test {
 
@@ -119,10 +116,33 @@ struct AgencyLogBuilder {
     return *this;
   }
 
+  auto setEmptyTerm() -> AgencyLogBuilder& {
+    auto& term = makeTerm();
+
+    term.leader.reset();
+    term.term.value++;
+    return *this;
+  }
+
   auto acknowledgeTerm(replication2::ParticipantId const& id)
       -> AgencyLogBuilder& {
     auto& current = makeCurrent();
     current.localState[id].term = makeTerm().term;
+    return *this;
+  }
+
+  auto setSnapshotTrue(replication2::ParticipantId const& id)
+      -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    current.localState[id].snapshotAvailable = true;
+    return *this;
+  }
+
+  auto allSnapshotsTrue() -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    for (auto& [id, v] : current.localState) {
+      v.snapshotAvailable = true;
+    }
     return *this;
   }
 

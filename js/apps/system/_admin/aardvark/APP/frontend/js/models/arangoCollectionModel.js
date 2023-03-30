@@ -20,7 +20,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -35,7 +35,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/shards?details=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/shards?details=true'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -50,7 +50,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/figures'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/figures'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -105,7 +105,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/count?details=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/count?details=true'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -121,7 +121,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/revision'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/revision'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -133,92 +133,12 @@
       });
     },
 
-    getIndex: function (callback) {
-      var self = this;
-
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/index/?collection=' + encodeURIComponent(this.get('id'))),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          callback(false, data, self.get('id'));
-        },
-        error: function (data) {
-          callback(true, data, self.get('id'));
-        }
-      });
-    },
-
-    createIndex: function (postParameter, callback) {
-      var self = this;
-
-      $.ajax({
-        cache: false,
-        type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/index?collection=' + encodeURIComponent(self.get('id'))),
-        headers: {
-          'x-arango-async': 'store'
-        },
-        data: JSON.stringify(postParameter),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data, textStatus, xhr) {
-          if (xhr.getResponseHeader('x-arango-async-id')) {
-            window.arangoHelper.addAardvarkJob({
-              id: xhr.getResponseHeader('x-arango-async-id'),
-              type: 'index',
-              desc: 'Creating Index',
-              collection: self.get('id')
-            });
-            callback(false, data);
-          } else {
-            callback(true, data);
-          }
-        },
-        error: function (data) {
-          callback(true, data);
-        }
-      });
-    },
-
-    deleteIndex: function (id, callback) {
-      var self = this;
-
-      $.ajax({
-        cache: false,
-        type: 'DELETE',
-        url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(this.get('name')) + '/' + encodeURIComponent(id)),
-        headers: {
-          'x-arango-async': 'store'
-        },
-        success: function (data, textStatus, xhr) {
-          if (xhr.getResponseHeader('x-arango-async-id')) {
-            window.arangoHelper.addAardvarkJob({
-              id: xhr.getResponseHeader('x-arango-async-id'),
-              type: 'index',
-              desc: 'Removing Index',
-              collection: self.get('id')
-            });
-            callback(false, data);
-          } else {
-            callback(true, data);
-          }
-        },
-        error: function (data) {
-          callback(true, data);
-        }
-      });
-      callback();
-    },
-
     truncateCollection: function () {
       var self = this;
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/truncate'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/truncate'),
         success: function () {
           arangoHelper.arangoNotification('Collection truncated.');
         },
@@ -232,7 +152,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/loadIndexesIntoMemory'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/loadIndexesIntoMemory'),
         success: function () {
           arangoHelper.arangoNotification('Loading indexes into memory.');
         },
@@ -242,43 +162,13 @@
       });
     },
 
-    loadCollection: function (callback) {
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/load'),
-        success: function () {
-          callback(false);
-        },
-        error: function () {
-          callback(true);
-        }
-      });
-      callback();
-    },
-
-    unloadCollection: function (callback) {
-      $.ajax({
-        cache: false,
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/unload?flush=true'),
-        success: function () {
-          callback(false);
-        },
-        error: function () {
-          callback(true);
-        }
-      });
-      callback();
-    },
-
     renameCollection: function (name, callback) {
       var self = this;
 
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/rename'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/rename'),
         data: JSON.stringify({ name: name }),
         contentType: 'application/json',
         processData: false,
@@ -322,7 +212,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
         data: JSON.stringify(data),
         contentType: 'application/json',
         processData: false,
@@ -334,7 +224,7 @@
         }
       });
     },
-    
+
     changeComputedValues: function (computedValues, callback) {
       if (!computedValues) {
         computedValues = null;
@@ -364,7 +254,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/properties'),
         data: JSON.stringify({ schema: validation }),
         contentType: 'application/json',
         processData: false,

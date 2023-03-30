@@ -72,15 +72,16 @@ struct ViewFactory : public arangodb::ViewFactory {
   virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
                                   TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice definition,
-                                  bool) const override {
-    view = vocbase.createView(definition);
+                                  bool isUserRequest) const override {
+    view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice definition) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice definition,
+                                       bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -108,8 +109,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
   auto viewJson = arangodb::velocypack::Parser::fromJson(
       "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" "
       "}");  // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
+  Vocbase vocbase(testDBInfo(server.server()));
 
   // not present collection (no datasource)
   {
@@ -136,7 +136,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
-  auto view = vocbase.createView(viewJson->slice());
+  auto view = vocbase.createView(viewJson->slice(), false);
 
   EXPECT_FALSE(collection->deleted());
   EXPECT_FALSE(view->deleted());
@@ -194,7 +194,7 @@ TEST_F(VocbaseTest, test_lookupDataSource) {
     EXPECT_FALSE(vocbase.lookupView("testViewGUID"));
   }
 
-  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true).ok());
   EXPECT_TRUE(view->drop().ok());
   EXPECT_TRUE(collection->deleted());
   EXPECT_TRUE(view->deleted());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,10 +38,13 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
+
+#include <string_view>
 
 namespace {
 
@@ -56,15 +59,15 @@ arangodb::Result existsCollection(v8::Isolate* isolate,
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
 
-  static const std::string wildcard("*");
+  static constexpr std::string_view wildcard("*");
 
   if (wildcard == database) {
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature.lookupDatabase(database);
+  auto& databaseFeature = v8g->server().getFeature<arangodb::DatabaseFeature>();
+  auto vocbase = databaseFeature.useDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);

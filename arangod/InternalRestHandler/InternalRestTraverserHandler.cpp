@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -248,11 +248,17 @@ void InternalRestTraverserHandler::queryEngine() {
     // Safe cast BaseTraverserEngines are all of type TRAVERSER
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
-    if (option == "smartSearchUnified") {
-      eng->smartSearchUnified(body, result);
-    } else {
-      // TODO: Take deprecation path!
-      eng->smartSearch(body, result);
+
+    try {
+      if (option == "smartSearchUnified") {
+        eng->smartSearchUnified(body, result);
+      } else {
+        // TODO: Take deprecation path!
+        eng->smartSearch(body, result);
+      }
+    } catch (arangodb::basics::Exception const& ex) {
+      generateError(ResponseCode::BAD, ex.code(), ex.what());
+      return;
     }
   } else {
     // PATH Info wrong other error
@@ -262,7 +268,9 @@ void InternalRestTraverserHandler::queryEngine() {
   generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
 
-// simon: this API will no longer be used in 3.7
+// simon: this API will no longer be used in 3.7 to regularly
+// shut down an AQL query, but it can be used during query setup if the
+// setup fails.
 void InternalRestTraverserHandler::destroyEngine() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() != 1) {

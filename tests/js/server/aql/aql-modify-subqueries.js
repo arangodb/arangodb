@@ -2,10 +2,6 @@
 /*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, bind parameters
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,12 +24,13 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
-var assertQueryError = helper.assertQueryError;
+const internal = require("internal");
+const db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
+const assertQueryError = helper.assertQueryError;
+const sanitizeStats = helper.sanitizeStats;
 const isCluster = require('@arangodb/cluster').isCluster();
 const disableSingleDocOp = { optimizer : { rules : [ "-optimize-cluster-single-document-operations" ] } };
 const disableRestrictToSingleShard = { optimizer : { rules : [ "-restrict-to-single-shard" ] } };
@@ -45,23 +42,6 @@ const disableSingleDocOpRestrictToSingleShard = {
       "-optimize-cluster-single-document-operations"
     ]
   }
-};
-
-var sanitizeStats = function (stats) {
-  // remove these members from the stats because they don't matter
-  // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  return stats;
 };
 
 let hasDistributeNode = function(nodes) {

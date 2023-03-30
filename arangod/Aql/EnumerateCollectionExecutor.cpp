@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,7 +127,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
 
   _cursor = _trx.indexScan(
-      _infos.getCollection()->name(),
+      _infos.getQuery().resourceMonitor(), _infos.getCollection()->name(),
       (_infos.getRandom() ? transaction::Methods::CursorType::ANY
                           : transaction::Methods::CursorType::ALL),
       infos.canReadOwnWrites());

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,9 @@
 
 #include "RestReplicationHandler.h"
 
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -37,10 +36,13 @@
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Cluster/ServerState.h"
 #include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -68,6 +70,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Utilities/NameValidator.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
@@ -88,7 +91,6 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 std::string const dataString("data");
-std::string const keyString("key");
 std::string const typeString("type");
 }  // namespace
 
@@ -263,7 +265,7 @@ RestReplicationHandler::RestReplicationHandler(ArangodServer& server,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestReplicationHandler::isCoordinatorError() {
-  if (_vocbase.type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+  if (ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "replication API is not supported on a coordinator");
@@ -685,7 +687,7 @@ Result RestReplicationHandler::testPermissions() {
               std::string dbName = _request->databaseName();
               DatabaseFeature& databaseFeature =
                   _vocbase.server().getFeature<DatabaseFeature>();
-              TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+              auto vocbase = databaseFeature.useDatabase(dbName);
               if (vocbase == nullptr) {
                 return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
               }
@@ -852,11 +854,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   DatabaseFeature& databaseFeature =
       _vocbase.server().getFeature<DatabaseFeature>();
-  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
-  if (vocbase) {
-    resultBuilder.add(VPackValue(StaticStrings::Properties));
-    vocbase->toVelocyPack(resultBuilder);
+  auto vocbase = databaseFeature.useDatabase(dbName);
+  if (!vocbase) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return;
   }
+
+  resultBuilder.add(VPackValue(StaticStrings::Properties));
+  vocbase->toVelocyPack(resultBuilder);
+  vocbase.reset();
 
   auto& exec = ExecContext::current();
   ExecContextSuperuserScope escope(exec.isAdminUser());
@@ -864,7 +870,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     if (!exec.isAdminUser() &&
-        !exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+        !exec.canUseCollection(dbName, c->name(), auth::Level::RO)) {
       continue;
     }
 
@@ -1102,7 +1108,7 @@ Result RestReplicationHandler::processRestoreCollection(
               .removeAllAnalyzers(_vocbase);
         }
 
-        auto dropResult = methods::Collections::drop(*col, true, 300.0, true);
+        auto dropResult = methods::Collections::drop(*col, true, true);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
               dropResult.is(
@@ -1340,6 +1346,11 @@ Result RestReplicationHandler::processRestoreCollection(
 
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
+#ifdef USE_ENTERPRISE
+    LogicalCollection::addEnterpriseShardingStrategy(toMerge, parameters);
+#endif
+
+    // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel
@@ -1589,11 +1600,14 @@ Result RestReplicationHandler::parseBatch(
             // prevent checking for _rev twice in the same document
             checkRev = false;
 
-            char ridBuffer[arangodb::basics::maxUInt64StringSize];
-            RevisionId newRid = collection->newRevisionId();
-
-            documentsToInsert.add(it.key);
-            documentsToInsert.add(newRid.toValuePair(ridBuffer));
+            // We simply get rid of the `_rev` attribute here on the
+            // coordinator. We need to create a new value but it has to be
+            // unique in the shard, therefore the shard leader must create the
+            // value. If multiple coordinators would create a timestamp based
+            // _rev value concurrently, we could get a duplicate, which would
+            // lead to a clash on the actual shard leader and can lead to
+            // RocksDB conflicts or even data corruption between primary index
+            // and data in the documents column family.
           } else {
             // copy key/value verbatim
             documentsToInsert.add(it.key);
@@ -2086,7 +2100,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
 
   if (!slice.isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-
     return;
   }
 
@@ -2374,7 +2387,7 @@ void RestReplicationHandler::handleCommandApplierGetStateAll() {
   VPackBuilder builder;
   builder.openObject();
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       continue;
@@ -2442,7 +2455,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shardSlice.copyString());
+  auto col = _vocbase.lookupCollection(shardSlice.stringView());
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
@@ -2625,7 +2638,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
     return;
   }
 
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2684,7 +2697,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   }
 
   std::string leaderId = leaderIdSlice.copyString();
-  auto col = _vocbase.lookupCollection(shard.copyString());
+  auto col = _vocbase.lookupCollection(shard.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2784,7 +2797,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   }
 
   TransactionId id = ExtractReadlockId(idSlice);
-  auto col = _vocbase.lookupCollection(collection.copyString());
+  auto col = _vocbase.lookupCollection(collection.stringView());
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
@@ -2796,7 +2809,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // 0.0 means using the default timeout (whatever that is)
   double ttl = VelocyPackHelper::getNumericValue(ttlSlice, 0.0);
 
-  if (col->getStatusLocked() != TRI_VOC_COL_STATUS_LOADED) {
+  if (col->deleted()) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED,
                   "collection not loaded");
@@ -3052,10 +3065,23 @@ bool RestReplicationHandler::prepareRevisionOperation(
     return false;
   }
 
-  // get resume
-  std::string const& resumeString = _request->value("resume", found);
+  // get resume.
+  // we first try the parameter "resumeHLC" - if set, this will contain a
+  // timestamp-encoded HLC value
+  std::string const& resumeString =
+      _request->value(StaticStrings::RevisionTreeResumeHLC, found);
   if (found) {
-    ctx.resume = RevisionId::fromString(resumeString);
+    // "resumeHLC" is set. use it
+    ctx.resume = RevisionId::fromHLC(resumeString);
+  } else {
+    // "resumeHLC" is not set. now fall back to the parameter "resume". this
+    // parameter contains either a numeric value of a timestamp-encoded HLC
+    // value
+    std::string const& resumeString =
+        _request->value(StaticStrings::RevisionTreeResume, found);
+    if (found) {
+      ctx.resume = RevisionId::fromString(resumeString);
+    }
   }
 
   // print request
@@ -3148,8 +3174,10 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         badFormat = true;
         break;
       }
-      RevisionId left = RevisionId::fromSlice(first);
-      RevisionId right = RevisionId::fromSlice(second);
+      // note: always decoding as HLC timestamps is fine here, because the
+      // sender side unconditionally encodes the revisions using HLC-encoding
+      RevisionId left = RevisionId::fromHLC(first.stringView());
+      RevisionId right = RevisionId::fromHLC(second.stringView());
       if (left == RevisionId::max() || right == RevisionId::max() ||
           left >= right || left < previousRight) {
         badFormat = true;
@@ -3168,6 +3196,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     return;
   }
 
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
   it.seek(ctx.resume);
@@ -3183,8 +3213,9 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     RevisionId right;
     auto setRange = [&body, &range, &left, &right](std::size_t index) -> void {
       range = body.at(index);
-      left = RevisionId::fromSlice(range.at(0));
-      right = RevisionId::fromSlice(range.at(1));
+      // the sender side always encodes the revisions here using HLC encoding
+      left = RevisionId::fromHLC(range.at(0).stringView());
+      right = RevisionId::fromHLC(range.at(1).stringView());
     };
     setRange(current);
 
@@ -3209,7 +3240,11 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         }
 
         if (it.hasMore() && it.revision() >= left && it.revision() <= right) {
-          response.add(it.revision().toValuePair(ridBuffer));
+          if (encodeAsHLC) {
+            response.add(VPackValue(it.revision().toHLC()));
+          } else {
+            response.add(it.revision().toValuePair(ridBuffer));
+          }
           ++total;
           resumeNext = it.revision().next();
           it.next();
@@ -3246,6 +3281,8 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       if (body.length() > 0 && resumeNext <= right) {
         response.add(StaticStrings::RevisionTreeResume,
                      resumeNext.toValuePair(ridBuffer));
+        response.add(StaticStrings::RevisionTreeResumeHLC,
+                     VPackValue(resumeNext.toHLC()));
       }
     }
   }
@@ -3265,6 +3302,14 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     return;
   }
 
+  // the "encodeAsHLC" parameter is sent from the following versions onwards:
+  // - 3.8.8 or higher
+  // - 3.9.4 or higher
+  // - 3.10.1 or higher
+  // - 3.11.0 or higher
+  // - 4.0 higher
+  bool encodeAsHLC = _request->parsedValue("encodeAsHLC", false);
+
   bool success = false;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
@@ -3278,7 +3323,12 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
         badFormat = true;
         break;
       }
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        rev = RevisionId::fromHLC(entry.stringView());
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
       if (rev == RevisionId::max()) {
         badFormat = true;
         break;
@@ -3313,7 +3363,12 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
     VPackArrayBuilder docs(&response);
 
     for (VPackSlice entry : VPackArrayIterator(body)) {
-      RevisionId rev = RevisionId::fromSlice(entry);
+      RevisionId rev;
+      if (encodeAsHLC) {
+        rev = RevisionId::fromHLC(entry.stringView());
+      } else {
+        rev = RevisionId::fromSlice(entry);
+      }
       // We assume that the rev is actually present, otherwise it would not
       // have been ordered. But we want this code to work if revisions in
       // the list arrive in some arbitrary order. However, in most cases
@@ -3689,7 +3744,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
-    uint64_t num = col->numberDocuments(&trx, transaction::CountType::Normal);
+    uint64_t num = col->getPhysical()->numberDocuments(&trx);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.

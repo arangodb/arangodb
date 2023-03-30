@@ -206,7 +206,8 @@ const localKeyStatus = function (endpoint, db, col, key, available, value) {
         return true;
       }
     }
-    return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}.`);
+    return Error(`Wrong value returned by ${endpoint}/${db}/${col}/${key}, got: ${JSON.stringify(data)}, ` +
+      `expected: ${JSON.stringify(value)}`);
   };
 };
 

@@ -137,7 +137,18 @@ function explaining_queriesSuite () {
       assertEqual(doc.headers['content-type'], contentType);
       assertFalse(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], 200);
-    }
+    },
+
+    test_explains_query_window_aggregate_no_arguments: function() {
+      let cmd = api;
+      let body = { "query" : "FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1" };
+      let doc =  arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+    },
   };
 }
 jsunity.run(error_handlingSuite);

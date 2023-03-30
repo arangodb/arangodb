@@ -76,7 +76,6 @@ const FailureOracleSuite = function () {
       const coordUrl = coord.url;
       const dbs0Url = getServerUrl(dbservers[0]);
       const dbs1Url = getServerUrl(dbservers[1]);
-
       waitFor(allServersHealthy());
 
       // Check the existence of time field

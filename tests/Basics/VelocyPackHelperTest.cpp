@@ -30,6 +30,7 @@
 #include <velocypack/Parser.h>
 
 #include "Basics/VelocyPackHelper.h"
+#include "VelocypackUtils/VelocyPackStringLiteral.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros
@@ -229,4 +230,31 @@ TEST(VPackHelperTest, tst_compare_values_unequal) {
   VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1",
                     "[true]");
   VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "{}");
+}
+
+using namespace arangodb::velocypack;
+
+TEST(VPackHelperTest, velocypack_string_literals) {
+  {
+    auto const& s = "4"_vpack;
+    ASSERT_EQ(s.getUInt(), 4);
+  }
+
+  {
+    auto const& array = R"([1,2,3,4])"_vpack;
+    ASSERT_EQ(array.slice()[0].getUInt(), 1);
+    ASSERT_EQ(array.slice()[1].getUInt(), 2);
+    ASSERT_EQ(array.slice()[2].getUInt(), 3);
+    ASSERT_EQ(array.slice()[3].getUInt(), 4);
+  }
+
+  {
+    auto const& obj = R"({
+                 "vertices": [ {"_key" : "A"}, {"_key" : "B"}, {"_key" : "C"} ],
+                 "edges": [ {"_from" : "A", "_to" : "B"},
+                            {"_from" : "B", "_to" : "C"} ]
+    })"_vpack;
+    ASSERT_TRUE(obj.slice()["vertices"].isArray());
+    ASSERT_TRUE(obj.slice()["edges"].isArray());
+  }
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -154,7 +154,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(
       // now do a final sync-to-disk call. note that this can fail
       auto& engine =
           vocbase()->server().getFeature<EngineSelectorFeature>().engine();
-      res = engine.flushWal(/*waitForSync*/ true, /*waitForCollector*/ false);
+      res =
+          engine.flushWal(/*waitForSync*/ true, /*flushColumnFamilies*/ false);
     }
 
     if (res.fail()) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,11 @@
 
 #include <string>
 #include <vector>
+#include <optional>
 
 #include "Basics/Common.h"
 #include "Basics/threads.h"
+#include <mutex>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief invalid process id
@@ -100,18 +102,21 @@ struct ExternalId {
 
 struct ExternalProcess : public ExternalId {
   std::string _executable;
-  size_t _numberArguments;
-  char** _arguments;
+  size_t _numberArguments = 0;
+  char** _arguments = nullptr;
 
 #ifdef _WIN32
-  HANDLE _process;
+  HANDLE _process = nullptr;
 #endif
 
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
 
+  ExternalProcess(ExternalProcess const& other) = delete;
+  ExternalProcess& operator=(ExternalProcess const& other) = delete;
+
+  ExternalProcess() = default;
   ~ExternalProcess();
-  ExternalProcess();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,17 +124,16 @@ struct ExternalProcess : public ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 extern std::vector<ExternalProcess*> ExternalProcesses;
+extern std::mutex ExternalProcessesLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalProcessStatus {
-  TRI_external_status_e _status;
-  int64_t _exitStatus;
+  TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
+  int64_t _exitStatus = 0;
   std::string _errorMessage;
-
-  ExternalProcessStatus();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +148,7 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-ProcessInfo TRI_ProcessInfoSelf(void);
+ProcessInfo TRI_ProcessInfoSelf();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -159,6 +163,13 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid);
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up process in the process list
+////////////////////////////////////////////////////////////////////////////////
+
+std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
+    TRI_pid_t pid);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -166,12 +177,14 @@ void TRI_SetProcessTitle(char const* title);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
+/// `fileForStdErr` is a file name, to which we will redirect stderr of the
+/// external process, if the string is non-empty.
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable,
-                               std::vector<std::string> const& arguments,
-                               std::vector<std::string> const& additionalEnv,
-                               bool usePipes, ExternalId* pid);
+void TRI_CreateExternalProcess(
+    char const* executable, std::vector<std::string> const& arguments,
+    std::vector<std::string> const& additionalEnv, bool usePipes,
+    ExternalId* pid, std::string const& fileForStdErr = std::string());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Reads from the pipe of processes

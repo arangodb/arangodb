@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,6 @@
 #include "LogBufferFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -33,6 +31,7 @@
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Metrics/CounterBuilder.h"
@@ -63,7 +62,7 @@ class LogAppenderRingBuffer final : public LogAppender {
  public:
   explicit LogAppenderRingBuffer(LogLevel minLogLevel)
       : LogAppender(), _minLogLevel(minLogLevel), _id(0) {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _buffer.resize(LogBufferFeature::BufferSize);
   }
 
@@ -76,7 +75,7 @@ class LogAppenderRingBuffer final : public LogAppender {
 
     double timestamp = TRI_microtime();
 
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
 
     uint64_t n = _id++;
     LogBuffer& ptr = _buffer[n % LogBufferFeature::BufferSize];
@@ -90,7 +89,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
   void clear() {
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
     _id = 0;
     _buffer.clear();
     _buffer.resize(LogBufferFeature::BufferSize);
@@ -112,7 +111,7 @@ class LogAppenderRingBuffer final : public LogAppender {
       search = arangodb::basics::StringUtils::tolower(searchString);
     }
 
-    MUTEX_LOCKER(guard, _lock);
+    std::lock_guard guard{_lock};
 
     if (_id >= LogBufferFeature::BufferSize) {
       s = _id % LogBufferFeature::BufferSize;
@@ -154,7 +153,7 @@ class LogAppenderRingBuffer final : public LogAppender {
   }
 
  private:
-  Mutex _lock;
+  std::mutex _lock;
   LogLevel const _minLogLevel;
   uint64_t _id;
   std::vector<LogBuffer> _buffer;
@@ -251,24 +250,44 @@ void LogBufferFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption("--log.in-memory",
-                  "use in-memory log appender, which can be queried via the "
-                  "API and web interface",
+                  "Use an in-memory log appender which can be queried via the "
+                  "API and web interface.",
                   new BooleanParameter(&_useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30800);
+      .setIntroducedIn(30800)
+      .setLongDescription(R"(You can use this option to toggle storing log
+messages in memory, from which they can be consumed via the `/_admin/log`
+HTTP API and via the web interface.
+
+By default, this option is turned on, so log messages are consumable via the API
+and web interface. Turning this option off disables that functionality, saves a
+bit of memory for the in-memory log buffers, and prevents potential log
+information leakage via these means.)");
 
   std::unordered_set<std::string> const logLevels = {
       "fatal", "error", "err", "warning", "warn", "info", "debug", "trace"};
   options
       ->addOption(
           "--log.in-memory-level",
-          "use in-memory log appender only for this log level and higher",
+          "Use an in-memory log appender only for this log level and higher.",
           new DiscreteValuesParameter<StringParameter>(&_minInMemoryLogLevel,
                                                        logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709);
+      .setIntroducedIn(30709)
+      .setLongDescription(R"(You can use this option to control which log
+messages are preserved in memory (in case `--log.in-memory` is enabled).
+
+The default value is `info`, meaning all log messages of types `info`,
+`warning`, `error`, and `fatal` are stored in-memory by an instance. By setting
+this option to `warning`, only `warning`, `error` and `fatal` log messages are 
+preserved in memory, and by setting the option to `error`, only `error` and
+`fatal` messages are kept.
+
+This option is useful because the number of in-memory log messages is limited 
+to the latest 2048 messages, and these slots are shared between informational,
+warning, and error messages by default.)");
 }
 
 void LogBufferFeature::prepare() {

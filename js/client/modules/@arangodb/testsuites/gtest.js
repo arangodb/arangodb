@@ -114,7 +114,7 @@ function getGTestResults(fileName, defaultResults) {
 
 function gtestRunner (testname, options) {
   let results = { failed: 0 };
-  let rootDir = fs.join(fs.getTempPath(), 'gtest');
+  let rootDir = fs.join(fs.getTempPath(), 'gtest', testname);
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
   const run = locateGTest(testname);
@@ -124,14 +124,17 @@ function gtestRunner (testname, options) {
       let argv = [
         '--gtest_output=json:' + testResultJsonFile,
       ];
-      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+
+      let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
+      if (filter.length > 0) {
+        if (filter.length > 1) {
+          throw "Found more than one gtest_filter argument";
+        }
+        argv.push('--' + filter[0]);
+      } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
         argv.push('--gtest_filter='+options.testCase);
       } else {
         argv.push('--gtest_filter=-*_LongRunning');
-        /*let greylist =   readGreylist();
-        greylist.forEach(function(greyItem) {
-          argv.push('--gtest_filter=-'+greyItem);
-        });*/
       }
       // all non gtest args have to come last
       argv.push('--log.line-number');
@@ -148,24 +151,24 @@ function gtestRunner (testname, options) {
       results.basics = {
         failed: 1,
         status: false,
-        message: 'binary "arangodbtests" not found when trying to run suite "all-gtest"'
+        message: `binary ${testname} not found when trying to run suite "all-gtest"`
       };
     }
   }
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
+
+  const tests = [ 'arangodbtests_zkd' ];
+
+  for(const test of tests) {
+    testFns[test] = x => gtestRunner(test, x);
+  }
   testFns['gtest'] = x => gtestRunner('arangodbtests', x);
-  testFns['catch'] = x => gtestRunner('arangodbtests', x);
-  testFns['boost'] = x => gtestRunner('arangodbtests', x);
 
   opts['skipGtest'] = false;
-  opts['skipGeo'] = false; // not used anymore - only here for downwards-compatibility
-
-  defaultFns.push('gtest');
-
   testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
