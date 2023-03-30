@@ -99,6 +99,10 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
   _info._options.returnOld =
       _info._options.returnOld || _info._outputRegisterId.isValid();
 
+  // currently not supported
+  TRI_ASSERT(!_info._options.returnOld);
+  TRI_ASSERT(!_info._options.returnNew);
+
   OperationResult result(Result(), _info._options);
 
   size_t possibleWrites = 0;  // TODO - get real statistic values!

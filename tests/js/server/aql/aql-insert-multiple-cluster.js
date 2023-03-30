@@ -1,7 +1,6 @@
 /*jshint globalstrict:false, strict:false */
 /*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN, AQL_EXECUTE */
 
-
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -34,6 +33,20 @@ const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
+      
+const assertRuleIsUsed = (query, bind = {}, rules = {}) => {
+  let res = AQL_EXPLAIN(query, bind, rules);
+  assertNotEqual(-1, res.plan.rules.indexOf(ruleName));
+  const nodes = res.plan.nodes.map((n) => n.type);
+  assertNotEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
+};
+
+const assertRuleIsNotUsed = (query, bind = {}, rules = {}) => {
+  let res = AQL_EXPLAIN(query, bind, rules);
+  assertEqual(-1, res.plan.rules.indexOf(ruleName));
+  const nodes = res.plan.nodes.map((n) => n.type);
+  assertEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
+};
 
 function InsertMultipleDocumentsSuite(nShards, repFactor) {
   'use strict';
@@ -50,7 +63,6 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
         numberOfShards: nShards,
         smartGraphAttribute: "value"
       });
-
 
       for (let i = 0; i < 10; ++i) {
         db[vertex].insert({_key: "value" + i + ":abc" + i, value: "value" + i});
@@ -77,13 +89,16 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       db._drop(cn);
     },
 
-    testInsertMultipleDocumentsFromEnumerateListIgnoreErrors: function () {
+    testFromEnumerateListIgnoreErrors: function () {
       let ignoreErrors = false;
-      const queries = [`LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
-        `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,];
+      const queries = [
+        `LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
+        `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
+      ];
       for (let i = 0; i < 1; ++i) {
         ignoreErrors = (i === 0) ? false : true;
         queries.forEach((query, idx) => {
+          assertRuleIsUsed(query);
           try {
             db._query(query);
             if (!ignoreErrors) {
@@ -99,15 +114,50 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
         });
       }
     },
+    
+    testReturnOld: function () {
+      // initial document
+      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false }`;
+      assertRuleIsUsed(query);
 
-    testInsertMultipleDocumentsOverwriteReplace: function () {
-      let res = db._query(`FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`);
+      let res = db._query(query);
+      assertEqual(db[cn].count(), 1);
+      assertEqual([], res.toArray());
+      
+      query = `FOR d IN [{_key: '123', value: 2}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update' } RETURN {old: OLD}`;
+      assertRuleIsNotUsed(query);
+      res = db._query(query);
+
+      assertEqual(db[cn].count(), 1);
+      let docInfo = res.toArray()[0];
+      assertEqual(docInfo.old._key, '123');
+      assertEqual(docInfo.old.value, 1);
+
+      query = `FOR d IN [{_key: '123', value: 2}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'replace' } RETURN {old: OLD}`;
+      assertRuleIsNotUsed(query);
+      res = db._query(query);
+
+      assertEqual(db[cn].count(), 1);
+      docInfo = res.toArray()[0];
+      assertEqual(docInfo.old._key, '123');
+      assertEqual(docInfo.old.value, 2);
+    },
+
+    testOverwriteReturnNew: function () {
+      // initial document
+      let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      assertRuleIsNotUsed(query);
+
+      let res = db._query(query);
       assertEqual(db[cn].count(), 1);
       let docInfo = res.toArray()[0];
       assertEqual(docInfo._key, '123');
       assertEqual(docInfo.value, 1);
 
-      res = db._query(`FOR d IN [{_key: '123', value: 2}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'replace' } RETURN {old: OLD, new: NEW}`);
+      query = `FOR d IN [{_key: '123', value: 2}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'replace' } RETURN {old: OLD, new: NEW}`;
+      assertRuleIsNotUsed(query);
+      res = db._query(query);
+
       assertEqual(db[cn].count(), 1);
       docInfo = res.toArray()[0];
       assertEqual(docInfo.old._key, '123');
@@ -116,15 +166,21 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertEqual(docInfo.new.value, 2);
     },
 
-    testInsertMultipleDocumentsOverwriteUpdateMerge: function () {
-      let res = db._query(`FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`);
+    testOverwriteUpdateMerge: function () {
+      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      assertRuleIsNotUsed(query);
+
+      let res = db._query(query);
       assertEqual(db[cn].count(), 1);
       let docInfo = res.toArray()[0];
       assertEqual(docInfo._key, '123');
       assertEqual(docInfo.value1, 1);
       assertEqual(docInfo.value2.name, 'abc');
 
-      res = db._query(`FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN {old: OLD, new: NEW}`);
+      query = `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN {old: OLD, new: NEW}`;
+      assertRuleIsNotUsed(query);
+      res = db._query(query);
+
       assertEqual(db[cn].count(), 1);
       docInfo = res.toArray()[0];
       assertEqual(docInfo.old._key, '123');
@@ -136,15 +192,21 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertEqual(docInfo.new.value2.value3, 'a');
     },
 
-    testInsertMultipleDocumentsOverwriteUpdateNotMerge: function () {
-      let res = db._query(`FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`);
+    testOverwriteUpdateNotMerge: function () {
+      let query = `FOR d IN [{_key: '123', value1: 1, value2: {name: 'abc'}}] INSERT d INTO ${cn} OPTIONS { overwrite: false } RETURN NEW`;
+      assertRuleIsNotUsed(query);
+      let res = db._query(query);
+
       assertEqual(db[cn].count(), 1);
       let docInfo = res.toArray()[0];
       assertEqual(docInfo._key, '123');
       assertEqual(docInfo.value1, 1);
       assertEqual(docInfo.value2.name, 'abc');
 
-      res = db._query(`FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: false } RETURN {old: OLD, new: NEW}`);
+      query = `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: false } RETURN {old: OLD, new: NEW}`;
+      res = db._query(query);
+
+      assertRuleIsNotUsed(query);
       assertEqual(db[cn].count(), 1);
       docInfo = res.toArray()[0];
       assertEqual(docInfo.old._key, '123');
@@ -155,15 +217,16 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertFalse(docInfo.new.value2.hasOwnProperty('name'));
       assertEqual(docInfo.new.value2.value3, 'a');
     },
-
-    testInsertMultipleDocumentsWaitForSync: function () {
+    
+    testTrailingReturn: function () {
       let docs = [];
       for (let i = 0; i < numDocs; ++i) {
         docs.push({d: i});
       }
       const expected = {writesExecuted: numDocs, writesIgnored: 0};
       const query = `FOR d IN @docs INSERT d INTO ${cn} OPTIONS { waitForSync: false } RETURN 1`;
-      const res = db._query(query, {docs: docs});
+      assertRuleIsNotUsed(query, {docs});
+      const res = db._query(query, {docs});
       assertEqual(res.toArray().length, numDocs);
       const stats = res.getExtra().stats;
       assertEqual(db[cn].count(), numDocs);
@@ -171,11 +234,29 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertEqual(expected.writesIgnored, stats.writesIgnored);
     },
 
-    testInsertWithConflict: function () {
+    testWaitForSync: function () {
+      let docs = [];
+      for (let i = 0; i < numDocs; ++i) {
+        docs.push({d: i});
+      }
+      const expected = {writesExecuted: numDocs, writesIgnored: 0};
+      const query = `FOR d IN @docs INSERT d INTO ${cn} OPTIONS { waitForSync: false }`;
+      assertRuleIsUsed(query, {docs});
+      const res = db._query(query, {docs});
+      assertEqual([], res.toArray());
+      const stats = res.getExtra().stats;
+      assertEqual(db[cn].count(), numDocs);
+      assertEqual(expected.writesExecuted, stats.writesExecuted);
+      assertEqual(expected.writesIgnored, stats.writesIgnored);
+    },
+
+    testConflict: function () {
       db[cn].insert({_key: "foobar"});
       assertEqual(1, db[cn].count());
+      const query = `FOR d IN [{}, {_key: "foobar"}] INSERT d INTO ${cn}`;
+      assertRuleIsUsed(query);
       try {
-        db._query(`FOR d IN [{}, {_key: "foobar"}] INSERT d INTO ${cn}`);
+        db._query(query);
         fail("query did not fail as expected");
       } catch (err) {
         assertTrue(err.errorNum !== undefined, 'unexpected error');
@@ -184,11 +265,13 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       }
     },
 
-    testInsertWithExclusive: function () {
+    testExclusive: function () {
       if (isServer) {
         return;
       }
       const query = `FOR d IN [{_key: '123', value: "a"}] INSERT d INTO ${cn} OPTIONS {exclusive: true}`;
+      assertRuleIsUsed(query);
+
       const trx = db._createTransaction({collections: {write: cn}});
       trx.collection(cn).insert({_key: '123'});
       let res = arango.POST_RAW('/_api/cursor', JSON.stringify({query: query}), {'x-arango-async': 'store'});
@@ -211,7 +294,7 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertEqual(db[cn].document('123').value, "a");
     },
 
-    testInsertWithFillIndexCache: function () {
+    testFillIndexCache: function () {
       if (isServer) {
         return;
       }
@@ -230,39 +313,42 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
         try {
           getEndpointsByType("dbserver").forEach((ep) => debugSetFailAt(ep, "RefillIndexCacheOnFollowers::failIfFalse"));
           // insert should just work
-          db._query(`FOR d IN @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true} RETURN d`, {docs: docs});
+          db._query(`FOR d IN @docs INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true} RETURN d`, {docs});
           assertEqual(db[cn].count(), numDocs);
         } finally {
           getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
         }
       }
     },
+    
+    testSmartGraph: function () {
+      let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex}`;
+      assertRuleIsUsed(query);
 
-    testInsertWithSmartGraph: function () {
       const verticesCount = db[vertex].count();
-      let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex} RETURN d`;
       let res = db._query(query);
       assertEqual(db[vertex].count(), verticesCount + 1);
-      let docInfo = res.toArray()[0];
-      assertEqual(docInfo._key, 'value123:abc123');
+      assertEqual([], res.toArray());
+
+      query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges}`;
+      assertRuleIsUsed(query);
 
       const edgesCount = db[edges].count();
-      query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges} RETURN d`;
       res = db._query(query);
       assertEqual(db[edges].count(), edgesCount + 1);
-      docInfo = res.toArray()[0];
-      assertEqual(docInfo["_from"], vertex + '/value3:abc3');
-      assertEqual(docInfo["_to"], vertex + '/value6:abc3');
+      assertEqual([], res.toArray());
 
       try {
-        query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges} RETURN d`;
+        query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges}`;
+        assertRuleIsUsed(query);
         db._query(query);
         fail();
       } catch (err) {
         assertTrue(err.errorMessage.includes("edge attribute missing"));
         assertEqual(db[edges].count(), edgesCount + 1);
       }
-    }
+    },
+  
   };
 }
 
@@ -280,12 +366,12 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
       db._drop(cn);
     },
 
-    testInsertMultipleDocumentsFromVariable: function () {
+    testFromVariable: function () {
       let docs = [];
       for (let i = 0; i < numDocs; ++i) {
         docs.push({d: i});
       }
-      const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, {docs: docs});
+      const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, {docs});
       const nodes = res.plan.nodes;
       assertEqual(nodes.length, 3);
       assertEqual(nodes[0].type, "SingletonNode");
@@ -310,8 +396,11 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
       });
     },
 
-    testInsertMultipleDocumentsFromEnumerateList: function () {
-      const queries = [`LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn}`, `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`];
+    testFromEnumerateList: function () {
+      const queries = [
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn}`, 
+        `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`
+      ];
       queries.forEach(query => {
         const res = AQL_EXPLAIN(query);
         const nodes = res.plan.nodes;
@@ -332,16 +421,25 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
         assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
       });
     },
-
-    testInsertMultipleDocumentsRuleNoEffect: function () {
+    
+    testInInnerLoop: function () {
       const queries = [
-        `FOR d IN  ${cn} INSERT d INTO ${cn}`,
+        `FOR i IN 1..1 FOR d IN ${cn} INSERT d INTO ${cn}`,
+        `FOR doc IN ${cn} FOR d IN ${cn} INSERT d INTO ${cn}`,
+        `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
+        `FOR i IN 1..10 FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
+      ];
+      queries.forEach((query, idx) => {
+        const rules = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
+        assertRuleIsNotUsed(query, {}, rules);
+      });
+    },
+
+    testRuleNoEffect: function () {
+      const queries = [
         `LET list = NOOPT(APPEND([{value1: 1}], [{value2: "a"}])) FOR d in list INSERT d INTO ${cn}`,
         `FOR d IN [{value: 1}, {value: 2}] LET i = MERGE(d, {}) INSERT i INTO ${cn}`,
-        `FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn} RETURN d`,
-        `FOR d IN ${cn} FOR dd IN d.value INSERT dd INTO ${cn}`,
         `LET list = [{value: 1}, {value: 2}] FOR d IN list LET merged = MERGE(d, { value2: "abc" }) INSERT merged INTO ${cn}`,
-        `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN {old: OLD, new: NEW}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update', mergeObjects: true } RETURN NEW`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} RETURN 1`,
@@ -349,16 +447,11 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
         `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN d`,
       ];
       queries.forEach((query, idx) => {
-        let rules = {};
-        if (idx === queries.length - 1) {
-          rules = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
-        }
-        const result = AQL_EXPLAIN(query, {}, rules);
-        assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
+        assertRuleIsNotUsed(query);
       });
     },
 
-    testInsertMultipleDocumentsRuleEffect: function () {
+    testRuleEffect: function () {
       const queries = [
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
         `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: false}`,
@@ -384,16 +477,14 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
         `FOR d in @docs INSERT d INTO ${cn} OPTIONS {exclusive: false}`,
       ];
       queries.forEach(function (query) {
-        const result = AQL_EXPLAIN(query);
-        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
+        assertRuleIsUsed(query);
       });
       let docs = [];
       for (let i = 0; i < numDocs; ++i) {
         docs.push({d: i});
       }
       queriesWithVariables.forEach(function (query) {
-        const result = AQL_EXPLAIN(query, {docs: docs});
-        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
+        assertRuleIsUsed(query, {docs});
       });
     },
   };

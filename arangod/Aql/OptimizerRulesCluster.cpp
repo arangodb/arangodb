@@ -451,12 +451,25 @@ bool substituteClusterMultipleDocumentInsertOperations(
   bool modified = false;
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
 
+  Variable const* oldVariable = mod->getOutVariableOld();
+  if (oldVariable != nullptr && mod->isVarUsedLater(oldVariable)) {
+    // using RETURN OLD cannot use optimization
+    return false;
+  }
+
+  Variable const* newVariable = mod->getOutVariableNew();
+  if (newVariable != nullptr && mod->isVarUsedLater(newVariable)) {
+    // using RETURN NEW. cannot use optimization
+    return false;
+  }
+
   auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
   if (enumerateNode->outVariable() != mod->inVariable()) {
     return false;
   }
 
   if (enumerateNode->isInInnerLoop()) {
+    // FOR ... INSERT is contained in inner loop. cannot use optimization
     return false;
   }
 
@@ -465,9 +478,15 @@ bool substituteClusterMultipleDocumentInsertOperations(
     node = node->getFirstParent();
     while (node) {
       auto type = node->getType();
-      if (type != EN::CALCULATION && type != EN::RETURN) {
+      if (type == EN::RETURN) {
+        // trailing RETURN statements currently unsupported
         return false;
       }
+
+      if (type != EN::CALCULATION) {
+        return false;
+      }
+
       if (type == EN::CALCULATION) {
         if (!ExecutionNode::castTo<CalculationNode const*>(node)
                  ->expression()
