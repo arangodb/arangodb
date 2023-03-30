@@ -176,9 +176,6 @@ void Worker<V, E, M>::setupWorker() {
       totalAmountOfEdges += quiver->numberOfEdges();
     }
 
-    LOG_DEVEL << "Total vertices: " << totalAmountOfVertices;
-    LOG_DEVEL << "Total edges: " << totalAmountOfEdges;
-
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
                                    .sender = ServerState::instance()->getId(),
                                    .vertexCount = totalAmountOfVertices,
