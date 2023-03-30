@@ -345,7 +345,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       for (auto const& fResponse : futureResponses) {
         auto& result = fResponse.get();
         if (result.fail()) {
-          LOG_TOPIC("ee2ax", WARN, Logger::PREGEL) << fmt::format(
+          LOG_TOPIC("ee2ab", WARN, Logger::PREGEL) << fmt::format(
               "Worker {} execution aborted prematurely.", this->self);
           // TODO: How to handle an error here properly. Currently I do not see
           //  any ConductorErrorState message been implemented.
