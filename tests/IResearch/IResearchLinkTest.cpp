@@ -216,7 +216,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_NE(nullptr, impl);
-    ASSERT_EQ("1_3simd", impl->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              impl->meta()._version);
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -292,7 +293,8 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_NE(nullptr, impl);
-    ASSERT_EQ("1_4simd", impl->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              impl->meta()._version);
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -623,9 +625,8 @@ TEST_F(IResearchLinkTest, test_self_token) {
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_NE(nullptr, link);
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
-        link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              link->meta()._version);
     self = link->self();
     EXPECT_NE(nullptr, self);
     auto lock = self->lock();

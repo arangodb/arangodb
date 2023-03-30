@@ -902,7 +902,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
             .ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(15, slice.length());
+    EXPECT_EQ(16, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  false == slice.get("globallyUniqueId").copyString().empty()));
@@ -945,7 +945,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
                     .ok());
     builder.close();
     auto slice = builder.slice();
-    EXPECT_EQ(19, slice.length());
+    EXPECT_EQ(20, slice.length());
     EXPECT_TRUE(slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
                 false == slice.get("deleted").getBoolean());
     EXPECT_TRUE(slice.hasKey("globallyUniqueId") &&
@@ -1184,7 +1184,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1216,7 +1216,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1248,7 +1248,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1274,7 +1274,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(20, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1325,7 +1325,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1357,7 +1357,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1389,7 +1389,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1415,7 +1415,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(20, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1480,7 +1480,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1512,7 +1512,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1538,7 +1538,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1564,7 +1564,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(20, slice.length());
       EXPECT_TRUE((slice.hasKey("collections") &&
                    slice.get("collections").isArray() &&
                    1 == slice.get("collections").length()));
@@ -1635,7 +1635,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1667,7 +1667,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1693,7 +1693,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(15, slice.length());
+      EXPECT_EQ(16, slice.length());
       EXPECT_TRUE((slice.hasKey("cleanupIntervalStep") &&
                    slice.get("cleanupIntervalStep").isNumber<size_t>() &&
                    2 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
@@ -1719,7 +1719,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(19, slice.length());
+      EXPECT_EQ(20, slice.length());
       EXPECT_TRUE((
           slice.hasKey("collections") && slice.get("collections").isArray() &&
           2 == slice.get("collections").length()));  // list of links is not
