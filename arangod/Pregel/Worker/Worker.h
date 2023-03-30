@@ -133,7 +133,8 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  [[nodiscard]] futures::Future<Result> _processVertices(size_t idx, std::shared_ptr<Quiver<V, E>> quiver);
+  [[nodiscard]] futures::Future<Result> _processVertices(
+      size_t idx, std::shared_ptr<Quiver<V, E>> quiver);
   void _finishedProcessing();
   void _callConductor(std::string const& path,
                       VPackBuilder const& message) const;
