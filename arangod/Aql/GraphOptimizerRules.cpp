@@ -162,6 +162,107 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
       return false;
   }
 }
+
+enum class PathAccessState {
+  // Search for access to any path variable
+  SEARCH_ACCESS_PATH,
+  // Check if we access edges or vertices on it
+  ACCESS_EDGES_OR_VERTICES,
+  // Check if we have an indexed access [x] (we find the x here)
+  SPECIFIC_DEPTH_ACCESS_DEPTH,
+  // CHeck if we have an indexed access [x] (we find [ ] here)
+  SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS,
+};
+
+auto swapOutLastElementAccesses(
+    Ast* ast,
+    AstNode* condition,
+    std::unordered_map<Variable const*,
+                       std::pair<Variable const*, Variable const*>>
+        pathVariables) -> std::pair<bool, AstNode*> {
+  Variable const* matchingPath = nullptr;
+  bool isEdgeAccess = false;
+  bool appliedAChange = false;
+
+  PathAccessState currentState{PathAccessState::SEARCH_ACCESS_PATH};
+
+  auto searchAccessPattern = [&](AstNode* node) -> AstNode* {
+    switch (currentState) {
+      case PathAccessState::SEARCH_ACCESS_PATH: {
+        if (node->type == NODE_TYPE_REFERENCE ||
+            node->type == NODE_TYPE_VARIABLE) {
+          // we are on the bottom of the tree. Check if it is our pathVar
+          auto variable = static_cast<Variable*>(node->getData());
+          if (pathVariables.contains(variable)) {
+            currentState = PathAccessState::ACCESS_EDGES_OR_VERTICES;
+            matchingPath = variable;
+          }
+        }
+        // Keep for now
+        return node;
+      }
+      case PathAccessState::ACCESS_EDGES_OR_VERTICES: {
+        // we have var.<this-here>
+        // Only vertices || edges supported
+        if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          if (node->stringEquals(StaticStrings::GraphQueryEdges)) {
+            isEdgeAccess = true;
+            currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH;
+            return node;
+          } else if (node->stringEquals(StaticStrings::GraphQueryVertices)) {
+            isEdgeAccess = false;
+            currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH;
+            return node;
+          }
+        }
+        // Incorrect type, do not touch, abort this search,
+        // setup next one
+        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        return node;
+      }
+      case PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH: {
+        // we have var.edges[<this-here>], we can only let -1 pass here for
+        // optimization
+        if (node->value.type == VALUE_TYPE_INT &&
+            node->value.value._int == -1) {
+          currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS;
+          return node;
+        }
+        // Incorrect type, do not touch, abort this search,
+        // setup next one
+        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        return node;
+      }
+      case PathAccessState::SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS: {
+        // We are in xxxx[-1] pattern, the next node has to be the indexed
+        // access.
+        if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+          // Reset pattern, we can now restart the search
+          currentState = PathAccessState::SEARCH_ACCESS_PATH;
+
+          // Let's switch!!
+          appliedAChange = true;
+          // We searched for the very same variable above!
+          auto const& matchingElements = pathVariables.find(matchingPath);
+          return ast->createNodeReference(isEdgeAccess
+                                              ? matchingElements->second.second
+                                              : matchingElements->second.first);
+        }
+        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        return node;
+      }
+    }
+  };
+
+  auto newCondition = Ast::traverseAndModify(condition, searchAccessPattern);
+  if (newCondition != condition) {
+    // Swap out everything.
+    return std::make_pair(appliedAChange, newCondition);
+  }
+
+  return std::make_pair(appliedAChange, nullptr);
+}
+
 }
 
 auto PathVariableAccess::isLast() const noexcept -> bool {
@@ -447,7 +548,6 @@ auto arangodb::aql::maybeExtractPathAccess(Ast* ast, Variable const* pathVar, As
   pathAccess.parentOfReplace = parentOfReplace;
   pathAccess.replaceIdx = replaceIdx;
   return pathAccess;
-
 }
 
 void arangodb::aql::replaceLastAccessOnGraphPathRule(
@@ -465,7 +565,7 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
   // Unfortunately we do not have a reverse lookup on where a variable is used.
   // So we first select all traversal candidates, and afterwards check where
   // they are used.
-  containers::SmallVector<Variable const*, 8> candidates;
+  std::unordered_map<Variable const*, std::pair<Variable const*, Variable const*>> candidates;
   candidates.reserve(tNodes.size());
   for (auto const& n : tNodes) {
     auto* traversal = ExecutionNode::castTo<TraversalNode*>(n);
@@ -473,7 +573,10 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
     if (traversal->isPathOutVariableUsedLater()) {
       auto pathOutVariable = traversal->pathOutVariable();
       TRI_ASSERT(pathOutVariable != nullptr);
-      candidates.emplace_back(pathOutVariable);
+      // Without further optimization an accessible path variable, requires vertex and edge to be accessible.
+      TRI_ASSERT(traversal->vertexOutVariable() != nullptr);
+      TRI_ASSERT(traversal->edgeOutVariable() != nullptr);
+      candidates.emplace(pathOutVariable, std::make_pair(traversal->vertexOutVariable(), traversal->edgeOutVariable()));
       LOG_DEVEL << "Identified Candidate " << traversal->id();
     }
   }
@@ -495,18 +598,17 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
     return;
   }
 
-  VarSet variablesUsedHere;
+  bool appliedAChange = false;
   for (auto& n : tNodes) {
     auto* calculation = ExecutionNode::castTo<CalculationNode*>(n);
-    variablesUsedHere.clear();
-    calculation->getVariablesUsedHere(variablesUsedHere);
-    for (auto const& p : candidates) {
-      if (variablesUsedHere.contains(p)) {
-        // calculation->expression()->node()->dump(0);
-        LOG_DEVEL << "Found user! " << n->id();
-      }
+    auto [didApplyChange, replacementCondition] = swapOutLastElementAccesses(plan->getAst(), calculation->expression()->nodeForModification(), candidates);
+    // Get's true as soon as one of the swapOut calls returns true
+    appliedAChange |= didApplyChange;
+    if (replacementCondition != nullptr) {
+      // This is the indicator that we have to replace the full expression here.
+      calculation->expression()->replaceNode(replacementCondition);
     }
   }
   // Nothing done
-  opt->addPlan(std::move(plan), rule, false);
+  opt->addPlan(std::move(plan), rule, appliedAChange);
 }

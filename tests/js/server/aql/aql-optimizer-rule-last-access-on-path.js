@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global AQL_EXPLAIN, assertTrue, assertFalse */
+/* global AQL_EXPLAIN, assertTrue, assertFalse, assertEqual */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -35,10 +35,33 @@ const {db} = require("@arangodb");
 const ruleName = "optimize-traversal-last-element-access";
 
 function TraversalOptimizeLastPathAccessTestSuite() {
+    const graphName = "UnitTestGraph";
+    const vc = "UnitTestVertexCollection";
+    const ec = "UnitTestEdgeCollection";
+    const startVertex = "UnitTestVertexCollection/1";
+
+    const injectData = () => {
+        // There is nothing special to this dataset, just something that matches the filters as used in the tests later;
+        // The only thing: We have the startVertex included
+        const vertices = [];
+        for (let i = 0; i < 100; ++i) {
+            vertices.push({_key: `${i}`, name: `${i % 2 === 0 ? "test" : "foo"}`});
+        }
+        db[vc].save(vertices);
+
+        const edges = [];
+        for (let i = 0; i < 100; ++i) {
+            for (let j = 0; j < 100; j += i + 2) {
+                edges.push({_from: `${vc}/${i}`, _to: `${vc}/${j}`, label: `${i % 2 === 0 ? "test" : "foo"}`, timestamp: j});
+            }
+        }
+        db[ec].save(edges);
+    };
+
     const makePath = (length, keyOffset = 0) => {
         const vertices = [];
         const edges = [];
-        for (let i = 0; i < length; ++i) {
+        for (let i = keyOffset; i < keyOffset + length; ++i) {
             vertices.push({_key: `${i}`, _id: `v/${i}`});
             if (i > 0) {
                 edges.push({_key: `${i - 1}-${i}`, _id: `e/${i - 1}-${i}`, _from: `v/${i - 1}`, _to: `v/${i}`});
@@ -55,11 +78,6 @@ function TraversalOptimizeLastPathAccessTestSuite() {
         makePath(2, 10),
         makePath(3, 10),
     ];
-
-    const graphName = "UnitTestGraph";
-    const vc = "UnitTestVertexCollection";
-    const ec = "UnitTestEdgeCollection";
-    const startVertex = "UnitTestVertexCollection/1";
 
     const isReferenceToPath = (refNode) => {
         const {typeID, name} = refNode;
@@ -113,12 +131,15 @@ function TraversalOptimizeLastPathAccessTestSuite() {
     };
 
     const assertResultsAreNotModifiedByRule = (query) => {
-        //assertFalse(true, `Test Not yet implemented`);
+        const originalResult = db._query(query,{},{optimizer:{rules: [`-${ruleName}`]}}).toArray();
+        const optimizedResult = db._query(query,{},{optimizer:{rules: [`+${ruleName}`]}}).toArray();
+        assertEqual(originalResult, optimizedResult);
     };
 
     return {
         setUpAll: function () {
             gm._create(graphName, [gm._relation(ec, vc, vc)], [], {numberOfShards: 3});
+            injectData();
         },
 
         tearDownAll: function () {
@@ -130,9 +151,10 @@ function TraversalOptimizeLastPathAccessTestSuite() {
                 `FOR p IN ${JSON.stringify(hardCodedPaths)} RETURN p.vertices[-1]`,
                 `FOR p IN ${JSON.stringify(hardCodedPaths)} RETURN p.edges[-1]`,
                 `FOR p IN ${vc} RETURN p.vertices[-1]`,
-                `FOR p IN ${vc} RETURN p.edges[-1]`,
+                `FOR p IN ${vc} RETURN p.edges[-1]`
             ];
             for (const q of queriesToTest) {
+                // We need to exclude the move filter into rule, otherwise we cannot simply find the path access anymore
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
                 assertPlanContainsPathAccess(nodes);
                 assertRuleIsNotApplied(rules);
@@ -145,7 +167,11 @@ function TraversalOptimizeLastPathAccessTestSuite() {
                 `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.vertices[-1]`,
                 `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.edges[-1]`,
                 `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.vertices[-1]`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1]`
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1]`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.vertices[-1].name == "test" RETURN v`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" RETURN e`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" && p.vertices[-1].name == "test" RETURN v`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} SORT p.edges[-1].timestamp RETURN e`,
             ];
             for (const q of queriesToTest) {
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
