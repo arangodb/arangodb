@@ -555,7 +555,9 @@ function testSuite() {
         }
       });
      
-      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') SORT doc.value1 RETURN doc").toArray();
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value1') RETURN 1").toArray();
+      assertEqual(100, res.length);
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') RETURN 1").toArray();
       assertEqual(50, res.length);
       
       // update by id
@@ -570,7 +572,10 @@ function testSuite() {
       res.forEach((res, i) => {
         assertEqual(extendedName + "/test" + i, res._id);
       });
-      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') SORT doc.value1 RETURN doc").toArray();
+
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value1') RETURN 1").toArray();
+      assertEqual(100, res.length);
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') RETURN 1").toArray();
       assertEqual(100, res.length);
     },
     
@@ -603,6 +608,54 @@ function testSuite() {
       assertFalse(doc.hasOwnProperty("value2"));
       assertFalse(doc.hasOwnProperty("value3"));
       assertEqual(666, doc.value4);
+    },
+
+    testCollectionBatchReplace: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      docs = [];
+      let keys = [];
+      for (let i = 50; i < 102; ++i) {
+        keys.push({ _key: "test" + i });
+        docs.push({ value2: i });
+      }
+      let res = c.replace(keys, docs);
+      assertEqual(52, res.length);
+      res.forEach((res, i) => {
+        if (i < 50) {
+          assertEqual(extendedName + "/test" + (50 + i), res._id);
+        } else {
+          assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, res.errorNum);
+        }
+      });
+     
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value1') RETURN 1").toArray();
+      assertEqual(50, res.length);
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') RETURN 1").toArray();
+      assertEqual(50, res.length);
+      
+      // update by id
+      docs = [];
+      keys = [];
+      for (let i = 0; i < 50; ++i) {
+        keys.push(extendedName + "/test" + i);
+        docs.push({ value2: i });
+      }
+      res = c.replace(keys, docs);
+      assertEqual(50, res.length);
+      res.forEach((res, i) => {
+        assertEqual(extendedName + "/test" + i, res._id);
+      });
+      
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value1') RETURN 1").toArray();
+      assertEqual(0, res.length);
+      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') RETURN 1").toArray();
+      assertEqual(100, res.length);
     },
     
     testCollectionSingleRemove: function() {
