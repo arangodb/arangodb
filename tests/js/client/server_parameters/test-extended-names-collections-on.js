@@ -145,6 +145,42 @@ function testSuite() {
       c = db._collection(extendedName);
       assertNull(c);
     },
+
+    testCreateDistributeShardsLikeTraditionalProto: function() {
+      if (!isCluster()) {
+        return;
+      }
+      let proto = db._create(traditionalName, { numberOfShards: 4, replicationFactor: 2 });
+      let c = db._create(extendedName, { distributeShardsLike: proto.name() });
+
+      try {
+        let properties = c.properties();
+        assertEqual(4, properties.numberOfShards);
+        assertEqual(2, properties.replicationFactor);
+        assertEqual(proto.name(), properties.distributeShardsLike);
+      } finally {
+        // note: we must always drop the dependent collection first, not the prototype
+        c.drop();
+      }
+    },
+    
+    testCreateDistributeShardsLikeExtendedProto: function() {
+      if (!isCluster()) {
+        return;
+      }
+      let proto = db._create(extendedName, { numberOfShards: 4, replicationFactor: 2 });
+      let c = db._create(traditionalName, { distributeShardsLike: proto.name() });
+
+      try {
+        let properties = c.properties();
+        assertEqual(4, properties.numberOfShards);
+        assertEqual(2, properties.replicationFactor);
+        assertEqual(proto.name(), properties.distributeShardsLike);
+      } finally {
+        // note: we must always drop the dependent collection first, not the prototype
+        c.drop();
+      }
+    },
     
     testCreateInvalidUtf8Names: function() {
       invalidNames.forEach((name) => {
@@ -464,8 +500,104 @@ function testSuite() {
       });
     },
     
+    testCollectionSingleUpdate: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let res = c.insert({ _key: "test1", value1: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+
+      let doc = c.update("test1", { value2: 42 });
+      assertEqual(extendedName + "/test1", doc._id);
+
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertEqual(1, doc.value1);
+      assertEqual(42, doc.value2);
+      
+      doc = c.update(extendedName + "/test1", { value3: 23 });
+      assertEqual(extendedName + "/test1", res._id);
+      
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertEqual(1, doc.value1);
+      assertEqual(42, doc.value2);
+      assertEqual(23, doc.value3);
+      
+      doc = db._update(extendedName + "/test1", { value4: 666 });
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertEqual(1, doc.value1);
+      assertEqual(42, doc.value2);
+      assertEqual(23, doc.value3);
+      assertEqual(666, doc.value4);
+    },
+    
+    testCollectionSingleReplace: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let res = c.insert({ _key: "test1", value1: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+
+      let doc = c.replace("test1", { value2: 42 });
+      assertEqual(extendedName + "/test1", doc._id);
+
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertFalse(doc.hasOwnProperty("value1"));
+      assertEqual(42, doc.value2);
+      
+      doc = c.replace(extendedName + "/test1", { value3: 23 });
+      assertEqual(extendedName + "/test1", res._id);
+      
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertFalse(doc.hasOwnProperty("value1"));
+      assertFalse(doc.hasOwnProperty("value2"));
+      assertEqual(23, doc.value3);
+      
+      doc = db._replace(extendedName + "/test1", { value4: 666 });
+      doc = c.document("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+      assertFalse(doc.hasOwnProperty("value1"));
+      assertFalse(doc.hasOwnProperty("value2"));
+      assertFalse(doc.hasOwnProperty("value3"));
+      assertEqual(666, doc.value4);
+    },
+    
+    testCollectionSingleRemove: function() {
+      let c = db._create(extendedName, { numberOfShards: 3, replicationFactor: 2 });
+      let res = c.insert({ _key: "test1", value: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+
+      let doc = c.remove("test1");
+      assertEqual(extendedName + "/test1", doc._id);
+
+      assertFalse(c.exists("test1"));
+      
+      try {
+        c.remove("test1");
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+      
+      res = c.insert({ _key: "test1", value: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+      
+      doc = c.remove(extendedName + "/test1");
+      assertEqual(extendedName + "/test1", doc._id);
+
+      assertFalse(c.exists("test1"));
+      
+      res = c.insert({ _key: "test1", value: 1 });
+      assertEqual(extendedName + "/test1", res._id);
+      
+      doc = db._remove(extendedName + "/test1");
+      assertEqual(extendedName + "/test1", doc._id);
+
+      assertFalse(c.exists("test1"));
+    },
+    
     testCollectionCount: function() {
-      let c = db._create(extendedName);
+      let c = db._create(extendedName, { numberOfShards: 4 });
       assertEqual(0, c.count());
 
       let docs = [];
@@ -475,6 +607,20 @@ function testSuite() {
       c.insert(docs);
 
       assertEqual(100, c.count());
+
+      if (!isCluster()) {
+        return;
+      }
+
+      let count = c.count(true);
+      let keys = Object.keys(count);
+      let total = 0;
+      assertEqual(4, keys.length);
+      keys.forEach((key) => {
+        total += count[key];
+      });
+
+      assertEqual(100, total);
     },
     
     testCollectionFigures: function() {
@@ -496,6 +642,22 @@ function testSuite() {
       assertEqual(1, figures.indexes.count);
       assertTrue(figures.hasOwnProperty("engine"));
       assertEqual(1, figures.engine.indexes.length);
+    },
+
+    testCollectionShards: function() {
+      if (!isCluster()) {
+        return;
+      }
+      let c = db._create(extendedName, { numberOfShards: 4, replicationFactor: 2 });
+      let shards = c.shards();
+      assertEqual(4, shards.length);
+      
+      shards = c.shards(true);
+      let keys = Object.keys(shards);
+      assertEqual(4, keys.length);
+      keys.forEach((key) => {
+        assertEqual(2, shards[key].length);
+      });
     },
     
     testCollectionTruncate: function() {
