@@ -60,7 +60,8 @@ const ArangoPrototypeState = require("@arangodb/arango-prototype-state").ArangoP
 // / @brief index id regex
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.indexRegex = /^([^\/]+)\/([0-9]+)$/;
+//ArangoDatabase.indexRegex = /^([^\/]+)\/([0-9]+)$/;
+ArangoDatabase.indexRegex = /^([^\/]+)\/(.+)$/;
  
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief key regex
@@ -186,7 +187,6 @@ ArangoDatabase.prototype._documenturl = function (id, expectedName) {
 ArangoDatabase.prototype._indexurl = function (id, expectedName) {
   if (typeof id === 'string') {
     let pa = ArangoDatabase.indexRegex.exec(id);
-
     if (pa === null && expectedName !== undefined && !id.startsWith(expectedName + '/')) {
       id = expectedName + '/' + id;
     }
@@ -675,7 +675,6 @@ ArangoDatabase.prototype._index = function (id) {
 
   let requestResult = this._connection.GET(this._indexurl(id));
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
@@ -689,14 +688,7 @@ ArangoDatabase.prototype._dropIndex = function (id) {
   }
 
   let requestResult = this._connection.DELETE(this._indexurl(id));
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
-    return false;
-  }
-
   arangosh.checkRequestResult(requestResult);
-
   return true;
 };
 
@@ -707,7 +699,6 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 ArangoDatabase.prototype._engine = function () {
   let requestResult = this._connection.GET('/_api/engine');
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 

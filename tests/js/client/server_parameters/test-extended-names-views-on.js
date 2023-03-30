@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, assertNull, assertNotNull, fail */
+/* global getOptions, assertEqual, assertTrue, assertNull, assertNotNull, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -151,7 +151,7 @@ function testSuite() {
       }
     },
 
-    testArangosearchInvalidUtf8Names: function() {
+    testArangosearchCreateInvalidUtf8Names: function() {
       invalidNames.forEach((name) => {
         try {
           db._createView(name, "arangosearch", {});
@@ -258,6 +258,22 @@ function testSuite() {
         }
       });
     },
+    
+    testViewInvalidUtf8Names: function() {
+      // db._view() returns null for non-existing views...
+      invalidNames.forEach((name) => {
+        // drop view
+        assertNull(db._view(name));
+      });
+    },
+    
+    testDropViewInvalidUtf8Names: function() {
+      // db._dropView() returns undefined for non-existing views...
+      invalidNames.forEach((name) => {
+        assertUndefined(db._dropView(name));
+      });
+    },
+    
   };
 }
 

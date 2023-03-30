@@ -174,6 +174,59 @@ function testSuite() {
       });
     },
     
+    testCreateIndexExtendedNames: function() {
+      let c = db._create(extendedName);
+      assertTrue(c instanceof ArangoCollection);
+    
+      let idx1 = c.ensureIndex({ type: "persistent", fields: ["value1"], name: extendedName + "1" });
+      let idx2 = c.ensureIndex({ type: "geo", fields: ["lat", "lon"], name: extendedName + "2" });
+      let idx3 = c.ensureIndex({ type: "inverted", fields: ["value2"], name: extendedName + "3" });
+
+      let indexes = c.indexes();
+      assertEqual(4, indexes.length);
+
+      assertEqual("primary", indexes[0].type);
+      assertEqual(extendedName + "/0", indexes[0].id);
+      assertTrue(indexes[0].id.startsWith(extendedName + "/"));
+      
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(idx1.id, indexes[1].id);
+      assertTrue(indexes[1].id.startsWith(extendedName + "/"));
+      assertEqual(extendedName + "1", indexes[1].name);
+      
+      assertEqual("geo", indexes[2].type);
+      assertEqual(idx2.id, indexes[2].id);
+      assertTrue(indexes[2].id.startsWith(extendedName + "/"));
+      assertEqual(extendedName + "2", indexes[2].name);
+      
+      assertEqual("inverted", indexes[3].type);
+      assertEqual(idx3.id, indexes[3].id);
+      assertTrue(indexes[3].id.startsWith(extendedName + "/"));
+      assertEqual(extendedName + "3", indexes[3].name);
+
+      c.dropIndex(extendedName + "1");
+      c.dropIndex(extendedName + "2");
+      c.dropIndex(extendedName + "3");
+      
+      indexes = c.indexes();
+      assertEqual(1, indexes.length);
+    },
+    
+    testCollectionInvalidUtf8Names: function() {
+      // db._collection() returns null for non-existing collections...
+      invalidNames.forEach((name) => {
+        // drop view
+        assertNull(db._collection(name));
+      });
+    },
+    
+    testDropCollectionInvalidUtf8Names: function() {
+      // db._drop() returns undefined for non-existing collections...
+      invalidNames.forEach((name) => {
+        assertUndefined(db._drop(name));
+      });
+    },
+    
   };
 }
 

@@ -598,13 +598,6 @@ ArangoCollection.prototype.dropIndex = function (id) {
   }
 
   let requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));
-
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code) {
-    return false;
-  }
-
   arangosh.checkRequestResult(requestResult);
   return true;
 };

@@ -154,11 +154,11 @@ static void JS_DropIndexVocbaseCol(
 
   auto res = methods::Indexes::drop(*collection, builder.slice());
 
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
-  TRI_V8_RETURN_FALSE();
+  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 

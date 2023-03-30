@@ -64,13 +64,33 @@ function testSuite() {
     testExtendedName: function() {
       let res = db._createDatabase(extendedName);
       assertTrue(res);
+
+      db._useDatabase(extendedName);
+      try {
+        let properties = db._properties();
+        assertEqual(extendedName, properties.name);
+      } finally {
+        db._useDatabase("_system");
+      }
+
       db._dropDatabase(extendedName);
     },
     
-    testInvalidUtf8Names: function() {
+    testCreateInvalidUtf8Names: function() {
       invalidNames.forEach((name) => {
         try {
           db._createDatabase(name);
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        }
+      });
+    },
+    
+    testDropInvalidUtf8Names: function() {
+      invalidNames.forEach((name) => {
+        try {
+          db._dropDatabase(name);
           fail();
         } catch (err) {
           assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);

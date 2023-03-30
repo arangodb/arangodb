@@ -59,7 +59,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <regex>
+
+#include <string>
+#include <string_view>
 
 #include <absl/strings/str_cat.h>
 
@@ -81,8 +83,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     hasName = false;
   }
   if (idSlice.isString()) {
-    std::regex re = std::regex("^([^\\/]+)\\/(.+)$", std::regex::ECMAScript);
-    if (std::regex_match(idSlice.copyString(), re)) {
+    if (idSlice.stringView().find('/') != std::string_view::npos) {
       id = idSlice.copyString();
       name = id.substr(id.find('/') + 1);
     } else {
