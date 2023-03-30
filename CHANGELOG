@@ -17,6 +17,10 @@ devel
   previously returned HTTP 404 already when the specified index could not be
   found.
 
+* Added `--dump-views` option to arangodump, to control whether arangosearch 
+  view definitions should be stored as part of the dump. The option defaults
+  to `true`.
+
 * APM-183: optionally allow special characters and Unicode characters in
   collection names, view names and index names.
 
