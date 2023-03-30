@@ -107,7 +107,7 @@ export const ViewLeftPane = ({
   isAdminUser: boolean;
 }) => {
   return (
-    <Box paddingY="4" display="flex" height="full" backgroundColor="#eeeee">
+    <Box minWidth="0" paddingY="4" display="flex" height="full" backgroundColor="#eeeee">
       <Box maxW="calc(100% - 48px)" marginX="auto" flexGrow={1}>
         <ViewConfigForm
           formState={formState}

@@ -18,7 +18,7 @@ export const ChakraCustomProvider = ({
         display: "none"
       },
       ".reactContainer": {
-        height: "calc(100% - 120px)",
+        height: "auto",
         display: "flex",
         width: "100%"
       }
