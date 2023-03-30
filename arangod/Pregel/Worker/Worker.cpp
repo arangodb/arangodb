@@ -106,6 +106,16 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
   _messageBatchSize = 5000;
+
+  if (_messageCombiner) {
+    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
+                                         _messageCombiner.get());
+    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
+                                          _messageCombiner.get());
+  } else {
+    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
+  }
 }
 
 template<typename V, typename E, typename M>
@@ -132,10 +142,6 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _quivers.size();
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                          _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
           nullptr, _messageFormat.get(), _messageCombiner.get());
@@ -145,8 +151,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming =
           std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
@@ -250,6 +254,7 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   _config->_globalSuperstep = gss;
   // write cache becomes the readable cache
   MY_WRITE_LOCKER(wguard, _cacheRWLock);
+  ADB_PROD_ASSERT(_readCache != nullptr);
   TRI_ASSERT(_readCache->containedMessageCount() == 0);
   std::swap(_readCache, _writeCache);
   _config->_localSuperstep = gss;
