@@ -1083,7 +1083,7 @@ class ClusterInfo final {
       _shards;  // from Plan/Collections/
                 // (may later come from Current/Collections/ )
   // planned shard => servers map
-  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
+  containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardsToPlanServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
 
@@ -1138,7 +1138,7 @@ class ClusterInfo final {
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
   containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
-      _shardIds;  // from Current/Collections/
+      _shardsToCurrentServers;  // from Current/Collections/
 
   struct NewStuffByDatabase;
   containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>

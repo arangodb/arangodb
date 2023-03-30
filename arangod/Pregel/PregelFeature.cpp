@@ -367,7 +367,9 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         message::StatusMessages{message::StatusStart{}});
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
-    _statusActors.emplace(en, statusActorPID);
+    _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
+      actors.emplace(en, statusActorPID);
+    });
 
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
         vocbase.name(), std::make_unique<ResultState>(),
@@ -791,14 +793,21 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
 }
 
 ResultT<StatusState> PregelFeature::getStatus(ExecutionNumber execNr) {
-  auto statusActor = _statusActors.find(execNr);
-  if (statusActor == _statusActors.end()) {
+  auto statusActor = _statusActors.doUnderLock(
+      [&execNr](auto const& actors) -> std::optional<actor::ActorPID> {
+        auto actor = actors.find(execNr);
+        if (actor == actors.end()) {
+          return std::nullopt;
+        }
+        return actor->second;
+      });
+  if (not statusActor.has_value()) {
     return Result{
         TRI_ERROR_HTTP_NOT_FOUND,
         fmt::format("Cannot locate status for pregel run {}.", execNr)};
   }
   auto state =
-      _actorRuntime->getActorStateByID<StatusActor>(statusActor->second.id);
+      _actorRuntime->getActorStateByID<StatusActor>(statusActor.value().id);
   if (!state.has_value()) {
     return Result{TRI_ERROR_HTTP_NOT_FOUND,
                   fmt::format("Cannot find status for pregel run {}.", execNr)};

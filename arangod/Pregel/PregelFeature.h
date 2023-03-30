@@ -166,7 +166,7 @@ class PregelFeature final : public ArangodFeature {
 
   std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActors;
 
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _statusActors;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
 };
 
 }  // namespace arangodb::pregel
