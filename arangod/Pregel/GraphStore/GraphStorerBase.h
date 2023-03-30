@@ -28,6 +28,15 @@
 
 #include "Pregel/GraphStore/Quiver.h"
 
+namespace arangodb {
+class Result;
+
+namespace futures {
+template<typename T>
+class Future;
+}
+}  // namespace arangodb
+
 namespace arangodb::pregel {
 
 class WorkerConfig;
@@ -35,7 +44,7 @@ class WorkerConfig;
 template<typename V, typename E>
 struct GraphStorerBase {
   virtual auto store(std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
-      -> void = 0;
+      -> futures::Future<Result> = 0;
   virtual ~GraphStorerBase() = default;
 };
 

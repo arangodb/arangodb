@@ -566,13 +566,31 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
         [this, self = shared_from_this(),
          statusUpdateCallback = std::move(_makeStatusCallback()),
          cleanup = std::move(cleanup)] {
+          // TODO: This try/catch block should be removed. Use Results instead.
           try {
             auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
                                             _config->globalShardIDs(),
                                             std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            // TODO GORDO-1599
-            storer.store(_quivers);
+
+            std::vector<futures::Future<Result>> storeFutures;
+            for (auto const& quiver : _quivers) {
+              storeFutures.emplace_back(storer.store({quiver}));
+            }
+            if (!storeFutures.empty()) {
+              // wait for all futures to finalize
+              auto futureResponses = futures::collectAll(storeFutures).get();
+              for (auto const& fResponse : futureResponses) {
+                auto& result = fResponse.get();
+                if (result.fail()) {
+                  LOG_PREGEL("ee2af", WARN)
+                      << fmt::format("Thread failed to store graph results: {}",
+                                     result.errorMessage());
+                  // TODO: Anything else we can do in case we've failed here?!
+                  throw;
+                }
+              }
+            }
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -594,8 +612,23 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer =
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
-  // TODO GORDO-1599
-  storer.store(_quivers);
+  std::vector<futures::Future<Result>> storeFutures;
+  for (auto const& quiver : _quivers) {
+    storeFutures.emplace_back(storer.store({quiver}));
+  }
+  if (!storeFutures.empty()) {
+    // wait for all futures to finalize
+    auto futureResponses = futures::collectAll(storeFutures).get();
+    for (auto const& fResponse : futureResponses) {
+      auto& result = fResponse.get();
+      if (result.fail()) {
+        LOG_PREGEL("ee2af", WARN) << fmt::format(
+            "Thread failed to store graph results: {}", result.errorMessage());
+        // TODO: Anything else we can do in case we've failed here?!
+        throw;
+      }
+    }
+  }
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 

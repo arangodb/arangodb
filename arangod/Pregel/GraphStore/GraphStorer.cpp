@@ -56,7 +56,13 @@ namespace arangodb::pregel {
 
 template<typename V, typename E>
 auto GraphStorer<V, E>::store(
-    std::vector<std::shared_ptr<Quiver<V, E>>> quivers) -> void {
+    std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
+    -> futures::Future<Result> {
+  // TODO: I do no like this approach. Currently the interface is using a vector
+  // of quivers, but this concept does not fit this approach here. If we write
+  // into a VPackBuilder, we need all quivers at once. If we want to write
+  // parallel per quiver, we only need a single quiver here. Rework needed.
+  TRI_ASSERT(quivers.size() == 1);
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -116,42 +122,40 @@ auto GraphStorer<V, E>::store(
   // This loop will fill a buffer of vertices until we run into a new
   // collection
   // or there are no more vertices for to store (or the buffer is full)
-  for (auto& quiver : quivers) {
-    for (auto& vertex : *quiver) {
-      if (vertex.shard() != currentShard || numDocs >= 1000) {
-        commitTransaction();
+  auto quiver = quivers.at(0);
+  for (auto& vertex : *quiver) {
+    if (vertex.shard() != currentShard || numDocs >= 1000) {
+      commitTransaction();
 
-        currentShard = vertex.shard();
-        shard = globalShards[currentShard.value];
+      currentShard = vertex.shard();
+      shard = globalShards[currentShard.value];
 
-        auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
-        trx = std::make_unique<SingleCollectionTransaction>(
-            ctx, shard, AccessMode::Type::WRITE);
-        trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+      trx = std::make_unique<SingleCollectionTransaction>(
+          ctx, shard, AccessMode::Type::WRITE);
+      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-        res = trx->begin();
-        if (!res.ok()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
+      res = trx->begin();
+      if (!res.ok()) {
+        return res;
       }
+    }
 
-      std::string_view const key = vertex.key();
+    std::string_view const key = vertex.key();
 
-      builder.openObject(true);
-      builder.add(
-          StaticStrings::KeyString,
-          VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      V const& data = vertex.data();
-      if (auto result = graphFormat->buildVertexDocument(builder, &data);
-          !result) {
-        LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
-      }
-      builder.close();
-      ++numDocs;
-      if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-        SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                           statusUpdateCallback);
-      }
+    builder.openObject(true);
+    builder.add(StaticStrings::KeyString,
+                VPackValuePair(key.data(), key.size(), VPackValueType::String));
+    V const& data = vertex.data();
+    if (auto result = graphFormat->buildVertexDocument(builder, &data);
+        !result) {
+      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
+    }
+    builder.close();
+    ++numDocs;
+    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                         statusUpdateCallback);
     }
   }
 
@@ -161,6 +165,7 @@ auto GraphStorer<V, E>::store(
   // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 }  // namespace arangodb::pregel

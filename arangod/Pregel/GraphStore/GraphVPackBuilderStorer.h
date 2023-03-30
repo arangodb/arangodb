@@ -61,8 +61,9 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
         config(config),
         statusUpdateCallback(statusUpdateCallback) {}
 
+  // TODO: No sense to use a future here as it is implemented now...
   auto store(std::vector<std::shared_ptr<Quiver<V, E>>> quiver)
-      -> void override;
+      -> futures::Future<Result> override;
 
   std::unique_ptr<VPackBuilder> result;
   bool withId{false};

@@ -56,7 +56,8 @@ namespace arangodb::pregel {
 
 template<typename V, typename E>
 auto GraphVPackBuilderStorer<V, E>::store(
-    std::vector<std::shared_ptr<Quiver<V, E>>> quivers) -> void {
+    std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
+    -> futures::Future<Result> {
   result = std::make_unique<VPackBuilder>();
 
   std::string tmp;
@@ -90,13 +91,13 @@ auto GraphVPackBuilderStorer<V, E>::store(
       V const& data = vertex.data();
       if (auto res = graphFormat->buildVertexDocument(*result, &data); !res) {
         LOG_PREGEL("37fde", ERR) << "Failed to build vertex document";
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "Failed to build vertex document");
+        return {Result(TRI_ERROR_INTERNAL, "Failed to build vertex document")};
       }
       result->close();
     }
   }
   result->close();
+  return {TRI_ERROR_NO_ERROR};
 }
 
 }  // namespace arangodb::pregel
