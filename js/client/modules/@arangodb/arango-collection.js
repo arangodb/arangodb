@@ -151,7 +151,10 @@ ArangoCollection.prototype._baseurl = function (suffix) {
 
 ArangoCollection.prototype._documenturl = function (id) {
   let s = id.split('/'), url;
-  let name = encodeURIComponent(this.name());
+  let name = this.name(); 
+  // note: no need to use encodeURIComponent(name) here, because
+  // _database._documenturl() will call URL-encode the parts of
+  // the URL already
   if (s.length === 1) {
     url = this._database._documenturl(name + '/' + id, name);
   } else {

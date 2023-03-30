@@ -52,7 +52,7 @@ function testSuite() {
       db._drop(traditionalName);
       db._drop(extendedName);
     },
-
+    
     testCreateTraditionalRenameToExtended: function() {
       if (isCluster()) {
         // renaming not supported in cluster
@@ -227,7 +227,233 @@ function testSuite() {
       });
     },
     
-    testQueryId: function() {
+    testCollectionAny: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let doc = c.any();
+      assertNotNull(doc);
+      assertTrue(doc._id.startsWith(extendedName + "/"));
+      
+      c.truncate();
+
+      doc = c.any();
+      assertNull(doc);
+    },
+    
+    testCollectionAll: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      docs = c.all().toArray();
+      docs.sort((l, r) => {
+        return l.value1 - r.value1;
+      });
+
+      assertEqual(100, docs.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(i, docs[i].value1);
+        assertEqual(extendedName + "/test" + i, docs[i]._id);
+        assertEqual("test" + i, docs[i]._key);
+      }
+    },
+    
+    testCollectionFirstExample: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let doc = c.firstExample({ value1: 36 });
+      assertEqual(extendedName + "/test36", doc._id);
+      assertEqual("test36", doc._key);
+      assertEqual(36, doc.value1);
+    },
+    
+    testCollectionByExample: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      docs = c.byExample({ value1: 36 }).toArray();
+      assertEqual(1, docs.length);
+      let doc = docs[0];
+      assertEqual(extendedName + "/test36", doc._id);
+      assertEqual("test36", doc._key);
+      assertEqual(36, doc.value1);
+    },
+    
+    testCollectionRemoveByExample: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      assertEqual(1, c.removeByExample({ value1: 36 }));
+
+      assertNull(c.firstExample({ value1: 36 }));
+      assertEqual([], c.byExample({ value1: 36 }).toArray());
+      assertFalse(c.exists("test36"));
+
+      assertEqual(0, c.removeByExample({ value1: 36 }));
+    },
+    
+    testCollectionUpdateByExample: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      assertEqual(1, c.updateByExample({ value1: 36 }, { value1: 37, value2: "foo" }));
+
+      assertNull(c.firstExample({ value1: 36 }));
+      assertEqual(1, c.byExample({ value1: 37, value2: "foo" }).toArray().length);
+      assertEqual(2, c.byExample({ value1: 37 }).toArray().length);
+      
+      let doc = c.firstExample({ value1: 37, value2: "foo" });
+      assertNotNull(doc);
+    },
+    
+    testCollectionReplaceByExample: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      assertEqual(1, c.replaceByExample({ value1: 36 }, { value2: "foo" }));
+
+      assertNull(c.firstExample({ value1: 36 }));
+      assertEqual(1, c.byExample({ value2: "foo" }).toArray().length);
+      
+      assertEqual(0, c.byExample({ value1: 36, value2: "foo" }).toArray().length);
+      assertEqual(1, c.byExample({ value2: "foo" }).toArray().length);
+      let doc = c.firstExample({ value2: "foo" });
+      assertNotNull(doc);
+    },
+    
+    testCollectionExists: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      for (let i = 50; i < 102; ++i) {
+        let doc = c.exists("test" + i);
+        if (i < 100) {
+          assertEqual(extendedName + "/test" + i, doc._id);
+          assertEqual("test" + i, doc._key);
+        } else {
+          assertFalse(doc);
+        }
+        
+        doc = c.exists(extendedName + "/test" + i);
+        if (i < 100) {
+          assertEqual(extendedName + "/test" + i, doc._id);
+          assertEqual("test" + i, doc._key);
+        } else {
+          assertFalse(doc);
+        }
+        
+        doc = db._exists(extendedName + "/test" + i);
+        // db._exists() only returns true/false, for whatever reason
+        if (i < 100) {
+          assertTrue(doc);
+        } else {
+          assertFalse(doc);
+        }
+      }
+    },
+    
+    testCollectionDocument: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      for (let i = 0; i < 100; ++i) {
+        let doc = c.document("test" + i);
+        assertEqual(extendedName + "/test" + i, doc._id);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+        
+        doc = db._document(extendedName + "/test" + i);
+        assertEqual(extendedName + "/test" + i, doc._id);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value1);
+      }
+    },
+    
+    testCollectionCount: function() {
+      let c = db._create(extendedName);
+      assertEqual(0, c.count());
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      assertEqual(100, c.count());
+    },
+    
+    testCollectionFigures: function() {
+      let c = db._create(extendedName);
+      assertEqual(0, c.count());
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let figures = c.figures();
+      assertTrue(figures.hasOwnProperty("indexes"));
+      assertEqual(1, figures.indexes.count);
+      
+      figures = c.figures(true);
+      assertTrue(figures.hasOwnProperty("indexes"));
+      assertEqual(1, figures.indexes.count);
+      assertTrue(figures.hasOwnProperty("engine"));
+      assertEqual(1, figures.engine.indexes.length);
+    },
+    
+    testCollectionTruncate: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      assertEqual(100, c.count());
+      c.truncate();
+      assertEqual(0, c.count());
+    },
+    
+    testQueryIdValues: function() {
       let c = db._create(extendedName);
       let docs = [];
       for (let i = 0; i < 100; ++i) {
@@ -291,6 +517,38 @@ function testSuite() {
         assertEqual(i, res[i].value1);
       }
     },
+    
+    testEdgesOutQuery: function() {
+      let c = db._createEdgeCollection(extendedName);
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, _from: "v/test" + i, _to: "v/test" + (i % 10), value: i });
+      }
+      c.insert(docs);
+
+      let edges = c.outEdges("v/test0");
+      assertEqual(1, edges.length);
+      assertEqual(extendedName + "/test0", edges[0]._id);
+      assertEqual(0, edges[0].value);
+      
+      edges = c.inEdges("v/test0");
+      edges.sort((l, r) => { return l.value - r.value; });
+      assertEqual(10, edges.length);
+      for (let i = 0; i < 10; ++i) { 
+        assertEqual(extendedName + "/test" + (i * 10), edges[i]._id);
+        assertEqual(i * 10, edges[i].value);
+      }
+      
+      edges = c.edges("v/test0");
+      edges.sort((l, r) => { return l.value - r.value; });
+      assertEqual(10, edges.length);
+      for (let i = 0; i < 10; ++i) { 
+        assertEqual(extendedName + "/test" + (i * 10), edges[i]._id);
+        assertEqual(i * 10, edges[i].value);
+      }
+    },
+  
   };
 }
 
