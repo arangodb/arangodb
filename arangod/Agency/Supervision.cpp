@@ -3760,6 +3760,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     // For replication1, id is always the shard id.
     // For replication2, id could be a shard id or a log id, depending on the
     // job type.
+    // TODO does replication2 still need to undo a moveShard job in here?
     for (auto const& [id, entry] : undos->get()) {
       // First check some conditions under which we simply get rid of the
       // entry:
