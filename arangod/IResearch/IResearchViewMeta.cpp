@@ -37,8 +37,7 @@
 
 #include <absl/strings/str_cat.h>
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : IResearchDataStoreMeta::Mask(mask),
@@ -111,7 +110,8 @@ bool IResearchViewMeta::operator==(
     return false;
   }
 #ifdef USE_ENTERPRISE
-  if (_sortCache != other._sortCache || _pkCache != other._pkCache || _optimizeTopK != other._optimizeTopK) {
+  if (_sortCache != other._sortCache || _pkCache != other._pkCache ||
+      _optimizeTopK != other._optimizeTopK) {
     return false;
   }
 #endif
@@ -242,8 +242,7 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
     } else {
       _optimizeTopK = defaults._optimizeTopK;
     }
-    // Do not bother copy ctor for smart sort. Defaults anyway should 
-    // be empty
+    // Do not bother copy ctor for smart sort. Defaults anyway should be empty
     TRI_ASSERT(mask->_optimizeTopK || defaults._optimizeTopK.empty());
   }
 #endif
@@ -299,7 +298,6 @@ bool IResearchViewMeta::json(velocypack::Builder& builder,
     builder.add(StaticStrings::kCachePrimaryKeyField, VPackValue(_pkCache));
   }
 
-  
   if ((!mask || mask->_optimizeTopK) &&
       (!ignoreEqual || _optimizeTopK != ignoreEqual->_optimizeTopK)) {
     velocypack::ArrayBuilder arrayScope(&builder,
@@ -448,5 +446,4 @@ size_t IResearchViewMetaState::memory() const {
   return size;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch
