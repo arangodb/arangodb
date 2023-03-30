@@ -34,8 +34,8 @@ namespace arangodb::pregel::conductor {
 struct ExecutionState;
 
 struct StateChange {
-  std::optional<pregel::message::StatusMessages> statusMessage;
-  std::unique_ptr<ExecutionState> newState;
+  std::optional<pregel::message::StatusMessages> statusMessage = std::nullopt;
+  std::unique_ptr<ExecutionState> newState = nullptr;
 };
 
 #define LOG_PREGEL_CONDUCTOR_STATE(logId, level)              \
