@@ -24,8 +24,6 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Function.h"
-#include "Aql/QueryContext.h"
 #include "Aql/Optimizer.h"
 #include "Aql/TraversalNode.h"
 #include "Containers/SmallVector.h"
@@ -36,6 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+<<<<<<< HEAD
 namespace {
 bool isSupportedNode(Ast const* ast, Variable const* pathVar,
                      AstNode const* node) {
@@ -550,6 +549,8 @@ auto arangodb::aql::maybeExtractPathAccess(Ast* ast, Variable const* pathVar, As
   return pathAccess;
 }
 
+=======
+>>>>>>> parent of 51df80a9484 (Moved maybeExtractPathAccess into GraphOptimizerRules and make it publicly available)
 void arangodb::aql::replaceLastAccessOnGraphPathRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
@@ -577,7 +578,6 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
       TRI_ASSERT(traversal->vertexOutVariable() != nullptr);
       TRI_ASSERT(traversal->edgeOutVariable() != nullptr);
       candidates.emplace(pathOutVariable, std::make_pair(traversal->vertexOutVariable(), traversal->edgeOutVariable()));
-      LOG_DEVEL << "Identified Candidate " << traversal->id();
     }
   }
 
