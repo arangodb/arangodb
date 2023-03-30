@@ -70,8 +70,13 @@ const SelectedEntityInfo = () => {
       <HStack>
         <Text>Attributes</Text>
         {Object.keys(displayData).map(key => {
+          const keyData = displayData[key];
+          let tooltip = `${keyData}`;
+          if (typeof keyData === "object") {
+            tooltip = JSON.stringify(keyData);
+          }
           return (
-            <Tooltip key={key} hasArrow label={displayData[key]}>
+            <Tooltip key={key} hasArrow label={tooltip}>
               <Tag size={"md"} background="gray.800" color="white">
                 {key}
               </Tag>
