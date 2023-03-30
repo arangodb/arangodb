@@ -82,6 +82,7 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
 
 template<typename V, typename E>
 auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
+  std::vector<futures::Future<ResultT<std::shared_ptr<Quiver<V, E>>>>> futures;
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
@@ -124,20 +125,25 @@ auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
         }
       }
 
-      try {
-        result.emplace_back(loadVertices(vertexShard, edges));
-      } catch (basics::Exception const& ex) {
-        LOG_PREGEL("8682a", WARN)
-            << "caught exception while loading pregel graph: " << ex.what();
-      } catch (std::exception const& ex) {
-        LOG_PREGEL("c87c9", WARN)
-            << "caught exception while loading pregel graph: " << ex.what();
-      } catch (...) {
+      futures.emplace_back(loadVertices(vertexShard, edges));
+    }
+  }
+
+  if (!futures.empty()) {
+    // wait for all futures to finalize
+    auto futureResponses = futures::collectAll(futures).get();
+    for (auto const& fResponse : futureResponses) {
+      auto& receivedResult = fResponse.get();
+      if (receivedResult.fail()) {
+        // TODO: Abort in error case?! Before we've just logged sth. ...
         LOG_PREGEL("c7240", WARN)
             << "caught unknown exception while loading pregel graph";
+      } else {
+        result.emplace_back(receivedResult.get());
       }
     }
   }
+
   // TODO GORDO-1584 and when using actors: send message to status actor instead
   // currently if statusUpdateCallback captures WorkerHandler by reference, this
   // can lead to to a bad alloc
@@ -149,7 +155,7 @@ auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
 template<typename V, typename E>
 auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards)
-    -> std::shared_ptr<Quiver<V, E>> {
+    -> futures::Future<ResultT<std::shared_ptr<Quiver<V, E>>>> {
   auto resultQuiver = std::make_shared<Quiver<V, E>>();
 
   transaction::Options trxOpts;
@@ -160,7 +166,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
   Result res = trx.begin();
 
   if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
+    return {res};
   }
 
   auto sourceShard = config->shardId(vertexShard);

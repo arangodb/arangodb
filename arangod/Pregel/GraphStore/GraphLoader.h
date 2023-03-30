@@ -55,7 +55,8 @@ struct GraphLoader : GraphLoaderBase<V, E> {
 
   [[nodiscard]] auto loadVertices(ShardID const& vertexShard,
                                   std::vector<ShardID> const& edgeShards)
-      -> std::shared_ptr<Quiver<V, E>>;
+      -> futures::Future<ResultT<std::shared_ptr<Quiver<V, E>>>>;
+
   auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  std::string_view documentID,
                  traverser::EdgeCollectionInfo& info) -> void;
