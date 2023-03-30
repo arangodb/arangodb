@@ -36,6 +36,7 @@
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnMessages.h"
+#include "Pregel/StatusMessages.h"
 
 namespace arangodb::pregel::worker {
 
@@ -158,12 +159,15 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     vertexComputation->_writeAggregators = &workerAggregator;
     vertexComputation->_cache = outCache;
 
+    size_t verticesProcessed = 0;
     size_t activeCount = 0;
     for (auto& vertexEntry : *this->state->quiver) {
       MessageIterator<M> messages = this->state->readCache->getMessages(
           vertexEntry.shard(), vertexEntry.key());
-      this->state->currentGssObservables.messagesReceived += messages.size();
-      this->state->currentGssObservables.memoryBytesUsedForMessages +=
+      this->state->messageStats.receivedCount += messages.size();
+      // _feature.metrics()->pregelMessagesReceived->count(
+      //     _readCache->containedMessageCount());
+      this->state->messageStats.memoryBytesUsedForMessages +=
           messages.size() * sizeof(M);
 
       if (messages.size() > 0 || vertexEntry.active()) {
@@ -174,15 +178,20 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         }
       }
 
-      ++this->state->currentGssObservables.verticesProcessed;
-      if (this->state->currentGssObservables.verticesProcessed %
+      this->state->messageStats.sendCount = outCache->sendCount();
+      verticesProcessed++;
+      if (verticesProcessed %
               Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
           0) {
-        this->dispatch(
-            this->state->conductor,
-            conductor::message::StatusUpdate{
-                .executionNumber = this->state->config->executionNumber(),
-                .status = this->state->observeStatus()});
+        this->template dispatch<pregel::message::StatusMessages>(
+            this->state->statusActor,
+            pregel::message::GlobalSuperStepUpdate{
+                .gss = this->state->config->globalSuperstep(),
+                .verticesProcessed = verticesProcessed,
+                .messagesSent = this->state->messageStats.sendCount,
+                .messagesReceived = this->state->messageStats.receivedCount,
+                .memoryBytesUsedForMessages =
+                    this->state->messageStats.memoryBytesUsedForMessages});
       }
     }
 
@@ -191,12 +200,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->writeCache->mergeCache(this->state->config, inCache);
     // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
-    MessageStats stats;
-    stats.sendCount = outCache->sendCount();
-    this->state->currentGssObservables.messagesSent += outCache->sendCount();
-    this->state->currentGssObservables.memoryBytesUsedForMessages +=
-        outCache->sendCount() * sizeof(M);
-    stats.superstepRuntimeSecs = TRI_microtime() - start;
+    this->state->messageStats.superstepRuntimeSecs = TRI_microtime() - start;
 
     auto out =
         VerticesProcessed{.sendCountPerActor = outCache->sendCountPerActor(),
@@ -205,10 +209,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     inCache->clear();
     outCache->clear();
 
-    // merge the thread local stats and aggregators
     this->state->workerContext->_writeAggregators->aggregateValues(
         workerAggregator);
-    this->state->messageStats.accumulate(stats);
 
     return out;
   }
@@ -220,20 +222,16 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->workerContext->postGlobalSuperstep(
         this->state->config->_globalSuperstep);
 
-    // count all received messages
-    this->state->messageStats.receivedCount =
-        this->state->readCache->containedMessageCount();
-    // _feature.metrics()->pregelMessagesReceived->count(
-    //     _readCache->containedMessageCount());
-
-    this->state->allGssStatus.push(
-        this->state->currentGssObservables.observe());
-    this->state->currentGssObservables.zero();
-    this->template dispatch<conductor::message::ConductorMessages>(
-        this->state->conductor,
-        conductor::message::StatusUpdate{
-            .executionNumber = this->state->config->executionNumber(),
-            .status = this->state->observeStatus()});
+    // all vertices processed
+    this->template dispatch<pregel::message::StatusMessages>(
+        this->state->statusActor,
+        pregel::message::GlobalSuperStepUpdate{
+            .gss = this->state->config->globalSuperstep(),
+            .verticesProcessed = this->state->quiver->numberOfVertices(),
+            .messagesSent = this->state->messageStats.sendCount,
+            .messagesReceived = this->state->messageStats.receivedCount,
+            .memoryBytesUsedForMessages =
+                this->state->messageStats.memoryBytesUsedForMessages});
 
     this->state->readCache->clear();
     this->state->config->_localSuperstep++;

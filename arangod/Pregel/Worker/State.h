@@ -79,21 +79,6 @@ struct WorkerState {
     }
   }
 
-  auto observeStatus() -> Status const {
-    auto currentGss = currentGssObservables.observe();
-    auto fullGssStatus = allGssStatus;
-
-    if (!currentGss.isDefault()) {
-      fullGssStatus.gss.emplace_back(currentGss);
-    }
-    return Status{
-        .graphStoreStatus =
-            GraphStoreStatus{},  // TODO GORDO-1546 graphStore->status(),
-        .allGssStatus = fullGssStatus.gss.size() > 0
-                            ? std::optional{fullGssStatus}
-                            : std::nullopt};
-  }
-
   std::shared_ptr<WorkerConfig> config;
 
   // only needed in computing state
@@ -111,7 +96,7 @@ struct WorkerState {
   std::unique_ptr<OutCache<M>> outCache = nullptr;
   uint32_t messageBatchSize = 500;
 
-  actor::ActorPID conductor;
+  const actor::ActorPID conductor;
   std::unique_ptr<Algorithm<V, E, M>> algorithm;
   const DatabaseGuard vocbaseGuard;
   const actor::ActorPID spawnActor;
@@ -119,8 +104,6 @@ struct WorkerState {
   const actor::ActorPID statusActor;
   std::shared_ptr<Quiver<V, E>> quiver = std::make_unique<Quiver<V, E>>();
   MessageStats messageStats;
-  GssObservables currentGssObservables;
-  AllGssStatus allGssStatus;
 };
 template<typename V, typename E, typename M, typename Inspector>
 auto inspect(Inspector& f, WorkerState<V, E, M>& x) {

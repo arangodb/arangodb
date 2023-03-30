@@ -26,6 +26,7 @@
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/Status.h"
+#include "Inspection/Format.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
 #include "fmt/core.h"
@@ -105,27 +106,63 @@ auto inspect(Inspector& f, GraphLoadingDetails& x) {
                             f.field("edgesLoaded", x.edgesLoaded),
                             f.field("memoryBytesUsed", x.memoryBytesUsed));
 }
+struct GlobalSuperStepDetails {
+  auto add(GlobalSuperStepDetails const& other) -> void {
+    verticesProcessed += other.verticesProcessed;
+    messagesSent += other.messagesSent;
+    messagesReceived += other.messagesReceived;
+    memoryBytesUsedForMessages += other.memoryBytesUsedForMessages;
+  }
+  uint64_t verticesProcessed = 0;
+  uint64_t messagesSent = 0;
+  uint64_t messagesReceived = 0;
+  uint64_t memoryBytesUsedForMessages = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GlobalSuperStepDetails& x) {
+  return f.object(x).fields(
+      f.field("verticesProcessed", x.verticesProcessed),
+      f.field("messagesSent", x.messagesSent),
+      f.field("messagesReceived", x.messagesReceived),
+      f.field("memoryBytesUsedForMessages", x.memoryBytesUsedForMessages));
+}
+
 struct Details {
   GraphLoadingDetails loading;
+  std::unordered_map<std::string, GlobalSuperStepDetails> computing;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Details& x) {
-  return f.object(x).fields(f.field("graphLoading", x.loading));
+  return f.object(x).fields(
+      f.field("graphLoading", x.loading),
+      f.field("globalSuperStepsDuringComputing", x.computing));
 }
 struct StatusDetails {
-  auto aggregateLoading() -> Details {
+  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+      -> void {
+    perWorker[server].loading = loadingDetails;
+    // update combined
     GraphLoadingDetails loadingCombined;
     for (auto& [server, details] : perWorker) {
       loadingCombined.add(details.loading);
     }
-    return Details{.loading =
-                       loadingCombined /* , and copy other properties */};
+    combined.loading = loadingCombined;
   }
-  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
-      -> void {
-    perWorker[server].loading = loadingDetails;
-    combined = aggregateLoading();
+  auto update(ServerID server, uint64_t gss,
+              GlobalSuperStepDetails const& gssDetails) -> void {
+    auto gssName = fmt::format("gss_{}", gss);
+    perWorker[server].computing[gssName] = gssDetails;
+    // update combined
+    GlobalSuperStepDetails lastGssCombined;
+    for (auto& [server, details] : perWorker) {
+      auto detailsForGss = details.computing.contains(gssName)
+                               ? details.computing[gssName]
+                               : GlobalSuperStepDetails{};
+      lastGssCombined.add(detailsForGss);
+    }
+    combined.computing[gssName] = lastGssCombined;
   }
+
   std::unordered_map<ServerID, Details> perWorker;
   Details combined;
 };
@@ -170,6 +207,18 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
         GraphLoadingDetails{.verticesLoaded = msg.verticesLoaded,
                             .edgesLoaded = msg.edgesLoaded,
                             .memoryBytesUsed = msg.memoryBytesUsed});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GlobalSuperStepUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server, msg.gss,
+        GlobalSuperStepDetails{
+            .verticesProcessed = msg.verticesProcessed,
+            .messagesSent = msg.messagesSent,
+            .messagesReceived = msg.messagesReceived,
+            .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
     return std::move(this->state);
   }
 
