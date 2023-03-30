@@ -28,6 +28,7 @@ const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
+const isEnterprise = require("internal").isEnterprise;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const cn = "UnitTestsCollection";
 const db = arangodb.db;
@@ -51,35 +52,7 @@ const assertRuleIsNotUsed = (query, bind = {}, rules = {}) => {
 function InsertMultipleDocumentsSuite(nShards, repFactor) {
   'use strict';
 
-  let smartGraphs = require("@arangodb/smart-graph");
-  const edges = "SmartEdges";
-  const vertex = "SmartVertices";
-  const graph = "TestSmartGraph";
-
   return {
-
-    setUpAll: function () {
-      smartGraphs._create(graph, [smartGraphs._relation(edges, vertex, vertex)], null, {
-        numberOfShards: nShards,
-        smartGraphAttribute: "value"
-      });
-
-      for (let i = 0; i < 10; ++i) {
-        db[vertex].insert({_key: "value" + i + ":abc" + i, value: "value" + i});
-      }
-      for (let i = 0; i < 10; ++i) {
-        db[edges].insert({
-          _from: vertex + "/value" + i + ":abc" + i,
-          _to: vertex + "/value" + (9 - i) + ":abc" + i,
-          value: "value" + i
-        });
-      }
-    },
-
-    tearDownAll: function () {
-      smartGraphs._drop(graph, true);
-    },
-
     setUp: function () {
       db._drop(cn);
       db._create(cn, {numberOfShards: nShards, replicationFactor: repFactor});
@@ -322,30 +295,60 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
     },
     
     testSmartGraph: function () {
-      let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex}`;
-      assertRuleIsUsed(query);
+      if (!isEnterprise()) {
+        // SmartGraphs only available in enterprise edition
+        return;
+      }
 
-      const verticesCount = db[vertex].count();
-      let res = db._query(query);
-      assertEqual(db[vertex].count(), verticesCount + 1);
-      assertEqual([], res.toArray());
+      const edges = "SmartEdges";
+      const vertex = "SmartVertices";
+      const graph = "TestSmartGraph";
 
-      query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges}`;
-      assertRuleIsUsed(query);
-
-      const edgesCount = db[edges].count();
-      res = db._query(query);
-      assertEqual(db[edges].count(), edgesCount + 1);
-      assertEqual([], res.toArray());
+      let smartGraphs = require("@arangodb/smart-graph");
+      smartGraphs._create(graph, [smartGraphs._relation(edges, vertex, vertex)], null, {
+        numberOfShards: nShards,
+        smartGraphAttribute: "value"
+      });
 
       try {
-        query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges}`;
+        for (let i = 0; i < 10; ++i) {
+          db[vertex].insert({_key: "value" + i + ":abc" + i, value: "value" + i});
+        }
+        for (let i = 0; i < 10; ++i) {
+          db[edges].insert({
+            _from: vertex + "/value" + i + ":abc" + i,
+            _to: vertex + "/value" + (9 - i) + ":abc" + i,
+            value: "value" + i
+          });
+        }
+
+        let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex}`;
         assertRuleIsUsed(query);
-        db._query(query);
-        fail();
-      } catch (err) {
-        assertTrue(err.errorMessage.includes("edge attribute missing"));
+
+        const verticesCount = db[vertex].count();
+        let res = db._query(query);
+        assertEqual(db[vertex].count(), verticesCount + 1);
+        assertEqual([], res.toArray());
+
+        query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges}`;
+        assertRuleIsUsed(query);
+
+        const edgesCount = db[edges].count();
+        res = db._query(query);
         assertEqual(db[edges].count(), edgesCount + 1);
+        assertEqual([], res.toArray());
+
+        try {
+          query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges}`;
+          assertRuleIsUsed(query);
+          db._query(query);
+          fail();
+        } catch (err) {
+          assertTrue(err.errorMessage.includes("edge attribute missing"));
+          assertEqual(db[edges].count(), edgesCount + 1);
+        }
+      } finally {
+        smartGraphs._drop(graph, true);
       }
     },
   
