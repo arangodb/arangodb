@@ -40,6 +40,7 @@
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ClusterFeature.h"
@@ -1690,7 +1691,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
                                         std::string const& collection) {
-  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+  std::lock_guard locker{_rebuildCollectionsLock};
   _rebuildCollections.emplace(std::make_pair(database, collection),
                               /*started*/ false);
 }
@@ -1712,7 +1713,7 @@ void RocksDBEngine::processTreeRebuilds() {
     std::pair<TRI_voc_tick_t, std::string> candidate{};
 
     {
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       if (_rebuildCollections.empty() ||
           _runningRebuilds >= maxParallelRebuilds) {
         // nothing to do, or too much to do
@@ -1776,7 +1777,7 @@ void RocksDBEngine::processTreeRebuilds() {
                 }
                 {
                   // mark as to-be-done again
-                  MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+                  std::lock_guard locker{_rebuildCollectionsLock};
                   auto it = _rebuildCollections.find(candidate);
                   if (it != _rebuildCollections.end()) {
                     (*it).second = false;
@@ -1790,7 +1791,7 @@ void RocksDBEngine::processTreeRebuilds() {
 
           // tree rebuilding finished successfully. now remove from the list
           // to-be-rebuilt candidates
-          MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+          std::lock_guard locker{_rebuildCollectionsLock};
           _rebuildCollections.erase(candidate);
 
         } catch (std::exception const& ex) {
@@ -1803,7 +1804,7 @@ void RocksDBEngine::processTreeRebuilds() {
       }
 
       // always count down _runningRebuilds!
-      MUTEX_LOCKER(locker, _rebuildCollectionsLock);
+      std::lock_guard locker{_rebuildCollectionsLock};
       TRI_ASSERT(_runningRebuilds > 0);
       --_runningRebuilds;
     });
@@ -3334,32 +3335,36 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
                        : 100));
   }
 
-  cache::Manager* manager =
-      server().getFeature<CacheManagerFeature>().manager();
-  if (manager != nullptr) {
-    // cache turned on
-    cache::Manager::MemoryStats stats = manager->memoryStats();
-    auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(stats.globalLimit));
-    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
-    builder.add("cache.active-tables", VPackValue(stats.activeTables));
-    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
-    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
+  {
+    // in-memory cache statistics
+    cache::Manager* manager =
+        server().getFeature<CacheManagerFeature>().manager();
+
+    std::optional<cache::Manager::MemoryStats> stats;
+    if (manager != nullptr) {
+      // cache turned on
+      stats = manager->memoryStats(cache::Cache::triesFast);
+    }
+    if (!stats.has_value()) {
+      stats = cache::Manager::MemoryStats{};
+    }
+    TRI_ASSERT(stats.has_value());
+
+    builder.add("cache.limit", VPackValue(stats->globalLimit));
+    builder.add("cache.allocated", VPackValue(stats->globalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats->activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats->spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats->spareTables));
+
+    std::pair<double, double> rates;
+    if (manager != nullptr) {
+      rates = manager->globalHitRates();
+    }
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
     builder.add("cache.hit-rate-recent",
                 VPackValue(rates.second >= 0.0 ? rates.second : 0.0));
-  } else {
-    // cache turned off
-    builder.add("cache.limit", VPackValue(0));
-    builder.add("cache.allocated", VPackValue(0));
-    builder.add("cache.active-tables", VPackValue(0));
-    builder.add("cache.unused-memory", VPackValue(0));
-    builder.add("cache.unused-tables", VPackValue(0));
-    // handle NaN
-    builder.add("cache.hit-rate-lifetime", VPackValue(0));
-    builder.add("cache.hit-rate-recent", VPackValue(0));
   }
 
   // print column family statistics
@@ -3589,7 +3594,7 @@ HealthData RocksDBEngine::healthCheck() {
   // in addition, serializing access to this function avoids stampedes
   // with multiple threads trying to calculate the free disk space
   // capacity at the same time, which could be expensive.
-  MUTEX_LOCKER(guard, _healthMutex);
+  std::lock_guard guard{_healthMutex};
 
   TRI_IF_FAILURE("RocksDBEngine::healthCheck") {
     _healthData.res.reset(TRI_ERROR_DEBUG, "peng! 💥");

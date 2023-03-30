@@ -84,12 +84,17 @@ resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 recovery_cluster priority=2000 size=small cluster buckets=8
 
+shell_api priority=500 cluster -- $EncryptionAtRest
+
+shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
+
 shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
 shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
-shell_server_aql priority=1000 cluster buckets=16 -- --dumpAgencyOnError true
+shell_server_aql priority=1000 cluster sniff buckets=16 -- --dumpAgencyOnError true --sniffFilter graph
 shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true

@@ -275,17 +275,23 @@ std::uint64_t Manager::spareAllocation() const noexcept {
   return _spareTableAllocation;
 }
 
-Manager::MemoryStats Manager::memoryStats() const noexcept {
-  Manager::MemoryStats result;
+std::optional<Manager::MemoryStats> Manager::memoryStats(
+    std::uint64_t maxTries) const noexcept {
+  SpinLocker guard(SpinLocker::Mode::Read, _lock,
+                   static_cast<size_t>(maxTries));
 
-  SpinLocker guard(SpinLocker::Mode::Read, _lock);
-  result.globalLimit = _resizing ? _globalSoftLimit : _globalHardLimit;
-  result.globalAllocation = _globalAllocation;
-  result.spareAllocation = _spareTableAllocation;
-  result.activeTables = _activeTables;
-  result.spareTables = _spareTables;
+  if (guard.isLocked()) {
+    Manager::MemoryStats result;
 
-  return result;
+    result.globalLimit = _resizing ? _globalSoftLimit : _globalHardLimit;
+    result.globalAllocation = _globalAllocation;
+    result.spareAllocation = _spareTableAllocation;
+    result.activeTables = _activeTables;
+    result.spareTables = _spareTables;
+    return result;
+  }
+
+  return std::nullopt;
 }
 
 std::pair<double, double> Manager::globalHitRates() {

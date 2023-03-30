@@ -29,9 +29,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -493,7 +491,7 @@ ClusterInfo::~ClusterInfo() = default;
 void ClusterInfo::cleanup() {
   while (true) {
     {
-      MUTEX_LOCKER(mutexLocker, _idLock);
+      std::lock_guard mutexLocker{_idLock};
       if (!_uniqid._backgroundJobIsRunning) {
         break;
       }
@@ -501,7 +499,7 @@ void ClusterInfo::cleanup() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);
+  std::lock_guard mutexLocker{_planProt.mutex};
 
   {
     WRITE_LOCKER(writeLocker, _planProt.lock);
@@ -513,7 +511,7 @@ void ClusterInfo::cleanup() {
   {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentCollections.clear();
-    _shardIds.clear();
+    _shardsToCurrentServers.clear();
   }
 }
 
@@ -523,14 +521,13 @@ void ClusterInfo::triggerBackgroundGetIds() {
   _uniqid._nextUpperValue = 0ULL;
 
   try {
-    _idLock.assertLockedByCurrentThread();
     if (_uniqid._backgroundJobIsRunning) {
       return;
     }
     _uniqid._backgroundJobIsRunning = true;
     std::thread([this] {
       auto guardRunning = scopeGuard([this]() noexcept {
-        MUTEX_LOCKER(mutexLocker, _idLock);
+        std::lock_guard mutexLocker{_idLock};
         _uniqid._backgroundJobIsRunning = false;
       });
 
@@ -542,7 +539,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
       }
 
       {
-        MUTEX_LOCKER(mutexLocker, _idLock);
+        std::lock_guard mutexLocker{_idLock};
 
         if (1ULL == _uniqid._nextBatchStart) {
           // Invalidate next batch
@@ -710,7 +707,7 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
-  MUTEX_LOCKER(mutexLocker, _idLock);
+  std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
     uint64_t result = _uniqid._currentValue;
@@ -998,7 +995,7 @@ void ClusterInfo::loadPlan() {
     THROW_ARANGO_EXCEPTION(r);
   }
 
-  MUTEX_LOCKER(mutexLocker, _planProt.mutex);  // only one may work at a time
+  std::lock_guard mutexLocker{_planProt.mutex};  // only one may work at a time
 
   // For ArangoSearch views we need to get access to immediately created views
   // in order to allow links to be created correctly.
@@ -1072,7 +1069,7 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
   decltype(_shards) newShards;
-  decltype(_shardServers) newShardServers;
+  decltype(_shardsToPlanServers) newShardsToPlanServers;
   decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
   decltype(_shardGroups) newShardGroups;
   decltype(_shardToName) newShardToName;
@@ -1089,7 +1086,7 @@ void ClusterInfo::loadPlan() {
     auto start = std::chrono::steady_clock::now();
     newDatabases = _plannedDatabases;
     newShards = _shards;
-    newShardServers = _shardServers;
+    newShardsToPlanServers = _shardsToPlanServers;
     newShardToShardGroupLeader = _shardToShardGroupLeader;
     newShardGroups = _shardGroups;
     newShardToName = _shardToName;
@@ -1146,7 +1143,7 @@ void ClusterInfo::loadPlan() {
                    VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
                 newShards.erase(shardName);
-                newShardServers.erase(shardName);
+                newShardsToPlanServers.erase(shardName);
                 newShardToName.erase(shardName);
                 newShardToShardGroupLeader.erase(shardName);
                 newShardGroups.erase(shardName);
@@ -1172,6 +1169,14 @@ void ClusterInfo::loadPlan() {
 
       // create a local database object...
       arangodb::CreateDatabaseInfo info(_server, ExecContext::current());
+      // validation of the database creation parameters should have happened
+      // already when we get here. whenever we get here, we have a database
+      // in the plan with whatever settings.
+      // we should not make the validation fail here, because that can lead
+      // to all sorts of problems later on if _new_ servers join the cluster
+      // that validate _existing_ databases. this must not fail.
+      info.strictValidation(false);
+
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
       if (res.fail()) {
@@ -1512,7 +1517,7 @@ void ClusterInfo::loadPlan() {
                                          .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
               newShards.erase(shardId);
-              newShardServers.erase(shardId);
+              newShardsToPlanServers.erase(shardId);
               newShardToName.erase(shardId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
@@ -1582,7 +1587,7 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          newShardServers.insert_or_assign(p.first, p.second);
+          newShardsToPlanServers.insert_or_assign(p.first, p.second);
           newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
@@ -1635,7 +1640,10 @@ void ClusterInfo::loadPlan() {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            if (col->second->size() == 0) {
+            auto logicalColToBeCreated = colPair.second.collection;
+            if (col->second->size() == 0 ||
+                (logicalColToBeCreated->isSmart() &&
+                 logicalColToBeCreated->type() == TRI_COL_TYPE_EDGE)) {
               // Can happen for smart edge collections. But in this case we
               // can ignore the collection.
               continue;
@@ -1776,7 +1784,7 @@ void ClusterInfo::loadPlan() {
   if (swapCollections) {
     _plannedCollections.swap(_newPlannedCollections);
     _shards.swap(newShards);
-    _shardServers.swap(newShardServers);
+    _shardsToPlanServers.swap(newShardsToPlanServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
     _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
@@ -1840,7 +1848,8 @@ void ClusterInfo::loadCurrent() {
   auto currentBuilder = std::make_shared<arangodb::velocypack::Builder>();
 
   // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _currentProt.mutex);  // only one may work at a time
+  std::lock_guard mutexLocker{
+      _currentProt.mutex};  // only one may work at a time
 
   uint64_t currentIndex;
   uint64_t currentVersion;
@@ -1874,13 +1883,13 @@ void ClusterInfo::loadCurrent() {
 
   decltype(_currentDatabases) newDatabases;
   decltype(_currentCollections) newCollections;
-  decltype(_shardIds) newShardIds;
+  decltype(_shardsToCurrentServers) newShardsToCurrentServers;
 
   {
     READ_LOCKER(guard, _currentProt.lock);
     newDatabases = _currentDatabases;
     newCollections = _currentCollections;
-    newShardIds = _shardIds;
+    newShardsToCurrentServers = _shardsToCurrentServers;
   }
 
   bool swapDatabases = false;
@@ -1918,7 +1927,7 @@ void ClusterInfo::loadCurrent() {
             for (auto const cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
                 for (auto const cs : VPackObjectIterator(cc.value)) {
-                  newShardIds.erase(cs.key.copyString());
+                  newShardsToCurrentServers.erase(cs.key.copyString());
                 }
               }
             }
@@ -1982,7 +1991,7 @@ void ClusterInfo::loadCurrent() {
             for (auto const& sh : VPackObjectIterator(cc)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
-                newShardIds.erase(path.back());
+                newShardsToCurrentServers.erase(path.back());
               }
               path.pop_back();
             }
@@ -2016,7 +2025,8 @@ void ClusterInfo::loadCurrent() {
             collectionDataCurrent->servers(shardID)  // args
         );
 
-        newShardIds.insert_or_assign(std::move(shardID), std::move(servers));
+        newShardsToCurrentServers.insert_or_assign(std::move(shardID),
+                                                   std::move(servers));
       }
 
       databaseCollections.try_emplace(std::move(collectionName),
@@ -2045,7 +2055,7 @@ void ClusterInfo::loadCurrent() {
     LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
         << "Have loaded new collections current cache!";
     _currentCollections.swap(newCollections);
-    _shardIds.swap(newShardIds);
+    _shardsToCurrentServers.swap(newShardsToCurrentServers);
   }
 
   _currentProt.isValid = true;
@@ -2692,7 +2702,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(
             getReloadServerListTimeout() / interval);
       }
@@ -3023,7 +3033,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
 
@@ -3148,7 +3158,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
-  auto cacheMutex = std::make_shared<Mutex>();
+  auto cacheMutex = std::make_shared<std::mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
   auto isCleaned = std::make_shared<bool>(false);
 
@@ -3800,7 +3810,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         bool gotTimeout;
         {
           // This one has not responded, wait for it.
-          CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+          std::lock_guard locker{agencyCallbacks[i]->_cv.mutex};
           gotTimeout =
               agencyCallbacks[i]->executeByCallbackOrTimeout(getPollInterval());
         }
@@ -4047,7 +4057,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     }
 
     {
-      CONDITION_LOCKER(locker, agencyCallback->_cv);
+      std::lock_guard locker{agencyCallback->_cv.mutex};
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
 
@@ -5137,7 +5147,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
           resultBuilder.add(VPackObjectIterator(finishedPlanIndex.slice()));
           resultBuilder.add("isNewlyCreated", VPackValue(true));
         }
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
 
         return Result(*tmpRes, *errMsg);
       }
@@ -5182,7 +5192,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
-            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            std::lock_guard locker{agencyCallback->_cv.mutex};
             return Result(*tmpRes, *errMsg);
           }
 
@@ -5205,7 +5215,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
-            CONDITION_LOCKER(locker, agencyCallback->_cv);
+            std::lock_guard locker{agencyCallback->_cv.mutex};
             return Result(*tmpRes, *errMsg);
           }
 
@@ -5227,7 +5237,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
     }
@@ -5471,7 +5481,7 @@ Result ClusterInfo::dropIndexCoordinatorInner(std::string const& databaseName,
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(interval);
       }
 
@@ -5494,7 +5504,7 @@ static std::string const mapUniqueToShortId = "Target/MapUniqueToShortID";
 void ClusterInfo::loadServers() {
   ++_serversProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                  // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  std::lock_guard mutexLocker{_serversProt.mutex};
   uint64_t storedVersion = _serversProt.wantedVersion;  // this is the version
   // we will set in the end
   if (_serversProt.doneVersion == storedVersion) {
@@ -5620,7 +5630,7 @@ void ClusterInfo::loadServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 containers::FlatHashMap<ServerID, RebootId> ClusterInfo::rebootIds() const {
-  MUTEX_LOCKER(mutexLocker, _serversProt.mutex);
+  std::lock_guard mutexLocker{_serversProt.mutex};
   return _serversKnown.rebootIds();
 }
 
@@ -5771,7 +5781,7 @@ static std::string const prefixCurrentCoordinators = "Current/Coordinators";
 void ClusterInfo::loadCurrentCoordinators() {
   ++_coordinatorsProt.wantedVersion;  // Indicate that after *NOW* somebody
                                       // has to reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _coordinatorsProt.mutex);
+  std::lock_guard mutexLocker{_coordinatorsProt.mutex};
   uint64_t storedVersion = _coordinatorsProt.wantedVersion;  // this is the
   // version we will set in the end
   if (_coordinatorsProt.doneVersion == storedVersion) {
@@ -5819,7 +5829,7 @@ static std::string const prefixMappings = "Target/MapUniqueToShortID";
 void ClusterInfo::loadCurrentMappings() {
   ++_mappingsProt.wantedVersion;  // Indicate that after *NOW* somebody
                                   // has to reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _mappingsProt.mutex);
+  std::lock_guard mutexLocker{_mappingsProt.mutex};
   uint64_t storedVersion = _mappingsProt.wantedVersion;  // this is the
                                                          // version we will
                                                          // set in the end
@@ -5885,7 +5895,7 @@ static std::string const prefixTarget = "Target";
 void ClusterInfo::loadCurrentDBServers() {
   ++_dbServersProt.wantedVersion;  // Indicate that after *NOW* somebody has to
                                    // reread from the agency!
-  MUTEX_LOCKER(mutexLocker, _dbServersProt.mutex);
+  std::lock_guard mutexLocker{_dbServersProt.mutex};
   uint64_t storedVersion = _dbServersProt.wantedVersion;  // this is the version
   // we will set in the end
   if (_dbServersProt.doneVersion == storedVersion) {
@@ -6054,13 +6064,13 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
-      // _shardIds is a map-type <ShardId,
+      // _shardsToCurrentServers is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardIds.find(shardID);
+      auto it = _shardsToCurrentServers.find(shardID);
 
       // TODO throw an exception if we don't find the shard or the server list
       // is null or empty?
-      if (it != _shardIds.end()) {
+      if (it != _shardsToCurrentServers.end()) {
         auto serverList = (*it).second;
         if (serverList != nullptr && !serverList->empty() &&
             !(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
@@ -6194,9 +6204,9 @@ void ClusterInfo::getResponsibleServersReplication1(
     {
       READ_LOCKER(readLocker, _currentProt.lock);
       for (auto const& shardId : shardIds) {
-        auto it = _shardIds.find(shardId);
+        auto it = _shardsToCurrentServers.find(shardId);
 
-        if (it == _shardIds.end()) {
+        if (it == _shardsToCurrentServers.end()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                          "no shard found with ID " + shardId);
         }
@@ -6496,7 +6506,7 @@ void ClusterInfo::setShardIds(
     containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
-  _shardIds = std::move(shardIds);
+  _shardsToCurrentServers = std::move(shardIds);
 }
 #endif
 
@@ -6534,8 +6544,8 @@ arangodb::Result ClusterInfo::getShardServers(std::string_view shardId,
                                               std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _shardServers.find(shardId);
-  if (it != _shardServers.end()) {
+  auto it = _shardsToPlanServers.find(shardId);
+  if (it != _shardsToPlanServers.end()) {
     servers = (*it).second;
     return arangodb::Result();
   }
@@ -7349,7 +7359,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         dump.add(VPackValue("shardServers"));
         {
           VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardServers) {
+          for (auto const& s : _shardsToPlanServers) {
             dump.add(VPackValue(s.first));
             VPackArrayBuilder a(&dump);
             for (auto const& sv : s.second) {
@@ -7401,7 +7411,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         dump.add(VPackValue("shardIds"));
         {
           VPackObjectBuilder d(&dump);
-          for (auto const& i : _shardIds) {
+          for (auto const& i : _shardsToCurrentServers) {
             dump.add(VPackValue(i.first));
             VPackArrayBuilder a(&dump);
             for (auto const& i : *i.second) {

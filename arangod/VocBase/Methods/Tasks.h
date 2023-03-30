@@ -26,11 +26,11 @@
 #pragma once
 
 #include <chrono>
+#include <mutex>
 
 #include <v8.h>
 #include <velocypack/Builder.h>
 
-#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Scheduler/Scheduler.h"
@@ -61,7 +61,7 @@ class Task : public std::enable_shared_from_this<Task> {
                          std::string const& command);
 
  private:
-  static Mutex _tasksLock;
+  static std::mutex _tasksLock;
   // id => [ user, task ]
   static std::unordered_map<std::string,
                             std::pair<std::string, std::shared_ptr<Task>>>
@@ -99,7 +99,7 @@ class Task : public std::enable_shared_from_this<Task> {
   std::string _user;
 
   Scheduler::WorkHandle _taskHandle;
-  Mutex _taskHandleMutex;
+  std::mutex _taskHandleMutex;
 
   // guard to make sure the database is not dropped while used by us
   std::unique_ptr<DatabaseGuard> _dbGuard;

@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -3745,7 +3744,7 @@ ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
-    uint64_t num = col->numberDocuments(&trx, transaction::CountType::Normal);
+    uint64_t num = col->getPhysical()->numberDocuments(&trx);
     return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.
