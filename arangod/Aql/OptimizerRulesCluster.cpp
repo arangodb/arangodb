@@ -448,15 +448,6 @@ bool substituteClusterMultipleDocumentInsertOperations(
   if (dep == nullptr || dep->getType() != EN::ENUMERATE_LIST) {
     return false;
   }
-
-  if (node->getFirstParent() != nullptr) {
-    return false;
-  }
-  /* TODO - handle return
-   * if (!::parentIsReturnOrConstCalc(node)) {
-    return false;
-  }*/
-
   bool modified = false;
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
 
@@ -467,6 +458,29 @@ bool substituteClusterMultipleDocumentInsertOperations(
 
   if (enumerateNode->isInInnerLoop()) {
     return false;
+  }
+
+  {
+    VarSet usedVars;
+    node = node->getFirstParent();
+    while (node) {
+      auto type = node->getType();
+      if (type != EN::CALCULATION && type != EN::RETURN) {
+        return false;
+      }
+      if (type == EN::CALCULATION) {
+        if (!ExecutionNode::castTo<CalculationNode const*>(node)
+                 ->expression()
+                 ->isDeterministic()) {
+          return false;
+        }
+      }
+      node->getVariablesUsedHere(usedVars);
+      if (usedVars.contains(mod->inVariable())) {
+        return false;
+      }
+      node = node->getFirstParent();
+    }
   }
 
   auto setterNode = plan->getVarSetBy(enumerateNode->inVariable()->id);
