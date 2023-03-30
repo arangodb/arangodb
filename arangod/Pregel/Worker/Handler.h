@@ -266,13 +266,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       totalActiveCount += vP.activeCount;
 
       for (auto [actorPid, count] : vP.sendCountPerActor) {
+        // Either creates the entry and initializes with count or in case it
+        // already exists, it will just simply increment by count.
         totalSendCountPerActor[actorPid] += count;
-        /*if (totalSendCountPerActor.contains(actorPid)) {
-          totalSendCountPerActor.at(actorPid) =
-              totalSendCountPerActor.at(actorPid) + count;
-        } else {
-          totalSendCountPerActor.emplace(actorPid, count);
-        }*/
       }
     }
 
