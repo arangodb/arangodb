@@ -1,4 +1,4 @@
-import { Box, Stack } from "@chakra-ui/react";
+import { Box, FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
@@ -6,6 +6,7 @@ import { IndexType } from "../useFetchIndices";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { InfoTooltip } from "./InfoTooltip";
+import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { ZKDIndexForm } from "./ZKDIndexForm";
@@ -20,29 +21,33 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
     tooltipText = `${tooltipText} Please note that for the RocksDB engine the index types "hash", "skiplist" and "persistent" are identical, so that they are not offered separately here.`;
   }
   return (
-    <Box width="100%" padding="4">
-      <Stack padding="4" background="white" spacing="4">
-        <Box
-          display={"grid"}
-          gridTemplateColumns={"200px 1fr 40px"}
-          rowGap="5"
-          columnGap="3"
-          maxWidth="500px"
-        >
-          <Box fontSize={"lg"}>Add new index</Box>
-          <SingleSelect
-            defaultValue={indexTypeOptions[0]}
-            options={indexTypeOptions}
-            onChange={value => {
-              if (value?.value) {
-                setIndexType(value.value as IndexType);
-              }
-            }}
-          />
-          <InfoTooltip label={tooltipText} />
-        </Box>
+    <Box width="100%" paddingY="4" height="full" background="white">
+      <Box fontSize={"lg"} paddingX="10">
+        Add new index
+      </Box>
+      <Box
+        display={"grid"}
+        gridTemplateColumns={"200px 1fr 40px"}
+        rowGap="5"
+        columnGap="3"
+        maxWidth="800px"
+        marginTop="4"
+        paddingX="10"
+      >
+        <FormLabel htmlFor="type">Type</FormLabel>
+        <SingleSelect
+          inputId="type"
+          defaultValue={indexTypeOptions[0]}
+          options={indexTypeOptions}
+          onChange={value => {
+            setIndexType(value?.value as IndexType);
+          }}
+        />
+        <InfoTooltip label={tooltipText} />
+      </Box>
+      <Box height="calc(100% - 48px)" marginTop="2">
         <IndexTypeForm onClose={onClose} type={indexType} />
-      </Stack>
+      </Box>
     </Box>
   );
 };
@@ -54,6 +59,9 @@ const IndexTypeForm = ({
   type: IndexType;
   onClose: () => void;
 }) => {
+  if (type === "inverted") {
+    return <InvertedIndexFormWrap onClose={onClose} />;
+  }
   if (type === "persistent") {
     return <PersistentIndexForm onClose={onClose} />;
   }
