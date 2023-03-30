@@ -886,9 +886,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MIN),
-        l->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              l->meta()._version);
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
@@ -952,9 +951,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
     trx.addHint(arangodb::transaction::Hints::Hint::INDEX_CREATION);
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLinkMock*>(link.get());
-    ASSERT_EQ(
-        arangodb::iresearch::getFormat(arangodb::iresearch::LinkVersion::MAX),
-        l->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              l->meta()._version);
     ASSERT_TRUE(l != nullptr);
     EXPECT_TRUE(
         (l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice()).ok()));
