@@ -10,7 +10,7 @@ import {
 import { isNumber } from "lodash";
 import React from "react";
 import { IndexActionCell } from "./IndexActionCell";
-import { IndexRowType } from "./useFetchIndices";
+import { IndexRowType, StoredValue } from "./useFetchIndices";
 import { useSyncIndexCreationJob } from "./useSyncIndexCreationJob";
 
 const TABLE_HEADERS = [
@@ -46,7 +46,7 @@ export const CollectionIndicesTable = ({
           {indices?.map(indexRow => {
             const indexRowData = getIndexRowData(indexRow);
             return (
-              <Tr>
+              <Tr key={indexRow.id}>
                 {TABLE_HEADERS.map(tableHeader => {
                   const tableCellContent =
                     indexRowData[
@@ -54,12 +54,12 @@ export const CollectionIndicesTable = ({
                     ];
                   if (tableHeader.id === "action") {
                     return (
-                      <Td key={indexRow.id}>
+                      <Td key={tableHeader.id}>
                         <IndexActionCell indexRow={indexRow} />
                       </Td>
                     );
                   }
-                  return <Td key={indexRow.id}>{tableCellContent}</Td>;
+                  return <Td key={tableHeader.id}>{tableCellContent}</Td>;
                 })}
               </Tr>
             );
@@ -107,13 +107,19 @@ const getIndexRowData = (indexRow: IndexRowType) => {
       return field;
     })
     .join(", ");
+  let storedValuesString = storedValues?.join(", ");
+  if (type === "inverted") {
+    storedValuesString = (storedValues as StoredValue[])
+      ?.map(value => value.fields.join(", "))
+      .join(", ");
+  }
   return {
     id: indexId,
     extras: extras.join(", "),
     fields: fieldsString,
     sparse: sparse === undefined ? "n/a" : `${sparse}`,
     selectivityEstimate: selectivityEstimateString,
-    storedValues: storedValues?.join(", "),
+    storedValues: storedValuesString,
     unique,
     name,
     type
