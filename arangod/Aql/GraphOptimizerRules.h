@@ -34,8 +34,8 @@ struct OptimizerRule;
 /// @brief replaces the last element on path access with the direct output of
 /// vertex/edge
 void replaceLastAccessOnGraphPathRule(Optimizer* opt,
-                                  std::unique_ptr<ExecutionPlan> plan,
-                                  OptimizerRule const&);
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

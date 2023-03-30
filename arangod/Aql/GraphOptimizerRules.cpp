@@ -28,7 +28,6 @@
 #include "Aql/TraversalNode.h"
 #include "Containers/SmallVector.h"
 
-
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -48,8 +47,7 @@ enum class PathAccessState {
 };
 
 auto swapOutLastElementAccesses(
-    Ast* ast,
-    AstNode* condition,
+    Ast* ast, AstNode* condition,
     std::unordered_map<Variable const*,
                        std::pair<Variable const*, Variable const*>>
         pathVariables) -> std::pair<bool, AstNode*> {
@@ -136,7 +134,7 @@ auto swapOutLastElementAccesses(
   return std::make_pair(appliedAChange, nullptr);
 }
 
-}
+}  // namespace
 
 void arangodb::aql::replaceLastAccessOnGraphPathRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
@@ -153,7 +151,9 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
   // Unfortunately we do not have a reverse lookup on where a variable is used.
   // So we first select all traversal candidates, and afterwards check where
   // they are used.
-  std::unordered_map<Variable const*, std::pair<Variable const*, Variable const*>> candidates;
+  std::unordered_map<Variable const*,
+                     std::pair<Variable const*, Variable const*>>
+      candidates;
   candidates.reserve(tNodes.size());
   for (auto const& n : tNodes) {
     auto* traversal = ExecutionNode::castTo<TraversalNode*>(n);
@@ -161,10 +161,13 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
     if (traversal->isPathOutVariableUsedLater()) {
       auto pathOutVariable = traversal->pathOutVariable();
       TRI_ASSERT(pathOutVariable != nullptr);
-      // Without further optimization an accessible path variable, requires vertex and edge to be accessible.
+      // Without further optimization an accessible path variable, requires
+      // vertex and edge to be accessible.
       TRI_ASSERT(traversal->vertexOutVariable() != nullptr);
       TRI_ASSERT(traversal->edgeOutVariable() != nullptr);
-      candidates.emplace(pathOutVariable, std::make_pair(traversal->vertexOutVariable(), traversal->edgeOutVariable()));
+      candidates.emplace(pathOutVariable,
+                         std::make_pair(traversal->vertexOutVariable(),
+                                        traversal->edgeOutVariable()));
     }
   }
 
@@ -188,7 +191,9 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
   bool appliedAChange = false;
   for (auto& n : tNodes) {
     auto* calculation = ExecutionNode::castTo<CalculationNode*>(n);
-    auto [didApplyChange, replacementCondition] = swapOutLastElementAccesses(plan->getAst(), calculation->expression()->nodeForModification(), candidates);
+    auto [didApplyChange, replacementCondition] = swapOutLastElementAccesses(
+        plan->getAst(), calculation->expression()->nodeForModification(),
+        candidates);
     // Get's true as soon as one of the swapOut calls returns true
     appliedAChange |= didApplyChange;
     if (replacementCondition != nullptr) {
