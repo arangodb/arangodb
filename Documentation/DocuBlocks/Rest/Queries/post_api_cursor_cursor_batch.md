@@ -11,33 +11,30 @@ The ID of the cursor.
 
 @RESTURLPARAM{batch-identifier,string,required}
 The ID of the batch. The first batch has an ID of `1` and the value is
-incremented by 1 with every batch. You can only request the latest batch again.
-Earlier batches are not kept on the server-side.
+incremented by 1 with every batch. You can only request the latest batch again
+(or the next batch). Earlier batches are not kept on the server-side.
 
 @RESTDESCRIPTION
 You can use this endpoint to retry fetching the latest batch from a cursor.
 The endpoint requires the `allowRetry` query option to be enabled for the cursor.
 
-Calling this endpoint with the last returned batch-identifier will return the
-query results for that same batch again. This will not advance the cursor.
-Client applications can use this to re-transfer a batch again in case of
+Calling this endpoint with the last returned batch identifier returns the
+query results for that same batch again. This does not advance the cursor.
+Client applications can use this to re-transfer a batch once more in case of
 transfer errors.
 
-Calling this endpoint with the next batch-identifier, i.e. the value returned
-in the `nextBatchId` attribute of a previous request will advance the cursor
-and return the results for the next batch.
+You can also call this endpoint with the next batch identifier, i.e. the value
+returned in the `nextBatchId` attribute of a previous request. This advances the
+cursor and returns the results of the next batch.
 
-Note that it is only supported to query the last returned batch id or the directly
-following batch id. Querying the directly following batch id is only supported
-if there are more results in the cursor (i.e. `hasMore` contains a value of
-`true`).
-
-Using any other batch identifier will return HTTP 404.
+Note that it is only supported to query the last returned batch identifier or
+the directly following batch identifier. The latter is only supported if there
+are more results in the cursor (i.e. `hasMore` is `true` in the latest batch).
 
 Note that when the last batch has been consumed successfully by a client
-application, it should explicitly destroy the cursor with an HTTP DELETE
-request, as it is unclear to the server if the client has received and
-processed the batch successfully.
+application, it should explicitly delete the cursor to inform the server that it
+successfully received and processed the batch so that the server can free up
+resources.
 
 @RESTRETURNCODES
 
