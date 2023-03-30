@@ -61,6 +61,48 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
     tearDown: function () {
       db._drop(cn);
     },
+    
+    testFromEnumerateListInvalidInputs: function () {
+      const queries = [
+        `FOR doc IN [[]] INSERT doc INTO ${cn}`,
+        `FOR doc IN [1] INSERT doc INTO ${cn}`,
+        `FOR doc IN ["foo"] INSERT doc INTO ${cn}`,
+        `FOR doc IN [true] INSERT doc INTO ${cn}`,
+      ];
+      queries.forEach((query) => {
+        try {
+          assertRuleIsUsed(query);
+          db._query(query);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+      });
+
+      assertEqual(0, db[cn].count());
+    },
+    
+    testFromEnumerateListInvalidInputsIgnoreErrors: function () {
+      const queries = [
+        `FOR doc IN [[], {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
+        `FOR doc IN [1, {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
+        `FOR doc IN ["foo", {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
+        `FOR doc IN [true, {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
+      ];
+      queries.forEach((query) => {
+        assertRuleIsUsed(query);
+        let res = db._query(query);
+        assertEqual([], res.toArray());
+      
+        assertEqual(1, db[cn].count());
+
+        let stats = res.getExtra().stats;
+        assertEqual(1, stats.writesExecuted);
+        assertEqual(1, stats.writesIgnored);
+
+        db[cn].truncate();
+      });
+    },
 
     testFromEnumerateListIgnoreErrors: function () {
       let ignoreErrors = false;
