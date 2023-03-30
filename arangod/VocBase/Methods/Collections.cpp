@@ -30,6 +30,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
@@ -119,6 +120,10 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
     events::CreateCollection(vocbase.name(), info.name,
                              TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  }
+  if (info.name != normalizeUtf8ToNFC(info.name)) {
+    return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "collection name is not properly UTF-8 NFC-normalized");
   }
 
   // check the collection type in _info
