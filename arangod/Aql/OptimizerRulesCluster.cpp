@@ -439,13 +439,6 @@ bool substituteClusterMultipleDocumentInsertOperations(
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, {EN::INSERT}, false);
 
-  // SINGLETON
-  // LET dd = {foo: "bar"}
-  // LET x = 42
-  // LET y = x * 2
-  // FOR d IN @docs
-  // INSERT d INTO col
-
   if (nodes.size() != 1) {
     return false;
   }
@@ -466,11 +459,6 @@ bool substituteClusterMultipleDocumentInsertOperations(
 
   bool modified = false;
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
-  if (mod->getOptions().exclusive) {
-    // exclusive lock used. this is not supported by the
-    // MultipleRemoteOperationsNode
-    return false;
-  }
 
   auto* enumerateNode = ExecutionNode::castTo<EnumerateListNode const*>(dep);
   if (enumerateNode->outVariable() != mod->inVariable()) {

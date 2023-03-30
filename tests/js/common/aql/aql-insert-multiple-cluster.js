@@ -293,6 +293,25 @@ function InsertMultipleDocumentsExplainSuite() {
         assertTrue(result.plan.rules.indexOf(ruleName) === -1, query);
       });
     },
+
+    testInsertMultipleDocumentsRuleEffect: function () {
+      const queries = [
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: true}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {refillIndexCaches: false}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwrite: true}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwrite: false}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'replace'}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'update'}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'ignore'}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {overwriteMode: 'conflict'}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: true}`,
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn} OPTIONS {exclusive: false}`,
+      ];
+      queries.forEach(function (query) {
+        const result = AQL_EXPLAIN(query);
+        assertTrue(result.plan.rules.indexOf(ruleName) !== -1, query);
+      });
+    },
   };
 }
 
