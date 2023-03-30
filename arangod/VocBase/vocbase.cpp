@@ -56,6 +56,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/debugging.h"
@@ -1375,7 +1376,11 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   bool extendedNames = databaseFeature.extendedNamesViews();
   if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
                                         newName)) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+  }
+  if (newName != normalizeUtf8ToNFC(newName)) {
+    return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "view name is not properly UTF-8 NFC-normalized");
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1445,6 +1450,17 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   // check if names are actually different
   if (oldName == newName) {
     return TRI_ERROR_NO_ERROR;
+  }
+
+  bool extendedNames =
+      server().getFeature<DatabaseFeature>().extendedNamesCollections();
+  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ false,
+                                              extendedNames, newName)) {
+    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+  }
+  if (newName != normalizeUtf8ToNFC(newName)) {
+    return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
+                  "collection name is not properly UTF-8 NFC-normalized");
   }
 
   READ_LOCKER(readLocker, _inventoryLock);

@@ -33,6 +33,7 @@ const jsunity = require('jsunity');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const ArangoView = require("@arangodb").ArangoView;
+const isCluster = require("internal").isCluster;
 
 const traditionalName = "UnitTestsDatabase";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
@@ -79,6 +80,21 @@ function testSuite() {
       }
     },
     
+    testArangosearchRenameToExtendedName: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+        
+      let view = db._createView(traditionalName, "arangosearch", {});
+      try {
+        view.rename(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+    },
+    
     testSearchAliasTraditionalName: function() {
       let view = db._createView(traditionalName, "search-alias", {});
       assertTrue(view instanceof ArangoView);
@@ -97,6 +113,21 @@ function testSuite() {
       
       let v = db._view(extendedName);
       assertNull(v);
+    },
+    
+    testSearchAliasRenameToExtendedName: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+        
+      let view = db._createView(traditionalName, "search-alias", {});
+      try {
+        view.rename(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
     },
   };
 }

@@ -53,6 +53,7 @@ function testSuite() {
     assertTrue(view instanceof ArangoView);
     
     if (!isCluster()) {
+      // renaming not supported in cluster
       view.rename(extendedName);
       assertNull(db._view(traditionalName));
       assertNotNull(db._view(extendedName));
@@ -85,6 +86,7 @@ function testSuite() {
     }
 
     if (!isCluster()) {
+      // renaming not supported in cluster
       view.rename(traditionalName);
       assertNull(db._view(extendedName));
       assertNotNull(db._view(traditionalName));
@@ -160,6 +162,22 @@ function testSuite() {
       });
     },
     
+    testArangosearchRenameToInvalidUtf8: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+      let view = db._createView(extendedName, "arangosearch", {});
+      invalidNames.forEach((name) => {
+        try {
+          view.rename(name);
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        }
+      });
+    },
+    
     testSearchAliasTraditionalName: function() {
       let view = db._createView(traditionalName, "search-alias", {});
       assertTrue(view instanceof ArangoView);
@@ -218,6 +236,22 @@ function testSuite() {
       invalidNames.forEach((name) => {
         try {
           db._createView(name, "search-alias", {});
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        }
+      });
+    },
+    
+    testSearchAliasRenameToInvalidUtf8: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+      let view = db._createView(extendedName, "search-alias", {});
+      invalidNames.forEach((name) => {
+        try {
+          view.rename(name);
           fail();
         } catch (err) {
           assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
