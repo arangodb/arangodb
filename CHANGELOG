@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-218: Updated WebUI dependencies.
+
 * A Pregel execution now stores it's state during and after execution
   into a system collection. To read or delete entries the new API
   `/_api/control_pregel/history[/<id>]` has been added. Additionally, the Pregel JavaScript
