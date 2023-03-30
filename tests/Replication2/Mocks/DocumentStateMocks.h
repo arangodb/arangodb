@@ -181,7 +181,7 @@ struct MockDocumentStateHandlersFactory
   auto makeRealSnapshotHandler(cluster::RebootTracker* rebootTracker = nullptr)
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
   auto makeRealTransactionHandler(
-      GlobalLogIdentifier const&,
+      TRI_vocbase_t* vocbase, GlobalLogIdentifier const&,
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
 
