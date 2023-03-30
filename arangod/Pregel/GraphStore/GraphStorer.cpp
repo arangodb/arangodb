@@ -55,7 +55,8 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
+auto GraphStorer<V, E>::store(
+    std::vector<std::shared_ptr<Quiver<V, E>>> quivers) -> void {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -115,39 +116,42 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
   // This loop will fill a buffer of vertices until we run into a new
   // collection
   // or there are no more vertices for to store (or the buffer is full)
-  for (auto& vertex : *quiver) {
-    if (vertex.shard() != currentShard || numDocs >= 1000) {
-      commitTransaction();
+  for (auto& quiver : quivers) {
+    for (auto& vertex : *quiver) {
+      if (vertex.shard() != currentShard || numDocs >= 1000) {
+        commitTransaction();
 
-      currentShard = vertex.shard();
-      shard = globalShards[currentShard.value];
+        currentShard = vertex.shard();
+        shard = globalShards[currentShard.value];
 
-      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
-      trx = std::make_unique<SingleCollectionTransaction>(
-          ctx, shard, AccessMode::Type::WRITE);
-      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+        auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+        trx = std::make_unique<SingleCollectionTransaction>(
+            ctx, shard, AccessMode::Type::WRITE);
+        trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-      res = trx->begin();
-      if (!res.ok()) {
-        THROW_ARANGO_EXCEPTION(res);
+        res = trx->begin();
+        if (!res.ok()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
-    }
 
-    std::string_view const key = vertex.key();
+      std::string_view const key = vertex.key();
 
-    builder.openObject(true);
-    builder.add(StaticStrings::KeyString,
-                VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    V const& data = vertex.data();
-    if (auto result = graphFormat->buildVertexDocument(builder, &data);
-        !result) {
-      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
-    }
-    builder.close();
-    ++numDocs;
-    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      builder.openObject(true);
+      builder.add(
+          StaticStrings::KeyString,
+          VPackValuePair(key.data(), key.size(), VPackValueType::String));
+      V const& data = vertex.data();
+      if (auto result = graphFormat->buildVertexDocument(builder, &data);
+          !result) {
+        LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
+      }
+      builder.close();
+      ++numDocs;
+      if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+        SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                           statusUpdateCallback);
+      }
     }
   }
 

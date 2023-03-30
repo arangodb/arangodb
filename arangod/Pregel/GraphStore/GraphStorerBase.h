@@ -34,7 +34,8 @@ class WorkerConfig;
 
 template<typename V, typename E>
 struct GraphStorerBase {
-  virtual auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void = 0;
+  virtual auto store(std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
+      -> void = 0;
   virtual ~GraphStorerBase() = default;
 };
 

@@ -424,9 +424,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                                         this->state->algorithm->inputFormat(),
                                         this->state->config->globalShardIDs(),
                                         std::move(statusUpdateCallback));
-        for (auto& quiver : this->state->quivers) {
-          storer.store(quiver);
-        }
+        storer.store(this->state->quivers);
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
@@ -465,11 +463,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
                                           this->state->algorithm->inputFormat(),
                                           std::move(statusUpdateCallback));
-        for (auto& quiver : this->state->quivers) {
-          // TODO GORDO-1599: Parallel store
-          storer.store(quiver);
-        }
-
+        // TODO GORDO-1599: Parallel store
+        storer.store(this->state->quivers);
         return PregelResults{*storer.result};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,

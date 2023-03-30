@@ -571,9 +571,8 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
                                             _config->globalShardIDs(),
                                             std::move(statusUpdateCallback));
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            for (auto& quiver : _quivers) {
-              storer.store(quiver);
-            }
+            // TODO GORDO-1599
+            storer.store(_quivers);
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -595,9 +594,8 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer =
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
-  for (auto& quiver : _quivers) {
-    storer.store(quiver);
-  }
+  // TODO GORDO-1599
+  storer.store(_quivers);
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 

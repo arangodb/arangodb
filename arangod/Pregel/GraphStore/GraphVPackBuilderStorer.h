@@ -61,7 +61,7 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
         config(config),
         statusUpdateCallback(statusUpdateCallback) {}
 
-  auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
+  auto store(std::vector<std::shared_ptr<Quiver<V, E>>> quiver) -> void override;
 
   std::unique_ptr<VPackBuilder> result;
   bool withId{false};
