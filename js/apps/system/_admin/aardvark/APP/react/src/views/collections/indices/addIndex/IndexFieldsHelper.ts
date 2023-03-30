@@ -28,6 +28,5 @@ export const commonFieldsMap = {
 
 export const commonSchema = {
   fields: Yup.string().required("Fields are required"),
-  name: Yup.string().matches(/^[^\s]+$/, "Name can't contain spaces"),
   inBackground: Yup.boolean()
 };
