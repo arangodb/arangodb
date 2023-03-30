@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -88,17 +88,17 @@ struct MultipleRemoteModificationExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  auto doMultipleRemoteModificationOperation(InputAqlItemRow&, Stats&)
-      -> OperationResult;
+  auto doMultipleRemoteOperations(InputAqlItemRow&, Stats&) -> OperationResult;
   auto doMultipleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
                                           OperationResult&) -> void;
 
+  static transaction::Methods createTransaction(
+      std::shared_ptr<transaction::Context> ctx, Infos& info);
+
   std::shared_ptr<transaction::Context> _ctx;
-  // transaction::Methods _trx;
+  transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
-  // for late initialization
-  std::unique_ptr<transaction::Methods> _trx;
 };
 
 }  // namespace aql

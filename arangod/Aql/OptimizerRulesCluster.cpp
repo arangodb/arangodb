@@ -31,7 +31,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/MultipleRemoteOperationNode.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/Optimizer.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"
@@ -481,7 +481,7 @@ bool substituteClusterMultipleDocumentInsertOperations(
   // TODO - need more checks?
 
   ExecutionNode* multiOperationNode =
-      plan->createNode<MultipleRemoteOperationNode>(
+      plan->createNode<MultipleRemoteModificationNode>(
           plan, plan->nextId(), mod->collection(), mod->getOptions(),
           enumerateNode->inVariable() /*in*/, nullptr, mod->getOutVariableOld(),
           mod->getOutVariableNew());

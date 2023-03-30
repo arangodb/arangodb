@@ -18,10 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/MultipleRemoteOperationNode.h"
+#include "Aql/MultipleRemoteModificationNode.h"
 
 #include <velocypack/Iterator.h>
 
@@ -45,7 +45,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-MultipleRemoteOperationNode::MultipleRemoteOperationNode(
+MultipleRemoteModificationNode::MultipleRemoteModificationNode(
     ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
     ModificationOptions const& options, Variable const* inVariable,
     Variable const* outVariable, Variable const* OLD, Variable const* NEW)
@@ -57,8 +57,8 @@ MultipleRemoteOperationNode::MultipleRemoteOperationNode(
       _outVariableNew(NEW),
       _options(options) {}
 
-/// @brief creates corresponding MultipleRemoteOperationNode
-std::unique_ptr<ExecutionBlock> MultipleRemoteOperationNode::createBlock(
+/// @brief creates corresponding MultipleRemoteModificationNode
+std::unique_ptr<ExecutionBlock> MultipleRemoteModificationNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
@@ -103,9 +103,9 @@ std::unique_ptr<ExecutionBlock> MultipleRemoteOperationNode::createBlock(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
-/// @brief doToVelocyPack, for MultipleRemoteOperationNode
-void MultipleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes,
-                                                 unsigned flags) const {
+/// @brief doToVelocyPack, for MultipleRemoteModificationNode
+void MultipleRemoteModificationNode::doToVelocyPack(VPackBuilder& nodes,
+                                                    unsigned flags) const {
   CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(nodes);
 
   // add collection information
@@ -144,12 +144,12 @@ void MultipleRemoteOperationNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 /// @brief estimateCost
-CostEstimate MultipleRemoteOperationNode::estimateCost() const {
+CostEstimate MultipleRemoteModificationNode::estimateCost() const {
   return _dependencies[0]->getCost();
 }
 
-std::vector<Variable const*> MultipleRemoteOperationNode::getVariablesSetHere()
-    const {
+std::vector<Variable const*>
+MultipleRemoteModificationNode::getVariablesSetHere() const {
   std::vector<Variable const*> vec;
 
   if (_outVariable) {
@@ -165,7 +165,7 @@ std::vector<Variable const*> MultipleRemoteOperationNode::getVariablesSetHere()
   return vec;
 }
 
-void MultipleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
+void MultipleRemoteModificationNode::getVariablesUsedHere(VarSet& vars) const {
   if (_inVariable) {
     vars.emplace(_inVariable);
   }

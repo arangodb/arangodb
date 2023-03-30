@@ -46,23 +46,23 @@ class ExecutionPlan;
 struct Collection;
 
 /// @brief class RemoteNode
-class MultipleRemoteOperationNode final : public ExecutionNode,
-                                          public CollectionAccessingNode {
+class MultipleRemoteModificationNode final : public ExecutionNode,
+                                             public CollectionAccessingNode {
   friend class ExecutionBlock;
   friend class SingleRemoteOperationBlock;
   /// @brief constructor with an id
  public:
-  MultipleRemoteOperationNode(ExecutionPlan* plan, ExecutionNodeId id,
-                              aql::Collection const* collection,
-                              ModificationOptions const& options,
-                              Variable const* inVariable,
-                              Variable const* outVariable, Variable const* OLD,
-                              Variable const* NEW);
+  MultipleRemoteModificationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 aql::Collection const* collection,
+                                 ModificationOptions const& options,
+                                 Variable const* inVariable,
+                                 Variable const* outVariable,
+                                 Variable const* OLD, Variable const* NEW);
 
   // We probably do not need this, because the rule will only be used on the
   // coordinator
-  MultipleRemoteOperationNode(ExecutionPlan* plan,
-                              arangodb::velocypack::Slice const& base)
+  MultipleRemoteModificationNode(ExecutionPlan* plan,
+                                 arangodb::velocypack::Slice const& base)
       : ExecutionNode(plan, base), CollectionAccessingNode(plan, base) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_NOT_IMPLEMENTED,
@@ -81,7 +81,7 @@ class MultipleRemoteOperationNode final : public ExecutionNode,
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
-    auto n = std::make_unique<MultipleRemoteOperationNode>(
+    auto n = std::make_unique<MultipleRemoteModificationNode>(
         plan, _id, collection(), _options, _inVariable, _outVariable,
         _outVariableOld, _outVariableNew);
     CollectionAccessingNode::cloneInto(*n);
