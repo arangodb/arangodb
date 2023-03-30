@@ -47,7 +47,7 @@ template<typename V, typename E, typename M, typename Runtime>
 struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::WorkerStart start)
       -> std::unique_ptr<WorkerState<V, E, M>> {
-    LOG_TOPIC("cd696", INFO, Logger::PREGEL) << fmt::format(
+    LOG_TOPIC("ä/öü", INFO, Logger::PREGEL) << fmt::format(
         "Worker Actor {} started with state {}", this->self, *this->state);
     // TODO GORDO-1556
     // _feature.metrics()->pregelWorkersNumber->fetch_add(1);
