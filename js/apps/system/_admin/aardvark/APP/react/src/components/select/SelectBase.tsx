@@ -43,6 +43,3 @@ export const getSelectBase = <IsMulti extends boolean = false>(
     }}
   />
 );
-
-const SelectBase = getSelectBase(Select);
-export default SelectBase;

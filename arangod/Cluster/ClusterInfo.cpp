@@ -511,7 +511,7 @@ void ClusterInfo::cleanup() {
   {
     WRITE_LOCKER(writeLocker, _currentProt.lock);
     _currentCollections.clear();
-    _shardIds.clear();
+    _shardsToCurrentServers.clear();
   }
 }
 
@@ -1069,7 +1069,7 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedDatabases) newDatabases;
   std::set<std::string> buildingDatabases;
   decltype(_shards) newShards;
-  decltype(_shardServers) newShardServers;
+  decltype(_shardsToPlanServers) newShardsToPlanServers;
   decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
   decltype(_shardGroups) newShardGroups;
   decltype(_shardToName) newShardToName;
@@ -1086,7 +1086,7 @@ void ClusterInfo::loadPlan() {
     auto start = std::chrono::steady_clock::now();
     newDatabases = _plannedDatabases;
     newShards = _shards;
-    newShardServers = _shardServers;
+    newShardsToPlanServers = _shardsToPlanServers;
     newShardToShardGroupLeader = _shardToShardGroupLeader;
     newShardGroups = _shardGroups;
     newShardToName = _shardToName;
@@ -1143,7 +1143,7 @@ void ClusterInfo::loadPlan() {
                    VPackObjectIterator(col.value.get("shards"))) {
                 auto const& shardName = shard.key.copyString();
                 newShards.erase(shardName);
-                newShardServers.erase(shardName);
+                newShardsToPlanServers.erase(shardName);
                 newShardToName.erase(shardName);
                 newShardToShardGroupLeader.erase(shardName);
                 newShardGroups.erase(shardName);
@@ -1517,7 +1517,7 @@ void ClusterInfo::loadPlan() {
                                          .get(collectionsPath))) {
               auto const& shardId = sh.key.copyString();
               newShards.erase(shardId);
-              newShardServers.erase(shardId);
+              newShardsToPlanServers.erase(shardId);
               newShardToName.erase(shardId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
@@ -1587,7 +1587,7 @@ void ClusterInfo::loadPlan() {
         for (auto const& p : *shardIDs) {
           TRI_ASSERT(p.first.size() >= 2);
           shards->push_back(p.first);
-          newShardServers.insert_or_assign(p.first, p.second);
+          newShardsToPlanServers.insert_or_assign(p.first, p.second);
           newShardToName.insert_or_assign(p.first, newCollection->name());
         }
 
@@ -1784,7 +1784,7 @@ void ClusterInfo::loadPlan() {
   if (swapCollections) {
     _plannedCollections.swap(_newPlannedCollections);
     _shards.swap(newShards);
-    _shardServers.swap(newShardServers);
+    _shardsToPlanServers.swap(newShardsToPlanServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
     _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
@@ -1883,13 +1883,13 @@ void ClusterInfo::loadCurrent() {
 
   decltype(_currentDatabases) newDatabases;
   decltype(_currentCollections) newCollections;
-  decltype(_shardIds) newShardIds;
+  decltype(_shardsToCurrentServers) newShardsToCurrentServers;
 
   {
     READ_LOCKER(guard, _currentProt.lock);
     newDatabases = _currentDatabases;
     newCollections = _currentCollections;
-    newShardIds = _shardIds;
+    newShardsToCurrentServers = _shardsToCurrentServers;
   }
 
   bool swapDatabases = false;
@@ -1927,7 +1927,7 @@ void ClusterInfo::loadCurrent() {
             for (auto const cc : VPackObjectIterator(colsSlice)) {
               if (cc.value.isObject()) {
                 for (auto const cs : VPackObjectIterator(cc.value)) {
-                  newShardIds.erase(cs.key.copyString());
+                  newShardsToCurrentServers.erase(cs.key.copyString());
                 }
               }
             }
@@ -1991,7 +1991,7 @@ void ClusterInfo::loadCurrent() {
             for (auto const& sh : VPackObjectIterator(cc)) {
               path.push_back(sh.key.copyString());
               if (!ncs.hasKey(path)) {
-                newShardIds.erase(path.back());
+                newShardsToCurrentServers.erase(path.back());
               }
               path.pop_back();
             }
@@ -2025,7 +2025,8 @@ void ClusterInfo::loadCurrent() {
             collectionDataCurrent->servers(shardID)  // args
         );
 
-        newShardIds.insert_or_assign(std::move(shardID), std::move(servers));
+        newShardsToCurrentServers.insert_or_assign(std::move(shardID),
+                                                   std::move(servers));
       }
 
       databaseCollections.try_emplace(std::move(collectionName),
@@ -2054,7 +2055,7 @@ void ClusterInfo::loadCurrent() {
     LOG_TOPIC("b4059", TRACE, Logger::CLUSTER)
         << "Have loaded new collections current cache!";
     _currentCollections.swap(newCollections);
-    _shardIds.swap(newShardIds);
+    _shardsToCurrentServers.swap(newShardsToCurrentServers);
   }
 
   _currentProt.isValid = true;
@@ -6063,13 +6064,13 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
-      // _shardIds is a map-type <ShardId,
+      // _shardsToCurrentServers is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardIds.find(shardID);
+      auto it = _shardsToCurrentServers.find(shardID);
 
       // TODO throw an exception if we don't find the shard or the server list
       // is null or empty?
-      if (it != _shardIds.end()) {
+      if (it != _shardsToCurrentServers.end()) {
         auto serverList = (*it).second;
         if (serverList != nullptr && !serverList->empty() &&
             !(*serverList)[0].empty() && (*serverList)[0][0] == '_') {
@@ -6203,9 +6204,9 @@ void ClusterInfo::getResponsibleServersReplication1(
     {
       READ_LOCKER(readLocker, _currentProt.lock);
       for (auto const& shardId : shardIds) {
-        auto it = _shardIds.find(shardId);
+        auto it = _shardsToCurrentServers.find(shardId);
 
-        if (it == _shardIds.end()) {
+        if (it == _shardsToCurrentServers.end()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                          "no shard found with ID " + shardId);
         }
@@ -6505,7 +6506,7 @@ void ClusterInfo::setShardIds(
     containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
         shardIds) {
   WRITE_LOCKER(writeLocker, _currentProt.lock);
-  _shardIds = std::move(shardIds);
+  _shardsToCurrentServers = std::move(shardIds);
 }
 #endif
 
@@ -6543,8 +6544,8 @@ arangodb::Result ClusterInfo::getShardServers(std::string_view shardId,
                                               std::vector<ServerID>& servers) {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _shardServers.find(shardId);
-  if (it != _shardServers.end()) {
+  auto it = _shardsToPlanServers.find(shardId);
+  if (it != _shardsToPlanServers.end()) {
     servers = (*it).second;
     return arangodb::Result();
   }
@@ -7358,7 +7359,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         dump.add(VPackValue("shardServers"));
         {
           VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardServers) {
+          for (auto const& s : _shardsToPlanServers) {
             dump.add(VPackValue(s.first));
             VPackArrayBuilder a(&dump);
             for (auto const& sv : s.second) {
@@ -7410,7 +7411,7 @@ VPackBuilder ClusterInfo::toVelocyPack() {
         dump.add(VPackValue("shardIds"));
         {
           VPackObjectBuilder d(&dump);
-          for (auto const& i : _shardIds) {
+          for (auto const& i : _shardsToCurrentServers) {
             dump.add(VPackValue(i.first));
             VPackArrayBuilder a(&dump);
             for (auto const& i : *i.second) {
