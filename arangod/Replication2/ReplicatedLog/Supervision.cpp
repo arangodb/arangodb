@@ -24,6 +24,7 @@
 
 #include "Supervision.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 
@@ -47,31 +48,41 @@ namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
+
+namespace {
+
+bool isParticipantUsable(LogCurrent const& current,
+                         ParticipantsHealth const& health,
+                         ParticipantId const& participantId) {
+  // server should be healthy and have a snapshot
+  if (not health.notIsFailed(participantId)) {
+    return false;
+  }
+  if (auto local = current.localState.find(participantId);
+      local != current.localState.end()) {
+    // TODO As noted in getParticipantsAcceptableAsLeaders() as well, we should
+    //      instead check that the state machine is operational, which means
+    //      that not only is there a snapshot, but it is a snapshot that's valid
+    //      in the current term.
+    if (not local->second.snapshotAvailable) {
+      return false;
+    }
+    return true;
+  } else {
+    return false;  // not even in current
+  }
+}
+}  // namespace
+
 /// Computes the number of usable participants, i.e. those which are not failed
 /// and have a snapshot.
 /// \return Number of usable participants.
-auto computeNumUsableParticipants(LogCurrent const& current,
-                                  ParticipantsFlagsMap const& planParticipants,
-                                  ParticipantsHealth const& health)
-    -> std::size_t {
-  auto count = std::count_if(planParticipants.begin(), planParticipants.end(),
-                             [&](auto const& pair) {
-                               // server should be healthy and have a snapshot
-                               auto const& [pid, flags] = pair;
-                               if (not health.notIsFailed(pid)) {
-                                 return false;
-                               }
-
-                               if (auto local = current.localState.find(pid);
-                                   local != current.localState.end()) {
-                                 if (not local->second.snapshotAvailable) {
-                                   return false;
-                                 }
-                               } else {
-                                 return false;  // not even in current
-                               }
-
-                               return true;
+auto computeNumUsableParticipants(
+    LogCurrent const& current, std::vector<ParticipantId> const& participants,
+    ParticipantsHealth const& health) -> std::size_t {
+  auto count = std::count_if(participants.cbegin(), participants.cend(),
+                             [&](auto const& pid) {
+                               return isParticipantUsable(current, health, pid);
                              });
   TRI_ASSERT(count >= 0);
   return count;
@@ -157,7 +168,8 @@ auto getParticipantsAcceptableAsLeaders(
     // check has snapshot
     // TODO the participant should also have the leader connection established;
     //      otherwise, the "snapshot available" information may be outdated and
-    //      lead to a temporary stall
+    //      lead to a temporary stall. See also the comment in
+    //      isParticipantUsable().
     auto iter = localStates.find(participant);
     if (iter == localStates.end() or not iter->second.snapshotAvailable) {
       continue;
@@ -675,16 +687,51 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   auto const& planParticipants = plan.participantsConfig.participants;
 
   if (planParticipants.size() == targetParticipants.size()) {
-    return;  // Nothing to do here
+    return;  // Nothing to do here, because checkParticipantToAdd() runs before.
   }
 
+  auto participantsToRemain = std::vector<ParticipantId>();
+  auto participantsToRemove = std::vector<ParticipantId>();
+  for (auto const& kv : planParticipants) {
+    auto const& participantId = kv.first;
+    if (targetParticipants.contains(participantId)) {
+      participantsToRemain.emplace_back(participantId);
+    } else {
+      participantsToRemove.emplace_back(participantId);
+    }
+  }
+  auto const& current = *log.current;
+
   // check if, after a remove, enough servers are available to form a quorum
-  auto wanted = plan.participantsConfig.config.effectiveWriteConcern;
-  auto have =
-      computeNumUsableParticipants(*log.current, planParticipants, health);
+  auto const needed = plan.participantsConfig.config.effectiveWriteConcern;
+  auto numUsableRemaining =
+      computeNumUsableParticipants(current, participantsToRemain, health);
+
+  // If we haven't enough servers in plan that are usable, choose some of the
+  // usable ones in the "to remove" set to remain (for now).
+  for (auto it = participantsToRemove.begin();
+       numUsableRemaining < needed && it != participantsToRemove.end();) {
+    auto const& participantId = *it;
+    auto const& planFlags = planParticipants.find(participantId)->second;
+    // To compensate for `numUsableRemaining < needed`, we select some usable
+    // participants to remain, even though they're no longer in target.
+    if (planFlags.allowedInQuorum &&
+        isParticipantUsable(current, health, participantId)) {
+      // we choose to let this participant remain
+      participantsToRemain.emplace_back(std::move(*it));
+      std::iter_swap(it, participantsToRemove.end() - 1);
+      participantsToRemove.pop_back();
+      ++numUsableRemaining;
+    } else {
+      ++it;
+    }
+  }
+
+  TRI_ASSERT(numUsableRemaining == computeNumUsableParticipants(
+                                       current, participantsToRemain, health));
 
   // if there are not enough participants, make sure we can still commit
-  if (wanted + 1 > static_cast<std::size_t>(have)) {
+  if (needed > numUsableRemaining) {
     // remove all allowedInQuorum=false, when possible
     for (auto const& [pid, flags] : planParticipants) {
       auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant = pid] {
@@ -718,8 +765,9 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
     return;
   }
 
-  for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
-       planParticipants) {
+  for (auto const& participantToRemove : participantsToRemove) {
+    auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] =
+        *planParticipants.find(participantToRemove);
     // never remove a leader
     if (!targetParticipants.contains(maybeRemovedParticipant) and
         maybeRemovedParticipant != leader.serverId) {
