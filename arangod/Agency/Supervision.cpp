@@ -3617,7 +3617,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     return false;
   };
 
-  auto const checkDeletion = [&](std::string const& shard,
+  auto const checkDeletion = [&](std::string const& id,
                                  Node const& entry) -> bool {
     std::string now(timepointToString(std::chrono::system_clock::now()));
     auto deadline = entry.hasAsString("removeIfNotStartedBy");
@@ -3654,11 +3654,11 @@ void Supervision::checkUndoLeaderChangeActions() {
       auto collection = entry.hasAsString("collection").value();
       if (isReplication2(database)) {
         auto stateId =
-            Job::getReplicatedStateId(*_snapshot, database, collection, shard);
+            Job::getReplicatedStateId(*_snapshot, database, collection, id);
         if (!stateId.has_value()) {
           LOG_TOPIC("030d0", WARN, Logger::SUPERVISION)
               << "Failed to lookup replicated log: database " << database
-              << "; collection: " << collection << "; shard: " << shard;
+              << "; collection: " << collection << "; shard: " << id;
           return true;
         }
 
@@ -3673,7 +3673,7 @@ void Supervision::checkUndoLeaderChangeActions() {
           return true;
         }
       } else {
-        if (!isServerInPlan(database, collection, shard, server.value())) {
+        if (!isServerInPlan(database, collection, id, server.value())) {
           LOG_TOPIC("739bb", DEBUG, Logger::SUPERVISION)
               << "deleting undo job because server " << server.value()
               << " is not in plan";
@@ -3689,14 +3689,18 @@ void Supervision::checkUndoLeaderChangeActions() {
         return true;
       }
 
-      auto logId =
-          replication2::LogId::fromString(entry.hasAsString("logId").value());
+      auto logId = replication2::LogId::fromString(id);
+      if (!logId.has_value()) {
+        TRI_ASSERT(false) << id;
+        return true;
+      }
+
       // Check that the removed server is not already leader in target.
       auto target = Job::readStateTarget(snapshot(), database, logId.value());
       if (!target.has_value() || target->leader == server.value()) {
         LOG_TOPIC("308c0", DEBUG, Logger::SUPERVISION)
             << "deleting job because server " << server.value()
-            << " is already leader in target";
+            << " is already leader in target of log " << logId.value();
         return true;
       }
     } else {
@@ -3834,8 +3838,7 @@ void Supervision::checkUndoLeaderChangeActions() {
         reclaimShard(trx, database.value(), collection.value(), id,
                      toServer.value(), fromServer.value());
       } else if (jobType == "reconfigureReplicatedLog") {
-        auto logId = replication2::LogId::fromString(
-            entry->hasAsString("logId").value());
+        auto logId = replication2::LogId::fromString(id);
         if (!logId.has_value()) {
           LOG_TOPIC("f0acc", ERR, Logger::SUPERVISION)
               << "Invalid log id: " << entry->hasAsString("logId").value();

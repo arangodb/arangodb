@@ -616,7 +616,6 @@ void ResignLeadership::addUndoReplicatedLog(
     trx.add("rebootId", VPackValue(rebootId.value()));
     trx.add("type", "reconfigureReplicatedLog");
     trx.add("database", log.database);
-    trx.add("logId", to_string(log.id));
     trx.add("fromServer", _server);
   }
 }
