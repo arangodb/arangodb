@@ -188,10 +188,12 @@ Result IResearchViewCoordinator::appendVPackImpl(VPackBuilder& build,
     build.add(StaticStrings::LinksField, VPackValue(VPackValueType::Object));
     auto const accept = [](std::string_view key) {
       return key != iresearch::StaticStrings::AnalyzerDefinitionsField &&
+#ifdef USE_ENTERPRISE
+             key != iresearch::StaticStrings::kOptimizeTopKField &&
+#endif
              key != iresearch::StaticStrings::PrimarySortField &&
              key != iresearch::StaticStrings::PrimarySortCompressionField &&
              key != iresearch::StaticStrings::StoredValuesField &&
-             key != iresearch::StaticStrings::kOptimizeTopKField &&
              key != iresearch::StaticStrings::VersionField &&
              key != iresearch::StaticStrings::CollectionNameField;
     };
