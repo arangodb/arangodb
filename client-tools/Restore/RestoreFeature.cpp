@@ -54,6 +54,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/HttpResponseChecker.h"
@@ -67,6 +68,24 @@
 #endif
 
 namespace {
+
+std::string escapedCollectionName(std::string const& name,
+                                  VPackSlice parameters) {
+  std::string escapedName = name;
+  if (!arangodb::CollectionNameValidator::isAllowedName(/*isSystem*/ true,
+                                                        false, name)) {
+    VPackSlice idSlice = parameters.get(arangodb::StaticStrings::DataSourceCid);
+    if (idSlice.isString()) {
+      escapedName = idSlice.copyString();
+    } else if (idSlice.isNumber<uint64_t>()) {
+      escapedName = std::to_string(idSlice.getNumber<uint64_t>());
+    } else {
+      escapedName =
+          std::to_string(arangodb::RandomGenerator::interval(UINT64_MAX));
+    }
+  }
+  return escapedName;
+}
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
@@ -584,10 +603,7 @@ arangodb::Result processInputDirectory(
       // loop over all files in InputDirectory, and look for all structure.json
       // files
       for (std::string const& file : files) {
-        size_t const nameLength = file.size();
-
-        if (nameLength > viewsSuffix.size() &&
-            file.substr(file.size() - viewsSuffix.size()) == viewsSuffix) {
+        if (file.ends_with(viewsSuffix)) {
           if (!restrictColls.empty() && restrictViews.empty()) {
             continue;  // skip view if not specifically included
           }
@@ -601,7 +617,7 @@ arangodb::Result processInputDirectory(
                             "': ", directory.status().errorMessage())};
           }
 
-          std::string const name = VelocyPackHelper::getStringValue(
+          std::string name = VelocyPackHelper::getStringValue(
               fileContent, StaticStrings::DataSourceName, "");
           if (!checkRequested(restrictViews, name)) {
             // view name not in list
@@ -612,9 +628,7 @@ arangodb::Result processInputDirectory(
           continue;
         }
 
-        if (nameLength <= collectionSuffix.size() ||
-            file.substr(file.size() - collectionSuffix.size()) !=
-                collectionSuffix) {
+        if (!file.ends_with(collectionSuffix)) {
           // some other file
           continue;
         }
@@ -622,7 +636,7 @@ arangodb::Result processInputDirectory(
         // found a structure.json file
         std::string name =
             file.substr(0, file.size() - collectionSuffix.size());
-        if (!options.includeSystemCollections && name[0] == '_') {
+        if (!options.includeSystemCollections && name.starts_with('_')) {
           continue;
         }
 
@@ -643,12 +657,17 @@ arangodb::Result processInputDirectory(
                       directory.pathToFile(file) +
                       "': file has wrong internal format"};
         }
-        std::string const cname = VelocyPackHelper::getStringValue(
+        std::string cname = VelocyPackHelper::getStringValue(
             parameters, StaticStrings::DataSourceName, "");
+
+        // problem: collection name may contain arbitrary characters
+        std::string escapedName = escapedCollectionName(cname, parameters);
         bool overwriteName = false;
-        if (cname != name &&
+        if (cname != name && name != escapedName &&
             name !=
-                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname))) {
+                (cname + "_" + arangodb::rest::SslInterface::sslMD5(cname)) &&
+            name != (escapedName + "_" +
+                     arangodb::rest::SslInterface::sslMD5(cname))) {
           // file has a different name than found in structure file
           if (options.importStructure) {
             // we cannot go on if there is a mismatch
@@ -1388,22 +1407,24 @@ Result RestoreFeature::RestoreMainJob::restoreData(
 
   // import data. check if we have a datafile
   //  ... there are 4 possible names
+  std::string escapedName =
+      escapedCollectionName(collectionName, parameters.get("parameters"));
   bool isCompressed = false;
   auto datafile = directory.readableFile(
-      collectionName + "_" +
-      arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json");
+      escapedName + "_" + arangodb::rest::SslInterface::sslMD5(collectionName) +
+      ".data.json");
   if (!datafile || datafile->status().fail()) {
     datafile = directory.readableFile(
-        collectionName + "_" +
+        escapedName + "_" +
         arangodb::rest::SslInterface::sslMD5(collectionName) + ".data.json.gz");
     isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
-    datafile = directory.readableFile(collectionName + ".data.json.gz");
+    datafile = directory.readableFile(escapedName + ".data.json.gz");
     isCompressed = true;
   }
   if (!datafile || datafile->status().fail()) {
-    datafile = directory.readableFile(collectionName + ".data.json");
+    datafile = directory.readableFile(escapedName + ".data.json");
     isCompressed = false;
   }
   if (!datafile || datafile->status().fail()) {

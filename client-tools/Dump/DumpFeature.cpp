@@ -90,6 +90,41 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
   return file->status();
 }
 
+std::string escapedCollectionName(std::string const& name,
+                                  VPackSlice parameters) {
+  std::string escapedName = name;
+  if (!arangodb::CollectionNameValidator::isAllowedName(/*isSystem*/ true,
+                                                        false, name)) {
+    VPackSlice idSlice = parameters.get(arangodb::StaticStrings::DataSourceCid);
+    if (idSlice.isString()) {
+      escapedName = idSlice.copyString();
+    } else if (idSlice.isNumber<uint64_t>()) {
+      escapedName = std::to_string(idSlice.getNumber<uint64_t>());
+    } else {
+      escapedName =
+          std::to_string(arangodb::RandomGenerator::interval(UINT64_MAX));
+    }
+  }
+  return escapedName;
+}
+
+std::string escapedViewName(std::string const& name, VPackSlice parameters) {
+  std::string escapedName = name;
+  if (!arangodb::ViewNameValidator::isAllowedName(/*isSystem*/ true, false,
+                                                  escapedName)) {
+    VPackSlice idSlice = parameters.get(arangodb::StaticStrings::DataSourceId);
+    if (idSlice.isString()) {
+      escapedName = idSlice.copyString();
+    } else if (idSlice.isNumber<uint64_t>()) {
+      escapedName = std::to_string(idSlice.getNumber<uint64_t>());
+    } else {
+      escapedName =
+          std::to_string(arangodb::RandomGenerator::interval(UINT64_MAX));
+    }
+  }
+  return escapedName;
+}
+
 /// @brief get a list of available databases to dump for the current user
 std::pair<arangodb::Result, std::vector<std::string>> getDatabases(
     arangodb::httpclient::SimpleHttpClient& client) {
@@ -365,8 +400,7 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
 
     header = response->getHeaderField(
         arangodb::StaticStrings::ContentTypeHeader, headerExtracted);
-    if (!headerExtracted ||
-        header.compare(0, 25, "application/x-arango-dump") != 0) {
+    if (!headerExtracted || !header.starts_with("application/x-arango-dump")) {
       return {TRI_ERROR_REPLICATION_INVALID_RESPONSE,
               "got invalid response from server: content-type is invalid"};
     }
@@ -496,10 +530,14 @@ Result DumpFeature::DumpCollectionJob::run(
 
   ++stats.totalCollections;
 
+  // problem: collection name may contain arbitrary characters
+  std::string escapedName =
+      escapedCollectionName(collectionName, collectionInfo.get("parameters"));
+
   if (dumpStructure) {
     // save meta data
     auto file = directory.writableFile(
-        collectionName + (options.clusterMode ? "" : ("_" + hexString)) +
+        escapedName + (options.clusterMode ? "" : ("_" + hexString)) +
             ".structure.json",
         true /*overwrite*/, 0, false /*gzipOk*/);
     if (!::fileOk(file.get())) {
@@ -532,7 +570,7 @@ Result DumpFeature::DumpCollectionJob::run(
   if (res.ok()) {
     // always create the file so that arangorestore does not complain
     auto file =
-        directory.writableFile(collectionName + "_" + hexString + ".data.json",
+        directory.writableFile(escapedName + "_" + hexString + ".data.json",
                                true /*overwrite*/, 0, true /*gzipOk*/);
     if (!::fileOk(file.get())) {
       return ::fileError(file.get(), true);
@@ -684,6 +722,11 @@ void DumpFeature::collectOptions(
 
   options->addOption("--dump-data", "Whether to dump collection data.",
                      new BooleanParameter(&_options.dumpData));
+
+  options
+      ->addOption("--dump-views", "Whether to dump view definitions.",
+                  new BooleanParameter(&_options.dumpViews))
+      .setIntroducedIn(31100);
 
   options
       ->addOption("--all-databases", "Whether to dump all databases.",
@@ -903,22 +946,24 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     views = VPackSlice::emptyArraySlice();
   }
 
-  // Step 1. Store view definition files
+  // Step 1. Store database properties files
   Result res = storeDumpJson(body, dbName);
   if (res.fail()) {
     return res;
   }
 
   // Step 2. Store view definition files
-  res = storeViews(views);
-  if (res.fail()) {
-    return res;
+  if (_options.dumpViews) {
+    res = storeViews(views);
+    if (res.fail()) {
+      return res;
+    }
   }
 
   // create a lookup table for collections
   std::map<std::string, arangodb::velocypack::Slice> restrictList;
   for (auto const& name : _options.collections) {
-    if (!name.empty() && name[0] == '_') {
+    if (name.starts_with('_')) {
       // if the user explictly asked for dumping certain collections, toggle the
       // system collection flag automatically
       _options.includeSystemCollections = true;
@@ -955,7 +1000,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
     if (deleted) {
       continue;
     }
-    if (name[0] == '_' && !_options.includeSystemCollections) {
+    if (name.starts_with('_') && !_options.includeSystemCollections) {
       continue;
     }
 
@@ -1074,18 +1119,20 @@ Result DumpFeature::storeDumpJson(VPackSlice body,
   return {};
 }
 
-Result DumpFeature::storeViews(VPackSlice const& views) const {
+Result DumpFeature::storeViews(VPackSlice views) const {
   for (VPackSlice view : VPackArrayIterator(views)) {
     auto nameSlice = view.get(StaticStrings::DataSourceName);
     if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
       continue;  // ignore
     }
 
+    // problem: name of view may contain arbitrary characters
+    std::string escapedName = escapedViewName(nameSlice.copyString(), view);
+
     try {
-      std::string fname = nameSlice.copyString();
-      fname.append(".view.json");
+      escapedName.append(".view.json");
       // save last tick in file
-      auto file = _directory->writableFile(fname, true, 0, false);
+      auto file = _directory->writableFile(escapedName, true, 0, false);
       if (!::fileOk(file.get())) {
         return ::fileError(file.get(), true);
       }
