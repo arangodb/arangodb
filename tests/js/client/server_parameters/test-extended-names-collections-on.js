@@ -227,6 +227,70 @@ function testSuite() {
       });
     },
     
+    testQueryId: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + extendedName + "` SORT doc.value1 RETURN doc").toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual("test" + i, res[i]._key);
+        assertEqual(extendedName + "/test" + i, res[i]._id);
+        assertEqual(i, res[i].value1);
+      }
+    },
+    
+    testParseIdentifierAqlFunction: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR doc IN `" + extendedName + "` SORT doc.value1 RETURN PARSE_IDENTIFIER(doc)").toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(extendedName, res[i].collection);
+        assertEqual("test" + i, res[i].key);
+      }
+      
+      res = db._query("FOR doc IN `" + extendedName + "` SORT doc.value1 RETURN PARSE_IDENTIFIER(doc._id)").toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual(extendedName, res[i].collection);
+        assertEqual("test" + i, res[i].key);
+      }
+    },
+    
+    testDocumentAqlFunction: function() {
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, value1: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR i IN 0..99 RETURN DOCUMENT('" + extendedName + "', CONCAT('test', i))").toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual("test" + i, res[i]._key);
+        assertEqual(extendedName + "/test" + i, res[i]._id);
+        assertEqual(i, res[i].value1);
+      }
+      
+      res = db._query("FOR i IN 0..99 RETURN DOCUMENT(CONCAT('" + extendedName + "/test', i))").toArray();
+      assertEqual(100, res.length);
+      for (let i = 0; i < 100; ++i) {
+        assertEqual("test" + i, res[i]._key);
+        assertEqual(extendedName + "/test" + i, res[i]._id);
+        assertEqual(i, res[i].value1);
+      }
+    },
   };
 }
 
