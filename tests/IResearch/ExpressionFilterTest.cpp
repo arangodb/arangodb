@@ -1255,8 +1255,12 @@ TEST_F(IResearchExpressionFilterTest, test) {
     ASSERT_NE(nullptr, columnValues);
     auto* value = irs::get<irs::payload>(*columnValues);
     ASSERT_NE(nullptr, value);
-    auto docs = prepared->execute(
-        {.segment = segment, .scorers = preparedOrder, .ctx = &queryCtx});
+    auto docs = prepared->execute({
+        .segment = segment,
+        .scorers = preparedOrder,
+        .ctx = &queryCtx,
+        .wand = {},
+    });
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);

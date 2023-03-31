@@ -531,11 +531,12 @@ class IResearchInvertedIndexIterator final
         }
         _projections.reset(segmentReader);
 
-        _itr = segmentReader.mask(_filter->execute(
-            irs::ExecutionContext{.segment = segmentReader,
-                                  .scorers = irs::Scorers::kUnordered,
-                                  .ctx = &kEmptyAttributeProvider,
-                                  .wand = {}}));
+        _itr = segmentReader.mask(_filter->execute({
+            .segment = segmentReader,
+            .scorers = irs::Scorers::kUnordered,
+            .ctx = &kEmptyAttributeProvider,
+            .wand = {},
+        }));
         _doc = irs::get<irs::document>(*_itr);
       } else {
         if constexpr (produce) {
