@@ -992,12 +992,6 @@ void ClusterInfo::loadClusterId() {
   }
 }
 
-void ClusterInfo::unregisterDangling(IndexId id) {
-  // we update pendings only during plan loads.
-  std::lock_guard mutexLocker{_planProt.mutex};
-  _pendingCleanups.erase(id);
-}
-
 /// @brief create a new collecion object from the data, using the cache if
 /// possible
 ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
