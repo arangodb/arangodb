@@ -72,7 +72,7 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState peer, Callback callback,
                                std::string description);
 
-  void updateServerState(ServersKnown const& state);
+  void updateServerState(ServersKnown state);
 
   bool isServerAlive(ServerID id) const;
 

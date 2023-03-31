@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen : 4000 */
-/* global arango, assertTrue */
+/* global arango, assertTrue, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -40,15 +40,20 @@ function ArangoSearchDanglingLinkSuite () {
       db.foo.save({a:1, b:'text'});
     },
     
+    setUp : function() {
+        internal.debugClearFailAt();
+    },
+    
     tearDownAll : function () {
       internal.debugClearFailAt();
       db._useDatabase('_system');
-      db._drop('UnitTestsDangling');
+      db._dropDatabase('UnitTestsDangling');
     },
 
     testDanglingLink : function () {
         internal.debugSetFailAt("IResearchLink::alwaysDangling");
         db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
+        db._dropView("dangle");
         let nCount = 0;
         while(db.foo.getIndexes(true, true).length > 1) {
             internal.sleep(1);
@@ -56,14 +61,35 @@ function ArangoSearchDanglingLinkSuite () {
             // 30 secs should be more than enought to kick in cleanup
             assertTrue(nCount < 30);
         }
+       
+    },
+    
+    testDanglingLinkRetryDrop : function () {
+        internal.debugSetFailAt("IResearchLink::alwaysDangling");
+        internal.debugSetFailAt("IResearchLink::failDropDangling");
+        db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
         db._dropView("dangle");
+        let nCount = 0;
+        while(db.foo.getIndexes(true, true).length > 1 && nCount < 10) {
+            internal.sleep(1);
+            nCount++;
+        }
+        assertEqual(10, nCount);
+        internal.debugClearFailAt("IResearchLink::failDropDangling");
+        while(db.foo.getIndexes(true, true).length > 1) {
+            internal.sleep(1);
+            nCount++;
+            // 30 secs should be more than enought to kick in cleanup
+            assertTrue(nCount < 30);
+        }
+        
     },
 
   };
 }
 
 if (internal.debugCanUseFailAt()) {
-  jsunity.run(aqlFailureSuite);
+  jsunity.run(ArangoSearchDanglingLinkSuite);
 }
 
 return jsunity.done();

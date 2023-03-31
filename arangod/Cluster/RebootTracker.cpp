@@ -91,7 +91,7 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 #endif
 }
 
-void RebootTracker::updateServerState(ServersKnown const& state) {
+void RebootTracker::updateServerState(ServersKnown state) {
   std::lock_guard guard{_mutex};
   LOG_TOPIC("77a6e", TRACE, Logger::CLUSTER)
       << "updating reboot server state from " << _state << " to " << state;

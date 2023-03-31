@@ -350,6 +350,54 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 3>
   return res;
 }
 
+void doQueueLinkDrop(IndexId id, std::string collection, std::string vocbase,
+                     ClusterInfo& ci) {
+  auto* scheduler = SchedulerFeature::SCHEDULER;
+  if (!scheduler || ci.server().isStopping()) {
+    return;
+  }
+  LOG_TOPIC("0d7b2", WARN, Logger::CLUSTER)
+      << "Scheduling drop for dangling link " << id;
+  auto dropTask = [id = id, collection = collection, vocbase = vocbase,
+                   &ci = ci] {
+    if (!ci.server().isStopping()) {
+      auto coll = ci.getCollectionNT(vocbase, collection);
+      if (coll) {
+        velocypack::Builder builder;
+        builder.openObject();
+        builder.add(arangodb::StaticStrings::IndexId,
+                    velocypack::Value(id.id()));
+        builder.close();
+        LOG_TOPIC("d7665", TRACE, Logger::CLUSTER)
+            << "Dropping dangling link " << id;
+        Result res;
+        TRI_IF_FAILURE("IResearchLink::failDropDangling") {
+          res = Result{TRI_ERROR_DEBUG};
+        }
+        else {
+          res = methods::Indexes::drop(coll.get(), builder.slice());
+        }
+        if (res.fail() &&
+            res.errorNumber() != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+          // we should have internal superuser
+          TRI_ASSERT(res.errorNumber() != TRI_ERROR_FORBIDDEN);
+          LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
+              << "Failed to drop dangling link " << id
+              << " Err:" << res.errorNumber();
+          doQueueLinkDrop(id, collection, vocbase, ci);
+        } else {
+          LOG_TOPIC("2c47a", TRACE, Logger::CLUSTER)
+              << "Removed dangling link" << id;
+        }
+      } else {
+        LOG_TOPIC("f5596", TRACE, Logger::CLUSTER)
+            << "Scheduled drop for dangling link " << id
+            << " skipped as collection is dropped";
+      }
+    };
+  };
+  scheduler->queue(RequestLane::INTERNAL_LOW, dropTask);
+}
 }  // namespace
 }  // namespace arangodb
 
@@ -995,7 +1043,6 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     // changed
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
-
     if (!isBuilding) {
       auto indexes = collection->getIndexes();
       // if the collection has a link to a view, there are dependencies between
@@ -1011,65 +1058,24 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
         hash = 0;
         if (cleanupLinks) {
           for (auto const& idx : indexes) {
+            TRI_ASSERT(idx);
             if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-              auto coordLink =
-                  basics::downCast<iresearch::IResearchLinkCoordinator>(
-                      idx.get());
-              TRI_ASSERT(coordLink);
-              auto const& viewId = coordLink->getViewId();
+              auto const& coordLink =
+                  basics::downCast<iresearch::IResearchLinkCoordinator const>(
+                      *idx);
+              auto const& viewId = coordLink.getViewId();
               auto vocbaseViews = _newPlannedViews.find(vocbase.name());
               if (vocbaseViews == _newPlannedViews.end() ||
                   vocbaseViews->second.find(viewId) ==
                       vocbaseViews->second.end()) {
-                if (_pendingCleanups.find(idx->id()) ==
-                    _pendingCleanups.end()) {
-                  // scheduling low prio index drop
-                  auto* scheduler = SchedulerFeature::SCHEDULER;
-                  if (scheduler && !_server.isStopping()) {
-                    LOG_TOPIC("0d7b2", WARN, Logger::CLUSTER)
-                        << "Scheduling drop for dangling link " << idx->id()
-                        << " View: " << viewId << " was dropped";
-                    _currentCleanups.insert(idx->id());
-                    scheduler->queue(
-                        RequestLane::INTERNAL_LOW,
-                        [id = idx->id(), name = collection->name(),
-                         vocbase = vocbase.name(), &server = server()] {
-                          if (!server.isStopping()) {
-                            auto& ci = server.getFeature<ClusterFeature>()
-                                           .clusterInfo();
-                            auto coll = ci.getCollectionNT(vocbase, name);
-                            if (coll) {
-                              velocypack::Builder builder;
-                              builder.openObject();
-                              builder.add(arangodb::StaticStrings::IndexId,
-                                          velocypack::Value(id.id()));
-                              builder.close();
-                              LOG_TOPIC("d7665", TRACE, Logger::CLUSTER)
-                                  << "Dropping dangling link " << id;
-                              auto res = methods::Indexes::drop(
-                                  coll.get(), builder.slice());
-                              if (res.fail() &&
-                                  res.errorNumber() !=
-                                      TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
-                                LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
-                                    << "Failed to drop dangling link " << id
-                                    << " Err:" << res.errorNumber();
-                                ci.unregisterDangling(id);
-                              } else {
-                                LOG_TOPIC("2c47a", TRACE, Logger::CLUSTER)
-                                    << "Removed dangling link" << id;
-                              }
-                            } else {
-                              LOG_TOPIC("f5596", TRACE, Logger::CLUSTER)
-                                  << "Scheduled drop for dangling link " << id
-                                  << " skipped as collection is dropped";
-                            }
-                          }
-                        });
-                  }
+                auto existing = _pendingCleanups.find(idx->id());
+                if (existing == _pendingCleanups.end()) {
+                  doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
+                                  const_cast<ClusterInfo&>(*this));
+                  _currentCleanups.emplace(idx->id());
                 } else {
                   // Drop is already pending. Just keep the record.
-                  _currentCleanups.insert(idx->id());
+                  _currentCleanups.emplace(idx->id());
                 }
               }
             }
@@ -1560,13 +1566,13 @@ void ClusterInfo::loadPlan() {
   //    },...
   //  },...
   // }}
-  bool cleanupLinkResponsible{false};
-  if (ServerState::instance()->isCoordinator() && !changeSet.dbs.empty()) {
-    cleanupLinkResponsible = true;
+  bool cleanupLinkResponsible{ServerState::instance()->isCoordinator() &&
+                              !changeSet.dbs.empty()};
+  if (cleanupLinkResponsible) {
     auto const myId = ServerState::instance()->getId();
     auto ctors = getCurrentCoordinators();
     for (auto const& s : ctors) {
-      if (!_rebootTracker.isServerAlive(s) && s < myId) {
+      if (_rebootTracker.isServerAlive(s) && s < myId) {
         cleanupLinkResponsible = false;
         break;
       }
@@ -5672,6 +5678,7 @@ void ClusterInfo::loadServers() {
   VPackSlice serversRegistered, serversAliases, serversKnownSlice,
       supervisionHealth;
 
+  // FIXME(Dronplane): use std::arrays
   std::initializer_list<std::string_view> const serversRegisteredPath{
       AgencyCommHelper::path(), "Current", "ServersRegistered"};
   if (result[0].hasKey(serversRegisteredPath)) {
