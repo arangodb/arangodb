@@ -536,7 +536,7 @@
 
     breadcrumb: function () {
       var name = window.location.hash.split('/');
-      var collid = decodeURIComponent(name[0]);
+      var collid = decodeURIComponent(name[1]);
       $('#subNavigationBar .breadcrumb').html(
         '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(collid.length > 64 ? collid.substr(0, 64) + "..." : collid) + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
