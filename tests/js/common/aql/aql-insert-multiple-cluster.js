@@ -559,6 +559,15 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
       });
     },
 
+    testWithDocumentReadingSubquery: function () {
+      const queries = [
+        `LET x = NOOPT(FOR d IN ${cn} LIMIT 5 RETURN d) FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
+      ];
+      queries.forEach((query, idx) => {
+        assertRuleIsNotUsed(query);
+      });
+    },
+
     testRuleNoEffect: function () {
       const queries = [
         `FOR d IN 1..1 INSERT d INTO ${cn}`,

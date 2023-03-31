@@ -448,6 +448,11 @@ bool substituteClusterMultipleDocumentInsertOperations(
   if (dep == nullptr || dep->getType() != EN::ENUMERATE_LIST) {
     return false;
   }
+
+  if (!::depIsSingletonOrConstCalc(dep)) {
+    return false;
+  }
+
   bool modified = false;
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
 
