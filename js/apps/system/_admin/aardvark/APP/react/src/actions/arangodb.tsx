@@ -13,18 +13,7 @@ class ArangoDB {
   private clusterApi: ReturnType<typeof Database.prototype.route>;
 
   constructor() {
-    let url;
-
-    const env = process.env.NODE_ENV;
-    if (env === 'development') {
-      url = process.env.REACT_APP_ARANGODB_HOST;
-    } else {
-      url = window.location.origin;
-    }
-
-    this.db = new Database({
-      url: url
-    });
+    this.db = new Database({ url: window.location.origin });
     this.clusterApi = this.db.route('_admin/cluster');
   }
 

@@ -1,16 +1,8 @@
 import { Database } from 'arangojs';
 import { memoize } from 'lodash';
 
-const env = process.env.NODE_ENV;
-let url: string;
-if (env === 'development') {
-  url = process.env.REACT_APP_ARANGODB_HOST as string;
-} else {
-  url = window.location.origin;
-}
-
 export const getDB = memoize((db: string) => new Database({
-  url,
+  url: window.location.origin,
   databaseName: db,
   auth: {
     token: window.arangoHelper.getCurrentJwt()

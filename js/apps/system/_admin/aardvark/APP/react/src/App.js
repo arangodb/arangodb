@@ -100,12 +100,6 @@ window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
 
-// only set this for development
-if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
-  window.frontendConfig.react = true;
-}
-
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.form.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
