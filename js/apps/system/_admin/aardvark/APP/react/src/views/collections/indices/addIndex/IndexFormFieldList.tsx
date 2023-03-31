@@ -4,9 +4,17 @@ import React from "react";
 import { IndexFormField, IndexFormFieldProps } from "./IndexFormField";
 
 export const IndexFormFieldsList = ({
-  fields
+  fields,
+  isFormDisabled,
+  renderField
 }: {
   fields: IndexFormFieldProps[];
+  isFormDisabled?: boolean;
+  renderField?: (props: {
+    field: IndexFormFieldProps;
+    index?: number;
+    autoFocus: boolean;
+  }) => JSX.Element;
 }) => {
   return (
     <Box
@@ -14,30 +22,52 @@ export const IndexFormFieldsList = ({
       gridTemplateColumns={"200px 1fr 40px"}
       rowGap="5"
       columnGap="3"
-      maxWidth="500px"
+      maxWidth="800px"
+      paddingRight="8"
+      paddingLeft="10"
+      alignItems="center"
+      marginTop="4"
     >
       {fields.map((field, index) => {
-        return <IndexFormField key={field.name} index={index} field={field} />;
+        return (
+          <IndexFormField
+            render={renderField}
+            key={field.name}
+            index={index}
+            field={{
+              ...field,
+              isDisabled: field.isDisabled || isFormDisabled
+            }}
+          />
+        );
       })}
     </Box>
   );
 };
-export const FormActions = ({ onClose }: { onClose: () => void }) => {
+export const FormActions = ({
+  onClose,
+  isFormDisabled
+}: {
+  onClose: () => void;
+  isFormDisabled?: boolean;
+}) => {
   const { isValid, isSubmitting } = useFormikContext();
   return (
-    <Stack direction="row" justifyContent="flex-end">
+    <Stack marginY="2" direction="row" justifyContent="flex-end" padding="10">
       <Button size="sm" onClick={onClose}>
         Close
       </Button>
-      <Button
-        colorScheme="green"
-        size="sm"
-        type="submit"
-        isDisabled={!isValid}
-        isLoading={isSubmitting}
-      >
-        Create
-      </Button>
+      {!isFormDisabled && (
+        <Button
+          colorScheme="green"
+          size="sm"
+          type="submit"
+          isDisabled={!isValid}
+          isLoading={isSubmitting}
+        >
+          Create
+        </Button>
+      )}
     </Stack>
   );
 };

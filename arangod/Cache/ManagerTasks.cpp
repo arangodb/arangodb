@@ -21,7 +21,8 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/ManagerTasks.h"
+#include "ManagerTasks.h"
+
 #include "Basics/SpinLocker.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
@@ -37,13 +38,15 @@ FreeMemoryTask::~FreeMemoryTask() = default;
 
 bool FreeMemoryTask::dispatch() {
   _manager.prepareTask(_environment);
+
   try {
     if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+      // intentionally don't unprepare task
       return true;
     }
     _manager.unprepareTask(_environment);
     return false;
-  } catch (std::exception const&) {
+  } catch (...) {
     _manager.unprepareTask(_environment);
     throw;
   }
@@ -66,11 +69,14 @@ void FreeMemoryTask::run() {
         metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
         metadata.toggleResizing();
       }
+      TRI_ASSERT(_manager._globalAllocation >=
+                 reclaimed + _manager._fixedAllocation);
       _manager._globalAllocation -= reclaimed;
+      TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
     }
 
     _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
+  } catch (...) {
     // always count down at the end
     _manager.unprepareTask(_environment);
     throw;
@@ -89,13 +95,15 @@ MigrateTask::~MigrateTask() = default;
 
 bool MigrateTask::dispatch() {
   _manager.prepareTask(_environment);
+
   try {
     if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+      // intentionally don't unprepare task
       return true;
     }
     _manager.unprepareTask(_environment);
     return false;
-  } catch (std::exception const&) {
+  } catch (...) {
     _manager.unprepareTask(_environment);
     throw;
   }
@@ -120,7 +128,7 @@ void MigrateTask::run() {
     }
 
     _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
+  } catch (...) {
     // always count down at the end
     _manager.unprepareTask(_environment);
     throw;
