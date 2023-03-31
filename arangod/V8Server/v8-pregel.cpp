@@ -220,12 +220,12 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  auto c = pregel.conductor(executionNum);
-  if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "Execution number is invalid");
+
+  auto canceled = pregel.cancel(executionNum);
+  if (canceled.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(canceled.errorNumber(),
+                                   canceled.errorMessage());
   }
-  c->cancel();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

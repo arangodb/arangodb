@@ -55,6 +55,7 @@ struct ExecutionState {
     return std::nullopt;
   };
   virtual auto aqlResultsAvailable() const -> bool { return false; }
+  virtual auto canBeCanceled() const -> bool { return true; }
   virtual ~ExecutionState() = default;
 };
 

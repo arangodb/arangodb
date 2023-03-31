@@ -55,6 +55,7 @@
 #include "Pregel/StatusActor.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/ResultActor.h"
+#include "Pregel/ResultMessages.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
 #include "Pregel/Utils.h"
@@ -384,7 +385,9 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
-    _resultActors.emplace(en, resultActorPID);
+    _resultActor.doUnderLock([&en, &resultActorPID](auto& actors) {
+      actors.emplace(en, resultActorPID);
+    });
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
         vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
@@ -399,17 +402,22 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
                     fmt::format("Unsupported Algorithm: {}",
                                 executionSpecifications.algorithm)};
     }
-    _actorRuntime->spawn<conductor::ConductorActor>(
+    auto conductorActorID = _actorRuntime->spawn<conductor::ConductorActor>(
         vocbase.name(),
         std::make_unique<conductor::ConductorState>(
             std::move(algorithm.value()), executionSpecifications,
             std::move(vocbaseLookupInfo), std::move(spawnActor),
             std::move(resultActorPID), std::move(statusActorPID)),
         conductor::message::ConductorStart{});
+    auto conductorActorPID = actor::ActorPID{.server = ss->getId(),
+                                             .database = vocbase.name(),
+                                             .id = conductorActorID};
+    _conductorActor.doUnderLock([&en, &conductorActorPID](auto& actors) {
+      actors.emplace(en, conductorActorPID);
+    });
 
     return en;
   } else {
-    // TODO needs to be part of the conductor state
     auto c = std::make_shared<pregel::Conductor>(executionSpecifications,
                                                  vocbase, *this);
     addConductor(std::move(c), en);
@@ -780,19 +788,27 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 }
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
-  if (!_resultActors.contains(execNr)) {
+  auto resultActor = _resultActor.doUnderLock(
+      [&execNr](auto const& actors) -> std::optional<actor::ActorPID> {
+        auto actor = actors.find(execNr);
+        if (actor == actors.end()) {
+          return std::nullopt;
+        }
+        return actor->second;
+      });
+  if (not resultActor.has_value()) {
     return Result{
         TRI_ERROR_HTTP_NOT_FOUND,
         fmt::format("Cannot locate results for pregel run {}.", execNr)};
   }
-  auto actorPID = _resultActors.at(execNr);
+  auto actorPID = resultActor.value();
   auto state = _actorRuntime->getActorStateByID<ResultActor>(actorPID.id);
   if (!state.has_value()) {
     return Result{
         TRI_ERROR_HTTP_NOT_FOUND,
         fmt::format("Cannot find results for pregel run {}.", execNr)};
   }
-  if (state.value().finished) {
+  if (state.value().complete) {
     return state.value().results;
   }
   return Result{
@@ -1144,4 +1160,49 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
   result.close();
 
   return res;
+}
+
+auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
+  auto c = conductor(executionNumber);
+  if (c != nullptr) {
+    c->cancel();
+    return Result{};
+  }
+
+  // pregel can still have ran with actors, then the result actor would exist
+  auto resultActor = _resultActor.doUnderLock(
+      [&executionNumber](auto const& actors) -> std::optional<actor::ActorPID> {
+        auto actor = actors.find(executionNumber);
+        if (actor == actors.end()) {
+          return std::nullopt;
+        }
+        return actor->second;
+      });
+  if (resultActor.has_value()) {
+    if (_actorRuntime->contains(resultActor.value().id)) {
+      _actorRuntime->dispatch<pregel::message::ResultMessages>(
+          resultActor.value(), resultActor.value(),
+          pregel::message::ResultCleanup{});
+    }
+
+    auto conductorActor = _conductorActor.doUnderLock(
+        [&executionNumber](
+            auto const& actors) -> std::optional<actor::ActorPID> {
+          auto actor = actors.find(executionNumber);
+          if (actor == actors.end()) {
+            return std::nullopt;
+          }
+          return actor->second;
+        });
+    if (conductorActor.has_value() and
+        _actorRuntime->contains(conductorActor.value().id)) {
+      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
+          conductorActor.value(), conductorActor.value(),
+          pregel::conductor::message::Cancel{});
+    }
+
+    return Result{};
+  }
+
+  return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
 }
