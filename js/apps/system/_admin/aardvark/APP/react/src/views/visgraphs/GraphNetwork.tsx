@@ -1,4 +1,4 @@
-import { Box, Progress } from "@chakra-ui/react";
+import { Alert, Box, Button, Progress, Stack, Text } from "@chakra-ui/react";
 import React, { useEffect, useRef, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
@@ -135,6 +135,7 @@ const GraphNetworkInner = ({
   progressValue: number;
   visJsRef: React.RefObject<HTMLDivElement>;
 }) => {
+  const { graphError } = useGraph();
   return (
     <>
       <GraphRightClickMenu
@@ -143,7 +144,7 @@ const GraphNetworkInner = ({
         }}
       />
       <Box id="graphNetworkWrap" height="full" backgroundColor="white">
-        {progressValue < 100 ? (
+        {progressValue < 100 && !graphError ? (
           <Box
             width="full"
             position="absolute"
@@ -154,9 +155,51 @@ const GraphNetworkInner = ({
             <Progress value={progressValue} colorScheme="green" />
           </Box>
         ) : null}
+        <GraphError />
         <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
         <GraphInfo />
       </Box>
     </>
+  );
+};
+
+const GraphError = () => {
+  const { graphError, onRestoreDefaults } = useGraph();
+
+  if (!graphError) {
+    return null;
+  }
+  return (
+    <Box
+      width="full"
+      position="absolute"
+      paddingX="10"
+      top="30%"
+      translateY="-100%"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+    >
+      <Alert
+        status="error"
+        position="absolute"
+        top="10"
+        width="auto"
+        borderRadius="sm"
+      >
+        <Stack>
+          <Text>Something went wrong while loading the graph</Text>
+          <Text>Error Code: {graphError.code}</Text>
+          <Button
+            onClick={onRestoreDefaults}
+            colorScheme="red"
+            variant="ghost"
+            size="sm"
+          >
+            Restore defaults
+          </Button>
+        </Stack>
+      </Alert>
+    </Box>
   );
 };

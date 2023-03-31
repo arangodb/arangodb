@@ -70,6 +70,7 @@ type GraphContextType = {
   selectedEntity?: SelectedEntityType;
   onSelectEntity: (data: SelectedEntityType) => void;
   hasDrawnOnce: MutableRefObject<boolean>;
+  graphError?: { code: number; response: { body: { errorMessage: string } } };
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -158,7 +159,11 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const { setUrlParams, setParams, params, urlParams } = useSetupParams({
     graphName
   });
-  const { data: graphData, isLoading: isGraphLoading } = useSWR<VisGraphData>(
+  const {
+    data: graphData,
+    isLoading: isGraphLoading,
+    error: graphError
+  } = useSWR<VisGraphData>(
     ["visData", graphName, params],
     async () => {
       const fetchStarted = new Date();
@@ -245,7 +250,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         selectedEntity,
         onSelectEntity,
         onRestoreDefaults,
-        hasDrawnOnce
+        hasDrawnOnce,
+        graphError
       }}
     >
       <UrlParametersContext.Provider value={{ urlParams, setUrlParams }}>
