@@ -33,7 +33,6 @@ cppcheck "$@" \
   --quiet \
   --platform=unix64 \
   --inline-suppr \
-  --suppress="*:*yacc.c*" \
   --suppress="*:Aql/grammar.cpp" \
   --suppress="*:Aql/tokens.cpp" \
   --suppress="*:Aql/tokens.ll" \
