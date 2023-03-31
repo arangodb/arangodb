@@ -504,7 +504,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
           FollowerStatistics{
               LogStatistics{f->lastAckedIndex, f->lastAckedCommitIndex},
               f->lastErrorReason, lastRequestLatencyMS, state,
-              f->nextPrevLogIndex});
+              f->nextPrevLogIndex, f->snapshotAvailable});
     }
 
     status.commitLagMS = leaderData.calculateCommitLag();
@@ -560,6 +560,13 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   if (guard->calculateCommitLag() > std::chrono::seconds{20}) {
     commitFailReason = guard->_lastCommitFailReason;
   }
+  std::vector<ParticipantId> followersWithSnapshot;
+  followersWithSnapshot.reserve(guard->_follower.size());
+  for (auto const& [pid, follower] : guard->_follower) {
+    if (pid != _id && follower->snapshotAvailable) {
+      followersWithSnapshot.emplace_back(pid);
+    }
+  }
   return QuickLogStatus{
       .role = ParticipantRole::kLeader,
       .localState = localState,
@@ -569,7 +576,8 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
       .snapshotAvailable = true,
       .commitFailReason = commitFailReason,
       .activeParticipantsConfig = guard->activeParticipantsConfig,
-      .committedParticipantsConfig = guard->committedParticipantsConfig};
+      .committedParticipantsConfig = guard->committedParticipantsConfig,
+      .followersWithSnapshot = std::move(followersWithSnapshot)};
 }
 
 auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
@@ -902,6 +910,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
       }
     }
     req.entries = std::move(transientEntries).persistent();
+
+    _self._logMetrics->replicatedLogAppendEntriesNumEntries->count(
+        req.entries.size());
+    _self._logMetrics->replicatedLogAppendEntriesSize->count(sizeCounter);
   }
 
   auto isEmptyAppendEntries = req.entries.empty();
@@ -1002,6 +1014,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
                 << to_string(response.reason.error)
                 << " message id = " << messageId;
             ++follower.numErrorsSinceLastAnswer;
+            _self._logMetrics->replicatedLogLeaderAppendEntriesErrorCount
+                ->count();
         }
       }
     } else {
@@ -1013,6 +1027,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
     }
   } else if (res.hasException()) {
     ++follower.numErrorsSinceLastAnswer;
+    _self._logMetrics->replicatedLogLeaderAppendEntriesErrorCount->count();
     follower.lastErrorReason = {
         AppendEntriesErrorReason::ErrorType::kCommunicationError};
     try {

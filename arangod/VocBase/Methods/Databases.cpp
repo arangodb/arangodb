@@ -65,7 +65,7 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-std::string Databases::normalizeName(std::string const& name) {
+std::string Databases::normalizeName(std::string_view name) {
   return normalizeUtf8ToNFC(name);
 }
 
@@ -341,6 +341,17 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
     }
 
     CreateDatabaseInfo createInfo(server, exec);
+    if (ServerState::instance()->isDBServer()) {
+      // if we are on a DB server, we are likely called by the maintenance,
+      // and validation of database creation should have happened on the
+      // coordinator already.
+      // we should not make the validation fail on the DB server only,
+      // because that can lead to all sorts of problems later on if _new_
+      // DB servers are added that validate _existing_ databases
+      // differently.
+      createInfo.strictValidation(false);
+    }
+
     res = createInfo.load(dbName, options, users);
 
     if (!res.ok()) {
@@ -480,7 +491,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
         auto& df = server.getFeature<DatabaseFeature>();
         res = ::dropDBCoordinator(df, dbName);
       } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
@@ -510,7 +521,7 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
       auto& df = server.getFeature<DatabaseFeature>();
       res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
     }
   }
 

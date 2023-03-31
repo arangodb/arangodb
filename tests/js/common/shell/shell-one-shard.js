@@ -175,6 +175,31 @@ function OneShardPropertiesSuite () {
         assertEqual(props.writeConcern, undefined);
       }
     },
+
+    testCreationWithDistributeShardsLike : function () {
+      if (isCluster) {
+        assertTrue(db._createDatabase(dn, { replicationFactor: 2, writeConcern: 2, sharding: "single" }));
+        db._useDatabase(dn);
+        // We need to create a new collection that we can use as a leader
+        db._create("leading");
+        try {
+          db._create("test", {distributeShardsLike: "leading"});
+          fail();
+        } catch (err) {
+          // We cannot create the collection, as the leader is not allowed! We will have a chain of distributeShardsLike
+          assertEqual(ERRORS.ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE.code, err.errorNum);
+        }
+
+        // It should be allowed to create a collection following the OneShard leader (_graphs for every non _system db)
+        const c = db._create("test", {distributeShardsLike: "_graphs"});
+        const props = c.properties();
+        assertEqual(2, props.writeConcern);
+        assertEqual(2, props.replicationFactor);
+        assertEqual(1, props.numberOfShards);
+
+        checkDBServerSharding(dn, "single");
+      }
+    },
     
     testShardingFlexible : function () {
       assertTrue(db._createDatabase(dn, { sharding: "flexible" }));

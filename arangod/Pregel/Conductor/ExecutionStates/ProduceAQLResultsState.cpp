@@ -44,7 +44,7 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
 
   if (responseCount == conductor.workers.size() and
       respondedWorkers == conductor.workers) {
-    return std::make_unique<AQLResultsAvailable>();
+    return std::make_unique<AQLResultsAvailable>(conductor);
   }
   return std::nullopt;
 }

@@ -38,7 +38,6 @@ auto inspect(Inspector& f, ResultStart& x) {
 struct SaveResults {
   ResultT<PregelResults> results = {PregelResults{}};
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, SaveResults& x) {
   return f.object(x).fields(f.field("results", x.results));
@@ -48,7 +47,6 @@ struct AddResults {
   ResultT<PregelResults> results = {PregelResults{}};
   bool receivedAllResults{false};
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, AddResults& x) {
   return f.object(x).fields(

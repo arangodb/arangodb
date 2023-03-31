@@ -49,6 +49,12 @@ struct ReplicatedLogMetrics {
   metrics::Histogram<metrics::LogScale<std::uint64_t>>*
       replicatedLogInsertsBytes;
   metrics::Histogram<metrics::LogScale<std::uint64_t>>* replicatedLogInsertsRtt;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogAppendEntriesNumEntries;
+  metrics::Histogram<metrics::LogScale<std::uint64_t>>*
+      replicatedLogAppendEntriesSize;
+  metrics::Counter* replicatedLogFollowerEntryDropCount;
+  metrics::Counter* replicatedLogLeaderAppendEntriesErrorCount;
 
   metrics::Counter* replicatedLogNumberAcceptedEntries;
   metrics::Counter* replicatedLogNumberCommittedEntries;

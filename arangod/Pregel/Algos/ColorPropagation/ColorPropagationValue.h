@@ -25,6 +25,7 @@
 #include "Inspection/VPack.h"
 #include "Pregel/SenderMessage.h"
 #include "Pregel/SenderMessageFormat.h"
+#include "Pregel/Utils.h"
 
 namespace arangodb::pregel::algos {
 

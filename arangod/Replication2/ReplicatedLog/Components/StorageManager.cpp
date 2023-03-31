@@ -98,9 +98,8 @@ struct comp::StorageManagerTransaction : IStorageTransaction {
         std::move(mapping),
         [slice = std::move(slice), iter = std::move(iter)](
             StorageManager::IStorageEngineMethods& methods) mutable noexcept {
-          return methods.insert(std::move(iter), {}).thenValue([](auto&& res) {
-            return res.result();
-          });
+          return methods.insert(std::move(iter), {.waitForSync = true})
+              .thenValue([](auto&& res) { return res.result(); });
         });
   }
 

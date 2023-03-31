@@ -3,9 +3,8 @@ import React, { useContext, useEffect, useState } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
 import useSWR from "swr";
-import MultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/MultiSelect";
+import MultiSelect from "../../../../components/select/MultiSelect";
+import { OptionType } from "../../../../components/select/SelectBase";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormState, ViewContext } from "../../constants";
 
@@ -93,11 +92,11 @@ const CollectionsDropdown = () => {
       isDisabled={!isAdminUser}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeLink((action.removedValue as any).value as string);
+          removeLink(action.removedValue.value);
           return;
         }
-        if (action.action === "select-option") {
-          addLink((action.option as any).value as string);
+        if (action.action === "select-option" && action.option?.value) {
+          addLink(action.option.value);
         }
       }}
     />

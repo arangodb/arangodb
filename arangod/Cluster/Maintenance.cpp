@@ -1179,7 +1179,8 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
     DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors,
-    replication::Version replicationVersion) {
+    replication::Version replicationVersion,
+    ReplicatedLogStatusMapByDatabase const& localLogs) {
   VPackBuilder ret;
 
   try {
@@ -1258,13 +1259,51 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         shardInSync = planServers.length() == numFollowers + 1;
         shardReplicated = numFollowers > 0;
       } else {
-        // Copy over PLAN values for replication 2 databases
-        ret.add(VPackValue(maintenance::SERVERS));
-        ret.add(planServers);
-        ret.add(VPackValue(StaticStrings::FailoverCandidates));
-        ret.add(planServers);
-        shardInSync = true;
-        shardReplicated = true;
+        auto const* status =
+            [&]() -> replication2::maintenance::LogStatus const* {
+          if (auto logs = localLogs.find(database); logs != localLogs.end()) {
+            auto logId = collection->replicatedStateId();
+            if (auto log = logs->second.find(logId);
+                log != logs->second.end()) {
+              if (log->second.status.role ==
+                  arangodb::replication2::replicated_log::ParticipantRole::
+                      kLeader) {
+                return &log->second;
+              }
+            }
+          }
+          return nullptr;
+        }();
+
+        if (status) {
+          ret.add(VPackValue(maintenance::SERVERS));
+          {
+            VPackArrayBuilder ar(&ret);
+            ret.add(VPackValue(ourselves));
+            for (auto const& p : status->status.followersWithSnapshot) {
+              ret.add(VPackValue(p));
+            }
+          }
+          ret.add(VPackValue(StaticStrings::FailoverCandidates));
+          {
+            VPackArrayBuilder ar(&ret);
+            ret.add(VPackValue(ourselves));
+            for (auto const& p : status->status.followersWithSnapshot) {
+              ret.add(VPackValue(p));
+            }
+          }
+          shardInSync =
+              status->status.followersWithSnapshot.size() + 1 ==
+              status->status.activeParticipantsConfig->participants.size();
+          shardReplicated = !status->status.followersWithSnapshot.empty();
+        } else {
+          ret.add(VPackValue(maintenance::SERVERS));
+          ret.add(VPackSlice::emptyArraySlice());
+          ret.add(VPackValue(StaticStrings::FailoverCandidates));
+          ret.add(VPackSlice::emptyArraySlice());
+          shardInSync = false;
+          shardReplicated = false;
+        }
       }
     }
     return {ret, shardInSync, shardReplicated};
@@ -1717,7 +1756,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             auto const [localCollectionInfo, shardInSync, shardReplicated] =
                 assembleLocalCollectionInfo(
                     df, shSlice, shardMap.slice().get(shName), dbName, shName,
-                    serverId, allErrors, replicationVersion);
+                    serverId, allErrors, replicationVersion, localLogs);
             // Collection no longer exists
             TRI_ASSERT(!localCollectionInfo.slice().isNone());
             if (localCollectionInfo.slice().isEmptyObject() ||
@@ -1911,7 +1950,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       }
 
       // UpdateCurrentForCollections (Current/Collections/Collection)
-      if (curcolls.isObject()) {
+      if (curcolls.isObject() && ldb.isObject()) {
         for (auto const& collection : VPackObjectIterator(curcolls)) {
           auto const colName = collection.key.copyString();
 
@@ -1926,8 +1965,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // Shard in current and has servers
             auto servers = shard.value.get(SERVERS);
             auto const shName = shard.key.copyString();
-
-            TRI_ASSERT(ldb.isObject());
 
             if (servers.isArray() && servers.length() > 0  // servers in current
                 && servers[0].stringView() == serverId     // we are leading

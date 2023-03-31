@@ -1,5 +1,4 @@
 /*jshint maxlen: 240 */
-/*global require */
 
 /// auto-generated file generated from errors.dat
 
@@ -55,6 +54,7 @@
     "ERROR_HTTP_CONFLICT"          : { "code" : 409, "message" : "conflict" },
     "ERROR_HTTP_GONE"              : { "code" : 410, "message" : "content permanently deleted" },
     "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
+    "ERROR_HTTP_ENHANCE_YOUR_CALM" : { "code" : 420, "message" : "enhance your calm" },
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
     "ERROR_HTTP_NOT_IMPLEMENTED"   : { "code" : 501, "message" : "not implemented" },
     "ERROR_HTTP_SERVICE_UNAVAILABLE" : { "code" : 503, "message" : "service unavailable" },

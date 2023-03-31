@@ -1,9 +1,8 @@
 import React, { useContext } from "react";
 import { Link, useRouteMatch } from "react-router-dom";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect, {
-  OptionType
-} from "../../../../components/pure-css/form/CreatableMultiSelect";
+import CreatableMultiSelect from "../../../../components/select/CreatableMultiSelect";
+import { OptionType } from "../../../../components/select/SelectBase";
 import { escapeFieldDot } from "../../../../utils/fieldHelpers";
 import { LinkProperties, ViewContext } from "../../constants";
 
@@ -69,16 +68,17 @@ export const FieldsDropdown = ({
     <CreatableMultiSelect
       value={fields}
       isClearable={false}
+      noOptionsMessage={() => null}
       components={{
         MultiValueLabel
       }}
       onChange={(_, action) => {
         if (action.action === "remove-value") {
-          removeField((action.removedValue as any).value as string);
+          removeField(action.removedValue.value);
           return;
         }
         if (action.action === "create-option") {
-          addField((action.option as any).value as string);
+          addField(action.option.value);
         }
       }}
       isDisabled={isDisabled}

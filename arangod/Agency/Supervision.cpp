@@ -37,8 +37,6 @@
 #include "Agency/NodeLoadInspector.h"
 #include "AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
@@ -241,7 +239,6 @@ static std::string const currentServersRegisteredPrefix =
 static std::string const foxxmaster = "/Current/Foxxmaster";
 
 void Supervision::upgradeOne(Builder& builder) {
-  _lock.assertLockedByCurrentThread();
   // "/arango/Agency/Definition" not exists or is 0
   if (!snapshot().has("Agency/Definition")) {
     {
@@ -267,7 +264,6 @@ void Supervision::upgradeOne(Builder& builder) {
 }
 
 void Supervision::upgradeZero(Builder& builder) {
-  _lock.assertLockedByCurrentThread();
   // "/arango/Target/FailedServers" is still an array
   Slice fails = snapshot().hasAsSlice(failedServersPrefix).value();
   if (fails.isArray()) {
@@ -291,7 +287,6 @@ void Supervision::upgradeZero(Builder& builder) {
 }
 
 void Supervision::upgradeHealthRecords(Builder& builder) {
-  _lock.assertLockedByCurrentThread();
   // "/arango/Supervision/health" is in old format
   Builder b;
   size_t n = 0;
@@ -331,8 +326,6 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
 
 // Upgrade agency, guarded by wakeUp
 void Supervision::upgradeAgency() {
-  _lock.assertLockedByCurrentThread();
-
   Builder builder;
   {
     VPackArrayBuilder trxs(&builder);
@@ -354,7 +347,6 @@ void Supervision::upgradeAgency() {
 }
 
 void Supervision::upgradeMaintenance(VPackBuilder& builder) {
-  _lock.assertLockedByCurrentThread();
   if (snapshot().has(supervisionMaintenance)) {
     std::string maintenanceState;
     try {
@@ -392,7 +384,6 @@ void Supervision::upgradeMaintenance(VPackBuilder& builder) {
 void Supervision::upgradeBackupKey(VPackBuilder& builder) {
   // Upgrade /arango/Target/HotBackup/Create from 0 to time out
 
-  _lock.assertLockedByCurrentThread();
   if (snapshot().has(HOTBACKUP_KEY)) {
     Node const& tmp = snapshot().get(HOTBACKUP_KEY).value().get();
     if (tmp.isNumber()) {
@@ -546,7 +537,6 @@ void handleOnStatus(
 // Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::check(std::string const& type) {
   // Dead lock detection
-  _lock.assertLockedByCurrentThread();
 
   // Book keeping
   std::vector<check_t> ret;
@@ -902,8 +892,6 @@ bool Supervision::earlyBird() const {
 
 // Update local agency snapshot, guarded by callers
 bool Supervision::updateSnapshot() {
-  _lock.assertLockedByCurrentThread();
-
   if (_agent == nullptr || this->isStopping()) {
     return false;
   }
@@ -953,7 +941,6 @@ bool Supervision::updateSnapshot() {
 
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
-  _lock.assertLockedByCurrentThread();
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_DBSERVER) ==
              "DBServers");
   LOG_TOPIC("aadea", TRACE, Logger::SUPERVISION) << "Checking dbservers...";
@@ -976,7 +963,6 @@ void Supervision::reportStatus(std::string const& status) {
   bool persist = false;
 
   {  // Do I have to report to agency under
-    _lock.assertLockedByCurrentThread();
     if (auto modeString = snapshot().hasAsString("/Supervision/State/Mode");
         !modeString || modeString.value() != status) {
       // This includes the case that the mode is not set, since status
@@ -1135,7 +1121,6 @@ void Supervision::updateDBServerMaintenance() {
 }
 
 void Supervision::step() {
-  _lock.assertLockedByCurrentThread();
   if (_jobId == 0 || _jobId == _jobIdMax) {
     getUniqueIds();  // cannot fail but only hang
   }
@@ -1278,10 +1263,10 @@ void Supervision::waitForIndexCommitted(index_t index) {
 
 void Supervision::notify() noexcept {
   {
-    CONDITION_LOCKER(guard, _cv);
+    std::lock_guard guard{_cv.mutex};
     _shouldRunAgain = true;
   }
-  _cv.signal();
+  _cv.cv.notify_one();
 }
 
 void Supervision::waitForSupervisionNode() {
@@ -1293,12 +1278,13 @@ void Supervision::waitForSupervisionNode() {
 
   while (!this->isStopping()) {
     {
-      CONDITION_LOCKER(guard, _cv);
-      _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
+      std::unique_lock guard{_cv.mutex};
+      _cv.cv.wait_for(guard, std::chrono::microseconds{
+                                 static_cast<uint64_t>(1000000 * _frequency)});
     }
 
     bool done = false;
-    MUTEX_LOCKER(locker, _lock);
+    std::lock_guard locker{_lock};
     _agent->executeLockedRead([&]() {
       if (_agent->readDB().has(supervisionNode)) {
         try {
@@ -1328,7 +1314,7 @@ void Supervision::run() {
 
   bool shutdown = false;
   {
-    CONDITION_LOCKER(guard, _cv);
+    std::unique_lock guard{_cv.mutex};
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
@@ -1341,7 +1327,7 @@ void Supervision::run() {
           ScopeGuard scopeGuard([&]() noexcept { guard.lock(); });
 
           {
-            MUTEX_LOCKER(locker, _lock);
+            std::lock_guard locker{_lock};
 
             // Only modifiy this condition with extreme care:
             // Supervision needs to wait until the agent has finished leadership
@@ -1374,7 +1360,9 @@ void Supervision::run() {
 
         if (!_shouldRunAgain && lapTime < 1000000) {
           // wait returns false if timeout was reached
-          _cv.wait(static_cast<uint64_t>((1000000 - lapTime) * _frequency));
+          _cv.cv.wait_for(guard,
+                          std::chrono::microseconds{static_cast<uint64_t>(
+                              (1000000 - lapTime) * _frequency)});
         }
       } catch (std::exception const& ex) {
         LOG_TOPIC("f5af1", ERR, Logger::SUPERVISION)
@@ -1404,7 +1392,6 @@ std::string Supervision::serverHealthFunctional(Node const& snapshot,
 
 // Guarded by caller
 std::string Supervision::serverHealth(std::string_view serverName) const {
-  _lock.assertLockedByCurrentThread();
   return Supervision::serverHealthFunctional(snapshot(), serverName);
 }
 
@@ -1738,7 +1725,6 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
 
 // Remove expired hot backup lock if exists
 void Supervision::unlockHotBackup() {
-  _lock.assertLockedByCurrentThread();
   if (snapshot().has(HOTBACKUP_KEY)) {
     Node const& tmp = snapshot().get(HOTBACKUP_KEY).value().get();
     if (tmp.isString()) {
@@ -1764,7 +1750,6 @@ void Supervision::unlockHotBackup() {
 
 // Guarded by caller
 void Supervision::handleJobs() {
-  _lock.assertLockedByCurrentThread();
   // Do supervision
   LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
   unlockHotBackup();
@@ -1836,7 +1821,6 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   // /Target/Failed. We can be rather generous here since old
   // snapshots and log entries are kept for much longer.
   // We only keep up to 500 finished jobs and 1000 failed jobs.
-  _lock.assertLockedByCurrentThread();
 
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
@@ -2075,8 +2059,6 @@ void arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(
 }
 
 void Supervision::cleanupHotbackupTransferJobs() {
-  _lock.assertLockedByCurrentThread();
-
   auto envelope = std::make_shared<VPackBuilder>();
   arangodb::consensus::cleanupHotbackupTransferJobsFunctional(snapshot(),
                                                               envelope);
@@ -2092,8 +2074,6 @@ void Supervision::cleanupHotbackupTransferJobs() {
 }
 
 void Supervision::failBrokenHotbackupTransferJobs() {
-  _lock.assertLockedByCurrentThread();
-
   auto envelope = std::make_shared<VPackBuilder>();
   arangodb::consensus::failBrokenHotbackupTransferJobsFunctional(snapshot(),
                                                                  envelope);
@@ -2129,8 +2109,6 @@ void Supervision::failBrokenHotbackupTransferJobs() {
 
 // Guarded by caller
 void Supervision::workJobs() {
-  _lock.assertLockedByCurrentThread();
-
   bool dummy = false;
   // ATTENTION: It is necessary to copy the todos here, since we modify
   // below!
@@ -2482,8 +2460,6 @@ void Supervision::ifResourceCreatorLost(
 }
 
 void Supervision::checkBrokenCreatedDatabases() {
-  _lock.assertLockedByCurrentThread();
-
   // check if snapshot has databases
   auto databases = snapshot().hasAsNode(planDBPrefix);
   if (!databases) {
@@ -2509,8 +2485,6 @@ void Supervision::checkBrokenCreatedDatabases() {
 }
 
 void Supervision::checkBrokenCollections() {
-  _lock.assertLockedByCurrentThread();
-
   // check if snapshot has databases
   auto collections = snapshot().hasAsNode(planColPrefix);
   if (!collections) {
@@ -2587,8 +2561,6 @@ void Supervision::checkBrokenCollections() {
 }
 
 void Supervision::checkBrokenAnalyzers() {
-  _lock.assertLockedByCurrentThread();
-
   // check if snapshot has analyzers
   auto node = snapshot().hasAsNode(planAnalyzersPrefix);
   if (!node) {
@@ -2946,8 +2918,6 @@ auto Supervision::collectParticipantsHealth() const -> ParticipantsHealth {
 }
 
 void Supervision::checkReplicatedLogs() {
-  _lock.assertLockedByCurrentThread();
-
   using namespace replication2::agency;
 
   // check if Target has replicated logs
@@ -2982,8 +2952,6 @@ void Supervision::checkReplicatedLogs() {
 }
 
 void Supervision::checkCollectionGroups() {
-  _lock.assertLockedByCurrentThread();
-
   using namespace replication2::agency;
 
   // check if Target has replicated logs
@@ -3030,8 +2998,6 @@ void Supervision::checkCollectionGroups() {
 }
 
 void Supervision::readyOrphanedIndexCreations() {
-  _lock.assertLockedByCurrentThread();
-
   if (snapshot().has(planColPrefix) && snapshot().has(curColPrefix)) {
     auto const& plannedDBs =
         snapshot().get(planColPrefix).value().get().children();
@@ -3160,8 +3126,6 @@ void Supervision::readyOrphanedIndexCreations() {
 }
 
 void Supervision::cleanupReplicatedLogs() {
-  _lock.assertLockedByCurrentThread();
-
   using namespace replication2::agency;
 
   // check if Plan has replicated logs
@@ -3371,8 +3335,6 @@ void arangodb::consensus::enforceReplicationFunctional(
 }
 
 void Supervision::enforceReplication() {
-  _lock.assertLockedByCurrentThread();
-
   auto envelope = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder guard1(envelope.get());
@@ -3392,8 +3354,6 @@ void Supervision::enforceReplication() {
 
 // Shrink cluster if applicable, guarded by caller
 void Supervision::shrinkCluster() {
-  _lock.assertLockedByCurrentThread();
-
   auto const& todo = snapshot().hasAsChildren(toDoPrefix).value().get();
   auto const& pending = snapshot().hasAsChildren(pendingPrefix).value().get();
 
@@ -3494,8 +3454,6 @@ bool Supervision::start(Agent* agent) {
 }
 
 void Supervision::getUniqueIds() {
-  _lock.assertLockedByCurrentThread();
-
   int64_t n = 10000;
 
   std::string path = _agencyPrefix + "/Sync/LatestID";
@@ -3539,8 +3497,8 @@ void Supervision::beginShutdown() {
   // Personal hygiene
   Thread::beginShutdown();
 
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
+  std::lock_guard guard{_cv.mutex};
+  _cv.cv.notify_all();
 }
 
 Node const& Supervision::snapshot() const {

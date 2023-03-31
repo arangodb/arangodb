@@ -213,6 +213,7 @@ class StaticStrings {
   static std::string const TransactionBody;
   static std::string const TransactionId;
   static std::string const Unlimited;
+  static std::string const UserAgent;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;

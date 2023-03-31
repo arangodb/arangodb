@@ -1,48 +1,8 @@
-#indexHeaderContent {
-  padding: 0;
-
-  .figuresHeader {
-
-    th {
-      padding-left: 10px;
-    }
-  }
-
-  #collectionEditIndexTable {
-    th {
-      padding-left: 10px;
-    }
-  }
-}
-
-.new-index-view {
-  padding: 20px;
-}
-
 .centralContent {
 
   .createModalDialog {
     background-color: $c-white;
     outline: none;
-  }
-
-  .contentIn {
-    background: $c-white;
-    border: 1px solid $c-bluegrey-border;
-    border-radius: 2px;
-    padding: 20px;
-
-    table {
-      border: 0;
-
-      select {
-        margin-top: -10px;
-      }
-
-      tr {
-        height: 40px;
-      }
-    }
   }
 
   .modal-body {
