@@ -187,8 +187,8 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       ...(updatedParams ? updatedParams : {})
     } as UrlParametersType;
     let { nodeStart } = newParams;
-    if (!nodeStart) {
-      nodeStart = graphData?.settings.startVertex._id || nodeStart;
+    if (!nodeStart && nodeStart !== undefined) {
+      nodeStart = graphData?.settings.startVertex?._id || nodeStart;
     }
     const fullConfig = await fetchUserConfig();
     await putUserConfig({ params: newParams, fullConfig, graphName });
