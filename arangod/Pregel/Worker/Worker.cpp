@@ -615,9 +615,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
                                     std::move(_makeStatusCallback()));
   std::vector<futures::Future<Result>> storeFutures;
   storeFutures.reserve(_quivers.size());
-  for (auto const& quiver : _quivers) {
-    storeFutures.emplace_back(storer.store({quiver}));
-  }
+  storeFutures.emplace_back(storer.store(_quivers));
   if (!storeFutures.empty()) {
     // wait for all futures to finalize
     auto futureResponses = futures::collectAll(storeFutures).get();
