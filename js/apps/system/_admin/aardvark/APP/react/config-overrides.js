@@ -4,18 +4,19 @@ const CompressionPlugin = require("compression-webpack-plugin");
 
 module.exports = {
   webpack: (config, env) => {
-    Object.assign(config.resolve.alias, {
-      "old-frontend": path.resolve(__dirname, "../frontend"),
-      "/img": path.resolve(__dirname, "../frontend/img"),
-      "./img": path.resolve(__dirname, "../frontend/img"),
-      img: path.resolve(__dirname, "../frontend/img"),
-    });
+    // Disable the module scope plugin to allow importing from the old frontend
     config.resolve.plugins = [];
+
+    // Add node compatibility fallbacks
     config.resolve.fallback = {
       path: require.resolve("path-browserify"),
       querystring: require.resolve("querystring-es3"),
       url: require.resolve("url/"),
     };
+
+    // The html-loader no longer supports interpolation, which we use in
+    // index.html to inject the old frontend scaffolding. Workaround via:
+    // https://github.com/webpack-contrib/html-loader/issues/291#issuecomment-671686973
     config.module.rules.unshift({
       test: /\.html$/,
       use: {
@@ -33,31 +34,27 @@ module.exports = {
         },
       },
     });
-    const loaders = config.module.rules.at(-1).oneOf;
-    loaders.splice(-1, 0, {
-      test: /\.css$/,
-      use: ["style-loader", "css-loader"],
-    });
-    loaders.at(-1).exclude = [
-      /^$/,
-      /\.(js|mjs|jsx|ts|tsx|ejs)$/,
-      /\.html$/,
-      /\.json$/,
-    ];
+
+    // Enable ejs template support
+    config.module.rules.at(-1).oneOf.at(-1).exclude.push(/\.ejs$/);
+    config.module.rules.unshift(
+      env === "production"
+        ? {
+            test: /\.ejs$/,
+            loader: "underscore-template-loader",
+            options: {
+              attributes: [],
+            },
+          }
+        : {
+            test: /\.ejs$/i,
+            use: "raw-loader",
+          }
+    );
+
     if (env === "production") {
-      config.module.rules.unshift({
-        test: /\.ejs$/,
-        loader: "underscore-template-loader",
-        options: {
-          attributes: [],
-        },
-      });
+      // Generate .gz files in the production build
       config.plugins.push(new CompressionPlugin());
-    } else {
-      config.module.rules.unshift({
-        test: /\.ejs$/i,
-        use: "raw-loader",
-      });
     }
     return config;
   },
