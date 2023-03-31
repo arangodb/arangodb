@@ -154,6 +154,7 @@ bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
   if (!nameFromFCall(scorerName, node)) {
     return false;
   }
+
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
@@ -174,6 +175,7 @@ bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
   if (!nameFromFCallUser(scorerName, node)) {
     return false;
   }
+
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
 
