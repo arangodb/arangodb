@@ -6,6 +6,7 @@ import { useElementPosition } from "../../components/hooks/useElementPosition";
 import { useGraph } from "./GraphContext";
 import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
+import { SmartGraphEmptyState } from "./SmartGraphEmptyState";
 
 let timer: number;
 
@@ -22,6 +23,7 @@ export const GraphNetwork = () => {
   } = useGraph();
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
+  const isSmart = graphData?.settings.isSmart || false;
   const [progressValue, setProgressValue] = useState(0);
   useEffect(() => {
     if (!nodes || !edges || !visJsRef.current) {
@@ -109,16 +111,18 @@ export const GraphNetwork = () => {
       background="white"
       position="relative"
     >
-      <GraphRightClickMenu
-        portalProps={{
-          containerRef
-        }}
-      />
-      <Box id="graphNetworkWrap" height="full" backgroundColor="white">
-        {progressValue < 100 ? <Progress value={progressValue} /> : null}
-        <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
-        <GraphInfo />
-      </Box>
+      {!isSmart? <>
+        <GraphRightClickMenu
+          portalProps={{
+            containerRef
+          }}
+        />
+        <Box id="graphNetworkWrap" height="full" backgroundColor="white">
+          {progressValue < 100 ? <Progress value={progressValue} /> : null}
+          <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+          <GraphInfo />
+        </Box>
+      </> : <SmartGraphEmptyState />}
     </Box>
   );
 };

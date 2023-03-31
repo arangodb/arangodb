@@ -111,6 +111,7 @@ type SettingsType = {
   nodesSizeMinMax: (number | null)[];
   connectionsCounts: number[];
   connectionsMinMax: (number | null)[];
+  isSmart?: boolean;
 };
 export type VisGraphData = {
   nodes: NodeDataType[];
