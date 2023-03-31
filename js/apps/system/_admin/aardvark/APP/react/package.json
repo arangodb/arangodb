@@ -25,7 +25,7 @@
     "ajv": "^8.12.0",
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
-    "arangojs": "^7.8.0",
+    "arangojs": "7.5.0",
     "axios": "^0.18.1",
     "backbone": "^1.4.1",
     "crypto-js": "^3.3.0",
@@ -83,7 +83,6 @@
     "not op_mini all"
   ],
   "devDependencies": {
-    "@craco/craco": "^7.1.0",
     "@types/minimatch": "^5.1.2",
     "compression-webpack-plugin": "^10.0.0",
     "html-loader": "^4.2.0",
