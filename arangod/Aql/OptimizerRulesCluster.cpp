@@ -557,6 +557,12 @@ void substituteClusterSingleDocumentOperationsRule(
       break;
     }
   }
+  if (modified) {
+    // turn off all other cluster optimization rules now as they are superfluous
+    opt->disableRules(plan.get(), [](OptimizerRule const& rule) {
+      return rule.isClusterOnly();
+    });
+  }
 
   opt->addPlan(std::move(plan), rule, modified);
 }
@@ -564,14 +570,14 @@ void substituteClusterSingleDocumentOperationsRule(
 void substituteClusterMultipleDocumentOperationsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
-  bool modified = false;
-
-  // Index: FOR d IN col FILTER d._key == @key RETURN d
-  // NoIndex: INSERT @doc INTO col
-
-  auto fun = &::substituteClusterMultipleDocumentInsertOperations;
-
-  modified = fun(opt, plan.get(), rule);
+  bool modified =
+      substituteClusterMultipleDocumentInsertOperations(opt, plan.get(), rule);
+  if (modified) {
+    // turn off all other cluster optimization rules now as they are superfluous
+    opt->disableRules(plan.get(), [](OptimizerRule const& rule) {
+      return rule.isClusterOnly();
+    });
+  }
 
   opt->addPlan(std::move(plan), rule, modified);
 }
