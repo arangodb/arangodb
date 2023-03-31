@@ -55,7 +55,7 @@ sharded after (default: `"vertex"`).
 To start an execution you need to specify the algorithm name and a named graph
 (SmartGraph in cluster). Alternatively you can specify the vertex and edge
 collections. Additionally you can specify custom parameters which vary for each
-algorithm, see [Pregel - Available Algorithms](https://www.arangodb.com/docs/stable/graphs-pregel.html#available-algorithms).
+algorithm, see [Pregel - Available Algorithms](https://www.arangodb.com/docs/stable/graphs-pregel-algorithms.html).
 
 @RESTRETURNCODES
 

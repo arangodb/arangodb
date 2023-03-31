@@ -31,7 +31,7 @@ collections in very special occasions, but normally a regular collection will do
 @RESTBODYPARAM{schema,object,optional,}
 Optional object that specifies the collection level schema for
 documents. The attribute keys `rule`, `level` and `message` must follow the
-rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/documents-schema-validation.html)
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/stable/data-modeling-documents-schema-validation.html)
 
 @RESTBODYPARAM{computedValues,array,optional,post_api_collection_computed_field}
 An optional list of objects, each representing a computed value.
@@ -43,7 +43,7 @@ or a shard key attribute.
 
 @RESTSTRUCT{expression,post_api_collection_computed_field,string,required,}
 An AQL `RETURN` operation with an expression that computes the desired value.
-See [Computed Value Expressions](https://www.arangodb.com/docs/devel/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
+See [Computed Value Expressions](https://www.arangodb.com/docs/stable/data-modeling-documents-computed-values.html#computed-value-expressions) for details.
 
 @RESTSTRUCT{overwrite,post_api_collection_computed_field,boolean,required,}
 Whether the computed value shall take precedence over a user-provided or
