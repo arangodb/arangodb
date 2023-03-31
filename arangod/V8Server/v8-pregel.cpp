@@ -151,6 +151,37 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  auto handlePregelHistoryV8Result =
+      [&](ResultT<OperationResult> const& result) -> void {
+    if (result.fail()) {
+      // check outer ResultT
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.errorNumber(),
+                                     result.errorMessage());
+    }
+    if (result.get().fail()) {
+      // check inner OperationResult
+      std::string message = std::string{result.get().errorMessage()};
+      if (result.get().errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        // For reasons, not all OperationResults deliver the expected message.
+        // Therefore, we need set up the message properly and manually here.
+        message = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND).errorMessage();
+      }
+
+      TRI_V8_THROW_EXCEPTION_MESSAGE(result.get().errorNumber(), message);
+    }
+    if (result.get().hasSlice()) {
+      if (result->slice().isNone()) {
+        // Truncate does not deliver a proper slice in a Cluster.
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+      } else {
+        TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
+      }
+    } else {
+      // Should always have a slice, doing this check to be sure.
+      // (e.g. a truncate might not return a Slice)
+      TRI_V8_RETURN(TRI_VPackToV8(isolate, VPackSlice::trueSlice()));
+    }
+  };
   v8::HandleScope scope(isolate);
 
   auto& vocbase = GetContextVocBase(isolate);
@@ -162,9 +193,8 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
-    VPackBuilder builder;
-    pregel.toVelocyPack(vocbase, builder, false, true);
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
+    pregel::statuswriter::CollectionStatusWriter cWriter{vocbase};
+    handlePregelHistoryV8Result(cWriter.readAllNonExpiredResults());
     return;
   }
 
