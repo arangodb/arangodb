@@ -68,6 +68,7 @@ ReconfigureReplicatedLog::ReconfigureReplicatedLog(Node const& snapshot,
   auto tmp_logId = _snapshot.hasAsUInt(path + "logId");
   auto tmp_operations = _snapshot.hasAsNode(path + "operations");
   auto tmp_expectedVersion = _snapshot.hasAsUInt(path + "expectedVersion");
+  auto tmp_undoSetLeader = _snapshot.hasAsString(path + "undoSetLeader");
 
   if (tmp_database && tmp_logId && tmp_operations) {
     _database = tmp_database.value();
@@ -75,6 +76,7 @@ ReconfigureReplicatedLog::ReconfigureReplicatedLog(Node const& snapshot,
     _operations =
         deserialize<std::vector<ReconfigureOperation>>(tmp_operations->get());
     _expectedVersion = tmp_expectedVersion.value_or(0);
+    _undoSetLeader = tmp_undoSetLeader;
   } else {
     std::string err = basics::StringUtils::concatT("Failed to find job ",
                                                    _jobId, " in agency.");
@@ -119,6 +121,9 @@ JOB_STATUS ReconfigureReplicatedLog::status() {
       Builder job;
       std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
+      if (_undoSetLeader) {
+        addUndoSetLeader(trx);
+      }
     }
     { VPackObjectBuilder b(&trx); }
   }
@@ -169,6 +174,9 @@ bool ReconfigureReplicatedLog::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("creator", VPackValue(_creator));
     _jb->add("timeCreated",
              VPackValue(timepointToString(std::chrono::system_clock::now())));
+    if (_undoSetLeader) {
+      _jb->add("undoSetLeader", *_undoSetLeader);
+    }
   }
 
   _status = TODO;
@@ -290,11 +298,55 @@ bool ReconfigureReplicatedLog::start(bool&) {
   return false;
 }
 
+void ReconfigureReplicatedLog::addUndoSetLeader(Builder& trx) {
+  std::string path = returnLeadershipPrefix + to_string(_logId);
+
+  // Briefly check that the place in Target is still empty:
+  if (_snapshot.has(path)) {
+    LOG_TOPIC("3dc7c", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo \"SetLeader\" job for replicated log "
+        << _logId << " since there was already one.";
+    return;
+  }
+
+  std::string now(timepointToString(std::chrono::system_clock::now()));
+  std::string deadline(timepointToString(std::chrono::system_clock::now() +
+                                         std::chrono::minutes(20)));
+
+  TRI_ASSERT(_undoSetLeader.has_value());
+  auto server = _undoSetLeader.value();
+
+  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
+      curServersKnown, server, "/", StaticStrings::RebootId));
+  if (!rebootId) {
+    // This should not happen, since we should have a rebootId for this.
+    LOG_TOPIC("a337b", WARN, Logger::SUPERVISION)
+        << "failed to schedule undo \"SetLeader\" job for replicated log "
+        << _logId << " since there was no rebootId for server " << server;
+    return;
+  }
+  trx.add(VPackValue(path));
+  {
+    VPackObjectBuilder guard(&trx);
+    trx.add("timeStamp", VPackValue(now));
+    trx.add("removeIfNotStartedBy", VPackValue(deadline));
+    trx.add("rebootId", VPackValue(rebootId.value()));
+    trx.add(VPackValue("reconfigureReplicatedLog"));
+    {
+      VPackObjectBuilder description(&trx);
+      trx.add("database", VPackValue(_database));
+      trx.add("server", server);
+    }
+  }
+}
+
 ReconfigureReplicatedLog::ReconfigureReplicatedLog(
     Node const& snapshot, AgentInterface* agent, std::string const& jobId,
     std::string const& creator, std::string const& database,
-    arangodb::replication2::LogId logId, std::vector<ReconfigureOperation> ops)
+    arangodb::replication2::LogId logId, std::vector<ReconfigureOperation> ops,
+    std::optional<ServerID> undoSetLeader)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _database(database),
       _logId(logId),
-      _operations(std::move(ops)) {}
+      _operations(std::move(ops)),
+      _undoSetLeader(std::move(undoSetLeader)) {}

@@ -1551,10 +1551,6 @@ void MoveShard::addUndoMoveShard(Builder& ops, Builder const& job) const {
     ops.add("timeStamp", VPackValue(now));
     ops.add("removeIfNotStartedBy", VPackValue(deadline));
     ops.add("rebootId", VPackValue(rebootId.value()));
-    ops.add("type", "moveShard");
-    ops.add("database", _database);
-    ops.add("collection", _collection);
-    ops.add("fromServer", _from);
-    ops.add("toServer", _to);
+    ops.add("moveShard", job.slice());
   }
 }

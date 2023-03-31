@@ -52,15 +52,9 @@ struct ResignLeadership : public Job {
   bool scheduleMoveShards(std::shared_ptr<Builder>& trx);
   void scheduleJobsR2(std::shared_ptr<Builder>& trx, DatabaseID const& database,
                       size_t&);
-  void addUndoReplicatedLog(Builder& trx,
-                            replication2::GlobalLogIdentifier const& log);
 
   std::string _server;
   bool _undoMoves{true};
-
-  // Keeping track of replication2 databases and their logs, will be useful in
-  // the event of an undo procedure.
-  std::vector<replication2::GlobalLogIdentifier> _replicatedLogs;
 };
 }  // namespace consensus
 }  // namespace arangodb

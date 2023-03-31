@@ -53,16 +53,11 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_undoMoves = _snapshot.hasAsBool(path + "undoMoves");
-  auto tmp_replicatedLogs = _snapshot.hasAsArray(path + "replicatedLogs");
 
   if (tmp_server && tmp_creator) {
     _server = tmp_server.value();
     _creator = tmp_creator.value();
     _undoMoves = tmp_undoMoves.value_or(true);
-    if (_undoMoves && tmp_replicatedLogs.has_value()) {
-      _replicatedLogs = velocypack::deserialize<decltype(_replicatedLogs)>(
-          *tmp_replicatedLogs);
-    }
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -143,14 +138,6 @@ JOB_STATUS ResignLeadership::status() {
       std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
       addReleaseServer(reportTrx, _server);
-
-      // If we're in a replication2 database, the leadership is bound to logs
-      // instead of shards, hence the undo procedure is different.
-      if (_undoMoves && !_replicatedLogs.empty()) {
-        for (auto const& log : _replicatedLogs) {
-          addUndoReplicatedLog(reportTrx, log);
-        }
-      }
     }
   }
 
@@ -334,36 +321,7 @@ bool ResignLeadership::start(bool& aborts) {
     {
       VPackObjectBuilder objectForMutation(pending.get());
 
-      // Schedule shard relocations
-      // For replication2, we have to create a list of all replicated logs that
-      // are going to be processed. This happens in the replication2 part of
-      // scheduleMoveShards. In case we plan to perform an undo operation for
-      // this leader, we need to know beforehand which logs are going to be
-      // affected by the SetLeader operation. This way, when the
-      // ResignLeadership job finishes, we'll be able to create undo jobs for
-      // all the ReconfigureReplicatedLog sub-jobs that have been created.
-      if (!scheduleMoveShards(pending)) {
-        finish("", "", false, "Could not schedule MoveShard.");
-        return false;
-      }
-
-      if (_undoMoves && !_replicatedLogs.empty()) {
-        // Doing a copy here, because we need to add the replicatedLogs.
-        VPackBuilder tmp;
-        {
-          VPackObjectBuilder guard(&tmp);
-          for (auto const& i : VPackObjectIterator(todo.slice()[0])) {
-            tmp.add(i.key.copyString(), i.value);
-          }
-          tmp.add(VPackValue("replicatedLogs"));
-          velocypack::serialize(tmp, _replicatedLogs);
-        }
-        todo = std::move(tmp);
-        addPutJobIntoSomewhere(*pending, "Pending", todo.slice());
-      } else {
-        addPutJobIntoSomewhere(*pending, "Pending", todo.slice()[0]);
-      }
-
+      addPutJobIntoSomewhere(*pending, "Pending", todo.slice()[0]);
       addRemoveJobFromSomewhere(*pending, "ToDo", _jobId);
 
       addBlockServer(*pending, _server, _jobId);
@@ -375,6 +333,13 @@ bool ResignLeadership::start(bool& aborts) {
         pending->add("op", VPackValue("push"));
         pending->add("new", VPackValue(_server));
       }
+
+      // Schedule shard relocations
+      if (!scheduleMoveShards(pending)) {
+        finish("", "", false, "Could not schedule MoveShard.");
+        return false;
+      }
+
     }  // mutation part of transaction done
 
     // Preconditions
@@ -432,14 +397,15 @@ void ResignLeadership::scheduleJobsR2(std::shared_ptr<Builder>& trx,
         continue;
       }
 
+      auto undo =
+          _undoMoves ? std::optional<std::string>{_server} : std::nullopt;
       ReconfigureReplicatedLog(
           _snapshot, _agent, _jobId + "-" + std::to_string(sub++), _jobId,
           database, logTarget.id,
           {ReconfigureOperation{
-              ReconfigureOperation::SetLeader{.participant = replacement}}})
+              ReconfigureOperation::SetLeader{.participant = replacement}}},
+          std::move(undo))
           .create(trx);
-
-      _replicatedLogs.emplace_back(database, logTarget.id);
     }
   }
 }
@@ -580,40 +546,4 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   finish(_server, "", false, "job aborted: " + reason, payload);
 
   return result;
-}
-
-void ResignLeadership::addUndoReplicatedLog(
-    Builder& trx, replication2::GlobalLogIdentifier const& log) {
-  std::string path = returnLeadershipPrefix + to_string(log.id);
-
-  // Briefly check that the place in Target is still empty:
-  if (_snapshot.has(path)) {
-    LOG_TOPIC("3dc7c", WARN, Logger::SUPERVISION)
-        << "failed to schedule undo \"SetLeader\" job for replicated log "
-        << log << " since there was already one.";
-    return;
-  }
-
-  std::string now(timepointToString(std::chrono::system_clock::now()));
-  std::string deadline(timepointToString(std::chrono::system_clock::now() +
-                                         std::chrono::minutes(20)));
-  auto rebootId = _snapshot.hasAsUInt(basics::StringUtils::concatT(
-      curServersKnown, _server, "/", StaticStrings::RebootId));
-  if (!rebootId) {
-    // This should not happen, since we should have a rebootId for this.
-    LOG_TOPIC("a337b", WARN, Logger::SUPERVISION)
-        << "failed to schedule undo \"SetLeader\" job for replicated log "
-        << log << " since there was no rebootId for server " << _server;
-    return;
-  }
-  trx.add(VPackValue(path));
-  {
-    VPackObjectBuilder guard(&trx);
-    trx.add("timeStamp", VPackValue(now));
-    trx.add("removeIfNotStartedBy", VPackValue(deadline));
-    trx.add("rebootId", VPackValue(rebootId.value()));
-    trx.add("type", "reconfigureReplicatedLog");
-    trx.add("database", log.database);
-    trx.add("fromServer", _server);
-  }
 }
