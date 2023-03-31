@@ -56,13 +56,13 @@ const assertRuleIsNotUsed = (query, bind = {}, options = {}) => {
   assertEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
 };
 
-function InsertMultipleDocumentsSuite(nShards, repFactor) {
+function InsertMultipleDocumentsSuite(params) {
   'use strict';
-
+  const {numberOfShards, replicationFactor} = params;
   return {
     setUp: function () {
       db._drop(cn);
-      db._create(cn, {numberOfShards: nShards, replicationFactor: repFactor});
+      db._create(cn, {numberOfShards, replicationFactor});
     },
 
     tearDown: function () {
@@ -450,7 +450,7 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
 
       let smartGraphs = require("@arangodb/smart-graph");
       smartGraphs._create(graph, [smartGraphs._relation(edges, vertex, vertex)], null, {
-        numberOfShards: nShards,
+        numberOfShards: numberOfShards,
         smartGraphAttribute: "value"
       });
 
@@ -499,14 +499,13 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
   };
 }
 
-function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
+function InsertMultipleDocumentsExplainSuite(params) {
   'use strict';
-
+  const {numberOfShards, replicationFactor} = params;
   return {
-
     setUp: function () {
       db._drop(cn);
-      db._create(cn, {numberOfShards: nShards, replicationFactor: repFactor});
+      db._create(cn, {numberOfShards, replicationFactor});
     },
 
     tearDown: function () {
@@ -675,51 +674,51 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
   };
 }
 
-function InsertMultipleDocumentsParameters1Suite() {
+function InsertMultipleDocumentsSuiteSingleShard() {
   let suite = {};
   deriveTestSuite(
-    InsertMultipleDocumentsSuite(1, 1),
+    InsertMultipleDocumentsSuite({numberOfShards: 1, replicationFactor: 1}),
     suite,
-    "_insertMultiple1"
+    "_SingleShard"
   );
   return suite;
 }
 
-function InsertMultipleDocumentsParameters2Suite() {
+function InsertMultipleDocumentsSuiteMultipleShards() {
   let suite = {};
   deriveTestSuite(
-    InsertMultipleDocumentsSuite(3, 3),
+    InsertMultipleDocumentsSuite({numberOfShards: 3, replicationFactor: 3}),
     suite,
-    "_insertMultiple2"
+    "_MultipleShards"
   );
   return suite;
 }
 
-function InsertMultipleDocumentsExplainParameters1Suite() {
+function InsertMultipleDocumentsExplainSuiteSingleShard() {
   let suite = {};
   deriveTestSuite(
-    InsertMultipleDocumentsExplainSuite(1, 1),
+    InsertMultipleDocumentsExplainSuite({numberOfShards: 1, replicationFactor: 1}),
     suite,
-    "_insertMultipleExplain1"
+    "_SingleShard"
   );
   return suite;
 }
 
-function InsertMultipleDocumentsExplainParameters2Suite() {
+function InsertMultipleDocumentsExplainSuiteMultipleShards() {
   let suite = {};
   deriveTestSuite(
-    InsertMultipleDocumentsExplainSuite(3, 3),
+    InsertMultipleDocumentsExplainSuite({numberOfShards: 3, replicationFactor: 3}),
     suite,
-    "_insertMultipleExplain2"
+    "_MultipleShards"
   );
   return suite;
 }
 
-jsunity.run(InsertMultipleDocumentsParameters1Suite);
-jsunity.run(InsertMultipleDocumentsParameters2Suite);
+jsunity.run(InsertMultipleDocumentsSuiteSingleShard);
+jsunity.run(InsertMultipleDocumentsSuiteMultipleShards);
 if (isServer) {
-  jsunity.run(InsertMultipleDocumentsExplainParameters1Suite);
-  jsunity.run(InsertMultipleDocumentsExplainParameters2Suite);
+  jsunity.run(InsertMultipleDocumentsExplainSuiteSingleShard);
+  jsunity.run(InsertMultipleDocumentsExplainSuiteMultipleShards);
 }
 
 return jsunity.done();
