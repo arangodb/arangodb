@@ -34,6 +34,13 @@ const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
+
+if (!isServer) {
+  global.AQL_EXPLAIN = (query, bindVars, options) => {
+    let res = arango.POST("/_api/explain", {query, bindVars, options});
+    return res;
+  };
+}
       
 const assertRuleIsUsed = (query, bind = {}, rules = {}) => {
   let res = AQL_EXPLAIN(query, bind, rules);
