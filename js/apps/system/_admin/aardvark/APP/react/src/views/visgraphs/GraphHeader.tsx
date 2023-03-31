@@ -7,7 +7,8 @@ import { GraphSettings } from "./graphSettings/GraphSettings";
 import { SearchButton } from "./SearchButton";
 
 export const GraphHeader = () => {
-  const { graphName } = useGraph();
+  const { graphName, graphData } = useGraph();
+  const isSmart = graphData?.settings.isSmart || false;
 
   return (
     <Box
@@ -19,14 +20,9 @@ export const GraphHeader = () => {
       gridTemplateColumns="1fr 1fr"
     >
       <Box>{graphName}</Box>
-      <HStack justifyContent="end" alignItems="center">
-        <DownloadButton />
-        <FullscreenButton />
-        <LoadFullGraph />
-        <SwitchToOld />
-        <SearchButton />
-        <GraphSettings />
-      </HStack>
+      {
+        !isSmart && <RightActions />
+      }
     </Box>
   );
 };
@@ -128,5 +124,18 @@ const LoadFullGraph = () => {
         aria-label={"Load full graph"}
       />
     </Tooltip>
+  );
+};
+
+const RightActions = () => {
+  return (
+    <HStack justifyContent="end" alignItems="center">
+      <DownloadButton />
+      <FullscreenButton />
+      <LoadFullGraph />
+      <SwitchToOld />
+      <SearchButton />
+      <GraphSettings />
+    </HStack>
   );
 };
