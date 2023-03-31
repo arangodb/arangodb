@@ -433,7 +433,7 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
 
-        assertEqual(args.removedSingleIndices, c.getIndexes().length); // just primary index
+        assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
         assertEqual(10000, c.count());
 
