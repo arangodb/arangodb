@@ -1312,7 +1312,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
           }
         }
       } else {
-        nodeLabel = node._key;
+        nodeLabel = node._key || node._id;
       }
 
       if (config.nodeLabelByCollection === 'true') {
@@ -1339,6 +1339,12 @@ authRouter.get('/visgraph/:name', function (req, res) {
           calculatedNodeColor = config.nodeColor;
         }
       }
+    if (Object.keys(nodesObj).length === 0 && !startVertex && multipleIds.length > 0) {
+      multipleIds.forEach(id => {
+        nodesObj[id] = generateNodeObject({ _id: id });
+      })
+    }
+
         
       nodeObj = {
         id: node._id,
@@ -1530,7 +1536,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
 
     // In case our AQL query did not deliver any nodes, we will put the "startVertex" into the "nodes" list
     // as well (to be able to display at least the starting point of our graph)
-    if (Object.keys(nodesObj).length === 0) {
+    if (Object.keys(nodesObj).length === 0 && startVertex) {
       nodesObj[startVertex._id] = generateNodeObject(startVertex);
     }
 
