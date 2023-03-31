@@ -1710,8 +1710,14 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.maxReplicationFactor = cl.maxReplicationFactor();
   config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
-  config.defaultReplicationFactor =
-      std::max(replicationFactor(), cl.systemReplicationFactor());
+
+  if (ServerState::instance()->isSingleServer()) {
+    config.defaultReplicationFactor = replicationFactor();
+  } else {
+    config.defaultReplicationFactor =
+        std::max(replicationFactor(), cl.systemReplicationFactor());
+  }
+
   config.defaultWriteConcern = writeConcern();
 
   config.isOneShardDB = cl.forceOneShard() || isOneShard();
