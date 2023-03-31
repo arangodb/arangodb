@@ -40,8 +40,9 @@ struct StorageManager : IStorageManager,
                         std::enable_shared_from_this<StorageManager> {
   using IStorageEngineMethods = replicated_state::IStorageEngineMethods;
 
-  explicit StorageManager(std::unique_ptr<IStorageEngineMethods> core,
-                          LoggerContext const& loggerContext);
+  StorageManager(std::unique_ptr<IStorageEngineMethods> core,
+                 LoggerContext const& loggerContext,
+                 std::shared_ptr<IScheduler> scheduler);
   auto resign() noexcept -> std::unique_ptr<IStorageEngineMethods>;
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLogIterator(std::optional<LogRange> range) const

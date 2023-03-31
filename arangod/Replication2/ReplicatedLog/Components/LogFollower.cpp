@@ -105,8 +105,8 @@ FollowerManager::FollowerManager(
     : loggerContext(deriveLoggerContext(*termInfo, logContext)),
       options(options),
       metrics(metrics),
-      storage(
-          std::make_shared<StorageManager>(std::move(methods), loggerContext)),
+      storage(std::make_shared<StorageManager>(std::move(methods),
+                                               loggerContext, scheduler)),
       compaction(std::make_shared<CompactionManager>(*storage, options,
                                                      loggerContext)),
       stateHandle(

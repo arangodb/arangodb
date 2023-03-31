@@ -26,6 +26,7 @@
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
 #include "Replication2/Mocks/FakeAsyncExecutor.h"
 #include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include <immer/flex_vector_transient.hpp>
 
@@ -49,20 +50,6 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
               (const, override));
 };
 
-struct SyncScheduler : IScheduler {
-  auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
-      -> arangodb::futures::Future<arangodb::futures::Unit> override {
-    std::abort();  // not implemented
-  }
-  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
-      -> WorkItemHandle override {
-    std::abort();  // not implemented
-  }
-  void queue(fu2::unique_function<void()> function) noexcept override {
-    function();
-  }
-};
 }  // namespace
 
 struct AppendEntriesFollowerTest : ::testing::Test {
@@ -70,7 +57,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   LogId const logId = LogId{12};
   std::shared_ptr<test::SyncExecutor> executor =
       std::make_shared<test::SyncExecutor>();
-  std::shared_ptr<SyncScheduler> scheduler = std::make_shared<SyncScheduler>();
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
 
   test::FakeStorageEngineMethodsContext storage{
       objectId,
