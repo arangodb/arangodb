@@ -54,6 +54,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto readResult() -> OperationResult override;
+  [[nodiscard]] auto readAllNonExpiredResults() -> OperationResult override;
   [[nodiscard]] auto readAllResults() -> OperationResult override;
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto deleteResult() -> OperationResult override;
@@ -71,6 +72,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
  private:
+  [[nodiscard]] auto executeQuery(std::string queryString) -> OperationResult;
   [[nodiscard]] auto handleOperationResult(SingleCollectionTransaction& trx,
                                            OperationOptions& options,
                                            Result& transactionResult,
