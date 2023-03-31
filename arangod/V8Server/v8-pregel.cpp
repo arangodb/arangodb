@@ -159,11 +159,10 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   auto& pregel = vocbase.server().getFeature<arangodb::pregel::PregelFeature>();
 
-  VPackBuilder builder;
-
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength == 0) {
+    VPackBuilder builder;
     pregel.toVelocyPack(vocbase, builder, false, true);
     TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
     return;
@@ -178,10 +177,25 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_ObjectToUInt64(isolate, args[0], true)};
   auto c = pregel.conductor(executionNum);
   if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "Execution number is invalid");
+    auto status = pregel.getStatus(executionNum);
+    if (not status.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(status.errorNumber(),
+                                     status.errorMessage());
+      return;
+    }
+    auto serializedState = inspection::serializeWithErrorT(status.get());
+    if (!serializedState.ok()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+          TRI_ERROR_CURSOR_NOT_FOUND,
+          fmt::format("Cannot serialize status {}",
+                      serializedState.error().error()));
+      return;
+    }
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, serializedState.get().slice()));
+    return;
   }
 
+  VPackBuilder builder;
   c->toVelocyPack(builder);
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
@@ -206,12 +220,12 @@ static void JS_PregelCancel(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto executionNum = arangodb::pregel::ExecutionNumber{
       TRI_ObjectToUInt64(isolate, args[0], true)};
-  auto c = pregel.conductor(executionNum);
-  if (!c) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_CURSOR_NOT_FOUND,
-                                   "Execution number is invalid");
+
+  auto canceled = pregel.cancel(executionNum);
+  if (canceled.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(canceled.errorNumber(),
+                                   canceled.errorMessage());
   }
-  c->cancel();
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END

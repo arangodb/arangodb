@@ -528,7 +528,7 @@ Result MaintenanceFeature::addAction(
   //  but just in case
   try {
     size_t action_hash = newAction->hash();
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::unique_lock guard(_actionRegistryLock);
 
     std::shared_ptr<Action> curAction =
         findFirstActionHashNoLock(action_hash, ::findNotDoneActions);
@@ -581,7 +581,7 @@ Result MaintenanceFeature::addAction(
 
     std::shared_ptr<Action> curAction;
 
-    WRITE_LOCKER(wLock, _actionRegistryLock);
+    std::unique_lock guard(_actionRegistryLock);
     if (!description->isRunEvenIfDuplicate()) {
       size_t action_hash = description->hash();
 
@@ -716,7 +716,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHash(
     size_t hash,
     std::function<bool(std::shared_ptr<maintenance::Action> const&)> const&
         predicate) {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   return findFirstActionHashNoLock(hash, predicate);
 }
@@ -736,7 +736,7 @@ std::shared_ptr<Action> MaintenanceFeature::findFirstActionHashNoLock(
 }
 
 std::shared_ptr<Action> MaintenanceFeature::findActionId(uint64_t id) {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   return findActionIdNoLock(id);
 }
@@ -759,7 +759,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(
   while (!_isShuttingDown) {
     // use priority queue for ready action (and purge any that are done waiting)
     {
-      WRITE_LOCKER(wLock, _actionRegistryLock);
+      std::unique_lock guard(_actionRegistryLock);
 
       while (!_prioQueue.empty()) {
         // If _prioQueue is empty, we have no ready job and simply loop in the
@@ -821,7 +821,7 @@ VPackBuilder MaintenanceFeature::toVelocyPack() const {
 }
 
 void MaintenanceFeature::toVelocyPack(VPackBuilder& vb) const {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   {
     VPackArrayBuilder ab(&vb);
@@ -1248,7 +1248,7 @@ size_t MaintenanceFeature::lastNumberOfDatabases() const {
 
 bool MaintenanceFeature::hasAction(ActionState state, ShardID const& shardId,
                                    std::string const& type) const {
-  READ_LOCKER(rLock, _actionRegistryLock);
+  std::shared_lock guard(_actionRegistryLock);
 
   // this is not ideal, as it needs to do a linear scan of all maintenance jobs
   // in the registry. however, this is our best bet, as we don't have active a
@@ -1308,7 +1308,7 @@ Result MaintenanceFeature::requeueAction(
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
-  WRITE_LOCKER(wLock, _actionRegistryLock);
+  std::unique_lock guard(_actionRegistryLock);
   registerAction(std::move(newAction), false);
   return {};
 }

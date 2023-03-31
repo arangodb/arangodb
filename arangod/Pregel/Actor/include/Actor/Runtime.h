@@ -83,6 +83,8 @@ struct Runtime
 
   auto getActorIDs() -> std::vector<ActorID> { return actors.allIDs(); }
 
+  auto contains(ActorID id) const -> bool { return actors.contains(id); }
+
   template<typename ActorConfig>
   auto getActorStateByID(ActorID id) const
       -> std::optional<typename ActorConfig::State> {
