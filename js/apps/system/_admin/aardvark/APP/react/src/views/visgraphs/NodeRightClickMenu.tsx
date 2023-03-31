@@ -1,7 +1,9 @@
 import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
+import { FullItem } from "vis-data/declarations/data-interface";
 import { fetchVisData, useGraph } from "./GraphContext";
 import { useUrlParameterContext } from "./UrlParametersContext";
+import { NodeDataType } from "./VisGraphData.types";
 
 export const NodeRightClickMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
@@ -9,7 +11,6 @@ export const NodeRightClickMenu = forwardRef(
       rightClickedEntity,
       setSelectedAction,
       onApplySettings,
-      graphName,
       datasets
     } = useGraph();
     const { urlParams, setUrlParams } = useUrlParameterContext();
@@ -42,43 +43,7 @@ export const NodeRightClickMenu = forwardRef(
           >
             Edit Node
           </MenuItem>
-          <MenuItem
-            onClick={async () => {
-              if (!rightClickedEntity.nodeId) {
-                return;
-              }
-              const params = {
-                ...urlParams,
-                query:
-                  "FOR v, e, p IN 1..1 ANY '" +
-                  rightClickedEntity.nodeId +
-                  "' GRAPH '" +
-                  graphName +
-                  "' RETURN p"
-              };
-              const newData = await fetchVisData({
-                graphName,
-                params
-              });
-              const newLabel = foundNode?.label
-                ? `${foundNode.label} (expanded)`
-                : `(expanded)`;
-              datasets?.nodes.updateOnly({
-                id: rightClickedEntity.nodeId,
-                label: newLabel
-              });
-              const newNodes = newData.nodes.filter((node: any) => {
-                return !datasets?.nodes.get(node.id);
-              });
-              const newEdges = newData.edges.filter((edge: any) => {
-                return !datasets?.edges.get(edge.id);
-              });
-              datasets?.nodes.add(newNodes);
-              datasets?.edges.add(newEdges);
-            }}
-          >
-            Expand Node
-          </MenuItem>
+          <ExpandNodeButton foundNode={foundNode} />
           <MenuItem
             onClick={() => {
               if (!rightClickedEntity.nodeId) {
@@ -127,3 +92,45 @@ export const NodeRightClickMenu = forwardRef(
     );
   }
 );
+const ExpandNodeButton = ({
+  foundNode
+}: {
+  foundNode: FullItem<NodeDataType, "id">;
+}) => {
+  const { rightClickedEntity, graphName, datasets } = useGraph();
+  const { urlParams } = useUrlParameterContext();
+  const expandNode = async () => {
+    if (!rightClickedEntity?.nodeId) {
+      return;
+    }
+    const params = {
+      ...urlParams,
+      query:
+        "FOR v, e, p IN 1..1 ANY '" +
+        rightClickedEntity.nodeId +
+        "' GRAPH '" +
+        graphName +
+        "' RETURN p"
+    };
+    const newData = await fetchVisData({
+      graphName,
+      params
+    });
+    const newLabel = foundNode?.label
+      ? `${foundNode.label} (expanded)`
+      : `(expanded)`;
+    datasets?.nodes.updateOnly({
+      id: rightClickedEntity.nodeId,
+      label: newLabel
+    });
+    const newNodes = newData.nodes.filter((node: any) => {
+      return !datasets?.nodes.get(node.id);
+    });
+    const newEdges = newData.edges.filter((edge: any) => {
+      return !datasets?.edges.get(edge.id);
+    });
+    datasets?.nodes.add(newNodes);
+    datasets?.edges.add(newEdges);
+  };
+  return <MenuItem onClick={expandNode}>Expand Node</MenuItem>;
+};
