@@ -111,22 +111,25 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
           .get());
 }
 
-auto CollectionStatusWriter::readAllResults() -> OperationResult {
-  std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
-  auto query = arangodb::aql::Query::create(
-      ctx(), arangodb::aql::QueryString(queryString), nullptr);
-  query->queryOptions().skipAudit = true;
-  aql::QueryResult queryResult = query->executeSync();
-  if (queryResult.result.fail()) {
-    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
-        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
-      return OperationResult(Result(TRI_ERROR_REQUEST_CANCELED), {});
-    }
-    return OperationResult(queryResult.result, {});
-  }
+auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
+  // TODO: GORDO-1607
+  // Note: As soon as we introduce an inspectable struct to the data we actually
+  // write into the pregel collection, we can remove change "entry.data" to
+  // just "entry".
+  std::string queryString = R"(
+    FOR entry IN _pregel_queries
+      FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
+      OR entry.data.expires == null
+    RETURN entry.data
+  )";
 
-  return OperationResult(Result(TRI_ERROR_NO_ERROR), queryResult.data->buffer(),
-                         {});
+  return executeQuery(queryString);
+}
+
+auto CollectionStatusWriter::readAllResults() -> OperationResult {
+  // TODO: GORDO-1607
+  std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
+  return executeQuery(queryString);
 }
 
 auto CollectionStatusWriter::updateResult(velocypack::Slice data)
@@ -188,6 +191,24 @@ auto CollectionStatusWriter::deleteAllResults() -> OperationResult {
   return handleOperationResult(
       trx, options, transactionResult,
       trx.truncateAsync(StaticStrings::PregelCollection, options).get());
+}
+
+auto CollectionStatusWriter::executeQuery(std::string queryString)
+    -> OperationResult {
+  auto query = arangodb::aql::Query::create(
+      ctx(), arangodb::aql::QueryString(queryString), nullptr);
+  query->queryOptions().skipAudit = true;
+  aql::QueryResult queryResult = query->executeSync();
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
+      return OperationResult(Result(TRI_ERROR_REQUEST_CANCELED), {});
+    }
+    return OperationResult(queryResult.result, {});
+  }
+
+  return OperationResult(Result(TRI_ERROR_NO_ERROR), queryResult.data->buffer(),
+                         {});
 }
 
 auto CollectionStatusWriter::handleOperationResult(
