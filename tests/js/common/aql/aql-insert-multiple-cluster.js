@@ -382,6 +382,19 @@ function InsertMultipleDocumentsSuite(params) {
       }
     },
 
+    testInvalidInput: function () {
+      const query = `FOR d IN [{_key: "foobar"}, []] INSERT d INTO ${cn}`;
+      assertRuleIsUsed(query);
+      try {
+        db._query(query);
+        fail("query did not fail as expected");
+      } catch (err) {
+        assertTrue(err.errorNum !== undefined, 'unexpected error');
+        assertEqual(internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        assertEqual(0, db[cn].count());
+      }
+    },
+
     testExclusive: function () {
       if (isServer) {
         return;
