@@ -180,7 +180,7 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '3rdParty', 'rta_makedata'));
+  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata'));
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
