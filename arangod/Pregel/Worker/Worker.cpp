@@ -584,7 +584,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
               for (auto const& fResponse : futureResponses) {
                 auto& result = fResponse.get();
                 if (result.fail()) {
-                  LOG_PREGEL("ee2af", WARN)
+                  LOG_PREGEL("ee2ad", WARN)
                       << fmt::format("Thread failed to store graph results: {}",
                                      result.errorMessage());
                   // TODO: Anything else we can do in case we've failed here?!
