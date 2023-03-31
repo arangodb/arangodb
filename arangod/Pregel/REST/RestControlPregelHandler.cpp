@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
@@ -287,15 +288,13 @@ void RestControlPregelHandler::handleDeleteRequest() {
 
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
 
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
+  auto canceled = _pregel.cancel(executionNumber);
+  if (canceled.fail()) {
+    generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
+                  canceled.errorMessage());
     return;
   }
-
-  c->cancel();
 
   VPackBuilder builder;
   builder.add(VPackValue(""));
