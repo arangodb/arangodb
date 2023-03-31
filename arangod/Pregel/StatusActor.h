@@ -148,7 +148,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(message::GlobalSuperStepStarted msg)
       -> std::unique_ptr<StatusState> {
-    LOG_DEVEL << "received msg";
     this->state->stateName = msg.state;
     this->state->gss = msg.gss;
     if (not this->state->timings.gss.empty()) {
