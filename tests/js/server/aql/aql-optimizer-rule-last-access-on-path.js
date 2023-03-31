@@ -80,9 +80,9 @@ function TraversalOptimizeLastPathAccessTestSuite() {
     ];
 
     const isReferenceToPath = (refNode) => {
-        const {typeID, name} = refNode;
+        const {name, type} = refNode;
         // Only Reference(45) to variable (p) are allowed
-        return typeID === 45 && name === "p";
+        return type === "reference" && name === "p";
     };
     const isLastElementAccess = (indexedAccess) => {
         if (indexedAccess.subNodes.length !== 2) {
@@ -92,16 +92,16 @@ function TraversalOptimizeLastPathAccessTestSuite() {
         const [path, index] = indexedAccess.subNodes;
         {
             // Test index
-            const {typeID, value} = index;
-            if (typeID !== 40 || value !== -1) {
+            const {value, type} = index;
+            if (type !== "value" || value !== -1) {
                 // Only type "value"(40) and access to last element "-1" can pass
                 return false;
             }
         }
         {
             // Test attribute access path
-            const {typeID, name, subNodes} = path;
-            if (typeID !== 35 || !(name === "vertices" || name === "edges") || subNodes.length !== 1 || !isReferenceToPath(subNodes[0])) {
+            const {name, subNodes, type} = path;
+            if (type !== "attribute access" || !(name === "vertices" || name === "edges") || subNodes.length !== 1 || !isReferenceToPath(subNodes[0])) {
                 return false;
             }
         }
@@ -110,7 +110,7 @@ function TraversalOptimizeLastPathAccessTestSuite() {
 
     const planContainsPathAccess = (nodes) => {
         // Pick all Indexed Access nodes (`LET v = <var>[<index>]`
-        const indexedAccesses = nodes.filter(n => n.type === "CalculationNode").map(c => c.expression).filter(e => e.typeID === 37);
+        const indexedAccesses = nodes.filter(n => n.type === "CalculationNode").map(c => c.expression).filter(e => e.type === "indexed access");
         return indexedAccesses.filter(isLastElementAccess).length > 0;
     };
     const ruleIsApplied = (rules) => {
@@ -130,10 +130,23 @@ function TraversalOptimizeLastPathAccessTestSuite() {
         assertFalse(ruleIsApplied(rules), `Rule ${ruleName} has been found in ${rules}`);
     };
 
+    const assertPlanDoesNotContainFilter = (nodes) => {
+        const filters = nodes.filter(n => n.type === "FilterNode");
+        assertEqual(filters.length, 0, `We still have a FILTER node`);
+    };
+
     const assertResultsAreNotModifiedByRule = (query) => {
         const originalResult = db._query(query,{},{optimizer:{rules: [`-${ruleName}`]}}).toArray();
         const optimizedResult = db._query(query,{},{optimizer:{rules: [`+${ruleName}`]}}).toArray();
         assertEqual(originalResult, optimizedResult);
+    };
+
+    const assertHasProjection = (nodes, type, attribute) => {
+        const traversalNodes = nodes.filter(n => n.type === "TraversalNode");
+        assertEqual(traversalNodes.length, 1, `We do not have expected number of Traversal Nodes, please check the test query, it should contain exactly one traversal statement`);
+        const projections = traversalNodes[0].options[type];
+        assertTrue(Array.isArray(projections), `Projections not found, or unexpected format`);
+        assertEqual(projections.filter(p => p === attribute).length, 1, `Expected Projection ${attribute} not found in ${projections}`);
     };
 
     return {
@@ -179,7 +192,33 @@ function TraversalOptimizeLastPathAccessTestSuite() {
                 assertRuleIsApplied(rules);
                 assertResultsAreNotModifiedByRule(q);
             }
-        }
+        },
+
+        testCombinationWithProjection: function () {
+            const queriesToTest = [
+                [`FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.vertices[-1].name`,"vertexProjections", "name"],
+                [`FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1].label`, "edgeProjections", "label"],
+            ];
+            for (const [q, type, attribute] of queriesToTest) {
+                const {nodes, rules} = AQL_EXPLAIN(q).plan;
+                assertPlanDoesNotContainPathAccess(nodes);
+                assertRuleIsApplied(rules);
+                assertHasProjection(nodes, type, attribute);
+            }
+        },
+
+        testCombinationWithInlineFilter: function () {
+            const queriesToTest = [
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.vertices[-1].name == "test" RETURN v`,
+                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" RETURN e`
+            ];
+            for (const q of queriesToTest) {
+                const {nodes, rules} = AQL_EXPLAIN(q).plan;
+                assertPlanDoesNotContainPathAccess(nodes);
+                assertRuleIsApplied(rules);
+                assertPlanDoesNotContainFilter(nodes);
+            }
+        },
     };
 }
 

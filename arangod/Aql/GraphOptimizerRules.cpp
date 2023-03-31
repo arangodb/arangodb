@@ -35,13 +35,13 @@ namespace {
 
 enum class PathAccessState {
   // Search for access to any path variable
-  SEARCH_ACCESS_PATH,
+  kSearchAccessPath,
   // Check if we access edges or vertices on it
-  ACCESS_EDGES_OR_VERTICES,
+  kAccessEdgesOrVertices,
   // Check if we have an indexed access [x] (we find the x here)
-  SPECIFIC_DEPTH_ACCESS_DEPTH,
+  kSpecificDepthAccessDepth,
   // CHeck if we have an indexed access [x] (we find [ ] here)
-  SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS,
+  kSpecificDepthAccessIndexedAccess,
 };
 
 auto swapOutLastElementAccesses(
@@ -53,61 +53,61 @@ auto swapOutLastElementAccesses(
   bool isEdgeAccess = false;
   bool appliedAChange = false;
 
-  PathAccessState currentState{PathAccessState::SEARCH_ACCESS_PATH};
+  PathAccessState currentState{PathAccessState::kSearchAccessPath};
 
   auto searchAccessPattern = [&](AstNode* node) -> AstNode* {
     switch (currentState) {
-      case PathAccessState::SEARCH_ACCESS_PATH: {
+      case PathAccessState::kSearchAccessPath: {
         if (node->type == NODE_TYPE_REFERENCE ||
             node->type == NODE_TYPE_VARIABLE) {
           // we are on the bottom of the tree. Check if it is our pathVar
           auto variable = static_cast<Variable*>(node->getData());
           if (pathVariables.contains(variable)) {
-            currentState = PathAccessState::ACCESS_EDGES_OR_VERTICES;
+            currentState = PathAccessState::kAccessEdgesOrVertices;
             matchingPath = variable;
           }
         }
         // Keep for now
         return node;
       }
-      case PathAccessState::ACCESS_EDGES_OR_VERTICES: {
+      case PathAccessState::kAccessEdgesOrVertices: {
         // we have var.<this-here>
         // Only vertices || edges supported
         if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (node->stringEquals(StaticStrings::GraphQueryEdges)) {
             isEdgeAccess = true;
-            currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH;
+            currentState = PathAccessState::kSpecificDepthAccessDepth;
             return node;
           } else if (node->stringEquals(StaticStrings::GraphQueryVertices)) {
             isEdgeAccess = false;
-            currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH;
+            currentState = PathAccessState::kSpecificDepthAccessDepth;
             return node;
           }
         }
         // Incorrect type, do not touch, abort this search,
         // setup next one
-        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        currentState = PathAccessState::kSearchAccessPath;
         return node;
       }
-      case PathAccessState::SPECIFIC_DEPTH_ACCESS_DEPTH: {
+      case PathAccessState::kSpecificDepthAccessDepth: {
         // we have var.edges[<this-here>], we can only let -1 pass here for
         // optimization
         if (node->value.type == VALUE_TYPE_INT &&
             node->value.value._int == -1) {
-          currentState = PathAccessState::SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS;
+          currentState = PathAccessState::kSpecificDepthAccessIndexedAccess;
           return node;
         }
         // Incorrect type, do not touch, abort this search,
         // setup next one
-        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        currentState = PathAccessState::kSearchAccessPath;
         return node;
       }
-      case PathAccessState::SPECIFIC_DEPTH_ACCESS_INDEXED_ACCESS: {
+      case PathAccessState::kSpecificDepthAccessIndexedAccess: {
         // We are in xxxx[-1] pattern, the next node has to be the indexed
         // access.
         if (node->type == NODE_TYPE_INDEXED_ACCESS) {
           // Reset pattern, we can now restart the search
-          currentState = PathAccessState::SEARCH_ACCESS_PATH;
+          currentState = PathAccessState::kSearchAccessPath;
 
           // Let's switch!!
           appliedAChange = true;
@@ -117,18 +117,21 @@ auto swapOutLastElementAccesses(
                                               ? matchingElements->second.second
                                               : matchingElements->second.first);
         }
-        currentState = PathAccessState::SEARCH_ACCESS_PATH;
+        currentState = PathAccessState::kSearchAccessPath;
         return node;
       }
     }
+    ADB_PROD_ASSERT(false) << "Unreachable code triggered";
+    return nullptr;
   };
 
   auto newCondition = Ast::traverseAndModify(condition, searchAccessPattern);
   if (newCondition != condition) {
     // Swap out everything.
+    TRI_ASSERT(appliedAChange) << "We attempt to swap the full condition, we "
+                                  "need to count an applied change.";
     return std::make_pair(appliedAChange, newCondition);
   }
-
   return std::make_pair(appliedAChange, nullptr);
 }
 
@@ -195,6 +198,8 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
     // Gets true as soon as one of the swapOut calls returns true
     appliedAChange |= didApplyChange;
     if (replacementCondition != nullptr) {
+      TRI_ASSERT(appliedAChange) << "We attempt to swap the full condition, we "
+                                    "need to count an applied change.";
       // This is the indicator that we have to replace the full expression here.
       calculation->expression()->replaceNode(replacementCondition);
     }
