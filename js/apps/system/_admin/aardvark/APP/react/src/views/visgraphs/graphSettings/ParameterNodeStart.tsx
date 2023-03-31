@@ -114,7 +114,7 @@ const ParameterNodeStart = () => {
         isClearable={false}
         styles={{
           container: baseStyles => {
-            return { width: "200px", ...baseStyles };
+            return { width: "240px", ...baseStyles };
           }
         }}
         id="nodeStart"
