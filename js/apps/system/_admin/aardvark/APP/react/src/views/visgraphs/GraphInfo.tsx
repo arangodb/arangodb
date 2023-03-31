@@ -58,7 +58,7 @@ const SelectedEntityInfo = () => {
   const displayData = omit(entityData, immutableIds) as {
     [key: string]: string;
   };
-
+  const attributes = Object.keys(displayData);
   return (
     <HStack paddingX="3" paddingY="2" background="white">
       <HStack>
@@ -67,23 +67,43 @@ const SelectedEntityInfo = () => {
           {entityData?._id}
         </Tag>
       </HStack>
-      <HStack>
-        <Text>Attributes</Text>
-        {Object.keys(displayData).map(key => {
-          const keyData = displayData[key];
-          let tooltip = `${keyData}`;
-          if (typeof keyData === "object") {
-            tooltip = JSON.stringify(keyData);
-          }
-          return (
-            <Tooltip key={key} hasArrow label={tooltip}>
-              <Tag size={"md"} background="gray.800" color="white">
-                {key}
-              </Tag>
-            </Tooltip>
-          );
-        })}
-      </HStack>
+      <Attributes attributes={attributes} displayData={displayData} />
     </HStack>
+  );
+};
+const Attributes = ({
+  attributes,
+  displayData
+}: {
+  attributes: string[];
+  displayData: { [key: string]: string };
+}) => {
+  if (attributes.length === 0) {
+    return null;
+  }
+  return (
+    <Box>
+      <Text>Attributes</Text>
+      {attributes.map(attribute => {
+        const keyData = displayData[attribute];
+        let tooltip = `${keyData}`;
+        if (typeof keyData === "object") {
+          tooltip = JSON.stringify(keyData);
+        }
+        return (
+          <Tooltip key={attribute} hasArrow label={tooltip}>
+            <Tag
+              marginBottom="2"
+              marginLeft="2"
+              size={"md"}
+              background="gray.800"
+              color="white"
+            >
+              {attribute}
+            </Tag>
+          </Tooltip>
+        );
+      })}
+    </Box>
   );
 };
