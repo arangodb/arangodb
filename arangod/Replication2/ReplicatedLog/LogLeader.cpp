@@ -563,7 +563,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   std::vector<ParticipantId> followersWithSnapshot;
   followersWithSnapshot.reserve(guard->_follower.size());
   for (auto const& [pid, follower] : guard->_follower) {
-    if (follower->snapshotAvailable) {
+    if (pid != _id && follower->snapshotAvailable) {
       followersWithSnapshot.emplace_back(pid);
     }
   }
