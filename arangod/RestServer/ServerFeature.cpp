@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -300,11 +301,19 @@ void ServerFeature::waitForHeartbeat() {
     return;
   }
 
+  if (!server().hasFeature<ClusterFeature>()) {
+    return;
+  }
+
+  auto& cf = server().getFeature<ClusterFeature>();
+
   while (true) {
-    if (HeartbeatThread::hasRunOnce()) {
+    auto heartbeatThread = cf.heartbeatThread();
+    TRI_ASSERT(heartbeatThread != nullptr);
+    if (heartbeatThread == nullptr || heartbeatThread->hasRunOnce()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 

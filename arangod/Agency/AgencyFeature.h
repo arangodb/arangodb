@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,6 +64,9 @@ class AgencyFeature : public ArangodFeature {
   uint64_t _maxAppendSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
+  uint64_t _supervisionDelayAddFollower;
+  uint64_t _supervisionDelayFailedFollower;
+  bool _failedLeaderAddsFollower;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   std::string _recoveryId;

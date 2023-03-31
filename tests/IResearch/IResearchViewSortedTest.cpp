@@ -76,8 +76,6 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "utils/string_utils.hpp"
-
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -157,8 +155,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     \"primarySort\": [ { \"field\" : \"seq\", \"direction\": \"desc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -267,7 +264,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);
@@ -463,8 +460,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     \"primarySort\": [ { \"field\": \"same\", \"asc\": true }, { \"field\": \"same\", \"asc\": false }, { \"field\" : \"seq\", \"direction\": \"desc\" }, { \"field\" : \"name\", \"direction\": \"asc\" } ] \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
@@ -573,7 +569,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
-        view->getLinks(), view.get(), view->name());
+        view->getLinks(nullptr), view.get(), view->name());
     ASSERT_TRUE(snapshot);
     // ensure more than 1 segment in index snapshot
     EXPECT_TRUE(snapshot->size() > 1);

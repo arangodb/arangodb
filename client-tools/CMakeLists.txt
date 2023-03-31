@@ -13,7 +13,7 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ShellConsoleFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
-  V8Client/ArangoClientHelper.cpp
+  ../cmake/activeCodePage.manifest
 )
 
 add_library(arango_shell STATIC
@@ -54,6 +54,7 @@ add_executable(${BIN_ARANGOBENCH}
   Benchmark/BenchFeature.cpp
   Benchmark/BenchmarkOperation.cpp
   Benchmark/testcases/helpers.cpp
+  ../cmake/activeCodePage.manifest
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
@@ -378,9 +379,12 @@ add_executable(${BIN_ARANGOSH}
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
   Shell/ShellFeature.cpp
+  Shell/TelemetricsHandler.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
+  Shell/ProcessMonitoringFeature.cpp
   Shell/arangosh.cpp
+  Shell/v8-deadline.cpp
   ${FUZZER}
 )
 
@@ -389,7 +393,6 @@ target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/client-
 target_link_libraries(${BIN_ARANGOSH}
   arango
   arango_v8
-  arango_v8_deadline
   ${V8_LIBS}
   fuerte
   ${MSVC_LIBS}

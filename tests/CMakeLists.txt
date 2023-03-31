@@ -17,6 +17,7 @@ add_subdirectory(Errors)
 add_subdirectory(Zkd)
 add_subdirectory(Graph)
 add_subdirectory(Replication2)
+add_subdirectory(Futures)
 
 # ----------------------------------------
 # Link directories
@@ -31,7 +32,6 @@ if (WINDOWS)
 endif ()
 
 add_library(arango_tests_basics OBJECT
-  ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchInvertedIndexMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
@@ -61,6 +61,7 @@ target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_ire
 
 add_subdirectory(IResearch)
 
+
 set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
@@ -70,6 +71,7 @@ set(ARANGODB_TESTS_SOURCES
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
+  Agency/NodeLoadTest.cpp
   Agency/NodeTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
@@ -81,11 +83,11 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
-  Aql/AqlItemMatrixTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
+  Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
   Aql/BitFunctionsTest.cpp
@@ -155,39 +157,6 @@ set(ARANGODB_TESTS_SOURCES
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerTest.cpp
   Auth/UserManagerClusterTest.cpp
-  Basics/ConversionsTest.cpp
-  Basics/CsvTest.cpp
-  Basics/datetime.cpp
-  Basics/FilesTest.cpp
-  Basics/FpConvTest.cpp
-  Basics/HashesTest.cpp
-  Basics/HybridLogicalClockTest.cpp
-  Basics/OverloadTest.cpp
-  Basics/PriorityQueueTest.cpp
-  Basics/StringBufferTest.cpp
-  Basics/StringBufferInternalTest.cpp
-  Basics/StringTest.cpp
-  Basics/StringUtf8NormalizeTest.cpp
-  Basics/StringUtf8Test.cpp
-  Basics/ApplicationServerTest.cpp
-  Basics/AttributeNameParserTest.cpp
-  Basics/CpuUsageSnapshotTest.cpp
-  Basics/EncodingUtilsTest.cpp
-  Basics/EndpointTest.cpp
-  Basics/FixedSizeAllocatorTest.cpp
-  Basics/GuardedTest.cpp
-  Basics/InspectionTest.cpp
-  Basics/LoggerTest.cpp
-  Basics/MemoryUsageTest.cpp
-  Basics/NumberUtilsTest.cpp
-  Basics/RandomTest.cpp
-  Basics/ReadWriteLockTest.cpp
-  Basics/RecursiveLockerTest.cpp
-  Basics/SpinLockTest.cpp
-  Basics/StringBufferTest.cpp
-  Basics/StringUtilsTest.cpp
-  Basics/UnshackledMutexTest.cpp
-  Basics/VelocyPackHelperTest.cpp
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -214,9 +183,6 @@ set(ARANGODB_TESTS_SOURCES
   Containers/MerkleTreeTest.cpp
   Containers/SmallVectorTest.cpp
   Errors/ErrorTTest.cpp
-  Futures/FutureTest.cpp
-  Futures/PromiseTest.cpp
-  Futures/TryTest.cpp
   Geo/GeoConstructorTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/GeoJsonTest.cpp
@@ -236,9 +202,6 @@ set(ARANGODB_TESTS_SOURCES
   Network/ConnectionPoolTest.cpp
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
-  Pregel/DurationTest.cpp
-  Pregel/typedbuffer.cpp
-  Pregel/StatusTest.cpp
   ProgramOptions/InifileParserTest.cpp
   ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
@@ -252,6 +215,7 @@ set(ARANGODB_TESTS_SOURCES
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
+  RocksDBEngine/CachedCollectionNameTest.cpp
   RocksDBEngine/ChecksumCalculatorTest.cpp
   RocksDBEngine/ChecksumHelperTest.cpp
   RocksDBEngine/EndianTest.cpp
@@ -278,12 +242,9 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/KeyGeneratorTest.cpp
   VocBase/LogicalDataSourceTest.cpp
   VocBase/LogicalViewTest.cpp
-  VocBase/PlanCollectionTest.cpp
   VocBase/VersionTest.cpp
   VocBase/VocbaseTest.cpp
   VPackDeserializer/BasicTests.cpp
-  Zkd/Conversion.cpp
-  Zkd/Library.cpp
   Cluster/ShardAutoRebalancerTest.cpp)
 
 if (LINUX)
@@ -302,8 +263,25 @@ endif ()
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
+add_subdirectory(Basics)
+add_subdirectory(Inspection)
+
+# This is the default from the Jenkins setup
 add_test(NAME arangodbtests
-	 COMMAND arangodbtests)
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning)
+
+# Run all tests
+add_test(NAME arangodbtests-full
+  COMMAND arangodbtests --gtest_output=xml)
+
+# An attempt at partitioning tests cases
+# for CircleCI
+add_test(NAME arangodbtests-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=IResearch*)
+
+add_test(NAME arangodbtests-non-iresearch
+  COMMAND arangodbtests --gtest_output=xml --gtest_filter=-*_LongRunning:IResearch*)
+
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -315,6 +293,13 @@ target_link_libraries(arangodbtests
   arango_tests_basics
   arango_tests_replication2
   arango_tests_graph
+  arango_tests_futures
+  arango_tests_zkd
+  arango_tests_pregel
+  arango_tests_pregel_graphstore
+  arango_tests_actor
+  arango_tests_inspection
+  arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
   arango_rocksdb
@@ -340,20 +325,6 @@ target_include_directories(arangodbtests PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
 )
-
-
-if(MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-    # There's a warning about /MP being unused if compiling only a single file
-    target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
-  endif()
-endif()
-
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-endif()
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
@@ -386,4 +357,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   endif()
 endforeach()
 
+add_subdirectory(Pregel)
 add_subdirectory(sepp)

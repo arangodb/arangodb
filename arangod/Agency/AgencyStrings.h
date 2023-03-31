@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,14 +41,12 @@ constexpr char const* CURRENT = "Current";
 constexpr char const* CURRENT_VERSION = "Current/Version";
 constexpr char const* CURRENT_COLLECTIONS = "Current/Collections/";
 constexpr char const* CURRENT_REPLICATED_LOGS = "Current/ReplicatedLogs/";
-constexpr char const* CURRENT_REPLICATED_STATES = "Current/ReplicatedStates/";
 constexpr char const* CURRENT_DATABASES = "Current/Databases/";
 
 constexpr char const* PLAN = "Plan";
 constexpr char const* PLAN_VERSION = "Plan/Version";
 constexpr char const* PLAN_COLLECTIONS = "Plan/Collections/";
 constexpr char const* PLAN_REPLICATED_LOGS = "Plan/ReplicatedLogs/";
-constexpr char const* PLAN_REPLICATED_STATES = "Plan/ReplicatedStates/";
 constexpr char const* PLAN_COLLECTION_GROUPS = "Plan/CollectionGroups/";
 constexpr char const* PLAN_DATABASES = "Plan/Databases/";
 constexpr char const* PLAN_VIEWS = "Plan/Views/";

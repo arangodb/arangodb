@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 #include <stack>
 #include <utility>
 
@@ -168,7 +169,8 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return some statistics about available caches
   //////////////////////////////////////////////////////////////////////////////
-  [[nodiscard]] MemoryStats memoryStats() const noexcept;
+  [[nodiscard]] std::optional<MemoryStats> memoryStats(
+      std::uint64_t maxTries) const noexcept;
 
   [[nodiscard]] std::pair<double, double> globalHitRates();
 
@@ -249,7 +251,6 @@ class Manager {
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
-  std::uint64_t _resizeAttempt;
   std::atomic<std::uint64_t> _outstandingTasks;
   std::atomic<std::uint64_t> _rebalancingTasks;
   std::atomic<std::uint64_t> _resizingTasks;
@@ -293,7 +294,7 @@ class Manager {
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
-  void unprepareTask(TaskEnvironment environment);
+  void unprepareTask(TaskEnvironment environment) noexcept;
 
   // periodically run to rebalance allocations globally
   ErrorCode rebalance(bool onlyCalculate = false);

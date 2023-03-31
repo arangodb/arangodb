@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -192,7 +192,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _outNonMaterializedIndVars.second.try_emplace(var, fieldNumber);
     }
   }
-
+  _options.forLateMaterialization = isLateMaterialized();
   prepareProjections();
 }
 
@@ -555,6 +555,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
     _outNonMaterializedIndVars.second.try_emplace(indVars.second.var,
                                                   indVars.second.indexFieldNum);
   }
+  _options.forLateMaterialization = true;
 }
 
 transaction::Methods::IndexHandle IndexNode::getSingleIndex() const {

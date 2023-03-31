@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,9 +31,10 @@ namespace arangodb {
 class TempFeature;
 class BenchFeature;
 
-using ArangoBenchFeatures =
-    ArangoClientFeatures<BasicFeaturePhaseClient, TempFeature, BenchFeature>;
-
+using ArangoBenchFeaturesList =
+    ArangoClientFeaturesList<BasicFeaturePhaseClient, TempFeature,
+                             BenchFeature>;
+struct ArangoBenchFeatures : ArangoBenchFeaturesList {};
 using ArangoBenchServer = ApplicationServerT<ArangoBenchFeatures>;
 using ArangoBenchFeature = ApplicationFeatureT<ArangoBenchServer>;
 

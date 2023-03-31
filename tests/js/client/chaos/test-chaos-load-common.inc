@@ -30,6 +30,7 @@ const _ = require('lodash');
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
 const {
@@ -164,26 +165,30 @@ function BaseChaosSuite(testOpts) {
   const coordination_cn = cn + "_coord";
 
   const createAnalyzers = () => {
-    let a = require("@arangodb/analyzers");
     try {
-      a.remove("testAnalyzer", true);
+      analyzers.remove("testAnalyzer", true);
     } catch (e) {
     }
-    a.save("testAnalyzer", "delimiter", { delimiter: "/" });
+    analyzers.save("testAnalyzer", "delimiter", { delimiter: "/" });
   };
 
   const removeViews = (isSearchAlias) => {
+    print(Date() + " removeViews: 1 deleting");
     let vn = viewName(cn + "_view", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 2 deleting");
     vn = viewName(cn + "_view_ps", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 3 deleting");
     vn = viewName(cn + "_view_sv", isSearchAlias);
     db._dropView(vn);
 
+    print(Date() + " removeViews: 4 deleting");
     vn = viewName(cn + "_view_ps_sv", isSearchAlias);
     db._dropView(vn);
+    print(Date() + " removeViews: done");
   };
 
   const createViews = (isSearchAlias) => {
@@ -317,11 +322,13 @@ function BaseChaosSuite(testOpts) {
     },
 
     tearDown: function () {
+      print(Date() + " tearDown: flushing failurepoints");
       clearAllFailurePoints();
       if (testOpts.withViews) {
         removeViews(false);
         removeViews(true);
       }
+      print(Date() + " tearDown: dropping " + cn);
       db._drop(cn);
 
       const shells = db[coordination_cn].all();
@@ -329,7 +336,10 @@ function BaseChaosSuite(testOpts) {
         print("Found remaining docs in coordination collection:");
         print(shells);
       }
+      print(Date() + " tearDown: dropping " + coordination_cn);
       db._drop(coordination_cn);
+      print(Date() + " tearDown: done.");
+      analyzers.remove('testAnalyzer');
     },
     
     testWorkInParallel: function () {
@@ -488,18 +498,26 @@ function BaseChaosSuite(testOpts) {
       }
 
       // run the suite for 3 minutes
-      runParallelArangoshTests(tests, 3 * 60, coordination_cn);
+      let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
 
-      print("Finished load test - waiting for cluster to get in sync before checking consistency.");
+      print(Date() + " Finished load test; Clearing failurepoints");
       clearAllFailurePoints();
+      print(Date() + " Waiting for shards to get in sync");
       waitForShardsInSync(cn);
+      print(Date() + " checking consistency");
       checkCollectionConsistency(cn);
       if (testOpts.withViews) {
+        print(Date() + " checking view 1 consistency");
         checkViewConsistency(cn, false, false);
+        print(Date() + " checking view 2 consistency");
         checkViewConsistency(cn, true, false);
+        print(Date() + " checking view 3 consistency");
         checkViewConsistency(cn, false, true);
+        print(Date() + " checking view 4 consistency");
         checkViewConsistency(cn, true, true);
       }
+      print(Date() + " checking consistency done.");
+      client_ret.forEach(client => { if (client.failed) { throw new Error("clients did not finish successfully"); }});
     }
   };
 }

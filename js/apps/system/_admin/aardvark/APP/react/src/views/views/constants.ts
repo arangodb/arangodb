@@ -67,7 +67,7 @@ type BaseFormState = {
   id: string;
   globallyUniqueId?: string;
   name: string;
-  type: 'arangosearch';
+  type: 'arangosearch' | 'search-alias';
   links?: {
     [collectionName: string]: LinkProperties | null;
   };
@@ -331,7 +331,7 @@ export const ViewContext = createContext({
   dispatch: noop,
   isAdminUser: false,
   changed: false,
-  setChanged: noop
+  setChanged: noop,
 });
 
 export type ViewProps = Pick<BaseFormState, 'name'>;

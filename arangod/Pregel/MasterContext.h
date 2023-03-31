@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include <velocypack/Slice.h>
 #include "Basics/Common.h"
 #include "Pregel/AggregatorHandler.h"
-#include "Reports.h"
 
 namespace arangodb {
 namespace pregel {
@@ -36,16 +35,17 @@ class Conductor;
 class MasterContext {
   friend class Conductor;
 
+ public:
   uint64_t _globalSuperstep = 0;
   uint64_t _vertexCount = 0;
   uint64_t _edgeCount = 0;
-  // Should cause the master to tell everyone to enter the next phase
-  bool _enterNextGSS = false;
-  AggregatorHandler* _aggregators = nullptr;
-  ReportManager* _reports;
+  std::unique_ptr<AggregatorHandler> _aggregators;
 
- public:
-  MasterContext() {}
+  MasterContext(uint64_t vertexCount, uint64_t edgeCount,
+                std::unique_ptr<AggregatorHandler> aggregators)
+      : _vertexCount{vertexCount},
+        _edgeCount{edgeCount},
+        _aggregators{std::move(aggregators)} {}
   virtual ~MasterContext() = default;
 
   inline uint64_t globalSuperstep() const { return _globalSuperstep; }
@@ -89,8 +89,6 @@ class MasterContext {
 #endif
   }
 
-  inline void enterNextGlobalSuperstep() { _enterNextGSS = true; }
-
   virtual void preApplication() {}
 
   /// @brief called before supersteps
@@ -100,41 +98,13 @@ class MasterContext {
     preGlobalSuperstep();
     return true;
   }
-  /// @brief called before supersteps; message that is put
-  ///        in msg is sent to all WorkerContexts
-  virtual void preGlobalSuperstepMessage(VPackBuilder& msg) {}
   /// @brief called after supersteps
   /// @return true to continue the computation
   virtual bool postGlobalSuperstep() { return true; }
 
-  /// @brief called after supersteps, VPackSlice contains array of all
-  ///        worker messages received
-  virtual bool postGlobalSuperstepMessage(VPackSlice workerMsgs) {
-    return true;
-  }
-
   virtual void postApplication() {}
 
-  ReportManager& getReportManager() { return *_reports; }
-
   virtual void serializeValues(VPackBuilder& b) {}
-
-  enum class ContinuationResult {
-    CONTINUE,
-    ABORT,
-    DONT_CARE,
-    ACTIVATE_ALL,
-    ERROR_ABORT,
-  };
-
-  virtual ContinuationResult postGlobalSuperstep(bool allVertexesVotedHalt) {
-    return ContinuationResult::DONT_CARE;
-  }
-
-  /// Called when a worker send updated aggregator values.
-  /// Only called in async mode, never called after a global superstep
-  /// Can be used to decide to enter the next phase
-  virtual void postLocalSuperstep() {}
 
   /// should indicate if compensation is supposed to start by returning true
   virtual bool preCompensation() { return true; }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -407,11 +407,10 @@ void BootstrapFeature::unprepare() {
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
+    auto vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
       vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
-      vocbase->release();
     }
   }
 }

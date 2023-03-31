@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,7 +49,8 @@ struct IDocumentStateTransactionHandler {
   virtual auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual void removeTransaction(TransactionId tid) = 0;
-  virtual auto getActiveTransactions() const -> TransactionMap const& = 0;
+  [[nodiscard]] virtual auto getUnfinishedTransactions() const
+      -> TransactionMap const& = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -61,7 +63,8 @@ class DocumentStateTransactionHandler
   auto ensureTransaction(DocumentLogEntry const& doc)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   void removeTransaction(TransactionId tid) override;
-  auto getActiveTransactions() const -> TransactionMap const& override;
+  [[nodiscard]] auto getUnfinishedTransactions() const
+      -> TransactionMap const& override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;

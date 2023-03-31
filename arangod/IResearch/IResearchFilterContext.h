@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "IResearch/IResearchInvertedIndexMeta.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchFilterOptimization.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 
 namespace arangodb {
 
@@ -49,7 +51,7 @@ struct QueryContext {
   transaction::Methods* trx{};
   aql::Ast* ast{};
   aql::ExpressionContext* ctx{};
-  ::iresearch::index_reader const* index{};
+  ::irs::IndexReader const* index{};
   aql::Variable const* ref{};
   // Allow optimize away/modify some conditions during filter building
   FilterOptimization filterOptimization{FilterOptimization::MAX};

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,6 +99,10 @@ class HttpResponse : public GeneralResponse {
  private:
   // the body must already be set. deflate is then run on the existing body
   ErrorCode deflate() override { return _body->deflate(); }
+
+  // the body must already be set. gzip compression is then run on the existing
+  // body
+  ErrorCode gzip() override { return _body->gzip(); }
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,

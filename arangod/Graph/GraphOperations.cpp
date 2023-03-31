@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -177,7 +177,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(
           }
         }
 #endif
-        res = methods::Collections::drop(*coll, false, -1.0);
+        res = methods::Collections::drop(*coll, false);
         if (res.fail()) {
           res = trx.finish(result.result);
           return OperationResult(res, options);
@@ -502,7 +502,7 @@ OperationResult GraphOperations::eraseOrphanCollection(
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
-        res = methods::Collections::drop(*coll, false, -1.0);
+        res = methods::Collections::drop(*coll, false);
       }
       if (res.fail()) {
         return OperationResult(res, options);
@@ -1015,6 +1015,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
   transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
+  trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   res = trx.begin();
 

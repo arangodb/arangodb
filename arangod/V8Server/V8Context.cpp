@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,8 @@
 
 #include "V8Context.h"
 
-#include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "RestServer/arangod.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -35,23 +32,17 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-std::string const GlobalContextMethods::CodeReloadRouting =
-    "require(\"@arangodb/actions\").reloadRouting();";
-
-std::string const GlobalContextMethods::CodeReloadAql =
-    "try { require(\"@arangodb/aql\").reload(); } catch (err) { }";
-
 V8Context::V8Context(size_t id, v8::Isolate* isolate)
-    : _id(id),
-      _isolate(isolate),
-      _locker(nullptr),
-      _creationStamp(TRI_microtime()),
-      _acquired(0.0),
-      _description("(none)"),
-      _lastGcStamp(0.0),
-      _invocations(0),
-      _invocationsSinceLastGc(0),
-      _hasActiveExternals(false) {}
+    : _isolate{isolate},
+      _lastGcStamp{0.0},
+      _invocationsSinceLastGc{0},
+      _hasActiveExternals{false},
+      _id{id},
+      _invocations{0},
+      _locker{nullptr},
+      _description{"(none)"},
+      _acquired{0.0},
+      _creationStamp{TRI_microtime()} {}
 
 void V8Context::lockAndEnter() {
   TRI_ASSERT(_isolate != nullptr);
@@ -61,7 +52,7 @@ void V8Context::lockAndEnter() {
 
   assertLocked();
 
-  ++_invocations;
+  _invocations.fetch_add(1, std::memory_order_relaxed);
   ++_invocationsSinceLastGc;
 }
 
@@ -83,7 +74,7 @@ void V8Context::assertLocked() const {
 }
 
 bool V8Context::hasGlobalMethodsQueued() {
-  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
+  std::lock_guard mutexLocker{_globalMethodsLock};
   return !_globalMethods.empty();
 }
 
@@ -100,7 +91,7 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
     return true;
   }
 
-  if (maxInvocations > 0 && _invocations >= maxInvocations) {
+  if (maxInvocations > 0 && invocations() >= maxInvocations) {
     // context is used often enough
     return true;
   }
@@ -109,49 +100,41 @@ bool V8Context::shouldBeRemoved(double maxAge, uint64_t maxInvocations) const {
   return false;
 }
 
-bool V8Context::addGlobalContextMethod(std::string const& method) {
-  GlobalContextMethods::MethodType type = GlobalContextMethods::type(method);
+void V8Context::addGlobalContextMethod(GlobalContextMethods::MethodType type) {
+  std::lock_guard mutexLocker{_globalMethodsLock};
 
-  if (type == GlobalContextMethods::MethodType::UNKNOWN) {
-    return false;
-  }
-
-  MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
-
-  for (auto& it : _globalMethods) {
+  for (auto const& it : _globalMethods) {
     if (it == type) {
       // action is already registered. no need to register it again
-      return true;
+      return;
     }
   }
 
   // insert action into vector
   _globalMethods.emplace_back(type);
-  return true;
 }
 
 void V8Context::handleGlobalContextMethods() {
   std::vector<GlobalContextMethods::MethodType> copy;
 
   try {
-    // we need to copy the vector of functions so we do not need to hold the
-    // lock while we execute them
-    // this avoids potential deadlocks when one of the executed functions itself
-    // registers a context method
+    // we need to copy the vector of functions so we do not need to hold
+    // the lock while we execute them this avoids potential deadlocks when
+    // one of the executed functions itself registers a context method
 
-    MUTEX_LOCKER(mutexLocker, _globalMethodsLock);
+    std::lock_guard mutexLocker{_globalMethodsLock};
     copy.swap(_globalMethods);
   } catch (...) {
-    // if we failed, we shouldn't have modified _globalMethods yet, so we can
-    // try again on the next invocation
+    // if we failed, we shouldn't have modified _globalMethods yet, so we
+    // can try again on the next invocation
     return;
   }
 
   for (auto& type : copy) {
-    std::string const& func = GlobalContextMethods::code(type);
+    std::string_view code = GlobalContextMethods::code(type);
 
     LOG_TOPIC("fcb75", DEBUG, arangodb::Logger::V8)
-        << "executing global context method '" << func << "' for context "
+        << "executing global context method '" << code << "' for context "
         << _id;
 
     TRI_GET_GLOBALS2(_isolate);
@@ -166,7 +149,7 @@ void V8Context::handleGlobalContextMethods() {
 
       TRI_ExecuteJavaScriptString(
           _isolate, _isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING(_isolate, func),
+          TRI_V8_STD_STRING(_isolate, code),
           TRI_V8_ASCII_STRING(_isolate, "global context method"), false);
 
       if (tryCatch.HasCaught()) {
@@ -176,7 +159,7 @@ void V8Context::handleGlobalContextMethods() {
       }
     } catch (...) {
       LOG_TOPIC("d0adc", WARN, arangodb::Logger::V8)
-          << "caught exception during global context method '" << func << "'";
+          << "caught exception during global context method '" << code << "'";
     }
 
     // restore old security settings
@@ -184,7 +167,7 @@ void V8Context::handleGlobalContextMethods() {
   }
 }
 
-void V8Context::handleCancelationCleanup() {
+void V8Context::handleCancellationCleanup() {
   v8::HandleScope scope(_isolate);
 
   LOG_TOPIC("e8060", DEBUG, arangodb::Logger::V8)

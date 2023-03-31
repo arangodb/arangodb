@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ arangodb::aql::Function const* getFunction(
   // exception
   try {
     return functions.byName(name);
-  } catch (arangodb::basics::Exception& e) {
+  } catch (arangodb::basics::Exception const& e) {
     if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
       throw;  // not a missing function exception
     }

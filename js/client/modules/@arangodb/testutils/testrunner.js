@@ -31,6 +31,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
+const analyzers = require("@arangodb/analyzers");
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -182,6 +183,55 @@ let viewsTest = {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new analyzers were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+let aralyzersTest = {
+  name: 'analyzers',
+  setUp: function(obj, te) {
+    analyzers.toArray().forEach(oneAnalyzer => {
+      obj.analyzersBefore.push(oneAnalyzer.name());
+    });
+    return true;
+  },
+  runCheck: function(obj, te) {
+    let leftover = [];
+    let foundAnalyzers = [];
+    try {
+      analyzers.toArray().forEach(oneAnalyzer => {
+        let name = oneAnalyzer.name();
+        let found = obj.analyzersBefore.find(oneAnalyzer => oneAnalyzer === name);
+        if (found === name) {
+          foundAnalyzers.push(name);
+        } else {
+          leftover.push(name);
+        }
+      });
+    } catch (x) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'failed to fetch the currently available analyzers: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    if (leftover.length !== 0) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup missing - test left over analyzer:' + leftover + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    } else if (foundAnalyzers.length !== obj.analyzersBefore.length) {
+      obj.results[obj.translateResult(te)] = {
+        status: false,
+        message: 'Cleanup remove analyzers:' + foundAnalyzers  + ' != ' + obj.analyzersBefore + '. Original test status: ' + JSON.stringify(obj.results[obj.translateResult(te)])
+      };
+      return false;
+    }
+    obj.analyzersBefore = [];
+    return true;
+  }
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief checks that no new graphs were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
 let graphsTest = {
@@ -268,9 +318,23 @@ let failurePointsCheck = {
   }
 };
 
+function isBucketized(testBuckets) {
+  if (testBuckets === undefined || testBuckets === null) {
+    return false;
+  }
+  let n = testBuckets.split('/');
+  let r = parseInt(n[0]);
+  let s = parseInt(n[1]);
+  if (r === 1 && s === 0) {
+    // we only have a single bucket - this is equivalent to not using bucketizing at all
+    return false;
+  }
+  return true;
+}
+
 class testRunner {
   constructor(options, testname, serverOptions = {}, checkUsers=true, checkCollections=true) {
-    if (options.testBuckets && !didSplitBuckets) {
+    if (isBucketized(options.testBuckets) && !didSplitBuckets) {
       throw new Error("You parametrized to split buckets, but this testsuite doesn't support it!!!");
     }
     this.addArgs = undefined;
@@ -306,6 +370,10 @@ class testRunner {
     this.viewsBefore = [];
     if (checkCollections) {
       this.cleanupChecks.push(viewsTest);
+    }
+    this.analyzersBefore = [];
+    if (checkCollections) {
+      this.cleanupChecks.push(aralyzersTest);
     }
     this.graphCount = 0;
     if (checkCollections) {
@@ -406,6 +474,20 @@ class testRunner {
     }
   }
 
+  restartSniff(testCase) {
+    if (this.options.sniffFilter) {
+      this.instanceManager.stopTcpDump();
+      if (testCase.search(this.options.sniffFilter) >= 0){
+        let split = testCase.split(fs.pathSeparator);
+        let fn = testCase;
+        if (split.length > 0) {
+          fn = split[split.length - 1];
+        }
+        this.instanceManager.launchTcpDump(fn + "_");
+      }
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief hook to replace with your way to invoke one test; existing overloads:
   //   - tu.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
@@ -503,7 +585,7 @@ class testRunner {
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
             this.continueTesting = false;
-            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            print(RED + Date() + ' server pretest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
             moreReason += `server pretest '${this.cleanupChecks[j].name}' failed!`;
             j = this.cleanupChecks.length;
             continue;
@@ -515,7 +597,7 @@ class testRunner {
             i = this.testList.length;
             break;
           }
-
+          this.restartSniff(te);
           this.preRun(te);
           this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
@@ -562,7 +644,7 @@ class testRunner {
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
-                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                print(RED + Date() + ' server posttest "' + this.cleanupChecks[j].name + '" failed!' + RESET);
                 moreReason += `server posttest '${this.cleanupChecks[j].name}' failed!`;
                 this.continueTesting = false;
                 j = this.cleanupChecks.length;

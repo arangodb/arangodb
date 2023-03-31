@@ -22,15 +22,13 @@ target_link_libraries(arango_vocbase
   arango_indexes
   arango_replication
   arango_replication2
+  arango_vocbase_api
   boost_system
   arango::validation)
 
 target_include_directories(arango_vocbase PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_vocbase PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
 
 add_subdirectory(Identifiers)
 add_subdirectory(Methods)

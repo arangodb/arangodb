@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallUnorderedMap.h"
@@ -78,6 +77,8 @@
 #include "VocBase/Methods/Collections.h"
 
 #include <tuple>
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -1164,7 +1165,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     }
 
     if (rhs->type == NODE_TYPE_ARRAY) {
-      if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
+      if (rhs->numMembers() < AstNode::kSortNumberThreshold ||
+          rhs->isSorted()) {
         // number of values is below threshold or array is already sorted
         continue;
       }
@@ -1223,7 +1225,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       }
 
       if (testNode->type == NODE_TYPE_ARRAY &&
-          testNode->numMembers() < AstNode::SortNumberThreshold) {
+          testNode->numMembers() < AstNode::kSortNumberThreshold) {
         // number of values is below threshold
         continue;
       }
@@ -1259,7 +1261,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       // estimate items in subquery
       CostEstimate estimate = sub->getSubquery()->getCost();
 
-      if (estimate.estimatedNrItems < AstNode::SortNumberThreshold) {
+      if (estimate.estimatedNrItems < AstNode::kSortNumberThreshold) {
         continue;
       }
 
@@ -1756,7 +1758,7 @@ class PropagateConstantAttributesHelper {
     TRI_ASSERT(name.empty());
 
     while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      name = std::string(".") + attribute->getString() + name;
+      name = absl::StrCat(".", attribute->getStringView(), name);
       attribute = attribute->getMember(0);
     }
 
@@ -1848,7 +1850,7 @@ class PropagateConstantAttributesHelper {
                 auto logical = collection->getCollection();
                 if (logical->hasSmartJoinAttribute() &&
                     logical->smartJoinAttribute() ==
-                        nameAttribute->getString()) {
+                        nameAttribute->getStringView()) {
                   // don't remove a SmartJoin attribute access!
                   return;
                 } else {
@@ -2163,9 +2165,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
-        (!groupVariables.empty() && !collectNode->hasOutVariable() &&
-         collectNode->getOptions().canUseMethod(
-             CollectOptions::CollectMethod::HASH));
+        (!groupVariables.empty() && collectNode->getOptions().canUseMethod(
+                                        CollectOptions::CollectMethod::HASH));
 
     if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
       if (collectNode->getOptions().shouldUseMethod(
@@ -2401,189 +2402,178 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     return;
   }
 
-  bool modifiedNode = false;
   auto p = plan.get();
 
-  auto visitor = [p, &modifiedNode](AstNode* node) {
-    AstNode* original = node;
+  auto visitor = [p](AstNode* node) {
+    again:
+      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        auto const* accessed = node->getMemberUnchecked(0);
 
-  again:
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      auto const* accessed = node->getMemberUnchecked(0);
+        if (accessed->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          TRI_ASSERT(v != nullptr);
 
-      if (accessed->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(accessed->getData());
-        TRI_ASSERT(v != nullptr);
+          auto setter = p->getVarSetBy(v->id);
 
-        auto setter = p->getVarSetBy(v->id);
-
-        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-          return node;
-        }
-
-        accessed = ExecutionNode::castTo<CalculationNode*>(setter)
-                       ->expression()
-                       ->node();
-        if (accessed == nullptr) {
-          return node;
-        }
-      }
-
-      TRI_ASSERT(accessed != nullptr);
-
-      if (accessed->type == NODE_TYPE_OBJECT) {
-        std::string_view attributeName(node->getStringView());
-        bool isDynamic = false;
-        size_t const n = accessed->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          auto member = accessed->getMemberUnchecked(i);
-
-          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              member->getStringView() == attributeName) {
-            // found the attribute!
-            AstNode* next = member->getMember(0);
-            if (!next->isDeterministic()) {
-              // do not descend into non-deterministic nodes
-              return node;
-            }
-            // descend further
-            node = next;
-            // now try optimizing the simplified condition
-            // time for a goto...!
-            goto again;
-          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-            // dynamic attribute name
-            isDynamic = true;
-          }
-        }
-
-        // attribute not found
-        if (!isDynamic) {
-          modifiedNode = true;
-          return p->getAst()->createNodeValueNull();
-        }
-      }
-    } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-      auto const* accessed = node->getMember(0);
-
-      if (accessed->type == NODE_TYPE_REFERENCE) {
-        Variable const* v = static_cast<Variable const*>(accessed->getData());
-        TRI_ASSERT(v != nullptr);
-
-        auto setter = p->getVarSetBy(v->id);
-
-        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-          return node;
-        }
-
-        accessed = ExecutionNode::castTo<CalculationNode*>(setter)
-                       ->expression()
-                       ->node();
-        if (accessed == nullptr) {
-          return node;
-        }
-      }
-
-      auto indexValue = node->getMember(1);
-
-      if (!indexValue->isConstant() ||
-          !(indexValue->isStringValue() || indexValue->isNumericValue())) {
-        // cant handle this type of index statically
-        return node;
-      }
-
-      if (accessed->type == NODE_TYPE_OBJECT) {
-        std::string_view attributeName;
-        std::string indexString;
-
-        if (indexValue->isStringValue()) {
-          // string index, e.g. ['123']
-          attributeName = indexValue->getStringView();
-        } else {
-          // numeric index, e.g. [123]
-          TRI_ASSERT(indexValue->isNumericValue());
-          // convert the numeric index into a string
-          indexString = std::to_string(indexValue->getIntValue());
-          attributeName = std::string_view(indexString);
-        }
-
-        bool isDynamic = false;
-        size_t const n = accessed->numMembers();
-        for (size_t i = 0; i < n; ++i) {
-          auto member = accessed->getMemberUnchecked(i);
-
-          if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
-              member->getStringView() == attributeName) {
-            // found the attribute!
-            AstNode* next = member->getMember(0);
-            if (!next->isDeterministic()) {
-              // do not descend into non-deterministic nodes
-              return node;
-            }
-            // descend further
-            node = next;
-            // now try optimizing the simplified condition
-            // time for a goto...!
-            goto again;
-          } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
-            // dynamic attribute name
-            isDynamic = true;
-          }
-        }
-
-        // attribute not found
-        if (!isDynamic) {
-          modifiedNode = true;
-          return p->getAst()->createNodeValueNull();
-        }
-      } else if (accessed->type == NODE_TYPE_ARRAY) {
-        int64_t position;
-        if (indexValue->isStringValue()) {
-          // string index, e.g. ['123'] -> convert to a numeric index
-          bool valid;
-          position = NumberUtils::atoi<int64_t>(
-              indexValue->getStringValue(),
-              indexValue->getStringValue() + indexValue->getStringLength(),
-              valid);
-          if (!valid) {
-            // invalid index
-            modifiedNode = true;
-            return p->getAst()->createNodeValueNull();
-          }
-        } else {
-          // numeric index, e.g. [123]
-          TRI_ASSERT(indexValue->isNumericValue());
-          position = indexValue->getIntValue();
-        }
-        int64_t const n = accessed->numMembers();
-        if (position < 0) {
-          // a negative position is allowed
-          position = n + position;
-        }
-        if (position >= 0 && position < n) {
-          AstNode* next = accessed->getMember(static_cast<size_t>(position));
-          if (!next->isDeterministic()) {
-            // do not descend into non-deterministic nodes
+          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
             return node;
           }
-          // descend further
-          node = next;
-          // now try optimizing the simplified condition
-          // time for a goto...!
-          goto again;
+
+          accessed = ExecutionNode::castTo<CalculationNode*>(setter)
+                         ->expression()
+                         ->node();
+          if (accessed == nullptr) {
+            return node;
+          }
         }
 
-        // index out of bounds
-        modifiedNode = true;
-        return p->getAst()->createNodeValueNull();
-      }
-    }
+        TRI_ASSERT(accessed != nullptr);
 
-    if (node != original) {
-      // we come out with a different, so we changed something...
-      modifiedNode = true;
-    }
-    return node;
+        if (accessed->type == NODE_TYPE_OBJECT) {
+          std::string_view attributeName(node->getStringView());
+          bool isDynamic = false;
+          size_t const n = accessed->numMembers();
+          for (size_t i = 0; i < n; ++i) {
+            auto member = accessed->getMemberUnchecked(i);
+
+            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+                member->getStringView() == attributeName) {
+              // found the attribute!
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
+              // now try optimizing the simplified condition
+              // time for a goto...!
+              goto again;
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+              // dynamic attribute name
+              isDynamic = true;
+            }
+          }
+
+          // attribute not found
+          if (!isDynamic) {
+            return p->getAst()->createNodeValueNull();
+          }
+        }
+      } else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+        auto const* accessed = node->getMember(0);
+
+        if (accessed->type == NODE_TYPE_REFERENCE) {
+          Variable const* v = static_cast<Variable const*>(accessed->getData());
+          TRI_ASSERT(v != nullptr);
+
+          auto setter = p->getVarSetBy(v->id);
+
+          if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+            return node;
+          }
+
+          accessed = ExecutionNode::castTo<CalculationNode*>(setter)
+                         ->expression()
+                         ->node();
+          if (accessed == nullptr) {
+            return node;
+          }
+        }
+
+        auto indexValue = node->getMember(1);
+
+        if (!indexValue->isConstant() ||
+            !(indexValue->isStringValue() || indexValue->isNumericValue())) {
+          // cant handle this type of index statically
+          return node;
+        }
+
+        if (accessed->type == NODE_TYPE_OBJECT) {
+          std::string_view attributeName;
+          std::string indexString;
+
+          if (indexValue->isStringValue()) {
+            // string index, e.g. ['123']
+            attributeName = indexValue->getStringView();
+          } else {
+            // numeric index, e.g. [123]
+            TRI_ASSERT(indexValue->isNumericValue());
+            // convert the numeric index into a string
+            indexString = std::to_string(indexValue->getIntValue());
+            attributeName = std::string_view(indexString);
+          }
+
+          bool isDynamic = false;
+          size_t const n = accessed->numMembers();
+          for (size_t i = 0; i < n; ++i) {
+            auto member = accessed->getMemberUnchecked(i);
+
+            if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
+                member->getStringView() == attributeName) {
+              // found the attribute!
+              AstNode* next = member->getMember(0);
+              if (!next->isDeterministic()) {
+                // do not descend into non-deterministic nodes
+                return node;
+              }
+              // descend further
+              node = next;
+              // now try optimizing the simplified condition
+              // time for a goto...!
+              goto again;
+            } else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+              // dynamic attribute name
+              isDynamic = true;
+            }
+          }
+
+          // attribute not found
+          if (!isDynamic) {
+            return p->getAst()->createNodeValueNull();
+          }
+        } else if (accessed->type == NODE_TYPE_ARRAY) {
+          int64_t position;
+          if (indexValue->isStringValue()) {
+            // string index, e.g. ['123'] -> convert to a numeric index
+            bool valid;
+            position = NumberUtils::atoi<int64_t>(
+                indexValue->getStringValue(),
+                indexValue->getStringValue() + indexValue->getStringLength(),
+                valid);
+            if (!valid) {
+              // invalid index
+              return p->getAst()->createNodeValueNull();
+            }
+          } else {
+            // numeric index, e.g. [123]
+            TRI_ASSERT(indexValue->isNumericValue());
+            position = indexValue->getIntValue();
+          }
+          int64_t const n = accessed->numMembers();
+          if (position < 0) {
+            // a negative position is allowed
+            position = n + position;
+          }
+          if (position >= 0 && position < n) {
+            AstNode* next = accessed->getMember(static_cast<size_t>(position));
+            if (!next->isDeterministic()) {
+              // do not descend into non-deterministic nodes
+              return node;
+            }
+            // descend further
+            node = next;
+            // now try optimizing the simplified condition
+            // time for a goto...!
+            goto again;
+          }
+
+          // index out of bounds
+          return p->getAst()->createNodeValueNull();
+        }
+      }
+
+      return node;
   };
 
   bool modified = false;
@@ -2601,14 +2591,9 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
     AstNode* root = nn->expression()->nodeForModification();
 
     if (root != nullptr) {
-      // reset for every round. can be modified by the visitor function!
-      modifiedNode = false;
       AstNode* simplified = plan->getAst()->traverseAndModify(root, visitor);
       if (simplified != root) {
         nn->expression()->replaceNode(simplified);
-      }
-      // cppcheck-suppress knownConditionTrueFalse
-      if (modifiedNode) {
         nn->expression()->invalidateAfterReplacements();
         modified = true;
       }
@@ -6025,7 +6010,7 @@ struct RemoveRedundantOr {
   // returns false if the existing value is better and true if the input value
   // is better
   bool compareBounds(AstNodeType type, AstNode const* value, int lowhigh) {
-    int cmp = CompareAstNodes(bestValue, value, true);
+    int cmp = compareAstNodes(bestValue, value, true);
 
     if (cmp == 0 && (isInclusiveBound(comparison) != isInclusiveBound(type))) {
       return (isInclusiveBound(type) ? true : false);
@@ -7025,7 +7010,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
     return static_cast<Variable const*>(lhs->getData())->id ==
            static_cast<Variable const*>(rhs->getData())->id;
   }
-  // CompareAstNodes does not handle non const attribute access
+  // compareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1,
       res2;
   bool acc1 = lhs->isAttributeAccessForVariable(res1, true);
@@ -7033,7 +7018,7 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   if (acc1 || acc2) {
     return acc1 && acc2 && res1 == res2;  // same variable same path
   }
-  return aql::CompareAstNodes(lhs, rhs, false) == 0;
+  return aql::compareAstNodes(lhs, rhs, false) == 0;
 }
 
 static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
@@ -7467,6 +7452,30 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     ExecutionNode* current = node->getFirstParent();
     LimitNode* limit = nullptr;
     bool canUseSortLimit = true;
+    bool mustRespectIdxHint = false;
+    auto enumerateColNode =
+        ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
+    auto const& colNodeHints = enumerateColNode->hint();
+    if (colNodeHints.isForced() &&
+        colNodeHints.type() == IndexHint::HintType::Simple) {
+      auto indexes = enumerateColNode->collection()->indexes();
+      auto& idxNames = colNodeHints.hint();
+      for (auto const& idxName : idxNames) {
+        for (std::shared_ptr<Index> const& idx : indexes) {
+          if (idx->name() == idxName) {
+            auto idxType = idx->type();
+            if ((idxType != Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) &&
+                (idxType != Index::IndexType::TRI_IDX_TYPE_GEO_INDEX)) {
+              mustRespectIdxHint = true;
+            } else {
+              info.index = idx;
+            }
+            break;
+          }
+        }
+      }
+    }
 
     while (current) {
       if (current->getType() == EN::FILTER) {
@@ -7508,7 +7517,8 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     // if info is valid we try to optimize ENUMERATE_COLLECTION
     if (info && info.collectionNodeToReplace == node) {
-      if (applyGeoOptimization(plan.get(), limit, info)) {
+      if (!mustRespectIdxHint &&
+          applyGeoOptimization(plan.get(), limit, info)) {
         mod = true;
       }
     }
@@ -7989,11 +7999,8 @@ namespace {
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(bool parallelizeWrites)
-      : _parallelizeWrites(parallelizeWrites), _isParallelizable(true) {}
+  bool _isParallelizable = true;
+  bool _hasParallelTraversal = false;
 
   ~ParallelizableFinder() = default;
 
@@ -8002,9 +8009,12 @@ struct ParallelizableFinder final
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
+    if ((node->getType() == ExecutionNode::SCATTER ||
+         node->getType() == ExecutionNode::DISTRIBUTE) &&
+        _hasParallelTraversal) {
+      // we cannot parallelize the gather if we have a parallel traversal which
+      // itself depends again on a scatter/distribute node, because we are
+      // currently lacking synchronization for that scatter/distribute node.
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
@@ -8013,21 +8023,11 @@ struct ParallelizableFinder final
         node->getType() == ExecutionNode::SHORTEST_PATH ||
         node->getType() == ExecutionNode::ENUMERATE_PATHS) {
       auto* gn = ExecutionNode::castTo<GraphNode*>(node);
+      _hasParallelTraversal |= gn->options()->parallelism() > 1;
       if (!gn->isLocalGraphNode()) {
         _isParallelizable = false;
         return true;  // true to abort the whole walking process
       }
-    }
-
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        (!_parallelizeWrites || (node->getType() != ExecutionNode::REMOVE &&
-                                 node->getType() != ExecutionNode::REPLACE &&
-                                 node->getType() != ExecutionNode::UPDATE))) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
     }
 
     // continue inspecting
@@ -8036,13 +8036,13 @@ struct ParallelizableFinder final
 };
 
 /// no modification nodes, ScatterNodes etc
-bool isParallelizable(GatherNode* node, bool parallelizeWrites) {
+bool isParallelizable(GatherNode* node) {
   if (node->parallelism() == GatherNode::Parallelism::Serial) {
     // node already defined to be serial
     return false;
   }
 
-  ParallelizableFinder finder(parallelizeWrites);
+  ParallelizableFinder finder;
   for (ExecutionNode* e : node->getDependencies()) {
     e->walk(finder);
     if (!finder._isParallelizable) {
@@ -8348,61 +8348,21 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
 
   bool modified = false;
 
-  // find all GatherNodes in the main query, starting from the query's root node
-  // (the node most south when looking at the query execution plan).
-  //
-  // for now, we effectively stop right after the first GatherNode we found,
-  // regardless of whether we can make that node use parallelism or not. the
-  // reason we have to stop here is that if we have multiple query snippets on a
-  // server they will use the same underlying transaction object. however,
-  // transactions are not thread-safe right now, so we must avoid any
-  // parallelism when there can be another snippet with the same transaction on
-  // the same server.
-  //
-  // for example consider the following query, joining the shards of two
-  // collections on 2 database servers:
-  //
-  //   (4)      DBS1                            DBS2               database
-  //        users, shard 1                 users, shard 2          servers
-  //       --------------------------------------------------------
-  //   (3)                      Gather                             coordinator
-  //       --------------------------------------------------------
-  //   (2)      DBS1            Scatter         DBS2               database
-  //       orders, shard 1                orders, shard 2          servers
-  //       --------------------------------------------------------
-  //   (1)                      Gather                             coordinator
-  //
-  // the query starts with a GatherNode (1). if we make that parallel, then it
-  // will ask the shards of `orders` on the database servers in parallel (2). So
-  // there can be 2 threads in (2), on different servers. all is fine until
-  // here. however, if the thread for DBS1 fetches upstream data from the
-  // coordinator (3), then the coordinator may reach out to DBS2 to get more
-  // data from the `users` collection (4). so one thread will be on DBS2 and
-  // using the transaction. at the very same time we already have another thread
-  // working on the same server on (2). they are using the same transaction
-  // object, which currently is not thread-safe. we need to avoid any such
-  // situation, and thus we cannot make any of the GatherNodes thread-safe here.
-  // the only case in which we currently can employ parallelization is when
-  // there is only a single GatherNode. all other restrictions for
-  // parallelization (e.g. no DistributeNodes around) still apply.
   containers::SmallVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
   plan->findNodesOfType(nodes, EN::GATHER, true);
 
-  if (nodes.size() == 1 && !plan->contains(EN::DISTRIBUTE) &&
-      !plan->contains(EN::SCATTER)) {
-    TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
-    bool parallelizeWrites = vocbase.server()
-                                 .getFeature<OptimizerRulesFeature>()
-                                 .parallelizeGatherWrites();
-    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(nodes[0]);
+  for (auto node : nodes) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(node);
 
-    if (!gn->isInSubquery() && isParallelizable(gn, parallelizeWrites)) {
+    if (!gn->isInSubquery() && isParallelizable(gn)) {
       // find all graph nodes and make sure that they all are using satellite
-      nodes.clear();
+      graphNodes.clear();
       plan->findNodesOfType(
-          nodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS}, true);
+          graphNodes, {EN::TRAVERSAL, EN::SHORTEST_PATH, EN::ENUMERATE_PATHS},
+          true);
       bool const allSatellite =
-          std::all_of(nodes.begin(), nodes.end(), [](auto n) {
+          std::all_of(graphNodes.begin(), graphNodes.end(), [](auto n) {
             GraphNode* graphNode = ExecutionNode::castTo<GraphNode*>(n);
             return graphNode->isLocalGraphNode();
           });

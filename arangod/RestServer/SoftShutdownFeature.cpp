@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,8 @@ void queueShutdownChecker(std::mutex& mutex,
                           std::function<void(bool)>& checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = scheduler->queueDelayed(arangodb::RequestLane::CLUSTER_INTERNAL,
+  workItem = scheduler->queueDelayed("soft-shutdown",
+                                     arangodb::RequestLane::CLUSTER_INTERNAL,
                                      std::chrono::seconds(2), checkFunc);
 }
 

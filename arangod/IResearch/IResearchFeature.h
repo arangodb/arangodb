@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,7 +37,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <typeindex>
+#include <filesystem>
 
 namespace arangodb {
 struct IndexTypeFactory;
@@ -92,6 +92,11 @@ inline bool isOffsetInfo(aql::AstNode const& node) noexcept {
          isOffsetInfo(*static_cast<aql::Function const*>(node.getData()));
 }
 
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database);
+
+void cleanupDatabase(TRI_vocbase_t& database);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchFeature
 ////////////////////////////////////////////////////////////////////////////////
@@ -101,13 +106,13 @@ class IResearchFeature final : public ArangodFeature {
 
   explicit IResearchFeature(Server& server);
 
-  void beginShutdown() override;
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void stop() override;
-  void unprepare() override;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void beginShutdown() final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void prepare() final;
+  void start() final;
+  void stop() final;
+  void unprepare() final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief report progress during recovery phase
@@ -127,9 +132,7 @@ class IResearchFeature final : public ArangodFeature {
   std::tuple<size_t, size_t, size_t> stats(ThreadGroup id) const;
   std::pair<size_t, size_t> limits(ThreadGroup id) const;
 
-  template<typename Engine,
-           typename std::enable_if_t<std::is_base_of_v<StorageEngine, Engine>,
-                                     int> = 0>
+  template<typename Engine>
   IndexTypeFactory& factory();
 
   bool linkSkippedDuringRecovery(arangodb::IndexId id) const noexcept;
@@ -152,6 +155,7 @@ class IResearchFeature final : public ArangodFeature {
 
  private:
   void registerRecoveryHelper();
+  void registerIndexFactory();
 
   struct State {
     std::mutex mtx;
@@ -179,7 +183,9 @@ class IResearchFeature final : public ArangodFeature {
   uint32_t _commitThreadsIdle;
   uint32_t _threads;
   uint32_t _threadsLimit;
-  std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> _factories;
+
+  std::shared_ptr<IndexTypeFactory> _clusterFactory;
+  std::shared_ptr<IndexTypeFactory> _rocksDBFactory;
 
   // number of links/indexes currently out of sync
   metrics::Gauge<uint64_t>& _outOfSyncLinks;

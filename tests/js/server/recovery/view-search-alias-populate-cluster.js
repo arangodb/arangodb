@@ -160,6 +160,7 @@ function recoverySuite() {
       }
       assertEqual(figures.numDocs, 501);
       assertEqual(figures.numLiveDocs, 501);
+      assertEqual(figures.numPrimaryDocs, 501);
       assertTrue(figures.numSegments >= 1);
       assertTrue(figures.numFiles >= 6);
       assertTrue(figures.indexSize > 0);

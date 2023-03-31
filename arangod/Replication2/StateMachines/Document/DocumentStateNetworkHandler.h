@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 #pragma once
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 
 namespace arangodb {
 
@@ -35,7 +37,8 @@ class Future;
 
 namespace network {
 class ConnectionPool;
-}
+struct RequestOptions;
+}  // namespace network
 
 namespace replication2::replicated_state::document {
 
@@ -44,8 +47,11 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> = 0;
+  virtual auto startSnapshot(LogIndex waitForIndex)
+      -> futures::Future<ResultT<SnapshotBatch>> = 0;
+  virtual auto nextSnapshotBatch(SnapshotId id)
+      -> futures::Future<ResultT<SnapshotBatch>> = 0;
+  virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
 };
 
 class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
@@ -54,8 +60,16 @@ class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
                                         GlobalLogIdentifier gid,
                                         network::ConnectionPool* pool);
 
-  auto getSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<velocypack::SharedSlice>> override;
+  auto startSnapshot(LogIndex waitForIndex)
+      -> futures::Future<ResultT<SnapshotBatch>> override;
+  auto nextSnapshotBatch(SnapshotId id)
+      -> futures::Future<ResultT<SnapshotBatch>> override;
+  auto finishSnapshot(SnapshotId id) -> futures::Future<Result> override;
+
+ private:
+  auto postSnapshotRequest(std::string path,
+                           network::RequestOptions const& opts)
+      -> futures::Future<ResultT<SnapshotBatch>>;
 
  private:
   ParticipantId _participantId;

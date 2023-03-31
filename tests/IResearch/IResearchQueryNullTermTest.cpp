@@ -127,7 +127,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -145,7 +145,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -403,7 +403,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -421,7 +421,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -439,7 +439,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -457,7 +457,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -479,7 +479,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -497,7 +497,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -515,7 +515,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -609,7 +609,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -627,7 +627,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -645,7 +645,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -663,7 +663,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -685,7 +685,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -703,7 +703,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -721,7 +721,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -818,7 +818,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -837,7 +837,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -857,7 +857,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -877,7 +877,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -902,7 +902,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -921,7 +921,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -941,7 +941,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -961,7 +961,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -986,7 +986,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1005,7 +1005,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1025,7 +1025,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1045,7 +1045,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1070,7 +1070,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1089,7 +1089,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }
@@ -1109,7 +1109,7 @@ class QueryNullTerm : public QueryTest {
       EXPECT_EQ(0U, resultIt.size());
 
       for (auto const actualDoc : resultIt) {
-        UNUSED(actualDoc);
+        IRS_IGNORE(actualDoc);
         EXPECT_TRUE(false);
       }
     }

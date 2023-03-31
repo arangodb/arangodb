@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,8 @@ class ClusterTransactionState final : public TransactionState {
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
   ~ClusterTransactionState() override = default;
+
+  [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
   [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;

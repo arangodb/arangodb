@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Functions.h"
+#include <cstdint>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
@@ -36,8 +37,6 @@
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -48,6 +47,7 @@
 #include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
@@ -59,9 +59,10 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "Pregel/Conductor.h"
+#include "Pregel/Conductor/Conductor.h"
+#include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
+#include "Pregel/Worker/Worker.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -87,6 +88,8 @@
 #include "utils/ngram_match_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
+#include <absl/strings/str_cat.h>
+
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
@@ -95,6 +98,7 @@
 #include <date/iso_week.h>
 #include <date/tz.h>
 #include <s2/s2loop.h>
+#include <s2/s2polygon.h>
 
 #include <unicode/schriter.h>
 #include <unicode/stsearch.h>
@@ -174,7 +178,7 @@ std::regex const ipV4LeadingZerosRegex("^(.*?\\.)?0[0-9]+.*$",
 #endif
 
 /// @brief mutex used to protect UUID generation
-static Mutex uuidMutex;
+static std::mutex uuidMutex;
 
 enum DateSelectionModifier {
   INVALID = 0,
@@ -1133,6 +1137,12 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
   // JavaScript function (this includes user-defined functions)
   {
     ISOLATE;
+    if (isolate == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "no V8 context available when executing call to function ", AFN));
+    }
     TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
     auto context = TRI_IGETC;
 
@@ -1198,7 +1208,8 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   AqlValueMaterializer mat1(vopts);
   geo::ShapeContainer outer, inner;
-  Result res = geo::geojson::parseRegion(mat1.slice(p1, true), outer, false);
+  auto res = geo::json::parseRegion(mat1.slice(p1, true), outer,
+                                    /*legacy=*/false);
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
     return AqlValue(AqlValueHintNull());
@@ -1213,13 +1224,12 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
   }
 
   AqlValueMaterializer mat2(vopts);
-  if (p2.isArray() && p2.length() >= 2) {
-    res = inner.parseCoordinates(mat2.slice(p2, true), /*geoJson*/ true);
-  } else if (p2.isObject()) {
-    res = geo::geojson::parseRegion(mat2.slice(p2, true), inner, false);
+  if (p2.isArray()) {
+    res = geo::json::parseCoordinates<true>(mat2.slice(p2, true), inner,
+                                            /*geoJson=*/true);
   } else {
-    res.reset(TRI_ERROR_BAD_PARAMETER,
-              "Second arg requires coordinate pair or GeoJSON");
+    res = geo::json::parseRegion(mat2.slice(p2, true), inner,
+                                 /*legacy=*/false);
   }
   if (res.fail()) {
     registerWarning(expressionContext, func, res);
@@ -1228,7 +1238,7 @@ AqlValue geoContainsIntersect(ExpressionContext* expressionContext,
 
   bool result;
   try {
-    result = contains ? outer.contains(&inner) : outer.intersects(&inner);
+    result = contains ? outer.contains(inner) : outer.intersects(inner);
     return AqlValue(AqlValueHintBool(result));
   } catch (basics::Exception const& ex) {
     res.reset(ex.code(), ex.what());
@@ -1337,13 +1347,12 @@ Result parseShape(ExpressionContext* exprCtx, AqlValue const& value,
   auto* vopts = &exprCtx->trx().vpackOptions();
   AqlValueMaterializer mat(vopts);
 
-  if (value.isArray() && value.length() >= 2) {
-    return shape.parseCoordinates(mat.slice(value, true), /*geoJson*/ true);
-  } else if (value.isObject()) {
-    return geo::geojson::parseRegion(mat.slice(value, true), shape, false);
-  } else {
-    return {TRI_ERROR_BAD_PARAMETER, "Requires coordinate pair or GeoJSON"};
+  if (value.isArray()) {
+    return geo::json::parseCoordinates<true>(mat.slice(value, true), shape,
+                                             /*geoJson=*/true);
   }
+  return geo::json::parseRegion(mat.slice(value, true), shape,
+                                /*legacy=*/false);
 }
 
 }  // namespace
@@ -1493,9 +1502,7 @@ AqlValue functions::IsObject(ExpressionContext*, AstNode const&,
 AqlValue functions::Typename(ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView parameters) {
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
-  char const* type = value.getTypeString();
-
-  return AqlValue(type, std::strlen(type));
+  return AqlValue(value.getTypeString());
 }
 
 /// @brief function TO_NUMBER
@@ -1582,7 +1589,7 @@ AqlValue functions::Uuid(ExpressionContext*, AstNode const&,
   boost::uuids::uuid uuid;
   {
     // must protect mutex generation from races
-    MUTEX_LOCKER(mutexLocker, ::uuidMutex);
+    std::lock_guard mutexLocker{::uuidMutex};
     uuid = boost::uuids::random_generator()();
   }
 
@@ -2681,7 +2688,8 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     VPackSlice slice = materializer.slice(search, false);
     matchPatterns.reserve(slice.length());
     replacePatterns.reserve(slice.length());
-    for (auto it : VPackObjectIterator(slice)) {
+    for (auto it :
+         VPackObjectIterator(slice, /*useSequentialIteration*/ true)) {
       velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(
@@ -5122,20 +5130,33 @@ AqlValue functions::Sleep(ExpressionContext* expressionContext, AstNode const&,
   auto& server = expressionContext->vocbase().server();
 
   double const sleepValue = value.toDouble();
-  auto now = std::chrono::steady_clock::now();
-  auto const endTime = now + std::chrono::milliseconds(
-                                 static_cast<int64_t>(sleepValue * 1000.0));
 
-  while (now < endTime) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (sleepValue < 0.010) {
+    // less than 10 ms sleep time
+    std::this_thread::sleep_for(std::chrono::duration<double>(sleepValue));
 
     if (expressionContext->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     } else if (server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
-    now = std::chrono::steady_clock::now();
+  } else {
+    auto now = std::chrono::steady_clock::now();
+    auto const endTime = now + std::chrono::milliseconds(
+                                   static_cast<int64_t>(sleepValue * 1000.0));
+
+    while (now < endTime) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+      if (expressionContext->killed()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      } else if (server.isStopping()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+      now = std::chrono::steady_clock::now();
+    }
   }
+
   return AqlValue(AqlValueHintNull());
 }
 
@@ -6014,12 +6035,12 @@ AqlValue functions::GeoDistance(ExpressionContext* exprCtx, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
 
-  if (parameters.size() > 2 && parameters[2].isString()) {
-    VPackValueLength len;
-    const char* ptr = parameters[2].slice().getStringUnchecked(len);
-    geo::Ellipsoid const& e = geo::utils::ellipsoidFromString(ptr, len);
-    return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e),
-                         true);
+  if (parameters.size() > 2) {
+    if (auto slice = parameters[2].slice(); slice.isString()) {
+      auto const& e = geo::utils::ellipsoidFromString(slice.stringView());
+      return ::numberValue(shape1.distanceFromCentroid(shape2.centroid(), e),
+                           true);
+    }
   }
   return ::numberValue(shape1.distanceFromCentroid(shape2.centroid()), true);
 }
@@ -6105,10 +6126,8 @@ AqlValue functions::GeoInRange(ExpressionContext* ctx, AstNode const& node,
 
     if (argc > 6) {
       auto const& value = extractFunctionParameterValue(args, 6);
-      if (value.isString()) {
-        VPackValueLength len;
-        char const* ptr = value.slice().getStringUnchecked(len);
-        ellipsoid = &geo::utils::ellipsoidFromString(ptr, len);
+      if (auto slice = value.slice(); slice.isString()) {
+        ellipsoid = &geo::utils::ellipsoidFromString(slice.stringView());
       }
     }
   }
@@ -6161,8 +6180,10 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
   AqlValueMaterializer mat2(vopts);
 
   geo::ShapeContainer first, second;
-  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first, false);
-  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second, false);
+  auto res1 = geo::json::parseRegion(mat1.slice(p1, true), first,
+                                     /*legacy=*/false);
+  auto res2 = geo::json::parseRegion(mat2.slice(p2, true), second,
+                                     /*legacy=*/false);
 
   if (res1.fail()) {
     registerWarning(expressionContext, "GEO_EQUALS", res1);
@@ -6173,7 +6194,7 @@ AqlValue functions::GeoEquals(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  bool result = first.equals(&second);
+  bool result = first.equals(second);
   return AqlValue(AqlValueHintBool(result));
 }
 
@@ -6189,7 +6210,8 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   AqlValueMaterializer mat(vopts);
 
   geo::ShapeContainer shape;
-  Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape, false);
+  auto res = geo::json::parseRegion(mat.slice(p1, true), shape,
+                                    /*legacy=*/false);
 
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_AREA", res);
@@ -6197,10 +6219,8 @@ AqlValue functions::GeoArea(ExpressionContext* expressionContext,
   }
 
   auto detEllipsoid = [](AqlValue const& p) {
-    if (p.isString()) {
-      VPackValueLength len;
-      const char* ptr = p.slice().getStringUnchecked(len);
-      return geo::utils::ellipsoidFromString(ptr, len);
+    if (auto slice = p.slice(); slice.isString()) {
+      return geo::utils::ellipsoidFromString(slice.stringView());
     }
     return geo::SPHERE;
   };
@@ -6257,13 +6277,13 @@ AqlValue functions::IsInPolygon(ExpressionContext* expressionContext,
 
   S2Loop loop;
   loop.set_s2debug_override(S2Debug::DISABLE);
-  Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
+  auto res = geo::json::parseLoop(coords.slice(), loop, geoJson);
   if (res.fail() || !loop.IsValid()) {
     registerWarning(expressionContext, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());
   }
 
-  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude);
+  S2LatLng latLng = S2LatLng::FromDegrees(latitude, longitude).Normalized();
   return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
@@ -6419,8 +6439,8 @@ AqlValue functions::GeoPolygon(ExpressionContext* expressionContext,
   builder->close();  // object
 
   // Now actually parse the result with S2:
-  geo::ShapeContainer container;
-  res = geo::geojson::parsePolygon(builder->slice(), container, false);
+  S2Polygon polygon;
+  res = geo::json::parsePolygon(builder->slice(), polygon);
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_POLYGON", res);
     return AqlValue(AqlValueHintNull());
@@ -6502,9 +6522,8 @@ AqlValue functions::GeoMultiPolygon(ExpressionContext* expressionContext,
   builder->close();
 
   // Now actually parse the result with S2:
-  geo::ShapeContainer container;
-  Result res =
-      geo::geojson::parseMultiPolygon(builder->slice(), container, false);
+  S2Polygon polygon;
+  auto res = geo::json::parseMultiPolygon(builder->slice(), polygon);
   if (res.fail()) {
     registerWarning(expressionContext, "GEO_MULTIPOLYGON", res);
     return AqlValue(AqlValueHintNull());
@@ -7372,7 +7391,7 @@ std::optional<T> bitOperationValue(VPackSlice input) {
   return {};
 }
 
-AqlValue handleBitOperation(
+static AqlValue handleBitOperation(
     ExpressionContext* expressionContext, AstNode const& node,
     VPackFunctionParametersView parameters,
     std::function<uint64_t(uint64_t, uint64_t)> const& cb) {
@@ -8779,7 +8798,8 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
     withId = arg2.slice().getBool();
   }
 
-  uint64_t execNr = arg1.toInt64();
+  auto execNr =
+      arangodb::pregel::ExecutionNumber{static_cast<uint64_t>(arg1.toInt64())};
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<pregel::PregelFeature>()) {
     registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
@@ -8789,6 +8809,24 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
+  // TODO: As soon as we switch to the actor framework, we do not need the
+  // differentiation between coordinator <-> dbserver anymore. This can be
+  // removed as well.
+  /*
+     * TODO: Enable this as soon as we do use the actor framework fully when
+     *  executing pregel.
+    auto pregelResults = feature.getResults(execNr);
+    if (!pregelResults.ok()) {
+      registerWarning(expressionContext, AFN, pregelResults.errorNumber());
+      return AqlValue(AqlValueHintEmptyArray());
+    }
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
+    }
+  */
+
+  // TODO: This block can be removed.
   if (ServerState::instance()->isCoordinator()) {
     auto c = feature.conductor(execNr);
     if (!c) {
@@ -8796,15 +8834,19 @@ AqlValue functions::PregelResult(ExpressionContext* expressionContext,
       return AqlValue(AqlValueHintEmptyArray());
     }
     c->collectAQLResults(builder, withId);
-
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
     if (!worker) {
       registerWarning(expressionContext, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(AqlValueHintEmptyArray());
     }
-    worker->aqlResult(builder, withId);
+    auto results = worker->aqlResult(withId);
+    {
+      VPackArrayBuilder ab(&builder);
+      builder.add(VPackArrayIterator(results.results.slice()));
+    }
   }
+  // TODO: This block can be removed.
 
   if (builder.isEmpty()) {
     return AqlValue(AqlValueHintEmptyArray());
@@ -9119,7 +9161,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
     VPackArrayIterator end;
   };
 
-  std::list<ArrayIteratorPair> iters;
+  std::list<velocypack::ArrayIterator> iters;
   std::vector<AqlValueMaterializer> materializers;
   materializers.reserve(parameters.size());
 
@@ -9135,9 +9177,7 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
       continue;  // skip empty array here
     }
 
-    VPackArrayIterator iter(slice);
-    ArrayIteratorPair pair{iter.begin(), iter.end()};
-    iters.emplace_back(pair);
+    iters.emplace_back(velocypack::ArrayIterator(slice));
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -9145,10 +9185,10 @@ AqlValue functions::Interleave(aql::ExpressionContext* expressionContext,
 
   while (!iters.empty()) {  // in this loop we only deal with nonempty arrays
     for (auto i = iters.begin(); i != iters.end();) {
-      builder->add(i->current.value());  // thus this will always be valid on
-                                         // the first iteration
-      i->current++;
-      if (i->current == i->end) {
+      builder->add(i->value());  // thus this will always be valid on
+                                 // the first iteration
+      i->next();
+      if (*i == std::default_sentinel) {
         i = iters.erase(i);
       } else {
         i++;
@@ -9293,7 +9333,8 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
         *builder,
         std::string_view(logicalCollection->keyGenerator().generate(input)),
         /*closeObject*/ false);
-    for (auto cur : VPackObjectIterator(input)) {
+    for (auto cur :
+         VPackObjectIterator(input, /*useSequentialIteration*/ true)) {
       builder->add(cur.key.stringView(), cur.value);
     }
     builder->close();
@@ -9538,19 +9579,20 @@ AqlValue DistanceImpl(aql::ExpressionContext* expressionContext,
                       F&& distanceFunc) {
   auto calculateDistance = [distanceFunc = std::forward<F>(distanceFunc),
                             expressionContext,
-                            &node](const VPackSlice lhs, const VPackSlice rhs) {
+                            &node](VPackSlice lhs, VPackSlice rhs) {
     TRI_ASSERT(lhs.isArray());
     TRI_ASSERT(rhs.isArray());
-    auto lhsLength = lhs.length();
-    auto rhsLength = rhs.length();
 
-    if (lhsLength != rhsLength) {
+    auto lhsIt = VPackArrayIterator(lhs);
+    auto rhsIt = VPackArrayIterator(rhs);
+
+    if (lhsIt.size() != rhsIt.size()) {
       aql::registerWarning(expressionContext, getFunctionName(node).data(),
                            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
 
-    return distanceFunc(lhs, rhs, lhsLength);
+    return distanceFunc(lhsIt, rhsIt);
   };
 
   // extract arguments
@@ -9612,15 +9654,17 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
                                      AstNode const& node,
                                      VPackFunctionParametersView parameters) {
   auto cosineSimilarityFunc = [expressionContext, &node](
-                                  const VPackSlice lhs, const VPackSlice rhs,
-                                  const VPackValueLength& length) {
+                                  VPackArrayIterator lhsIt,
+                                  VPackArrayIterator rhsIt) {
     double numerator{};
     double lhsSum{};
     double rhsSum{};
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
+
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9633,6 +9677,9 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
       numerator += lhsVal * rhsVal;
       lhsSum += lhsVal * lhsVal;
       rhsSum += rhsVal * rhsVal;
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     double denominator = std::sqrt(lhsSum) * std::sqrt(rhsSum);
@@ -9652,14 +9699,14 @@ AqlValue functions::CosineSimilarity(aql::ExpressionContext* expressionContext,
 AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
-  auto L1DistFunc = [expressionContext, &node](const VPackSlice lhs,
-                                               const VPackSlice rhs,
-                                               const VPackValueLength& length) {
+  auto L1DistFunc = [expressionContext, &node](VPackArrayIterator lhsIt,
+                                               VPackArrayIterator rhsIt) {
     double dist{};
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         aql::registerWarning(expressionContext, getFunctionName(node).data(),
                              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9668,6 +9715,9 @@ AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
 
       dist +=
           std::abs(lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>());
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     return ::numberValue(dist, true);
@@ -9679,14 +9729,15 @@ AqlValue functions::L1Distance(aql::ExpressionContext* expressionContext,
 AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
                                AstNode const& node,
                                VPackFunctionParametersView parameters) {
-  auto L2DistFunc = [expressionContext, &node](const VPackSlice lhs,
-                                               const VPackSlice rhs,
-                                               const VPackValueLength& length) {
+  auto L2DistFunc = [expressionContext, &node](VPackArrayIterator lhsIt,
+                                               VPackArrayIterator rhsIt) {
     double dist{};
 
-    for (VPackValueLength i = 0; i < length; ++i) {
-      auto lhsSlice = lhs.at(i);
-      auto rhsSlice = rhs.at(i);
+    TRI_ASSERT(lhsIt.size() == rhsIt.size());
+
+    while (lhsIt.valid()) {
+      auto lhsSlice = lhsIt.value();
+      auto rhsSlice = rhsIt.value();
       if (!lhsSlice.isNumber() || !rhsSlice.isNumber()) {
         registerWarning(expressionContext, getFunctionName(node).data(),
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -9696,6 +9747,9 @@ AqlValue functions::L2Distance(aql::ExpressionContext* expressionContext,
       double diff = lhsSlice.getNumber<double>() - rhsSlice.getNumber<double>();
 
       dist += std::pow(diff, 2);
+
+      lhsIt.next();
+      rhsIt.next();
     }
 
     return ::numberValue(std::sqrt(dist), true);

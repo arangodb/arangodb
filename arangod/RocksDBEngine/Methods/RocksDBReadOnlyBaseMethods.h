@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,6 +73,12 @@ class RocksDBReadOnlyBaseMethods : public RocksDBTransactionMethods {
                          RocksDBKey const& key) override;
   rocksdb::Status SingleDelete(rocksdb::ColumnFamilyHandle*,
                                RocksDBKey const&) override;
+
+  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
+                                  rocksdb::Slice const&,
+                                  rocksdb::PinnableSlice*, ReadOwnWrites,
+                                  rocksdb::Snapshot const*) final;
+
   void PutLogData(rocksdb::Slice const&) override;
 
   void SetSavePoint() override {}

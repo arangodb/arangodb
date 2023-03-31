@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 
 using namespace arangodb;
@@ -51,8 +50,9 @@ using namespace arangodb::basics;
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
                                      aql::QueryResult&& result,
                                      size_t batchSize, double ttl,
-                                     bool hasCount)
-    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount),
+                                     bool hasCount, bool isRetriable)
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, hasCount,
+             isRetriable),
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
@@ -68,14 +68,7 @@ VPackSlice QueryResultCursor::extra() const {
 }
 
 /// @brief check whether the cursor contains more data
-bool QueryResultCursor::hasNext() {
-  if (_iterator.valid()) {
-    return true;
-  }
-
-  _isDeleted = true;
-  return false;
-}
+bool QueryResultCursor::hasNext() const noexcept { return _iterator.valid(); }
 
 /// @brief return the next element
 VPackSlice QueryResultCursor::next() {
@@ -128,7 +121,9 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 
     builder.add("cached", VPackValue(_cached));
 
-    if (!hasNext()) {
+    handleNextBatchIdValue(builder, hasNext());
+
+    if (!hasNext() && !isRetriable()) {
       // mark the cursor as deleted
       this->setDeleted();
     }
@@ -140,7 +135,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL,
                   "internal error during QueryResultCursor::dump");
   }
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }
 
 // .............................................................................
@@ -148,8 +143,10 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // .............................................................................
 
 QueryStreamCursor::QueryStreamCursor(std::shared_ptr<arangodb::aql::Query> q,
-                                     size_t batchSize, double ttl)
-    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false),
+                                     size_t batchSize, double ttl,
+                                     bool isRetriable)
+    : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
+             isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
       _finalization(false),
@@ -451,17 +448,21 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (hasMore) {
     builder.add("id", VPackValue(std::to_string(id())));
   }
+  handleNextBatchIdValue(builder, hasMore);
+
   builder.add("cached", VPackValue(false));
 
   if (!hasMore) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
 
-    // very important here, because _query may become invalid after here!
-    guard.revert();
+    if (!isRetriable()) {
+      // very important here, because _query may become invalid after here!
+      guard.revert();
 
-    _query.reset();
-    this->setDeleted();
+      _query.reset();
+      this->setDeleted();
+    }
     return ExecutionState::DONE;
   }
 

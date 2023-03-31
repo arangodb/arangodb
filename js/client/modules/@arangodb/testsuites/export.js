@@ -43,6 +43,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const GREEN = internal.COLORS.COLOR_GREEN;
 
 const toArgv = internal.toArgv;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 const testPaths = {
   'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
@@ -61,6 +62,8 @@ class exportRunner extends tu.runInArangoshRunner {
   shutdown (results) {
     print(CYAN + 'Shutting down...' + RESET);
     results['shutdown'] = this.instanceManager.shutdownInstance(false);
+    results.status = results.failed === 0 && results['shutdown'];
+    this.instanceManager.destructor(results.status);
     print(CYAN + 'done.' + RESET);
     print();
     return results;
@@ -114,13 +117,10 @@ class exportRunner extends tu.runInArangoshRunner {
 
     let skipEncrypt = true;
     let keyfile = "";
-    if (global.ARANGODB_CLIENT_VERSION) {
-      let version = global.ARANGODB_CLIENT_VERSION(true);
-      if (version.hasOwnProperty('enterprise-version')) {
-        skipEncrypt = false;
-        keyfile = fs.join(this.instanceManager.rootDir, 'secret-key');
-        fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
-      }
+    if (isEnterprise()) {
+      skipEncrypt = false;
+      keyfile = fs.join(this.instanceManager.rootDir, 'secret-key');
+      fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
     }
     
     let databases = [
@@ -704,10 +704,10 @@ class exportRunner extends tu.runInArangoshRunner {
 function exportTest (options) {
   return new exportRunner(options, "export").run();
 }
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
-  defaultFns.push('export');
+
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

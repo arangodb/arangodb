@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -219,6 +219,11 @@ auto replicated_log::InMemoryLog::operator=(
 
 auto replicated_log::InMemoryLog::getIteratorFrom(LogIndex fromIdx) const
     -> std::unique_ptr<LogIterator> {
+  return getRangeIteratorFrom(fromIdx);
+}
+
+auto replicated_log::InMemoryLog::getRangeIteratorFrom(LogIndex fromIdx) const
+    -> std::unique_ptr<LogRangeIterator> {
   // if we want to have read from log entry 1 onwards, we have to drop
   // no entries, because log entry 0 does not exist.
   auto log = _log.drop(fromIdx.saturatedDecrement(_first.value).value);

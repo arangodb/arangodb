@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,6 @@
 
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -44,26 +42,28 @@
 
 #include <ctime>
 #include <iomanip>
+#include <string_view>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
 /// Build endpoint from URL
-static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
+static bool endpointPathFromUrl(std::string_view url, std::string& endpoint,
                                 std::string& path) {
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
 
-  if (url.compare(0, pos, "http://") == 0) {
+  if (url.starts_with("http://")) {
     ep << "tcp://";
-  } else if (url.compare(0, ++pos, "https://") == 0) {
+  } else if (url.starts_with("https://")) {
     ep << "ssl://";
+    pos = 8;
   } else {
     return false;
   }
 
-  size_t slash_p = url.find("/", pos);
+  size_t slash_p = url.find('/', pos);
   if (slash_p == std::string::npos) {
     ep << url.substr(pos);
   } else {
@@ -71,9 +71,17 @@ static bool endpointPathFromUrl(std::string const& url, std::string& endpoint,
     path = url.substr(slash_p);
   }
 
-  if (ep.str().find(':') == std::string::npos) {
-    ep << ":8529";
-  }
+  TRI_ASSERT(ep.str().find(':') != std::string::npos);
+  // the following if condition should never be true, as we
+  // have always added one of the protocol strings "tcp://" or
+  // "ssl://" to ep when we get here. these protocol strings
+  // both contain a colon character.
+  // TODO: remove it entirely if the assertion above does
+  // never trigger
+  //
+  //   if (ep.str().find(':') == std::string::npos) {
+  //    ep << ":8529";
+  //   }
 
   endpoint = ep.str();
 
@@ -88,8 +96,8 @@ Store::Store(arangodb::ArangodServer& server, Agent* agent,
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock);
-    MUTEX_LOCKER(lock, _storeLock);
+    std::lock_guard otherLock{rhs._storeLock};
+    std::lock_guard lock{_storeLock};
     _agent = rhs._agent;
     _timeTable = rhs._timeTable;
     _observerTable = rhs._observerTable;
@@ -102,8 +110,8 @@ Store& Store::operator=(Store const& rhs) {
 /// Move assignment operator
 Store& Store::operator=(Store&& rhs) {
   if (&rhs != this) {
-    MUTEX_LOCKER(otherLock, rhs._storeLock);
-    MUTEX_LOCKER(lock, _storeLock);
+    std::lock_guard otherLock{rhs._storeLock};
+    std::lock_guard lock{_storeLock};
     _agent = std::move(rhs._agent);
     _timeTable = std::move(rhs._timeTable);
     _observerTable = std::move(rhs._observerTable);
@@ -117,7 +125,7 @@ Store& Store::operator=(Store&& rhs) {
 Store::~Store() = default;
 
 index_t Store::applyTransactions(std::vector<log_t> const& queries) {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
 
   for (auto const& query : queries) {
     applies(Slice(query.entry->data()));
@@ -137,7 +145,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
         if (!wmode.privileged()) {
           bool found = false;
           for (auto const& o : VPackObjectIterator(i[0])) {
-            size_t pos = o.key.copyString().find(RECONFIGURE);
+            size_t pos = o.key.stringView().find(RECONFIGURE);
             if (pos != std::string::npos && (pos == 0 || pos == 1)) {
               found = true;
               break;
@@ -149,7 +157,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
           }
         }
 
-        MUTEX_LOCKER(storeLocker, _storeLock);
+        std::lock_guard storeLocker{_storeLock};
         switch (i.length()) {
           case 1:  // No precondition
             success.push_back(applies(i[0]) ? APPLIED : UNKNOWN_ERROR);
@@ -175,8 +183,8 @@ std::vector<apply_ret_t> Store::applyTransactions(
 
       // Wake up TTL processing
       {
-        CONDITION_LOCKER(guard, _cv);
-        _cv.signal();
+        std::lock_guard guard{_cv.mutex};
+        _cv.cv.notify_one();
       }
 
     } catch (std::exception const& e) {  // Catch any errors
@@ -196,7 +204,7 @@ std::vector<apply_ret_t> Store::applyTransactions(
 check_ret_t Store::applyTransaction(VPackSlice query) {
   check_ret_t ret(true);
 
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
 
   if (query.isObject()) {
     ret.successful(applies(query.get("query")));
@@ -223,8 +231,8 @@ check_ret_t Store::applyTransaction(VPackSlice query) {
   }
   // Wake up TTL processing
   {
-    CONDITION_LOCKER(guard, _cv);
-    _cv.signal();
+    std::lock_guard guard{_cv.mutex};
+    _cv.cv.notify_one();
   }
 
   return ret;
@@ -246,8 +254,8 @@ struct notify_t {
   std::string key;
   std::string modified;
   std::string oper;
-  notify_t(std::string const& k, std::string const& m, std::string const& o)
-      : key(k), modified(m), oper(o) {}
+  notify_t(std::string const& k, std::string m, std::string o)
+      : key(k), modified(std::move(m)), oper(std::move(o)) {}
 };
 
 /// Apply (from logs)
@@ -258,28 +266,28 @@ std::vector<bool> Store::applyLogEntries(
 
   // Apply log entries
   {
-    VPackArrayIterator queriesIterator(queries.slice());
+    std::lock_guard storeLocker{_storeLock};
 
-    MUTEX_LOCKER(storeLocker, _storeLock);
-
-    while (queriesIterator.valid()) {
-      applied.push_back(applies(queriesIterator.value()));
-      queriesIterator.next();
+    for (auto it : VPackArrayIterator(queries.slice())) {
+      applied.push_back(applies(it.value()));
     }
   }
 
   if (inform && _agent->leading()) {
     // Find possibly affected callbacks
     std::multimap<std::string, std::shared_ptr<notify_t>> in;
-    VPackArrayIterator queriesIterator(queries.slice());
 
-    while (queriesIterator.valid()) {
-      VPackSlice const& i = queriesIterator.value();
+    for (auto it : VPackArrayIterator(queries.slice())) {
+      for (auto j : VPackObjectIterator(it.value())) {
+        if (!j.value.isObject()) {
+          continue;
+        }
 
-      for (auto const& j : VPackObjectIterator(i)) {
-        if (j.value.isObject() && j.value.hasKey("op")) {
-          std::string oper = j.value.get("op").copyString();
-          if (!(oper == "observe" || oper == "unobserve")) {
+        if (auto operSlice = j.value.get("op"); !operSlice.isNone()) {
+          // we have an "op" key
+
+          if (operSlice.stringView() != "observe" &&
+              operSlice.stringView() != "unobserve") {
             std::string uri = j.key.copyString();
             if (!uri.empty() && uri.at(0) != '/') {
               uri = std::string("/") + uri;
@@ -287,12 +295,12 @@ std::vector<bool> Store::applyLogEntries(
             while (true) {
               // TODO: Check if not a special lock will help
               {
-                MUTEX_LOCKER(storeLocker, _storeLock);
+                std::lock_guard storeLocker{_storeLock};
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second,
-                             std::make_shared<notify_t>(
-                                 it->first, j.key.copyString(), oper));
+                  in.emplace(it->second, std::make_shared<notify_t>(
+                                             it->first, j.key.copyString(),
+                                             operSlice.copyString()));
                 }
               }
               size_t pos = uri.find_last_of('/');
@@ -306,11 +314,9 @@ std::vector<bool> Store::applyLogEntries(
           }
         }
       }
-
-      queriesIterator.next();
     }
 
-    // Sort by URLS to avoid multiple callbacks
+    // Sort by URLs to avoid multiple callbacks
     std::vector<std::string> urls;
     for (auto it = in.begin(), end = in.end(); it != end;
          it = in.upper_bound(it->first)) {
@@ -412,12 +418,8 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
   check_ret_t ret;
   ret.open();
 
-  _storeLock.assertLockedByCurrentThread();
-
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
-
-    std::string key = precond.key.copyString();
-    std::vector<std::string> pv = split(key);
+    std::vector<std::string> pv = split(precond.key.stringView());
 
     Node const* node = &Node::dummyNode();
 
@@ -430,7 +432,7 @@ check_ret_t Store::check(VPackSlice slice, CheckMode mode) const {
 
     if (precond.value.isObject()) {
       for (auto const& op : VPackObjectIterator(precond.value)) {
-        std::string const& oper = op.key.copyString();
+        std::string_view oper = op.key.stringView();
         if (oper == "old") {  // old
           if (*node != op.value) {
             ret.push_back(precond.key);
@@ -699,7 +701,7 @@ bool Store::read(VPackSlice query, Builder& ret) const {
   //   a fast path for exactly one path, in which we do not have to copy all
   //   a slow path for more than one path
 
-  MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
+  std::lock_guard storeLocker{_storeLock};  // Freeze KV-Store for read
   if (query_strs.size() == 1) {
     auto const& path = query_strs[0];
     std::vector<std::string> pv = split(path);
@@ -751,7 +753,7 @@ query_t Store::clearExpired() const {
   query_t tmp = std::make_shared<Builder>();
   {
     VPackArrayBuilder t(tmp.get());
-    MUTEX_LOCKER(storeLocker, _storeLock);
+    std::lock_guard storeLocker{_storeLock};
     if (!_timeTable.empty()) {
       for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
         if (it->first < std::chrono::system_clock::now()) {
@@ -775,7 +777,7 @@ query_t Store::clearExpired() const {
 
 /// Dump internal data to builder
 void Store::dumpToBuilder(Builder& builder) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   toBuilder(builder, true);
 
   std::map<std::string, int64_t> clean;
@@ -815,8 +817,6 @@ void Store::dumpToBuilder(Builder& builder) const {
 
 /// Apply transaction to key value store. Guarded by caller
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
-  _storeLock.assertLockedByCurrentThread();
-
   auto it = VPackObjectIterator(transaction);
 
   std::vector<std::string> abskeys;
@@ -937,7 +937,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
 
 // Clear my data
 void Store::clear() {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   _timeTable.clear();
   _observerTable.clear();
   _observedTable.clear();
@@ -950,7 +950,7 @@ Store& Store::operator=(VPackSlice const& s) {
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
 
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   if (slice.isArray()) {
     TRI_ASSERT(slice.length() == 4);
     _node.applies(slice[0]);
@@ -991,39 +991,32 @@ Store& Store::operator=(VPackSlice const& s) {
 
 /// Put key value store in velocypack, guarded by caller
 void Store::toBuilder(Builder& b, bool showHidden) const {
-  _storeLock.assertLockedByCurrentThread();
   _node.toBuilder(b, showHidden);
 }
 
 /// Time table
-std::multimap<TimePoint, std::string>& Store::timeTable() {
-  _storeLock.assertLockedByCurrentThread();
-  return _timeTable;
-}
+std::multimap<TimePoint, std::string>& Store::timeTable() { return _timeTable; }
 
 /// Time table
 std::multimap<TimePoint, std::string> const& Store::timeTable() const {
-  _storeLock.assertLockedByCurrentThread();
   return _timeTable;
 }
 
 /// Observed table
 std::unordered_multimap<std::string, std::string>& Store::observedTable() {
-  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Observed table
 std::unordered_multimap<std::string, std::string> const& Store::observedTable()
     const {
-  _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Get node at path under mutex and store it in velocypack
 void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
                 bool showHidden) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   if (auto node = _node.hasAsNode(path); node) {
     node.value().get().toBuilder(b, showHidden);
   } else {
@@ -1035,19 +1028,18 @@ void Store::get(std::string const& path, arangodb::velocypack::Builder& b,
 
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   return _node.hasAsNode(path).value().get();
 }
 
 /// Get node at path under mutex
 bool Store::has(std::string const& path) const {
-  MUTEX_LOCKER(storeLocker, _storeLock);
+  std::lock_guard storeLocker{_storeLock};
   return _node.has(path);
 }
 
 /// Remove ttl entry for path, guarded by caller
 void Store::removeTTL(std::string const& uri) {
-  _storeLock.assertLockedByCurrentThread();
   if (!_timeTable.empty()) {
     for (auto it = _timeTable.cbegin(); it != _timeTable.cend();) {
       if (it->second == uri) {
@@ -1091,46 +1083,6 @@ std::string Store::normalize(char const* key, size_t length) {
   return normalized;
 }
 
-/// @brief Split strings by forward slashes, omitting empty strings,
-/// and ignoring multiple subsequent forward slashes
-std::vector<std::string> Store::split(std::string const& str) {
-  std::vector<std::string> result;
-
-  char const* p = str.data();
-  char const* e = str.data() + str.size();
-
-  // strip leading forward slashes
-  while (p != e && *p == '/') {
-    ++p;
-  }
-
-  // strip trailing forward slashes
-  while (p != e && *(e - 1) == '/') {
-    --e;
-  }
-
-  char const* start = nullptr;
-  while (p != e) {
-    if (*p == '/') {
-      if (start != nullptr) {
-        // had already found something
-        result.emplace_back(start, p - start);
-        start = nullptr;
-      }
-    } else {
-      if (start == nullptr) {
-        start = p;
-      }
-    }
-    ++p;
-  }
-  if (start != nullptr) {
-    result.emplace_back(start, p - start);
-  }
-
-  return result;
-}
-
 /**
  * @brief Unguarded pointer to a node path in this store.
  *        Caller must enforce locking.
@@ -1154,7 +1106,7 @@ void Store::callTriggers(std::string_view key, std::string_view op,
   }
 }
 
-void Store::registerPrefixTrigger(std::string prefix,
+void Store::registerPrefixTrigger(std::string const& prefix,
                                   AgencyTriggerCallback cb) {
   std::unique_lock guard(_triggersMutex);
   auto normalized = normalize(prefix);

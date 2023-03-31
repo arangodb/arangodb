@@ -6,6 +6,7 @@
 
 cmake_minimum_required(VERSION 3.21)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
@@ -199,6 +200,14 @@ endif()
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
   add_definitions("-DUSE_DTRACE=1")
+endif ()
+
+# enable code coverage
+option(USE_COVERAGE "enable gcov code coverage" OFF)
+if (USE_COVERAGE)
+  add_compile_options(-fno-stack-protector -fprofile-arcs -ftest-coverage)
+  add_link_options(--coverage)
+  add_definitions("-DUSE_COVERAGE=1")
 endif ()
 
 # enable Enterprise Edition features
@@ -465,7 +474,6 @@ endif()
 ################################################################################
 
 math(EXPR BITS "8*${CMAKE_SIZEOF_VOID_P}")
-add_definitions("-DARANGODB_BITS=${BITS}")
 
 ################################################################################
 ## COMPILER FEATURES
@@ -549,7 +557,7 @@ if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
 endif ()
 
 # need c++20
-# XXX this should really be set on a per target level using cmake compile_features capabilties
+# XXX this should really be set on a per target level using cmake compile_features capabilities
 set(CMAKE_CXX_STANDARD 20)
 # turn off compiler language extensions (e.g. don't use -std=gnu++20, but
 # -std=c++20).
@@ -685,6 +693,8 @@ option(USE_MAINTAINER_MODE
 )
 
 if (USE_MAINTAINER_MODE)
+  add_definitions("-DIRESEARCH_DEBUG")
+
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
@@ -773,7 +783,7 @@ if (NOT WINDOWS)
 endif ()
 
 # ------------------------------------------------------------------------------
-# IMPLICIT INCLUDES AND LIBIRARY DIRECTORIES
+# IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
 # ------------------------------------------------------------------------------
 
 function(CREATE_FLAGS OUTPUT GLUE)
@@ -875,6 +885,10 @@ function(add_compile_warnings_flags)
       endif()
     else ()
       add_compile_options(-Werror -Wno-error=deprecated-declarations)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # This option has too many false positives
+        add_compile_options(-Wno-error=maybe-uninitialized)
+      endif()
     endif ()
   endif ()
 endfunction()
@@ -885,7 +899,7 @@ endif ()
 
 
 # compiler options
-if (MSVC) 
+if (MSVC)
   message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
 
   if (USE_MINIMAL_DEBUGINFO)
@@ -919,14 +933,14 @@ else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
 
-  if (CMAKE_COMPILER_IS_GNUCC)
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
     endif()
-  elseif (CMAKE_COMPILER_IS_CLANG)
+  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
@@ -971,7 +985,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
   # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_C_FLAGS                  "${EXTRA_C_FLAGS}"                                CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
   set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
   set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
   set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
@@ -982,7 +996,7 @@ else () # NOT MSVC
   # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
   # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
   # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_CXX_FLAGS                "${EXTRA_CXX_FLAGS}"                              CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
   set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
@@ -998,8 +1012,8 @@ else () # NOT MSVC
 endif ()
 
 # put together the final flags
-set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS}")
-set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
+set(CMAKE_CXX_FLAGS  "${BASE_FLAGS} ${BASE_CXX_FLAGS} ${CMAKE_CXX_FLAGS} ${EXTRA_CXX_FLAGS}")
 
 if (VERBOSE)
   message(STATUS "Info BASE_FLAGS:     ${BASE_FLAGS}")
@@ -1007,6 +1021,10 @@ if (VERBOSE)
   message(STATUS "Info BASE_CXX_FLAGS: ${BASE_CXX_FLAGS}")
   message(STATUS "Info BASE_LD_FLAGS:  ${BASE_LD_FLAGS}")
   message(STATUS "Info BASE_LIBS:      ${BASE_LIBS}")
+  message(STATUS)
+
+  message(STATUS "Info EXTRA_C_FLAGS:   ${EXTRA_C_FLAGS}")
+  message(STATUS "Info EXTRA_CXX_FLAGS: ${EXTRA_CXX_FLAGS}")
   message(STATUS)
 
   if (NOT CMAKE_BUILD_TYPE STREQUAL "None")
@@ -1047,7 +1065,7 @@ else ()
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
   else ()
-    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
+    set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([0-9]\.[0-9]\.[^0-9\"]*).*")
   endif ()
   string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
@@ -1072,7 +1090,7 @@ if (NOT DEFINED OPENSSL_ROOT_DIR OR "${OPENSSL_ROOT_DIR}" STREQUAL "")
     set (OPENSSL_ROOT_DIR "$ENV{OPENSSL_ROOT_DIR}")
   endif ()
 else ()
-  set(ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
+  set (ENV{OPENSSL_ROOT_DIR} "${OPENSSL_ROOT_DIR}")
 endif ()
 
 unset (OPENSSL_FOUND CACHE)
@@ -1088,7 +1106,9 @@ endif ()
 
 if (WIN32)
   # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL:")
+  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
+  set (OPENSSL_USE_STATIC_LIBS TRUE)
+  set (OPENSSL_MSVC_STATIC_RT TRUE)
   include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
   if (NOT OPENSSL_FOUND)
     message ("System-wide attempt to find OpenSSL:")
@@ -1107,8 +1127,8 @@ endif ()
 message(${OPENSSL_INCLUDE_DIR})
 
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
-add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
-add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DARANGODB_OPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
 
 if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
@@ -1136,18 +1156,9 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
-add_subdirectory(3rdParty)
-link_libraries(
-  absl::flat_hash_set
-  absl::flat_hash_map
-  absl::node_hash_set
-  absl::node_hash_map
-  absl::synchronization
-  absl::strings
-)
-
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL)
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
 
@@ -1365,3 +1376,5 @@ else ()
   add_custom_target(arangodb
     DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore arangobench)
 endif ()
+
+add_subdirectory(utils/gdb-pretty-printers/immer/test)

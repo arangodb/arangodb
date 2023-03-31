@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -324,6 +324,9 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
     if (bounded) {
       queue.numCountedItems.fetch_sub(1, std::memory_order_relaxed);
     }
+    [[maybe_unused]] uint64_t oldSubmitted =
+        _jobsSubmitted.fetch_sub(1, std::memory_order_relaxed);
+    TRI_ASSERT(oldSubmitted > 0);
     throw;
   }
   std::ignore = work.release();  // queue now has ownership for the WorkItemBase
@@ -824,7 +827,7 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
     }
 
     do {
-      cpu_relax();
+      basics::cpu_relax();
 
       work = checkAllQueues(maxCheckedQueue);
       if (work != nullptr) {

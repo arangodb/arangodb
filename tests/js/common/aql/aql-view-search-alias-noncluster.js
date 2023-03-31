@@ -92,7 +92,7 @@ jsunity.run(function IResearchAqlTestSuite_SearchAlias_NonCluster() {
                        fields:["field1", "field2", "field3"],
                        name:"invertedIndexWithLongPrimarySort",
                        primarySort: {fields:[{field: "field1", direction: "asc"}]},
-                       storedValues: [["field2"], ["field3"]]});            
+                       storedValues: ["field2", "field3"]});
       
 
       let wpsl = db._createView("WithLongPrimarySort", "search-alias", 

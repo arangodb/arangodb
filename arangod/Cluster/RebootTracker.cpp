@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -150,6 +151,9 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
 }
 
 void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
+  if (_scheduler->server().isStopping()) {
+    return;
+  }
   auto it = _callbacks.find(serverId);
   if (it == _callbacks.end()) {
     return;
@@ -179,6 +183,9 @@ void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
 }
 
 void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
+  if (_scheduler->server().isStopping()) {
+    return;
+  }
   _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                     [callback = std::move(callback)]() mutable noexcept {
                       safeInvoke(callback);

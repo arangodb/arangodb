@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -332,11 +332,9 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(
         basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       LOG_TOPIC("0a3a4", WARN, Logger::REPLICATION)
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
@@ -359,18 +357,15 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-    TRI_vocbase_t* vocbase =
-        sysDbFeature.server().getFeature<DatabaseFeature>().lookupDatabase(
-            name);
-
-    if (vocbase != nullptr && name != StaticStrings::SystemDatabase) {
+    if (name != StaticStrings::SystemDatabase &&
+        sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(
+            name)) {
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 
       auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
-      // delete from cache by id and name
-      _state.vocbases.erase(std::to_string(vocbase->id()));
+      // delete from cache by name
       _state.vocbases.erase(name);
 
       auto res =
@@ -1834,9 +1829,8 @@ void TailingSyncer::fetchLeaderLog(
     } else {
       // success!
       LOG_TOPIC("a4822", DEBUG, Logger::REPLICATION)
-          << "fetching leader log from tick " + StringUtils::itoa(fetchTick) +
-                 " took "
-          << time << " s";
+          << "fetching leader log from tick " << fetchTick << " took " << time
+          << " s";
       sharedStatus->gotResponse(std::move(response), time);
     }
   } catch (basics::Exception const& ex) {

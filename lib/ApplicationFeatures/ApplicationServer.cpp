@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,13 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
 #include <atomic>
 #include <chrono>
-#include <exception>
+#include <cstdlib>
 #include <iostream>
 #include <new>
-#include <unordered_set>
 #include <utility>
 
 #include <boost/range/adaptor/filtered.hpp>
@@ -40,7 +38,6 @@
 #include "ApplicationServer.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -282,10 +279,10 @@ void ApplicationServer::beginShutdown() {
 
   // make sure that we advance the state when we get out of here
   auto waitAborter = scopeGuard([this]() noexcept {
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::lock_guard guard{_shutdownCondition.mutex};
 
     _abortWaiting = true;
-    guard.signal();
+    _shutdownCondition.cv.notify_one();
   });
 
   // now we can execute the actual shutdown sequence
@@ -820,7 +817,7 @@ void ApplicationServer::wait() {
     }
 
     // wait until somebody calls beginShutdown and it finishes
-    CONDITION_LOCKER(guard, _shutdownCondition);
+    std::unique_lock guard{_shutdownCondition.mutex};
 
     if (_abortWaiting) {
       // yippieh!
@@ -828,7 +825,7 @@ void ApplicationServer::wait() {
     }
 
     using namespace std::chrono_literals;
-    guard.wait(100ms);
+    _shutdownCondition.cv.wait_for(guard, 100ms);
   }
 }
 

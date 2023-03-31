@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor (database, data, stream) {
+function ArangoQueryCursor(database, data, stream) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -47,6 +47,11 @@ function ArangoQueryCursor (database, data, stream) {
   this._total = 0;
   this._stream = stream || false;
   this._cached = false;
+  this._retriable = false;
+
+  if (data.hasOwnProperty('nextBatchId')) {
+    this._retriable = true;
+  }
 
   if (data.result !== undefined) {
     this._count = data.result.length;
@@ -56,7 +61,7 @@ function ArangoQueryCursor (database, data, stream) {
       this._hasNext = true;
     }
 
-    if (data.hasMore !== undefined && data.hasMore) {
+    if (data.hasMore) {
       this._hasMore = true;
     }
   }
@@ -78,6 +83,7 @@ ArangoQueryCursor.prototype.toString = function () {
   }
 
   let result = '[object ArangoQueryCursor';
+
 
   if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
@@ -204,6 +210,7 @@ ArangoQueryCursor.prototype.next = function () {
   if (!this._hasNext) {
     throw 'No more results';
   }
+  const latestBatchId = this.data.nextBatchId;
 
   var result = this.data.result[this._pos];
   this._pos++;
@@ -219,9 +226,27 @@ ArangoQueryCursor.prototype.next = function () {
       // load more results
       var requestResult = this._database._connection.POST(this._baseurl(), null);
 
-      arangosh.checkRequestResult(requestResult);
 
+      try {
+        arangosh.checkRequestResult(requestResult);
+      } catch (err) {
+        if (latestBatchId !== undefined) {
+          requestResult = this._database._connection.POST(this._baseurl() + '/' + encodeURIComponent(latestBatchId), null);
+          arangosh.checkRequestResult(requestResult);
+        } else {
+          // throw the error again for the case in which the request to the latest batch is not retryable
+          throw err;
+        }
+      }
+
+      let oldId; // undefined
+      if (this._retriable && this.data.id !== undefined) {
+        oldId = this.data.id;
+      }
       this.data = requestResult;
+      if (oldId !== undefined) {
+        this.data.id = oldId;
+      }
       this._count = requestResult.result.length;
 
       if (this._pos < this._count) {
@@ -237,7 +262,7 @@ ArangoQueryCursor.prototype.next = function () {
   return result;
 };
 
-ArangoQueryCursor.prototype[Symbol.iterator] = function * () {
+ArangoQueryCursor.prototype[Symbol.iterator] = function* () {
   while (this._hasNext) {
     yield this.next();
   }
@@ -252,7 +277,7 @@ ArangoQueryCursor.prototype[Symbol.iterator] = function * () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.dispose = function () {
-  if (!this.data.id || !this._hasMore) {
+  if (!this._retriable && (!this.data.id || !this._hasMore)) {
     // client side only cursor, or already disposed
     return;
   }
@@ -281,7 +306,7 @@ ArangoQueryCursor.prototype.count = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.getExtra = function () {
-  return this.data.extra || { };
+  return this.data.extra || {};
 };
 
 // //////////////////////////////////////////////////////////////////////////////

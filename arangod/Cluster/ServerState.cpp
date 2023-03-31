@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -1076,13 +1076,14 @@ void ServerState::setShortId(uint32_t id) {
 }
 
 RebootId ServerState::getRebootId() const {
-  TRI_ASSERT(_rebootId.initialized());
-  return _rebootId;
+  auto const rebootId = RebootId(_rebootId.load(std::memory_order_relaxed));
+  TRI_ASSERT(rebootId.initialized());
+  return rebootId;
 }
 
 void ServerState::setRebootId(RebootId const rebootId) {
   TRI_ASSERT(rebootId.initialized());
-  _rebootId = rebootId;
+  _rebootId.store(rebootId.value(), std::memory_order_relaxed);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

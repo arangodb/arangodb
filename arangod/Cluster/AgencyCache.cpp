@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandler.h"
+#include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
@@ -162,6 +163,12 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
       ->second.getFuture();
 }
 
+futures::Future<Result> AgencyCache::waitForLatestCommitIndex() {
+  AsyncAgencyComm ac;
+  return ac.getCurrentCommitIndex().thenValue(
+      [this](consensus::index_t idx) { return this->waitFor(idx); });
+}
+
 index_t AgencyCache::index() const {
   std::shared_lock g(_storeLock);
   return _commitIndex;
@@ -209,20 +216,19 @@ void AgencyCache::handleCallbacksNoLock(
   for (auto const& cb : _callbacks) {
     auto const& cbkey = cb.first;
     auto it = std::lower_bound(keys.begin(), keys.end(), cbkey);
-    if (it != keys.end() && it->compare(0, cbkey.size(), cbkey) == 0) {
+    if (it != keys.end() && it->starts_with(cbkey)) {
       if (uniq.emplace(cb.second).second) {
         toCall.push_back(cb.second);
       }
     }
   }
 
-  std::unordered_set<std::string> dbs;
   const char SLASH('/');
 
   // Find keys, which are a prefix of a callback:
   for (auto const& k : keys) {
     auto it = _callbacks.lower_bound(k);
-    while (it != _callbacks.end() && it->first.compare(0, k.size(), k) == 0) {
+    while (it != _callbacks.end() && it->first.starts_with(k)) {
       if (uniq.emplace(it->second).second) {
         toCall.push_back(it->second);
       }
@@ -247,12 +253,6 @@ void AgencyCache::handleCallbacksNoLock(
                    r.compare(0, strlen(PLAN_REPLICATED_LOGS),
                              PLAN_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(PLAN_REPLICATED_LOGS));
-          planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (rs > strlen(
-                            PLAN_REPLICATED_STATES) &&  // Plan/ReplicatedStates
-                   r.compare(0, strlen(PLAN_REPLICATED_STATES),
-                             PLAN_REPLICATED_STATES) == 0) {
-          auto tmp = r.substr(strlen(PLAN_REPLICATED_STATES));
           planChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else if (rs > strlen(
                             PLAN_COLLECTION_GROUPS) &&  // Plan/CollectionGroups
@@ -300,13 +300,6 @@ void AgencyCache::handleCallbacksNoLock(
             r.compare(0, strlen(CURRENT_REPLICATED_LOGS),
                       CURRENT_REPLICATED_LOGS) == 0) {
           auto tmp = r.substr(strlen(CURRENT_REPLICATED_LOGS));
-          currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
-        } else if (
-            rs > strlen(
-                     CURRENT_REPLICATED_STATES) &&  // Current/ReplicatedStates
-            r.compare(0, strlen(CURRENT_REPLICATED_STATES),
-                      CURRENT_REPLICATED_STATES) == 0) {
-          auto tmp = r.substr(strlen(CURRENT_REPLICATED_STATES));
           currentChanges.emplace(tmp.substr(0, tmp.find(SLASH)));
         } else {
           currentChanges.emplace();  // "" to indicate non database
@@ -726,12 +719,10 @@ AgencyCache::change_set_t AgencyCache::changedSince(
       AgencyCommHelper::path(PLAN_VIEWS) + "/",
       AgencyCommHelper::path(PLAN_COLLECTION_GROUPS) + "/",
       AgencyCommHelper::path(PLAN_REPLICATED_LOGS) + "/",
-      AgencyCommHelper::path(PLAN_REPLICATED_STATES) + "/",
   });
   static std::vector<std::string> const currentGoodies(
       {AgencyCommHelper::path(CURRENT_COLLECTIONS) + "/",
        AgencyCommHelper::path(CURRENT_REPLICATED_LOGS) + "/",
-       AgencyCommHelper::path(CURRENT_REPLICATED_STATES) + "/",
        AgencyCommHelper::path(CURRENT_DATABASES) + "/"});
 
   bool get_rest = false;

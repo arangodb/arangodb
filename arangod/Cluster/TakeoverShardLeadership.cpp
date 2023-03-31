@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,17 +55,18 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
 namespace {
-static std::string serverPrefix("server:");
+constexpr std::string_view serverPrefix("server:");
 
 std::string stripServerPrefix(std::string const& destination) {
-  TRI_ASSERT(destination.size() >= serverPrefix.size() &&
-             destination.substr(0, serverPrefix.size()) == serverPrefix);
+  TRI_ASSERT(destination.starts_with(serverPrefix));
   return destination.substr(serverPrefix.size());
 }
 }  // namespace
@@ -273,7 +274,7 @@ bool TakeoverShardLeadership::first() {
     } else {
       std::stringstream error;
       error << "TakeoverShardLeadership: failed to lookup local collection "
-            << shard << "in database " + database;
+            << shard << "in database " << database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();
       res = actionError(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       result(res);

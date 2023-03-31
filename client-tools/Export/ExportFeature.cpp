@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include "Basics/files.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -89,6 +90,8 @@ ExportFeature::ExportFeature(Server& server, int* result)
   _outputDirectory = FileUtils::buildFilename(
       FileUtils::currentDirectory().result(), "export");
 }
+
+ExportFeature::~ExportFeature() = default;
 
 void ExportFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -312,11 +315,6 @@ void ExportFeature::start() {
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
-
-  httpClient->params().setLocationRewriter(static_cast<void*>(&client),
-                                           &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client.username(),
-                                           client.password());
 
   // must stay here in order to establish the connection
   httpClient->getServerVersion();

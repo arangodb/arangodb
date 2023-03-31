@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,24 +26,21 @@
 #include <memory>
 #include <vector>
 
-#include <s2/s2point.h>
-#include <s2/s2latlng.h>
-
 #include "Basics/Result.h"
+#include "Geo/Coding.h"
 
-class S2CellId;
-class S2Region;
-class S2RegionCoverer;
-class S2LatLngRect;
+#include <s2/s2point.h>
+#include <s2/s2cell_id.h>
+#include <s2/s2region.h>
+
 class S2Polyline;
+class S2LatLngRect;
 class S2Polygon;
+class S2RegionCoverer;
+class S2PointRegion;
 
-namespace arangodb {
-namespace velocypack {
-class Slice;
-}
-namespace geo {
-struct Coordinate;
+namespace arangodb::geo {
+
 class Ellipsoid;
 struct QueryParams;
 
@@ -51,99 +48,83 @@ struct QueryParams;
 /// a type and helper methods to do intersect and contains
 /// checks between all supported region types
 class ShapeContainer final {
-  ShapeContainer(ShapeContainer const&) = delete;
-
  public:
-  enum class Type {
+  enum class Type : uint8_t {
     EMPTY = 0,
-    S2_POINT,
-    S2_POLYLINE,
-    S2_LATLNGRECT,  // only used in legacy code but kept for backwards
-                    // compatibility of the enum numerical values
-    S2_POLYGON,
-    S2_MULTIPOINT,
-    S2_MULTIPOLYLINE
+    S2_POINT = 1,
+    S2_POLYLINE = 2,
+    S2_LATLNGRECT = 3,  // only used in legacy code but kept for backwards
+                        // compatibility of the enum numerical values
+    S2_POLYGON = 4,
+    S2_MULTIPOINT = 5,
+    S2_MULTIPOLYLINE = 6,
   };
 
-  ShapeContainer() noexcept : _data(nullptr), _type(Type::EMPTY) {}
-  ShapeContainer(ShapeContainer&& other) noexcept;
-  /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
-      : _data(ptr.release()), _type(tt) {}
-  ShapeContainer(S2Region* ptr, Type tt) : _data(ptr), _type(tt) {}*/
-  ~ShapeContainer();
+  ShapeContainer(ShapeContainer const& other) = delete;
+  ShapeContainer& operator=(ShapeContainer const& other) = delete;
 
-  ShapeContainer& operator=(ShapeContainer&&) noexcept;
-
- public:
-  /// Parses a coordinate pair
-  Result parseCoordinates(velocypack::Slice const& json, bool geoJson);
-
-  void reset(std::unique_ptr<S2Region> ptr, Type tt) noexcept;
-  void reset(S2Region* ptr, Type tt) noexcept;
-  void resetCoordinates(S2LatLng ll);
-  void resetCoordinates(double lat, double lon) {
-    resetCoordinates(S2LatLng::FromDegrees(lat, lon));
+  ShapeContainer() noexcept = default;
+  ShapeContainer(ShapeContainer&& other) noexcept
+      : _data{std::move(other._data)},
+        _type{std::exchange(other._type, Type::EMPTY)},
+        _options{std::exchange(other._options, coding::Options::kInvalid)} {}
+  ShapeContainer& operator=(ShapeContainer&& other) noexcept {
+    std::swap(_data, other._data);
+    std::swap(_type, other._type);
+    std::swap(_options, other._options);
+    return *this;
   }
 
-  Type type() const { return _type; }
-  inline bool empty() const { return _type == Type::EMPTY; }
+  bool empty() const noexcept { return _type == Type::EMPTY; }
 
   bool isAreaType() const noexcept {
     return _type == Type::S2_POLYGON || _type == Type::S2_LATLNGRECT;
   }
 
-  /// @brief centroid of this shape
-  S2Point centroid() const noexcept;
-
-  /// @brief generate a cell covering
-  std::vector<S2CellId> covering(S2RegionCoverer*) const noexcept;
-
-  /// @brief distance from center in meters on the unit sphere
-  double distanceFromCentroid(S2Point const&) const noexcept;
-  /// @brief distance from center in meters on the ellipsoid surfaces
-  double distanceFromCentroid(S2Point const&, Ellipsoid const&) const noexcept;
-
-  /// @brief may intersect the cell
-  bool mayIntersect(S2CellId) const noexcept;
-
-  /// @brief adjust query parameters (specifically max distance)
   void updateBounds(QueryParams& qp) const noexcept;
 
-  /// contains this region the coordinate
-  bool contains(S2Point const&) const;
-  bool contains(S2Polyline const*) const;
-  bool contains(S2LatLngRect const*) const;
-  bool contains(S2Polygon const*) const;
-  bool contains(ShapeContainer const*) const;
+  S2Point centroid() const noexcept;
 
-  /// intersects this region the coordinate
-  bool intersects(Coordinate const*) const;
-  bool intersects(S2Point const& p) const {
-    return contains(p);  // same thing
-  }
-  bool intersects(S2Polyline const*) const;
-  bool intersects(S2LatLngRect const*) const;
-  bool intersects(S2Polygon const*) const;
-  bool intersects(ShapeContainer const*) const;
+  bool contains(S2Point const& other) const;
+  bool contains(ShapeContainer const& other) const;
 
-  /// equals this region the coordinate
-  bool equals(Coordinate const*) const;
-  bool equals(Coordinate const&, Coordinate const&) const;
-  bool equals(double lat1, double lon1) const;
-  bool equals(S2Polyline const*) const;
-  bool equals(S2Polyline const*, S2Polyline const*) const;
-  bool equals(S2LatLngRect const*) const;
-  bool equals(S2Polygon const*) const;
-  bool equals(ShapeContainer const*) const;
+  bool intersects(ShapeContainer const& other) const;
 
-  /// @brief calculate area of polygon or multipolygon
-  double area(geo::Ellipsoid const& e);
+  bool equals(ShapeContainer const& other) const;
 
-  S2Region const* region() const noexcept { return _data; }
+  double distanceFromCentroid(S2Point const& other) const noexcept;
+
+  double distanceFromCentroid(S2Point const& other,
+                              Ellipsoid const& e) const noexcept;
+
+  double area(Ellipsoid const& e) const;
+
+  // Return not normalized covering
+  // For S2_MULTIPOINT and S2_MULTIPOLYLINE even not valid
+  std::vector<S2CellId> covering(S2RegionCoverer& coverer) const;
+
+  S2Region* region() noexcept { return _data.get(); }
+  S2Region const* region() const noexcept { return _data.get(); }
+  Type type() const noexcept { return _type; }
+
+  void reset(std::unique_ptr<S2Region> region, Type type,
+             coding::Options options = coding::Options::kInvalid) noexcept;
+  void reset(S2Point point,
+             coding::Options options = coding::Options::kInvalid);
+
+  // Using s2 Encode/Decode
+  void Encode(Encoder& encoder, coding::Options options) const;
+  bool Decode(Decoder& decoder, std::vector<S2Point>& cache);
+
+  void setCoding(coding::Options options) noexcept { _options = options; }
 
  private:
-  S2Region* _data;
-  Type _type;
+  template<ShapeContainer::Type Type, typename T>
+  void decodeImpl(Decoder& decoder);
+
+  std::unique_ptr<S2Region> _data;
+  Type _type{Type::EMPTY};
+  coding::Options _options{coding::Options::kInvalid};
 };
-}  // namespace geo
-}  // namespace arangodb
+
+}  // namespace arangodb::geo

@@ -1,33 +1,37 @@
-add_library(arango_pregel STATIC
+add_library(arango_pregel_with_actors STATIC
   AggregatorHandler.cpp
+  Utils.cpp)
+target_include_directories(arango_pregel_with_actors
+  PRIVATE
+  ${PROJECT_SOURCE_DIR}/arangod)
+target_link_libraries(arango_pregel_with_actors
+  PRIVATE
+  arango_inspection
+  arango_actor)
+
+add_library(arango_pregel STATIC
   AlgoRegistry.cpp
-  Conductor.cpp
-  GraphStore.cpp
+  ExecutionNumber.cpp
   IncomingCache.cpp
   IndexHelpers.cpp
   OutgoingCache.cpp
   PregelFeature.cpp
-  PregelMetrics.cpp
-  Recovery.cpp
-  Reports.cpp
-  Reports.h
-  Utils.cpp
-  Worker.cpp
-  WorkerConfig.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestControlPregelHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestPregelHandler.cpp)
-
+  PregelMetrics.cpp)
 target_link_libraries(arango_pregel
-	arango
+  arango
   arango_agency
+  arango_pregel_with_actors
   boost_boost
+  arango_actor
   boost_system)
-
 target_include_directories(arango_pregel PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arango_pregel PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
-
+add_subdirectory(Actor)
 add_subdirectory(Algos)
+add_subdirectory(Conductor)
+add_subdirectory(GraphStore)
+add_subdirectory(REST)
+add_subdirectory(Worker)
+add_subdirectory(StatusWriter)

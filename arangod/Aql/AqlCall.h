@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,22 +119,6 @@ struct AqlCall {
   static AqlCall SimulateGetSome(std::size_t atMost) {
     return AqlCall{/*offset*/ 0, /*softLimit*/ atMost,
                    /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static bool IsSkipSomeCall(AqlCall const& call) noexcept {
-    return call.getOffset() > 0;
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static bool IsGetSomeCall(AqlCall const& call) noexcept {
-    return call.getLimit() > 0 && call.getOffset() == 0;
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static bool IsFullCountCall(AqlCall const& call) noexcept {
-    return call.hasHardLimit() && call.getLimit() == 0 &&
-           call.getOffset() == 0 && call.needsFullCount();
   }
 
   static bool IsFastForwardCall(AqlCall const& call) noexcept {

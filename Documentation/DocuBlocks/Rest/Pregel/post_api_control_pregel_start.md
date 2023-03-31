@@ -39,7 +39,7 @@ The most important general option is "store", which controls whether the results
 computed by the Pregel job are written back into the source collections or not.
 
 Another important general option is "parallelism", which controls the number of
-parallel threads that will work on the Pregel job at most. If "parallelism" is not
+parallel threads that work on the Pregel job at most. If "parallelism" is not
 specified, a default value may be used. In addition, the value of "parallelism"
 may be effectively capped at some server-specific value.
 
@@ -104,7 +104,7 @@ the results in the vertices as attribute `component`:
 
   logJsonResponse(response);
 
-  var id = JSON.parse(response.body);
+  var id = response.parsedBody;
   var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,7 +72,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
   rocksdb::SequenceNumber beginSeq() const override;
 
   /// @brief only called on replication2 follower
-  virtual arangodb::Result triggerIntermediateCommit() override;
+  arangodb::Result triggerIntermediateCommit() override;
 
   [[nodiscard]] futures::Future<Result> performIntermediateCommitIfRequired(
       DataSourceId collectionId) override;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -110,11 +110,12 @@ class IndexFactory {
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
-  virtual std::vector<std::string> supportedIndexes() const;
+  virtual std::vector<std::string_view> supportedIndexes() const;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
   /// "hash") used to display storage engine capabilities
-  virtual std::unordered_map<std::string, std::string> indexAliases() const;
+  virtual std::vector<std::pair<std::string_view, std::string_view>>
+  indexAliases() const;
 
   /// @brief create system indexes primary / edge
   virtual void fillSystemIndexes(

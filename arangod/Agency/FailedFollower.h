@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,8 @@ struct FailedFollower : public Job {
                  std::string const& database = std::string(),
                  std::string const& collection = std::string(),
                  std::string const& shard = std::string(),
-                 std::string const& from = std::string());
+                 std::string const& from = std::string(),
+                 std::string const& notBefore = std::string());
 
   FailedFollower(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
                  std::string const& jobId);
@@ -55,6 +56,7 @@ struct FailedFollower : public Job {
   std::string _from;
   std::string _to;
   std::chrono::system_clock::time_point _created;
+  std::chrono::system_clock::time_point _notBefore;
 };
 }  // namespace consensus
 }  // namespace arangodb

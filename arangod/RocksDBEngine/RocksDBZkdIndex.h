@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,11 +48,11 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId, velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   FilterCosts supportsFilterCondition(
       transaction::Methods& /*trx*/,
@@ -79,11 +79,11 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
   using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId, velocypack::Slice doc,
-                const OperationOptions& options, bool performChecks) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                const LocalDocumentId& documentId,
-                velocypack::Slice doc) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, transaction::Methods* trx,

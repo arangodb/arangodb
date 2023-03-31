@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,12 +28,13 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Aql/VarInfoMap.h"
 #include "Basics/Common.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -97,10 +98,9 @@ struct BaseOptions {
     LookupInfo(arangodb::aql::QueryContext&, arangodb::velocypack::Slice info,
                arangodb::velocypack::Slice shards);
 
-    void initializeNonConstExpressions(
-        aql::Ast* ast,
-        std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-        aql::Variable const* indexVariable);
+    void initializeNonConstExpressions(aql::Ast* ast,
+                                       aql::VarInfoMap const& varInfo,
+                                       aql::Variable const* indexVariable);
 
     /// @brief Build a velocypack containing all relevant information
     ///        for DBServer traverser engines.
@@ -219,19 +219,14 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
-  void setRefactor(bool r) noexcept { _refactor = r; }
-
-  bool refactor() const { return _refactor; }
-
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
   arangodb::aql::FixedVarExpressionContext const& getExpressionCtx() const;
 
-  virtual void initializeIndexConditions(
-      aql::Ast* ast,
-      std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
-      aql::Variable const* indexVariable);
+  virtual void initializeIndexConditions(aql::Ast* ast,
+                                         aql::VarInfoMap const& varInfo,
+                                         aql::Variable const* indexVariable);
 
   virtual void calculateIndexExpressions(aql::Ast* ast);
 
@@ -264,17 +259,17 @@ struct BaseOptions {
   void parseShardIndependentFlags(arangodb::velocypack::Slice info);
 
  protected:
-  mutable arangodb::transaction::Methods _trx;
+  mutable transaction::Methods _trx;
 
   // needed for expression evaluation.
   // This entry is required by API, but not actively used here
-  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   /// This context holds values for Variables/References in AqlNodes
   /// it is read from whenever we need to do a calculation in this class.
   /// e.g. edge.weight > a
   /// Here "a" is read from the expression context.
-  arangodb::aql::FixedVarExpressionContext _expressionCtx;
+  aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   /// This vector holds the information necessary for the Storage layer.
@@ -328,11 +323,6 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data
   aql::Projections _edgeProjections;
-
-  /// @brief whether or not we are running the refactored version
-  /// TODO: This must be removed prior release - (is currently needed for the
-  /// refactoring)
-  bool _refactor;
 };
 
 }  // namespace graph

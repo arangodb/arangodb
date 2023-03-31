@@ -96,8 +96,8 @@ Please note that keys are only guaranteed to be truly ascending in single
 server deployments and for collections that only have a single shard (that includes
 collections in a OneShard database).
 The reason is that for collections with more than a single shard, document keys
-are generated on coordinator(s). For collections with a single shard, the document
-keys are generated on the leader DB server, which has full control over the key
+are generated on Coordinator(s). For collections with a single shard, the document
+keys are generated on the leader DB-Server, which has full control over the key
 sequence.
 
 @RESTSTRUCT{allowUserKeys,post_api_collection_opts,boolean,required,}
@@ -161,7 +161,7 @@ copies take over, usually without an error being reported.
 @RESTBODYPARAM{writeConcern,integer,optional,int64}
 Write concern for this collection (default: 1).
 It determines how many copies of each shard are required to be
-in sync on the different DB-Servers. If there are less then these many copies
+in sync on the different DB-Servers. If there are less than these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
 `writeConcern` cannot be larger than `replicationFactor`. _(cluster only)_

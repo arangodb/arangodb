@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,17 +28,21 @@
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Counter.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
@@ -47,11 +51,11 @@ using namespace arangodb::options;
 namespace {
 // replace tcp:// with http://, and ssl:// with https://
 std::string fixEndpointProto(std::string const& endpoint) {
-  if (endpoint.compare(0, 6, "tcp://") == 0) {  //  find("tcp://", 0, 6)
-    return "http://" + endpoint.substr(6);      // strlen("tcp://")
+  if (endpoint.starts_with("tcp://")) {
+    return "http://" + endpoint.substr(6);  // strlen("tcp://")
   }
-  if (endpoint.compare(0, 6, "ssl://") == 0) {  // find("ssl://", 0, 6) == 0
-    return "https://" + endpoint.substr(6);     // strlen("ssl://")
+  if (endpoint.starts_with("ssl://")) {
+    return "https://" + endpoint.substr(6);  // strlen("ssl://")
   }
   return endpoint;
 }
@@ -77,6 +81,8 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total,
                 "(DC-2-DC only) Number of times the database and collection "
                 "overviews have been requested.");
+DECLARE_GAUGE(arangodb_replication_clients, uint64_t,
+              "Number of replication clients connected");
 
 namespace arangodb {
 
@@ -96,7 +102,9 @@ ReplicationFeature::ReplicationFeature(Server& server)
       _maxParallelTailingInvocations(0),
       _quickKeysLimit(1000000),
       _inventoryRequests(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_replication_cluster_inventory_requests_total{})) {
+          arangodb_replication_cluster_inventory_requests_total{})),
+      _clients(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_replication_clients{})) {
   static_assert(
       Server::isCreatedAfter<ReplicationFeature,
                              application_features::CommunicationFeaturePhase,
@@ -284,6 +292,10 @@ void ReplicationFeature::trackTailingEnd() noexcept {
   --_parallelTailingInvocations;
 }
 
+void ReplicationFeature::trackInventoryRequest() noexcept {
+  ++_inventoryRequests;
+}
+
 double ReplicationFeature::checkConnectTimeout(double value) const {
   if (_forceConnectTimeout) {
     return _connectTimeout;
@@ -306,7 +318,7 @@ bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
 
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
   if (!ServerState::instance()->isClusterRole() &&
@@ -343,7 +355,7 @@ void ReplicationFeature::disableReplicationApplier() {
 
 // stop the replication applier for a single database
 void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
-  TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   if (!ServerState::instance()->isClusterRole() &&
       vocbase->replicationApplier() != nullptr) {

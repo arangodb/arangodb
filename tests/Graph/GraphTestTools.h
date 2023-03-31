@@ -42,9 +42,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
@@ -87,9 +85,6 @@ struct GraphTestSetup
 struct MockIndexHelpers {
   static std::shared_ptr<Index> getEdgeIndexHandle(
       TRI_vocbase_t& vocbase, std::string const& edgeCollectionName);
-  static IndexAccessor createEdgeIndexAccessor(
-      TRI_vocbase_t& vocbase, std::string const& edgeCollectionName,
-      aql::Variable* tmpVar, aql::Query& query, TRI_edge_direction_e direction);
 
   static arangodb::aql::AstNode* buildCondition(aql::Query& query,
                                                 aql::Variable const* tmpVar,
@@ -100,8 +95,7 @@ struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
 
   MockGraphDatabase(ArangodServer& server, std::string name)
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                createInfo(server, name, 1)) {}
+      : vocbase(createInfo(server, name, 1)) {}
 
   ~MockGraphDatabase() {}
 
@@ -289,13 +283,7 @@ struct MockGraphDatabase {
     auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
     return plan->getAst()->variables()->createTemporaryVariable();
   }
-
-};  // namespace graph
-
-bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
-               std::vector<std::string> vertices,
-               std::vector<std::pair<std::string, std::string>> edges,
-               std::string& msgs);
+};
 
 }  // namespace graph
 }  // namespace tests

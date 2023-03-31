@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@
 #include "Aql/SortCondition.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
-#include "Basics/tryEmplaceHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/BaseOptions.h"
@@ -922,13 +922,13 @@ void GraphNode::addEdgeCollection(aql::Collection& collection,
                                   TRI_edge_direction_e dir) {
   auto const& n = collection.name();
   if (_isSmart) {
-    if (n.compare(0, 6, "_from_") == 0) {
+    if (n.starts_with(StaticStrings::FullFromPrefix)) {
       if (dir != TRI_EDGE_IN) {
         _directions.emplace_back(TRI_EDGE_OUT);
         _edgeColls.emplace_back(&collection);
       }
       return;
-    } else if (n.compare(0, 4, "_to_") == 0) {
+    } else if (n.starts_with(StaticStrings::FullToPrefix)) {
       if (dir != TRI_EDGE_OUT) {
         _directions.emplace_back(TRI_EDGE_IN);
         _edgeColls.emplace_back(&collection);

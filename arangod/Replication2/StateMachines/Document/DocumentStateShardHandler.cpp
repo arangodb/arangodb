@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -89,7 +90,7 @@ Result DocumentStateShardHandler::dropLocalShard(
   bool work = collectionDropper.first();
   if (work) {
     return {TRI_ERROR_INTERNAL,
-            fmt::format("Cannot create shard ID {}", shardId)};
+            fmt::format("Cannot drop shard ID {}", shardId)};
   }
 
   _maintenanceFeature.addDirty(_gid.database);

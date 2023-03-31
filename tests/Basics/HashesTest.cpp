@@ -55,13 +55,13 @@ class CHashesTest : public ::testing::Test {
     while (begin + 3 < end) {
       auto* temp = begin + 3;
       block_crc = static_cast<uint32_t>(absl::ExtendCrc32c(
-          absl::ToCrc32c(block_crc), std::string_view{begin, temp}));
+          absl::crc32c_t{block_crc}, std::string_view{begin, temp}));
       begin = temp;
     }
     if (begin != end) {
       EXPECT_LT(begin, end);
       block_crc = static_cast<uint32_t>(absl::ExtendCrc32c(
-          absl::ToCrc32c(block_crc), std::string_view{begin, end}));
+          absl::crc32c_t{block_crc}, std::string_view{begin, end}));
     }
     EXPECT_EQ(all_crc, block_crc);
     return block_crc;

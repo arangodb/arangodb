@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Properties/PlanCollection.h"
+#include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -290,33 +291,13 @@ RestStatus RestCollectionHandler::handleCommandGet() {
                                /*showProperties*/ true, FiguresType::None,
                                CountType::None);
 
-      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-      auto shards = ci.getShardList(std::to_string(coll->planId().id()));
-
+      auto shardsMap = coll->shardIds();
       if (_request->parsedValue("details", false)) {
         // with details
-        VPackObjectBuilder arr(&_builder, "shards", true);
-        for (ShardID const& shard : *shards) {
-          std::vector<ServerID> servers;
-          ci.getShardServers(shard, servers);
-
-          if (servers.empty()) {
-            continue;
-          }
-
-          VPackArrayBuilder arr2(&_builder, shard);
-
-          for (auto const& server : servers) {
-            arr2->add(VPackValue(server));
-          }
-        }
+        coll->shardMapToVelocyPack(_builder);
       } else {
-        // no details
-        VPackArrayBuilder arr(&_builder, "shards", true);
-
-        for (ShardID const& shard : *shards) {
-          arr->add(VPackValue(shard));
-        }
+        // without details
+        coll->shardIDsToVelocyPack(_builder);
       }
     }
     return standardResponse();
@@ -349,17 +330,23 @@ void RestCollectionHandler::handleCommandPost() {
 
   bool enforceReplicationFactor =
       _request->parsedValue("enforceReplicationFactor", true);
-
-  auto planCollection =
-      PlanCollection::fromCreateAPIBody(body, ServerDefaults(_vocbase));
+  auto config = _vocbase.getDatabaseConfiguration();
+  config.enforceReplicationFactor = enforceReplicationFactor;
+  auto planCollection = CreateCollectionBody::fromCreateAPIBody(body, config);
   if (planCollection.fail()) {
     // error message generated in inspect
     generateError(rest::ResponseCode::BAD, planCollection.errorNumber(),
                   planCollection.errorMessage());
-    events::CreateCollection(_vocbase.name(), "", planCollection.errorNumber());
+    // Try to get a name for Auditlog, if it is available, otherwise report
+    // empty string
+    auto collectionName = VelocyPackHelper::getStringValue(
+        body, StaticStrings::DataSourceName, StaticStrings::Empty);
+    events::CreateCollection(_vocbase.name(), collectionName,
+                             planCollection.errorNumber());
     return;
   }
-  std::vector<PlanCollection> collections{std::move(planCollection.get())};
+  std::vector<CreateCollectionBody> collections{
+      std::move(planCollection.get())};
   auto parameters = planCollection->toCollectionsCreate();
 
   OperationOptions options(_context);
@@ -440,8 +427,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
-    if (flush &&
-        TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED == coll->status()) {
+    if (flush && !coll->deleted()) {
       server().getFeature<EngineSelectorFeature>().engine().flushWal(false,
                                                                      false);
     }
@@ -678,7 +664,7 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem, -1.0);
+    res = methods::Collections::drop(*coll, allowDropSystem);
   }
 
   if (res.fail()) {
@@ -746,7 +732,12 @@ RestCollectionHandler::collectionRepresentationAsync(
   _builder.add(StaticStrings::DataSourceId,
                VPackValue(std::to_string(coll->id().id())));
   _builder.add(StaticStrings::DataSourceName, VPackValue(coll->name()));
-  _builder.add("status", VPackValue(coll->status()));
+  // only here for API-compatibility...
+  if (coll->deleted()) {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_DELETED*/ 5));
+  } else {
+    _builder.add("status", VPackValue(/*TRI_VOC_COL_STATUS_LOADED*/ 3));
+  }
   _builder.add(StaticStrings::DataSourceType, VPackValue(coll->type()));
 
   if (!showProperties) {

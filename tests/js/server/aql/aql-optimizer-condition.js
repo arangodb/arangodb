@@ -28,17 +28,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
 
 function optimizerConditionsTestSuite () {
   const opt = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
 
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
@@ -224,8 +221,8 @@ function optimizerConditionsTestSuite () {
       var expression = calcNode.expression;
       assertEqual("logical and", expression.type);
       assertEqual(2, expression.subNodes.length);
-     
-      var left = expression.subNodes[0];
+    
+      var left = helper.unpackRawExpression(expression.subNodes[0]);
 
       assertEqual("logical and", left.type);
       assertEqual(2, left.subNodes.length);
@@ -245,7 +242,7 @@ function optimizerConditionsTestSuite () {
       assertEqual("value", left.subNodes[1].subNodes[1].subNodes[1].type);
       assertEqual("b", left.subNodes[1].subNodes[1].subNodes[1].value);
 
-      var right = expression.subNodes[1];
+      var right = helper.unpackRawExpression(expression.subNodes[1]);
      
       assertEqual("compare in", right.type);
       assertEqual("attribute access", right.subNodes[0].type);
@@ -257,7 +254,7 @@ function optimizerConditionsTestSuite () {
 
   };
 }
+
 jsunity.run(optimizerConditionsTestSuite);
 
 return jsunity.done();
-

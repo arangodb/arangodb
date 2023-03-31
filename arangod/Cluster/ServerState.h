@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,12 +78,10 @@ class ServerState {
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
- public:
   explicit ServerState(ArangodServer&);
 
   ~ServerState();
 
- public:
   /// @brief create the (sole) instance
   static ServerState* instance() noexcept;
 
@@ -137,7 +135,6 @@ class ServerState {
 
   static void reset();
 
- public:
   /// @brief sets the initialized flag
   void setInitialized() { _initialized = true; }
 
@@ -364,7 +361,7 @@ class ServerState {
   ///
   /// Changes of rebootIds (i.e. server reboots) are noticed in ClusterInfo and
   /// can be used through a notification architecture from there
-  RebootId _rebootId;
+  std::atomic<RebootId::value_type> _rebootId = 0;
 
   /// @brief the server's own endpoint, can be set just once
   std::string _myEndpoint;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/Scheduler.h"
@@ -115,6 +116,9 @@ void CacheManagerFeature::start() {
 
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
+    if (scheduler->server().isStopping()) {
+      return false;
+    }
     try {
       scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
       return true;
@@ -129,7 +133,11 @@ void CacheManagerFeature::start() {
 
   _rebalancer = std::make_unique<CacheRebalancerThread>(
       server(), _manager.get(), _rebalancingInterval);
-  _rebalancer->start();
+  if (!_rebalancer->start()) {
+    LOG_TOPIC("13895", FATAL, Logger::STARTUP)
+        << "cache manager startup failed";
+    FATAL_ERROR_EXIT();
+  }
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }
 

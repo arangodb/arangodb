@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +23,23 @@
 
 #pragma once
 
-#include <Graph/Types/UniquenessLevel.h>
-#include "Aql/Condition.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Aql/PruneExpressionEvaluator.h"
+#include "Aql/TraversalExecutor.h"
+#include "Graph/Types/UniquenessLevel.h"
 #include "VocBase/LogicalCollection.h"
-#include "PruneExpressionEvaluator.h"
-#include "TraversalExecutor.h"
+
+#include <memory>
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 
 namespace aql {
 struct Collection;
-}
+class Condition;
+}  // namespace aql
 
 namespace graph {
 struct BaseOptions;

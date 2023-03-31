@@ -60,7 +60,7 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     arangodb::OperationOptions options(arangodb::ExecContext::current());
     {
-      TRI_vocbase_t* vocbase =
+      auto vocbase =
           dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
       std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(

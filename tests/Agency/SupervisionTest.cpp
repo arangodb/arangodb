@@ -43,7 +43,7 @@ std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
   std::vector<std::string> todelete;
   velocypack::Builder builder;
-  Supervision::removeTransactionBuilder(builder, todelete);
+  Supervision::buildRemoveTransaction(builder, todelete);
   auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
@@ -57,7 +57,7 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
 TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
   std::vector<std::string> todelete{servers[0]};
   velocypack::Builder builder;
-  Supervision::removeTransactionBuilder(builder, todelete);
+  Supervision::buildRemoveTransaction(builder, todelete);
   auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());
@@ -79,7 +79,7 @@ TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
 TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
   std::vector<std::string> todelete = servers;
   velocypack::Builder builder;
-  Supervision::removeTransactionBuilder(builder, todelete);
+  Supervision::buildRemoveTransaction(builder, todelete);
   auto slice = builder.slice();
 
   ASSERT_TRUE(slice.isArray());

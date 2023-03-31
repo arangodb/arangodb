@@ -35,7 +35,11 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/EnumeratePathsExecutor.h"
+
+// Unfortunately we need to include this as we declare a tests-based template
+// at the end of this file.
+#include "Aql/EnumeratePathsExecutor.cpp"
+
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
@@ -45,9 +49,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
-#include "Graph/KShortestPathsFinder.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/ShortestPathResult.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
@@ -116,13 +118,13 @@ PathSequence const somePaths = {
 // record of which paths it produced. This record is used in the validation
 // whether the executor output the correct sequence of rows.
 
-class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
+class FakeKShortestPathsFinder {
+  using VertexRef = arangodb::velocypack::HashedStringRef;
+
  public:
   FakeKShortestPathsFinder(ShortestPathOptions& options,
                            PathSequence const& kpaths)
-      : KShortestPathsFinderInterface(options),
-        _kpaths(kpaths),
-        _traversalDone(true) {}
+      : _kpaths(kpaths), _traversalDone(true) {}
   ~FakeKShortestPathsFinder() = default;
 
   auto gotoNextPath() -> bool {
@@ -139,10 +141,19 @@ class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
     return false;
   }
 
-  bool startKShortestPathsTraversal(Slice const& start,
-                                    Slice const& end) override {
-    _source = std::string{start.copyString()};
-    _target = std::string{end.copyString()};
+  bool skipPath() {
+    Builder builder{};
+    return getNextPath(builder);
+  }
+
+  bool isDone() const { return _traversalDone; }
+
+  // not required here inside the test itself, but necessary by interface
+  void clear() {}
+  void destroyEngines() {}
+  void reset(VertexRef source, VertexRef target, size_t depth = 0) {
+    _source = source.toString();
+    _target = target.toString();
 
     _calledWith.emplace_back(std::make_pair(_source, _target));
 
@@ -151,10 +162,9 @@ class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
     EXPECT_NE(_source, _target);
 
     _finder = _kpaths.begin();
-    return true;
   }
 
-  bool getNextPathAql(Builder& builder) override {
+  bool getNextPath(arangodb::velocypack::Builder& result) {
     _traversalDone = !gotoNextPath();
 
     if (_traversalDone) {
@@ -162,11 +172,11 @@ class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
     } else {
       _pathsProduced.emplace_back(*_finder);
       // fill builder with something sensible?
-      builder.openArray();
+      result.openArray();
       for (auto&& v : *_finder) {
-        builder.add(VPackValue(v));
+        result.add(VPackValue(v));
       }
-      builder.close();
+      result.close();
 
       // HACK
       _finder++;
@@ -174,34 +184,12 @@ class FakeKShortestPathsFinder : public KShortestPathsFinderInterface {
     }
   }
 
-  bool skipPath() override {
-    Builder builder{};
-    return getNextPathAql(builder);
-  }
-
-  bool isDone() const override { return _traversalDone; }
+  aql::TraversalStats stealStats() { return {}; }
 
   PathSequence& getPathsProduced() noexcept { return _pathsProduced; }
   std::vector<std::pair<std::string, std::string>> getCalledWith() noexcept {
     return _calledWith;
   }
-
-  bool shortestPath(arangodb::velocypack::Slice start,
-                    arangodb::velocypack::Slice target,
-                    arangodb::graph::ShortestPathResult& result) override {
-    return false;
-  }
-
-  void clear() override{};
-  bool getNextPathShortestPathResult(ShortestPathResult& path) override {
-    // TODO might need to be implemented.
-    return true;
-  };
-
-  bool getNextPath(Path& path) override {
-    // TODO might need to be implemented.
-    return true;
-  };
 
  private:
   // We emulate a number of paths between PathPair
@@ -262,7 +250,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
   ShortestPathOptions options;
   RegisterInfos registerInfos;
-  EnumeratePathsExecutorInfos<KShortestPathsFinderInterface> executorInfos;
+  EnumeratePathsExecutorInfos<FakeKShortestPathsFinder> executorInfos;
   FakeKShortestPathsFinder& finder;
   SharedAqlItemBlockPtr inputBlock;
   AqlItemBlockInputRange input;
@@ -270,7 +258,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
   std::shared_ptr<Builder> fakeUnusedBlock;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-  EnumeratePathsExecutor<KShortestPathsFinderInterface> testee;
+  EnumeratePathsExecutor<FakeKShortestPathsFinder> testee;
   OutputAqlItemRow output;
 
   EnumeratePathsExecutorTest(KShortestPathsTestParameters parameters__)
@@ -375,8 +363,8 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
           while (verticesExpected != std::end(pathExpected) &&
                  verticesResult != verticesResult.end()) {
             ASSERT_EQ((*verticesResult).copyString(), *verticesExpected);
-            verticesResult++;
-            verticesExpected++;
+            ++verticesResult;
+            ++verticesExpected;
           }
           ASSERT_TRUE((verticesExpected == std::end(pathExpected)) &&
                       // Yes, really, they didn't implement == for iterators
@@ -398,7 +386,7 @@ class EnumeratePathsExecutorTest : public ::testing::Test {
 
   void TestExecutor(
       RegisterInfos& registerInfos,
-      EnumeratePathsExecutorInfos<KShortestPathsFinderInterface>& executorInfos,
+      EnumeratePathsExecutorInfos<FakeKShortestPathsFinder>& executorInfos,
       AqlItemBlockInputRange& input) {
     // This will fetch everything now, unless we give a small enough atMost
 
@@ -506,3 +494,6 @@ INSTANTIATE_TEST_CASE_P(KShortestPathExecutorPathsTestInstance,
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
+
+template class ::arangodb::aql::EnumeratePathsExecutor<
+    arangodb::tests::aql::FakeKShortestPathsFinder>;

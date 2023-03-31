@@ -277,7 +277,15 @@ function printRules(rules, stats) {
     stringBuilder.appendLine();
   }
 
-  stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
+  let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
+  statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  if (stats.hasOwnProperty('peakMemoryUsage')) {
+    statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
+  }
+  if (stats.hasOwnProperty('executionTime')) {
+    statsLine += ', ' + annotation('exec time [s]') + ': ' + value(stats.executionTime.toFixed(5));
+  }
+  stringBuilder.appendLine(statsLine);
   stringBuilder.appendLine();
 }
 
@@ -391,7 +399,11 @@ function printIndexes(indexes) {
       if (l > maxFieldsLen) {
         maxFieldsLen = l;
       }
-      l = (index.storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = index.storedValues || [];
+      if (index.type === 'inverted') {
+        storedValuesFields = Array.isArray(index.storedValues) && index.storedValues.flatMap(s => s.fields) || [];
+      }
+      l = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       if (l > maxStoredValuesLen) {
         maxStoredValuesLen = l;
       }
@@ -420,8 +432,12 @@ function printIndexes(indexes) {
       var cache = (indexes[i].hasOwnProperty('cacheEnabled') && indexes[i].cacheEnabled ? 'true' : 'false');
       var fields = '[ ' + indexes[i].fields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
       var fieldsLen = indexes[i].fields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
-      var storedValues = '[ ' + (indexes[i].storedValues || []).map(indexFieldToName).map(attribute).join(', ') + ' ]';
-      var storedValuesLen = (indexes[i].storedValues || []).map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
+      var storedValuesFields = indexes[i].storedValues || [];
+      if (indexes[i].type === 'inverted') {
+        storedValuesFields = Array.isArray(indexes[i].storedValues) && indexes[i].storedValues.flatMap(s => s.fields) || [];
+      }
+      var storedValues = '[ ' + storedValuesFields.map(indexFieldToName).map(attribute).join(', ') + ' ]';
+      var storedValuesLen = storedValuesFields.map(indexFieldToName).map(attributeUncolored).join(', ').length + '[  ]'.length;
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
@@ -911,7 +927,50 @@ function processQuery(query, explain, planIndex) {
     return (node) => variableName(node);
   };
 
+  var unfoldRawData = function (value) {
+    let node = {};
+    if (Array.isArray(value)) {
+      node.type = 'array';
+      node.subNodes = [];
+      value.forEach((v) => {
+        node.subNodes.push(unfoldRawData(v));
+      });
+    } else if (typeof value === 'object' && value !== null) {
+      node.type = 'object';
+      node.subNodes = [];
+      Object.keys(value).forEach((k) => {
+        node.subNodes.push({
+          type: 'object element',
+          name: k,
+          subNodes: [ unfoldRawData(value[k]) ]
+        });
+      });
+    } else {
+      node.type = 'value';
+      node.value = value;
+    }
+    return node;
+  };
+
+  var checkRawData = function (node) {
+    if (node.hasOwnProperty('raw')) {
+      node = unfoldRawData(node.raw);
+    } else {
+      if (Array.isArray(node.subNodes)) {
+        let s = [];
+        node.subNodes.forEach((v) => {
+          s.push(checkRawData(v));
+        });
+        node.subNodes = s;
+      }
+    }
+    return node;
+  };
+
   var buildExpression = function (node) {
+    // replace "raw" value with proper subNodes
+    node = checkRawData(node);
+
     var binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
         // make it a keyword
@@ -1316,7 +1375,7 @@ function processQuery(query, explain, planIndex) {
            
         }
         let viewAnnotation = '/* view query';
-        if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
+        if (node.hasOwnProperty('outNmDocId')) {
           viewAnnotation += ' with late materialization';
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
@@ -2313,11 +2372,15 @@ function debug(query, bindVars, options) {
     input.options = {};
   }
   input.options.explainRegisters = true;
+  let dbProperties = db._properties();
+  delete dbProperties.id;
+  delete dbProperties.isSystem;
+  delete dbProperties.path;
 
   let result = {
     engine: db._engine(),
     version: db._version(true),
-    database: db._name(),
+    database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
     collections: {},
@@ -2617,8 +2680,8 @@ function explainQuerysRegisters(plan) {
    *     type: string,
    *     unusedRegsStack: Array<number[]>,
    *     varInfoList: Array<{VariableId: number, RegisterId: number, depth: number}>,
-   *     varsSetHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
-   *     varsUsedHere: Array<{id: number, name: string, isDataFromCollection: boolean}>,
+   *     varsSetHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
+   *     varsUsedHere: Array<{id: number, name: string, isFullDocumentFromCollection: boolean}>,
    *   }
    * }
    */

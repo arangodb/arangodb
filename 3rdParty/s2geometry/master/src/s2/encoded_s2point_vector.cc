@@ -464,9 +464,6 @@ void EncodeS2PointVectorCompact(Span<const S2Point> points, Encoder* encoder) {
   // Now we encode the contents of each block.
   StringVectorEncoder blocks;
   vector<S2Point> exceptions;
-  uint64 offset_bytes_sum = 0;
-  uint64 delta_nibbles_sum = 0;
-  uint64 exceptions_sum = 0;
   for (int i = 0; i < values.size(); i += kBlockSize) {
     int block_size = min(kBlockSize, values.size() - i);
     BlockCode code = GetBlockCode(MakeSpan(&values[i], block_size),
@@ -536,9 +533,6 @@ void EncodeS2PointVectorCompact(Span<const S2Point> points, Encoder* encoder) {
       block->Ensure(exceptions_bytes);
       block->putn(exceptions.data(), exceptions_bytes);
     }
-    offset_bytes_sum += offset_bytes;
-    delta_nibbles_sum += delta_nibbles;
-    exceptions_sum += num_exceptions;
   }
   blocks.Encode(encoder);
 }

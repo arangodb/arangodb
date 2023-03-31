@@ -1453,7 +1453,12 @@ function ahuacatlQueryShortestPathTestSuite() {
       // this item is not connected to any other
       vertexCollection.save({_key: "J", name: "J"});
 
-      var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      let query;
+      if (cluster.isCluster()) {
+        query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      } else {
+        query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
+      }
       var actual = getQueryResults(query);
 
       assertEqual([], actual);
@@ -1516,93 +1521,6 @@ function ahuacatlQueryShortestPathTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for ShortestPath with intentional failures
 ////////////////////////////////////////////////////////////////////////////////
-
-function ahuacatlQueryShortestpathErrorsSuite() {
-  var vn = "UnitTestsTraversalVertices";
-  var en = "UnitTestsTraversalEdges";
-  var vertexCollection;
-  var edgeCollection;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll: function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-
-      vertexCollection = db._create(vn, {numberOfShards: 4});
-      edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
-
-      ["A", "B", "C", "D", "E"].forEach(function (item) {
-        vertexCollection.save({_key: item, name: item});
-      });
-
-      [["A", "B"], ["B", "C"], ["A", "D"], ["D", "E"], ["E", "C"], ["C", "A"]].forEach(function (item) {
-        var l = item[0];
-        var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r});
-      });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll: function () {
-      db._drop(vn);
-      db._drop(en);
-      internal.debugClearFailAt();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks error handling in SHORTEST_PATH
-////////////////////////////////////////////////////////////////////////////////
-
-    testShortestPathOOM: function () {
-      var s = vn + "/A";
-      var m = vn + "/B";
-      var t = vn + "/C";
-
-      var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${s}" TO "${t}" ${en} RETURN v._id`;
-
-      var actual = getQueryResults(query);
-      // Positive Check
-      assertEqual(actual, [s, m, t]);
-
-      internal.debugSetFailAt("TraversalOOMInitialize");
-
-      // Negative Check
-      try {
-        actual = getQueryResults(query);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-      internal.debugClearFailAt();
-
-      // Redo the positive check. Make sure the former fail is gone
-      actual = getQueryResults(query);
-      assertEqual(actual, [s, m, t]);
-
-      internal.debugSetFailAt("TraversalOOMPath");
-      // Negative Check
-      try {
-        actual = getQueryResults(query);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, errors.ERROR_DEBUG.code);
-      }
-
-    }
-
-  };
-}
-
 function kPathsTestSuite() {
   const gn = "UnitTestGraph";
   const vn = "UnitTestV";
@@ -2020,9 +1938,6 @@ jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
-if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
-  jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
-}
 jsunity.run(kPathsTestSuite);
 jsunity.run(allShortestPathsTestSuite);
 jsunity.run(ShortestPathErrorTestSuite);

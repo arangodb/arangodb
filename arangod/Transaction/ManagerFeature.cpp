@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -174,7 +174,7 @@ void ManagerFeature::queueGarbageCollection() {
   // all threads executing this might be blocking, waiting for a lock to be
   // released.
   auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
+      "transactions-gc", RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
       _gcfunc);
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem = std::move(workItem);

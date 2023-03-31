@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,9 @@ class ErrorCode {
   [[nodiscard]] constexpr explicit operator ValueType() const noexcept {
     return _value;
   }
+
+  /// @brief return the document id
+  [[nodiscard]] ValueType value() const noexcept;
 
   // This could also be constexpr, but we'd have to include
   // <velocypack/Value.h>, and I'm unsure whether that's worth it, and rather

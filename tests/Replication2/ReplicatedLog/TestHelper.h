@@ -19,33 +19,13 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
-
-#include "Replication2/Mocks/FakeFailureOracle.h"
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
-
-#include "Cluster/FailureOracle.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/InMemoryLog.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogCore.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/LogLeader.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/PersistedLog.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
-#include "Replication2/ReplicatedLog/types.h"
-
-#include <gtest/gtest.h>
 
 #include <deque>
 #include <memory>
 #include <utility>
 
-#include "Replication2/Mocks/FakeReplicatedLog.h"
-#include "Replication2/Mocks/PersistedLog.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 
 namespace arangodb::replication2::test {
 
@@ -66,11 +46,12 @@ struct SimpleIterator : PersistedLogIterator {
 
   I current, end;
 };
-template<typename C, typename Iter = typename C::const_iterator>
-auto make_iterator(C const& c) -> std::shared_ptr<SimpleIterator<Iter>> {
-  return std::make_shared<SimpleIterator<Iter>>(c.begin(), c.end());
-}
 
+template<typename C, typename Iter = typename C::const_iterator>
+auto make_iterator(C const& c) -> std::unique_ptr<SimpleIterator<Iter>> {
+  return std::make_unique<SimpleIterator<Iter>>(c.begin(), c.end());
+}
+/*
 struct ReplicatedLogTest : ::testing::Test {
   template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
@@ -176,6 +157,7 @@ struct ReplicatedLogTest : ::testing::Test {
       std::make_shared<ReplicatedLogMetricsMock>();
   std::shared_ptr<ReplicatedLogGlobalSettings> _optionsMock =
       std::make_shared<ReplicatedLogGlobalSettings>();
+  std::string const dbName = "testDb";
 };
-
+*/
 }  // namespace arangodb::replication2::test

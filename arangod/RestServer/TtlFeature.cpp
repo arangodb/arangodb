@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -120,8 +119,13 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
                       "expecting numeric value for frequency");
       }
       frequency = slice.get("frequency").getNumericValue<uint64_t>();
-      if (frequency < TtlProperties::minFrequency) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+      TRI_IF_FAILURE("allow-low-ttl-frequency") {
+        // for faster js tests we want to allow lower frequency values
+      }
+      else {
+        if (frequency < TtlProperties::minFrequency) {
+          return Result(TRI_ERROR_BAD_PARAMETER, "too low value for frequency");
+        }
       }
     }
     if (slice.hasKey("maxTotalRemoves")) {
@@ -160,9 +164,9 @@ class TtlThread final : public ServerThread<ArangodServer> {
         _ttlFeature(ttlFeature),
         _working(false) {}
 
-  ~TtlThread() { shutdown(); }
+  ~TtlThread() final { shutdown(); }
 
-  void beginShutdown() override {
+  void beginShutdown() final {
     Thread::beginShutdown();
 
     // wake up the thread that may be waiting in run()
@@ -171,21 +175,21 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
   void wakeup() {
     // wake up the thread that may be waiting in run()
-    CONDITION_LOCKER(guard, _condition);
-    guard.signal();
+    std::lock_guard guard{_condition.mutex};
+    _condition.cv.notify_one();
   }
 
   bool isCurrentlyWorking() const { return _working.load(); }
 
   /// @brief frequency is specified in milliseconds
   void setNextStart(uint64_t frequency) {
-    CONDITION_LOCKER(guard, _condition);
+    std::lock_guard guard{_condition.mutex};
     _nextStart =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(frequency);
   }
 
- protected:
-  void run() override {
+ private:
+  void run() final {
     TtlProperties properties = _ttlFeature.properties();
     setNextStart(properties.frequency);
 
@@ -197,26 +201,21 @@ class TtlThread final : public ServerThread<ArangodServer> {
         << properties.maxCollectionRemoves;
 
     while (true) {
-      auto now = std::chrono::steady_clock::now();
-
-      while (now < _nextStart) {
+      while (true) {
         if (isStopping()) {
           // server shutdown
           return;
         }
+        std::unique_lock guard{_condition.mutex};
+        auto now = std::chrono::steady_clock::now();
+        if (now >= _nextStart) {
+          break;
+        }
 
         // wait for our start...
-        CONDITION_LOCKER(guard, _condition);
-
-        guard.wait(std::chrono::microseconds(
-            std::chrono::duration_cast<std::chrono::microseconds>(_nextStart -
-                                                                  now)));
-        now = std::chrono::steady_clock::now();
-      }
-
-      if (isStopping()) {
-        // server shutdown
-        return;
+        _condition.cv.wait_for(
+            guard, std::chrono::duration_cast<std::chrono::microseconds>(
+                       _nextStart - now));
       }
 
       // properties may have changed... update them
@@ -240,7 +239,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
     }
   }
 
- private:
   /// @brief whether or not the background thread shall continue working
   bool isActive() const {
     return _ttlFeature.isActive() && !isStopping() && !ServerState::readOnly();
@@ -271,14 +269,11 @@ class TtlThread final : public ServerThread<ArangodServer> {
         return;
       }
 
-      TRI_vocbase_t* vocbase = db.useDatabase(name);
+      auto vocbase = db.useDatabase(name);
 
       if (vocbase == nullptr) {
         continue;
       }
-
-      // make sure we decrease the reference counter later
-      auto sg = arangodb::scopeGuard([&]() noexcept { vocbase->release(); });
 
       LOG_TOPIC("ec905", TRACE, Logger::TTL)
           << "TTL thread going to process database '" << vocbase->name() << "'";
@@ -408,7 +403,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
     }
   }
 
- private:
   TtlFeature& _ttlFeature;
 
   arangodb::basics::ConditionVariable _condition;
@@ -485,7 +479,7 @@ void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
 
   if (_properties.frequency > 0 &&
       _properties.frequency < TtlProperties::minFrequency) {
@@ -514,7 +508,7 @@ void TtlFeature::start() {
   }
 
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
 
     // a frequency of 0 means the thread is not started at all
     if (_properties.frequency == 0) {
@@ -522,7 +516,7 @@ void TtlFeature::start() {
     }
   }
 
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (server().isStopping()) {
     // don't create the thread if we are already shutting down
@@ -542,7 +536,7 @@ void TtlFeature::beginShutdown() {
   // this will make the TTL background thread stop as soon as possible
   deactivate();
 
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (_thread != nullptr) {
     // this will also wake up the thread if it should be sleeping
@@ -554,7 +548,7 @@ void TtlFeature::stop() { shutdownThread(); }
 
 void TtlFeature::allowRunning(bool value) {
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
 
     if (value) {
       _allowRunning = true;
@@ -573,7 +567,7 @@ void TtlFeature::allowRunning(bool value) {
 void TtlFeature::waitForThreadWork() {
   while (true) {
     {
-      MUTEX_LOCKER(locker, _threadMutex);
+      std::lock_guard locker{_threadMutex};
 
       if (_thread == nullptr) {
         break;
@@ -592,7 +586,7 @@ void TtlFeature::waitForThreadWork() {
 
 void TtlFeature::activate() {
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
     if (_active) {
       // already activated
       return;
@@ -605,7 +599,7 @@ void TtlFeature::activate() {
 
 void TtlFeature::deactivate() {
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
     if (!_active) {
       // already deactivated
       return;
@@ -619,27 +613,27 @@ void TtlFeature::deactivate() {
 }
 
 bool TtlFeature::isActive() const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
   return _allowRunning && _active;
 }
 
 void TtlFeature::statsToVelocyPack(VPackBuilder& builder) const {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard locker{_statisticsMutex};
   _statistics.toVelocyPack(builder);
 }
 
 void TtlFeature::updateStats(TtlStatistics const& stats) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard locker{_statisticsMutex};
   _statistics += stats;
 }
 
 void TtlFeature::propertiesToVelocyPack(VPackBuilder& builder) const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
   _properties.toVelocyPack(builder, _active);
 }
 
 TtlProperties TtlFeature::properties() const {
-  MUTEX_LOCKER(locker, _propertiesMutex);
+  std::lock_guard locker{_propertiesMutex};
   return _properties;
 }
 
@@ -650,7 +644,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
   bool active;
 
   {
-    MUTEX_LOCKER(locker, _propertiesMutex);
+    std::lock_guard locker{_propertiesMutex};
 
     bool const hasActiveFlag = slice.isObject() && slice.hasKey("active");
     if (hasActiveFlag && !slice.get("active").isBool()) {
@@ -670,7 +664,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
   }
 
   {
-    MUTEX_LOCKER(locker, _threadMutex);
+    std::lock_guard locker{_threadMutex};
 
     if (_thread != nullptr) {
       _thread->setNextStart(frequency);
@@ -686,7 +680,7 @@ Result TtlFeature::propertiesFromVelocyPack(VPackSlice const& slice,
 }
 
 void TtlFeature::shutdownThread() noexcept {
-  MUTEX_LOCKER(locker, _threadMutex);
+  std::lock_guard locker{_threadMutex};
 
   if (_thread != nullptr) {
     try {

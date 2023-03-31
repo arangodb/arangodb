@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,7 +78,7 @@ static_assert(
     static_cast<int>(QueryExecutionState::ValueType::INITIALIZATION) == 0,
     "unexpected min QueryExecutionState enum value");
 static_assert(static_cast<int>(QueryExecutionState::ValueType::INVALID_STATE) <
-                  11,
+                  12,
               "unexpected max QueryExecutionState enum value");
 
 }  // namespace aql

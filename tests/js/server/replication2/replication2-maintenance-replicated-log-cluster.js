@@ -90,6 +90,7 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, servers, leader),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
+        properties: {implementation: {type: "black-hole", parameters: {}}}
       });
 
       // wait for all servers to have reported in current
@@ -106,6 +107,7 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, servers),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
+        properties: {implementation: {type: "black-hole", parameters: {}}}
       });
 
       // wait for all servers to have reported in current
@@ -195,6 +197,7 @@ const replicatedLogSuite = function () {
         id: logId,
         currentTerm: lh.createTermSpecification(term, newServers, leader),
         participantsConfig: lh.createParticipantsConfig(1, planConfig, newServers),
+        properties: {implementation: {type: "black-hole", parameters: {}}}
       });
 
       // wait for all servers to have reported in current

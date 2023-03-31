@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -310,26 +310,28 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result,
-                                bool translateCids) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+                                bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
-  result.add(VPackValue("shards"));
-  result.openObject();
-  auto tmpShards = _shardIds;
+  if (includeShardsEntry) {
+    result.add(VPackValue("shards"));
+    result.openObject();
+    auto tmpShards = _shardIds;
 
-  for (auto const& shards : *tmpShards) {
-    result.add(VPackValue(shards.first));
-    result.openArray();
+    for (auto const& shards : *tmpShards) {
+      result.add(VPackValue(shards.first));
+      result.openArray();
 
-    for (auto const& servers : shards.second) {
-      result.add(VPackValue(servers));
+      for (auto const& servers : shards.second) {
+        result.add(VPackValue(servers));
+      }
+
+      result.close();  // server array
     }
 
-    result.close();  // server array
+    result.close();  // shards
   }
-
-  result.close();  // shards
 
   if (isSatellite()) {
     result.add(StaticStrings::ReplicationFactor,

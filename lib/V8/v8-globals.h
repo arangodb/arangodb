@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -648,6 +648,9 @@ struct TRI_v8_global_t {
   /// @brief "errorNum" key name
   v8::Persistent<v8::String> ErrorNumKey;
 
+  /// @brief "original" key name
+  v8::Persistent<v8::String> OriginalKey;
+
   /// @brief "headers" key name
   v8::Persistent<v8::String> HeadersKey;
 
@@ -720,14 +723,17 @@ struct TRI_v8_global_t {
   /// @brief "protocol" key name
   v8::Persistent<v8::String> ProtocolKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "rawSuffix" key name
   v8::Persistent<v8::String> RawSuffixKey;
 
+  /// @brief "refillIndexCaches" key name
+  v8::Persistent<v8::String> RefillIndexCachesKey;
+
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
-
-  /// @brief "rawRequestBody" key name
-  v8::Persistent<v8::String> RawRequestBodyKey;
 
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;

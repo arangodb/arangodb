@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_log_started_following_total
-introducedIn: "3.9.0"
+introducedIn: "3.11.0"
 help: |
   Number of times started following a replicated log.
 unit: number

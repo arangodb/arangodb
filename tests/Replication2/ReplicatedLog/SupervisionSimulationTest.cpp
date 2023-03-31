@@ -26,7 +26,6 @@
 #include <fmt/ostream.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
@@ -58,8 +57,7 @@ struct ReplicatedLogSupervisionSimulationTest
   auto makeAgencyState(Log const& log,
                        replicated_log::ParticipantsHealth health)
       -> AgencyState {
-    return AgencyState{.replicatedState = std::nullopt,
-                       .replicatedLog = log,
+    return AgencyState{.replicatedLog = log,
                        .health = std::move(health),
                        .logLeaderWriteConcern = std::nullopt};
   }
@@ -492,16 +490,16 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_change_wait_for_sync) {
       MC_EVENTUALLY_ALWAYS(mcpreds::isPlannedWriteConcern(false)),
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth())};
   // Unfortunately the deterministic checker takes too long
-  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                          AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
                                             AgencyState, AgencyTransition>;
-  // using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
-  //                                           AgencyState, AgencyTransition>;
   //
   auto result =
       Engine::run(driver, allTests, initState,
                   {.iterations = 20000, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
+  // std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_replace_leader) {
@@ -595,10 +593,13 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("A"))};
-  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  // using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+  //                                           AgencyState, AgencyTransition>;
+  //
+  using Engine = model_checker::ActorEngine<model_checker::RandomEnumerator,
                                             AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
+  // std::cout << result.stats << std::endl;
 }

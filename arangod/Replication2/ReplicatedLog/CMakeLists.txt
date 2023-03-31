@@ -10,7 +10,6 @@ target_sources(arango_replication2 PRIVATE
   LogFollower.cpp
   LogLeader.cpp
   LogStatus.cpp
-  LogUnconfiguredParticipant.cpp
   NetworkAttachedFollower.cpp
   NetworkMessages.cpp
   ReplicatedLog.cpp

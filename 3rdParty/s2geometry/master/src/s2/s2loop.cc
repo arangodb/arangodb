@@ -110,7 +110,14 @@ S2Loop::S2Loop(S2Loop&& b)
           b.unindexed_contains_calls_.exchange(0, std::memory_order_relaxed)),
       bound_(std::move(b.bound_)),
       subregion_bound_(std::move(b.subregion_bound_)),
-      index_(std::move(b.index_)) {}
+      index_(std::move(b.index_)) {
+  // `index_` has a pointer to an S2Loop::Shape which points to S2Loop.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->loop_ = this;
+  }
+}
 
 S2Loop& S2Loop::operator=(S2Loop&& b) {
   if (owns_vertices_) {
@@ -131,15 +138,27 @@ S2Loop& S2Loop::operator=(S2Loop&& b) {
   subregion_bound_ = std::move(b.subregion_bound_);
   index_ = std::move(b.index_);
 
+  // `index_` has a pointer to an S2Loop::Shape which points to S2Loop.
+  // But, we've moved to a new address, so get the Shape back out of the index
+  // and update it to point to our new location.
+  if (index_.begin() != index_.end()) {
+    down_cast<Shape*>(*index_.begin())->loop_ = this;
+  }
+
   return *this;
 }
 #endif
 
 S2Loop::S2Loop(Span<const S2Point> vertices)
-  : S2Loop(vertices, S2Debug::ALLOW) {}
+    : S2Loop(vertices, S2Debug::ALLOW) {}
 
 S2Loop::S2Loop(Span<const S2Point> vertices, S2Debug override)
-  : s2debug_override_(override) {
+    : s2debug_override_(override) {
+  Init(vertices);
+}
+
+S2Loop::S2Loop(absl::Span<const S2LatLng> vertices, S2Debug override)
+    : s2debug_override_(override) {
   Init(vertices);
 }
 
@@ -147,9 +166,7 @@ void S2Loop::set_s2debug_override(S2Debug override) {
   s2debug_override_ = override;
 }
 
-S2Debug S2Loop::s2debug_override() const {
-  return s2debug_override_;
-}
+S2Debug S2Loop::s2debug_override() const { return s2debug_override_; }
 
 void S2Loop::ClearIndex() {
   unindexed_contains_calls_.store(0, std::memory_order_relaxed);
@@ -162,6 +179,20 @@ void S2Loop::Init(Span<const S2Point> vertices) {
   num_vertices_ = vertices.size();
   vertices_ = new S2Point[num_vertices_];
   std::copy(vertices.begin(), vertices.end(), &vertices_[0]);
+  owns_vertices_ = true;
+  InitOriginAndBound();
+}
+
+void S2Loop::Init(absl::Span<const S2LatLng> vertices) {
+  ClearIndex();
+  if (owns_vertices_) delete[] vertices_;
+  num_vertices_ = vertices.size();
+  vertices_ = new S2Point[num_vertices_];
+  auto* vertices_ptr = vertices_;
+  for (auto const& point : vertices) {
+    *vertices_ptr = point.ToPoint();
+    ++vertices_ptr;
+  }
   owns_vertices_ = true;
   InitOriginAndBound();
 }

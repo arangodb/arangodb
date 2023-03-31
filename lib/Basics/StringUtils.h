@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,12 +32,17 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {
+
+template<typename T>
+class ResultT;
+
 namespace basics {
 
 static constexpr size_t maxUInt64StringSize = 21;
@@ -344,6 +349,10 @@ uint64_t uint64(std::string_view value) noexcept;
 uint64_t uint64_trusted(char const* value, size_t length) noexcept;
 uint64_t uint64_trusted(std::string_view value) noexcept;
 
+/// @brief parses an unsigned integers, but returns any errors
+ResultT<uint64_t> try_uint64(char const* value, size_t size) noexcept;
+ResultT<uint64_t> try_uint64(std::string_view value) noexcept;
+
 /// @brief parses an integer
 int32_t int32(char const* value, size_t size) noexcept;
 int32_t int32(std::string_view value) noexcept;
@@ -560,6 +569,14 @@ auto joinT(std::string_view delim, Args&&... args) -> std::string {
       "it to an int instead.");
   return detail::joinImplStr(delim, detail::toStringOrView(args)...);
 }
+
+/// @brief Translates a set of HTTP headers into a string, which is
+/// properly escaped to put it into a log file.
+std::string headersToString(
+    std::unordered_map<std::string, std::string> const& headers);
+
+/// @brief returns the endpoint from a URL
+std::string getEndpointFromUrl(std::string const& url);
 
 }  // namespace StringUtils
 }  // namespace basics

@@ -22,6 +22,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/strings/str_replace.h>
+
 #include <velocypack/Iterator.h>
 
 #include "Aql/OptimizerRulesFeature.h"
@@ -36,7 +38,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace arangodb::tests {
 namespace {
@@ -618,16 +619,16 @@ class QueryOrView : public QueryOr {
           "analyzers": [ "test_analyzer", "identity" ],
           "includeAllFields": true,
           "trackListPositions": true,
-          "version": %u,
+          "version": $0,
           "storeValues":"id" },
         "collection_2": {
           "analyzers": [ "test_analyzer", "identity" ],
           "includeAllFields": true,
-          "version": %u,
+          "version": $1,
           "storeValues":"id" }
       }})";
 
-      auto viewDefinition = irs::string_utils::to_string(
+      auto viewDefinition = absl::Substitute(
           viewDefinitionTemplate, static_cast<uint32_t>(linkVersion()),
           static_cast<uint32_t>(linkVersion()));
 

@@ -55,6 +55,8 @@ auto AsyncFollower::release(arangodb::replication2::LogIndex doneWithIdx)
   return _follower->release(doneWithIdx);
 }
 
+auto AsyncFollower::compact() -> Result { return _follower->compact(); }
+
 auto AsyncFollower::getParticipantId() const noexcept -> ParticipantId const& {
   return _follower->getParticipantId();
 }

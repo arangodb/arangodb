@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "RocksDBTrxMethods.h"
 
 #include "Aql/QueryCache.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
@@ -233,6 +234,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   }
 
   createTransaction();
+  ensureSnapshot();
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
   // read snapshots are only required for AQL queries. But since on followers we
   // do not run AQL queries, we can have intermediate commits _without_ read

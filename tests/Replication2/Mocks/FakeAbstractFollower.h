@@ -38,7 +38,7 @@ namespace arangodb::replication2::test {
  * It only models an AbstractFollower. If you want to have full control,
  * consider using the FakeFollower.
  */
-struct FakeAbstractFollower : AbstractFollower {
+struct FakeAbstractFollower : replicated_log::AbstractFollower {
   explicit FakeAbstractFollower(ParticipantId id)
       : participantId(std::move(id)) {}
 
@@ -47,19 +47,23 @@ struct FakeAbstractFollower : AbstractFollower {
     return participantId;
   };
 
-  auto appendEntries(AppendEntriesRequest request)
-      -> futures::Future<AppendEntriesResult> override {
+  auto appendEntries(replicated_log::AppendEntriesRequest request)
+      -> futures::Future<replicated_log::AppendEntriesResult> override {
     return requests.emplace_back(std::move(request)).promise.getFuture();
   }
 
-  void resolveRequest(AppendEntriesResult result) {
+  void resolveRequest(replicated_log::AppendEntriesResult result) {
     requests.front().promise.setValue(std::move(result));
     requests.pop_front();
   }
 
   void resolveWithOk() {
-    resolveRequest(AppendEntriesResult{
-        LogTerm{4}, TRI_ERROR_NO_ERROR, {}, currentRequest().messageId});
+    resolveRequest(
+        replicated_log::AppendEntriesResult{LogTerm{4},
+                                            TRI_ERROR_NO_ERROR,
+                                            {},
+                                            currentRequest().messageId,
+                                            snapshotStatus});
   }
 
   template<typename E>
@@ -68,7 +72,8 @@ struct FakeAbstractFollower : AbstractFollower {
     requests.pop_front();
   }
 
-  [[nodiscard]] auto currentRequest() const -> AppendEntriesRequest const& {
+  [[nodiscard]] auto currentRequest() const
+      -> replicated_log::AppendEntriesRequest const& {
     return requests.front().request;
   }
 
@@ -83,13 +88,14 @@ struct FakeAbstractFollower : AbstractFollower {
   }
 
   struct AsyncRequest {
-    explicit AsyncRequest(AppendEntriesRequest request)
+    explicit AsyncRequest(replicated_log::AppendEntriesRequest request)
         : request(std::move(request)) {}
-    AppendEntriesRequest request;
-    futures::Promise<AppendEntriesResult> promise;
+    replicated_log::AppendEntriesRequest request;
+    futures::Promise<replicated_log::AppendEntriesResult> promise;
   };
 
   std::deque<AsyncRequest> requests;
   ParticipantId participantId;
+  bool snapshotStatus{true};
 };
 }  // namespace arangodb::replication2::test

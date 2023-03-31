@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ void queueGarbageCollection(std::mutex& mutex,
                             std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
   workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
-      arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
+      "networkfeature-gc", arangodb::RequestLane::INTERNAL_LOW, offset, gcfunc);
 }
 
 constexpr double CongestionRatio = 0.5;
@@ -334,7 +334,6 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                         std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
-                      TRI_ASSERT(req != nullptr);
                       cb(err, std::move(req), std::move(res), isFromPool);
                     });
 }

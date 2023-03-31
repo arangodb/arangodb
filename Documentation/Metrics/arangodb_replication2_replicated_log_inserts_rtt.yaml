@@ -1,5 +1,5 @@
 name: arangodb_replication2_replicated_log_inserts_rtt
-introducedIn: "3.9.0"
+introducedIn: "3.11.0"
 help: |
   Round-trip time of inserts into replicated logs in microseconds.
 unit: us

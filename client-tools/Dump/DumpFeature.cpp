@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
@@ -44,6 +43,7 @@
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "Shell/ClientFeature.h"
@@ -1021,7 +1021,7 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client,
   // wait for all jobs to finish, then check for errors
   _clientTaskQueue.waitForIdle();
   {
-    MUTEX_LOCKER(lock, _workerErrorLock);
+    std::lock_guard lock{_workerErrorLock};
     if (!_workerErrors.empty()) {
       return _workerErrors.front();
     }
@@ -1109,7 +1109,7 @@ Result DumpFeature::storeViews(VPackSlice const& views) const {
 void DumpFeature::reportError(Result const& error) {
   try {
     {
-      MUTEX_LOCKER(lock, _workerErrorLock);
+      std::lock_guard lock{_workerErrorLock};
       _workerErrors.emplace_back(error);
     }
     _clientTaskQueue.clearQueue();

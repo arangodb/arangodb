@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #endif
 
 #include "search/scorers.hpp"
+#include "utils/assert.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/file_utils.hpp"
@@ -46,9 +47,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/application-exit.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
-#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -57,6 +56,7 @@
 #endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Containers/SmallVector.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -120,10 +120,10 @@ class IResearchLogTopic final : public LogTopic {
   }
 
  private:
-  static LogLevel const kDefaultLevel = LogLevel::INFO;
+  static constexpr LogLevel kDefaultLevel = LogLevel::INFO;
 
-  typedef std::underlying_type<irs::logger::level_t>::type irsLogLevelType;
-  typedef std::underlying_type<LogLevel>::type arangoLogLevelType;
+  using irsLogLevelType = std::underlying_type_t<irs::logger::level_t>;
+  using arangoLogLevelType = std::underlying_type_t<LogLevel>;
 
   static_assert(static_cast<irsLogLevelType>(irs::logger::IRL_FATAL) ==
                         static_cast<arangoLogLevelType>(LogLevel::FATAL) - 1 &&
@@ -366,43 +366,48 @@ bool upgradeArangoSearchLinkCollectionName(
       ClusterMethods::realNameFromSmartName(clusterCollectionName);
 #endif
       for (auto& index : indexes) {
+        TRI_ASSERT(index != nullptr);
         if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-          auto indexPtr = dynamic_cast<IResearchLink*>(index.get());
-          if (indexPtr) {
-            LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
-                << "Checking collection name '" << clusterCollectionName
-                << "' for link " << indexPtr->id().id();
-            if (indexPtr->setCollectionName(clusterCollectionName)) {
-              LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
-                  << "Setting collection name '" << clusterCollectionName
-                  << "' for link " << indexPtr->id().id();
-              if (selector.engineName() == RocksDBEngine::kEngineName) {
-                auto& engine = selector.engine<RocksDBEngine>();
-                auto builder = collection->toVelocyPackIgnore(
-                    {"path", "statusString"}, LogicalDataSource::Serialization::
-                                                  PersistenceWithInProgress);
-                auto res = engine.writeCreateCollectionMarker(
-                    vocbase.id(), collection->id(), builder.slice(),
-                    RocksDBLogValue::Empty());
-                if (res.fail()) {
-                  LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
-                      << "Unable to store updated link information on upgrade "
-                         "for collection '"
-                      << clusterCollectionName << "' for link "
-                      << indexPtr->id().id() << ": " << res.errorMessage();
-                }
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-              } else if (selector.engineName() !=
-                         "Mock") {  // for unit tests just ignore write to
-                                    // storage
+          auto* indexPtr = dynamic_cast<IResearchLink*>(index.get());
+          TRI_ASSERT(indexPtr != nullptr);
+          auto id = indexPtr->index().id().id();
 #else
-              } else {
+          auto* indexPtr = basics::downCast<IResearchRocksDBLink>(index.get());
+          auto const id = indexPtr->id().id();
 #endif
-                TRI_ASSERT(false);
-                LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
-                    << "Unsupported engine '" << selector.engineName()
-                    << "' for link upgrade task";
+          LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
+              << "Checking collection name '" << clusterCollectionName
+              << "' for link " << id;
+          if (indexPtr->setCollectionName(clusterCollectionName)) {
+            LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
+                << "Setting collection name '" << clusterCollectionName
+                << "' for link " << id;
+            if (selector.engineName() == RocksDBEngine::kEngineName) {
+              auto& engine = selector.engine<RocksDBEngine>();
+              auto builder = collection->toVelocyPackIgnore(
+                  {"path", "statusString"},
+                  LogicalDataSource::Serialization::PersistenceWithInProgress);
+              auto res = engine.writeCreateCollectionMarker(
+                  vocbase.id(), collection->id(), builder.slice(),
+                  RocksDBLogValue::Empty());
+              if (res.fail()) {
+                LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
+                    << "Unable to store updated link information on upgrade "
+                       "for collection '"
+                    << clusterCollectionName << "' for link " << id << ": "
+                    << res.errorMessage();
               }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+              // for unit tests just ignore write to storage
+            } else if (selector.engineName() != "Mock") {
+#else
+            } else {
+#endif
+              TRI_ASSERT(false);
+              LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
+                  << "Unsupported engine '" << selector.engineName()
+                  << "' for link upgrade task";
             }
           }
         }
@@ -478,8 +483,6 @@ bool upgradeSingleServerArangoSearchView0_1(
       return false;  // definition generation failure
     }
 
-    std::filesystem::path dataPath;
-
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
       LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
@@ -491,13 +494,11 @@ bool upgradeSingleServerArangoSearchView0_1(
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
     // original algorithm for computing data-store path
-    dataPath = std::filesystem::path(dbPathFeature.directory());
+    std::filesystem::path dataPath{dbPathFeature.directory()};
     dataPath /= "databases";
-    dataPath /= "database-";
-    dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::StaticStrings::ViewArangoSearchType;
-    dataPath += "-";
-    dataPath += std::to_string(view->id().id());
+    dataPath /= absl::StrCat("database-", vocbase.id());
+    dataPath /=
+        absl::StrCat(StaticStrings::ViewArangoSearchType, "-", view->id().id());
 
     res = view->drop();  // drop view (including all links)
 
@@ -602,31 +603,24 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
   addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
 }
 
-namespace {
 template<typename T>
-void registerSingleFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>> const& m,
-    ArangodServer& server) {
-  TRI_ASSERT(m.find(std::type_index(typeid(T))) != m.end());
-  IndexTypeFactory& factory = *m.find(std::type_index(typeid(T)))->second;
-  if (server.hasFeature<T>()) {
-    auto& engine = server.getFeature<T>();
-    auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
-    Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::ViewArangoSearchType},
-        factory);
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          res.errorNumber(),
-          basics::StringUtils::concatT(
-              "failure registering IResearch link factory with index "
-              "factory from feature '",
-              engine.name(), "': ", res.errorMessage()));
-    }
+void registerSingleFactory(IndexTypeFactory& factory, ArangodServer& server) {
+  if (!server.hasFeature<T>()) {
+    return;
+  }
+  auto& engine = server.getFeature<T>();
+  auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
+  // TODO(MBkkt) remove std::string and update IndexFactory interface
+  auto r = engineFactory.emplace(
+      std::string{StaticStrings::ViewArangoSearchType}, factory);
+  if (!r.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        r.errorNumber(),
+        absl::StrCat("failure registering IResearch link factory with index "
+                     "factory from feature '",
+                     engine.name(), "': ", r.errorMessage()));
   }
 }
-
-}  // namespace
 
 void registerFunctions(aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(
@@ -638,18 +632,6 @@ void registerFunctions(aql::AqlFunctionFeature& functions) {
                                 aql::Function::Flags::CanRunOnDBServerOneShard,
                                 aql::Function::Flags::NoEval),
        &offsetInfoFunc});
-}
-
-void registerIndexFactory(
-    std::map<std::type_index, std::shared_ptr<IndexTypeFactory>>& m,
-    ArangodServer& server) {
-  m.emplace(
-      std::type_index(typeid(ClusterEngine)),
-      arangodb::iresearch::IResearchLinkCoordinator::createFactory(server));
-  registerSingleFactory<ClusterEngine>(m, server);
-  m.emplace(std::type_index(typeid(RocksDBEngine)),
-            arangodb::iresearch::IResearchRocksDBLink::createFactory(server));
-  registerSingleFactory<RocksDBEngine>(m, server);
 }
 
 void registerScorers(aql::AqlFunctionFeature& functions) {
@@ -815,6 +797,30 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
               msg);
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+class AssertionCallbackSetter {
+ public:
+  AssertionCallbackSetter() noexcept {
+    irs::SetAssertCallback(&assertCallback);
+  }
+
+ private:
+  [[noreturn]] static void assertCallback(std::string_view file,
+                                          std::size_t line,
+                                          std::string_view function,
+                                          std::string_view condition,
+                                          std::string_view message) noexcept {
+    CrashHandler::assertionFailure(file.data(), static_cast<int>(line),
+                                   function.data(), condition.data(),
+                                   message.data());
+  }
+};
+
+[[maybe_unused]] AssertionCallbackSetter setAssert;
+
+#endif
+
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -833,6 +839,7 @@ class IResearchAsync {
 #endif
   {
     TRI_IF_FAILURE("IResearchFeature::testGroupAccess") {
+      // cppcheck-suppress throwInNoexceptFunction
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
@@ -873,10 +880,12 @@ bool isFilter(aql::Function const& func) noexcept {
 }
 
 bool isScorer(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &dummyScorerFunc;
 }
 
 bool isOffsetInfo(aql::Function const& func) noexcept {
+  // cppcheck-suppress throwInNoexceptFunction
   return func.implementation == &offsetInfoFunc;
 }
 
@@ -910,7 +919,7 @@ void IResearchFeature::beginShutdown() { _running.store(false); }
 void IResearchFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   _running.store(false);
-  options->addSection("arangosearch", std::string{name()}.append(" feature"));
+  options->addSection("arangosearch", absl::StrCat(name(), " feature"));
 
   options
       ->addOption(THREADS_PARAM,
@@ -1050,8 +1059,19 @@ but the returned data may be incomplete.)");
 void IResearchFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   // validate all entries in _skipRecoveryItems for formal correctness
+  auto checkFormat = [](auto const& item) {
+    auto r = item.find('/');
+    if (r == std::string_view::npos) {
+      return false;
+    }
+    r = item.find('/', r);
+    if (r == std::string_view::npos) {
+      return true;
+    }
+    return false;
+  };
   for (auto const& item : _skipRecoveryItems) {
-    if (item != "all" && basics::StringUtils::split(item, '/').size() != 2) {
+    if (item != "all" && checkFormat(item)) {
       LOG_TOPIC("b9f28", FATAL, arangodb::iresearch::TOPIC)
           << "invalid format for '" << SKIP_RECOVERY
           << "' parameter. expecting '"
@@ -1113,7 +1133,7 @@ void IResearchFeature::prepare() {
   ::irs::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory(_factories, server());
+  registerIndexFactory();
 
   // register 'arangosearch' view
   registerViewFactory(server());
@@ -1227,6 +1247,27 @@ void IResearchFeature::unprepare() {
   _running.store(false);
 }
 
+std::filesystem::path getPersistedPath(DatabasePathFeature const& dbPathFeature,
+                                       TRI_vocbase_t& database) {
+  std::filesystem::path path{dbPathFeature.directory()};
+  path /= "databases";
+  path /= absl::StrCat("database-", database.id());
+  return path;
+}
+
+void cleanupDatabase(TRI_vocbase_t& database) {
+  auto const& feature = database.server().getFeature<DatabasePathFeature>();
+  auto path = getPersistedPath(feature, database);
+  std::error_code error;
+  std::filesystem::remove_all(path);
+  if (error) {
+    LOG_TOPIC("bad02", ERR, TOPIC)
+        << "Failed to remove arangosearch path for database (id '"
+        << database.id() << "' name: '" << database.name() << "') with error '"
+        << error.message() << "'";
+  }
+}
+
 void IResearchFeature::reportRecoveryProgress(arangodb::IndexId id,
                                               std::string_view phase,
                                               size_t current, size_t total) {
@@ -1280,19 +1321,19 @@ bool IResearchFeature::queue(ThreadGroup id,
   } catch (std::exception const& e) {
     LOG_TOPIC("c1b64", WARN, arangodb::iresearch::TOPIC)
         << "Caught exception while sumbitting a task to thread group '"
-        << std::to_string(std::underlying_type_t<ThreadGroup>(id))
-        << "' error '" << e.what() << "'";
+        << std::underlying_type_t<ThreadGroup>(id) << "' error '" << e.what()
+        << "'";
   } catch (...) {
     LOG_TOPIC("c1b65", WARN, arangodb::iresearch::TOPIC)
         << "Caught an exception while sumbitting a task to thread group '"
-        << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+        << std::underlying_type_t<ThreadGroup>(id) << "'";
   }
 
   if (!server().isStopping()) {
     // do not log error at shutdown
     LOG_TOPIC("c1b66", ERR, arangodb::iresearch::TOPIC)
         << "Failed to submit a task to thread group '"
-        << std::to_string(std::underlying_type_t<ThreadGroup>(id)) << "'";
+        << std::underlying_type_t<ThreadGroup>(id) << "'";
   }
 
   return false;
@@ -1352,6 +1393,13 @@ void IResearchFeature::registerRecoveryHelper() {
   }
 }
 
+void IResearchFeature::registerIndexFactory() {
+  _clusterFactory = IResearchLinkCoordinator::createFactory(server());
+  registerSingleFactory<ClusterEngine>(*_clusterFactory, server());
+  _rocksDBFactory = IResearchRocksDBLink::createFactory(server());
+  registerSingleFactory<RocksDBEngine>(*_rocksDBFactory, server());
+}
+
 #ifdef USE_ENTERPRISE
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 int64_t IResearchFeature::columnsCacheUsage() const noexcept {
@@ -1374,12 +1422,14 @@ bool IResearchFeature::trackColumnsCacheUsage(int64_t diff) noexcept {
 }
 #endif
 
-template<typename Engine, typename std::enable_if_t<
-                              std::is_base_of_v<StorageEngine, Engine>, int>>
+template<typename Engine>
 IndexTypeFactory& IResearchFeature::factory() {
-  TRI_ASSERT(_factories.find(std::type_index(typeid(Engine))) !=
-             _factories.end());
-  return *_factories.find(std::type_index(typeid(Engine)))->second;
+  if constexpr (std::is_same_v<Engine, ClusterEngine>) {
+    return *_clusterFactory;
+  } else {
+    static_assert(std::is_same_v<Engine, RocksDBEngine>);
+    return *_rocksDBFactory;
+  }
 }
 template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
 template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();

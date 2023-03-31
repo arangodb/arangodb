@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <string_view>
 #include <thread>
 
@@ -88,9 +89,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     return std::move(_response);
   }
 
-  ArangodServer& server() { return _server; }
+  ArangodServer& server() noexcept { return _server; }
+  ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() { return _statistics; }
+  RequestStatistics::Item const& statistics() const noexcept {
+    return _statistics;
+  }
   RequestStatistics::Item&& stealStatistics();
   void setStatistics(RequestStatistics::Item&& stat);
 
@@ -196,7 +200,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestStatistics::Item _statistics;
 
  private:
-  mutable Mutex _executionMutex;
+  mutable std::mutex _executionMutex;
 
   std::function<void(rest::RestHandler*)> _callback;
 

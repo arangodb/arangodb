@@ -3,9 +3,9 @@
 
 @RESTHEADER{GET /_api/control_pregel/{id}, Get Pregel job execution status}
 
-@RESTQUERYPARAMETERS
+@RESTURLPARAMETERS
 
-@RESTQUERYPARAM{id,number,required}
+@RESTURLPARAM{id,number,required}
 Pregel execution identifier.
 
 @RESTDESCRIPTION

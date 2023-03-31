@@ -56,7 +56,7 @@ violation. Possible values are:
 - `ignore`: this will not update an existing document and simply ignore the
   error caused by a unique key constraint violation.
 
-Note that that `update`, `replace` and `ignore` will only work when the
+Note that `update`, `replace` and `ignore` will only work when the
 import document in the request contains the `_key` attribute. `update` and
 `replace` may also fail because of secondary unique key constraint violations.
 
@@ -137,10 +137,9 @@ Importing documents with heterogenous attributes from a JSON array
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 3);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 3);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -164,10 +163,9 @@ Importing documents from individual JSON lines
     + "&type=documents", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 3);
-    assert(r.errors === 0);
-    assert(r.empty === 1);
+    assert(response.parsedBody.created === 3);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 1);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -191,10 +189,9 @@ Using the auto type detection
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=auto", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 3);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 3);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -218,10 +215,9 @@ Importing into an edge collection, with attributes `_from`, `_to` and `name`
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=documents", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 2);
-    assert(r.errors === 0);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 2);
+    assert(response.parsedBody.errors === 0);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -242,10 +238,9 @@ Importing into an edge collection, omitting `_from` or `_to`
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn + "&type=list&details=true", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 0);
-    assert(r.errors === 1);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 0);
+    assert(response.parsedBody.errors === 1);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);
@@ -266,10 +261,9 @@ Violating a unique constraint, but allow partial imports
     + "&type=documents&details=true", body);
 
     assert(response.code === 201);
-    var r = JSON.parse(response.body);
-    assert(r.created === 1);
-    assert(r.errors === 1);
-    assert(r.empty === 0);
+    assert(response.parsedBody.created === 1);
+    assert(response.parsedBody.errors === 1);
+    assert(response.parsedBody.empty === 0);
 
     logJsonResponse(response);
     db._drop(cn);

@@ -6,44 +6,17 @@
 **Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
 
 ---
-## abseil
+## abseil-cpp
 
-Just update code and directory name (commit hash) and apply patch
+13708db87b1ab69f4f2b3214f3f51e986546f282
+abseil-cpp is pulled in as a submodule - the exact commit can be found there.
 
-```
-diff --git a/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h b/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-index f2fa08977fd..8e97fdb0ca4 100644
---- a/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-+++ b/3rdParty/abseil-cpp/master/absl/flags/commandlineflag.h
-@@ -153,7 +153,7 @@ class CommandLineFlag {
-   bool ParseFrom(absl::string_view value, std::string* error);
- 
-  protected:
--  ~CommandLineFlag() = default;
-+  virtual ~CommandLineFlag() = default;
- 
-  private:
-   friend class flags_internal::PrivateHandleAccessor;
-diff --git a/3rdParty/abseil-cpp/master/absl/strings/numbers.h b/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-index 86c84ed39b7..131d5f1b03b 100644
---- a/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-+++ b/3rdParty/abseil-cpp/master/absl/strings/numbers.h
-@@ -23,12 +23,10 @@
- #ifndef ABSL_STRINGS_NUMBERS_H_
- #define ABSL_STRINGS_NUMBERS_H_
- 
--#ifdef __SSSE3__
--#include <tmmintrin.h>
--#endif
--
- #ifdef _MSC_VER
- #include <intrin.h>
-+#elif defined(__SSSE3__)
-+#include <tmmintrin.h>
- #endif
- 
- #include <cstddef>
-```
+The submodule repository is located at https://github.com/arangodb/abseil-cpp
+
+We have some changes for usage in arangodb and iresearch, so we maintain our own branch with
+these changes called "master".
+To update to a new version pull from upstream (https://github.com/google/abseil-cpp)
+and rebase onto the new version the our "master" branch.
 
 ## boost
 
@@ -93,6 +66,40 @@ Then copy `temp_modules.h` to `modules.h`, and fix the paths.
 
 Only used on Linux/Mac, still uses autofoo.
 
+The following change has been made to jemalloc compared to upstream commit
+54eaed1d8b56b1aa528be3bdd1877e59c56fa90c:
+
+```diff
+diff --git a/3rdParty/jemalloc/CMakeLists.txt b/3rdParty/jemalloc/CMakeLists.txt
+index add5b967e2e..3ef8b0d6e39 100644
+--- a/3rdParty/jemalloc/CMakeLists.txt
++++ b/3rdParty/jemalloc/CMakeLists.txt
+@@ -28,7 +28,7 @@ if (LINUX OR DARWIN)
+   else ()
+     set(JEMALLOC_CC_TMP "${CMAKE_C_COMPILER}")
+     set(JEMALLOC_CXX_TMP "${CMAKE_CXX_COMPILER}")
+-    set(JEMALLOC_CONFIG "background_thread:true")
++    set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
+   endif ()
+
+   if (USE_JEMALLOC_PROF)
+diff --git a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
+index 7655de4e2f3..9e1c8a37627 100644
+--- a/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
++++ b/3rdParty/jemalloc/v5.3.0/src/jemalloc.c
+@@ -1220,6 +1220,7 @@ malloc_conf_init_helper(sc_data_t *sc_data, unsigned bin_shard_sizes[SC_NBINS],
+
+                        CONF_HANDLE_BOOL(opt_abort, "abort")
+                        CONF_HANDLE_BOOL(opt_abort_conf, "abort_conf")
++                       CONF_HANDLE_BOOL(opt_cache_oblivious, "cache_oblivious")
+                        CONF_HANDLE_BOOL(opt_trust_madvise, "trust_madvise")
+                        if (strncmp("metadata_thp", k, klen) == 0) {
+                                int m;
+```
+This change will become irrelevant when upgrading to a newer version of
+jemalloc, because it is already contained in upstream jemalloc.
+
+
 ## libunwind
 
 Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
@@ -139,166 +146,45 @@ Just update code and directory name (commit hash) and apply patch
 
 ```
 diff --git a/3rdParty/s2geometry/master/CMakeLists.txt b/3rdParty/s2geometry/master/CMakeLists.txt
-index 2cbbf68c7d7..27f57896054 100644
+index 4044cd90a00..f22895951e7 100644
 --- a/3rdParty/s2geometry/master/CMakeLists.txt
 +++ b/3rdParty/s2geometry/master/CMakeLists.txt
-@@ -68,7 +68,6 @@ if (WITH_GFLAGS)
-     add_definitions(-DS2_USE_GFLAGS)
- endif()
+@@ -260,13 +260,14 @@ endif()
+ # list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
+ # add_subdirectory(<path_to_s2geometry_dir> s2geometry)
+ # target_link_libraries(<target_name> s2)
+-target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
++target_include_directories(s2 SYSTEM PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
  
--find_package(absl REQUIRED)
- find_package(OpenSSL REQUIRED)
- # pthreads isn't used directly, but this is still required for std::thread.
- find_package(Threads REQUIRED)
-diff --git a/3rdParty/s2geometry/master/src/s2/base/logging.h b/3rdParty/s2geometry/master/src/s2/base/logging.h
-index b5a26715441..5136b297c43 100644
---- a/3rdParty/s2geometry/master/src/s2/base/logging.h
-+++ b/3rdParty/s2geometry/master/src/s2/base/logging.h
-@@ -62,7 +62,7 @@ class S2LogMessage {
-     : severity_(severity), stream_(stream) {
-     if (enabled()) {
-       stream_ << file << ":" << line << " "
--              << absl::LogSeverityName(severity) << " ";
-+              << absl::LogSeverityName(severity_) << " ";
-     }
-   }
-   ~S2LogMessage() { if (enabled()) stream_ << std::endl; }
-diff --git a/3rdParty/s2geometry/master/src/s2/s2loop_measures.h b/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-index cdc8e87cd8d..fb1df468a10 100644
---- a/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-+++ b/3rdParty/s2geometry/master/src/s2/s2loop_measures.h
-@@ -226,7 +226,7 @@ T GetSurfaceIntegral(S2PointLoopSpan loop,
-   if (loop.size() < 3) return sum;
+ # Add version information to the target
+ set_target_properties(s2 PROPERTIES
+     SOVERSION ${PROJECT_VERSION_MAJOR}
+     VERSION ${PROJECT_VERSION})
  
-   S2Point origin = loop[0];
--  for (int i = 1; i + 1 < loop.size(); ++i) {
-+  for (int i = 1; i + 1 < static_cast<int>(loop.size()); ++i) {
-     // Let V_i be loop[i], let O be the current origin, and let length(A, B)
-     // be the length of edge (A, B).  At the start of each loop iteration, the
-     // "leading edge" of the triangle fan is (O, V_i), and we want to extend
++#[[
+ # We don't need to install all headers, only those
+ # transitively included by s2 headers we are exporting.
+ install(FILES src/s2/_fp_contract_off.h
+@@ -438,6 +439,7 @@ install(TARGETS ${S2_TARGETS}
+         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}")
++]]
+ 
+ message("GTEST_ROOT: ${GTEST_ROOT}")
+ if (GTEST_ROOT)
 diff --git a/3rdParty/s2geometry/master/src/s2/s2polygon.h b/3rdParty/s2geometry/master/src/s2/s2polygon.h
-index 9981ae0ff89..e77f0c96714 100644
+index 9981ae0ff89..eb8ca50e8fd 100644
 --- a/3rdParty/s2geometry/master/src/s2/s2polygon.h
 +++ b/3rdParty/s2geometry/master/src/s2/s2polygon.h
-@@ -1009,10 +1009,10 @@ inline S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
-     }
-   } else {
-     i = prev_loop_.load(std::memory_order_relaxed);
--    if (e >= start[i] && e < start[i + 1]) {
-+    if (e >= static_cast<int>(start[i]) && e < static_cast<int>(start[i + 1])) {
-       // This edge belongs to the same loop as the previous call.
-     } else {
--      if (e == start[i + 1]) {
-+      if (e == static_cast<int>(start[i + 1])) {
-         // This edge immediately follows the loop from the previous call.
-         // Note that S2Polygon does not allow empty loops.
-         ++i;
-diff --git a/3rdParty/s2geometry/master/src/s2/s2region_coverer.h b/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-index 575f74c3ad4..1969b320cb7 100644
---- a/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-+++ b/3rdParty/s2geometry/master/src/s2/s2region_coverer.h
-@@ -269,7 +269,14 @@ class S2RegionCoverer {
-     S2Cell cell;
-     bool is_terminal;        // Cell should not be expanded further.
-     int num_children = 0;    // Number of children that intersect the region.
-+#ifdef _MSC_VER
-+#pragma warning(push)
-+#pragma warning(disable:4200)
-+#endif
-     Candidate* children[0];  // Actual size may be 0, 4, 16, or 64 elements.
-+#ifdef _MSC_VER
-+#pragma warning(pop)
-+#endif
-   };
+@@ -701,6 +701,7 @@ class S2Polygon final : public S2Region {
+   S2Polygon* Clone() const override;
+   S2Cap GetCapBound() const override;  // Cap surrounding rect bound.
+   S2LatLngRect GetRectBound() const override { return bound_; }
++  S2LatLngRect GetSubRegionBound() const { return subregion_bound_; }
+   void GetCellUnionBound(std::vector<S2CellId> *cell_ids) const override;
  
-   // If the cell intersects the given region, return a new candidate with no
-diff --git a/3rdParty/s2geometry/master/src/s2/util/coding/coder.h b/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-index df633a2c45d..4e230ea4789 100644
---- a/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/coding/coder.h
-@@ -495,7 +495,7 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
-                 "Decoder must be trivially copy-assignable");
-   static_assert(absl::is_trivially_destructible<Decoder>::value,
-                 "Decoder must be trivially destructible");
--  std::memset(array, 0, num_decoders * sizeof(Decoder));
-+  std::memset(static_cast<void*>(array), 0, num_decoders * sizeof(Decoder));
- }
- 
- inline unsigned char Decoder::get8() {
-diff --git a/3rdParty/s2geometry/master/src/s2/util/bits/bits.h b/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-index f1d5d26cef3..ae063557aa3 100644
---- a/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/bits/bits.h
-@@ -39,29 +39,29 @@ namespace Bits {
- 
- inline int FindLSBSetNonZero(uint32 n) {
-   S2_ASSUME(n != 0);
--  return absl::countr_zero(n);
-+  return static_cast<int>(absl::countr_zero(n));
- }
- 
- inline int FindLSBSetNonZero64(uint64 n) {
-   S2_ASSUME(n != 0);
--  return absl::countr_zero(n);
-+  return static_cast<int>(absl::countr_zero(n));
- }
- 
- inline int Log2FloorNonZero(uint32 n) {
-   S2_ASSUME(n != 0);
--  return absl::bit_width(n) - 1;
-+  return static_cast<int>(absl::bit_width(n)) - 1;
- }
- 
- inline int Log2FloorNonZero64(uint64 n) {
-   S2_ASSUME(n != 0);
--  return absl::bit_width(n) - 1;
-+  return static_cast<int>(absl::bit_width(n)) - 1;
- }
- 
- inline int FindMSBSetNonZero(uint32 n) { return Log2FloorNonZero(n); }
- inline int FindMSBSetNonZero64(uint64 n) { return Log2FloorNonZero64(n); }
- 
- inline int Log2Ceiling(uint32 n) {
--  int floor = absl::bit_width(n) - 1;
-+  int floor = static_cast<int>(absl::bit_width(n)) - 1;
-   if ((n & (n - 1)) == 0) {  // zero or a power of two
-     return floor;
-   } else {
-diff --git a/3rdParty/s2geometry/master/src/s2/base/port.h b/3rdParty/s2geometry/master/src/s2/base/port.h
-index 0efaba84248..328393d2ffd 100644
---- a/3rdParty/s2geometry/master/src/s2/base/port.h
-+++ b/3rdParty/s2geometry/master/src/s2/base/port.h
-@@ -59,6 +59,15 @@
- #undef ERROR
- #undef DELETE
- #undef DIFFERENCE
-+#undef S_IRUSR
-+#undef S_IWUSR
-+#undef S_IXUSR
-+#undef S_IRGRP
-+#undef S_IWGRP
-+#undef S_IXGRP
-+#undef S_IROTH
-+#undef S_IWOTH
-+#undef S_IXOTH
- #define STDIN_FILENO 0
- #define STDOUT_FILENO 1
- #define STDERR_FILENO 2
-diff --git a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-index cbc4fe9aa46..9de05c61d73 100644
---- a/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-+++ b/3rdParty/s2geometry/master/src/s2/util/gtl/compact_array.h
-@@ -413,7 +413,9 @@ class compact_array_base {
-     value_allocator_type allocator;
- 
-     T* new_ptr = allocator.allocate(capacity());
--    memcpy(new_ptr, Array(), old_capacity * sizeof(T));
-+    if (old_capacity != 0) {
-+      memcpy(new_ptr, Array(), old_capacity * sizeof(T));
-+    }
-     allocator.deallocate(Array(), old_capacity);
- 
-     SetArray(new_ptr);
+   bool Contains(const S2Cell& cell) const override;
 ```
 
 ## snappy

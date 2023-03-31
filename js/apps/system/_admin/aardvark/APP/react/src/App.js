@@ -1,6 +1,5 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
-import 'react-autocomplete-input/dist/bundle.css';
 import ReactDOM from 'react-dom';
 
 const jsoneditor = require('jsoneditor');
@@ -13,11 +12,10 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/views/ViewInfoReactView');
+require('./views/visgraphs/VisGraphReactView');
 require('./views/views/ViewSettingsReactView');
-require('./views/views/ViewConsolidationReactView');
-require('./views/views/ViewLinksReactView');
-require('./views/views/ViewJSONReactView');
+require('./views/views/ViewsListReactView');
+require('./views/collections/indices/CollectionIndicesReactView');
 
 // old libraries
 const jQuery = require('jquery');
@@ -59,7 +57,7 @@ require('../node_modules/noty/lib/themes/sunset.css');
 
 window.JST = {};
 
-function requireAll (context) {
+function requireAll(context) {
   context.keys().forEach(context);
   _.each(context.keys(), function (key) {
     // detect and store ejs templates
@@ -195,9 +193,9 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 
 class App extends Component {
   // <Overview />
-  render () {
+  render() {
     return (
-      <div className="App"/>
+      <div className="App" />
     );
   }
 }

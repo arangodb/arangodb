@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,8 +132,9 @@ void ClusterRestWalHandler::flush() {
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  auto res = flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res =
+      flushWalOnAllDBServers(feature, waitForSync, flushColumnFamilies);
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
   generateResult(rest::ResponseCode::OK,

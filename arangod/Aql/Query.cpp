@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
+#include "Aql/ProfileLevel.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -346,6 +347,8 @@ void Query::prepareQuery(SerializationFormat format) {
         throw;
       }
     }
+
+    enterState(QueryExecutionState::ValueType::PHYSICAL_INSTANTIATION);
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
@@ -937,6 +940,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
       engine->collectExecutionStats(_execStats);
     }
 
+    // execution statistics
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
 
@@ -1083,10 +1087,19 @@ QueryResult Query::explain() {
 
     result.extra = std::make_shared<VPackBuilder>();
     {
-      VPackObjectBuilder guard(result.extra.get(), /*unindexed*/ true);
-      _warnings.toVelocyPack(*result.extra);
-      result.extra->add(VPackValue("stats"));
-      opt._stats.toVelocyPack(*result.extra);
+      VPackBuilder& b = *result.extra;
+      VPackObjectBuilder guard(&b, /*unindexed*/ true);
+      // warnings
+      _warnings.toVelocyPack(b);
+      b.add(VPackValue("stats"));
+      {
+        // optimizer statistics
+        ensureExecutionTime();
+        VPackObjectBuilder guard(&b, /*unindexed*/ true);
+        opt._stats.toVelocyPack(b);
+        b.add("peakMemoryUsage", VPackValue(_resourceMonitor.peak()));
+        b.add("executionTime", VPackValue(executionTime()));
+      }
     }
 
   } catch (Exception const& ex) {
@@ -1503,6 +1516,7 @@ velocypack::Options const& Query::vpackOptions() const {
 
 transaction::Methods& Query::trxForOptimization() {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
+  TRI_ASSERT(_trx != nullptr);
   return *_trx;
 }
 
@@ -1577,7 +1591,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ss != nullptr);
 
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    TRI_ASSERT(server.substr(0, 7) != "server:");
+    TRI_ASSERT(!server.starts_with("server:"));
 
     auto f =
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
@@ -1871,7 +1885,7 @@ void Query::debugKillQuery() {
 
   QueryRegistry* registry = QueryRegistryFeature::registry();
   if (registry != nullptr) {
-    isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+    isInRegistry = registry->queryIsRegistered(_queryId);
   }
   TRI_ASSERT(isInList || isStreaming || isInRegistry ||
              _execState == QueryExecutionState::ValueType::FINALIZATION)

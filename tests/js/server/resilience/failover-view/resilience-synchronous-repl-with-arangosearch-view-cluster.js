@@ -32,6 +32,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const _ = require("lodash");
+const isEnterprise = require("internal").isEnterprise();
 const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
@@ -215,12 +216,12 @@ function SynchronousReplicationWithViewSuite () {
 
     // Insert with check:
     var id = c.insert({Hallo:12});
-    assertEqual(1, c.count());
+    assertEqual(4, c.count());
 
     viewOperations("assert", null, function assert() {
       assertEqual(
         viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} COLLECT WITH COUNT into iCount RETURN iCount",
-        bind: '{ "@vn" : name }' }).toArray()[0], 1); } );
+        bind: '{ "@vn" : name }' }).toArray()[0], 4); } );
 
     if (healing.place === 1) { healFailure(healing); }
     if (failure.place === 2) { makeFailure(failure); }
@@ -233,15 +234,21 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(result[0], 12);
     });
 
+    {
+      var result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} FILTER d.Hallo == 12 RETURN d.Hallo`).toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], 12);
+    }
+
     if (healing.place === 2) { healFailure(healing); }
     if (failure.place === 3) { makeFailure(failure); }
 
     var ids = c.insert([{Hallo:13}, {Hallo:14}]);
-    assertEqual(3, c.count());
+    assertEqual(6, c.count());
     assertEqual(2, ids.length);
     viewOperations("assert", null, function assert() {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(result.length, 3);
+      assertEqual(result.length, 6);
     });
 
     if (healing.place === 3) { healFailure(healing); }
@@ -261,6 +268,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(14, result[1].Hallo);
     });
 
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(13, result[0].Hallo);
+        assertEqual(14, result[1].Hallo);
+    }
+
     if (healing.place === 4) { healFailure(healing); }
     if (failure.place === 5) { makeFailure(failure); }
 
@@ -278,6 +293,13 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(1, result.length);
       assertEqual(100, result[0].Hallo);
     });
+
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key == '${id._key}' RETURN d`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(100, result[0].Hallo);
+    }
 
     if (healing.place === 6) { healFailure(healing); }
     if (failure.place === 7) { makeFailure(failure); }
@@ -301,6 +323,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(102, result[1].Hallo);
     });
 
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(101, result[0].Hallo);
+        assertEqual(102, result[1].Hallo);
+    }
+
     if (healing.place === 8) { healFailure(healing); }
     if (failure.place === 9) { makeFailure(failure); }
 
@@ -320,6 +350,14 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(100, result[0].Hallo);
       assertEqual(105, result[0].Hallox);
     });
+
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key == '${id._key}' RETURN d`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(100, result[0].Hallo);
+        assertEqual(105, result[0].Hallox);
+    }
 
     if (healing.place === 10) { healFailure(healing); }
     if (failure.place === 11) { makeFailure(failure); }
@@ -347,8 +385,29 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(107, result[1].Hallox);
     });
 
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d._key IN [${ids.map(e => "'" + e._key + "'").join(",")}] SORT d._key RETURN d`).toArray();
+        assertEqual(2, result.length);
+        assertEqual(101, result[0].Hallo);
+        assertEqual(102, result[1].Hallo);
+        assertEqual(106, result[0].Hallox);
+        assertEqual(107, result[1].Hallox);
+    }
+
     if (healing.place === 12) { healFailure(healing); }
-    if (failure.place === 13) { makeFailure(failure); }
+    if (failure.place === 13) {
+      makeFailure(failure);
+      // Note that it is not guaranteed that an AQL query runs without an
+      // error, directly after the leader of a collection which occurs in
+      // the query is stopped. It is entirely possible that the coordinator
+      // still picks the failed server, so we have to wait for the failover
+      // to happen. The easiest way to achieve this is to read a document,
+      // which can retry until the failover has happened:
+      if (!failure.follower) {
+        doc = c.document(id._key);
+      }
+    }
 
     // AQL:
     var q = db._query(`FOR x IN @@cn
@@ -364,6 +423,13 @@ function SynchronousReplicationWithViewSuite () {
       assertEqual(3, result.length);
       assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
     });
+
+    {
+      result = db._query(`FOR d IN ${cn} OPTIONS {indexHint: "inverted", forceIndexHint: true, waitForSync: true} 
+        FILTER d.Hallo > 0 SORT d.Hallo RETURN {'Hallo': d.Hallo}`).toArray();
+        assertEqual(3, result.length);
+        assertEqual([{Hallo:100}, {Hallo:101}, {Hallo:102}], result);
+    }
 
     if (healing.place === 13) { healFailure(healing); }
     if (failure.place === 14) { makeFailure(failure); }
@@ -385,11 +451,11 @@ function SynchronousReplicationWithViewSuite () {
     if (healing.place === 15) { healFailure(healing); }
     if (failure.place === 16) { makeFailure(failure); }
 
-    assertEqual(2, c.count());
+    assertEqual(5, c.count());
     viewOperations("assert", null, function assert(doc = id._key) {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(2, result.length);
+      assertEqual(5, result.length);
       assertEqual(undefined, result.find(e => e._key === doc));
     });
 
@@ -408,7 +474,7 @@ function SynchronousReplicationWithViewSuite () {
     viewOperations("assert", null, function assert(doc = id._key) {
       var result = viewOperations("query", { query: "FOR d IN @@vn OPTIONS {waitForSync: true} RETURN d", 
                                   bind: '{ "@vn" : name }' }).toArray();
-      assertEqual(0, result.length);
+      assertEqual(3, result.length);
     });
 
     if (healing.place === 18) { healFailure(healing); }
@@ -488,8 +554,28 @@ function SynchronousReplicationWithViewSuite () {
         c = db._create(cn, {numberOfShards: 1, replicationFactor: 2,
                             avoidServers: systemCollServers});
         
+        c.save({ name_1: "abc", "value": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
+        c.save({ name_1: "cde", "value": [{ "nested_1": [{ "nested_2": "foo234"}]}]});
+        c.save({ name_1: "efg", "value": [{ "nested_1": [{ "nested_2": "foo423"}]}]});
+
         viewOperations("drop");//try { db._view("vn1").drop(); } catch(ignore) { }
-        viewOperations("create", { properties: { links: { [cn]: { includeAllFields: true } } } });
+        let viewMeta = {};
+        let indexMeta = {};
+        if (isEnterprise) {
+          viewMeta = { properties: { links: { [cn]: { includeAllFields: true, "fields": { "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } } } };
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            "Hallo", "_key",
+            {"name": "value", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
+          ]};
+        } else {
+          viewMeta = { properties: { links: { [cn]: { includeAllFields: true } } } };
+          indexMeta = {type: 'inverted', name: 'inverted', fields: [
+            "Hallo", "_key",
+            {"name": "value[*]"}
+          ]};
+        }
+        c.ensureIndex(indexMeta); 
+        viewOperations("create", viewMeta);
 
         var servers = findCollectionServers("_system", cn);
         console.info("Test collections uses servers:", servers);

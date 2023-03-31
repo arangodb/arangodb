@@ -1,6 +1,6 @@
 gtest_replication2 priority=1000
 replication2_client cluster
-replication2_server cluster -- --dumpAgencyOnError true
+replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 # execute single test suites
 auto cluster suffix=rlog-cluster -- --dumpAgencyOnError true --test shell-replicated-logs-cluster.js

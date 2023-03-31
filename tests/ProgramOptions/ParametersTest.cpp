@@ -130,6 +130,18 @@ TEST(ParametersTest, toNumberComments) {
 }
 
 TEST(ParametersTest, toNumberUnits) {
+  ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0b"));
+  ASSERT_EQ(int64_t(1), arangodb::options::toNumber<int64_t>("1b"));
+  ASSERT_EQ(int64_t(100), arangodb::options::toNumber<int64_t>("100b"));
+  ASSERT_EQ(int64_t(1000000), arangodb::options::toNumber<int64_t>("1000000b"));
+  ASSERT_EQ(int64_t(1234567890),
+            arangodb::options::toNumber<int64_t>("1234567890b"));
+  ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0B"));
+  ASSERT_EQ(int64_t(1), arangodb::options::toNumber<int64_t>("1B"));
+  ASSERT_EQ(int64_t(100), arangodb::options::toNumber<int64_t>("100B"));
+  ASSERT_EQ(int64_t(6684888386),
+            arangodb::options::toNumber<int64_t>("6684888386B"));
+
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0k"));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0kb"));
   ASSERT_EQ(int64_t(0), arangodb::options::toNumber<int64_t>("0KB"));

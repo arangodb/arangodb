@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -394,23 +394,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
-
-#ifdef __GLIBC__
-  {
-    // test presence of environment variable GLIBCXX_FORCE_NEW
-    char const* v = getenv("GLIBCXX_FORCE_NEW");
-
-    if (v == nullptr) {
-      // environment variable not set
-      LOG_TOPIC("3909f", WARN, arangodb::Logger::MEMORY)
-          << "environment variable GLIBCXX_FORCE_NEW' is not set. "
-          << "it is recommended to set it to some value to avoid unnecessary "
-             "memory pooling in glibc++";
-      LOG_TOPIC("56d59", WARN, arangodb::Logger::MEMORY)
-          << "execute 'export GLIBCXX_FORCE_NEW=1'";
-    }
-  }
-#endif
 
   // test max_map_count
   if (MaxMapCountFeature::needsChecking()) {

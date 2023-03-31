@@ -144,8 +144,10 @@ class AllShortestPathsFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> AllShortestPathsFinder {
-    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
-    options.setStopAtFirstDepth(true);
+    arangodb::graph::PathType::Type pathType =
+        arangodb::graph::PathType::Type::AllShortestPaths;
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       pathType};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return AllShortestPathsFinder{
         MockGraphProvider(

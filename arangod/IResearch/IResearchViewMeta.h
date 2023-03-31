@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #pragma once
 
 #include <locale>
-#include <unordered_set>
 
 #include "IResearchDataStoreMeta.h"
 #include "IResearchViewSort.h"
@@ -35,6 +34,7 @@
 
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -154,7 +154,7 @@ struct IResearchViewMetaState {
 
   // collection links added to this view via IResearchLink
   // creation (may contain no-longer valid cids)
-  std::unordered_set<DataSourceId> _collections;
+  containers::FlatHashSet<DataSourceId> _collections;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

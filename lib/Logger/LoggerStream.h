@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,12 +49,6 @@ class LoggerStreamBase {
   LoggerStreamBase& operator<<(LogLevel const& level) noexcept;
 
   LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
-
-  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
 
   LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 

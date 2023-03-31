@@ -80,6 +80,7 @@ function makeDataWrapper (options) {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runRtaInArangosh";
+      this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
     }
     filter(te, filtered) {
       return true;
@@ -117,17 +118,32 @@ function makeDataWrapper (options) {
         if (this.options.hasOwnProperty('makedata_args')) {
           argv = argv.concat(toArgv(this.options['makedata_args']));
         }
-        if ((this.options.cluster) && (count === 3)) {
-          this.instanceManager.arangods.forEach(function (oneInstance, i) {
-            if (oneInstance.isRole(inst.instanceRole.dbServer)) {
-              stoppedDbServerInstance = oneInstance;
-            }
-          });
-          print('stopping dbserver ' + stoppedDbServerInstance.name +
-                ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
-          stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
-          stoppedDbServerInstance.waitForExit();
-          argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
+        if (this.options.cluster) {
+          if (count === 2) {
+            args['javascript.execute'] = fs.join(this.options.rtasource, 'test_data','run_in_arangosh.js');
+            let myargs = toArgv(args).concat([
+              '--javascript.module-directory',
+              fs.join(this.options.rtasource, 'test_data'),
+              '--',
+              fs.join(this.options.rtasource, 'test_data', 'tests', 'js', 'server', 'cluster', 'wait_for_shards_in_sync.js'),
+              '--args',
+              'true'
+            ]);
+            let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+          }
+
+          if (count === 3) {
+            this.instanceManager.arangods.forEach(function (oneInstance, i) {
+              if (oneInstance.isRole(inst.instanceRole.dbServer)) {
+                stoppedDbServerInstance = oneInstance;
+              }
+            });
+            print('stopping dbserver ' + stoppedDbServerInstance.name +
+                  ' ID: ' + stoppedDbServerInstance.id +JSON.stringify( stoppedDbServerInstance.getStructure()));
+            stoppedDbServerInstance.shutDownOneInstance(counters, false, 10);
+            stoppedDbServerInstance.waitForExit();
+            argv = argv.concat([ '--disabledDbserverUUID', stoppedDbServerInstance.id]);
+          }
         }
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
         if (this.options.extremeVerbosity !== 'silence') {
@@ -158,7 +174,7 @@ function makeDataWrapper (options) {
 }
 
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
   opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..','release-test-automation'));

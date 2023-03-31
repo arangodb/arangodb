@@ -1,10 +1,12 @@
 add_library(arango_geo STATIC
-  Ellipsoid.cpp
   GeoJson.cpp
   GeoParams.cpp
   ShapeContainer.cpp
-  Shapes.cpp
   Utils.cpp)
+
+if (NOT USE_ENTERPRISE)
+  target_sources(arango_geo PRIVATE Coding.cpp)
+endif ()
 
 target_link_libraries(arango_geo
   arango
@@ -14,7 +16,7 @@ target_link_libraries(arango_geo
 
 if (MSVC)
   target_compile_options(arango_geo PUBLIC "-J")
-endif()
+endif ()
 
 add_subdirectory(karney)
 add_subdirectory(S2)

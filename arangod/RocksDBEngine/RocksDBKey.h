@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,12 +80,6 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructCollection(TRI_voc_tick_t databaseId,
                            DataSourceId collectionId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified replicated log key
-  //////////////////////////////////////////////////////////////////////////////
-  void constructReplicatedLog(TRI_voc_tick_t databaseId,
-                              arangodb::replication2::LogId logId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified replicated state key
@@ -349,7 +343,7 @@ class RocksDBKey {
       case RocksDBEntryType::IndexEstimateValue:
       case RocksDBEntryType::KeyGeneratorValue:
       case RocksDBEntryType::View:
-      case RocksDBEntryType::ReplicatedLog:
+      case RocksDBEntryType::ReplicatedState:
         return type;
       default:
         return RocksDBEntryType::Placeholder;

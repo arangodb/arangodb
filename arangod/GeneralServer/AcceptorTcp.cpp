@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -191,9 +191,7 @@ bool tls_h2_negotiated(SSL* ssl) {
   const unsigned char* next_proto = nullptr;
   unsigned int next_proto_len = 0;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10002000L
   SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
-#endif  // OPENSSL_VERSION_NUMBER >= 0x10002000L
 
   // allowed value is "h2"
   // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml

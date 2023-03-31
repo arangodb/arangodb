@@ -50,6 +50,9 @@ global.DEFINE_MODULE('internal', (function () {
         this.code = error.code;                  // int - http status code
         this.errorNum = error.errorNum;          // int - internal arangodb error code
         this.errorMessage = error.errorMessage;  // string - error message
+        if (error.error) {
+          this.original = error;
+        }
       }
     };
 
@@ -102,17 +105,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.ARANGO_QUIET) {
     exports.quiet = global.ARANGO_QUIET;
     delete global.ARANGO_QUIET;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief coverage
-  // //////////////////////////////////////////////////////////////////////////////
-
-  exports.coverage = false;
-
-  if (global.COVERAGE) {
-    exports.coverage = global.COVERAGE;
-    delete global.COVERAGE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -1743,11 +1735,6 @@ global.DEFINE_MODULE('internal', (function () {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief options
   // //////////////////////////////////////////////////////////////////////////////
-
-  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
-    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
-    delete global.ENCRYPTION_KEY_RELOAD;
-  }
 
   let testsBasePaths = {};
   let testsBasePathsEnterprise = {};

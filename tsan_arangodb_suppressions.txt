@@ -32,10 +32,6 @@ race:VersionSet::SetLastSequence
 race:AllowImplicitCollectionsSwitcher
 race:graph::RefactoredTraverserCache::appendVertex
 
-# Known false-positive, see https://github.com/google/sanitizers/issues/953
-race:absl/synchronization/internal/waiter.cc
-race:absl::synchronization_internal::Waiter
-
 # TODO Fix known thread leaks
 thread:ClusterFeature::startHeartbeatThread
 thread:CacheManagerFeature::start
@@ -54,4 +50,4 @@ race:DummyConnection::sendRequest
 # 4. ctx_lock unlock; wait_for on ctx_lock; ctx_lock lock
 # 5. s[i + 1].flush_mutex lock
 # It should be fixed in future, because current code doing a lot unnecessary stuff
-deadlock:iresearch::index_writer::flush_pending
+deadlock:irs::IndexWriter::FlushPending

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,6 +65,7 @@ namespace arangodb::replication2::replicated_state::document {
 struct IDocumentStateAgencyHandler;
 struct IDocumentStateNetworkHandler;
 struct IDocumentStateShardHandler;
+struct IDocumentStateSnapshotHandler;
 struct IDocumentStateTransactionHandler;
 struct IDocumentStateTransaction;
 
@@ -73,6 +75,8 @@ struct IDocumentStateHandlersFactory {
       -> std::shared_ptr<IDocumentStateAgencyHandler> = 0;
   virtual auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> = 0;
+  virtual auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+      -> std::unique_ptr<IDocumentStateSnapshotHandler> = 0;
   virtual auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(DocumentLogEntry const& doc,
@@ -94,6 +98,8 @@ class DocumentStateHandlersFactory
       -> std::shared_ptr<IDocumentStateAgencyHandler> override;
   auto createShardHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateShardHandler> override;
+  auto createSnapshotHandler(GlobalLogIdentifier const& gid)
+      -> std::unique_ptr<IDocumentStateSnapshotHandler> override;
   auto createTransactionHandler(GlobalLogIdentifier gid)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(DocumentLogEntry const& doc,

@@ -39,6 +39,7 @@ const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 
 const toArgv = require('internal').toArgv;
+const { isEnterprise, versionHas } = require("@arangodb/test-helper");
 
 const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
@@ -172,8 +173,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
 }
 
 function recovery (options) {
-  if (!global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] ||
-      global.ARANGODB_CLIENT_VERSION(true)['failure-tests'] === 'false') {
+  if (!versionHas('failure-tests')) {
     return {
       recovery: {
         status: false,
@@ -187,19 +187,11 @@ function recovery (options) {
     status: true
   };
 
-  let useEncryption = false;
-
-  if (global.ARANGODB_CLIENT_VERSION) {
-    let version = global.ARANGODB_CLIENT_VERSION(true);
-    if (version.hasOwnProperty('enterprise-version')) {
-      useEncryption = true;
-    }
-  }
+  let useEncryption = isEnterprise();
 
   let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
-
   let count = 0;
 
   let tmpMgr = new tmpDirMmgr('recovery', options);
@@ -298,6 +290,7 @@ function recovery (options) {
           if (params.keyDir !== "") {
             fs.removeDirectoryRecursive(params.keyDir, true);
           }
+          params.instance.cleanup();
         }
         break;
       }
@@ -322,7 +315,7 @@ function recovery (options) {
   return results;
 }
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
+exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

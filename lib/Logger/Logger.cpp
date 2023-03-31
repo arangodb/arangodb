@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -233,7 +233,7 @@ void Logger::setLogStructuredParams(
     std::unordered_map<std::string, bool> const& paramsAndValues) {
   WRITE_LOCKER(guard, Logger::_structuredParamsLock);
   for (const auto& [paramName, value] : paramsAndValues) {
-    if (auto it = allowList.find({paramName.data(), paramName.size()});
+    if (auto it = allowList.find(std::string_view{paramName});
         it == allowList.end()) {
       continue;
     }

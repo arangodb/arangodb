@@ -97,6 +97,11 @@ function recoverySuite () {
           // intentionally ignore "This is an unlicensed ArangoDB instance...
           return false;
         }
+        if (line.match(/\[5e48f\].*blob/)) {
+          // intentionally ignore startup warning about BlobDB being an
+          // experimental feature
+          return false;
+        }
         return true;
       });
 

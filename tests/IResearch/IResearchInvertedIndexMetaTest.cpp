@@ -45,8 +45,7 @@ void serializationChecker(ArangodServer& server,
 
   arangodb::iresearch::IResearchInvertedIndexMeta metaLhs, metaRhs;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server));
+  TRI_vocbase_t vocbase(testDBInfo(server));
   auto res = metaLhs.init(server, json->slice(), true, errorString,
                           std::string_view(vocbase.name()));
   {
@@ -469,8 +468,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          std::string_view(vocbase.name()));
     {
@@ -623,8 +621,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
 
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          std::string_view(vocbase.name()));
     {
@@ -663,8 +660,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
@@ -697,8 +693,7 @@ TEST_F(IResearchInvertedIndexMetaTest,
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), false, errorString,
                        std::string_view(vocbase.name()));
   ASSERT_FALSE(res);
@@ -741,8 +736,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = metaLhs.init(server.server(), json->slice(), false, errorString,
                             std::string_view(vocbase.name()));
     {
@@ -769,8 +763,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
                                       kDefinitionWithoutAnalyzers.size());
 
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto res = metaRhs.init(server.server(), json->slice(), false, errorString,
                             std::string_view(vocbase.name()));
     {
@@ -906,8 +899,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
   {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     ASSERT_TRUE(meta.init(server.server(), json->slice(), false, errorString,
                           std::string_view(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
@@ -956,8 +948,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), true, errorString,
                        std::string_view(vocbase.name()));
   {
@@ -1018,8 +1009,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testmatchesFieldsDefinition) {
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto res = meta.init(server.server(), json->slice(), true, errorString,
                        std::string_view(vocbase.name()));
   {

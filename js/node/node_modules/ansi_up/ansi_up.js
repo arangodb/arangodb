@@ -34,10 +34,12 @@ var PacketKind;
 })(PacketKind || (PacketKind = {}));
 var AnsiUp = (function () {
     function AnsiUp() {
-        this.VERSION = "5.0.1";
+        this.VERSION = "5.1.0";
         this.setup_palettes();
         this._use_classes = false;
         this.bold = false;
+        this.italic = false;
+        this.underline = false;
         this.fg = this.bg = null;
         this._buffer = '';
         this._url_whitelist = { 'http': 1, 'https': 1 };
@@ -266,7 +268,7 @@ var AnsiUp = (function () {
         return blocks.join("");
     };
     AnsiUp.prototype.with_state = function (pkt) {
-        return { bold: this.bold, fg: this.fg, bg: this.bg, text: pkt.text };
+        return { bold: this.bold, italic: this.italic, underline: this.underline, fg: this.fg, bg: this.bg, text: pkt.text };
     };
     AnsiUp.prototype.process_ansi = function (pkt) {
         var sgr_cmds = pkt.text.split(';');
@@ -276,12 +278,26 @@ var AnsiUp = (function () {
             if (isNaN(num) || num === 0) {
                 this.fg = this.bg = null;
                 this.bold = false;
+                this.italic = false;
+                this.underline = false;
             }
             else if (num === 1) {
                 this.bold = true;
             }
+            else if (num === 3) {
+                this.italic = true;
+            }
+            else if (num === 4) {
+                this.underline = true;
+            }
             else if (num === 22) {
                 this.bold = false;
+            }
+            else if (num === 23) {
+                this.italic = false;
+            }
+            else if (num === 24) {
+                this.underline = false;
             }
             else if (num === 39) {
                 this.fg = null;
@@ -335,7 +351,7 @@ var AnsiUp = (function () {
         if (txt.length === 0)
             return txt;
         txt = this.escape_txt_for_html(txt);
-        if (!fragment.bold && fragment.fg === null && fragment.bg === null)
+        if (!fragment.bold && !fragment.italic && !fragment.underline && fragment.fg === null && fragment.bg === null)
             return txt;
         var styles = [];
         var classes = [];
@@ -343,6 +359,10 @@ var AnsiUp = (function () {
         var bg = fragment.bg;
         if (fragment.bold)
             styles.push('font-weight:bold');
+        if (fragment.italic)
+            styles.push('font-style:italic');
+        if (fragment.underline)
+            styles.push('text-decoration:underline');
         if (!this._use_classes) {
             if (fg)
                 styles.push("color:rgb(" + fg.rgb.join(',') + ")");

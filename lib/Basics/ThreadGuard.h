@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+// It's test only abstraction other code should use some thread pool
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 
 #include <thread>
 #include <vector>
@@ -63,3 +67,5 @@ struct ThreadGuard {
 };
 
 }  // namespace arangodb
+
+#endif

@@ -1,5 +1,6 @@
 add_library(arango_v8server STATIC
   FoxxFeature.cpp
+  GlobalContextMethods.cpp
   V8Context.cpp
   V8DealerFeature.cpp
   v8-actions.cpp
@@ -37,6 +38,3 @@ target_link_libraries(arango_v8server
 target_include_directories(arango_v8server PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-
-target_compile_options(arango_v8server PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})

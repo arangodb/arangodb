@@ -11,7 +11,6 @@ add_library(arango_aql STATIC
   AqlItemBlockInputRange.cpp
   AqlItemBlockManager.cpp
   AqlItemBlockUtils.cpp
-  AqlItemMatrix.cpp
   AqlTransaction.cpp
   AqlValue.cpp
   AqlValueGroup.cpp
@@ -81,7 +80,6 @@ add_library(arango_aql STATIC
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  IResearchViewExecutor.cpp
   IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
   LateMaterializedExpressionContext.cpp
@@ -187,9 +185,6 @@ target_include_directories(arango_aql PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
   "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-target_compile_options(arango_aql PRIVATE
-	${CMAKE_DEPRECATE_OPTIONS})
-
 ################################################################################
 ## BISON/FLEX
 ################################################################################
@@ -218,6 +213,9 @@ if (USE_MAINTAINER_MODE AND NOT MSVC)
   )
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   set_source_files_properties(tokens.cpp PROPERTIES COMPILE_FLAGS -Wno-sign-compare)
+endif ()
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  set_source_files_properties(grammar.cpp PROPERTIES COMPILE_FLAGS -Wno-unused-but-set-variable)
 endif ()

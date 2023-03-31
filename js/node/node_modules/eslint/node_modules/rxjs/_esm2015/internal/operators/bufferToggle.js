@@ -18,7 +18,6 @@ class BufferToggleOperator {
 class BufferToggleSubscriber extends OuterSubscriber {
     constructor(destination, openings, closingSelector) {
         super(destination);
-        this.openings = openings;
         this.closingSelector = closingSelector;
         this.contexts = [];
         this.add(subscribeToResult(this, openings));
@@ -53,7 +52,7 @@ class BufferToggleSubscriber extends OuterSubscriber {
         this.contexts = null;
         super._complete();
     }
-    notifyNext(outerValue, innerValue, outerIndex, innerIndex, innerSub) {
+    notifyNext(outerValue, innerValue) {
         outerValue ? this.closeBuffer(outerValue) : this.openBuffer(innerValue);
     }
     notifyComplete(innerSub) {

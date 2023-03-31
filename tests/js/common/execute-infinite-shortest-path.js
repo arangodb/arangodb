@@ -40,7 +40,7 @@ function main (args) {
     e,
     pathes,
     console = require('console'),
-    Helper = require('test-helper').Helper,
+    helper = require('test-helper').helper,
     caching = false;
 
   if (args[2] === 'true') {
@@ -71,7 +71,7 @@ function main (args) {
 
   console.log('Importing');
 
-  Helper.process(base_path + 'generated_edges.csv', function (row) {
+  helper.process(base_path + 'generated_edges.csv', function (row) {
     v1 = graph.getOrAddVertex(row[1]);
     v2 = graph.getOrAddVertex(row[2]);
     e = graph.addEdge(v1, v2);
@@ -89,7 +89,7 @@ function main (args) {
   };
 
   while (true) {
-    Helper.process(base_path + 'generated_testcases.csv', processor);
+    helper.process(base_path + 'generated_testcases.csv', processor);
     console.log('Round Finished');
   }
 

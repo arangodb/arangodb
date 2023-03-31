@@ -79,8 +79,7 @@ TEST_F(AqlQueryLimitsTest, testManyNodes) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo));
 
   std::string query("LET x = NOOPT('testi')\n");
   size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes -
@@ -103,8 +102,7 @@ TEST_F(AqlQueryLimitsTest, testTooManyNodes) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo));
 
   std::string query("LET x = NOOPT('testi')\n");
   size_t cnt = arangodb::aql::ExecutionPlan::maxPlanNodes;
@@ -123,8 +121,7 @@ TEST_F(AqlQueryLimitsTest, testDeepRecursion) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo));
 
   std::string query("RETURN 0");
   size_t cnt = arangodb::aql::Ast::maxExpressionNesting - 2;
@@ -146,8 +143,7 @@ TEST_F(AqlQueryLimitsTest, testTooDeepRecursion) {
   arangodb::CreateDatabaseInfo testDBInfo(server.server(),
                                           arangodb::ExecContext::current());
   testDBInfo.load("testVocbase", 2);
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        std::move(testDBInfo));
+  TRI_vocbase_t vocbase(std::move(testDBInfo));
 
   std::string query("RETURN 0");
   size_t cnt = arangodb::aql::Ast::maxExpressionNesting;

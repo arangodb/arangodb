@@ -77,9 +77,12 @@ TEST(IResearchComparerTest, test_comparer_single_entry) {
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());
+  auto compare = [&](auto const& lhs, auto const& rhs) {
+    return comparer.Compare(lhs, rhs) < 0;
+  };
   EXPECT_FALSE(
-      std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
-  std::sort(actual_values.begin(), actual_values.end(), comparer);
+      std::is_sorted(actual_values.begin(), actual_values.end(), compare));
+  std::sort(actual_values.begin(), actual_values.end(), compare);
   EXPECT_EQ(expected_values, actual_values);
 }
 
@@ -139,8 +142,11 @@ TEST(IResearchComparerTest, test_comparer_multiple_entries) {
   EXPECT_TRUE(comparer.empty());
   comparer.reset(sort);
   EXPECT_FALSE(comparer.empty());
+  auto compare = [&](auto const& lhs, auto const& rhs) {
+    return comparer.Compare(lhs, rhs) < 0;
+  };
   EXPECT_FALSE(
-      std::is_sorted(actual_values.begin(), actual_values.end(), comparer));
-  std::sort(actual_values.begin(), actual_values.end(), comparer);
+      std::is_sorted(actual_values.begin(), actual_values.end(), compare));
+  std::sort(actual_values.begin(), actual_values.end(), compare);
   EXPECT_EQ(expected_values, actual_values);
 }

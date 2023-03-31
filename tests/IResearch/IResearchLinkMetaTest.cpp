@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -227,8 +228,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
 
   // with active vocbase
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -283,8 +283,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     std::unordered_set<std::string> expectedOverrides = {"default", "all",
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -293,18 +292,15 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
 
     for (auto& field : meta._fields) {
       EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(
-                        field.key())));  // FIXME: after C++20 remove cast and
+                        field.first)));  // FIXME: after C++20 remove cast and
                                          // use heterogeneous lookup
 
-      for (auto& fieldOverride : field.value()->_fields) {
-        auto& actual = *(fieldOverride.value());
+      for (auto& fieldOverride : field.second._fields) {
+        auto& actual = fieldOverride.second;
 
-        EXPECT_EQ(1U,
-                  expectedOverrides.erase(static_cast<std::string>(
-                      fieldOverride.key())));  // FIXME: after C++20 remove cast
-                                               // and use heterogeneous lookup
+        EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.first));
 
-        if ("default" == fieldOverride.key()) {
+        if ("default" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());
           EXPECT_FALSE(actual._includeAllFields);
           EXPECT_FALSE(actual._trackListPositions);
@@ -319,7 +315,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
                            irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
-        } else if ("all" == fieldOverride.key()) {
+        } else if ("all" == fieldOverride.first) {
           EXPECT_EQ(2U, actual._fields.size());
           EXPECT_TRUE((actual._fields.find("d") != actual._fields.end()));
           EXPECT_TRUE((actual._fields.find("e") != actual._fields.end()));
@@ -336,7 +332,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
               (arangodb::iresearch::Features(irs::IndexFeatures::FREQ) ==
                actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
-        } else if ("some" == fieldOverride.key()) {
+        } else if ("some" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());    // not inherited
           EXPECT_TRUE(actual._includeAllFields);  // inherited
           EXPECT_TRUE(actual._trackListPositions);
@@ -358,7 +354,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
                    arangodb::iresearch::FieldFeatures::NORM,
                    irs::IndexFeatures::FREQ) == itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
-        } else if ("none" == fieldOverride.key()) {
+        } else if ("none" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());      // not inherited
           EXPECT_TRUE(actual._includeAllFields);    // inherited
           EXPECT_TRUE(actual._trackListPositions);  // inherited
@@ -448,8 +444,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
     std::unordered_set<std::string> expectedOverrides = {"default", "all",
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE(
@@ -457,19 +452,14 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
     EXPECT_EQ(3U, meta._fields.size());
 
     for (auto& field : meta._fields) {
-      EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(
-                        field.key())));  // FIXME: after C++20 remove cast and
-                                         // use heterogeneous lookup
+      EXPECT_EQ(1U, expectedFields.erase(field.first));
 
-      for (auto& fieldOverride : field.value()->_fields) {
-        auto& actual = *(fieldOverride.value());
+      for (auto& fieldOverride : field.second._fields) {
+        auto& actual = fieldOverride.second;
 
-        EXPECT_EQ(1U,
-                  expectedOverrides.erase(static_cast<std::string>(
-                      fieldOverride.key())));  // FIXME: after C++20 remove cast
-                                               // and use heterogeneous lookup
+        EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.first));
 
-        if ("default" == fieldOverride.key()) {
+        if ("default" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());
           EXPECT_FALSE(actual._includeAllFields);
           EXPECT_FALSE(actual._trackListPositions);
@@ -484,7 +474,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
                            irs::IndexFeatures::FREQ) ==
                        actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
-        } else if ("all" == fieldOverride.key()) {
+        } else if ("all" == fieldOverride.first) {
           EXPECT_EQ(2U, actual._fields.size());
           EXPECT_TRUE((actual._fields.find("d") != actual._fields.end()));
           EXPECT_TRUE((actual._fields.find("e") != actual._fields.end()));
@@ -501,7 +491,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
               (arangodb::iresearch::Features(irs::IndexFeatures::FREQ) ==
                actual._analyzers.begin()->_pool->features()));
           EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
-        } else if ("some" == fieldOverride.key()) {
+        } else if ("some" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());    // not inherited
           EXPECT_TRUE(actual._includeAllFields);  // inherited
           EXPECT_TRUE(actual._trackListPositions);
@@ -523,7 +513,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
                    arangodb::iresearch::FieldFeatures::NORM,
                    irs::IndexFeatures::FREQ) == itr->_pool->features()));
           EXPECT_FALSE(!itr->_pool->get());
-        } else if ("none" == fieldOverride.key()) {
+        } else if ("none" == fieldOverride.first) {
           EXPECT_TRUE(actual._fields.empty());      // not inherited
           EXPECT_TRUE(actual._includeAllFields);    // inherited
           EXPECT_TRUE(actual._trackListPositions);  // inherited
@@ -640,8 +630,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
   // with active vocbase (not fullAnalyzerDefinition)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -670,8 +659,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
 
   // with active vocbase (with fullAnalyzerDefinition)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -741,48 +729,48 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   // copy from meta
   meta._fields["a"] = meta;
   // do not inherit fields to match jSon inheritance
-  meta._fields["a"]->_fields.clear();
+  meta._fields["a"]._fields.clear();
   // copy from meta
   meta._fields["b"] = meta;
   // do not inherit fields to match jSon inheritance
-  meta._fields["b"]->_fields.clear();
+  meta._fields["b"]._fields.clear();
   // copy from meta
   meta._fields["c"] = meta;
   // do not inherit fields to match jSon inheritance
-  meta._fields["c"]->_fields.clear();
-  meta._fields["c"]->_fields["default"]->_analyzers.emplace_back(identity);
+  meta._fields["c"]._fields.clear();
+  meta._fields["c"]._fields["default"]._analyzers.emplace_back(identity);
   // will override values below
-  auto& overrideAll = meta._fields["c"]->_fields["all"];
+  auto& overrideAll = meta._fields["c"]._fields["all"];
 
   // initialize with parent, override below
-  auto& overrideSome = meta._fields["c"]->_fields["some"] = meta._fields["c"];
+  auto& overrideSome = (meta._fields["c"]._fields["some"] = meta._fields["c"]);
   // initialize with parent
-  auto& overrideNone = meta._fields["c"]->_fields["none"] = meta._fields["c"];
+  auto& overrideNone = (meta._fields["c"]._fields["none"] = meta._fields["c"]);
   meta._sort.emplace_back(
       {arangodb::basics::AttributeName(std::string_view("_key"), false)}, true);
   meta._sort.emplace_back(
       {arangodb::basics::AttributeName(std::string_view("_id"), false)}, false);
 
   // do not inherit fields to match jSon inheritance
-  overrideAll->_fields.clear();
-  overrideAll->_fields["x"]->_analyzers.emplace_back(identity);
-  overrideAll->_fields["y"]->_analyzers.emplace_back(identity);
-  overrideAll->_includeAllFields = false;
-  overrideAll->_trackListPositions = false;
-  overrideAll->_storeValues = arangodb::iresearch::ValueStorage::NONE;
-  overrideAll->_analyzers.clear();
-  overrideAll->_analyzers.emplace_back(
+  overrideAll._fields.clear();
+  overrideAll._fields["x"]._analyzers.emplace_back(identity);
+  overrideAll._fields["y"]._analyzers.emplace_back(identity);
+  overrideAll._includeAllFields = false;
+  overrideAll._trackListPositions = false;
+  overrideAll._storeValues = arangodb::iresearch::ValueStorage::NONE;
+  overrideAll._analyzers.clear();
+  overrideAll._analyzers.emplace_back(
       arangodb::iresearch::IResearchLinkMeta::Analyzer(
           analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty",
                         arangodb::QueryAnalyzerRevisions::QUERY_LATEST),
           "empty"));
 
   // do not inherit fields to match jSon inheritance
-  overrideSome->_fields.clear();
-  overrideSome->_trackListPositions = false;
-  overrideSome->_storeValues = arangodb::iresearch::ValueStorage::ID;
+  overrideSome._fields.clear();
+  overrideSome._trackListPositions = false;
+  overrideSome._storeValues = arangodb::iresearch::ValueStorage::ID;
   // do not inherit fields to match jSon inheritance
-  overrideNone->_fields.clear();
+  overrideNone._fields.clear();
 
   // without active vobcase (not fullAnalyzerDefinition)
   {
@@ -1065,8 +1053,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
                                                               "some", "none"};
     std::unordered_set<std::string_view> expectedAnalyzers = {"::empty",
                                                               "identity"};
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1185,8 +1172,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
              VPackParser::fromJson("{\"args\":\"en\"}")->slice().toString()},
             {"identity", VPackSlice::emptyObjectSlice().toString()},
         };
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
+    TRI_vocbase_t vocbase(testDBInfo(server.server()));
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1552,8 +1538,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskNone) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   // missing analyzer (name only)
   {
@@ -1688,9 +1673,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -1702,7 +1687,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -1739,9 +1724,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -1754,7 +1739,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -1888,9 +1873,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -1902,7 +1887,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -1947,9 +1932,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -1962,7 +1947,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2077,9 +2062,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2091,7 +2076,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2136,9 +2121,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -2151,7 +2136,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2310,9 +2295,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2324,7 +2309,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2369,9 +2354,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -2384,7 +2369,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2591,8 +2576,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 // https://github.com/arangodb/backlog/issues/581
 // (ArangoSearch view doesn't validate uniqueness of analyzers)
 TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& analyzers =
       server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -2732,8 +2716,7 @@ class IResearchLinkMetaTestNoSystem
 };
 
 TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   ASSERT_EQ(nullptr,
             server.getFeature<arangodb::SystemDatabaseFeature>().use());
@@ -2820,9 +2803,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2834,7 +2817,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -2871,9 +2854,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
       ASSERT_EQ(*identity, *analyzer._pool);
     }
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -2886,7 +2869,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3021,9 +3004,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3035,7 +3018,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3080,9 +3063,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -3095,7 +3078,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3211,9 +3194,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3225,7 +3208,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3270,9 +3253,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -3285,7 +3268,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3445,9 +3428,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ(std::string("testVocbase::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3459,7 +3442,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ(std::string("_system::empty"), analyzer._pool->name());
       EXPECT_EQ(std::string("empty"), analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3504,9 +3487,9 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     }
 
     ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ(2, meta._fields.begin().value()->_analyzers.size());
+    ASSERT_EQ(2, meta._fields.begin()->second._analyzers.size());
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[0];
+      auto& analyzer = meta._fields.begin()->second._analyzers[0];
       EXPECT_EQ("testVocbase::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       // definition from cache since it's not presented "analyzerDefinitions"
@@ -3519,7 +3502,7 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
                 analyzer._pool);
     }
     {
-      auto& analyzer = meta._fields.begin().value()->_analyzers[1];
+      auto& analyzer = meta._fields.begin()->second._analyzers[1];
       EXPECT_EQ("_system::empty", analyzer._pool->name());
       EXPECT_EQ("empty", analyzer._pool->type());
       EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
@@ -3708,8 +3691,7 @@ TEST_F(IResearchLinkMetaTest, test_collectioNameComparison) {
 
 #ifdef USE_ENTERPRISE
 TEST_F(IResearchLinkMetaTest, test_withNested) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   arangodb::iresearch::IResearchLinkMeta meta;
   auto json = arangodb::velocypack::Parser::fromJson(
       R"({ 
@@ -3752,118 +3734,118 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
   ASSERT_TRUE(meta._hasNested);
 
   {
-    auto const abc = meta._fields.findPtr("abc");
-    ASSERT_NE(nullptr, abc);
-    ASSERT_FALSE((*abc)->_hasNested);
-    ASSERT_FALSE((*abc)->_includeAllFields);
-    ASSERT_FALSE((*abc)->_trackListPositions);
-    ASSERT_EQ(1, (*abc)->_analyzers.size());
-    ASSERT_TRUE((*abc)->_nested.empty());
-    ASSERT_TRUE((*abc)->_fields.empty());
+    auto const abc = meta._fields.find("abc");
+    ASSERT_NE(meta._fields.end(), abc);
+    ASSERT_FALSE(abc->second._hasNested);
+    ASSERT_FALSE(abc->second._includeAllFields);
+    ASSERT_FALSE(abc->second._trackListPositions);
+    ASSERT_EQ(1, abc->second._analyzers.size());
+    ASSERT_TRUE(abc->second._nested.empty());
+    ASSERT_TRUE(abc->second._fields.empty());
   }
   {
-    auto const foo = meta._fields.findPtr("foo");
-    ASSERT_NE(nullptr, foo);
-    ASSERT_TRUE((*foo)->_hasNested);
-    ASSERT_FALSE((*foo)->_includeAllFields);
-    ASSERT_FALSE((*foo)->_trackListPositions);
-    ASSERT_EQ(1, (*foo)->_analyzers.size());
-    ASSERT_EQ(3, (*foo)->_nested.size());
+    auto const foo = meta._fields.find("foo");
+    ASSERT_NE(meta._fields.end(), foo);
+    ASSERT_TRUE(foo->second._hasNested);
+    ASSERT_FALSE(foo->second._includeAllFields);
+    ASSERT_FALSE(foo->second._trackListPositions);
+    ASSERT_EQ(1, foo->second._analyzers.size());
+    ASSERT_EQ(3, foo->second._nested.size());
     {
-      auto const bar = (*foo)->_nested.findPtr("bar");
-      ASSERT_NE(nullptr, bar);
-      ASSERT_FALSE((*bar)->_hasNested);
-      ASSERT_FALSE((*bar)->_includeAllFields);
-      ASSERT_FALSE((*bar)->_trackListPositions);
-      ASSERT_EQ(1, (*bar)->_analyzers.size());
-      ASSERT_TRUE((*bar)->_nested.empty());
-      ASSERT_TRUE((*bar)->_fields.empty());
+      auto const bar = foo->second._nested.find("bar");
+      ASSERT_NE(foo->second._nested.end(), bar);
+      ASSERT_FALSE(bar->second._hasNested);
+      ASSERT_FALSE(bar->second._includeAllFields);
+      ASSERT_FALSE(bar->second._trackListPositions);
+      ASSERT_EQ(1, bar->second._analyzers.size());
+      ASSERT_TRUE(bar->second._nested.empty());
+      ASSERT_TRUE(bar->second._fields.empty());
     }
     {
-      auto const bas = (*foo)->_nested.findPtr("bas");
-      ASSERT_NE(nullptr, bas);
-      ASSERT_TRUE((*bas)->_hasNested);
-      ASSERT_FALSE((*bas)->_includeAllFields);
-      ASSERT_FALSE((*bas)->_trackListPositions);
-      ASSERT_EQ(1, (*bas)->_analyzers.size());
-      ASSERT_EQ(3, (*bas)->_nested.size());
+      auto const bas = foo->second._nested.find("bas");
+      ASSERT_NE(foo->second._nested.end(), bas);
+      ASSERT_TRUE(bas->second._hasNested);
+      ASSERT_FALSE(bas->second._includeAllFields);
+      ASSERT_FALSE(bas->second._trackListPositions);
+      ASSERT_EQ(1, bas->second._analyzers.size());
+      ASSERT_EQ(3, bas->second._nested.size());
       {
-        auto const a = (*bas)->_nested.findPtr("a");
-        ASSERT_FALSE((*a)->_hasNested);
-        ASSERT_EQ(1, (*a)->_analyzers.size());
-        auto analyzer = (*a)->_analyzers[0];
+        auto const a = bas->second._nested.find("a");
+        ASSERT_FALSE(a->second._hasNested);
+        ASSERT_EQ(1, a->second._analyzers.size());
+        auto analyzer = a->second._analyzers[0];
         ASSERT_EQ("empty", analyzer._shortName);
       }
       {
-        auto const a = (*bas)->_nested.findPtr("b");
-        ASSERT_FALSE((*a)->_hasNested);
-        ASSERT_EQ(1, (*a)->_analyzers.size());
-        auto analyzer = (*a)->_analyzers[0];
+        auto const a = bas->second._nested.find("b");
+        ASSERT_FALSE(a->second._hasNested);
+        ASSERT_EQ(1, a->second._analyzers.size());
+        auto analyzer = a->second._analyzers[0];
         ASSERT_EQ("identity", analyzer._shortName);
       }
       {
-        auto const a = (*bas)->_nested.findPtr("c");
-        ASSERT_FALSE((*a)->_hasNested);
-        ASSERT_EQ(1, (*a)->_analyzers.size());
-        auto analyzer = (*a)->_analyzers[0];
+        auto const a = bas->second._nested.find("c");
+        ASSERT_FALSE(a->second._hasNested);
+        ASSERT_EQ(1, a->second._analyzers.size());
+        auto analyzer = a->second._analyzers[0];
         ASSERT_EQ("identity", analyzer._shortName);
       }
-      ASSERT_TRUE((*bas)->_fields.empty());
+      ASSERT_TRUE(bas->second._fields.empty());
     }
     {
-      auto const kas = (*foo)->_nested.findPtr("kas");
-      ASSERT_NE(nullptr, kas);
-      ASSERT_TRUE((*kas)->_hasNested);
-      ASSERT_FALSE((*kas)->_includeAllFields);
-      ASSERT_FALSE((*kas)->_trackListPositions);
-      ASSERT_EQ(1, (*kas)->_analyzers.size());
-      auto analyzer = (*kas)->_analyzers[0];
+      auto const kas = foo->second._nested.find("kas");
+      ASSERT_NE(foo->second._nested.end(), kas);
+      ASSERT_TRUE(kas->second._hasNested);
+      ASSERT_FALSE(kas->second._includeAllFields);
+      ASSERT_FALSE(kas->second._trackListPositions);
+      ASSERT_EQ(1, kas->second._analyzers.size());
+      auto analyzer = kas->second._analyzers[0];
       ASSERT_EQ("identity", analyzer._shortName);
-      ASSERT_EQ(1, (*kas)->_nested.size());
+      ASSERT_EQ(1, kas->second._nested.size());
       {
-        auto const skas = (*kas)->_nested.findPtr("skas");
-        ASSERT_NE(nullptr, skas);
-        ASSERT_FALSE((*skas)->_hasNested);
-        ASSERT_TRUE((*skas)->_includeAllFields);
-        ASSERT_FALSE((*skas)->_trackListPositions);
-        ASSERT_EQ(1, (*skas)->_analyzers.size());
-        auto analyzer = (*skas)->_analyzers[0];
+        auto const skas = kas->second._nested.find("skas");
+        ASSERT_NE(kas->second._nested.end(), skas);
+        ASSERT_FALSE(skas->second._hasNested);
+        ASSERT_TRUE(skas->second._includeAllFields);
+        ASSERT_FALSE(skas->second._trackListPositions);
+        ASSERT_EQ(1, skas->second._analyzers.size());
+        auto analyzer = skas->second._analyzers[0];
         ASSERT_EQ("empty", analyzer._shortName);
-        ASSERT_EQ(0, (*skas)->_fields.size());
-        ASSERT_EQ(0, (*skas)->_nested.size());
+        ASSERT_EQ(0, skas->second._fields.size());
+        ASSERT_EQ(0, skas->second._nested.size());
       }
-      ASSERT_TRUE((*kas)->_fields.empty());
+      ASSERT_TRUE(kas->second._fields.empty());
     }
-    ASSERT_TRUE((*foo)->_fields.empty());
+    ASSERT_TRUE(foo->second._fields.empty());
   }
   {
-    auto const bar = meta._fields.findPtr("bar");
-    ASSERT_NE(nullptr, bar);
-    ASSERT_TRUE((*bar)->_hasNested);
-    ASSERT_FALSE((*bar)->_includeAllFields);
-    ASSERT_FALSE((*bar)->_trackListPositions);
-    ASSERT_EQ(1, (*bar)->_analyzers.size());
-    ASSERT_EQ(2, (*bar)->_nested.size());
-    ASSERT_TRUE((*bar)->_fields.empty());
+    auto const bar = meta._fields.find("bar");
+    ASSERT_NE(meta._fields.end(), bar);
+    ASSERT_TRUE(bar->second._hasNested);
+    ASSERT_FALSE(bar->second._includeAllFields);
+    ASSERT_FALSE(bar->second._trackListPositions);
+    ASSERT_EQ(1, bar->second._analyzers.size());
+    ASSERT_EQ(2, bar->second._nested.size());
+    ASSERT_TRUE(bar->second._fields.empty());
     {
-      auto const nestedD = (*bar)->_nested.findPtr("d");
-      ASSERT_NE(nullptr, nestedD);
-      ASSERT_FALSE((*nestedD)->_hasNested);
-      ASSERT_FALSE((*nestedD)->_includeAllFields);
-      ASSERT_FALSE((*nestedD)->_trackListPositions);
-      ASSERT_EQ(1, (*nestedD)->_analyzers.size());
-      ASSERT_TRUE((*nestedD)->_nested.empty());
-      ASSERT_TRUE((*nestedD)->_fields.empty());
+      auto const nestedD = bar->second._nested.find("d");
+      ASSERT_NE(bar->second._nested.end(), nestedD);
+      ASSERT_FALSE(nestedD->second._hasNested);
+      ASSERT_FALSE(nestedD->second._includeAllFields);
+      ASSERT_FALSE(nestedD->second._trackListPositions);
+      ASSERT_EQ(1, nestedD->second._analyzers.size());
+      ASSERT_TRUE(nestedD->second._nested.empty());
+      ASSERT_TRUE(nestedD->second._fields.empty());
     }
     {
-      auto const nestedC = (*bar)->_nested.findPtr("c");
-      ASSERT_NE(nullptr, nestedC);
-      ASSERT_FALSE((*nestedC)->_hasNested);
-      ASSERT_FALSE((*nestedC)->_includeAllFields);
-      ASSERT_FALSE((*nestedC)->_trackListPositions);
-      ASSERT_EQ(1, (*nestedC)->_analyzers.size());
-      ASSERT_TRUE((*nestedC)->_nested.empty());
-      ASSERT_TRUE((*nestedC)->_fields.empty());
+      auto const nestedC = bar->second._nested.find("c");
+      ASSERT_NE(bar->second._nested.end(), nestedC);
+      ASSERT_FALSE(nestedC->second._hasNested);
+      ASSERT_FALSE(nestedC->second._includeAllFields);
+      ASSERT_FALSE(nestedC->second._trackListPositions);
+      ASSERT_EQ(1, nestedC->second._analyzers.size());
+      ASSERT_TRUE(nestedC->second._nested.empty());
+      ASSERT_TRUE(nestedC->second._fields.empty());
     }
   }
   VPackBuilder serialized;
@@ -3956,8 +3938,7 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
     "analyzers": [ "identity" ]
   })");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
   std::string errorField;
   ASSERT_FALSE(
       meta.init(server.server(), json->slice(), errorField, vocbase.name()));
@@ -3968,8 +3949,7 @@ TEST_F(IResearchLinkMetaTest, test_withNested) {
 #ifdef USE_ENTERPRISE
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -3999,21 +3979,20 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitions) {
   ASSERT_EQ(2, meta._fields.size());
   {
     auto const& field = meta._fields["nothot"];
-    ASSERT_FALSE(field.get()->_cache);
+    ASSERT_FALSE(field._cache);
   }
   {
     auto const& field = meta._fields["field"];
-    ASSERT_TRUE(field.get()->_cache);
-    auto const& foo = field.get()->_fields.findPtr("foo");
-    ASSERT_FALSE(foo->get()->_cache);
-    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
-    ASSERT_TRUE(hotfoo->get()->_cache);
+    ASSERT_TRUE(field._cache);
+    auto const& foo = field._fields.find("foo");
+    ASSERT_FALSE(foo->second._cache);
+    auto const& hotfoo = field._fields.find("hotfoo");
+    ASSERT_TRUE(hotfoo->second._cache);
   }
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4044,21 +4023,20 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsGlobalCache) {
   ASSERT_EQ(2, meta._fields.size());
   {
     auto const& field = meta._fields["globalhot"];
-    ASSERT_TRUE(field.get()->_cache);
+    ASSERT_TRUE(field._cache);
   }
   {
     auto const& field = meta._fields["field"];
-    ASSERT_TRUE(field.get()->_cache);
-    auto const& foo = field.get()->_fields.findPtr("foo");
-    ASSERT_FALSE(foo->get()->_cache);
-    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
-    ASSERT_TRUE(hotfoo->get()->_cache);
+    ASSERT_TRUE(field._cache);
+    auto const& foo = field._fields.find("foo");
+    ASSERT_FALSE(foo->second._cache);
+    auto const& hotfoo = field._fields.find("hotfoo");
+    ASSERT_TRUE(hotfoo->second._cache);
   }
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4092,15 +4070,15 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
   ASSERT_EQ(2, meta._fields.size());
   {
     auto const& field = meta._fields["globalhot"];
-    ASSERT_TRUE(field.get()->_cache);
+    ASSERT_TRUE(field._cache);
   }
   {
     auto const& field = meta._fields["field"];
-    ASSERT_TRUE(field.get()->_cache);
-    auto const& foo = field.get()->_fields.findPtr("foo");
-    ASSERT_FALSE(foo->get()->_cache);
-    auto const& hotfoo = field.get()->_fields.findPtr("hotfoo");
-    ASSERT_TRUE(hotfoo->get()->_cache);
+    ASSERT_TRUE(field._cache);
+    auto const& foo = field._fields.find("foo");
+    ASSERT_FALSE(foo->second._cache);
+    auto const& hotfoo = field._fields.find("hotfoo");
+    ASSERT_TRUE(hotfoo->second._cache);
   }
   ASSERT_EQ(2, meta._storedValues.columns().size());
   ASSERT_TRUE(meta._storedValues.columns()[0].cached);
@@ -4114,6 +4092,11 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsDefinitionsSortCache) {
 
 // Circumventing fakeit inability to build a mock
 // for class with pure virtual functions in base
+class mock_field_iterator : public irs::field_iterator {
+ public:
+  void Destroy() const noexcept override {}
+};
+
 class mock_term_reader : public irs::term_reader {
  public:
   irs::seek_term_iterator::ptr iterator(irs::SeekMode mode) const override {
@@ -4124,8 +4107,9 @@ class mock_term_reader : public irs::term_reader {
     return nullptr;
   }
 
-  irs::doc_iterator::ptr wanderator(const irs::seek_cookie&,
-                                    irs::IndexFeatures) const override {
+  irs::doc_iterator::ptr wanderator(
+      const irs::seek_cookie&, irs::IndexFeatures,
+      const irs::WanderatorOptions&) const override {
     return nullptr;
   }
 
@@ -4139,6 +4123,13 @@ class mock_term_reader : public irs::term_reader {
 
   size_t bit_union(const cookie_provider& provider,
                    size_t* bitset) const override {
+    return 0;
+  }
+
+  irs::term_meta term(irs::bytes_view) const noexcept override { return {}; }
+
+  size_t read_documents(irs::bytes_view,
+                        std::span<irs::doc_id_t>) const override {
     return 0;
   }
 
@@ -4157,11 +4148,14 @@ class mock_term_reader : public irs::term_reader {
 
 void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
                            arangodb::iresearch::IResearchLinkMeta const& meta,
-                           std::set<irs::field_id> expected) {
+                           std::set<irs::field_id> expected,
+                           arangodb::containers::FlatHashSet<std::string> const*
+                               expectedGeoColumns = nullptr) {
   std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
   mock_term_reader mockTermReader;
 
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
+  fakeit::Mock<mock_field_iterator> mockFieldIterator;
+  fakeit::When(Method(mockFieldIterator, Destroy)).AlwaysReturn();
   fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
     if (field == mockedFields.end()) {
       field = mockedFields.begin();
@@ -4179,22 +4173,31 @@ void makeCachedColumnsTest(std::vector<irs::field_meta> const& mockedFields,
 
   fakeit::Mock<irs::field_reader> mockFieldsReader;
   fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator, false>(
-        &mockFieldIterator.get());
+    return irs::memory::to_managed<irs::field_iterator>(
+        mockFieldIterator.get());
   });
   std::set<irs::field_id> actual;
-  arangodb::iresearch::collectCachedNormColumns(actual, mockFieldsReader.get(),
-                                                meta);
+  arangodb::containers::FlatHashSet<std::string> geoColumns;
+  arangodb::iresearch::collectCachedColumns(actual, geoColumns,
+                                            mockFieldsReader.get(), meta);
+  if (!expectedGeoColumns) {
+    ASSERT_TRUE(geoColumns.empty());
+  } else {
+    ASSERT_EQ(*expectedGeoColumns, geoColumns);
+  }
   ASSERT_EQ(actual, expected);
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
-      "analyzerDefinitions": [ 
+      "analyzerDefinitions": [
+         { "name": "geo", "type": "geojson", 
+           "properties": {
+             "type":"shape","options":{"maxCells":20,"minLevel":4,"maxLevel":23}},
+           "features": [ "frequency" ]},
          { "name": "empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]},
          { "name": "::empty", "type": "empty", "properties": {"args":"ru"}, "features": [ "frequency" ]} 
       ],
@@ -4204,7 +4207,7 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
         "field": {
           "fields": {
             "foo": {"cache":false},
-            "hotfoo": { "includeAllFields":true}
+            "hotfoo": { "includeAllFields":true, "analyzers":["geo"]}
           },
           "cache":true,
           "analyzers": [ "identity", "empty", "_system::empty", "::empty"]
@@ -4311,38 +4314,13 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumns) {
     mockedFields.push_back(std::move(field_meta));
   }
 
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator, false>(
-        &mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 15};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4412,38 +4390,13 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsIncludeAllFields) {
     mockedFields.push_back(std::move(field_meta));
   }
 
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator, false>(
-        &mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 2, 3, 4, 5, 7};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4511,39 +4464,13 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsWithNested) {
     field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
     mockedFields.push_back(std::move(field_meta));
   }
-
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator, false>(
-        &mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 3};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
 }
 
 TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
+  TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
   auto json = VPackParser::fromJson(
       R"({
@@ -4610,31 +4537,6 @@ TEST_F(IResearchLinkMetaTest, test_cachedColumnsOnlyNested) {
     field_meta.features.emplace(irs::type<irs::Norm>::id(), 4);
     mockedFields.push_back(std::move(field_meta));
   }
-
-  std::vector<irs::field_meta>::const_iterator field = mockedFields.end();
-  mock_term_reader mockTermReader;
-
-  fakeit::Mock<irs::field_iterator> mockFieldIterator;
-  fakeit::When(Method(mockFieldIterator, next)).AlwaysDo([&]() {
-    if (field == mockedFields.end()) {
-      field = mockedFields.begin();
-      mockTermReader.field_meta_ = &(*field);
-      return true;
-    }
-    ++field;
-    if (field != mockedFields.end()) {
-      mockTermReader.field_meta_ = &(*field);
-    }
-    return field != mockedFields.end();
-  });
-  fakeit::When(Method(mockFieldIterator, value))
-      .AlwaysDo([&]() -> irs::term_reader const& { return mockTermReader; });
-
-  fakeit::Mock<irs::field_reader> mockFieldsReader;
-  fakeit::When(Method(mockFieldsReader, iterator)).AlwaysDo([&]() {
-    return irs::memory::to_managed<irs::field_iterator, false>(
-        &mockFieldIterator.get());
-  });
   std::set<irs::field_id> expected{1, 4};
   makeCachedColumnsTest(mockedFields, meta, expected);
   ASSERT_TRUE(arangodb::iresearch::hasHotFields(meta));
