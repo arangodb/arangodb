@@ -28,8 +28,6 @@
 #include "Aql/TraversalNode.h"
 #include "Containers/SmallVector.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -194,13 +192,12 @@ void arangodb::aql::replaceLastAccessOnGraphPathRule(
     auto [didApplyChange, replacementCondition] = swapOutLastElementAccesses(
         plan->getAst(), calculation->expression()->nodeForModification(),
         candidates);
-    // Get's true as soon as one of the swapOut calls returns true
+    // Gets true as soon as one of the swapOut calls returns true
     appliedAChange |= didApplyChange;
     if (replacementCondition != nullptr) {
       // This is the indicator that we have to replace the full expression here.
       calculation->expression()->replaceNode(replacementCondition);
     }
   }
-  // Nothing done
   opt->addPlan(std::move(plan), rule, appliedAChange);
 }
