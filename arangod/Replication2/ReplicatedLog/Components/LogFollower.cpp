@@ -114,7 +114,7 @@ FollowerManager::FollowerManager(
       snapshot(std::make_shared<SnapshotManager>(
           *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
-                                                     loggerContext)),
+                                                     loggerContext, scheduler)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit, metrics,
           loggerContext)),
