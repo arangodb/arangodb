@@ -1326,6 +1326,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         nodeSize = 20;
         if (Number.isInteger(node[config.nodeSize])) {
           nodeSize = node[config.nodeSize];  
+          sizeAttributeFound = true;
         } else {
           sizeAttributeFound = false;
         }
@@ -1363,8 +1364,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
         nodeObj.group = coll;
         nodeObj.color = "";
       } else if (config.nodeColorAttribute !== '') {
-        nodeObj.group = JSON.stringify(node[config.nodeColorAttribute]);
-        nodeObj.color = "";
+        var attr = node[config.nodeColorAttribute]
+        if (attr) {
+          nodeObj.group = JSON.stringify(attr);
+          nodeObj.color = "";
+          nodeObj.colorAttributeFound = true;
+        } else {
+          nodeObj.colorAttributeFound = false;
+        }
       }
 
       nodeObj.sortColor = nodeObj.color;
@@ -1510,6 +1517,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
                 edgeObj.color = tmpObjEdges[attr];
                 //edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
               }
+              edgeObj.colorAttributeFound = true;
             } else {
               edgeObj.colorAttributeFound = false;
             }
