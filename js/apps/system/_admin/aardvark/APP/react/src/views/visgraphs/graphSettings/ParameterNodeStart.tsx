@@ -69,12 +69,6 @@ const ParameterNodeStart = () => {
     const inputSplit = inputValue.split("/");
     const [collectionName] = inputSplit;
     const db = getCurrentDB();
-    // filter = "doc.@attribute >= @search && STARTS_WITH(doc.@attribute, @search)";
-    // db.query("(FOR doc IN " +
-    // collectionName+
-    // " FILTER " +
-    // filter +
-    // " LIMIT (@limit + 1) RETURN doc._id)");
     if (inputSplit.length === 1) {
       // filter here
       return Promise.resolve(
@@ -112,7 +106,6 @@ const ParameterNodeStart = () => {
       };
     });
   };
-
 
   return (
     <>
