@@ -365,7 +365,7 @@ void Worker<V, E, M>::_startProcessing() {
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
-      futures.emplace_back(_processVertices(idx, quiver));
+      futures.emplace_back(futures::makeFuture([idx, quiver]() { return_processVertices(idx, quiver); }));
     }
 
     if (!futures.empty()) {
