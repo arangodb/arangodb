@@ -58,18 +58,28 @@ const useAddNodeAction = ({
 };
 
 export const AddNodeModal = () => {
-  const { graphName, onClearAction, datasets, graphData } = useGraph();
+  const {
+    graphName,
+    onClearAction,
+    datasets,
+    graphData,
+    selectedAction
+  } = useGraph();
   const { vertexCollections } = graphData?.settings || {};
   const { addNode } = useAddNodeAction({
     graphName,
     onSuccess: response => {
       const { _id: id, _key: label } = response.new || {};
+      const { pointer } = selectedAction?.entity || {};
       const nodeModel = {
         id,
         label,
-        shape: "dot"
+        shape: "dot",
+        size: 20,
+        x: Number(pointer?.canvas.x),
+        y: Number(pointer?.canvas.y)
       };
-      datasets?.nodes.add(nodeModel as NodeDataType);
+      datasets?.nodes.add((nodeModel as unknown) as NodeDataType);
       onClearAction();
     },
     onFailure: onClearAction

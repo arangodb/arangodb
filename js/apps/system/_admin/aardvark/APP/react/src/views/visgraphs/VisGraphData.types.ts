@@ -9,6 +9,8 @@ export type NodeDataType = {
   shape: string;
   color?: string;
   fixed?: boolean;
+  x?: number;
+  y?: number;
   font: {
     strokeWidth: number;
     strokeColor: string;

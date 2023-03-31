@@ -100,8 +100,10 @@ export const GraphNetwork = () => {
     registerNetwork();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
-  const position = useElementPosition(containerRef);
-  const height = position ? `calc(100vh - ${position.top}px)` : "80vh";
+  const containerPosition = useElementPosition(containerRef);
+  const height = containerPosition
+    ? `calc(100vh - ${containerPosition.top}px)`
+    : "80vh";
   return (
     <Box
       ref={containerRef}

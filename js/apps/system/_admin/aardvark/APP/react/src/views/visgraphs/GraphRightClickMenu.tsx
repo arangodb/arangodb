@@ -36,13 +36,13 @@ export const GraphRightClickMenu = ({
       const nodeId = network.getNodeAt(pointer.DOM) as string;
       const edgeId = network.getEdgeAt(pointer.DOM) as string;
       if (nodeId) {
-        setRightClickedEntity({ type: "node", nodeId });
+        setRightClickedEntity({ type: "node", nodeId, pointer });
         network.selectNodes([nodeId]);
       } else if (edgeId) {
-        setRightClickedEntity({ type: "edge", edgeId });
+        setRightClickedEntity({ type: "edge", edgeId, pointer });
         network.selectEdges([edgeId]);
       } else {
-        setRightClickedEntity({ type: "canvas" });
+        setRightClickedEntity({ type: "canvas", pointer });
       }
     });
   }, [network, setRightClickedEntity]);

@@ -22,6 +22,7 @@ type ActionEntityType = {
   type: string;
   nodeId?: string;
   edgeId?: string;
+  pointer: { DOM: { x: number; y: number }; canvas: { x: number; y: number } };
 };
 
 export type SelectedActionType = {
