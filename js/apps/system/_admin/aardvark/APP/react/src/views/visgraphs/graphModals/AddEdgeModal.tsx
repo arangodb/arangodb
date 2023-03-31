@@ -139,7 +139,7 @@ export const AddEdgeModal = () => {
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
           <Button
-            colorScheme="red"
+            colorScheme="green"
             onClick={() => {
               if (from && to) {
                 addEdge({

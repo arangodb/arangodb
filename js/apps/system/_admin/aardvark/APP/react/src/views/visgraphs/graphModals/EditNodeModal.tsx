@@ -101,7 +101,7 @@ export const EditNodeModal = () => {
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
           <Button
-            colorScheme="red"
+            colorScheme="green"
             onClick={() => {
               updateNode({ nodeId, updatedData: json });
             }}

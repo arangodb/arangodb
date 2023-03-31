@@ -101,7 +101,7 @@ export const EditEdgeModal = () => {
         <HStack>
           <Button onClick={onClearAction}>Cancel</Button>
           <Button
-            colorScheme="red"
+            colorScheme="green"
             onClick={() => {
               udpateEdge({ edgeId, updatedData: json });
             }}
