@@ -28,13 +28,13 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -649,7 +649,7 @@ class RocksDBEngine final : public StorageEngine {
   basics::ReadWriteLock _purgeLock;
 
   /// @brief mutex that protects the storage engine health check
-  Mutex _healthMutex;
+  std::mutex _healthMutex;
 
   /// @brief timestamp of last health check log message. we only log health
   /// check errors every so often, in order to prevent log spamming
@@ -663,7 +663,7 @@ class RocksDBEngine final : public StorageEngine {
   HealthData _healthData;
 
   /// @brief lock for _rebuildCollections
-  Mutex _rebuildCollectionsLock;
+  std::mutex _rebuildCollectionsLock;
   /// @brief map of database/collection-guids for which we need to repair trees
   std::map<std::pair<TRI_voc_tick_t, std::string>, bool> _rebuildCollections;
   /// @brief number of currently running tree rebuild jobs jobs

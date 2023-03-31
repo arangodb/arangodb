@@ -56,35 +56,27 @@ void FreeMemoryTask::run() {
   try {
     using basics::SpinLocker;
 
-    {
+    bool ran = _cache->freeMemory();
+
+    if (ran) {
+      std::uint64_t reclaimed = 0;
       SpinLocker guard(SpinLocker::Mode::Write, _manager._lock);
-
-      // note: FreeMemoryTask must not run concurrently with the
-      // cache's own shutdown to avoid data inconsistency
-      SpinLocker taskGuard(SpinLocker::Mode::Read, _cache->_shutdownLock);
-
-      bool ran = _cache->freeMemory();
-
-      if (ran) {
-        std::uint64_t reclaimed = 0;
-        Metadata& metadata = _cache->metadata();
-        {
-          SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
-          TRI_ASSERT(metaGuard.isLocked());
-          reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
-          metadata.adjustLimits(metadata.softUsageLimit,
-                                metadata.softUsageLimit);
-          metadata.toggleResizing();
-        }
-        TRI_ASSERT(_manager._globalAllocation >=
-                   reclaimed + _manager._fixedAllocation);
-        _manager._globalAllocation -= reclaimed;
-        TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
+      Metadata& metadata = _cache->metadata();
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+        TRI_ASSERT(metaGuard.isLocked());
+        reclaimed = metadata.hardUsageLimit - metadata.softUsageLimit;
+        metadata.adjustLimits(metadata.softUsageLimit, metadata.softUsageLimit);
+        metadata.toggleResizing();
       }
+      TRI_ASSERT(_manager._globalAllocation >=
+                 reclaimed + _manager._fixedAllocation);
+      _manager._globalAllocation -= reclaimed;
+      TRI_ASSERT(_manager._globalAllocation >= _manager._fixedAllocation);
     }
 
     _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
+  } catch (...) {
     // always count down at the end
     _manager.unprepareTask(_environment);
     throw;
@@ -121,22 +113,22 @@ void MigrateTask::run() {
   try {
     using basics::SpinLocker;
 
-    {
-      // note: MigrateTask must not run concurrently with the
-      // cache's own shutdown to avoid data inconsistency
-      SpinLocker taskGuard(SpinLocker::Mode::Read, _cache->_shutdownLock);
+    // do the actual migration
+    bool ran = _cache->migrate(_table);
 
-      // do the actual migration
-      bool ran = _cache->migrate(_table);
-
-      if (!ran) {
-        _manager.reclaimTable(std::move(_table), false);
-        TRI_ASSERT(_table == nullptr);
+    if (!ran) {
+      Metadata& metadata = _cache->metadata();
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Write, metadata.lock());
+        TRI_ASSERT(metaGuard.isLocked());
+        metadata.toggleMigrating();
       }
+      _manager.reclaimTable(std::move(_table), false);
+      TRI_ASSERT(_table == nullptr);
     }
 
     _manager.unprepareTask(_environment);
-  } catch (std::exception const&) {
+  } catch (...) {
     // always count down at the end
     _manager.unprepareTask(_environment);
     throw;

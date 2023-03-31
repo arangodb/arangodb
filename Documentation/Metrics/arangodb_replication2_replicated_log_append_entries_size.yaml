@@ -1,0 +1,14 @@
+name: arangodb_replication2_replicated_log_append_entries_size
+introducedIn: "3.11.0"
+help: |
+  Histogram of the size of append-entries message.
+unit: bytes
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The leader of a replicated log replicates the log entries by sending
+  append-entries requests to its followers.
+  This is a histogram keeping track of the size of those messages.

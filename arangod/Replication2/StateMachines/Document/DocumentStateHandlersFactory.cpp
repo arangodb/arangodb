@@ -28,6 +28,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,13 +45,20 @@ DocumentStateHandlersFactory::DocumentStateHandlersFactory(
 auto DocumentStateHandlersFactory::createShardHandler(TRI_vocbase_t& vocbase,
                                                       GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateShardHandler> {
+  auto maintenance =
+      createMaintenanceActionExecutor(gid, ServerState::instance()->getId());
   return std::make_shared<DocumentStateShardHandler>(vocbase, std::move(gid),
-                                                     _maintenanceFeature);
+                                                     std::move(maintenance));
 }
 
 auto DocumentStateHandlersFactory::createSnapshotHandler(
     TRI_vocbase_t& vocbase, GlobalLogIdentifier const& gid)
     -> std::shared_ptr<IDocumentStateSnapshotHandler> {
+  // TODO: this looks unsafe, because the vocbase that we have fetched above
+  // is just a raw pointer. there may be a concurrent thread that deletes
+  // the vocbase we just looked up.
+  // this should be improved, by using `DatabaseFeature::useDatabase()`
+  // instead, which returns a managed pointer.
   auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   return std::make_shared<DocumentStateSnapshotHandler>(
       std::make_unique<DatabaseSnapshotFactory>(vocbase), ci.rebootTracker());
@@ -95,6 +103,13 @@ auto DocumentStateHandlersFactory::createNetworkHandler(GlobalLogIdentifier gid)
     -> std::shared_ptr<IDocumentStateNetworkHandler> {
   return std::make_shared<DocumentStateNetworkHandler>(std::move(gid),
                                                        _connectionPool);
+}
+
+auto DocumentStateHandlersFactory::createMaintenanceActionExecutor(
+    GlobalLogIdentifier gid, ServerID server)
+    -> std::shared_ptr<IMaintenanceActionExecutor> {
+  return std::make_shared<MaintenanceActionExecutor>(
+      std::move(gid), std::move(server), _maintenanceFeature);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

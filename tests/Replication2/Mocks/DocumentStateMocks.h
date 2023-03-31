@@ -33,6 +33,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
+#include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
@@ -170,13 +171,17 @@ struct MockDocumentStateHandlersFactory
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
       createNetworkHandler, (GlobalLogIdentifier), (override));
+  MOCK_METHOD(
+      std::shared_ptr<replicated_state::document::IMaintenanceActionExecutor>,
+      createMaintenanceActionExecutor, (GlobalLogIdentifier, ServerID),
+      (override));
 
   auto makeUniqueDatabaseSnapshotFactory()
       -> std::unique_ptr<replicated_state::document::IDatabaseSnapshotFactory>;
   auto makeRealSnapshotHandler(cluster::RebootTracker* rebootTracker = nullptr)
       -> std::shared_ptr<MockDocumentStateSnapshotHandler>;
   auto makeRealTransactionHandler(
-      GlobalLogIdentifier const&,
+      TRI_vocbase_t* vocbase, GlobalLogIdentifier const&,
       std::shared_ptr<replicated_state::document::IDocumentStateShardHandler>)
       -> std::shared_ptr<MockDocumentStateTransactionHandler>;
 
@@ -225,6 +230,16 @@ struct MockDocumentStateTransactionHandler
  private:
   std::shared_ptr<replicated_state::document::IDocumentStateTransactionHandler>
       _real;
+};
+
+struct MockMaintenanceActionExecutor
+    : replicated_state::document::IMaintenanceActionExecutor {
+  MOCK_METHOD(Result, executeCreateCollectionAction,
+              (ShardID, CollectionID, std::shared_ptr<VPackBuilder>),
+              (override));
+  MOCK_METHOD(Result, executeDropCollectionAction, (ShardID, CollectionID),
+              (override));
+  MOCK_METHOD(void, addDirty, (), (override));
 };
 
 struct MockDocumentStateShardHandler

@@ -26,7 +26,6 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/Store.h"
 #include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Cluster/ClusterTypes.h"
 
@@ -34,6 +33,7 @@
 
 #include <chrono>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_set>
@@ -302,11 +302,8 @@ class Supervision : public arangodb::Thread {
       std::string const& coordinatorID, uint64_t rebootID,
       bool coordinatorFound);
 
-  /// @brief Migrate chains of distributeShardsLike to depth 1
-  void fixPrototypeChain(VPackBuilder&);
-
-  mutable Mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
-  Agent* _agent;        /**< @brief My agent */
+  std::mutex _lock;  // guards snapshot, _jobId, jobIdMax, _selfShutdown
+  Agent* _agent;     /**< @brief My agent */
   Store _spearhead;
   mutable Node const* _snapshot;
   Node _transient;

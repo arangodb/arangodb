@@ -24,7 +24,6 @@
 
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
 #include "Basics/ThreadGuard.h"
@@ -40,7 +39,7 @@ using namespace arangodb::basics;
 // RecursiveMutexLocker
 
 TEST(RecursiveLockerTest, testRecursiveMutexNoAcquire) {
-  arangodb::Mutex mutex;
+  std::mutex mutex;
   std::atomic<std::thread::id> owner;
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker, mutex, owner, false);
@@ -54,7 +53,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexNoAcquire) {
 }
 
 TEST(RecursiveLockerTest, testRecursiveMutexAcquire) {
-  arangodb::Mutex mutex;
+  std::mutex mutex;
   std::atomic<std::thread::id> owner;
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker, mutex, owner, true);
@@ -65,7 +64,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexAcquire) {
 }
 
 TEST(RecursiveLockerTest, testRecursiveMutexLockUnlock) {
-  arangodb::Mutex mutex;
+  std::mutex mutex;
   std::atomic<std::thread::id> owner;
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker, mutex, owner, true);
@@ -84,7 +83,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexLockUnlock) {
 }
 
 TEST(RecursiveLockerTest, testRecursiveMutexNested) {
-  arangodb::Mutex mutex;
+  std::mutex mutex;
   std::atomic<std::thread::id> owner;
 
   RECURSIVE_MUTEX_LOCKER_NAMED(locker1, mutex, owner, true);
@@ -109,7 +108,7 @@ TEST(RecursiveLockerTest, testRecursiveMutexNested) {
 }
 
 TEST(RecursiveLockerTest, testRecursiveMutexMultiThreaded) {
-  arangodb::Mutex mutex;
+  std::mutex mutex;
   std::atomic<std::thread::id> owner;
 
   // number of threads started

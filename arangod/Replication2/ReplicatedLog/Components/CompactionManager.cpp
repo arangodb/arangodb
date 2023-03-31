@@ -135,8 +135,8 @@ void CompactionManager::triggerAsyncCompaction(
         compaction.range = compactionRange;
         LOG_CTX("28d7d", TRACE, self->loggerContext)
             << "starting compaction on range " << compactionRange;
-        auto f = store->removeFront(index);
         guard.unlock();
+        auto f = store->removeFront(index);
         auto result = co_await asResult(std::move(f));
         auto cresult = CompactResult{.error = std::nullopt,
                                      .stopReason = reason,

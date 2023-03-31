@@ -29,17 +29,15 @@ namespace arangodb::pregel::conductor {
 struct ConductorState;
 
 struct Done : ExecutionState {
-  Done() = default;
+  Done(ConductorState& conductor);
   auto name() const -> std::string override { return "done"; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
+                            worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  }
+      -> std::optional<std::unique_ptr<ExecutionState>> override;
+
+  ConductorState& conductor;
 };
 
 }  // namespace arangodb::pregel::conductor

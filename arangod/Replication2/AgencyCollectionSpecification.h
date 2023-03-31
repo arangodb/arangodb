@@ -53,9 +53,9 @@ struct CollectionGroup {
 
   struct Attributes {
     struct MutableAttributes {
-      std::size_t writeConcern;
-      std::size_t replicationFactor;
-      bool waitForSync;
+      std::size_t writeConcern{};
+      std::size_t replicationFactor{};
+      bool waitForSync{};
     };
 
     MutableAttributes mutableAttributes;

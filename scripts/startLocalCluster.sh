@@ -205,6 +205,11 @@ start() {
         CMD="rr $CMD"
     fi
 
+    REPLICATION_VERSION_PARAM=""
+    if [ -n "$REPLICATION_VERSION" ]; then
+      REPLICATION_VERSION_PARAM="--database.default-replication-version=${REPLICATION_VERSION}"
+    fi
+
     TYPE=$1
     PORT=$2
     mkdir -p cluster/data$PORT
@@ -231,6 +236,7 @@ start() {
       --server.descriptors-minimum 0
       --javascript.allow-admin-execute true
       --http.trusted-origin all
+      $REPLICATION_VERSION_PARAM
 EOM
 
     SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"

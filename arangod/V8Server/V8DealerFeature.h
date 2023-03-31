@@ -70,13 +70,24 @@ class V8DealerFeature final : public ArangodFeature {
 
   explicit V8DealerFeature(Server& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void unprepare() override final;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
+  void prepare() final;
+  void start() final;
+  void unprepare() final;
+
+  void verifyAppPaths();
+  ErrorCode createDatabase(std::string_view name, std::string_view id,
+                           bool removeExisting);
+  void cleanupDatabase(TRI_vocbase_t& database);
 
  private:
+  ErrorCode createApplicationDirectory(std::string const& name,
+                                       std::string const& basePath,
+                                       bool removeExisting);
+  ErrorCode createBaseApplicationDirectory(std::string const& appPath,
+                                           std::string const& type);
+
   double _gcFrequency;
   uint64_t _gcInterval;
   double _maxContextAge;

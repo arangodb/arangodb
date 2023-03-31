@@ -24,18 +24,16 @@
 
 #include "Basics/Guarded.h"
 #include "Basics/UnshackledMutex.h"
-#include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/ShardProperties.h"
 
 #include <shared_mutex>
 
 struct TRI_vocbase_t;
-namespace arangodb {
-class MaintenanceFeature;
-}
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IMaintenanceActionExecutor;
 
 struct IDocumentStateShardHandler {
   virtual ~IDocumentStateShardHandler() = default;
@@ -49,10 +47,18 @@ struct IDocumentStateShardHandler {
 };
 
 class DocumentStateShardHandler : public IDocumentStateShardHandler {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
  public:
-  explicit DocumentStateShardHandler(TRI_vocbase_t& vocbase,
-                                     GlobalLogIdentifier gid,
-                                     MaintenanceFeature& maintenanceFeature);
+  explicit DocumentStateShardHandler(
+      GlobalLogIdentifier gid,
+      std::shared_ptr<IMaintenanceActionExecutor> maintenance)
+      : _gid(std::move(gid)), _maintenance(std::move(maintenance)) {}
+#endif
+
+ public:
+  explicit DocumentStateShardHandler(
+      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid,
+      std::shared_ptr<IMaintenanceActionExecutor> maintenance);
   auto ensureShard(ShardID shard, CollectionID collection,
                    std::shared_ptr<VPackBuilder> properties)
       -> ResultT<bool> override;
@@ -62,16 +68,8 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto getShardMap() -> ShardMap override;
 
  private:
-  auto executeCreateCollectionAction(ShardID shard, CollectionID collection,
-                                     std::shared_ptr<VPackBuilder> properties)
-      -> Result;
-  auto executeDropCollectionAction(ShardID shard, CollectionID collection)
-      -> Result;
-
- private:
   GlobalLogIdentifier _gid;
-  MaintenanceFeature& _maintenanceFeature;
-  ServerID _server;
+  std::shared_ptr<IMaintenanceActionExecutor> _maintenance;
   struct {
     ShardMap shards;
     std::shared_mutex mutex;

@@ -32,7 +32,9 @@ inline namespace comp {
 
 struct IStorageManager;
 
-struct FollowerCommitManager : IFollowerCommitManager {
+struct FollowerCommitManager
+    : IFollowerCommitManager,
+      std::enable_shared_from_this<FollowerCommitManager> {
   explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&,
                                  LoggerContext const& loggerContext);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
@@ -46,12 +48,9 @@ struct FollowerCommitManager : IFollowerCommitManager {
   void resign() noexcept;
 
  private:
-  using ResolveType = std::pair<WaitForResult, InMemoryLog>;
-  using ResolveFuture = futures::Future<ResolveType>;
-  using ResolvePromise = futures::Promise<ResolveType>;
+  using ResolvePromise = futures::Promise<WaitForResult>;
+  using ResolveFuture = futures::Future<WaitForResult>;
   using WaitForQueue = std::multimap<LogIndex, ResolvePromise>;
-
-  auto waitForBoth(LogIndex) noexcept -> ResolveFuture;
 
   struct GuardedData {
     explicit GuardedData(IStorageManager&, IStateHandleManager&);

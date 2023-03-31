@@ -29,10 +29,8 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/cpu-relax.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"

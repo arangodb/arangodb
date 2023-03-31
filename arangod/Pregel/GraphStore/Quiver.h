@@ -39,15 +39,18 @@ struct Quiver {
   using VertexType = Vertex<V, E>;
   using EdgeType = Edge<E>;
 
-  auto emplace(VertexType&& v) -> void { vertices.emplace_back(std::move(v)); }
+  auto emplace(VertexType&& v) -> void {
+    edgeCounter += v._edges.size();
+    vertices.emplace_back(std::move(v));
+  }
   auto numberOfVertices() -> size_t { return vertices.size(); }
-  // TODO
-  auto numberOfEdges() -> size_t { return 0; }
+  auto numberOfEdges() -> size_t { return edgeCounter; }
 
   auto begin() { return std::begin(vertices); }
   auto end() { return std::end(vertices); }
 
   std::vector<VertexType> vertices;
+  std::size_t edgeCounter{0};
 };
 
 template<typename V, typename E, typename Inspector>

@@ -24,6 +24,7 @@
 
 #include "Supervision.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <memory>
 
@@ -47,6 +48,45 @@ namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
+
+namespace {
+
+bool isParticipantUsable(LogCurrent const& current,
+                         ParticipantsHealth const& health,
+                         ParticipantId const& participantId) {
+  // server should be healthy and have a snapshot
+  if (not health.notIsFailed(participantId)) {
+    return false;
+  }
+  if (auto local = current.localState.find(participantId);
+      local != current.localState.end()) {
+    // TODO As noted in getParticipantsAcceptableAsLeaders() as well, we should
+    //      instead check that the state machine is operational, which means
+    //      that not only is there a snapshot, but it is a snapshot that's valid
+    //      in the current term.
+    if (not local->second.snapshotAvailable) {
+      return false;
+    }
+    return true;
+  } else {
+    return false;  // not even in current
+  }
+}
+}  // namespace
+
+/// Computes the number of usable participants, i.e. those which are not failed
+/// and have a snapshot.
+/// \return Number of usable participants.
+auto computeNumUsableParticipants(
+    LogCurrent const& current, std::vector<ParticipantId> const& participants,
+    ParticipantsHealth const& health) -> std::size_t {
+  auto count = std::count_if(participants.cbegin(), participants.cend(),
+                             [&](auto const& pid) {
+                               return isParticipantUsable(current, health, pid);
+                             });
+  TRI_ASSERT(count >= 0);
+  return count;
+}
 
 auto computeEffectiveWriteConcern(LogTargetConfig const& config,
                                   ParticipantsFlagsMap const& participants,
@@ -126,6 +166,10 @@ auto getParticipantsAcceptableAsLeaders(
       continue;
     }
     // check has snapshot
+    // TODO the participant should also have the leader connection established;
+    //      otherwise, the "snapshot available" information may be outdated and
+    //      lead to a temporary stall. See also the comment in
+    //      isParticipantUsable().
     auto iter = localStates.find(participant);
     if (iter == localStates.end() or not iter->second.snapshotAvailable) {
       continue;
@@ -374,6 +418,10 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (!log.current->leader.has_value()) {
+    return;
+  }
+
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
 
@@ -385,19 +433,38 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     }
 
     auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
-        current.leader->serverId,
-        current.leader->committedParticipantsConfig->participants,
-        log.current->localState);
+        leader.serverId, committedParticipants, current.localState);
+
+    // If there's a new target, we don't want to switch to another server than
+    // that to avoid switching the leader too often. Note that this doesn't
+    // affect the situation where the current leader is unhealthy, which is
+    // handled in checkLeaderHealthy().
+    if (target.leader) {
+      // Unless the target leader is not permissible as a leader for some
+      // reason, we return and wait for checkLeaderSetInTarget() to do its work.
+      // Otherwise, we still continue as usual to possibly select some random
+      // participant as a follower, in order to make progress.
+      auto const& planParticipants = plan.participantsConfig.participants;
+      auto const targetLeaderConfigIt = planParticipants.find(*target.leader);
+      if (targetLeaderConfigIt != planParticipants.cend() &&
+          health.notIsFailed(*target.leader) &&
+          targetLeaderConfigIt->second.allowedAsLeader) {
+        // Let checkLeaderSetInTarget() do the work instead
+        return;
+      }
+    }
 
     //  Check whether we already have a participant that is
     //  acceptable and forced
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
+      // both assertions are guaranteed by getParticipantsAcceptableAsLeaders()
       TRI_ASSERT(committedParticipants.contains(participant));
+      TRI_ASSERT(participant != leader.serverId);
       auto const& flags = committedParticipants.at(participant);
 
-      if (participant != current.leader->serverId and flags.forced) {
+      if (flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
           ctx.createAction<SwitchLeaderAction>(
@@ -476,16 +543,16 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
         }
       }
 
+      if (!planLeaderConfig.allowedAsLeader) {
+        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
+        return;
+      }
+
       if (planLeaderConfig.forced != true) {
         auto desiredFlags = planLeaderConfig;
         desiredFlags.forced = true;
         ctx.createAction<UpdateParticipantFlagsAction>(*target.leader,
                                                        desiredFlags);
-        return;
-      }
-
-      if (!planLeaderConfig.allowedAsLeader) {
-        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
         return;
       }
 
@@ -619,28 +686,102 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   auto const& targetParticipants = target.participants;
   auto const& planParticipants = plan.participantsConfig.participants;
 
-  for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
-       planParticipants) {
+  if (planParticipants.size() == targetParticipants.size()) {
+    return;  // Nothing to do here, because checkParticipantToAdd() runs before.
+  }
+
+  auto participantsToRemain = std::vector<ParticipantId>();
+  auto participantsToRemove = std::vector<ParticipantId>();
+  for (auto const& kv : planParticipants) {
+    auto const& participantId = kv.first;
+    if (targetParticipants.contains(participantId)) {
+      participantsToRemain.emplace_back(participantId);
+    } else {
+      participantsToRemove.emplace_back(participantId);
+    }
+  }
+  auto const& current = *log.current;
+
+  // check if, after a remove, enough servers are available to form a quorum
+  auto const needed = plan.participantsConfig.config.effectiveWriteConcern;
+  auto numUsableRemaining =
+      computeNumUsableParticipants(current, participantsToRemain, health);
+
+  // If we haven't enough servers in plan that are usable, choose some of the
+  // usable ones in the "to remove" set to remain (for now).
+  for (auto it = participantsToRemove.begin();
+       numUsableRemaining < needed && it != participantsToRemove.end();) {
+    auto const& participantId = *it;
+    auto const& planFlags = planParticipants.find(participantId)->second;
+    // To compensate for `numUsableRemaining < needed`, we select some usable
+    // participants to remain, even though they're no longer in target.
+    if (planFlags.allowedInQuorum &&
+        isParticipantUsable(current, health, participantId)) {
+      // we choose to let this participant remain
+      participantsToRemain.emplace_back(std::move(*it));
+      std::iter_swap(it, participantsToRemove.end() - 1);
+      participantsToRemove.pop_back();
+      ++numUsableRemaining;
+    } else {
+      ++it;
+    }
+  }
+
+  TRI_ASSERT(numUsableRemaining == computeNumUsableParticipants(
+                                       current, participantsToRemain, health));
+
+  // if there are not enough participants, make sure we can still commit
+  if (needed > numUsableRemaining) {
+    // remove all allowedInQuorum=false, when possible
+    for (auto const& [pid, flags] : planParticipants) {
+      auto shouldBeAllowedInQuorum = [&, &maybeRemovedParticipant = pid] {
+        if (auto iter = targetParticipants.find(maybeRemovedParticipant);
+            iter != targetParticipants.end()) {
+          if (not iter->second.allowedInQuorum) {
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      if (not flags.allowedInQuorum and shouldBeAllowedInQuorum()) {
+        // unset the flag for now
+        auto newFlags = flags;
+        newFlags.allowedInQuorum = true;
+        ctx.createAction<UpdateParticipantFlagsAction>(pid, newFlags);
+      }
+    }
+
+    ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
+    return;
+  }
+
+  if (committedParticipantsConfig.generation !=
+      plan.participantsConfig.generation) {
+    // still waiting
+    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+    ctx.createAction<NoActionPossibleAction>();
+    return;
+  }
+
+  for (auto const& participantToRemove : participantsToRemove) {
+    auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] =
+        *planParticipants.find(participantToRemove);
     // never remove a leader
     if (!targetParticipants.contains(maybeRemovedParticipant) and
         maybeRemovedParticipant != leader.serverId) {
       // If the participant is not allowed in Quorum it is safe to remove it
-      if (not maybeRemovedParticipantFlags.allowedInQuorum and
-          committedParticipantsConfig.generation ==
-              plan.participantsConfig.generation) {
+      if (not maybeRemovedParticipantFlags.allowedInQuorum) {
         ctx.createAction<RemoveParticipantFromPlanAction>(
             maybeRemovedParticipant);
-      } else if (maybeRemovedParticipantFlags.allowedInQuorum) {
+      } else {
         // A participant can only be removed without risk,
         // if it is not member of any quorum
         auto newFlags = maybeRemovedParticipantFlags;
         newFlags.allowedInQuorum = false;
         ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
                                                        newFlags);
-      } else {
-        // still waiting
-        ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-        ctx.createAction<NoActionPossibleAction>();
       }
     }
   }
