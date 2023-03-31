@@ -574,6 +574,7 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
 
             std::vector<futures::Future<Result>> storeFutures;
+            storeFutures.reserve(_quivers.size());
             for (auto const& quiver : _quivers) {
               storeFutures.emplace_back(storer.store({quiver}));
             }
@@ -613,6 +614,7 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
   std::vector<futures::Future<Result>> storeFutures;
+  storeFutures.reserve(_quivers.size());
   for (auto const& quiver : _quivers) {
     storeFutures.emplace_back(storer.store({quiver}));
   }
