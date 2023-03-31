@@ -40,6 +40,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
+  var db = internal.db;
 
   function getCollection(name) {
     var c = db._collection(name);
@@ -81,7 +82,6 @@
     uuidDocCount: 1001,
   }) {
     // 'use strict';
-    var db = internal.db;
     const smartGraphName = "UnitTestDumpSmartGraph";
     const edges = "UnitTestDumpSmartEdges";
     const vertices = "UnitTestDumpSmartVertices";
