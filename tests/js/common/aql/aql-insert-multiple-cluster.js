@@ -608,10 +608,10 @@ function InsertMultipleDocumentsExplainSuite(params) {
 
     testWithDocumentReadingSubquery: function () {
       const queries = [
-        `LET x = NOOPT(FOR d IN ${cn} LIMIT 5 RETURN d) FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
+        `LET x = (FOR d IN ${cn} LIMIT 5 RETURN d) FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
       ];
       queries.forEach((query, idx) => {
-        assertRuleIsNotUsed(query);
+        assertRuleIsNotUsed(query, {}, {optimizer: {rules: ["-remove-unnecessary-calculations", "-remove-unnecessary-calculations-2", "remove-unnecessary-calculations-3"]}});
       });
     },
 
