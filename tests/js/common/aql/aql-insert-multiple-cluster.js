@@ -34,16 +34,23 @@ const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
+
+if (!isServer) {
+  global.AQL_EXPLAIN = (query, bindVars, options) => {
+    let res = arango.POST("/_api/explain", {query, bindVars, options});
+    return res;
+  };
+}
       
-const assertRuleIsUsed = (query, bind = {}, rules = {}) => {
-  let res = AQL_EXPLAIN(query, bind, rules);
+const assertRuleIsUsed = (query, bind = {}, options = {}) => {
+  let res = AQL_EXPLAIN(query, bind, options);
   assertNotEqual(-1, res.plan.rules.indexOf(ruleName));
   const nodes = res.plan.nodes.map((n) => n.type);
   assertNotEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
 };
 
-const assertRuleIsNotUsed = (query, bind = {}, rules = {}) => {
-  let res = AQL_EXPLAIN(query, bind, rules);
+const assertRuleIsNotUsed = (query, bind = {}, options = {}) => {
+  let res = AQL_EXPLAIN(query, bind, options);
   assertEqual(-1, res.plan.rules.indexOf(ruleName));
   const nodes = res.plan.nodes.map((n) => n.type);
   assertEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
@@ -62,7 +69,30 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       db._drop(cn);
     },
     
-    testFromEnumerateListInvalidInputs: function () {
+    testFromEnumerateListInvalidInputsNoArray: function () {
+      const queries = [
+        `LET docs = MERGE({}, {}) FOR doc IN docs INSERT doc INTO ${cn}`,
+        `LET docs = NOOPT({}) FOR doc IN docs INSERT doc INTO ${cn}`,
+        `LET docs = {} FOR doc IN docs INSERT doc INTO ${cn}`,
+        `FOR doc IN {} INSERT doc INTO ${cn}`,
+        `FOR doc IN NOOPT({}) INSERT doc INTO ${cn}`,
+      ];
+      queries.forEach((query) => {
+        try {
+          // rule may or may not be applied here right now. 
+          // but at least we verify that nothing bad happens if the rule 
+          // is applied for these queries in the future.
+          db._query(query);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_QUERY_ARRAY_EXPECTED.code, err.errorNum);
+        }
+      });
+
+      assertEqual(0, db[cn].count());
+    },
+    
+    testFromEnumerateListInvalidInputsNoObjects: function () {
       const queries = [
         `FOR doc IN [[]] INSERT doc INTO ${cn}`,
         `FOR doc IN [1] INSERT doc INTO ${cn}`,
@@ -82,7 +112,7 @@ function InsertMultipleDocumentsSuite(nShards, repFactor) {
       assertEqual(0, db[cn].count());
     },
     
-    testFromEnumerateListInvalidInputsIgnoreErrors: function () {
+    testFromEnumerateListInvalidInputsNoObjectsIgnoreErrors: function () {
       const queries = [
         `FOR doc IN [[], {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
         `FOR doc IN [1, {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
@@ -536,6 +566,16 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
         assertEqual(nodes[2].dependencies.length, 1);
         assertEqual(nodes[2].dependencies[0], dependencyId);
         assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
+      });
+    },
+    
+    testSubqueries: function () {
+      const queries = [
+        `LET docs = (FOR i IN 1..1 FOR d IN ${cn} INSERT d INTO ${cn}) RETURN docs`,
+        `LET docs = (FOR i IN 1..1 RETURN i) FOR d IN docs INSERT d INTO ${cn}`,
+      ];
+      queries.forEach((query, idx) => {
+        assertRuleIsNotUsed(query);
       });
     },
     
