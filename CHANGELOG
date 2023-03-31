@@ -4,8 +4,6 @@ devel
 * Forward the `ttl` cursor option for AQL queries in the JavaScript API
   from the `db._query()` and the `db._createStatement()` methods to the server.
 
-* Deleted customizable Pregel (AIR) and Greenspun library
-
 * Updated arangosync to v2.16.1.
 
 * FE-142: Updates indices view list & index addition to React.

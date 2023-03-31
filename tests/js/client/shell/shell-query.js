@@ -31,6 +31,7 @@ const jsunity = require("jsunity");
 
 const arangodb = require("@arangodb");
 const db = arangodb.db;
+const ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: _query function
