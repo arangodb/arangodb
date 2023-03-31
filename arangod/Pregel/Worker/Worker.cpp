@@ -26,6 +26,7 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Containers/Enumerate.h"
+#include "Pregel/FutureHelper.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -341,20 +342,6 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   _state = WorkerState::DONE;
   _workHandle.reset();
 }
-
-namespace {
-
-template<typename Fn, typename R = std::invoke_result_t<Fn>>
-auto GiveMeAFuture(Scheduler* scheduler, Fn&& fn) -> futures::Future<R> {
-  futures::Promise<R> p;
-  auto f = p.getFuture();
-  scheduler->queue(RequestLane::INTERNAL_LOW,
-                   [p = std::move(p), fn = std::forward<Fn>(fn)]() mutable {
-                     p.setValue(std::forward<Fn>(fn)());
-                   });
-  return f;
-}
-}  // namespace
 
 /// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
