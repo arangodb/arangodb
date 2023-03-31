@@ -362,6 +362,7 @@ void Worker<V, E, M>::_startProcessing() {
     }
 
     std::vector<futures::Future<Result>> futures;
+    futures.reserve(_quivers.size());
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
