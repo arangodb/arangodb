@@ -56,19 +56,6 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void trackCreateHandlerTask() noexcept;
-  void trackBeginOngoingLowPriorityTask() noexcept;
-  void trackEndOngoingLowPriorityTask() noexcept;
-
-  void trackQueueTimeViolation();
-
-  /// @brief returns the last stored dequeue time [ms]
-  uint64_t getLastLowPriorityDequeueTime() const noexcept override;
-
-  /// @brief set the time it took for the last low prio item to be dequeued
-  /// (time between queuing and dequeing) [ms]
-  void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
-
   constexpr static uint64_t const NumberOfQueues = 4;
 
   constexpr static uint64_t const HighPriorityQueue = 1;
@@ -90,7 +77,8 @@ class SupervisedScheduler final : public Scheduler {
   double unavailabilityQueueFillGrade() const override;
 
   /// @brief get information about low prio queue:
-  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued() const;
+  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const override;
 
  protected:
   bool isStopping() override { return _stopping; }
@@ -170,7 +158,6 @@ class SupervisedScheduler final : public Scheduler {
 
  private:
   NetworkFeature& _nf;
-  SharedPRNGFeature& _sharedPRNG;
 
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;
@@ -225,17 +212,9 @@ class SupervisedScheduler final : public Scheduler {
   metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
   metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
 
-  metrics::Counter& _metricsHandlerTasksCreated;
   metrics::Counter& _metricsThreadsStarted;
   metrics::Counter& _metricsThreadsStopped;
   metrics::Counter& _metricsQueueFull;
-  metrics::Counter& _metricsQueueTimeViolations;
-  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
-
-  /// @brief amount of time it took for the last low prio item to be dequeued
-  /// (time between queuing and dequeing) [ms].
-  /// this metric is only updated probabilistically
-  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
   std::array<std::reference_wrapper<metrics::Gauge<uint64_t>>, NumberOfQueues>
       _metricsQueueLengths;

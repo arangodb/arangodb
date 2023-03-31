@@ -86,7 +86,7 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 
 namespace arangodb {
 
-SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
+Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _exitSignals;

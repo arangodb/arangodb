@@ -36,8 +36,12 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/SharedPRNGFeature.h"
 #include "Statistics/RequestStatistics.h"
 
 using namespace arangodb;
@@ -70,9 +74,32 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
+DECLARE_COUNTER(arangodb_scheduler_handler_tasks_created_total,
+                "Number of scheduler tasks created");
+DECLARE_COUNTER(arangodb_scheduler_queue_time_violations_total,
+                "Tasks dropped because the client-requested queue time "
+                "restriction would be violated");
+DECLARE_GAUGE(
+    arangodb_scheduler_ongoing_low_prio, uint64_t,
+    "Total number of ongoing RestHandlers coming from the low prio queue");
+DECLARE_GAUGE(arangodb_scheduler_low_prio_queue_last_dequeue_time, uint64_t,
+              "Last recorded dequeue time for a low priority queue item [ms]");
+
 Scheduler::Scheduler(ArangodServer& server)
-    : _server(server) /*: _stopping(false)*/
-{
+    : _server(server),
+      _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
+      _metricsHandlerTasksCreated(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_handler_tasks_created_total{})),
+      _metricsQueueTimeViolations(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_queue_time_violations_total{})),
+      _ongoingLowPriorityGauge(
+          _server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_ongoing_low_prio{})),
+      _metricsLastLowPriorityDequeueTime(
+          _server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_scheduler_low_prio_queue_last_dequeue_time{})) {
   // Move this into the Feature and then move it else where
 }
 
@@ -175,6 +202,32 @@ Scheduler::WorkHandle Scheduler::queueDelayed(
   }
 
   return item;
+}
+
+void Scheduler::trackCreateHandlerTask() noexcept {
+  ++_metricsHandlerTasksCreated;
+}
+
+void Scheduler::trackBeginOngoingLowPriorityTask() noexcept {
+  ++_ongoingLowPriorityGauge;
+}
+
+void Scheduler::trackEndOngoingLowPriorityTask() noexcept {
+  --_ongoingLowPriorityGauge;
+}
+
+void Scheduler::trackQueueTimeViolation() { ++_metricsQueueTimeViolations; }
+
+/// @brief returns the last stored dequeue time [ms]
+uint64_t Scheduler::getLastLowPriorityDequeueTime() const noexcept {
+  return _metricsLastLowPriorityDequeueTime.load();
+}
+
+void Scheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
+  // update only probabilistically, in order to reduce contention on the gauge
+  if ((_sharedPRNG.rand() & 7) == 0) {
+    _metricsLastLowPriorityDequeueTime.operator=(time);
+  }
 }
 
 /*

@@ -40,6 +40,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
+#include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "Logger/LogContext.h"
 
@@ -86,6 +87,10 @@ class Scheduler {
   [[nodiscard]] virtual WorkHandle queueDelayed(
       std::string_view name, RequestLane lane, clock::duration delay,
       fu2::unique_function<void(bool canceled)> handler) noexcept;
+
+  /// @brief get information about low prio queue:
+  virtual std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const = 0;
 
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
@@ -250,6 +255,17 @@ class Scheduler {
   std::mutex _cronQueueMutex;
   std::condition_variable _croncv;
   std::unique_ptr<SchedulerCronThread> _cronThread;
+  SharedPRNGFeature& _sharedPRNG;
+
+ protected:
+  metrics::Counter& _metricsHandlerTasksCreated;
+  metrics::Counter& _metricsQueueTimeViolations;
+  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
+
+  /// @brief amount of time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms].
+  /// this metric is only updated probabilistically
+  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
   // ---------------------------------------------------------------------------
   // Statistics stuff
@@ -264,8 +280,18 @@ class Scheduler {
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
 
+  void trackCreateHandlerTask() noexcept;
+  void trackBeginOngoingLowPriorityTask() noexcept;
+  void trackEndOngoingLowPriorityTask() noexcept;
+
+  void trackQueueTimeViolation();
+
   /// @brief returns the last stored dequeue time [ms]
-  virtual uint64_t getLastLowPriorityDequeueTime() const noexcept = 0;
+  uint64_t getLastLowPriorityDequeueTime() const noexcept;
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   virtual double approximateQueueFillGrade() const = 0;

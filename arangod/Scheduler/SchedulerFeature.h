@@ -23,9 +23,8 @@
 
 #pragma once
 
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
 
 #include <functional>
 #include <memory>
@@ -36,7 +35,7 @@ class SchedulerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
-  static SupervisedScheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
   explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();

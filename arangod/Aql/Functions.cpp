@@ -111,6 +111,7 @@
 #include <velocypack/Sink.h>
 
 #include <algorithm>
+#include <list>
 
 #ifdef __APPLE__
 #include <regex>

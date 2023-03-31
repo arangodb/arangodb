@@ -49,7 +49,7 @@
 #include "IResearch/IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestServer/arangod.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;  // forward declaration
 

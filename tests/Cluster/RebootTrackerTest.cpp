@@ -153,9 +153,7 @@ class RebootTrackerTest
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
-  static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER),
-                             decltype(*scheduler)>::value,
-                "Use the correct scheduler in the tests");
+
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
 

@@ -26,6 +26,7 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
+#include "Scheduler/Scheduler.h"
 
 #include <string>
 #include <function2.hpp>
@@ -51,7 +52,7 @@ namespace cluster {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  using SchedulerPointer = SupervisedScheduler*;
+  using SchedulerPointer = Scheduler*;
   using Callback = fu2::unique_function<void()>;
   struct DescriptedCallback {
     Callback callback;

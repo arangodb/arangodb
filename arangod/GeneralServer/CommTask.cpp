@@ -42,7 +42,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
@@ -128,7 +128,8 @@ bool queueTimeViolated(GeneralRequest const& req) {
         // level for the REQUESTS log topic is FATAL, so if we logged here in
         // INFO level, it would effectively be suppressed. thus we are using the
         // Scheduler's log topic here, which is somewhat related.
-        SchedulerFeature::SCHEDULER->trackQueueTimeViolation();
+        static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
+            ->trackQueueTimeViolation();
         LOG_TOPIC("1bbcc", WARN, Logger::THREADS)
             << "dropping incoming request because the client-specified maximum "
                "queue time requirement ("
@@ -520,8 +521,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
+  TRI_ASSERT(dynamic_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER) !=
+             nullptr);
+  static_cast<SupervisedScheduler*>(SchedulerFeature::SCHEDULER)
+      ->trackCreateHandlerTask();
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
