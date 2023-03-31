@@ -52,6 +52,7 @@
 #include "Pregel/Conductor/Messages.h"
 #include "Pregel/Conductor/ExecutionStates/DatabaseCollectionLookup.h"
 #include "Pregel/ExecutionNumber.h"
+#include "Pregel/StatusActor.h"
 #include "Pregel/PregelOptions.h"
 #include "Pregel/ResultActor.h"
 #include "Pregel/SpawnActor.h"
@@ -361,12 +362,21 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             vocbase, executionSpecifications.vertexCollections,
             executionSpecifications.edgeCollections);
 
+    auto statusActorID = _actorRuntime->spawn<StatusActor>(
+        vocbase.name(), std::make_unique<StatusState>(),
+        message::StatusMessages{message::StatusStart{}});
+    auto statusActorPID = actor::ActorPID{
+        .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
+    _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
+      actors.emplace(en, statusActorPID);
+    });
+
     auto resultActorID = _actorRuntime->spawn<ResultActor>(
         vocbase.name(), std::make_unique<ResultState>(),
         message::ResultMessages{message::ResultStart{}});
     auto resultActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = resultActorID};
-    _resultActor.emplace(en, resultActorPID);
+    _resultActors.emplace(en, resultActorPID);
 
     auto spawnActorID = _actorRuntime->spawn<SpawnActor>(
         vocbase.name(), std::make_unique<SpawnState>(vocbase, resultActorPID),
@@ -762,12 +772,12 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 }
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
-  if (!_resultActor.contains(execNr)) {
+  if (!_resultActors.contains(execNr)) {
     return Result{
         TRI_ERROR_HTTP_NOT_FOUND,
         fmt::format("Cannot locate results for pregel run {}.", execNr)};
   }
-  auto actorPID = _resultActor.at(execNr);
+  auto actorPID = _resultActors.at(execNr);
   auto state = _actorRuntime->getActorStateByID<ResultActor>(actorPID.id);
   if (!state.has_value()) {
     return Result{
@@ -780,6 +790,29 @@ ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
   return Result{
       TRI_ERROR_INTERNAL,
       fmt::format("Pregel results for run {} are not yet available.", execNr)};
+}
+
+ResultT<StatusState> PregelFeature::getStatus(ExecutionNumber execNr) {
+  auto statusActor = _statusActors.doUnderLock(
+      [&execNr](auto const& actors) -> std::optional<actor::ActorPID> {
+        auto actor = actors.find(execNr);
+        if (actor == actors.end()) {
+          return std::nullopt;
+        }
+        return actor->second;
+      });
+  if (not statusActor.has_value()) {
+    return Result{
+        TRI_ERROR_HTTP_NOT_FOUND,
+        fmt::format("Cannot locate status for pregel run {}.", execNr)};
+  }
+  auto state =
+      _actorRuntime->getActorStateByID<StatusActor>(statusActor.value().id);
+  if (!state.has_value()) {
+    return Result{TRI_ERROR_HTTP_NOT_FOUND,
+                  fmt::format("Cannot find status for pregel run {}.", execNr)};
+  }
+  return state.value();
 }
 
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
