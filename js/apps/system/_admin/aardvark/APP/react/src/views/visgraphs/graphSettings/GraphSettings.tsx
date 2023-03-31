@@ -10,6 +10,7 @@ import {
   HStack,
   Menu,
   MenuButton,
+  Portal,
   useMenuContext,
   useMenuPositioner,
   useMultiStyleConfig
@@ -45,42 +46,44 @@ const SettingsMenuContent = () => {
     return null;
   }
   return (
-    <Box
-      {...positionerProps}
-      __css={{
-        ...styles.list
-      }}
-      maxHeight="600px"
-      overflow="overlay"
-      width="400px"
-      position="relative"
-      paddingY="0"
-    >
-      <Accordion allowMultiple allowToggle defaultIndex={[0]}>
-        <GraphAccordionItem title="Graph">
-          <AccordionGraphContent />
-        </GraphAccordionItem>
-        <GraphAccordionItem title="Nodes">
-          <AccordionNodesContent />
-        </GraphAccordionItem>
-        <GraphAccordionItem title="Edges">
-          <AccordionEdgesContent />
-        </GraphAccordionItem>
-      </Accordion>
-      <HStack
-        background="white"
-        borderTop="1px solid"
-        borderColor="gray.300"
-        position="sticky"
-        bottom="0"
-        justifyContent="end"
-        padding="3"
-        paddingRight="5"
+    <Portal>
+      <Box
+        {...positionerProps}
+        __css={{
+          ...styles.list
+        }}
+        maxHeight="600px"
+        overflow="overlay"
+        width="400px"
+        position="relative"
+        paddingY="0"
       >
-        <RestoreDefaultsButton />
-        <ApplyButton />
-      </HStack>
-    </Box>
+        <Accordion allowMultiple allowToggle defaultIndex={[0]}>
+          <GraphAccordionItem title="Graph">
+            <AccordionGraphContent />
+          </GraphAccordionItem>
+          <GraphAccordionItem title="Nodes">
+            <AccordionNodesContent />
+          </GraphAccordionItem>
+          <GraphAccordionItem title="Edges">
+            <AccordionEdgesContent />
+          </GraphAccordionItem>
+        </Accordion>
+        <HStack
+          background="white"
+          borderTop="1px solid"
+          borderColor="gray.300"
+          position="sticky"
+          bottom="0"
+          justifyContent="end"
+          padding="3"
+          paddingRight="5"
+        >
+          <RestoreDefaultsButton />
+          <ApplyButton />
+        </HStack>
+      </Box>
+    </Portal>
   );
 };
 const GraphAccordionItem = ({
@@ -106,7 +109,11 @@ const GraphAccordionItem = ({
 const RestoreDefaultsButton = () => {
   const { onRestoreDefaults } = useGraph();
   return (
-    <Button colorScheme="gray" variant="ghost" onClick={() => onRestoreDefaults()}>
+    <Button
+      colorScheme="gray"
+      variant="ghost"
+      onClick={() => onRestoreDefaults()}
+    >
       Restore defaults
     </Button>
   );

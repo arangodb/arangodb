@@ -6,6 +6,7 @@ import {
   Menu,
   MenuButton,
   MenuList,
+  Portal,
   Tooltip,
   useMenuContext
 } from "@chakra-ui/react";
@@ -41,28 +42,30 @@ const SearchList = () => {
   }
 
   return (
-    <MenuList>
-      <Box padding={"4"}>
-        <FormLabel htmlFor="nodeSearch">Search for a node</FormLabel>
-        <SingleSelect
-          styles={{
-            container: base => {
-              return {
-                ...base,
-                width: "240px"
-              };
-            }
-          }}
-          inputId="nodeSearch"
-          placeholder="Start typing to search in nodes"
-          options={options}
-          onChange={value => {
-            network?.fit({
-              nodes: [(value as any).value]
-            });
-          }}
-        />
-      </Box>
-    </MenuList>
+    <Portal>
+      <MenuList>
+        <Box padding={"4"}>
+          <FormLabel htmlFor="nodeSearch">Search for a node</FormLabel>
+          <SingleSelect
+            styles={{
+              container: base => {
+                return {
+                  ...base,
+                  width: "240px"
+                };
+              }
+            }}
+            inputId="nodeSearch"
+            placeholder="Start typing to search in nodes"
+            options={options}
+            onChange={value => {
+              network?.fit({
+                nodes: [(value as any).value]
+              });
+            }}
+          />
+        </Box>
+      </MenuList>
+    </Portal>
   );
 };
