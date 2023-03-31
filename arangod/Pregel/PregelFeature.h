@@ -169,6 +169,7 @@ class PregelFeature final : public ArangodFeature {
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
   // conductor actor is only used on the coordinator
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
 };
 
 }  // namespace arangodb::pregel
