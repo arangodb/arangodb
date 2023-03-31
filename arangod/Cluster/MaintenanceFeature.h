@@ -38,6 +38,7 @@
 
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <queue>
 #include <map>
 
@@ -511,7 +512,7 @@ class MaintenanceFeature : public ArangodFeature {
 
   /// @brief lock to protect _actionRegistry and state changes to
   /// MaintenanceActions within
-  mutable arangodb::basics::ReadWriteLock _actionRegistryLock;
+  mutable std::shared_mutex _actionRegistryLock;
 
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;

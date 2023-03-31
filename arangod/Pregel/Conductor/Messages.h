@@ -145,14 +145,20 @@ auto inspect(Inspector& f, CleanupFinished& x) {
   return f.object(x).fields();
 }
 
+struct Cancel {};
+template<typename Inspector>
+auto inspect(Inspector& f, Cancel& x) {
+  return f.object(x).fields();
+}
+
 struct ConductorMessages
     : std::variant<ConductorStart, ResultT<WorkerCreated>, ResultT<GraphLoaded>,
                    ResultT<GlobalSuperStepFinished>, ResultT<Stored>,
-                   ResultCreated, StatusUpdate, CleanupFinished> {
+                   ResultCreated, StatusUpdate, CleanupFinished, Cancel> {
   using std::variant<ConductorStart, ResultT<WorkerCreated>,
                      ResultT<GraphLoaded>, ResultT<GlobalSuperStepFinished>,
                      ResultT<Stored>, ResultCreated, StatusUpdate,
-                     CleanupFinished>::variant;
+                     CleanupFinished, Cancel>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorMessages& x) {
@@ -165,7 +171,8 @@ auto inspect(Inspector& f, ConductorMessages& x) {
       arangodb::inspection::type<ResultT<Stored>>("Stored"),
       arangodb::inspection::type<ResultCreated>("ResultCreated"),
       arangodb::inspection::type<StatusUpdate>("StatusUpdate"),
-      arangodb::inspection::type<CleanupFinished>("CleanupFinished"));
+      arangodb::inspection::type<CleanupFinished>("CleanupFinished"),
+      arangodb::inspection::type<Cancel>("Cancel"));
 }
 
 }  // namespace conductor::message
