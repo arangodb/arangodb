@@ -100,7 +100,7 @@ export const GraphNetwork = () => {
     registerNetwork();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
-  const position = useElementPosition(visJsRef);
+  const position = useElementPosition(containerRef);
   const height = position ? `calc(100vh - ${position.top}px)` : "80vh";
   return (
     <Box
@@ -115,7 +115,17 @@ export const GraphNetwork = () => {
         }}
       />
       <Box id="graphNetworkWrap" height="full" backgroundColor="white">
-        {progressValue < 100 ? <Progress value={progressValue} /> : null}
+        {progressValue < 100 ? (
+          <Box
+            width="full"
+            position="absolute"
+            paddingX="10"
+            top="50%"
+            translateY="-100%"
+          >
+            <Progress value={progressValue} colorScheme="green" />
+          </Box>
+        ) : null}
         <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
         <GraphInfo />
       </Box>
