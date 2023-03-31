@@ -112,15 +112,22 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
 }
 
 auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
-  std::string queryString =
-      std::string("FOR entry IN " + StaticStrings::PregelCollection +
-                  "  FILTER DATE_DIFF(DATE_NOW(), "
-                  "  DATE_TIMESTAMP(entry.data.expires), \"s\") >= 0 " +
-                  "RETURN entry");
+  // TODO: GORDO-1607
+  // Note: As soon as we introduce an inspectable struct to the data we actually
+  // write into the pregel collection, we can remove change "entry.data" to
+  // just "entry".
+  std::string queryString = R"(
+    FOR entry IN _pregel_queries
+      FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
+      OR entry.data.expires == null
+    RETURN entry.data
+  )";
+
   return executeQuery(queryString);
 }
 
 auto CollectionStatusWriter::readAllResults() -> OperationResult {
+  // TODO: GORDO-1607
   std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
   return executeQuery(queryString);
 }
