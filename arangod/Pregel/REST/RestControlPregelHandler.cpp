@@ -152,14 +152,9 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
-
     VPackBuilder builder;
-    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
 
   if (suffixes.size() == 1 && suffixes.at(0) != "history") {

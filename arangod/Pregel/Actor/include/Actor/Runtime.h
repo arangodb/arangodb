@@ -39,8 +39,9 @@
 namespace arangodb::pregel::actor {
 
 template<typename S>
-concept CallableOnFunction = requires(S s) {
+concept Schedulable = requires(S s, std::chrono::seconds delay) {
   {s([]() {})};
+  {s.delay(delay, [](bool canceled) {})};
 };
 template<typename D>
 concept VPackDispatchable = requires(D d, ActorPID pid,
@@ -48,7 +49,7 @@ concept VPackDispatchable = requires(D d, ActorPID pid,
   {d(pid, pid, msg)};
 };
 
-template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher>
+template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher>
 struct Runtime
     : std::enable_shared_from_this<Runtime<Scheduler, ExternalDispatcher>> {
   Runtime() = delete;
@@ -134,6 +135,18 @@ struct Runtime
     }
   }
 
+  template<typename ActorMessage>
+  auto dispatchDelayed(std::chrono::seconds delay, ActorPID sender,
+                       ActorPID receiver, ActorMessage const& message) -> void {
+    scheduler->delay(delay, [self = this->weak_from_this(), sender, receiver,
+                             message](bool canceled) {
+      auto me = self.lock();
+      if (me != nullptr) {
+        me->dispatch(sender, receiver, message);
+      }
+    });
+  }
+
   auto areAllActorsIdle() -> bool {
     return actors.checkAll([](std::shared_ptr<ActorBase> const& actor) {
       return actor->isIdle();
@@ -193,7 +206,7 @@ struct Runtime
     (*externalDispatcher)(sender, receiver, payload.get());
   }
 };
-template<CallableOnFunction Scheduler, VPackDispatchable ExternalDispatcher,
+template<Schedulable Scheduler, VPackDispatchable ExternalDispatcher,
          typename Inspector>
 auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
   return f.object(x).fields(
@@ -204,7 +217,7 @@ auto inspect(Inspector& f, Runtime<Scheduler, ExternalDispatcher>& x) {
 
 };  // namespace arangodb::pregel::actor
 
-template<arangodb::pregel::actor::CallableOnFunction Scheduler,
+template<arangodb::pregel::actor::Schedulable Scheduler,
          arangodb::pregel::actor::VPackDispatchable ExternalDispatcher>
 struct fmt::formatter<
     arangodb::pregel::actor::Runtime<Scheduler, ExternalDispatcher>>
