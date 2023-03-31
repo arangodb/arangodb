@@ -777,9 +777,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Transient report
       Builder tReport;
       {
-        VPackArrayBuilder transaction(&tReport);     // Transist Transaction
+        VPackArrayBuilder transaction(&tReport);  // Transist Transaction
         {
-          VPackObjectBuilder operation(&tReport);    // Operation
+          VPackObjectBuilder operation(&tReport);  // Operation
           tReport.add(
               VPackValue(healthPrefix + serverID));  // Supervision/Health
           {
@@ -793,9 +793,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       Builder pReport;
       if (changed) {
         {
-          VPackArrayBuilder transaction(&pReport);     // Persist Transaction
+          VPackArrayBuilder transaction(&pReport);  // Persist Transaction
           {
-            VPackObjectBuilder operation(&pReport);    // Operation
+            VPackObjectBuilder operation(&pReport);  // Operation
             pReport.add(
                 VPackValue(healthPrefix + serverID));  // Supervision/Health
             {
@@ -810,7 +810,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
                 pReport.add(i.key.stringView(), i.value);
               }
             }
-          }                                      // Operation
+          }  // Operation
           if (envelope != nullptr &&
               envelope->slice().length() > 1) {  // Preconditions(Job)
             TRI_ASSERT(envelope->slice().isArray() &&
@@ -838,7 +838,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
           << " not yet available.  Skipping health check.";
     }  // else
 
-  }    // for
+  }  // for
 
   return ret;
 }
