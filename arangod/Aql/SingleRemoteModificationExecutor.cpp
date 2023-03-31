@@ -32,8 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <algorithm>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -123,7 +121,8 @@ auto SingleRemoteModificationExecutor<
   const bool isUpdate = std::is_same<Modifier, Update>::value;
   const bool isReplace = std::is_same<Modifier, Replace>::value;
 
-  int possibleWrites = 0;  // TODO - get real statistic values!
+  uint64_t writesExecuted = 0;
+  uint64_t writesIgnored = 0;
 
   if (_info._key.empty() &&
       _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
@@ -157,10 +156,18 @@ auto SingleRemoteModificationExecutor<
           "'update' or 'replace'");
     }
     result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
-    possibleWrites = 1;
+    if (result.ok()) {
+      writesExecuted++;
+    } else {
+      writesIgnored++;
+    }
   } else if (isRemove) {
     result = _trx.remove(_info._aqlCollection->name(), inSlice, _info._options);
-    possibleWrites = 1;
+    if (result.ok()) {
+      writesExecuted++;
+    } else {
+      writesIgnored++;
+    }
   } else if (isReplace) {
     if (_info._replaceIndex &&
         _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
@@ -172,10 +179,18 @@ auto SingleRemoteModificationExecutor<
       result =
           _trx.replace(_info._aqlCollection->name(), inSlice, _info._options);
     }
-    possibleWrites = 1;
+    if (result.ok()) {
+      writesExecuted++;
+    } else {
+      writesIgnored++;
+    }
   } else if (isUpdate) {
     result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
-    possibleWrites = 1;
+    if (result.ok()) {
+      writesExecuted++;
+    } else {
+      writesIgnored++;
+    }
   }
 
   // check operation result
@@ -198,7 +213,8 @@ auto SingleRemoteModificationExecutor<
     }
   }
 
-  stats.incrWritesExecuted(possibleWrites);
+  stats.incrWritesExecuted(writesExecuted);
+  stats.incrWritesIgnored(writesIgnored);
   stats.incrScannedIndex();
   return result;
 }
