@@ -22,18 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
+#include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Basics/ResultT.h"
 #include "Pregel/ResultMessages.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "fmt/core.h"
 
 namespace arangodb::pregel {
 
 struct ResultState {
+  ResultState() = default;
+  ResultState(TTL ttl) : ttl{ttl} {};
   ResultT<PregelResults> results = {PregelResults{}};
   bool complete{false};
   std::vector<actor::ActorPID> otherResultActors;
+  TTL ttl;
+  std::chrono::system_clock::time_point expiration;
 };
 
 template<typename Inspector>
@@ -43,6 +50,14 @@ auto inspect(Inspector& f, ResultState& x) {
 
 template<typename Runtime>
 struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
+  auto setExpiration() {
+    this->state->expiration =
+        std::chrono::system_clock::now() + this->state->ttl.duration;
+
+    this->template dispatch<pregel::message::ResultMessages>(
+        this->self, pregel::message::CleanupResultWhenExpired{});
+  }
+
   auto operator()(message::ResultStart start) -> std::unique_ptr<ResultState> {
     LOG_TOPIC("ea414", INFO, Logger::PREGEL)
         << fmt::format("Result Actor {} started", this->self);
@@ -58,6 +73,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
   auto operator()(message::SaveResults start) -> std::unique_ptr<ResultState> {
     this->state->results = {start.results};
     this->state->complete = true;
+    setExpiration();
     return std::move(this->state);
   }
 
@@ -73,6 +89,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     if (msg.results.fail()) {
       this->state->results = msg.results;
       this->state->complete = true;
+      setExpiration();
       return std::move(this->state);
     }
 
@@ -91,16 +108,32 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     this->state->results = {
         PregelResults{.results = std::move(newResultsBuilder)}};
 
-    this->state->complete = msg.receivedAllResults;
+    if (msg.receivedAllResults) {
+      this->state->complete = true;
+      setExpiration();
+    }
 
     return std::move(this->state);
   }
 
-  auto operator()(message::ResultCleanup msg) -> std::unique_ptr<ResultState> {
+  auto operator()(message::CleanupResultWhenExpired msg)
+      -> std::unique_ptr<ResultState> {
+    if (this->state->expiration <= std::chrono::system_clock::now()) {
+      this->finish();
+    } else {
+      // send this message every 20 seconds
+      std::chrono::seconds offset = std::chrono::seconds(20);
+      this->template dispatchDelayed<pregel::message::ResultMessages>(
+          offset, this->self, pregel::message::CleanupResultWhenExpired{});
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::CleanupResults msg) -> std::unique_ptr<ResultState> {
     this->finish();
     for (auto const& actor : this->state->otherResultActors) {
       this->template dispatch<pregel::message::ResultMessages>(
-          actor, pregel::message::ResultCleanup{});
+          actor, pregel::message::CleanupResults{});
     }
     return std::move(this->state);
   }
