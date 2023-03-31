@@ -138,7 +138,13 @@ void MultipleRemoteModificationNode::doToVelocyPack(VPackBuilder& nodes,
 
 /// @brief estimateCost
 CostEstimate MultipleRemoteModificationNode::estimateCost() const {
-  return _dependencies[0]->getCost();
+  size_t length = estimateListLength(_plan, _inVariable);
+
+  TRI_ASSERT(!_dependencies.empty());
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedNrItems *= length;
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
 }
 
 std::vector<Variable const*>

@@ -546,6 +546,21 @@ function InsertMultipleDocumentsExplainSuite(nShards, repFactor) {
       });
     },
     
+    testEstimateCost: function() {
+      const docs = [];
+      const numDocs = 100;
+      for (let i = 0; i < numDocs; ++i) {
+        docs.push({});
+      }
+      const query = `FOR d in @docs INSERT d INTO ${cn}`;
+      
+      const res = AQL_EXPLAIN(query, {docs: docs});
+      const nodes = res.plan.nodes;
+      assertEqual(nodes[2].type, "MultipleRemoteModificationNode");
+      assertEqual(nodes[2].estimatedNrItems, numDocs);
+      assertEqual(nodes[2].estimatedCost, numDocs + 2);
+    },
+
     testInInnerLoop: function () {
       const queries = [
         `FOR i IN 1..1 FOR d IN ${cn} INSERT d INTO ${cn}`,
