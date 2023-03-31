@@ -1,8 +1,6 @@
 devel
 -----
 
-* FE-221: Display info if a SmartGraph is opened in new Graph Viewer.
-
 * FE-200: Add canvas interactions to Graph Viewer.
 
 * Updated arangosync to v2.16.1.

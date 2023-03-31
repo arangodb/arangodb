@@ -102,8 +102,10 @@ export const GraphNetwork = () => {
     registerNetwork();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options, setNetwork]);
-  const position = useElementPosition(visJsRef);
-  const height = position ? `calc(100vh - ${position.top}px)` : "80vh";
+  const containerPosition = useElementPosition(containerRef);
+  const height = containerPosition
+    ? `calc(100vh - ${containerPosition.top}px)`
+    : "80vh";
   return (
     <Box
       ref={containerRef}
@@ -111,18 +113,50 @@ export const GraphNetwork = () => {
       background="white"
       position="relative"
     >
-      {!isSmart? <>
-        <GraphRightClickMenu
-          portalProps={{
-            containerRef
-          }}
+      {!isSmart ? (
+        <GraphNetworkInner
+          containerRef={containerRef}
+          progressValue={progressValue}
+          visJsRef={visJsRef}
         />
-        <Box id="graphNetworkWrap" height="full" backgroundColor="white">
-          {progressValue < 100 ? <Progress value={progressValue} /> : null}
-          <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
-          <GraphInfo />
-        </Box>
-      </> : <SmartGraphEmptyState />}
+      ) : (
+        <SmartGraphEmptyState />
+      )}
     </Box>
+  );
+};
+
+const GraphNetworkInner = ({
+  containerRef,
+  progressValue,
+  visJsRef
+}: {
+  containerRef: React.RefObject<HTMLDivElement>;
+  progressValue: number;
+  visJsRef: React.RefObject<HTMLDivElement>;
+}) => {
+  return (
+    <>
+      <GraphRightClickMenu
+        portalProps={{
+          containerRef
+        }}
+      />
+      <Box id="graphNetworkWrap" height="full" backgroundColor="white">
+        {progressValue < 100 ? (
+          <Box
+            width="full"
+            position="absolute"
+            paddingX="10"
+            top="50%"
+            translateY="-100%"
+          >
+            <Progress value={progressValue} colorScheme="green" />
+          </Box>
+        ) : null}
+        <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+        <GraphInfo />
+      </Box>
+    </>
   );
 };
