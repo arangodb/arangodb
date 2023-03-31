@@ -56,7 +56,7 @@ const SettingsMenuContent = () => {
       position="relative"
       paddingY="0"
     >
-      <Accordion allowMultiple allowToggle defaultIndex={[0, 1, 2]}>
+      <Accordion allowMultiple allowToggle defaultIndex={[0]}>
         <GraphAccordionItem title="Graph">
           <AccordionGraphContent />
         </GraphAccordionItem>
