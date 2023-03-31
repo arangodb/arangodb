@@ -28,6 +28,7 @@
 #include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/overload.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -51,17 +52,6 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
-
-namespace {
-// helper type for the visitor
-template<class... Ts>
-struct overloaded : Ts... {
-  using Ts::operator()...;
-};
-// explicit deduction guide (not needed as of C++20)
-template<class... Ts>
-overloaded(Ts...) -> overloaded<Ts...>;
-}  // namespace
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -152,17 +142,17 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
     }
   }
 
-  std::visit(overloaded{[&](ActorLoadingUpdate const& update) {
-                          update.fn(message::GraphLoadingUpdate{
-                              .verticesLoaded = result->numberOfVertices(),
-                              .edgesLoaded = result->numberOfEdges(),
-                              .memoryBytesUsed = 0  // TODO
-                          });
-                        },
-                        [](OldLoadingUpdate const& update) {
-                          SchedulerFeature::SCHEDULER->queue(
-                              RequestLane::INTERNAL_LOW, update.fn);
-                        }},
+  std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                        update.fn(message::GraphLoadingUpdate{
+                            .verticesLoaded = result->numberOfVertices(),
+                            .edgesLoaded = result->numberOfEdges(),
+                            .memoryBytesUsed = 0  // TODO
+                        });
+                      },
+                      [](OldLoadingUpdate const& update) {
+                        SchedulerFeature::SCHEDULER->queue(
+                            RequestLane::INTERNAL_LOW, update.fn);
+                      }},
              updateCallback);
   return result;
 }
@@ -246,17 +236,17 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
       break;
     }
 
-    std::visit(overloaded{[&](ActorLoadingUpdate const& update) {
-                            update.fn(message::GraphLoadingUpdate{
-                                .verticesLoaded = result->numberOfVertices(),
-                                .edgesLoaded = result->numberOfEdges(),
-                                .memoryBytesUsed = 0  // TODO
-                            });
-                          },
-                          [](OldLoadingUpdate const& update) {
-                            SchedulerFeature::SCHEDULER->queue(
-                                RequestLane::INTERNAL_LOW, update.fn);
-                          }},
+    std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result->numberOfVertices(),
+                              .edgesLoaded = result->numberOfEdges(),
+                              .memoryBytesUsed = 0  // TODO
+                          });
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
                updateCallback);
   }
 }
