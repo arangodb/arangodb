@@ -62,12 +62,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    auto dispatch = [this](actor::ActorPID actor,
-                           worker::message::PregelMessage message) -> void {
-      this->template dispatch<worker::message::WorkerMessages>(actor, message);
-    };
     for (auto& cache : this->state->outCaches) {
-      cache->setDispatch(dispatch);
+      cache->setDispatch(
+          [this](actor::ActorPID actor,
+                 worker::message::PregelMessage message) -> void {
+            this->template dispatch<worker::message::WorkerMessages>(actor,
+                                                                     message);
+          });
       cache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
     }
 

@@ -41,6 +41,7 @@
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/SpawnMessages.h"
 #include "Pregel/PregelOptions.h"
+#include "Pregel/StatusActor.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
@@ -102,6 +103,7 @@ class PregelFeature final : public ArangodFeature {
   void cleanupConductor(ExecutionNumber executionNumber);
   void cleanupWorker(ExecutionNumber executionNumber);
   [[nodiscard]] ResultT<PregelResults> getResults(ExecutionNumber execNr);
+  [[nodiscard]] ResultT<StatusState> getStatus(ExecutionNumber execNr);
 
   void handleConductorRequest(TRI_vocbase_t& vocbase, std::string const& path,
                               VPackSlice const& body,
@@ -126,6 +128,8 @@ class PregelFeature final : public ArangodFeature {
   std::string tempPath() const;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
+  auto cancel(ExecutionNumber executionNumber) -> Result;
 
  private:
   void scheduleGarbageCollection();
@@ -162,7 +166,10 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
+  // conductor actor is only used on the coordinator
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
 };
 
 }  // namespace arangodb::pregel
