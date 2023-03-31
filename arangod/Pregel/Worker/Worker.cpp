@@ -362,7 +362,7 @@ void Worker<V, E, M>::_startProcessing() {
       return;
     }
 
-    std::vector<futures::Future<Result>> futures;
+    std::vector<futures::Future<ResultT<ProcessVerticesResult>>> futures;
     futures.reserve(_quivers.size());
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
@@ -382,6 +382,10 @@ void Worker<V, E, M>::_startProcessing() {
         if (result.fail()) {
           LOG_PREGEL("ee2ac", WARN) << "Execution aborted prematurely.";
           return;
+        } else {
+          _workerContext->_writeAggregators->aggregateValues(
+              result->workerAggregator);
+          _messageStats.accumulate(result->stats);
         }
       }
     }
@@ -405,8 +409,8 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-Result Worker<V, E, M>::_processVertices(size_t idx,
-                                         std::shared_ptr<Quiver<V, E>> quiver) {
+ResultT<ProcessVerticesResult> Worker<V, E, M>::_processVertices(
+    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -416,12 +420,13 @@ Result Worker<V, E, M>::_processVertices(size_t idx,
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
 
-  AggregatorHandler workerAggregator(_algorithm.get());
+  ProcessVerticesResult verticesResult{
+      .workerAggregator = AggregatorHandler(_algorithm.get()), .stats = {}};
 
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
       _algorithm->createComputation(_config));
   _initializeVertexContext(vertexComputation.get());
-  vertexComputation->_writeAggregators = &workerAggregator;
+  vertexComputation->_writeAggregators = &verticesResult.workerAggregator;
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
@@ -454,31 +459,28 @@ Result Worker<V, E, M>::_processVertices(size_t idx,
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    return Result{TRI_ERROR_INTERNAL};
+    return {TRI_ERROR_INTERNAL};
   }
 
   // merge thread local messages, _writeCache does locking
   _writeCache->mergeCache(_config, inCache);
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
-  MessageStats stats;
-  stats.sendCount = outCache->sendCount();
+  verticesResult.stats.sendCount = outCache->sendCount();
   _currentGssObservables.messagesSent += outCache->sendCount();
   _currentGssObservables.memoryBytesUsedForMessages +=
       outCache->sendCount() * sizeof(M);
-  stats.superstepRuntimeSecs = TRI_microtime() - start;
+  verticesResult.stats.superstepRuntimeSecs = TRI_microtime() - start;
   inCache->clear();
   outCache->clear();
 
   {
     // merge the thread local stats and aggregators
-    _workerContext->_writeAggregators->aggregateValues(workerAggregator);
-    _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
 
-  return Result{TRI_ERROR_NO_ERROR};
+  return {std::move(verticesResult)};
 }
 
 // called at the end of a worker thread, needs mutex
