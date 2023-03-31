@@ -1741,15 +1741,15 @@ authRouter.get('/visgraph/:name', function (req, res) {
       }
     const nodeSizeAttributeMessage = 
       !nodeSizeAttributeFound && config.nodeSize
-        ? "No such node attribute found"
+        ? "Invalid attribute specified"
         : "";
     const nodeColorAttributeMessage = 
       !nodeColorAttributeFound && config.nodeColorAttribute
-        ? "No such node attribute found"
+        ? "Invalid attribute specified"
         : "";
     const edgeColorAttributeMessage = 
       !edgeColorAttributeFound && config.edgeColorAttribute
-        ? "No such edge attribute found"
+        ? "Invalid attribute specified"
         : "";
     toReturn = {
       nodes: nodesArr,
