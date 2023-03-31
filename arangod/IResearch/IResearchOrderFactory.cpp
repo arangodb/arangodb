@@ -148,15 +148,11 @@ bool nameFromFCall(std::string& scorerName, aql::AstNode const& node) {
 }
 
 bool fromFCall(irs::Scorer::ptr* scorer, aql::AstNode const& node,
-               arangodb::iresearch::QueryContext const& ctx,
-               std::string* name) {
+               arangodb::iresearch::QueryContext const& ctx) {
   std::string scorerName;
 
   if (!nameFromFCall(scorerName, node)) {
     return false;
-  }
-  if (name) {
-    *name = scorerName;
   }
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
@@ -172,15 +168,11 @@ bool nameFromFCallUser(std::string_view& scorerName, aql::AstNode const& node) {
 }
 
 bool fromFCallUser(irs::Scorer::ptr* scorer, aql::AstNode const& node,
-                   arangodb::iresearch::QueryContext const& ctx,
-                   std::string* name) {
+                   arangodb::iresearch::QueryContext const& ctx) {
   std::string_view scorerName;
 
   if (!nameFromFCallUser(scorerName, node)) {
     return false;
-  }
-  if (name) {
-    *name = scorerName;
   }
   return fromFCall(scorer, scorerName, node.getMemberUnchecked(0), ctx);
 }
@@ -213,12 +205,12 @@ aql::Variable const* refFromScorer(aql::AstNode const& node) {
 }
 
 bool scorer(irs::Scorer::ptr* scorer, aql::AstNode const& node,
-            QueryContext const& ctx, std::string* scorer_name /*= nullptr*/) {
+            QueryContext const& ctx) {
   switch (node.type) {
     case aql::NODE_TYPE_FCALL:  // function call
-      return fromFCall(scorer, node, ctx, scorer_name);
+      return fromFCall(scorer, node, ctx);
     case aql::NODE_TYPE_FCALL_USER:  // user function call
-      return fromFCallUser(scorer, node, ctx, scorer_name);
+      return fromFCallUser(scorer, node, ctx);
     default:
       // IResearch does not support any
       // expressions except function calls

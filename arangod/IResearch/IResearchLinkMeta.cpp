@@ -751,9 +751,7 @@ bool IResearchLinkMeta::init(
     std::string err;
     if (mask->_optimizeTopK) {
       if (!_optimizeTopK.fromVelocyPack(field, err)) {
-        errorField = StaticStrings::kOptimizeTopKField;
-        errorField = StaticStrings::kOptimizeTopKField;
-        absl::StrAppend(&errorField, ": ", err);
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
         return false;
       }
     }

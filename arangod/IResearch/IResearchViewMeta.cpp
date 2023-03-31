@@ -123,7 +123,7 @@ bool IResearchViewMeta::operator!=(
   return !(*this == other);
 }
 
-const IResearchViewMeta& IResearchViewMeta::DEFAULT() {
+IResearchViewMeta const& IResearchViewMeta::DEFAULT() {
   static const IResearchViewMeta meta;
 
   return meta;
@@ -232,11 +232,9 @@ bool IResearchViewMeta::init(velocypack::Slice slice, std::string& errorField,
     auto const field = slice.get(StaticStrings::kOptimizeTopKField);
     mask->_optimizeTopK = !field.isNone();
     if (mask->_optimizeTopK) {
-      std::string error;
-      if (!_optimizeTopK.fromVelocyPack(field, error)) {
-        errorField = StaticStrings::kOptimizeTopKField;
-        errorField += " ";
-        errorField += error;
+      std::string err;
+      if (!_optimizeTopK.fromVelocyPack(field, err)) {
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
         return false;
       }
     } else {

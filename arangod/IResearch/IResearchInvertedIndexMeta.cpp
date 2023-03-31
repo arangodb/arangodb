@@ -365,8 +365,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     if (!optimizeTopKSlice.isNone()) {
       std::string err;
       if (!_optimizeTopK.fromVelocyPack(optimizeTopKSlice, err)) {
-        errorField = StaticStrings::kOptimizeTopKField;
-        absl::StrAppend(&errorField, ": ", err);
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
         return false;
       }
     }
