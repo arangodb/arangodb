@@ -379,9 +379,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
           { "name": "testAnalyzer0", "type": "identity", "properties":{}, "features":[]}
         ],
         "analyzers": ["testAnalyzer0" ],
-        "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}],
-        "optimizeTopK": []
-    })");
+        "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -494,9 +496,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[] }
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"lz4"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -564,7 +568,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                   arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
 
-    auto expected_json = arangodb::velocypack::Parser::fromJson(R"({
+    auto expected_json =
+        arangodb::velocypack::Parser::fromJson(R"({
       "type":"arangosearch",
       "version":0,
       "primarySort":[],
@@ -577,9 +582,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+                                               ",\"optimizeTopK\": []"
+#endif
+                                               "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
   // with primary sort
@@ -626,9 +633,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
   // with primary sort and custom primary compression
@@ -676,9 +685,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -728,9 +739,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -779,9 +792,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 
@@ -862,9 +877,11 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
         { "name": "testAnalyzer1", "type": "identity", "properties":{}, "features":[]}
       ],
       "analyzers": ["testAnalyzer1" ],
-      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}],
-      "optimizeTopK": []
-    })");
+      "storedValues":[{"fields":["test.t"], "compression":"lz4"}, {"fields":["a.a", "b.b"], "compression":"none"}])"
+#ifdef USE_ENTERPRISE
+        ",\"optimizeTopK\": []"
+#endif
+        "}");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
 }

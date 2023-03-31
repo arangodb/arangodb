@@ -96,6 +96,12 @@
 
 namespace {
 
+#ifdef USE_ENTERPRISE
+static constexpr size_t kEnterpriseFields = 1;
+#else
+static constexpr size_t kEnterpriseFields = 0;
+#endif
+
 struct DocIdScorer final : public irs::ScorerBase<void> {
   static constexpr std::string_view type_name() noexcept {
     return "test_doc_id";
@@ -221,7 +227,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  false == slice.get("globallyUniqueId").copyString().empty()));
@@ -258,7 +264,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     std::string error;
 
     EXPECT_TRUE((slice.isObject()));
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  false == slice.get("globallyUniqueId").copyString().empty()));
@@ -383,7 +389,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
     EXPECT_TRUE((slice.isObject()));
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                  slice.get("globallyUniqueId").isString() &&
                  !slice.get("globallyUniqueId").copyString().empty()));
@@ -467,7 +473,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -553,7 +559,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -634,7 +640,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -693,11 +699,16 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(10 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      EXPECT_FALSE(tmpSlice2.get("optimizeTopK").isNone());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -799,7 +810,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -885,7 +896,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -965,7 +976,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1024,11 +1035,16 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(10 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      EXPECT_FALSE(tmpSlice2.get("optimizeTopK").isNone());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1129,7 +1145,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1215,7 +1231,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1295,7 +1311,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1354,11 +1370,16 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(10 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      EXPECT_FALSE(tmpSlice2.get("optimizeTopK").isNone());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -1460,7 +1481,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1546,7 +1567,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1626,7 +1647,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(16, slice.length());
+    EXPECT_EQ(15 + kEnterpriseFields, slice.length());
     EXPECT_TRUE(slice.get("name").isString() &&
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
@@ -1685,11 +1706,16 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
       EXPECT_EQ(1, tmpSlice.length());
       tmpSlice2 = tmpSlice.get("testCollection");
       EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
+      EXPECT_EQ(10 + kEnterpriseFields, tmpSlice2.length());
       EXPECT_FALSE(tmpSlice2.get("storedValues").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySort").isNone());
       EXPECT_FALSE(tmpSlice2.get("primarySortCompression").isNone());
-      EXPECT_FALSE(tmpSlice2.get("optimizeTopK").isNone());
+      auto valueTopK = tmpSlice2.get("optimizeTopK");
+#ifdef USE_ENTERPRISE
+      EXPECT_TRUE(valueTopK.isEmptyArray());
+#else
+      EXPECT_TRUE(valueTopK.isNone());
+#endif
       EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
                   1 == tmpSlice2.get("analyzers").length() &&
                   "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
@@ -3703,7 +3729,7 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
     ASSERT_EQ(1, reader->live_docs_count());
 
     auto& segment = reader[0];
-    const auto* column = segment.sort();
+    auto const* column = segment.sort();
     ASSERT_NE(nullptr, column);
     ASSERT_TRUE(irs::IsNull(column->name()));
     ASSERT_EQ(0, column->payload().size());
@@ -6121,7 +6147,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6150,7 +6176,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -6192,7 +6218,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6221,7 +6247,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -6275,7 +6301,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -6304,7 +6330,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -6361,7 +6387,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -6390,7 +6416,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -6448,7 +6474,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -6481,7 +6507,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -6539,7 +6565,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6584,7 +6610,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -6630,7 +6656,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6659,7 +6685,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -6724,7 +6750,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6769,7 +6795,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -6816,7 +6842,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6861,7 +6887,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -6911,7 +6937,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6940,7 +6966,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -6970,7 +6996,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         builder.close();
 
         auto slice = builder.slice();
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -6998,7 +7024,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         builder.close();
 
         auto slice = builder.slice();
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -7902,7 +7928,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -7931,7 +7957,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -7980,7 +8006,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8009,7 +8035,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -8062,7 +8088,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8091,7 +8117,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -8149,7 +8175,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8178,7 +8204,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
                    arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -8236,7 +8262,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -8281,7 +8307,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -8331,7 +8357,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -8376,7 +8402,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
                      arangodb::iresearch::StaticStrings::ViewArangoSearchType));
@@ -8431,7 +8457,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8457,7 +8483,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -8514,7 +8540,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8558,7 +8584,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -8635,7 +8661,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8679,7 +8705,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -8732,7 +8758,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8761,7 +8787,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -8811,7 +8837,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8848,7 +8874,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -8903,7 +8929,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -8932,7 +8958,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -8973,7 +8999,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9002,7 +9028,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9052,7 +9078,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -9081,7 +9107,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9132,7 +9158,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(16, slice.length());
+      EXPECT_EQ(15 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
@@ -9161,7 +9187,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_EQ(20, slice.length());
+      EXPECT_EQ(19 + kEnterpriseFields, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9203,7 +9229,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9227,7 +9253,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9266,7 +9292,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9290,7 +9316,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9342,7 +9368,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9371,7 +9397,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9395,7 +9421,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9427,7 +9453,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9456,7 +9482,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9480,7 +9506,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9512,7 +9538,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9541,7 +9567,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9565,7 +9591,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9597,7 +9623,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9626,7 +9652,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9650,7 +9676,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9682,7 +9708,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(
             (slice.hasKey("globallyUniqueId") &&
              slice.get("globallyUniqueId").isString() &&
@@ -9711,7 +9737,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(20, slice.length());
+        EXPECT_EQ(19 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -9735,7 +9761,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_EQ(16, slice.length());
+        EXPECT_EQ(15 + kEnterpriseFields, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
                     arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -10502,7 +10528,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_EQ("testView", slice.get("name").copyString());
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(4, meta._storedValues.columns().size());
@@ -10566,7 +10592,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
-    EXPECT_EQ(20, slice.length());
+    EXPECT_EQ(19 + kEnterpriseFields, slice.length());
     EXPECT_EQ("testView", slice.get("name").copyString());
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(5, meta._storedValues.columns().size());
@@ -10630,7 +10656,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
   auto slice = builder.slice();
   arangodb::iresearch::IResearchViewMeta meta;
   std::string error;
-  EXPECT_EQ(20, slice.length());
+  EXPECT_EQ(19 + kEnterpriseFields, slice.length());
   EXPECT_EQ("testView", slice.get("name").copyString());
   EXPECT_TRUE(meta.init(slice, error));
   ASSERT_EQ(2, meta._storedValues.columns().size());
