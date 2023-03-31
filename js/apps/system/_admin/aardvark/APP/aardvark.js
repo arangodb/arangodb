@@ -1357,23 +1357,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
         },
         sizeAttributeFound
       };
+
       if (config.nodeColorByCollection === 'true') {
         var coll = node._id.split('/')[0];
-        if (tmpObjNodes.hasOwnProperty(coll)) {
-          nodeObj.color = tmpObjNodes[coll];
-        } else {
-          tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
-          nodeObj.color = tmpObjNodes[coll];
-        }
+        nodeObj.group = coll;
+        nodeObj.color = "";
       } else if (config.nodeColorAttribute !== '') {
-        var attr = node[config.nodeColorAttribute];
-        if (attr !== undefined && attr !== null) {
-            nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
-            nodeObj['nodeColorAttributeValue'] = attr;
-            nodeObj.color = tmpObjNodes[attr];
-        } else {
-          nodeObj.colorAttributeFound = false;
-        }
+        nodeObj.group = JSON.stringify(node[config.nodeColorAttribute]);
+        nodeObj.color = "";
       }
 
       nodeObj.sortColor = nodeObj.color;
@@ -1555,6 +1546,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         node.nodeEdgesCount = nodeEdgesCount[node.id];
         node.value = nodeEdgesCount[node.id];
         connectionsCounts.push(nodeEdgesCount[node.id]);
+
         // if a node without edges is found, use def. size 10
         if (Number.isNaN(node.size)) {
           node.size = 10;
