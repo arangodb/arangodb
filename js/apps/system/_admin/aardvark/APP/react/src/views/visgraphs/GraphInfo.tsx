@@ -82,7 +82,7 @@ const Attributes = ({
     return null;
   }
   return (
-    <Box>
+    <HStack>
       <Text>Attributes</Text>
       {attributes.map(attribute => {
         const keyData = displayData[attribute];
@@ -104,6 +104,6 @@ const Attributes = ({
           </Tooltip>
         );
       })}
-    </Box>
+    </HStack>
   );
 };
