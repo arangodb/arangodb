@@ -9,9 +9,6 @@ import { userIsAdmin } from '../../utils/usePermissions';
 import { FormState } from "./constants";
 import { ViewAnalyzerModal } from './ViewAnalyzerModal';
 
-declare var frontendConfig: { [key: string]: any };
-declare var arangoHelper: { [key: string]: any };
-
 type ButtonProps = {
   analyzer: FormState;
   modalCid: string;
@@ -30,13 +27,13 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
       const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
 
       if (result.body.error) {
-        arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
+        window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
       } else {
-        arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
+        window.arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
         await mutate('/analyzer');
       }
     } catch (e: any) {
-      arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
+      window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
     }
   };
 
@@ -128,8 +125,8 @@ interface ActionProps {
 const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isUserDefined = analyzer.name.includes('::');
   const isSameDB = isUserDefined
-    ? analyzer.name.split('::')[0] === frontendConfig.db
-    : frontendConfig.db === '_system';
+    ? analyzer.name.split('::')[0] === window.frontendConfig.db
+    : window.frontendConfig.db === '_system';
   const isAdminUser = userIsAdmin(permission);
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
