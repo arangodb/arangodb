@@ -7,11 +7,13 @@ const ParameterLimit = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newUrlParameters = {
-      ...urlParams,
-      limit: Number(event.target.value)
-    };
-    setUrlParams(newUrlParameters);
+    if (Number(event.target.value) >= 0) {
+      const newUrlParameters = {
+        ...urlParams,
+        limit: Number(event.target.value)
+      };
+      setUrlParams(newUrlParameters);
+    }
   };
 
   return (

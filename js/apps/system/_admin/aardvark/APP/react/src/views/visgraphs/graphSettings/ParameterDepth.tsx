@@ -7,11 +7,13 @@ const ParameterDepth = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const newUrlParameters = {
-      ...urlParams,
-      depth: Number(event.target.value)
-    };
-    setUrlParams(newUrlParameters);
+    if (Number(event.target.value) >= 0) {
+      const newUrlParameters = {
+        ...urlParams,
+        depth: Number(event.target.value)
+      };
+      setUrlParams(newUrlParameters);
+    }
   };
 
   return (
