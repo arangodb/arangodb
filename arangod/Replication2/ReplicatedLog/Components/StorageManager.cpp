@@ -305,19 +305,25 @@ auto StorageManager::getTermIndexMapping() const -> TermIndexMapping {
   return guardedData.getLockedGuard()->onDiskMapping;
 }
 
-auto StorageManager::getPeristedLogIterator(LogIndex first) const
+auto StorageManager::getPersistedLogIterator(LogIndex first) const
     -> std::unique_ptr<PersistedLogIterator> {
-  return getPeristedLogIterator(
+  return getPersistedLogIterator(
       LogRange{first, LogIndex{static_cast<std::uint64_t>(-1)}});
 }
 
-auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
+auto StorageManager::getPersistedLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
   auto range =
       bounds ? *bounds
              : LogRange{LogIndex{0}, LogIndex{static_cast<std::uint64_t>(-1)}};
 
-  auto diskIter = guardedData.getLockedGuard()->methods->read(range.from);
+  auto guard = guardedData.getLockedGuard();
+  if (guard->methods == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+
+  auto diskIter = guard->methods->read(range.from);
 
   struct Iterator : PersistedLogIterator {
     explicit Iterator(LogRange range,
@@ -345,6 +351,11 @@ auto StorageManager::getPeristedLogIterator(std::optional<LogRange> bounds)
 auto StorageManager::getCommittedLogIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
   auto guard = guardedData.getLockedGuard();
+  if (guard->methods == nullptr) {
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+
   auto range = guard->onDiskMapping.getIndexRange();
   if (bounds) {
     range = intersect(*bounds, range);

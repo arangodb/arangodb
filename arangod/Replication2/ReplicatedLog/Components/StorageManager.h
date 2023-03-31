@@ -28,7 +28,9 @@
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
 #include "Futures/Promise.h"
 #include <deque>
-
+namespace arangodb::replication2 {
+struct IScheduler;
+}
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
@@ -44,9 +46,9 @@ struct StorageManager : IStorageManager,
   auto transaction() -> std::unique_ptr<IStorageTransaction> override;
   auto getCommittedLogIterator(std::optional<LogRange> range) const
       -> std::unique_ptr<LogRangeIterator> override;
-  auto getPeristedLogIterator(LogIndex first) const
+  auto getPersistedLogIterator(LogIndex first) const
       -> std::unique_ptr<PersistedLogIterator>;
-  auto getPeristedLogIterator(std::optional<LogRange> range) const
+  auto getPersistedLogIterator(std::optional<LogRange> range) const
       -> std::unique_ptr<PersistedLogIterator>;
   auto getTermIndexMapping() const -> TermIndexMapping override;
   auto beginMetaInfoTrx() -> std::unique_ptr<IStateInfoTransaction> override;
@@ -86,6 +88,7 @@ struct StorageManager : IStorageManager,
   Guarded<GuardedData> guardedData;
   using GuardType = Guarded<GuardedData>::mutex_guard_type;
   LoggerContext const loggerContext;
+  std::shared_ptr<IScheduler> const scheduler;
 
   auto scheduleOperation(GuardType&&, TermIndexMapping mapResult,
                          std::unique_ptr<StorageOperation>)

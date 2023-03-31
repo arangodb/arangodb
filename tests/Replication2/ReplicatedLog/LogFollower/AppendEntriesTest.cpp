@@ -48,6 +48,21 @@ struct ReplicatedStateHandleMock : IReplicatedStateHandle {
   MOCK_METHOD(replicated_state::Status, getInternalStatus, (),
               (const, override));
 };
+
+struct SyncScheduler : IScheduler {
+  auto delayedFuture(std::chrono::nanoseconds duration, std::string_view name)
+      -> arangodb::futures::Future<arangodb::futures::Unit> override {
+    std::abort();  // not implemented
+  }
+  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
+                    fu2::unique_function<void(bool canceled)> handler) noexcept
+      -> WorkItemHandle override {
+    std::abort();  // not implemented
+  }
+  void queue(fu2::unique_function<void()> function) noexcept override {
+    function();
+  }
+};
 }  // namespace
 
 struct AppendEntriesFollowerTest : ::testing::Test {
@@ -55,6 +70,7 @@ struct AppendEntriesFollowerTest : ::testing::Test {
   LogId const logId = LogId{12};
   std::shared_ptr<test::SyncExecutor> executor =
       std::make_shared<test::SyncExecutor>();
+  std::shared_ptr<SyncScheduler> scheduler = std::make_shared<SyncScheduler>();
 
   test::FakeStorageEngineMethodsContext storage{
       objectId,
@@ -84,7 +100,8 @@ struct AppendEntriesFollowerTest : ::testing::Test {
     return std::make_shared<FollowerManager>(
         storage.getMethods(),
         std::unique_ptr<ReplicatedStateHandleMock>(stateHandle), termInfo,
-        options, metrics, nullptr, LoggerContext{Logger::REPLICATION2});
+        options, metrics, nullptr, scheduler,
+        LoggerContext{Logger::REPLICATION2});
   }
 };
 

@@ -1067,7 +1067,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
     return _inMemoryLog.getMemtryIteratorFrom(firstIdx);
   }
 
-  auto diskIter = _self._storageManager->getPeristedLogIterator(firstIdx);
+  auto diskIter = _self._storageManager->getPersistedLogIterator(firstIdx);
 
   struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
     explicit OverlayIterator(
