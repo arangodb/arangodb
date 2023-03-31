@@ -84,9 +84,6 @@ struct CollectionStatusWriter : StatusWriterInterface {
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };
 
-// Note: Put inspect methods into dedicated own header file.
-// This will speed up compilation times. Only include where we actually
-// need to serialize.
 template<typename Inspector>
 auto inspect(Inspector& f, CollectionStatusWriter::OperationData& x) {
   return f.object(x).fields(f.field("_key", x._key), f.field("data", x.data));
