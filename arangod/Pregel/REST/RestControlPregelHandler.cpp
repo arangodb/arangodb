@@ -34,6 +34,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
+#include "Pregel/StatusActor.h"
 #include "Transaction/StandaloneContext.h"
 
 #include <velocypack/Builder.h>
@@ -172,8 +173,20 @@ void RestControlPregelHandler::handleGetRequest() {
     auto c = _pregel.conductor(executionNumber);
 
     if (nullptr == c) {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                    "Execution number is invalid");
+      auto status = _pregel.getStatus(executionNumber);
+      if (not status.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, status.errorNumber(),
+                      status.errorMessage());
+        return;
+      }
+      auto serializedState = inspection::serializeWithErrorT(status.get());
+      if (!serializedState.ok()) {
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
+                      fmt::format("Cannot serialize status: {}",
+                                  serializedState.error().error()));
+        return;
+      }
+      generateResult(rest::ResponseCode::OK, serializedState.get().slice());
       return;
     }
 

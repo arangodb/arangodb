@@ -103,7 +103,7 @@ RestStatus RestPregelHandler::execute() {
             actor::ActorPID{.server = ServerState::instance()->getId(),
                             .database = _vocbase.name(),
                             .id = resultActorID};
-        _pregel._resultActor.emplace(
+        _pregel._resultActors.emplace(
             std::get<message::SpawnWorker>(spawnMessage.get())
                 .message.executionNumber,
             resultActorPID);
