@@ -185,7 +185,7 @@ let viewsTest = {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief checks that no new analyzers were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
-let aralyzersTest = {
+let analyzersTest = {
   name: 'analyzers',
   setUp: function(obj, te) {
     analyzers.toArray().forEach(oneAnalyzer => {
@@ -373,7 +373,7 @@ class testRunner {
     }
     this.analyzersBefore = [];
     if (checkCollections) {
-      this.cleanupChecks.push(aralyzersTest);
+      this.cleanupChecks.push(analyzersTest);
     }
     this.graphCount = 0;
     if (checkCollections) {
