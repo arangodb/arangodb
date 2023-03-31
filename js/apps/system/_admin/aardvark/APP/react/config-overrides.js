@@ -4,6 +4,9 @@ const CompressionPlugin = require("compression-webpack-plugin");
 
 module.exports = {
   webpack: (config, env) => {
+    // Allow using "img/xyz" in the legacy frontend
+    config.resolve.alias["./img"] = path.resolve(__dirname, "../frontend/img");
+
     // Disable the module scope plugin to allow importing from the old frontend
     config.resolve.plugins = [];
 
@@ -15,7 +18,7 @@ module.exports = {
     };
 
     // The html-loader no longer supports interpolation, which we use in
-    // index.html to inject the old frontend scaffolding. Workaround via:
+    // index.html to inject the legacy frontend scaffolding. Workaround via:
     // https://github.com/webpack-contrib/html-loader/issues/291#issuecomment-671686973
     config.module.rules.unshift({
       test: /\.html$/,
