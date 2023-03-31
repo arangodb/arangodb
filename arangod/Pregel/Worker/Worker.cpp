@@ -342,6 +342,20 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   _workHandle.reset();
 }
 
+namespace {
+
+template<typename Fn, typename R = std::invoke_result_t<Fn>>
+auto GiveMeAFuture(Scheduler* scheduler, Fn&& fn) -> futures::Future<R> {
+  futures::Promise<R> p;
+  auto f = p.getFuture();
+  scheduler->queue(RequestLane::INTERNAL_LOW,
+                   [p = std::move(p), fn = std::forward<Fn>(fn)]() mutable {
+                     p.setValue(std::forward<Fn>(fn)());
+                   });
+  return f;
+}
+}  // namespace
+
 /// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
@@ -366,8 +380,11 @@ void Worker<V, E, M>::_startProcessing() {
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
-      futures.emplace_back(futures::makeFuture(
-          [idx, quiver]() { return_processVertices(idx, quiver); }));
+      futures.emplace_back(
+          GiveMeAFuture(SchedulerFeature::SCHEDULER,
+                        [self, this, idx = idx, quiver = quiver]() {
+                          return _processVertices(idx, quiver);
+                        }));
     }
 
     if (!futures.empty()) {
@@ -401,8 +418,8 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-futures::Future<Result> Worker<V, E, M>::_processVertices(
-    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
+Result Worker<V, E, M>::_processVertices(size_t idx,
+                                         std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -450,7 +467,7 @@ futures::Future<Result> Worker<V, E, M>::_processVertices(
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    return futures::makeFuture(Result{TRI_ERROR_INTERNAL});
+    return Result{TRI_ERROR_INTERNAL};
   }
 
   // merge thread local messages, _writeCache does locking
@@ -474,7 +491,7 @@ futures::Future<Result> Worker<V, E, M>::_processVertices(
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
 
-  return futures::makeFuture(Result{TRI_ERROR_NO_ERROR});
+  return Result{TRI_ERROR_NO_ERROR};
 }
 
 // called at the end of a worker thread, needs mutex

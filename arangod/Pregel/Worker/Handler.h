@@ -333,10 +333,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     std::vector<futures::Future<ResultT<VerticesProcessed>>> futures;
     // first build up all future requests
+    /*
     for (auto [idx, quiver] : enumerate(this->state->quivers)) {
-      futures.emplace_back(processVertices(idx, quiver));
+      futures.emplace_back(futures::makeFuture(
+          [idx, quiver]() { return processVertices(idx, quiver); }));
     }
-
+*/
     std::vector<VerticesProcessed> verticesProcessed = {};
 
     if (!futures.empty()) {
