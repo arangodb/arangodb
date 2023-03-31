@@ -96,8 +96,12 @@ ProcessMonitoringFeature::~ProcessMonitoringFeature() = default;
 
 void ProcessMonitoringFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _enabled =
       server().getFeature<V8SecurityFeature>().isAllowedToControlProcesses();
+#else
+  _enabled =
+#endif
 }
 
 void ProcessMonitoringFeature::start() {
