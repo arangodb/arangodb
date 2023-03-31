@@ -32,7 +32,8 @@ namespace arangodb::pregel {
 
 struct ResultState {
   ResultT<PregelResults> results = {PregelResults{}};
-  bool finished{false};
+  bool complete{false};
+  std::vector<actor::ActorPID> otherResultActors;
 };
 
 template<typename Inspector>
@@ -48,14 +49,20 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::OtherResultActorStarted start)
+      -> std::unique_ptr<ResultState> {
+    this->state->otherResultActors.push_back(this->sender);
+    return std::move(this->state);
+  }
+
   auto operator()(message::SaveResults start) -> std::unique_ptr<ResultState> {
     this->state->results = {start.results};
-    this->state->finished = true;
+    this->state->complete = true;
     return std::move(this->state);
   }
 
   auto operator()(message::AddResults msg) -> std::unique_ptr<ResultState> {
-    if (this->state->finished) {
+    if (this->state->complete) {
       return std::move(this->state);
     }
 
@@ -65,7 +72,7 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
 
     if (msg.results.fail()) {
       this->state->results = msg.results;
-      this->state->finished = true;
+      this->state->complete = true;
       return std::move(this->state);
     }
 
@@ -84,8 +91,17 @@ struct ResultHandler : actor::HandlerBase<Runtime, ResultState> {
     this->state->results = {
         PregelResults{.results = std::move(newResultsBuilder)}};
 
-    this->state->finished = msg.receivedAllResults;
+    this->state->complete = msg.receivedAllResults;
 
+    return std::move(this->state);
+  }
+
+  auto operator()(message::ResultCleanup msg) -> std::unique_ptr<ResultState> {
+    this->finish();
+    for (auto const& actor : this->state->otherResultActors) {
+      this->template dispatch<pregel::message::ResultMessages>(
+          actor, pregel::message::ResultCleanup{});
+    }
     return std::move(this->state);
   }
 
