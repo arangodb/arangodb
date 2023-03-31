@@ -272,7 +272,7 @@ function StatementStreamSuite () {
         ttl : 0.00001,
         batchSize : 1000, // default
         options: {
-          stream : true, // server module only uses cursors for streaming queries
+          stream : true,
         }
       });
       var docs = [ ];

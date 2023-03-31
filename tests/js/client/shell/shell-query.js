@@ -49,8 +49,6 @@ function QuerySuite () {
       var result = db._query("FOR i IN 1..2000 RETURN i", { }, {
         ttl : 0.00001,
         batchSize : 1000, // default
-      }, {
-        stream : true // server module only uses cursors for streaming queries
       });
       var docs = [ ];
       try {
@@ -73,9 +71,6 @@ function QuerySuite () {
         query : "FOR i IN 1..2000 RETURN i",
         ttl : 0.00001,
         batchSize : 1000, // default
-        options: {
-          stream : true, // server module only uses cursors for streaming queries
-        }
       });
       var docs = [ ];
       try {
