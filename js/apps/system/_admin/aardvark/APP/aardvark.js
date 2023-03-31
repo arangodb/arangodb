@@ -1653,7 +1653,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
         arrows: {
           to: {
             enabled: (config.edgeDirection === "true"),
-            type: "arrow"
+            type: "arrow",
+            scaleFactor: 0.5
           },
         },
       },
@@ -1683,7 +1684,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
           arrows: {
             to: {
               enabled: (config.edgeDirection === "true"),
-              type: "arrow"
+              type: "arrow",
+              scaleFactor: 0.5
             },
           },
         },
@@ -1708,7 +1710,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
             arrows: {
               to: {
                 enabled: (config.edgeDirection === "true"),
-                type: "arrow"
+                type: "arrow",
+                scaleFactor: 0.5
               },
             },
           },
