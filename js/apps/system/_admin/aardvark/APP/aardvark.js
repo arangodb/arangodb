@@ -1321,11 +1321,13 @@ authRouter.get('/visgraph/:name', function (req, res) {
       if (typeof nodeLabel === 'number') {
         nodeLabel = JSON.stringify(nodeLabel);
       }
-      
+      let sizeAttributeFound;
       if (config.nodeSize && config.nodeSizeByEdges === 'false') {
         nodeSize = 20;
-        if(Number.isInteger(node[config.nodeSize])) {
+        if (Number.isInteger(node[config.nodeSize])) {
           nodeSize = node[config.nodeSize];  
+        } else {
+          sizeAttributeFound = false;
         }
         
         sizeCategory = node[config.nodeSize] || '';
@@ -1339,12 +1341,6 @@ authRouter.get('/visgraph/:name', function (req, res) {
           calculatedNodeColor = config.nodeColor;
         }
       }
-    if (Object.keys(nodesObj).length === 0 && !startVertex && multipleIds.length > 0) {
-      multipleIds.forEach(id => {
-        nodesObj[id] = generateNodeObject({ _id: id });
-      })
-    }
-
         
       nodeObj = {
         id: node._id,
@@ -1358,7 +1354,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
           strokeWidth: 2,
           strokeColor: '#ffffff',
           vadjust: -7
-        }
+        },
+        sizeAttributeFound
       };
       if (config.nodeColorByCollection === 'true') {
         var coll = node._id.split('/')[0];
@@ -1374,6 +1371,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
             nodeObj['nodeColorAttributeKey'] = config.nodeColorAttribute;
             nodeObj['nodeColorAttributeValue'] = attr;
             nodeObj.color = tmpObjNodes[attr];
+        } else {
+          nodeObj.colorAttributeFound = false;
         }
       }
 
@@ -1520,6 +1519,8 @@ authRouter.get('/visgraph/:name', function (req, res) {
                 edgeObj.color = tmpObjEdges[attr];
                 //edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
               }
+            } else {
+              edgeObj.colorAttributeFound = false;
             }
           }
         }
@@ -1539,7 +1540,15 @@ authRouter.get('/visgraph/:name', function (req, res) {
     if (Object.keys(nodesObj).length === 0 && startVertex) {
       nodesObj[startVertex._id] = generateNodeObject(startVertex);
     }
+    if (Object.keys(nodesObj).length === 0 && !startVertex && multipleIds.length > 0) {
+      multipleIds.forEach(id => {
+        nodesObj[id] = generateNodeObject({ _id: id });
+      })
+    }
 
+    let nodeColorAttributeFound;
+    let nodeSizeAttributeFound;
+    
     _.each(nodesObj, function (node) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
@@ -1583,7 +1592,12 @@ authRouter.get('/visgraph/:name', function (req, res) {
           };
         }
       }
-
+      if (node.colorAttributeFound) {
+          nodeColorAttributeFound = true;
+      }
+      if (node.sizeAttributeFound) {
+          nodeSizeAttributeFound = true;
+      }
       nodesArr.push(node);
     });
 
@@ -1592,10 +1606,14 @@ authRouter.get('/visgraph/:name', function (req, res) {
       nodeNamesArr.push(key);
     });
 
+    let edgeColorAttributeFound;
     // array format for sigma.js
     _.each(edgesObj, function (edge) {
       if (nodeNamesArr.indexOf(edge.source) > -1 && nodeNamesArr.indexOf(edge.target) > -1) {
         edgesArr.push(edge);
+      }
+      if(edge.colorAttributeFound) {
+        edgeColorAttributeFound = true;
       }
     });
 
@@ -1718,11 +1736,25 @@ authRouter.get('/visgraph/:name', function (req, res) {
         default:
           layoutObject = barnesHutOptions;
       }
-
+    const nodeSizeAttributeMessage = 
+      !nodeSizeAttributeFound && config.nodeSize
+        ? "No such node attribute found"
+        : "";
+    const nodeColorAttributeMessage = 
+      !nodeColorAttributeFound && config.nodeColorAttribute
+        ? "No such node attribute found"
+        : "";
+    const edgeColorAttributeMessage = 
+      !edgeColorAttributeFound && config.edgeColorAttribute
+        ? "No such edge attribute found"
+        : "";
     toReturn = {
       nodes: nodesArr,
       edges: edgesArr,
       settings: {
+        nodeColorAttributeMessage,
+        nodeSizeAttributeMessage,
+        edgeColorAttributeMessage,
         configlayout: config.layout,
         layout: layoutObject,
         vertexCollections: vertexCollections,

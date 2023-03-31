@@ -44,6 +44,9 @@ export type EdgeDataType = {
   sortColor: string;
 };
 type SettingsType = {
+  nodeColorAttributeMessage?: string;
+  edgeColorAttributeMessage?: string;
+  nodeSizeAttributeMessage?: string;
   layout: {
     interaction: {
       dragNodes: boolean;
