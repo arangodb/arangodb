@@ -39,6 +39,7 @@ struct SpawnWorker {
   actor::ServerID destinationServer;
   actor::ActorPID conductor;
   actor::ActorPID resultActorOnCoordinator;
+  TTL ttl;
   worker::message::CreateWorker message;
 };
 template<typename Inspector>
@@ -47,7 +48,7 @@ auto inspect(Inspector& f, SpawnWorker& x) {
       f.field("destinationServer", x.destinationServer),
       f.field("conductor", x.conductor),
       f.field("resultActorOnCoordinator", x.resultActorOnCoordinator),
-      f.field("message", x.message));
+      f.field("ttl", x.ttl), f.field("message", x.message));
 }
 
 struct SpawnCleanup {};
