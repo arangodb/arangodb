@@ -363,10 +363,10 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             executionSpecifications.edgeCollections);
 
     auto statusStart = message::StatusMessages{message::StatusStart{
+        .state = "Execution Started",
         .id = executionSpecifications.executionNumber,
         .database = vocbase.name(),
         .algorithm = executionSpecifications.algorithm,
-        .state = "Execution Started",
         .ttl = executionSpecifications.ttl,
         .parallelism = executionSpecifications.parallelism
     }};

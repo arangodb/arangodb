@@ -32,10 +32,10 @@
 namespace arangodb::pregel {
 
 struct PrintableTiming {
-  PrintableTiming(uint64_t timingInMicroseconds)
+  explicit PrintableTiming(uint64_t timingInMicroseconds)
       : timing{message::TimingInMicroseconds{.value = timingInMicroseconds}} {}
-  PrintableTiming(message::TimingInMicroseconds timingInMilliseconds)
-      : timing{timingInMilliseconds} {}
+  explicit PrintableTiming(message::TimingInMicroseconds timingInMicroseconds)
+      : timing{timingInMicroseconds} {}
   message::TimingInMicroseconds timing;
 };
 template<typename Inspector>
@@ -48,7 +48,7 @@ auto inspect(Inspector& f, PrintableTiming& x) {
     }
     return res;
   } else {
-    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
+    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.)); // NOLINT(cppcoreguidelines-narrowing-conversions)
   }
 }
 struct PrintableDuration {
@@ -70,9 +70,9 @@ struct PrintableDuration {
       stop = PrintableTiming{timing};
     }
   }
-  auto duration() const -> PrintableTiming {
+  [[nodiscard]] auto duration() const -> PrintableTiming {
     if (not start.has_value()) {
-      return 0;
+      return PrintableTiming{0};
     }
     if (not stop.has_value()) {
       return PrintableTiming{message::TimingInMicroseconds::now().value -
@@ -91,13 +91,13 @@ auto inspect(Inspector& f, PrintableDuration& x) {
   }
 }
 struct PregelTimings {
-  PrintableDuration running;
+  PrintableDuration totalRuntime;
   PrintableDuration loading;
   std::vector<PrintableDuration> gss;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(f.field("running", x.running),
+  return f.object(x).fields(f.field("totalRuntime", x.totalRuntime),
                             f.field("loading", x.loading),
                             f.field("gss", x.gss));
 }
@@ -107,6 +107,7 @@ struct StatusState {
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
+  std::optional<PrintableTiming> created;
   TTL ttl;
   size_t parallelism;
   PregelTimings timings;
@@ -118,25 +119,32 @@ auto inspect(Inspector& f, StatusState& x) {
   return f.object(x).fields(
       f.field("state", x.stateName), f.field("id", x.id),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("ttl", x.ttl), f.field("parallelism", x.parallelism),
-      f.field("timings", x.timings), f.field("gss", x.gss),
+      f.field("created", x.created), f.field("ttl", x.ttl),
+      f.field("parallelism", x.parallelism), f.field("timings", x.timings),
+      f.field("gss", x.gss),
       // TODO embed aggregators field (it already has "aggregators" as key)
       f.field("aggregators", x.aggregators));
 }
 
 template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
-  auto operator()(message::StatusStart msg) -> std::unique_ptr<StatusState> {
+  auto operator()(message::StatusStart& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->id = msg.id;
     this->state->database = msg.database;
     this->state->algorithm = msg.algorithm;
+    this->state->created = PrintableTiming{msg.time};
     this->state->ttl = msg.ttl;
     this->state->parallelism = msg.parallelism;
-    this->state->timings.running.setStart(msg.time);
 
     LOG_TOPIC("ea4f4", INFO, Logger::PREGEL)
         << fmt::format("Status Actor {} started", this->self);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::PregelStarted msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.totalRuntime.setStart(msg.time);
     return std::move(this->state);
   }
 
@@ -179,7 +187,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(auto&& rest) -> std::unique_ptr<StatusState> {
+  auto operator()([[maybe_unused]] auto&& rest) -> std::unique_ptr<StatusState> {
     LOG_TOPIC("e9df2", INFO, Logger::PREGEL)
         << "Status Actor: Got unhandled message";
     return std::move(this->state);

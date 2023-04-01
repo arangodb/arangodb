@@ -54,21 +54,30 @@ auto inspect(Inspector& f, TimingInMicroseconds& x) {
 }
 
 struct StatusStart {
+  std::string state;
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
   TimingInMicroseconds time = TimingInMicroseconds::now();
-  std::string state;
   TTL ttl;
   size_t parallelism;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusStart& x) {
-  return f.object(x).fields(
-      f.field("id", x.id), f.field("database", x.database),
-      f.field("algorithm", x.algorithm), f.field("created", x.time),
-      f.field("ttl", x.ttl), f.field("state", x.state),
-      f.field("parallelism", x.parallelism));
+  return f.object(x).fields(f.field("state", x.state), f.field("id", x.id),
+                            f.field("database", x.database),
+                            f.field("algorithm", x.algorithm),
+                            f.field("time", x.time), f.field("ttl", x.ttl),
+                            f.field("parallelism", x.parallelism));
+}
+
+struct PregelStarted {
+  std::string state;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+};
+template<typename Inspector>
+auto inspect(Inspector& f, PregelStarted& x) {
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
 struct LoadingStarted {
@@ -93,15 +102,16 @@ auto inspect(Inspector& f, GlobalSuperStepStarted& x) {
                             f.field("state", x.state), f.field("time", x.time));
 }
 
-struct StatusMessages
-    : std::variant<StatusStart, LoadingStarted, GlobalSuperStepStarted> {
-  using std::variant<StatusStart, LoadingStarted,
+struct StatusMessages : std::variant<StatusStart, PregelStarted, LoadingStarted,
+                                     GlobalSuperStepStarted> {
+  using std::variant<StatusStart, PregelStarted, LoadingStarted,
                      GlobalSuperStepStarted>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
   return f.variant(x).unqualified().alternatives(
       arangodb::inspection::type<StatusStart>("Start"),
+      arangodb::inspection::type<PregelStarted>("PregelStarted"),
       arangodb::inspection::type<LoadingStarted>("LoadingStarted"),
       arangodb::inspection::type<GlobalSuperStepStarted>(
           "GlobalSuperStepStarted"));

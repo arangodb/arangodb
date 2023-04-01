@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,29 +18,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "State.h"
+#include "InitialState.h"
+#include "CreateWorkersState.h"
+#include "Pregel/Conductor/State.h"
 
-namespace arangodb::pregel::conductor {
+using namespace arangodb;
+using namespace arangodb::pregel;
+using namespace arangodb::pregel::conductor;
 
-struct ConductorState;
+Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 
-/*
-  This is the initial state the conductor is in when created. It does not do
-  anything on its own and needs to be changed from outside.
- */
+auto Initial::receive(actor::ActorPID sender,
+                      message::ConductorMessages message)
+    -> std::optional<StateChange> {
+  auto newState = std::make_unique<CreateWorkers>(conductor);
+  auto stateName = newState->name();
 
-struct Initial : ExecutionState {
-  explicit Initial(ConductorState& conductor);
-  ~Initial() override = default;
-  [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<StateChange> override;
-
-  ConductorState& conductor;
-};
-
-}  // namespace arangodb::pregel::conductor
+  return StateChange{
+      .statusMessage = pregel::message::PregelStarted{.state = stateName},
+      .newState = std::move(newState)};
+}
