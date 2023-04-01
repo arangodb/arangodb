@@ -65,7 +65,11 @@ auto Storing::receive(actor::ActorPID sender,
   respondedWorkers.emplace(sender);
 
   if (respondedWorkers == conductor.workers) {
-    return StateChange{.newState = std::make_unique<Done>(conductor)};
+    auto newState = std::make_unique<Done>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::StatusDone{.state = stateName},
+        .newState = std::make_unique<Done>(conductor)};
   }
 
   return std::nullopt;

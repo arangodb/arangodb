@@ -51,10 +51,14 @@ auto Loading::receive(actor::ActorPID sender,
         totalVerticesCount, totalEdgesCount,
         std::make_unique<AggregatorHandler>(conductor.algorithm.get()),
         conductor.specifications.userParameters.slice());
+    auto newState = std::make_unique<Computing>(
+        conductor, std::move(masterContext),
+        std::unordered_map<actor::ActorPID, uint64_t>{});
+    auto stateName = newState->name();
 
-    return StateChange{.newState = std::make_unique<Computing>(
-                           conductor, std::move(masterContext),
-                           std::unordered_map<actor::ActorPID, uint64_t>{})};
+    return StateChange{
+        .statusMessage = pregel::message::ComputationStarted{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   return std::nullopt;

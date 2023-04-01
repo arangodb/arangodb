@@ -58,17 +58,15 @@ struct StatusStart {
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
-  TimingInMicroseconds time = TimingInMicroseconds::now();
   TTL ttl;
   size_t parallelism;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusStart& x) {
-  return f.object(x).fields(f.field("state", x.state), f.field("id", x.id),
-                            f.field("database", x.database),
-                            f.field("algorithm", x.algorithm),
-                            f.field("time", x.time), f.field("ttl", x.ttl),
-                            f.field("parallelism", x.parallelism));
+  return f.object(x).fields(
+      f.field("state", x.state), f.field("id", x.id),
+      f.field("database", x.database), f.field("algorithm", x.algorithm),
+      f.field("ttl", x.ttl), f.field("parallelism", x.parallelism));
 }
 
 struct PregelStarted {
@@ -89,6 +87,15 @@ auto inspect(Inspector& f, LoadingStarted& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
+struct ComputationStarted {
+  std::string state;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ComputationStarted& x) {
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+}
+
 struct GlobalSuperStepStarted {
   uint64_t gss;
   VPackBuilder aggregators;
@@ -102,10 +109,21 @@ auto inspect(Inspector& f, GlobalSuperStepStarted& x) {
                             f.field("state", x.state), f.field("time", x.time));
 }
 
-struct StatusMessages : std::variant<StatusStart, PregelStarted, LoadingStarted,
-                                     GlobalSuperStepStarted> {
+struct StatusDone {
+  std::string state;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusDone& x) {
+  return f.object(x).fields(f.field("state", x.state));
+}
+
+struct StatusMessages
+    : std::variant<StatusStart, PregelStarted, LoadingStarted,
+                   ComputationStarted, GlobalSuperStepStarted, StatusDone> {
   using std::variant<StatusStart, PregelStarted, LoadingStarted,
-                     GlobalSuperStepStarted>::variant;
+                     ComputationStarted, GlobalSuperStepStarted,
+                     StatusDone>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
@@ -113,8 +131,10 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<StatusStart>("Start"),
       arangodb::inspection::type<PregelStarted>("PregelStarted"),
       arangodb::inspection::type<LoadingStarted>("LoadingStarted"),
+      arangodb::inspection::type<ComputationStarted>("ComputationStarted"),
       arangodb::inspection::type<GlobalSuperStepStarted>(
-          "GlobalSuperStepStarted"));
+          "GlobalSuperStepStarted"),
+      arangodb::inspection::type<StatusDone>("Done"));
 }
 
 }  // namespace arangodb::pregel::message

@@ -28,6 +28,7 @@
 #include "Inspection/Status.h"
 #include "Pregel/StatusMessages.h"
 #include "fmt/core.h"
+#include "fmt/chrono.h"
 
 namespace arangodb::pregel {
 
@@ -48,7 +49,7 @@ auto inspect(Inspector& f, PrintableTiming& x) {
     }
     return res;
   } else {
-    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.)); // NOLINT(cppcoreguidelines-narrowing-conversions)
+    return f.apply(fmt::format("{:.6f} s", x.timing.value / 1000000.));
   }
 }
 struct PrintableDuration {
@@ -93,13 +94,16 @@ auto inspect(Inspector& f, PrintableDuration& x) {
 struct PregelTimings {
   PrintableDuration totalRuntime;
   PrintableDuration loading;
+  PrintableDuration computation;
+  PrintableDuration storing;
   std::vector<PrintableDuration> gss;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
-  return f.object(x).fields(f.field("totalRuntime", x.totalRuntime),
-                            f.field("loading", x.loading),
-                            f.field("gss", x.gss));
+  return f.object(x).fields(
+      f.field("totalRuntime", x.totalRuntime), f.field("loading", x.loading),
+      f.field("computation", x.computation), f.field("storing", x.storing),
+      f.field("gss", x.gss));
 }
 
 struct StatusState {
@@ -107,7 +111,8 @@ struct StatusState {
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
-  std::optional<PrintableTiming> created;
+  std::chrono::steady_clock::time_point created;
+  std::optional<std::chrono::steady_clock::time_point> expires;
   TTL ttl;
   size_t parallelism;
   PregelTimings timings;
@@ -116,10 +121,13 @@ struct StatusState {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
+  // TODO: Fix formatting.
+  auto formatted_created = fmt::format("{}", x.created.time_since_epoch());
+
   return f.object(x).fields(
       f.field("state", x.stateName), f.field("id", x.id),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", x.created), f.field("ttl", x.ttl),
+      f.field("created", formatted_created), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism), f.field("timings", x.timings),
       f.field("gss", x.gss),
       // TODO embed aggregators field (it already has "aggregators" as key)
@@ -133,7 +141,10 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->id = msg.id;
     this->state->database = msg.database;
     this->state->algorithm = msg.algorithm;
-    this->state->created = PrintableTiming{msg.time};
+
+    // TODO: Get this from the message
+    this->state->created = std::chrono::steady_clock::now();
+
     this->state->ttl = msg.ttl;
     this->state->parallelism = msg.parallelism;
 
@@ -154,6 +165,15 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::ComputationStarted msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.loading.setStop(msg.time);
+    this->state->timings.computation.setStart(msg.time);
+    this->state->timings.gss.push_back(PrintableDuration::withStart(msg.time));
+    return std::move(this->state);
+  }
+
   auto operator()(message::GlobalSuperStepStarted msg)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
@@ -165,6 +185,16 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->aggregators = std::move(msg.aggregators);
     return std::move(this->state);
   }
+
+//  auto operator()(message::StatusDone& msg) -> std::unique_ptr<StatusState> {
+//    this->state->stateName = msg.state;
+//    this->state->expires =
+//        this->state->created + std::chrono::seconds{this->state->ttl};
+//    this->state->timings.storing.setStop(msg.time);
+//    this->state->timings.totalRuntime.setStop(msg.time);
+//
+//    return std::move(this->state);
+//  }
 
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<StatusState> {
@@ -187,7 +217,8 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest) -> std::unique_ptr<StatusState> {
+  auto operator()([[maybe_unused]] auto&& rest)
+      -> std::unique_ptr<StatusState> {
     LOG_TOPIC("e9df2", INFO, Logger::PREGEL)
         << "Status Actor: Got unhandled message";
     return std::move(this->state);

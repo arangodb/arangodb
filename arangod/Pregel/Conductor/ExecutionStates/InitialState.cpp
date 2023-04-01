@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitialState.h"
+
 #include "CreateWorkersState.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -34,6 +36,10 @@ Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 auto Initial::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
+  if (!std::holds_alternative<message::ConductorStart>(message)) {
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+  }
+
   auto newState = std::make_unique<CreateWorkers>(conductor);
   auto stateName = newState->name();
 
