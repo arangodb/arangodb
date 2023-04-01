@@ -97,6 +97,17 @@ struct PregelTimings {
   PrintableDuration computation;
   PrintableDuration storing;
   std::vector<PrintableDuration> gss;
+
+  auto stopAll(message::TimingInMicroseconds timing) {
+    totalRuntime.setStop(timing);
+    loading.setStop(timing);
+    computation.setStop(timing);
+    storing.setStop(timing);
+
+    for (auto& g : gss) {
+      g.setStop(timing);
+    }
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PregelTimings& x) {
@@ -123,11 +134,16 @@ template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
   // TODO: Fix formatting.
   auto formatted_created = fmt::format("{}", x.created.time_since_epoch());
+  auto formatted_expires =
+      x.expires.has_value()
+          ? fmt::format("{}", x.expires.value().time_since_epoch())
+          : "0";
 
   return f.object(x).fields(
       f.field("state", x.stateName), f.field("id", x.id),
       f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", formatted_created), f.field("ttl", x.ttl),
+      f.field("created", formatted_created),
+      f.field("expires", formatted_expires), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism), f.field("timings", x.timings),
       f.field("gss", x.gss),
       // TODO embed aggregators field (it already has "aggregators" as key)
@@ -174,8 +190,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::StoringStarted msg)
-      -> std::unique_ptr<StatusState> {
+  auto operator()(message::StoringStarted msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.computation.setStop(msg.time);
 
@@ -200,15 +215,15 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-//  auto operator()(message::StatusDone& msg) -> std::unique_ptr<StatusState> {
-//    this->state->stateName = msg.state;
-//    this->state->expires =
-//        this->state->created + std::chrono::seconds{this->state->ttl};
-//    this->state->timings.storing.setStop(msg.time);
-//    this->state->timings.totalRuntime.setStop(msg.time);
-//
-//    return std::move(this->state);
-//  }
+  auto operator()(message::PregelFinished& msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->expires = this->state->created + this->state->ttl.duration;
+    this->state->timings.storing.setStop(msg.time);
+    this->state->timings.totalRuntime.setStop(msg.time);
+
+    return std::move(this->state);
+  }
 
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<StatusState> {

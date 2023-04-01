@@ -68,8 +68,8 @@ auto Storing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<Done>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::StatusDone{.state = stateName},
-        .newState = std::make_unique<Done>(conductor)};
+        .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   return std::nullopt;

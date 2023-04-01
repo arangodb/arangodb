@@ -44,8 +44,11 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
 
   if (responseCount == conductor.workers.size() and
       respondedWorkers == conductor.workers) {
-    return StateChange{.newState =
-                           std::make_unique<AQLResultsAvailable>(conductor)};
+    auto newState = std::make_unique<AQLResultsAvailable>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .newState = std::move(newState)};
   }
   return std::nullopt;
 }
