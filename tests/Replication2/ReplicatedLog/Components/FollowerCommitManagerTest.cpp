@@ -30,6 +30,7 @@
 #include "Replication2/ReplicatedState/PersistedStateInfo.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Basics/Result.h"
+#include "Replication2/Mocks/SchedulerMocks.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -85,9 +86,12 @@ struct FollowerCommitManagerTest : ::testing::Test {
   testing::StrictMock<StorageManagerMock> storage;
   testing::StrictMock<StateHandleManagerMock> stateHandle;
 
+  std::shared_ptr<test::SyncScheduler> scheduler =
+      std::make_shared<test::SyncScheduler>();
+
   std::shared_ptr<FollowerCommitManager> commit =
       std::make_shared<FollowerCommitManager>(
-          storage, stateHandle, LoggerContext{Logger::REPLICATION2});
+          storage, stateHandle, LoggerContext{Logger::REPLICATION2}, scheduler);
 };
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {

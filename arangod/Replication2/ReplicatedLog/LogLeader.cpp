@@ -376,8 +376,9 @@ auto replicated_log::LogLeader::construct(
       logContext.with<logContextKeyTerm>(term).with<logContextKeyLeaderId>(id);
 
   auto storageManager = std::make_shared<StorageManager>(
-      std::move(methods), commonLogContext.with<logContextKeyLogComponent>(
-                              "local-storage-manager"));
+      std::move(methods),
+      commonLogContext.with<logContextKeyLogComponent>("local-storage-manager"),
+      scheduler);
   auto lastIndex =
       storageManager->getTermIndexMapping().getLastIndex().value_or(
           TermIndexPair{});
@@ -1067,7 +1068,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
     return _inMemoryLog.getMemtryIteratorFrom(firstIdx);
   }
 
-  auto diskIter = _self._storageManager->getPeristedLogIterator(firstIdx);
+  auto diskIter = _self._storageManager->getPersistedLogIterator(firstIdx);
 
   struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
     explicit OverlayIterator(
