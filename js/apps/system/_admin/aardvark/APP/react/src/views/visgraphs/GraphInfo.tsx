@@ -1,4 +1,4 @@
-import { Box, HStack, Tag, Text, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, HStack, Tag, Text, Tooltip } from "@chakra-ui/react";
 import { omit } from "lodash";
 import React from "react";
 import { SelectedEntityType, useGraph } from "./GraphContext";
@@ -60,7 +60,7 @@ const SelectedEntityInfo = () => {
   };
   const attributes = Object.keys(displayData);
   return (
-    <HStack paddingX="3" paddingY="2" background="white">
+    <HStack paddingX="3" background="white">
       <HStack>
         <Box>ID</Box>
         <Tag size={"md"} background="gray.800" color="white">
@@ -82,7 +82,7 @@ const Attributes = ({
     return null;
   }
   return (
-    <HStack>
+    <Flex direction="row" flexWrap="wrap" alignItems="center">
       <Text>Attributes</Text>
       {attributes.map(attribute => {
         const keyData = displayData[attribute];
@@ -93,7 +93,7 @@ const Attributes = ({
         return (
           <Tooltip key={attribute} hasArrow label={tooltip}>
             <Tag
-              marginBottom="2"
+              marginY="2"
               marginLeft="2"
               size={"md"}
               background="gray.800"
@@ -104,6 +104,6 @@ const Attributes = ({
           </Tooltip>
         );
       })}
-    </HStack>
+    </Flex>
   );
 };
