@@ -174,6 +174,20 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::StoringStarted msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.computation.setStop(msg.time);
+
+    if (not this->state->timings.gss.empty()) {
+      this->state->timings.gss.back().setStop(msg.time);
+    }
+
+    this->state->timings.storing.setStart(msg.time);
+
+    return std::move(this->state);
+  }
+
   auto operator()(message::GlobalSuperStepStarted msg)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;

@@ -21,8 +21,6 @@ Computing::Computing(
       ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 }
 
-Computing::~Computing() {}
-
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
   if (masterContext->_globalSuperstep == 0) {
@@ -84,10 +82,19 @@ auto Computing::receive(actor::ActorPID sender,
       // TODO GORDO-1510
       // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
-        return StateChange{.newState = std::make_unique<Storing>(conductor)};
+        auto newState = std::make_unique<Storing>(conductor);
+        auto stateName = newState->name();
+        return StateChange{
+            .statusMessage =
+                pregel::message::StoringStarted{.state = stateName},
+            .newState = std::move(newState)};
       }
-      return StateChange{.newState =
-                             std::make_unique<ProduceAQLResults>(conductor)};
+
+      auto newState = std::make_unique<ProduceAQLResults>(conductor);
+      auto stateName = newState->name();
+      return StateChange{
+          .statusMessage = pregel::message::StoringStarted{.state = stateName},
+          .newState = std::move(newState)};
     }
 
     conductor.timing.gss.back().finish();
@@ -100,16 +107,17 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<Computing>(
         conductor, std::move(masterContext),
         std::move(messageAccumulation.sendCountPerActor));
+    auto stateName = newState->name();
     return StateChange{.statusMessage =
                            pregel::message::GlobalSuperStepStarted{
                                .gss = gss,
                                .aggregators = std::move(aggregators),
-                               .state = newState->name()},
+                               .state = stateName},
                        .newState = std::move(newState)};
   }
 
   return std::nullopt;
-};
+}
 
 auto Computing::_postGlobalSuperStep() -> PostGlobalSuperStepResult {
   // workers are done if all messages were processed and no active vertices

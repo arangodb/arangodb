@@ -109,20 +109,29 @@ auto inspect(Inspector& f, GlobalSuperStepStarted& x) {
                             f.field("state", x.state), f.field("time", x.time));
 }
 
+struct StoringStarted {
+  std::string state;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StoringStarted& x) {
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+}
+
 struct StatusDone {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusDone& x) {
-  return f.object(x).fields(f.field("state", x.state));
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
-struct StatusMessages
-    : std::variant<StatusStart, PregelStarted, LoadingStarted,
-                   ComputationStarted, GlobalSuperStepStarted, StatusDone> {
+struct StatusMessages : std::variant<StatusStart, PregelStarted, LoadingStarted,
+                                     ComputationStarted, GlobalSuperStepStarted,
+                                     StoringStarted, StatusDone> {
   using std::variant<StatusStart, PregelStarted, LoadingStarted,
-                     ComputationStarted, GlobalSuperStepStarted,
+                     ComputationStarted, GlobalSuperStepStarted, StoringStarted,
                      StatusDone>::variant;
 };
 template<typename Inspector>
@@ -134,6 +143,7 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<ComputationStarted>("ComputationStarted"),
       arangodb::inspection::type<GlobalSuperStepStarted>(
           "GlobalSuperStepStarted"),
+      arangodb::inspection::type<StoringStarted>("StoringStarted"),
       arangodb::inspection::type<StatusDone>("Done"));
 }
 
