@@ -44,7 +44,6 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
-
 #include <utility>
 
 namespace arangodb {

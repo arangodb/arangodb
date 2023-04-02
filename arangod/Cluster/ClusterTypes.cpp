@@ -37,7 +37,8 @@ std::ostream& operator<<(std::ostream& o,
 }
 
 std::ostream& operator<<(std::ostream& o, ServerHealth r) {
-  switch (r) { case ServerHealth::kGood:
+  switch (r) {
+    case ServerHealth::kGood:
       o << consensus::Supervision::HEALTH_STATUS_GOOD;
       break;
     case ServerHealth::kBad:

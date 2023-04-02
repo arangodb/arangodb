@@ -99,7 +99,8 @@ void RebootTracker::updateServerState(ServersKnown state) {
   // because we want to log all gone or rebooted server
   for (auto const& [serverId, oldState] : _state) {
     auto it = state.find(serverId);
-    auto const newRebootId = it != state.end() ? it->second.rebootId : RebootId::max();
+    auto const newRebootId =
+        it != state.end() ? it->second.rebootId : RebootId::max();
     if (oldState.rebootId != newRebootId) {
       TRI_ASSERT(oldState.rebootId < newRebootId);
       LOG_TOPIC("88857", INFO, Logger::CLUSTER)
@@ -211,8 +212,7 @@ void RebootTracker::unregisterCallback(RebootTracker::PeerState const& peer,
 bool RebootTracker::isServerAlive(ServerID id) const {
   std::lock_guard guard{_mutex};
   auto it = _state.find(id);
-  return it != _state.end() &&
-         it->second.status == ServerHealth::kGood;
+  return it != _state.end() && it->second.status == ServerHealth::kGood;
 }
 
 }  // namespace arangodb::cluster
