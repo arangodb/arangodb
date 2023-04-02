@@ -206,7 +206,7 @@ Index::Index(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : _iid(iid),
-      _collection(collection),
+      _collection(&collection),
       _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
@@ -218,7 +218,7 @@ Index::Index(
 Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
              VPackSlice slice)
     : _iid(iid),
-      _collection(collection),
+      _collection(&collection),
       _name(arangodb::basics::VelocyPackHelper::getStringValue(
           slice, arangodb::StaticStrings::IndexName,
           ::defaultIndexName(slice))),
@@ -491,8 +491,8 @@ std::string Index::context() const {
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection.vocbase().name() << "/"
-         << _collection.name() << ", unique: " << (_unique ? "true" : "false")
+         << ", collection: " << _collection->vocbase().name() << "/"
+         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
 

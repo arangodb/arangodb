@@ -780,7 +780,7 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     LOG_TOPIC("54612", DEBUG, Logger::AQL)
         << "Using RDBCoveringIterator for geo index query: "
         << params.toString();
-    return std::make_unique<RDBCoveringIterator>(monitor, &_collection, trx,
+    return std::make_unique<RDBCoveringIterator>(monitor, _collection.get(), trx,
                                                  this, std::move(params));
   }
 
@@ -814,10 +814,10 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 
   if (params.ascending) {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(
-        monitor, &_collection, trx, this, std::move(params));
+        monitor, _collection.get(), trx, this, std::move(params));
   } else {
     return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(
-        monitor, &_collection, trx, this, std::move(params));
+        monitor, _collection.get(), trx, this, std::move(params));
   }
 }
 

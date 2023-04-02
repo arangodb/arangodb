@@ -203,7 +203,7 @@ void RocksDBIndex::destroyCache() {
 }
 
 Result RocksDBIndex::drop() {
-  auto* coll = toRocksDBCollection(_collection);
+  auto* coll = toRocksDBCollection(*_collection);
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
   bool const prefixSameAsStart = type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
