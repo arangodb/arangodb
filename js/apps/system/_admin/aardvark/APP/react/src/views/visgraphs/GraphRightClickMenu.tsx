@@ -1,5 +1,5 @@
 import { PortalProps } from "@chakra-ui/react";
-import React, { MutableRefObject, useEffect, useState } from "react";
+import React, { MutableRefObject } from "react";
 import { ContextMenu } from "../../components/contextMenu/ContextMenu";
 import { CanvasRightClickMenu } from "./CanvasRightClickMenu";
 import { EdgeRightClickMenu } from "./EdgeRightClickMenu";

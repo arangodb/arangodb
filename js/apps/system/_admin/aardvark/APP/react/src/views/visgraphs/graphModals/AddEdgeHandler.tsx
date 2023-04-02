@@ -16,6 +16,9 @@ export const AddEdgeHandler = () => {
         network.disableEditMode();
       }
     }
+    return () => {
+      network?.disableEditMode();
+    };
   }, [selectedAction, network]);
 
   return (
