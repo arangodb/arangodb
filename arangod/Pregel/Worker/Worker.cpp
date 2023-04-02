@@ -145,7 +145,8 @@ void Worker<V, E, M>::_initializeMessageCaches() {
           _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
-          _config, _messageFormat.get(), _messageCombiner.get()));
+          _config, _config->localPregelShardIDs(), _messageFormat.get(),
+          _messageCombiner.get()));
       incoming.release();
     }
   } else {
@@ -157,7 +158,8 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
                                                         _messageFormat.get());
       _inCaches.push_back(incoming.get());
-      _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
+      _outCaches.push_back(new ArrayOutCache<M>(
+          _config, _config->localPregelShardIDs(), _messageFormat.get()));
       incoming.release();
     }
   }
