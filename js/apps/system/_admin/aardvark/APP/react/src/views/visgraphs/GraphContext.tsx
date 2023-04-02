@@ -193,6 +193,9 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
       ...urlParams,
       ...(updatedParams ? updatedParams : {})
     } as UrlParametersType;
+    // if the new params nodeStart is an "empty string",
+    // (not "undefined"), we set it from settings.startVertex.
+    // This is when nodeStart is blank & we click apply
     let { nodeStart } = newParams;
     if (!nodeStart && nodeStart !== undefined) {
       nodeStart = graphData?.settings.startVertex?._id || nodeStart;

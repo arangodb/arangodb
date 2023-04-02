@@ -1,6 +1,6 @@
 import { FormLabel } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
-import AsyncMultiSelect from "../../../components/select/AsyncMultiSelect";
+import MultiSelect from "../../../components/select/MultiSelect";
 import { OptionType } from "../../../components/select/SelectBase";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../utils/arangoClient";
@@ -44,11 +44,9 @@ const ParameterNodeStart = () => {
     setUrlParams(newUrlParameters);
     setValue(updatedValues);
   };
-  const [graphVertexCollections, setGraphVertexCollections] = useState<
-    string[]
-  >([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [initialOptions, setInitialOptions] = useState<OptionType[]>();
+  const [options, setOptions] = useState<OptionType[] | undefined>();
   useEffect(() => {
     const db = getCurrentDB();
     const fetchGraphVertexCollection = async () => {
@@ -60,57 +58,23 @@ const ParameterNodeStart = () => {
         };
       });
       setInitialOptions(initialOptions);
-      setGraphVertexCollections(data);
     };
     fetchGraphVertexCollection();
   }, [graphName]);
 
-  const loadOptions = async (inputValue: string) => {
-    const inputSplit = inputValue.split("/");
-    const [collectionName] = inputSplit;
-    const db = getCurrentDB();
-    if (inputSplit.length === 1) {
-      // filter here
-      return Promise.resolve(
-        initialOptions?.filter(option => option.value.includes(inputValue)) ||
-          []
-      );
-    }
-    let newCollections = [...graphVertexCollections];
-    if (collectionName) {
-      newCollections = [collectionName];
-    }
-    let queries: string[] = [];
-    newCollections.forEach(collection => {
-      const colQuery =
-        "(FOR doc IN " +
-        collection +
-        " FILTER " +
-        "doc._id >= @search && CONTAINS(doc._id, @search) " +
-        "LIMIT 5 " +
-        "RETURN doc._id)";
-      queries = [...queries, colQuery];
-    });
-    const cursor = await db.query(
-      "RETURN FLATTEN(APPEND([], [" + queries.join(", ") + "]))",
-      { search: inputValue }
-    );
-    const data = await cursor.all();
-    if (!data) {
-      return Promise.resolve([]);
-    }
-    return (data[0] as string[]).map(value => {
-      return {
-        label: value,
-        value: value
-      };
-    });
-  };
+  useEffect(() => {
+    const loadOptions = async () => {
+      const options = await fetchOptions({ inputValue, initialOptions });
+      setOptions(options);
+    };
+    loadOptions();
+  }, [inputValue, initialOptions]);
 
   return (
     <>
       <FormLabel htmlFor="nodeStart">Start node</FormLabel>
-      <AsyncMultiSelect
+      <MultiSelect
+        noOptionsMessage={() => "No nodes found"}
         isClearable={false}
         styles={{
           container: baseStyles => {
@@ -119,10 +83,9 @@ const ParameterNodeStart = () => {
         }}
         id="nodeStart"
         value={values}
-        defaultOptions={initialOptions}
+        options={options}
         inputValue={inputValue}
         placeholder="Enter 'collection_name/node_name'"
-        loadOptions={loadOptions}
         onInputChange={(newValue, action) => {
           if (action.action === "set-value") {
             return;
@@ -160,3 +123,49 @@ const ParameterNodeStart = () => {
 };
 
 export default ParameterNodeStart;
+
+const fetchOptions = async ({
+  inputValue,
+  initialOptions
+}: {
+  inputValue: string;
+  initialOptions: OptionType[] | undefined;
+}) => {
+  const inputSplit = inputValue.split("/");
+  const [collectionName] = inputSplit;
+  const db = getCurrentDB();
+  if (inputSplit.length === 1) {
+    // filter here
+    const finalOptions = inputValue
+      ? initialOptions?.filter(option => option.value.includes(inputValue)) ||
+        []
+      : initialOptions || [];
+    return Promise.resolve(finalOptions);
+  }
+  const newCollections = [collectionName];
+  let queries: string[] = [];
+  newCollections.forEach(collection => {
+    const colQuery =
+      "(FOR doc IN " +
+      collection +
+      " FILTER " +
+      "doc._id >= @search && CONTAINS(doc._id, @search) " +
+      "LIMIT 5 " +
+      "RETURN doc._id)";
+    queries = [...queries, colQuery];
+  });
+  const cursor = await db.query(
+    "RETURN FLATTEN(APPEND([], [" + queries.join(", ") + "]))",
+    { search: inputValue }
+  );
+  const data = await cursor.all();
+  if (!data) {
+    return Promise.resolve([]);
+  }
+  return (data[0] as string[]).map(value => {
+    return {
+      label: value,
+      value: value
+    };
+  });
+};
