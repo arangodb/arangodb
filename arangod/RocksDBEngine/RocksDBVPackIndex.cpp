@@ -1297,15 +1297,15 @@ Result RocksDBVPackIndex::warmup() {
     return {};
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
-  SingleCollectionTransaction trx(ctx, *_collection, AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
+  SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {
     return res;
   }
 
-  auto rocksColl = toRocksDBCollection(*_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
   _cache->sizeHint(expectedCount);
@@ -1641,7 +1641,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         }
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         // find conflicting document's key
-        auto readResult = _collection->getPhysical()->read(
+        auto readResult = _collection.getPhysical()->read(
             &trx, docId,
             [&](LocalDocumentId const&, VPackSlice doc) {
               VPackSlice key =
@@ -1772,7 +1772,7 @@ Result RocksDBVPackIndex::insertUnique(
     if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
       // find conflicting document's key
       LocalDocumentId docId = RocksDBValue::documentId(existing);
-      auto readResult = _collection->getPhysical()->read(
+      auto readResult = _collection.getPhysical()->read(
           &trx, docId,
           [&](LocalDocumentId const&, VPackSlice doc) {
             IndexOperationMode mode = options.indexOperationMode;
@@ -1870,7 +1870,7 @@ Result RocksDBVPackIndex::insertNonUnique(
   if (_estimates) {
     auto* state = RocksDBTransactionState::toState(&trx);
     auto* trxc = static_cast<RocksDBTransactionCollection*>(
-        state->findCollection(_collection->id()));
+        state->findCollection(_collection.id()));
     TRI_ASSERT(trxc != nullptr);
     for (uint64_t hash : hashes) {
       trxc->trackIndexInsert(id(), hash);
@@ -1889,7 +1889,7 @@ void RocksDBVPackIndex::handleCacheInvalidation(transaction::Methods& trx,
         options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
        options.refillIndexCaches == RefillIndexCaches::kRefill)) {
     RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-        _collection->id(), id(), {slice.data(), slice.size()});
+        _collection.id(), id(), {slice.data(), slice.size()});
   }
 }
 
@@ -2060,7 +2060,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   if (!_unique && _estimates) {
     auto* state = RocksDBTransactionState::toState(&trx);
     auto* trxc = static_cast<RocksDBTransactionCollection*>(
-        state->findCollection(_collection->id()));
+        state->findCollection(_collection.id()));
     TRI_ASSERT(trxc != nullptr);
     for (uint64_t hash : hashes) {
       // The estimator is only useful if we are in a non-unique index
@@ -2156,7 +2156,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIterator(
     // unique index iterator can only be used if all index fields are
     // covered. we cannot do range lookups etc.
     return std::make_unique<RocksDBVPackUniqueIndexIterator>(
-        monitor, _collection.get(), trx, this, useCache ? _cache : nullptr,
+        monitor, &_collection, trx, this, useCache ? _cache : nullptr,
         leftSearch->slice(), opts, readOwnWrites);
   }
 
@@ -2181,7 +2181,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
 
   bool mustCheckBounds =
       RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-          _collection->id(), readOwnWrites);
+          _collection.id(), readOwnWrites);
 
   if (unique()) {
     // unique index
@@ -2189,21 +2189,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
       // reverse version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBVPackIndexIterator<true, true, true>>(
-            monitor, _collection.get(), trx, this, std::move(bounds),
+            monitor, &_collection, trx, this, std::move(bounds),
             useCache ? _cache : nullptr, opts, readOwnWrites, format);
       }
       return std::make_unique<RocksDBVPackIndexIterator<true, true, false>>(
-          monitor, _collection.get(), trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     // forward version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<true, false, true>>(
-          monitor, _collection.get(), trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<true, false, false>>(
-        monitor, _collection.get(), trx, this, std::move(bounds),
+        monitor, &_collection, trx, this, std::move(bounds),
         useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
 
@@ -2212,21 +2212,21 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBVPackIndexIterator<false, true, true>>(
-          monitor, _collection.get(), trx, this, std::move(bounds),
+          monitor, &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, opts, readOwnWrites, format);
     }
     return std::make_unique<RocksDBVPackIndexIterator<false, true, false>>(
-        monitor, _collection.get(), trx, this, std::move(bounds),
+        monitor, &_collection, trx, this, std::move(bounds),
         useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
   // forward version
   if (mustCheckBounds) {
     return std::make_unique<RocksDBVPackIndexIterator<false, false, true>>(
-        monitor, _collection.get(), trx, this, std::move(bounds),
+        monitor, &_collection, trx, this, std::move(bounds),
         useCache ? _cache : nullptr, opts, readOwnWrites, format);
   }
   return std::make_unique<RocksDBVPackIndexIterator<false, false, false>>(
-      monitor, _collection.get(), trx, this, std::move(bounds),
+      monitor, &_collection, trx, this, std::move(bounds),
       useCache ? _cache : nullptr, opts, readOwnWrites, format);
 }
 
@@ -2340,7 +2340,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
         (searchSlice.length() == 1 && searchSlice.at(0).isArray() &&
          searchSlice.at(0).length() == 0)) {
       // IN with no/invalid condition
-      return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+      return std::make_unique<EmptyIndexIterator>(&_collection, trx);
     }
 
     // build the actual lookup iterator, which can only handle a single
@@ -2354,7 +2354,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
                                  readOwnWrites, format, isUniqueIndexIterator);
 
     return std::make_unique<RocksDBVPackIndexInIterator>(
-        monitor, _collection.get(), trx, this, std::move(wrapped), searchSlice, opts,
+        monitor, &_collection, trx, this, std::move(wrapped), searchSlice, opts,
         readOwnWrites,
         isUniqueIndexIterator
             ? RocksDBVPackIndexSearchValueFormat::kValuesOnly
@@ -2745,7 +2745,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   _estimator->clear();
 
   auto& selector =
-      _collection->vocbase().server().getFeature<EngineSelectorFeature>();
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
@@ -2784,7 +2784,7 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
   rocksdb::Slice const end = bounds.end();
 
   // intentional copy of the read options
-  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;  // safe to use on rocksdb::DB directly
   options.prefix_same_as_start = true;

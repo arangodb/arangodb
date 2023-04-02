@@ -185,9 +185,6 @@ RestStatus RestIndexHandler::getIndexes() {
       return RestStatus::DONE;
     }
 
-    LOG_DEVEL << cName;
-    LOG_DEVEL << indexes.toJson();
-
     TRI_ASSERT(indexes.slice().isArray());
     VPackBuilder tmp;
     tmp.openObject();

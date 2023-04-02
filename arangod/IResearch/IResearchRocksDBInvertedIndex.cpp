@@ -236,7 +236,7 @@ std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
 
 std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
   if (ServerState::instance()->isSingleServer()) {
-    return std::to_string(Index::_collection->id().id());
+    return std::to_string(Index::_collection.id().id());
   }
   return meta()._collectionName;
 }
@@ -244,13 +244,13 @@ std::string IResearchRocksDBInvertedIndex::getCollectionName() const {
 std::string const& IResearchRocksDBInvertedIndex::getShardName()
     const noexcept {
   if (ServerState::instance()->isDBServer()) {
-    return Index::_collection->name();
+    return Index::_collection.name();
   }
   return arangodb::StaticStrings::Empty;
 }
 
 void IResearchRocksDBInvertedIndex::insertMetrics() {
-  auto& metric = Index::_collection->vocbase()
+  auto& metric = Index::_collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
   _numFailedCommits =
@@ -268,7 +268,7 @@ void IResearchRocksDBInvertedIndex::insertMetrics() {
 }
 
 void IResearchRocksDBInvertedIndex::removeMetrics() {
-  auto& metric = Index::_collection->vocbase()
+  auto& metric = Index::_collection.vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
   if (_numFailedCommits) {

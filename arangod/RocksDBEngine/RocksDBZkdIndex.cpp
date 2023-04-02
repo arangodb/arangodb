@@ -562,7 +562,7 @@ std::unique_ptr<IndexIterator> RocksDBZkdIndexBase::iteratorForCondition(
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<false>>(
-      monitor, _collection.get(), this, trx, std::move(min), std::move(max),
+      monitor, &_collection, this, trx, std::move(min), std::move(max),
       fields().size(), readOwnWrites, opts.lookahead);
 }
 
@@ -573,7 +573,7 @@ std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
   auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
   return std::make_unique<RocksDBZkdIndexIterator<true>>(
-      monitor, _collection.get(), this, trx, std::move(min), std::move(max),
+      monitor, &_collection, this, trx, std::move(min), std::move(max),
       fields().size(), readOwnWrites, opts.lookahead);
 }
 

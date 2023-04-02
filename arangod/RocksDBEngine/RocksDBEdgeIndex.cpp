@@ -637,7 +637,7 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   if (s.ok()) {
     std::hash<std::string_view> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection->id(),
+    RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
                                                              id(), hash);
 
     handleCacheInvalidation(trx, options, fromToRef);
@@ -672,7 +672,7 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   if (s.ok()) {
     std::hash<std::string_view> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection->id(),
+    RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(),
                                                              id(), hash);
     handleCacheInvalidation(trx, options, fromToRef);
   } else {
@@ -695,7 +695,7 @@ void RocksDBEdgeIndex::refillCache(transaction::Methods& trx,
   keysBuilder.add(VPackSlice::emptyArraySlice());
 
   ResourceMonitor monitor(GlobalResourceMonitor::instance());
-  RocksDBEdgeIndexLookupIterator it(monitor, _collection.get(), &trx, this,
+  RocksDBEdgeIndexLookupIterator it(monitor, &_collection, &trx, this,
                                     std::move(keysBuilder), _cache,
                                     ReadOwnWrites::no);
 
@@ -728,7 +728,7 @@ void RocksDBEdgeIndex::handleCacheInvalidation(transaction::Methods& trx,
           options.refillIndexCaches != RefillIndexCaches::kDontRefill) ||
          options.refillIndexCaches == RefillIndexCaches::kRefill)) {
       RocksDBTransactionState::toState(&trx)->trackIndexCacheRefill(
-          _collection->id(), id(), fromToRef);
+          _collection.id(), id(), fromToRef);
     }
   }
 }
@@ -779,7 +779,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
   }
 
   // operator type unsupported
-  return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -795,15 +795,15 @@ Result RocksDBEdgeIndex::warmup() {
     return {};
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
-  SingleCollectionTransaction trx(ctx, *_collection, AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_collection.vocbase());
+  SingleCollectionTransaction trx(ctx, _collection, AccessMode::Type::READ);
   Result res = trx.begin();
 
   if (res.fail()) {
     return res;
   }
 
-  auto rocksColl = toRocksDBCollection(*_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
   // Prepare the cache to be resized for this amount of objects to be inserted.
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
   expectedCount = static_cast<uint64_t>(expectedCount * selectivityEstimate());
@@ -822,10 +822,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   cache::Cache* cc = _cache.get();
   TRI_ASSERT(cc != nullptr);
 
-  auto rocksColl = toRocksDBCollection(*_collection);
+  auto rocksColl = toRocksDBCollection(_collection);
 
   // intentional copy of the read options
-  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;    // safe to use on rocksdb::DB directly
@@ -967,7 +967,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
   VPackBuilder keys;
   fillLookupValue(keys, valNode);
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-    monitor, _collection.get(), trx, this, std::move(keys),
+      monitor, &_collection, trx, this, std::move(keys),
       useCache ? _cache : nullptr, readOwnWrites);
 }
 
@@ -980,7 +980,7 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
   fillInLookupValues(trx, keys, valNode);
   // "in"-checks never need to observe own writes.
   return std::make_unique<RocksDBEdgeIndexLookupIterator>(
-    monitor, _collection.get(), trx, this, std::move(keys),
+      monitor, &_collection, trx, this, std::move(keys),
       useCache ? _cache : nullptr, ReadOwnWrites::no);
 }
 

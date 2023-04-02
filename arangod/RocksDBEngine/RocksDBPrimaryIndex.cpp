@@ -613,7 +613,7 @@ void RocksDBPrimaryIndex::load() {
   if (hasCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
+        static_cast<RocksDBCollection*>(_collection.getPhysical());
     uint64_t numDocs = rdb->meta().numberDocuments();
 
     if (numDocs > 0) {
@@ -657,7 +657,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
   }
 
   RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(trx, _collection->id());
+      RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
   rocksdb::Status s = mthds->Get(_cf, key->string(), &val, readOwnWrites);
   if (!s.ok()) {
@@ -698,7 +698,7 @@ Result RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 
   // acquire rocksdb transaction
   RocksDBMethods* mthds =
-      RocksDBTransactionState::toMethods(trx, _collection->id());
+      RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::PinnableSlice val;
   rocksdb::Status s;
   if (lockForUpdate) {
@@ -818,7 +818,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx,
                        static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
-  auto* mthds = RocksDBTransactionState::toMethods(&trx, _collection->id());
+  auto* mthds = RocksDBTransactionState::toMethods(&trx, _collection.id());
   rocksdb::Status s = mthds->Delete(_cf, key.ref());
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -853,7 +853,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
 
   bool mustCheckBounds =
       RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-          _collection->id(), readOwnWrites);
+          _collection.id(), readOwnWrites);
 
   if (node == nullptr) {
     // full range scan
@@ -861,14 +861,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            monitor, _collection.get() /*logical collection*/, trx, this,
+            monitor, &_collection /*logical collection*/, trx, this,
             RocksDBKeyBounds::PrimaryIndex(objectId(),
                                            KeyGeneratorHelper::lowestKey,
                                            KeyGeneratorHelper::highestKey),
             readOwnWrites);
       }
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
-          monitor, _collection.get() /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(),
                                          KeyGeneratorHelper::lowestKey,
                                          KeyGeneratorHelper::highestKey),
@@ -877,14 +877,14 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          monitor, _collection.get() /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(),
                                          KeyGeneratorHelper::lowestKey,
                                          KeyGeneratorHelper::highestKey),
           readOwnWrites);
     }
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
-        monitor, _collection.get() /*logical collection*/, trx, this,
+        monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(),
                                        KeyGeneratorHelper::lowestKey,
                                        KeyGeneratorHelper::highestKey),
@@ -930,23 +930,23 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         if (_isRunningInCluster) {
           // translate from our own shard name to "real" collection name
           return value.compare(
-              trx->resolver()->getCollectionName(_collection->id()));
+              trx->resolver()->getCollectionName(_collection.id()));
         }
-        return value.compare(_collection->name());
+        return value.compare(_collection.name());
       }
 
       TRI_ASSERT(key);
       TRI_ASSERT(collection);
 
-      if (!_isRunningInCluster && collection->id() != _collection->id()) {
+      if (!_isRunningInCluster && collection->id() != _collection.id()) {
         // using the name of a different collection...
-        return value.compare(_collection->name());
+        return value.compare(_collection.name());
       } else if (_isRunningInCluster &&
-                 collection->planId() != _collection->planId()) {
+                 collection->planId() != _collection.planId()) {
         // using a different collection
         // translate from our own shard name to "real" collection name
         return value.compare(
-            trx->resolver()->getCollectionName(_collection->id()));
+            trx->resolver()->getCollectionName(_collection.id()));
       }
 
       // strip collection name prefix
@@ -972,7 +972,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
           type == aql::NODE_TYPE_OPERATOR_BINARY_GE ||
           type == aql::NODE_TYPE_OPERATOR_BINARY_GT ||
           type == aql::NODE_TYPE_OPERATOR_BINARY_EQ)) {
-      return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+      return std::make_unique<EmptyIndexIterator>(&_collection, trx);
     }
 
     TRI_ASSERT(aap.attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
@@ -1000,7 +1000,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
     if (type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       if (cmpResult != 0) {
         // doc._id == different collection
-        return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+        return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       }
       if (!upperFound || value < upper) {
         upper = value;
@@ -1018,7 +1018,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         upper = KeyGeneratorHelper::highestKey;
       } else if (cmpResult < 0) {
         // doc._id < collection with "lower" name
-        return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+        return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_LT && !value.empty()) {
           // modify upper bound so that it is not included
@@ -1042,7 +1042,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
         lower = KeyGeneratorHelper::lowestKey;
       } else if (cmpResult > 0) {
         // doc._id > collection with "bigger" name
-        return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+        return std::make_unique<EmptyIndexIterator>(&_collection, trx);
       } else {
         if (type == aql::NODE_TYPE_OPERATOR_BINARY_GE && !value.empty()) {
           // modify lower bound so it is included in the results
@@ -1075,30 +1075,30 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::iteratorForCondition(
       // forward version
       if (mustCheckBounds) {
         return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, true>>(
-            monitor, _collection.get() /*logical collection*/, trx, this,
+            monitor, &_collection /*logical collection*/, trx, this,
             RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
             readOwnWrites);
       }
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<false, false>>(
-          monitor, _collection.get() /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
           readOwnWrites);
     }
     // reverse version
     if (mustCheckBounds) {
       return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, true>>(
-          monitor, _collection.get() /*logical collection*/, trx, this,
+          monitor, &_collection /*logical collection*/, trx, this,
           RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
           readOwnWrites);
     }
     return std::make_unique<RocksDBPrimaryIndexRangeIterator<true, false>>(
-        monitor, _collection.get() /*logical collection*/, trx, this,
+        monitor, &_collection /*logical collection*/, trx, this,
         RocksDBKeyBounds::PrimaryIndex(objectId(), lower, upper),
         readOwnWrites);
   }
 
   // operator type unsupported or IN used on non-array
-  return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -1122,7 +1122,7 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createInIterator(
 
   fillInLookupValues(trx, keysBuilder, valNode, ascending, isId);
   return std::make_unique<RocksDBPrimaryIndexInIterator>(
-      monitor, _collection.get(), trx, this, std::move(keysBuilder), isId);
+      monitor, &_collection, trx, this, std::move(keysBuilder), isId);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
@@ -1144,11 +1144,11 @@ std::unique_ptr<IndexIterator> RocksDBPrimaryIndex::createEqIterator(
 
   if (!keyBuilder.isEmpty()) {
     return std::make_unique<RocksDBPrimaryIndexEqIterator>(
-        monitor, _collection.get(), trx, this, std::move(keyBuilder), isId,
+        monitor, &_collection, trx, this, std::move(keyBuilder), isId,
         readOwnWrites);
   }
 
-  return std::make_unique<EmptyIndexIterator>(_collection.get(), trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 void RocksDBPrimaryIndex::fillInLookupValues(transaction::Methods* trx,
@@ -1215,7 +1215,7 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && collection->id() != _collection->id()) {
+    if (!_isRunningInCluster && collection->id() != _collection.id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
@@ -1231,19 +1231,19 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
               TRI_ERROR_INTERNAL, "unable to cast smart edge collection");
         }
 
-        if (!c->isDisjoint() && (_collection->planId() != c->getLocalCid() &&
-                                 _collection->planId() != c->getFromCid() &&
-                                 _collection->planId() != c->getToCid())) {
+        if (!c->isDisjoint() && (_collection.planId() != c->getLocalCid() &&
+                                 _collection.planId() != c->getFromCid() &&
+                                 _collection.planId() != c->getToCid())) {
           // invalid planId
           return;
         } else if (c->isDisjoint() &&
-                   _collection->planId() != c->getLocalCid()) {
+                   _collection.planId() != c->getLocalCid()) {
           // invalid planId
           return;
         }
       } else
 #endif
-          if (collection->planId() != _collection->planId()) {
+          if (collection->planId() != _collection.planId()) {
         // only continue lookup if the id value is syntactically correct and
         // refers to "our" collection, using cluster collection id
         return;
