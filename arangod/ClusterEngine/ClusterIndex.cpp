@@ -498,7 +498,7 @@ bool ClusterIndex::inProgress() const {
             << " " << index.toJson();
         }
       }
-    } 
-  } 
+    }
+  }
   return false;
 }

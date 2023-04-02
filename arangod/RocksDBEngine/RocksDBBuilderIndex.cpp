@@ -768,6 +768,7 @@ void RocksDBBuilderIndex::Locker::unlock() {
 Result RocksDBBuilderIndex::fillIndexBackground(
     Locker& locker,
     std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+
   TRI_ASSERT(locker.isLocked());
 
   RocksDBIndex* internal = _wrapped.get();

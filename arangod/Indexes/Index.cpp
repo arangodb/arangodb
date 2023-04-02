@@ -199,7 +199,7 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
     Index::emptyCoveredFields{};
 
 // If the Index is on a coordinator instance the index may not access the
-// logical collection because it could be gone!
+// logical collection because it could be gone!Index::Index(
 Index::Index(
     IndexId iid, arangodb::LogicalCollection& collection,
     std::string const& name,
@@ -534,6 +534,8 @@ void Index::toVelocyPack(
   if (ServerState::instance()->isCoordinator()) {
     builder.add("progress", VPackValue(66));
   }
+
+  
 
   builder.add(
       arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
