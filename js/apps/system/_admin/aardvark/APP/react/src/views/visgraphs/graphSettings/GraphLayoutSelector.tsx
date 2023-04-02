@@ -3,18 +3,17 @@ import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { LayoutType, useUrlParameterContext } from "../UrlParametersContext";
 
+const LAYOUT_OPTIONS: Array<{ layout: LayoutType }> = [
+  {
+    layout: "forceAtlas2"
+  },
+  {
+    layout: "hierarchical"
+  }
+];
+
 const GraphLayoutSelector = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-
-  const layouts: Array<{ layout: LayoutType }> = [
-    {
-      layout: "forceAtlas2"
-    },
-    {
-      layout: "hierarchical"
-    }
-  ];
-
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const newUrlParameters = {
       ...urlParams,
@@ -32,7 +31,7 @@ const GraphLayoutSelector = () => {
         value={urlParams.layout}
         onChange={handleChange}
       >
-        {layouts.map(style => {
+        {LAYOUT_OPTIONS.map(style => {
           const { layout } = style;
           return (
             <option key={layout} value={layout}>

@@ -35,6 +35,6 @@ export const useNodeData = ({
   };
   useEffect(() => {
     nodeId && !disabled && fetchNodeData(nodeId);
-  }, [nodeId]);
+  }, [nodeId, disabled]);
   return { nodeData, immutableIds, isLoading };
 };

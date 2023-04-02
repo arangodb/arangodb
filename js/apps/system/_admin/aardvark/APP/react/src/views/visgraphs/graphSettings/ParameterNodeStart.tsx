@@ -53,10 +53,10 @@ const ParameterNodeStart = () => {
     const db = getCurrentDB();
     const fetchGraphVertexCollection = async () => {
       let data = await db.graph(graphName).listVertexCollections();
-      const initialOptions = data.map(columnName => {
+      const initialOptions = data.map(collectionName => {
         return {
-          value: `${columnName}/`,
-          label: `${columnName}/`
+          value: `${collectionName}/`,
+          label: `${collectionName}/`
         };
       });
       setInitialOptions(initialOptions);

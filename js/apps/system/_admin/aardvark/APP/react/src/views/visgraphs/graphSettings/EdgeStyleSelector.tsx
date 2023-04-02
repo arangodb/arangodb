@@ -3,20 +3,20 @@ import React, { ChangeEvent } from "react";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useUrlParameterContext } from "../UrlParametersContext";
 
+const STYLES_OPTIONS = [
+  {
+    type: "solid"
+  },
+  {
+    type: "dashed"
+  },
+  {
+    type: "dotted"
+  }
+];
+
 const EdgeStyleSelector = () => {
   const { urlParams, setUrlParams } = useUrlParameterContext();
-
-  const styles = [
-    {
-      type: "solid"
-    },
-    {
-      type: "dashed"
-    },
-    {
-      type: "dotted"
-    }
-  ];
 
   const handleChange = (event: ChangeEvent<HTMLSelectElement>) => {
     const newUrlParameters = { ...urlParams, edgeType: event.target.value };
@@ -32,7 +32,7 @@ const EdgeStyleSelector = () => {
         value={urlParams.edgeType}
         onChange={handleChange}
       >
-        {styles.map(style => {
+        {STYLES_OPTIONS.map(style => {
           const { type } = style;
           return (
             <option key={type} value={type}>

@@ -44,7 +44,6 @@ const useUpdateEdgeAction = ({
       );
       onSuccess();
     } catch (error) {
-      console.log("Error saving document: ", error);
       window.arangoHelper.arangoError("Graph", "Could not update this edge.");
       onFailure();
     }
@@ -72,7 +71,6 @@ export const EditEdgeModal = () => {
   if (!edgeId) {
     return null;
   }
-  console.log({ isLoading, json, mutableEdgeData });
   if (isLoading) {
     return (
       <Flex width="full" height="full" align="center">

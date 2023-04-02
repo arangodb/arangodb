@@ -18,10 +18,10 @@ export const LoadFullGraphModal = () => {
   const curentLimit = Number(urlParams.limit);
   return (
     <Modal isOpen onClose={onClearAction}>
-      <ModalHeader>Load full graph?</ModalHeader>
+      <ModalHeader>Are you sure?</ModalHeader>
       <ModalBody>
         <Text color="red.600" fontWeight="semibold" fontSize="lg">
-          Caution: Really load the full graph?
+          Caution: Do you want to load the entire graph?
         </Text>
         <Text>If no limit is set, your result set could be too big.</Text>
         <Text>

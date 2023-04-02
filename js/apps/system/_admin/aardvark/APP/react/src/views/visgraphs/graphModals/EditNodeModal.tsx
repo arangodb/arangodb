@@ -72,7 +72,6 @@ export const EditNodeModal = () => {
   if (!nodeId) {
     return null;
   }
-  console.log({ isLoading, json, mutableNodeData });
   if (isLoading) {
     return (
       <Flex width="full" height="full" align="center">
