@@ -18,7 +18,7 @@ export const InputControl = (props: InputControlProps) => {
       isDisabled={isSubmitting}
       {...rest}
     >
-      <Input {...field} id={name} {...inputProps} />
+      <Input {...field} id={name} backgroundColor="white" {...inputProps} />
     </FormikFormControl>
   );
 };

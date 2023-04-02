@@ -12,14 +12,13 @@ export const SwitchControl = (props: InputControlProps) => {
   const [field] = useField(name);
   const { isSubmitting } = useFormikContext();
   return (
-    <FormikFormControl name={name} label={label} {...rest}>
-      <Switch
-        {...field}
-        isChecked={field.value}
-        id={name}
-        isDisabled={isSubmitting}
-        {...switchProps}
-      />
+    <FormikFormControl
+      name={name}
+      label={label}
+      isDisabled={isSubmitting}
+      {...rest}
+    >
+      <Switch {...field} isChecked={!!field.value} id={name} {...switchProps} />
     </FormikFormControl>
   );
 };

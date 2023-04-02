@@ -32,6 +32,7 @@ struct FatalError : ExecutionState {
   FatalError(ConductorState& conductor);
   ~FatalError() = default;
   auto name() const -> std::string override { return "fatal error"; };
+  auto canBeCanceled() const -> bool override { return false; }
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;
