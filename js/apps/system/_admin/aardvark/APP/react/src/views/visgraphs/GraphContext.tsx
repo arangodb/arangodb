@@ -16,13 +16,14 @@ import {
   UrlParametersContext,
   UrlParametersType
 } from "./UrlParametersContext";
-import { EdgeDataType, NodeDataType, VisGraphData } from "./VisGraphData.types";
+import { EdgeDataType, NodeDataType, VisGraphData, VisPointer } from "./VisGraphData.types";
+
 
 type ActionEntityType = {
   type: string;
   nodeId?: string;
   edgeId?: string;
-  pointer: { DOM: { x: number; y: number }; canvas: { x: number; y: number } };
+  pointer: VisPointer;
 };
 
 export type SelectedActionType = {

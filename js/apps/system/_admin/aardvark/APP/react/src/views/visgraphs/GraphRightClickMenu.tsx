@@ -11,32 +11,9 @@ export const GraphRightClickMenu = ({
 }: {
   portalProps?: Omit<PortalProps, "children">;
 }) => {
-  const [position, setPosition] = useState({ left: "0", top: "0" });
-  const { network, rightClickedEntity, setRightClickedEntity } = useGraph();
-  useEffect(() => {
-    if (!network) {
-      return;
-    }
-    network.on("oncontext", ({ event, pointer }) => {
-      event.preventDefault();
-      const { x, y } = pointer.DOM;
-      setPosition({
-        left: `${x}px`,
-        top: `${y}px`
-      });
-      const nodeId = network.getNodeAt(pointer.DOM) as string;
-      const edgeId = network.getEdgeAt(pointer.DOM) as string;
-      if (nodeId) {
-        setRightClickedEntity({ type: "node", nodeId, pointer });
-        network.selectNodes([nodeId]);
-      } else if (edgeId) {
-        setRightClickedEntity({ type: "edge", edgeId, pointer });
-        network.selectEdges([edgeId]);
-      } else {
-        setRightClickedEntity({ type: "canvas", pointer });
-      }
-    });
-  }, [network, setRightClickedEntity]);
+  const { rightClickedEntity, setRightClickedEntity } = useGraph();
+  const { x, y } = rightClickedEntity?.pointer.DOM || { x: 0, y: 0 };
+  const position = { left: `${x}px`, top: `${y}px` };
   const renderMenu = (ref: MutableRefObject<HTMLDivElement>) => {
     if (rightClickedEntity && rightClickedEntity.type === "canvas") {
       return <CanvasRightClickMenu ref={ref} />;

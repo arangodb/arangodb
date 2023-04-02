@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
 import { useGraph } from "./GraphContext";
+import { VisPointer } from "./VisGraphData.types";
 
 let timer: number;
 export const useSetupGraphNetwork = ({
@@ -15,7 +16,8 @@ export const useSetupGraphNetwork = ({
     setDatasets,
     onAddEdge,
     onSelectEntity,
-    hasDrawnOnce
+    hasDrawnOnce,
+    setRightClickedEntity
   } = useGraph();
   const [progressValue, setProgressValue] = useState(0);
 
@@ -93,9 +95,25 @@ export const useSetupGraphNetwork = ({
         }
       });
     }
+    newNetwork.on(
+      "oncontext",
+      ({ event, pointer }: { event: Event; pointer: VisPointer }) => {
+        event.preventDefault();
+        const nodeId = newNetwork.getNodeAt(pointer.DOM) as string;
+        const edgeId = newNetwork.getEdgeAt(pointer.DOM) as string;
+        if (nodeId) {
+          setRightClickedEntity({ type: "node", nodeId, pointer });
+          newNetwork.selectNodes([nodeId]);
+        } else if (edgeId) {
+          setRightClickedEntity({ type: "edge", edgeId, pointer });
+          newNetwork.selectEdges([edgeId]);
+        } else {
+          setRightClickedEntity({ type: "canvas", pointer });
+        }
+      }
+    );
     registerNetwork();
-
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [edges, nodes, options, setNetwork]);
+  }, [edges, nodes, options]);
   return { progressValue, setProgressValue };
 };

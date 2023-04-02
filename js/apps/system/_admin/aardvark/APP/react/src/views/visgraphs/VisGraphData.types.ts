@@ -103,3 +103,7 @@ export type VisGraphData = {
 export interface VisDataResponse extends ArangojsResponse {
   body?: VisGraphData;
 }
+export type VisPointer = {
+  DOM: { x: number; y: number };
+  canvas: { x: number; y: number };
+};
