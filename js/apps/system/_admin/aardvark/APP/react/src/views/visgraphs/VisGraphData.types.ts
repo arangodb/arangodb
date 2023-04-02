@@ -1,100 +1,77 @@
 import { ArangojsResponse } from "arangojs/lib/request.node";
+import { Edge, Node, Options } from "vis-network";
 
-export type NodeDataType = {
+export interface NodeDataType extends Node {
   id: string;
-  label: string;
-  size: number;
-  value: number;
   sizeCategory?: string;
-  shape: string;
-  color?: string;
-  fixed?: boolean;
-  x?: number;
-  y?: number;
-  font: {
-    strokeWidth: number;
-    strokeColor: string;
-    vadjust: number;
-  };
   sortColor?: string;
-  borderWidth?: number;
-  shadow?: {
-    enabled: true;
-    color: string;
-    size: number;
-    x: number;
-    y: number;
-  };
-};
-export type EdgeDataType = {
+}
+
+export interface EdgeDataType extends Edge {
   id: string;
   source: string;
   from: string;
-  label: string;
   target: string;
   to: string;
-  color: string;
-  font: {
-    strokeWidth: number;
-    strokeColor: string;
-    align: string;
-  };
-  length: number;
-  size: number;
   sortColor: string;
-};
-type SettingsType = {
+}
+
+// options need to be typed as
+// they are marked as `any` in vis-network exports
+interface VisOptions extends Options {
+  interaction: {
+    dragNodes: boolean;
+    dragView: boolean;
+    hideEdgesOnDrag: boolean;
+    hideNodesOnDrag: boolean;
+    hover: boolean;
+    hoverConnectedEdges: boolean;
+    keyboard: {
+      enabled: boolean;
+      speed: {
+        x: number;
+        y: number;
+        zoom: number;
+      };
+      bindToWindow: boolean;
+    };
+    multiselect: boolean;
+    navigationButtons: boolean;
+    selectable: boolean;
+    selectConnectedEdges: boolean;
+    tooltipDelay: number;
+    zoomSpeed: number;
+    zoomView: boolean;
+  };
+  layout: {
+    randomSeed: number;
+    hierarchical: boolean;
+  };
+  edges: {
+    smooth: boolean;
+    arrows: {
+      to: {
+        enabled: boolean;
+        type: string;
+      };
+    };
+  };
+  physics: {
+    barnesHut: {
+      gravitationalConstant: number;
+      centralGravity: number;
+      springLength: number;
+      damping: number;
+    };
+    solver: string;
+  };
+}
+
+interface SettingsType {
+  layout: VisOptions;
   nodeColorAttributeMessage?: string;
   edgeColorAttributeMessage?: string;
   nodeSizeAttributeMessage?: string;
-  layout: {
-    interaction: {
-      dragNodes: boolean;
-      dragView: boolean;
-      hideEdgesOnDrag: boolean;
-      hideNodesOnDrag: boolean;
-      hover: boolean;
-      hoverConnectedEdges: boolean;
-      keyboard: {
-        enabled: boolean;
-        speed: {
-          x: number;
-          y: number;
-          zoom: number;
-        };
-        bindToWindow: boolean;
-      };
-      multiselect: boolean;
-      navigationButtons: boolean;
-      selectable: boolean;
-      selectConnectedEdges: boolean;
-      tooltipDelay: number;
-      zoomSpeed: number;
-      zoomView: boolean;
-    };
-    layout: {
-      randomSeed: number;
-      hierarchical: boolean;
-    };
-    edges: {
-      smooth: boolean;
-      arrows: {
-        to: {
-          enabled: boolean;
-          type: string;
-        };
-      };
-    };
-    physics: {
-      barnesHut: {
-        gravitationalConstant: number;
-        centralGravity: number;
-        springLength: number;
-        damping: number;
-      };
-      solver: string;
-    };
-  };
   vertexCollections: {
     name: string;
     id: string;
@@ -117,7 +94,7 @@ type SettingsType = {
   connectionsCounts: number[];
   connectionsMinMax: (number | null)[];
   isSmart?: boolean;
-};
+}
 export type VisGraphData = {
   nodes: NodeDataType[];
   edges: EdgeDataType[];

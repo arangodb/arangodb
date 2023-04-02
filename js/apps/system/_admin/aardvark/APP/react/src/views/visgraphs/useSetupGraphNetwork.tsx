@@ -72,7 +72,7 @@ export const useSetupGraphNetwork = ({
         clearTimeout(timer);
         setProgressValue(100);
 
-        timer = setTimeout(() => {
+        timer = window.setTimeout(() => {
           newNetwork.stopSimulation();
           newNetwork.setOptions({
             physics: false,
