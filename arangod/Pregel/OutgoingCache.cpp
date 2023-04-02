@@ -265,7 +265,7 @@ void ArrayOutActorCache<M>::appendMessage(PregelShard shard,
                                           std::string_view const& key,
                                           M const& data) {
   _sendCountPerActor[_responsibleActorPerShard
-                         [this->_config->globalShardIDs()[shard.value]]]++;
+                         [this->_config->globalShardID(shard)]]++;
   if (this->isLocalShard(shard)) {
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
@@ -318,7 +318,7 @@ void ArrayOutActorCache<M>::flushMessages() {
         .shard = shard,
         .messages = messages};
     auto actor =
-        _responsibleActorPerShard[this->_config->globalShardIDs()[shard.value]];
+        _responsibleActorPerShard[this->_config->globalShardID(shard)]];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += shardMessageCount;
@@ -345,7 +345,7 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
                                               M const& data) {
   if (this->isLocalShard(shard)) {
     _sendCountPerActor[_responsibleActorPerShard
-                           [this->_config->globalShardIDs()[shard.value]]]++;
+                           [this->_config->globalShardID(shard)]]++;
     this->_localCache->storeMessageNoLock(shard, key, data);
     this->_sendCount++;
   } else {
@@ -356,7 +356,7 @@ void CombiningOutActorCache<M>::appendMessage(PregelShard shard,
       _combiner->combine(ref, data);
     } else {  // first message for this vertex
       _sendCountPerActor[_responsibleActorPerShard
-                             [this->_config->globalShardIDs()[shard.value]]]++;
+                             [this->_config->globalShardID(shard)]]++;
       vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
@@ -401,7 +401,7 @@ void CombiningOutActorCache<M>::flushMessages() {
         .shard = shard,
         .messages = messagesToVPack(vertexMessageMap)};
     auto actor =
-        _responsibleActorPerShard[this->_config->globalShardIDs()[shard.value]];
+        _responsibleActorPerShard[this->_config->globalShardID(shard)];
     _dispatch(actor, pregelMessage);
 
     this->_sendCount += vertexMessageMap.size();
