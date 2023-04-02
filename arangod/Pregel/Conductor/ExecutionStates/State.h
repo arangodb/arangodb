@@ -44,6 +44,7 @@ struct ExecutionState {
                        conductor::message::ConductorMessages message)
       -> std::optional<std::unique_ptr<ExecutionState>> = 0;
   virtual auto aqlResultsAvailable() const -> bool { return false; }
+  virtual auto canBeCanceled() const -> bool { return true; }
   virtual ~ExecutionState() = default;
 };
 
