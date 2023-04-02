@@ -225,6 +225,14 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
+  auto operator()(message::InFatalError& msg)
+    -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.stopAll(msg.time);
+
+    return std::move(this->state);
+  }
+
   auto operator()(actor::message::UnknownMessage unknown)
       -> std::unique_ptr<StatusState> {
     LOG_TOPIC("eb6f2", INFO, Logger::PREGEL) << fmt::format(

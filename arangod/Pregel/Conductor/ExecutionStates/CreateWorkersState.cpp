@@ -60,11 +60,19 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   conductor.workers.emplace(sender);
 

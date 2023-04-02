@@ -37,7 +37,11 @@ auto Initial::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (!std::holds_alternative<message::ConductorStart>(message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   auto newState = std::make_unique<CreateWorkers>(conductor);

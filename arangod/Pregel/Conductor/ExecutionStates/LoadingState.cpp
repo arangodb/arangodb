@@ -40,7 +40,11 @@ auto Loading::receive(actor::ActorPID sender,
   }
   auto workerCreated = std::get<ResultT<message::GraphLoaded>>(message);
   if (not workerCreated.ok()) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
   totalVerticesCount += workerCreated.get().vertexCount;

@@ -54,12 +54,20 @@ auto Computing::receive(actor::ActorPID sender,
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GlobalSuperStepFinished>>(
           message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto gssFinished =
       std::get<ResultT<message::GlobalSuperStepFinished>>(message);
   if (not gssFinished.ok()) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());

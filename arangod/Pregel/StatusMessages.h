@@ -127,12 +127,22 @@ auto inspect(Inspector& f, PregelFinished& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
-struct StatusMessages : std::variant<StatusStart, PregelStarted, LoadingStarted,
-                                     ComputationStarted, GlobalSuperStepStarted,
-                                     StoringStarted, PregelFinished> {
+struct InFatalError {
+  std::string state;
+  TimingInMicroseconds time = TimingInMicroseconds::now();
+};
+template<typename Inspector>
+auto inspect(Inspector& f, InFatalError& x) {
+  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+}
+
+struct StatusMessages
+    : std::variant<StatusStart, PregelStarted, LoadingStarted,
+                   ComputationStarted, GlobalSuperStepStarted, StoringStarted,
+                   PregelFinished, InFatalError> {
   using std::variant<StatusStart, PregelStarted, LoadingStarted,
                      ComputationStarted, GlobalSuperStepStarted, StoringStarted,
-                     PregelFinished>::variant;
+                     PregelFinished, InFatalError>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
@@ -144,7 +154,8 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<GlobalSuperStepStarted>(
           "GlobalSuperStepStarted"),
       arangodb::inspection::type<StoringStarted>("StoringStarted"),
-      arangodb::inspection::type<PregelFinished>("PregelFinished"));
+      arangodb::inspection::type<PregelFinished>("PregelFinished"),
+      arangodb::inspection::type<InFatalError>("InFatalError"));
 }
 
 }  // namespace arangodb::pregel::message
