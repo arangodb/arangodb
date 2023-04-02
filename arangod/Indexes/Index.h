@@ -241,7 +241,7 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection& collection() const { return _collection; }
+  inline LogicalCollection& collection() const { return *_collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
@@ -482,7 +482,7 @@ class Index {
                       std::string const& attributeName) const;
 
   IndexId const _iid;
-  LogicalCollection& _collection;
+  std::unique_ptr<LogicalCollection> _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
   bool const _useExpansion;

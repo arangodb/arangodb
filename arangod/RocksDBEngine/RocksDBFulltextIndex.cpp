@@ -479,7 +479,7 @@ static RocksDBKeyBounds MakeBounds(uint64_t oid,
 Result RocksDBFulltextIndex::applyQueryToken(
     transaction::Methods* trx, FulltextQueryToken const& token,
     std::set<LocalDocumentId>& resultSet) {
-  auto mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
+  auto mthds = RocksDBTransactionState::toMethods(trx, _collection->id());
   // why can't I have an assignment operator when I want one
   RocksDBKeyBounds bounds = MakeBounds(objectId(), token);
   rocksdb::Slice end = bounds.end();
@@ -564,5 +564,5 @@ std::unique_ptr<IndexIterator> RocksDBFulltextIndex::iteratorForCondition(
   }
 
   return std::make_unique<RocksDBFulltextIndexIterator>(
-      monitor, &_collection, trx, std::move(results));
+      monitor, _collection.get(), trx, std::move(results));
 }

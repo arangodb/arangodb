@@ -379,7 +379,7 @@ Result RocksDBBuilderIndex::fillIndexForeground(
   rocksdb::Snapshot const* snap = nullptr;
 
   auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+      _collection->vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
@@ -768,12 +768,13 @@ void RocksDBBuilderIndex::Locker::unlock() {
 Result RocksDBBuilderIndex::fillIndexBackground(
     Locker& locker,
     std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+
   TRI_ASSERT(locker.isLocked());
 
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
-  RocksDBEngine& engine = _collection.vocbase()
+  RocksDBEngine& engine = _collection->vocbase()
                               .server()
                               .getFeature<EngineSelectorFeature>()
                               .engine<RocksDBEngine>();
@@ -787,14 +788,14 @@ Result RocksDBBuilderIndex::fillIndexBackground(
   });
 
   std::string name =
-      absl::StrCat("index creation for ", _collection.vocbase().name(), "/",
-                   _collection.name());
+      absl::StrCat("index creation for ", _collection->vocbase().name(), "/",
+                   _collection->name());
 
   // prevent WAL deletion from this tick
   auto lowerBoundTracker =
       std::make_shared<LowerBoundTracker>(snap->GetSequenceNumber(), name);
   auto& flushFeature =
-      _collection.vocbase().server().getFeature<FlushFeature>();
+      _collection->vocbase().server().getFeature<FlushFeature>();
   flushFeature.registerFlushSubscription(lowerBoundTracker);
 
   locker.unlock();

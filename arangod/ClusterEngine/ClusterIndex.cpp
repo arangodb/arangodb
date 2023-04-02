@@ -226,12 +226,12 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
-  auto& engine = _collection.vocbase()
+  auto& engine = _collection->vocbase()
                      .server()
                      .getFeature<EngineSelectorFeature>()
                      .engine();
   return Index::Compare(engine, _info.slice(), info,
-                        _collection.vocbase().name());
+                        _collection->vocbase().name());
 }
 
 Index::FilterCosts ClusterIndex::supportsFilterCondition(
@@ -427,9 +427,9 @@ ClusterIndex::coveredFields() const {
 }
 
 bool ClusterIndex::inProgress() const {
-  auto const& vocbase = _collection.vocbase();
+  auto const& vocbase = _collection->vocbase();
   auto const& dbname = vocbase.name();
-  auto const cid = std::to_string(_collection.id().id());
+  auto const cid = std::to_string(_collection->id().id());
   auto const& agencyCache =
     vocbase.server().getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] =

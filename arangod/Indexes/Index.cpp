@@ -198,15 +198,13 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
 /*static*/ std::vector<std::vector<arangodb::basics::AttributeName>> const
     Index::emptyCoveredFields{};
 
-// If the Index is on a coordinator instance the index may not access the
-// logical collection because it could be gone!
 Index::Index(
     IndexId iid, arangodb::LogicalCollection& collection,
     std::string const& name,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
     bool unique, bool sparse)
     : _iid(iid),
-      _collection(collection),
+      _collection(&collection),
       _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
@@ -218,7 +216,7 @@ Index::Index(
 Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
              VPackSlice slice)
     : _iid(iid),
-      _collection(collection),
+      _collection(&collection),
       _name(arangodb::basics::VelocyPackHelper::getStringValue(
           slice, arangodb::StaticStrings::IndexName,
           ::defaultIndexName(slice))),
@@ -491,8 +489,8 @@ std::string Index::context() const {
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection.vocbase().name() << "/"
-         << _collection.name() << ", unique: " << (_unique ? "true" : "false")
+         << ", collection: " << _collection->vocbase().name() << "/"
+         << _collection->name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";
 
@@ -534,6 +532,8 @@ void Index::toVelocyPack(
   if (ServerState::instance()->isCoordinator()) {
     builder.add("progress", VPackValue(66));
   }
+
+  
 
   builder.add(
       arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));

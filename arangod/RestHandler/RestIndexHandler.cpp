@@ -27,6 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -183,6 +184,9 @@ RestStatus RestIndexHandler::getIndexes() {
                     res.errorMessage());
       return RestStatus::DONE;
     }
+
+    LOG_DEVEL << cName;
+    LOG_DEVEL << indexes.toJson();
 
     TRI_ASSERT(indexes.slice().isArray());
     VPackBuilder tmp;
