@@ -29,9 +29,11 @@
 #include "Cluster/AgencyCache.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Cluster/ClusterFeature.h"
+#include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
+#include "Network/NetworkFeature.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -41,6 +43,7 @@
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
+using namespace arangodb::futures;
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
@@ -125,6 +128,55 @@ void ClusterIndex::toVelocyPack(
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
+  }
+
+  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+    uint64_t progress = 0;
+    uint64_t success = 0;
+    auto const shards = _collection.shardIds();
+    auto const body = VPackBuffer<uint8_t>();
+    auto* pool = _collection.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<Future<network::Response>> futures;
+    futures.reserve(shards->size());
+    std::string const prefix = "/_api/index/";
+    for (auto const& shard : *shards) {
+      network::RequestOptions reqOpts;
+      std::string const url = prefix + shard.first + "/" + std::to_string(_iid.id());
+      futures.emplace_back(network::sendRequestRetry(pool, "shard:" + shard.first,
+                                                     fuerte::RestVerb::Get, url,
+                                                     body, reqOpts));
+    }
+    for (Future<network::Response>& f : futures) {
+      network::Response const& r = f.get();
+      if (r.fail()) {
+        LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+          << "Communication error while collecting figures for collection "
+          << _collection.name() + " from " + r.destination;
+      }
+      VPackSlice resSlice = r.slice();
+      if (!resSlice.isObject() || !resSlice.hasKey(StaticStrings::Error) ||
+          !resSlice.get(StaticStrings::Error).isBoolean()) {
+        LOG_TOPIC("agbe4", INFO, Logger::CLUSTER)
+          << "Result of collecting figures for collection "
+          << _collection.name() + " from " + r.destination << " is invalid";
+      }
+      if (resSlice.get(StaticStrings::Error).getBoolean()) {
+        LOG_TOPIC("a4beg", INFO, Logger::CLUSTER)
+          << "Failed to collect figures for collection "
+          << _collection.name() + " from " + r.destination;
+      }
+      if (resSlice.hasKey("progress") && resSlice.get("progress").isNumber()) {
+        progress += resSlice.get("progress").getNumber<uint64_t>();
+        success++;
+      } else {
+        LOG_TOPIC("aegb4", TRACE, Logger::CLUSTER)
+          << "No progress entry on index " << std::to_string(_iid.id())
+          << "  from " + r.destination << ": " << resSlice.toJson();
+      }
+    }
+    if (success) {
+      builder.add("progress", VPackValue(progress / success));
+    }
   }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
@@ -437,14 +489,12 @@ bool ClusterIndex::inProgress() const {
           "Plan/Collections/" + dbname + "/" + cid + "/indexes")});
   auto slc = acb->slice()[0].get(std::vector<std::string>{
       "arango", "Plan", "Collections", vocbase.name()});
-  LOG_TOPIC("adfe4", INFO, Logger::CLUSTER) // kaveh remove
-    << slc.toJson();
   if (slc.hasKey(std::vector<std::string>{cid,"indexes"})) {
     slc = slc.get(std::vector<std::string>{cid,"indexes"});
     for (auto const& index : VPackArrayIterator(slc)) {
       if (index.get("id").copyString() == std::to_string(_iid.id())) {
         if (index.hasKey("isBuilding")) {
-          LOG_TOPIC("adfe4", INFO, Logger::CLUSTER) // kaveh remove
+          LOG_TOPIC("fdae4", INFO, Logger::CLUSTER) // kaveh remove
             << " " << index.toJson();
         }
       }
