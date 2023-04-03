@@ -878,6 +878,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     std::shared_ptr<ShardMap> shardMapNew = c->shardingInfo()->shardIds();
+    auto names = c->realNamesForRead();
+    LOG_DEVEL << "Collection names: ";
+    for (auto const& cName : names) {
+      LOG_DEVEL << " - " << cName;
+    }
     LOG_DEVEL << "ShardMap Original: " << shardMap.get();
     LOG_DEVEL << "ShardMap Other:    " << shardMapNew.get();
     ADB_PROD_ASSERT(*shardMap == *shardMapNew);
