@@ -100,7 +100,7 @@ RestStatus RestPregelHandler::execute() {
             std::get<message::SpawnWorker>(spawnMessage.get());
 
         auto resultActorID = _pregel._actorRuntime->spawn<ResultActor>(
-            _vocbase.name(), std::make_unique<ResultState>(),
+            _vocbase.name(), std::make_unique<ResultState>(spawnWorkerMsg.ttl),
             message::ResultMessages{message::ResultStart{}});
         auto resultActorPID =
             actor::ActorPID{.server = ServerState::instance()->getId(),
