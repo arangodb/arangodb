@@ -1171,7 +1171,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         */
         _.each(multipleIds, function (nodeid) {
           aqlQuery =
-            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
+            'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
           if (limit !== 0) {
             aqlQuery += ' LIMIT ' + limit;
           }
@@ -1180,7 +1180,7 @@ authRouter.get('/visgraph/:name', function (req, res) {
         });
       } else {
         aqlQuery =
-          'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
+          'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
         if (limit !== 0) {
           aqlQuery += ' LIMIT ' + limit;
         }
@@ -1538,11 +1538,6 @@ authRouter.get('/visgraph/:name', function (req, res) {
     // as well (to be able to display at least the starting point of our graph)
     if (Object.keys(nodesObj).length === 0 && startVertex) {
       nodesObj[startVertex._id] = generateNodeObject(startVertex);
-    }
-    if (Object.keys(nodesObj).length === 0 && !startVertex && multipleIds.length > 0) {
-      multipleIds.forEach(id => {
-        nodesObj[id] = generateNodeObject({ _id: id });
-      })
     }
 
     let nodeColorAttributeFound;
