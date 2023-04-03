@@ -91,7 +91,7 @@ struct TestAttributeY : public irs::attribute {
 REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with
                                      // analized fields
 
-class TestAnalyzer : public irs::analysis::analyzer {
+class TestAnalyzer final : public irs::analysis::TypedAnalyzer<TestAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "TestInsertAnalyzer";
@@ -123,8 +123,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  TestAnalyzer(std::string_view value)
-      : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
+  TestAnalyzer(std::string_view value) {
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
 
@@ -135,8 +134,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
     }
   }
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<TestAttributeX>::id()) {
       return _px;
     }
@@ -152,14 +150,14 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return nullptr;
   }
 
-  virtual bool next() override {
+  bool next() final {
     _term.value = _data;
     _data = irs::bytes_view{};
 
     return !irs::IsNull(_term.value);
   }
 
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     _data = irs::ViewCast<irs::byte_type>(data);
     _term.value = irs::bytes_view{};
 

@@ -30,6 +30,7 @@
 #include "Cluster/ServerState.h"
 #include "Inspection/VPackWithErrorT.h"
 #include "Pregel/Conductor/Conductor.h"
+#include "Pregel/Conductor/Messages.h"
 #include "Pregel/ExecutionNumber.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/REST/RestOptions.h"
@@ -151,14 +152,9 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    bool const allDatabases = _request->parsedValue("all", false);
-    bool const fanout = ServerState::instance()->isCoordinator() &&
-                        !_request->parsedValue("local", false);
-
     VPackBuilder builder;
-    _pregel.toVelocyPack(_vocbase, builder, allDatabases, fanout);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
+    return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
 
   if (suffixes.size() == 1 && suffixes.at(0) != "history") {
@@ -287,15 +283,13 @@ void RestControlPregelHandler::handleDeleteRequest() {
 
   auto executionNumber = arangodb::pregel::ExecutionNumber{
       arangodb::basics::StringUtils::uint64(suffixes[0])};
-  auto c = _pregel.conductor(executionNumber);
 
-  if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "Execution number is invalid");
+  auto canceled = _pregel.cancel(executionNumber);
+  if (canceled.fail()) {
+    generateError(rest::ResponseCode::NOT_FOUND, canceled.errorNumber(),
+                  canceled.errorMessage());
     return;
   }
-
-  c->cancel();
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

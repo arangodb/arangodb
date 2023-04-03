@@ -37,7 +37,8 @@
 
 namespace arangodb::tests {
 namespace {
-class TestDelimAnalyzer : public irs::analysis::analyzer {
+class TestDelimAnalyzer final
+    : public irs::analysis::TypedAnalyzer<TestDelimAnalyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "TestDelimAnalyzer";
@@ -83,18 +84,16 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   }
 
   TestDelimAnalyzer(std::string_view delim)
-      : irs::analysis::analyzer(irs::type<TestDelimAnalyzer>::get()),
-        _delim(irs::ViewCast<irs::byte_type>(delim)) {}
+      : _delim(irs::ViewCast<irs::byte_type>(delim)) {}
 
-  virtual irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &_term;
     }
     return nullptr;
   }
 
-  virtual bool next() override {
+  bool next() final {
     if (_data.empty()) {
       return false;
     }
@@ -119,7 +118,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     _data = irs::ViewCast<irs::byte_type>(data);
     return true;
   }
