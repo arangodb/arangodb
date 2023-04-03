@@ -367,11 +367,14 @@ void Worker<V, E, M>::_startProcessing() {
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
-      futures.emplace_back(
-          GiveMeAFuture(SchedulerFeature::SCHEDULER,
-                        [self, this, idx = idx, quiver = quiver]() {
-                          return _processVertices(idx, quiver);
-                        }));
+      InCache<M>* inCachePtr = _inCaches[idx];
+      OutCache<M>* outCachePtr = _outCaches[idx];
+      futures.emplace_back(GiveMeAFuture(
+          SchedulerFeature::SCHEDULER,
+          [self, this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
+           quiver = quiver]() {
+            return _processVertices(inCachePtr, outCachePtr, quiver);
+          }));
     }
 
     if (!futures.empty()) {
@@ -410,12 +413,13 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
 ResultT<ProcessVerticesResult> Worker<V, E, M>::_processVertices(
-    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
+    InCache<M>* inCache, OutCache<M>* outCache,
+    std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[idx];
-  OutCache<M>* outCache = _outCaches[idx];
+  TRI_ASSERT(inCache != nullptr);
+  TRI_ASSERT(outCache != nullptr);
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
