@@ -373,8 +373,7 @@ void doQueueLinkDrop(IndexId id, std::string collection, std::string vocbase,
         Result res;
         TRI_IF_FAILURE("IResearchLink::failDropDangling") {
           res = Result{TRI_ERROR_DEBUG};
-        }
-        else {
+        } else {
           res = methods::Indexes::drop(coll.get(), builder.slice());
         }
         if (res.fail() &&
@@ -1054,23 +1053,18 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
           for (auto const& idx : indexes) {
             TRI_ASSERT(idx);
             if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-              auto const& coordLink =
+              auto& coordLink =
                   basics::downCast<iresearch::IResearchLinkCoordinator const>(
                       *idx);
               auto const& viewId = coordLink.getViewId();
               auto vocbaseViews = _newPlannedViews.find(vocbase.name());
               if (vocbaseViews == _newPlannedViews.end() ||
-                  vocbaseViews->second.find(viewId) ==
-                      vocbaseViews->second.end()) {
-                auto existing = _pendingCleanups.find(idx->id());
-                if (existing == _pendingCleanups.end()) {
+                  !vocbaseViews->second.contains(viewId)) {
+                if (_pendingCleanups.contains(idx->id().id())) {
                   doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
                                   const_cast<ClusterInfo&>(*this));
-                  _currentCleanups.emplace(idx->id());
-                } else {
-                  // Drop is already pending. Just keep the record.
-                  _currentCleanups.emplace(idx->id());
                 }
+                _currentCleanups.emplace(idx->id().id());
               }
             }
           }

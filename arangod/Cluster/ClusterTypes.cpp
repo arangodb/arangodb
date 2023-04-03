@@ -51,7 +51,7 @@ std::ostream& operator<<(std::ostream& o, ServerHealth r) {
       o << consensus::Supervision::HEALTH_STATUS_UNCLEAR;
       break;
     default:
-      TRI_ASSERT(FALSE);
+      TRI_ASSERT(false);
       o << consensus::Supervision::HEALTH_STATUS_UNCLEAR;
   }
   return o;

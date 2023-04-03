@@ -40,7 +40,6 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
-#include "VocBase/Identifiers/IndexId.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
 #include "Replication2/AgencyCollectionSpecification.h"
@@ -1014,8 +1013,8 @@ class ClusterInfo final {
   // Accounting drops of dangling links. We do not want to pollute
   // scheduler with drop requests. So we put only one per link at time.
   // And only if that request fails, we will try again.
-  containers::FlatHashSet<IndexId> _pendingCleanups;
-  mutable containers::FlatHashSet<IndexId> _currentCleanups;
+  containers::FlatHashSet<std::uint64_t> _pendingCleanups;
+  mutable containers::FlatHashSet<std::uint64_t> _currentCleanups;
 
   // The DBServers, also from Current:
   // from Current/DBServers
