@@ -315,8 +315,7 @@ bool AqlAnalyzer::isOptimized() const {
 #endif
 
 AqlAnalyzer::AqlAnalyzer(Options const& options)
-    : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
-      _options(options),
+    : _options(options),
       _query(arangodb::aql::StandaloneCalculation::buildQueryContext(
           arangodb::DatabaseFeature::getCalculationVocbase())),
       _itemBlockManager(_query->resourceMonitor(),
