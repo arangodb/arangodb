@@ -373,7 +373,8 @@ void doQueueLinkDrop(IndexId id, std::string collection, std::string vocbase,
         Result res;
         TRI_IF_FAILURE("IResearchLink::failDropDangling") {
           res = Result{TRI_ERROR_DEBUG};
-        } else {
+        }
+        else {
           res = methods::Indexes::drop(coll.get(), builder.slice());
         }
         if (res.fail() &&
