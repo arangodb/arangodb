@@ -1119,6 +1119,7 @@ std::vector<std::string> Node::exists(
 }
 
 std::vector<std::string> Node::exists(std::string_view rel) const {
+  // cppcheck-suppress returnDanglingLifetime
   return exists(split(rel));
 }
 
