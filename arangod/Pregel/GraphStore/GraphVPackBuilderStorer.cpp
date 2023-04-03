@@ -57,8 +57,6 @@ namespace arangodb::pregel {
 template<typename V, typename E>
 auto GraphVPackBuilderStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver)
     -> void {
-  result = std::make_unique<VPackBuilder>();
-
   std::string tmp;
 
   result->openArray(/*unindexed*/ true);
