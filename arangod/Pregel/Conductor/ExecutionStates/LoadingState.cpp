@@ -1,6 +1,10 @@
 #include "LoadingState.h"
+
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Conductor/ExecutionStates/ComputingState.h"
+#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -30,16 +34,13 @@ auto Loading::messages()
 
 auto Loading::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GraphLoaded>>(message)) {
-    // TODO return error state (GORDO-1553)
-    return std::nullopt;
   }
   auto workerCreated = std::get<ResultT<message::GraphLoaded>>(message);
   if (not workerCreated.ok()) {
-    // TODO return error state (GORDO-1553)
-    return std::nullopt;
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   respondedWorkers.emplace(sender);
   totalVerticesCount += workerCreated.get().vertexCount;
@@ -51,9 +52,9 @@ auto Loading::receive(actor::ActorPID sender,
         std::make_unique<AggregatorHandler>(conductor.algorithm.get()),
         conductor.specifications.userParameters.slice());
 
-    return std::make_unique<Computing>(
-        conductor, std::move(masterContext),
-        std::unordered_map<actor::ActorPID, uint64_t>{});
+    return StateChange{.newState = std::make_unique<Computing>(
+                           conductor, std::move(masterContext),
+                           std::unordered_map<actor::ActorPID, uint64_t>{})};
   }
 
   return std::nullopt;
