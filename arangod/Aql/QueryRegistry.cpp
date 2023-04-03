@@ -73,7 +73,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(std::move(query), ttl, std::move(guard));
+  auto p = std::make_unique<QueryInfo>(query, ttl, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   TRI_IF_FAILURE("QueryRegistryInsertException2") {
@@ -123,10 +123,10 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
 
   } catch (...) {
     // revert engine registration
-    for (auto& engine : p->_query->snippets()) {
+    for (auto& engine : query->snippets()) {
       _engines.erase(engine->engineId());
     }
-    for (auto& engine : p->_query->traversers()) {
+    for (auto& engine : query->traversers()) {
       _engines.erase(engine->engineId());
     }
     // no need to revert last insert
