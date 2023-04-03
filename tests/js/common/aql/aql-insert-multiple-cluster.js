@@ -76,7 +76,10 @@ function InsertMultipleDocumentsSuite(params) {
         `LET docs = NOOPT({}) FOR doc IN docs INSERT doc INTO ${cn}`,
         `LET docs = {} FOR doc IN docs INSERT doc INTO ${cn}`,
         `FOR doc IN {} INSERT doc INTO ${cn}`,
-        `FOR doc IN NOOPT({}) INSERT doc INTO ${cn}`,
+        `FOR doc IN NOOPT({}) INSERT doc INTO ${cn}
+        `FOR doc IN ${cn} INSERT doc INTO ${cn}`,
+        LET allDocs = ${cn} FOR doc IN allDocs INSERT doc INTO ${cn}`,
+        
       ];
       queries.forEach((query) => {
         try {
