@@ -35,11 +35,16 @@
 namespace arangodb::pregel {
 template<typename V, typename E>
 struct Magazine {
-  std::vector<std::shared_ptr<Quiver<V, E>>> quivers;
+  using Storage = std::vector<std::shared_ptr<Quiver<V, E>>>;
+  using iterator = typename Storage::iterator;
+
+  Storage quivers;
 
   auto emplace(std::shared_ptr<Quiver<V, E>>&& quiver) {
     return quivers.emplace_back(std::move(quiver));
   }
+
+  auto size() -> size_t { return quivers.size(); }
 
   auto begin() const { return std::begin(quivers); }
   auto end() const { return std::end(quivers); }

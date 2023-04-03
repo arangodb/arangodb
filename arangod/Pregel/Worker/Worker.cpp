@@ -25,6 +25,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
+#include "Containers/Enumerate.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -106,6 +107,20 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
 
   _messageBatchSize = 5000;
 
+  if (_messageCombiner) {
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+  } else {
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
+  }
+
   _initializeMessageCaches();
 }
 
@@ -131,14 +146,8 @@ Worker<V, E, M>::~Worker() {
 
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
-  const size_t p = _config->parallelism();
+  const size_t p = _magazine.size();
   if (_messageCombiner) {
-    _readCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
-                                _messageFormat.get(), _messageCombiner.get());
-    _writeCache =
-        new CombiningInCache<M>(_config->localPregelShardIDs(),
-                                _messageFormat.get(), _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
           std::set<PregelShard>{}, _messageFormat.get(),
@@ -149,10 +158,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
       incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                     _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
-                                      _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
                                                         _messageFormat.get());
@@ -338,6 +343,7 @@ void Worker<V, E, M>::_startProcessing() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
+  _initializeMessageCaches();
 
   auto self = shared_from_this();
   scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
@@ -345,7 +351,11 @@ void Worker<V, E, M>::_startProcessing() {
       LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
       return;
     }
-    if (_processVertices() && _state == WorkerState::COMPUTING) {
+    for (auto [idx, quiver] : enumerate(_magazine)) {
+      auto res = _processVertices(_inCaches[idx], _outCaches[idx], quiver);
+      (void)res;
+    }
+    if (_state == WorkerState::COMPUTING) {
       _finishedProcessing();  // last thread turns the lights out
     }
   });
@@ -363,12 +373,12 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-bool Worker<V, E, M>::_processVertices() {
+bool Worker<V, E, M>::_processVertices(InCache<M>* inCache,
+                                       OutCache<M>* outCache,
+                                       std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[0];
-  OutCache<M>* outCache = _outCaches[0];
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
@@ -382,31 +392,29 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& quiver : _magazine) {
-    for (auto& vertexEntry : *quiver) {
-      MessageIterator<M> messages =
-          _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
-      _currentGssObservables.messagesReceived += messages.size();
-      _currentGssObservables.memoryBytesUsedForMessages +=
-          messages.size() * sizeof(M);
+  for (auto& vertexEntry : *quiver) {
+    MessageIterator<M> messages =
+        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
+    _currentGssObservables.messagesReceived += messages.size();
+    _currentGssObservables.memoryBytesUsedForMessages +=
+        messages.size() * sizeof(M);
 
-      if (messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(messages);
-        if (vertexEntry.active()) {
-          activeCount++;
-        }
+    if (messages.size() > 0 || vertexEntry.active()) {
+      vertexComputation->_vertexEntry = &vertexEntry;
+      vertexComputation->compute(messages);
+      if (vertexEntry.active()) {
+        activeCount++;
       }
-      if (_state != WorkerState::COMPUTING) {
-        break;
-      }
+    }
+    if (_state != WorkerState::COMPUTING) {
+      break;
+    }
 
-      ++_currentGssObservables.verticesProcessed;
-      if (_currentGssObservables.verticesProcessed %
-              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-          0) {
-        _makeStatusCallback()();
-      }
+    ++_currentGssObservables.verticesProcessed;
+    if (_currentGssObservables.verticesProcessed %
+            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+        0) {
+      _makeStatusCallback()();
     }
   }
 
