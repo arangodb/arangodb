@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN, AQL_EXECUTE */
+/*global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXECUTE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,23 +34,20 @@ const cn = "UnitTestsCollection";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
+const aqlExplain = isServer ? global.AQL_EXPLAIN : (query, bindVars, options) => {
+  return arango.POST("/_api/explain", {query, bindVars, options});
+};
 
-if (!isServer) {
-  global.AQL_EXPLAIN = (query, bindVars, options) => {
-    let res = arango.POST("/_api/explain", {query, bindVars, options});
-    return res;
-  };
-}
 
 const assertRuleIsUsed = (query, bind = {}, options = {}) => {
-  let res = AQL_EXPLAIN(query, bind, options);
+  let res = aqlExplain(query, bind, options);
   assertNotEqual(-1, res.plan.rules.indexOf(ruleName));
   const nodes = res.plan.nodes.map((n) => n.type);
   assertNotEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
 };
 
 const assertRuleIsNotUsed = (query, bind = {}, options = {}) => {
-  let res = AQL_EXPLAIN(query, bind, options);
+  let res = aqlExplain(query, bind, options);
   assertEqual(-1, res.plan.rules.indexOf(ruleName));
   const nodes = res.plan.nodes.map((n) => n.type);
   assertEqual(-1, nodes.indexOf('MultipleRemoteModificationNode'));
@@ -143,14 +140,18 @@ function InsertMultipleDocumentsSuite(params) {
         ];
         queries.forEach((query, idx) => {
           assertRuleIsUsed(query);
+          const previousCount = db[cn].count();
           try {
             db._query(query);
             if (!ignoreErrors) {
               fail();
             } else {
-              assertTrue(db[cn].count(), idx + 1);
+              const afterCount = db[cn].count();
+              assertEqual(afterCount, previousCount + 1);
             }
           } catch (err) {
+            const afterCount = db[cn].count();
+            assertEqual(afterCount, previousCount);
             assertFalse(ignoreErrors);
             assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
             assertTrue(err.errorMessage.includes("unique constraint violated"));
@@ -529,7 +530,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
       for (let i = 0; i < numDocs; ++i) {
         docs.push({d: i});
       }
-      const res = AQL_EXPLAIN(`FOR d IN @docs INSERT d INTO ${cn}`, {docs});
+      const res = aqlExplain(`FOR d IN @docs INSERT d INTO ${cn}`, {docs});
       const nodes = res.plan.nodes;
       assertEqual(nodes.length, 3);
       assertEqual(nodes[0].type, "SingletonNode");
@@ -560,7 +561,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
         `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`
       ];
       queries.forEach(query => {
-        const res = AQL_EXPLAIN(query);
+        const res = aqlExplain(query);
         const nodes = res.plan.nodes;
         assertEqual(nodes.length, 3);
         assertEqual(nodes[0].type, "SingletonNode");
@@ -588,7 +589,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
       }
       const query = `FOR d in @docs INSERT d INTO ${cn}`;
 
-      const res = AQL_EXPLAIN(query, {docs: docs});
+      const res = aqlExplain(query, {docs: docs});
       const nodes = res.plan.nodes;
       assertEqual(nodes[2].type, "MultipleRemoteModificationNode");
       assertEqual(nodes[2].estimatedNrItems, numDocs);
