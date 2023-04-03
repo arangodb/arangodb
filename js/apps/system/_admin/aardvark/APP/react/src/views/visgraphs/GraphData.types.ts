@@ -8,10 +8,10 @@ export interface NodeDataType extends Node {
 
 export interface EdgeDataType extends Edge {
   id: string;
-  source?: string;
   from: string;
-  target?: string;
   to: string;
+  source?: string;
+  target?: string;
   sortColor?: string;
 }
 
@@ -100,4 +100,3 @@ export type GraphDataType = {
   edges: EdgeDataType[];
   settings: SettingsType;
 };
-

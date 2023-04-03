@@ -48,6 +48,17 @@ const fetchVertexOptions = async ({
     };
   });
 };
+
+/**
+ * Takes the graph name and
+ * the input entered by the user,
+ * to fetches collections & vertices.
+ *
+ * Happens in two parts:
+ * 1. Fetch all collections & perform client-side search in them.
+ * 2. Search for vertices in that collection (via AQL)
+ */
+
 export const useNodeStartOptions = ({
   graphName,
   inputValue

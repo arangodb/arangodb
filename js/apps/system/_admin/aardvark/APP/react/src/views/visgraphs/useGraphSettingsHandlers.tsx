@@ -55,11 +55,12 @@ export const useGraphSettingsHandlers = ({
       ...urlParams,
       ...(updatedParams ? updatedParams : {})
     } as UrlParametersType;
-    // if the new params nodeStart is an "empty string",
-    // (not "undefined"), we set it from settings.startVertex.
-    // This is when nodeStart is blank & we click apply
+    /**
+     * If nodeStart is undefined, we want to remove it.
+     * If it is an empty string, we set it from settings.startVertex.
+     */
     let { nodeStart } = newParams;
-    if (!nodeStart && nodeStart !== undefined) {
+    if (nodeStart === "") {
       nodeStart = graphData?.settings.startVertex?._id || nodeStart;
     }
     const fullConfig = await fetchUserConfig();
