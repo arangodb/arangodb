@@ -152,15 +152,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
-  [[nodiscard]] auto processVertices(size_t idx,
+  [[nodiscard]] auto processVertices(InCache<M>* inCache, OutCache<M>* outCache,
                                      std::shared_ptr<Quiver<V, E>> quiver)
-      -> futures::Future<ResultT<VerticesProcessed>> {
+      -> ResultT<VerticesProcessed> {
     // _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
 
     double start = TRI_microtime();
 
-    InCache<M>* inCache = this->state->inCaches[idx].get();
-    OutCache<M>* outCache = this->state->outCaches[idx].get();
     outCache->setBatchSize(this->state->messageBatchSize);
     outCache->setLocalCache(inCache);
 
@@ -333,13 +331,17 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->messagesForNextGss.clear();
 
     std::vector<futures::Future<ResultT<VerticesProcessed>>> futures;
+    futures.reserve(this->state->quivers.size());
     // first build up all future requests
-    /*
     for (auto [idx, quiver] : enumerate(this->state->quivers)) {
-      futures.emplace_back(futures::makeFuture(
-          [idx, quiver]() { return processVertices(idx, quiver); }));
+      InCache<M>* inCachePtr = this->state->inCaches[idx].get();
+      OutCache<M>* outCachePtr = this->state->outCaches[idx].get();
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          [this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
+           quiver = quiver]() {
+            return processVertices(inCachePtr, outCachePtr, quiver);
+          }));
     }
-*/
     std::vector<VerticesProcessed> verticesProcessed = {};
 
     if (!futures.empty()) {

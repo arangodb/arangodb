@@ -26,7 +26,6 @@
 #include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #include "Containers/Enumerate.h"
-#include "Pregel/FutureHelper.h"
 #include "GeneralServer/RequestLane.h"
 #include "Inspection/VPack.h"
 #include "Inspection/VPackWithErrorT.h"
@@ -109,13 +108,17 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _messageBatchSize = 5000;
 
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                          _messageCombiner.get());
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
   } else {
-    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
   }
 }
 
@@ -380,8 +383,7 @@ void Worker<V, E, M>::_startProcessing() {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
       InCache<M>* inCachePtr = _inCaches[idx];
       OutCache<M>* outCachePtr = _outCaches[idx];
-      futures.emplace_back(GiveMeAFuture(
-          SchedulerFeature::SCHEDULER,
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
           [self, this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
            quiver = quiver]() {
             return _processVertices(inCachePtr, outCachePtr, quiver);
