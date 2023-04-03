@@ -94,10 +94,10 @@ void RestAnalyzerHandler::createAnalyzer(  // create
 
   bool extendedNames =
       server().getFeature<DatabaseFeature>().extendedNamesAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames,
-          std::string_view(splittedAnalyzerName.second.data(),
-                           splittedAnalyzerName.second.size()))) {
+  if (!AnalyzerNameValidator::validateName(
+           extendedNames, std::string_view(splittedAnalyzerName.second.data(),
+                                           splittedAnalyzerName.second.size()))
+           .ok()) {
     generateError(arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "invalid characters in analyzer name '" +
@@ -354,8 +354,9 @@ void RestAnalyzerHandler::removeAnalyzer(IResearchAnalyzerFeature& analyzers,
 
   bool extendedNames =
       server().getFeature<DatabaseFeature>().extendedNamesAnalyzers();
-  if (!AnalyzerNameValidator::isAllowedName(
-          extendedNames, std::string_view(name.data(), name.size()))) {
+  if (!AnalyzerNameValidator::validateName(
+           extendedNames, std::string_view(name.data(), name.size()))
+           .ok()) {
     generateError(
         arangodb::Result(TRI_ERROR_BAD_PARAMETER,
                          std::string("Invalid characters in analyzer name '")

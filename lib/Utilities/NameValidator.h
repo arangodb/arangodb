@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "Basics/Result.h"
+
 #include <cstddef>
 #include <string>
 #include <string_view>
@@ -47,10 +49,15 @@ struct DatabaseNameValidator {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
+  [[nodiscard]] static Result validateName(bool allowSystem, bool extendNames,
+                                           std::string_view name);
+
+ private:
   /// @brief checks if a database name is allowed in the given context.
-  /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            std::string_view name) noexcept;
+  /// returns true if the name is allowed and false otherwise.
+  /// does not check for proper UTF-8 NFC normalization.
+  [[nodiscard]] static bool isAllowedName(bool allowSystem, bool extendedNames,
+                                          std::string_view name) noexcept;
 };
 
 struct CollectionNameValidator {
@@ -64,10 +71,15 @@ struct CollectionNameValidator {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
+  [[nodiscard]] static Result validateName(bool allowSystem, bool extendNames,
+                                           std::string_view name);
+
+ private:
   /// @brief checks if a collection name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            std::string_view name) noexcept;
+  /// does not check for proper UTF-8 NFC normalization.
+  [[nodiscard]] static bool isAllowedName(bool allowSystem, bool extendedNames,
+                                          std::string_view name) noexcept;
 };
 
 struct ViewNameValidator {
@@ -83,10 +95,15 @@ struct ViewNameValidator {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
+  [[nodiscard]] static Result validateName(bool allowSystem, bool extendNames,
+                                           std::string_view name);
+
+ private:
   /// @brief checks if a view name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool allowSystem, bool extendedNames,
-                            std::string_view name) noexcept;
+  /// does not check for proper UTF-8 NFC normalization.
+  [[nodiscard]] static bool isAllowedName(bool allowSystem, bool extendedNames,
+                                          std::string_view name) noexcept;
 };
 
 struct IndexNameValidator {
@@ -100,9 +117,15 @@ struct IndexNameValidator {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
+  [[nodiscard]] static Result validateName(bool extendNames,
+                                           std::string_view name);
+
+ private:
   /// @brief checks if a index name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool extendedNames, std::string_view name) noexcept;
+  /// does not check for proper UTF-8 NFC normalization.
+  [[nodiscard]] static bool isAllowedName(bool extendedNames,
+                                          std::string_view name) noexcept;
 };
 
 struct AnalyzerNameValidator {
@@ -116,9 +139,15 @@ struct AnalyzerNameValidator {
     return extendedNames ? maxNameLengthExtended : maxNameLengthTraditional;
   }
 
+  [[nodiscard]] static Result validateName(bool extendNames,
+                                           std::string_view name);
+
+ private:
   /// @brief checks if an analyzer name is allowed in the given context.
   /// returns true if the name is allowed and false otherwise
-  static bool isAllowedName(bool extendedNames, std::string_view name) noexcept;
+  /// does not check for proper UTF-8 NFC normalization.
+  [[nodiscard]] static bool isAllowedName(bool extendedNames,
+                                          std::string_view name) noexcept;
 };
 
 }  // namespace arangodb

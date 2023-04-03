@@ -93,8 +93,9 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
 std::string escapedCollectionName(std::string const& name,
                                   VPackSlice parameters) {
   std::string escapedName = name;
-  if (!arangodb::CollectionNameValidator::isAllowedName(/*isSystem*/ true,
-                                                        false, name)) {
+  if (!arangodb::CollectionNameValidator::validateName(/*isSystem*/ true, false,
+                                                       name)
+           .ok()) {
     // we have a collection name with special characters.
     // we should not try to save the collection under its name in the
     // filesystem. instead, we will use the collection id as part of the
@@ -120,8 +121,9 @@ std::string escapedCollectionName(std::string const& name,
 
 std::string escapedViewName(std::string const& name, VPackSlice parameters) {
   std::string escapedName = name;
-  if (!arangodb::ViewNameValidator::isAllowedName(/*isSystem*/ true, false,
-                                                  escapedName)) {
+  if (!arangodb::ViewNameValidator::validateName(/*isSystem*/ true, false,
+                                                 escapedName)
+           .ok()) {
     // we have a view name with special characters.
     // we should not try to save the view under its name in the filesystem.
     // instead, we will use the view id as part of the filename.
@@ -469,8 +471,10 @@ void processJob(arangodb::httpclient::SimpleHttpClient& client,
 /// in every OS
 [[nodiscard]] std::string getDatabaseDirName(std::string const& databaseName,
                                              std::string const& id) {
-  bool isOldStyleName = arangodb::DatabaseNameValidator::isAllowedName(
-      /*allowSystem*/ true, /*extendedNames*/ false, databaseName);
+  bool isOldStyleName =
+      arangodb::DatabaseNameValidator::validateName(
+          /*allowSystem*/ true, /*extendedNames*/ false, databaseName)
+          .ok();
   return isOldStyleName ? databaseName : id;
 }
 

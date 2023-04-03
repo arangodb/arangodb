@@ -4260,16 +4260,16 @@ void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
                            .extendedNamesCollections();
 
   // common validation
-  if (name.empty() ||
-      (validateStrict && !CollectionNameValidator::isAllowedName(
-                             /*allowSystem*/ true, extendedNames, name))) {
-    // will throw
-    std::string errorMessage(TRI_errno_string(TRI_ERROR_ARANGO_ILLEGAL_NAME));
-    errorMessage.append(": ");
-    errorMessage.append(name.data(), name.size());
+  if (name.empty() || validateStrict) {
+    auto res = CollectionNameValidator::validateName(
+        /*allowSystem*/ true, extendedNames, name);
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME, errorMessage);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
+
+  TRI_ASSERT(!name.empty());
 }
 
 /// @brief create an AST collection node

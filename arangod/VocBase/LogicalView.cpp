@@ -124,9 +124,10 @@ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
 
   bool extendedNames =
       server.getFeature<DatabaseFeature>().extendedNamesViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
-                                        name)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
+                                                 extendedNames, name);
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   auto& viewTypes = server.getFeature<ViewTypesFeature>();

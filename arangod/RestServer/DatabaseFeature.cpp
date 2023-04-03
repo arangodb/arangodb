@@ -694,9 +694,10 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   result = nullptr;
 
   bool extendedNames = extendedNamesDatabases();
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
+                                                     extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
@@ -1182,13 +1183,15 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     if (res.fail()) {
       std::string errorMsg;
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
         // check if the name would be allowed when using extended names
-        if (DatabaseNameValidator::isAllowedName(
-                /*isSystem*/ false, /*extendedNames*/ true, name)) {
+        if (DatabaseNameValidator::validateName(
+                /*isSystem*/ false, /*extendedNames*/ true, name)
+                .ok()) {
           errorMsg.append(
               ". This database name would be allowed when using the "
               "extended naming convention for databases, which is "

@@ -106,12 +106,9 @@ Result Indexes::getIndex(LogicalCollection const& collection,
                              .server()
                              .getFeature<DatabaseFeature>()
                              .extendedNamesIndexes();
-    if (!IndexNameValidator::isAllowedName(extendedNames, name)) {
-      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    }
-    if (extendedNames && name != normalizeUtf8ToNFC(name)) {
-      return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                    "index name is not properly UTF-8 NFC-normalized");
+    if (auto res = IndexNameValidator::validateName(extendedNames, name);
+        res.fail()) {
+      return res;
     }
   }
 
@@ -619,7 +616,7 @@ static bool ExtractIndexName(VPackSlice arg, bool extendedNames,
     return true;
   }
 
-  if (IndexNameValidator::isAllowedName(extendedNames, handle)) {
+  if (IndexNameValidator::validateName(extendedNames, handle).ok()) {
     name = std::string(handle.data(), handle.size());
     return true;
   }

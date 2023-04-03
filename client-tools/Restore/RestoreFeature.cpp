@@ -72,8 +72,9 @@ namespace {
 std::string escapedCollectionName(std::string const& name,
                                   VPackSlice parameters) {
   std::string escapedName = name;
-  if (!arangodb::CollectionNameValidator::isAllowedName(/*isSystem*/ true,
-                                                        false, name)) {
+  if (!arangodb::CollectionNameValidator::validateName(/*isSystem*/ true, false,
+                                                       name)
+           .ok()) {
     // we have a collection name with special characters.
     // we should not try to save the collection under its name in the
     // filesystem. instead, we will use the collection id as part of the

@@ -1305,9 +1305,10 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceSystem, false);
   bool extendedNames =
       server().getFeature<DatabaseFeature>().extendedNamesCollections();
-  if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
-            "illegal collection name '" + name + "'"};
+  if (auto res =
+          CollectionNameValidator::validateName(isSystem, extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   TRI_col_type_e collectionType =
@@ -1374,13 +1375,10 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   }
 
   bool extendedNames = databaseFeature.extendedNamesViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
-                                        newName)) {
-    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-  }
-  if (newName != normalizeUtf8ToNFC(newName)) {
-    return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                  "view name is not properly UTF-8 NFC-normalized");
+  if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
+                                                 extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1454,13 +1452,10 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
 
   bool extendedNames =
       server().getFeature<DatabaseFeature>().extendedNamesCollections();
-  if (!CollectionNameValidator::isAllowedName(/*allowSystem*/ false,
-                                              extendedNames, newName)) {
-    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
-  }
-  if (newName != normalizeUtf8ToNFC(newName)) {
-    return Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                  "collection name is not properly UTF-8 NFC-normalized");
+  if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
+                                                       extendedNames, newName);
+      res.fail()) {
+    return res;
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1603,8 +1598,9 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
 
     bool extendedNames =
         server().getFeature<DatabaseFeature>().extendedNamesViews();
-    valid &= ViewNameValidator::isAllowedName(/*allowSystem*/ false,
-                                              extendedNames, name);
+    valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
+                                             extendedNames, name)
+                 .ok();
   }
 
   if (!valid) {

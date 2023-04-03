@@ -187,9 +187,10 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   bool extendedNames =
       info.server().getFeature<DatabaseFeature>().extendedNamesDatabases();
 
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, info.getName())) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+  if (auto res = DatabaseNameValidator::validateName(
+          /*allowSystem*/ false, extendedNames, info.getName());
+      res.fail()) {
+    return res;
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
