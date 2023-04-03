@@ -140,8 +140,7 @@ function InsertMultipleDocumentsSuite(params) {
         `LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
         `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
       ];
-      for (let i = 0; i < 1; ++i) {
-        ignoreErrors = (i === 0) ? false : true;
+      for (const ignoreErrors of [false, true]) {
         queries.forEach((query, idx) => {
           assertRuleIsUsed(query);
           try {
