@@ -877,6 +877,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // We want to check if the collection is usable and all followers
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
+    std::shared_ptr<ShardMap> shardMapNew = c->shardingInfo()->shardIds();
+    LOG_DEVEL << "ShardMap Original: " << shardMap.get();
+    LOG_DEVEL << "ShardMap Other:    " << shardMapNew.get();
+    ADB_PROD_ASSERT(*shardMap == *shardMapNew);
+
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
     auto cic = ci.getCollectionCurrent(dbName,
