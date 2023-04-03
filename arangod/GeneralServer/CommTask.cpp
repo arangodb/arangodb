@@ -447,21 +447,18 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   TRI_ASSERT(request != nullptr);
   TRI_ASSERT(response != nullptr);
 
+  if (request == nullptr || response == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid object setup for executeRequest");
+  }
+
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
 
   // store the message id for error handling
-  uint64_t messageId = 0UL;
-  if (request) {
-    messageId = request->messageId();
-  } else if (response) {
-    messageId = response->messageId();
-  } else {
-    LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
-        << "could not find corresponding request/response";
-  }
+  uint64_t messageId = request->messageId();
 
   rest::ContentType const respType = request->contentTypeResponse();
 
@@ -504,12 +501,11 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal(
-        [self(shared_from_this()), handler(std::move(handler)),
-         messageId](futures::Try<Result>&& /*ignored*/) -> void {
-          self->sendResponse(handler->stealResponse(),
-                             self->stealStatistics(messageId));
-        });
+    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
+                              messageId](
+                                 futures::Try<Result>&& /*ignored*/) -> void {
+      self->sendResponse(h->stealResponse(), self->stealStatistics(messageId));
+    });
     return;
   }
 
