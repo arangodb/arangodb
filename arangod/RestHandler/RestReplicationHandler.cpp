@@ -2276,7 +2276,7 @@ void RestReplicationHandler::handleCommandSync() {
     result.add("name", VPackValue(it.second));
     result.close();  // one collection
   }
-  result.close();    // collections
+  result.close();  // collections
 
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
