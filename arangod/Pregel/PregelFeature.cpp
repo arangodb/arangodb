@@ -370,8 +370,7 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
         .database = vocbase.name(),
         .algorithm = executionSpecifications.algorithm,
         .ttl = executionSpecifications.ttl,
-        .parallelism = executionSpecifications.parallelism
-    }};
+        .parallelism = executionSpecifications.parallelism}};
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
         vocbase.name(), std::make_unique<StatusState>(),
         std::move(statusStart));

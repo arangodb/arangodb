@@ -86,8 +86,7 @@ auto CreateWorkers::receive(actor::ActorPID sender,
         std::make_unique<Loading>(conductor, std::move(actorForShard));
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage =
-            pregel::message::LoadingStarted{.state = stateName},
+        .statusMessage = pregel::message::LoadingStarted{.state = stateName},
         .newState = std::move(newState)};
   }
   return std::nullopt;

@@ -60,7 +60,8 @@ auto Loading::receive(actor::ActorPID sender,
         std::unordered_map<actor::ActorPID, uint64_t>{});
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::ComputationStarted{.state = stateName},
+        .statusMessage =
+            pregel::message::ComputationStarted{.state = stateName},
         .newState = std::move(newState)};
   }
 
