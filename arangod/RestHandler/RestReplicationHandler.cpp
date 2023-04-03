@@ -884,9 +884,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
               << " , smartChild: " << c->isSmartChild()
               << " , isSatellite: " << c->isSatellite();
     if (c->type() == TRI_COL_TYPE_DOCUMENT) {
-      LOG_DEVEL << " - Document collection;
+      LOG_DEVEL << " - Document collection";
     } else if (c->type() == TRI_COL_TYPE_EDGE) {
-      LOG_DEVEL << " - Edge collection;
+      LOG_DEVEL << " - Edge collection";
     }
 
     LOG_DEVEL << "Collection names: ";
