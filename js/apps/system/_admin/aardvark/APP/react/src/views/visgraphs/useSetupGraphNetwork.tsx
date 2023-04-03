@@ -38,6 +38,14 @@ export const useSetupGraphNetwork = ({
         addEdge: function(data: { from: string; to: string }, callback: any) {
           onAddEdge({ data, callback });
         }
+      },
+      physics: {
+        ...options?.physics,
+        stabilization: {
+          enabled: true,
+          iterations: 500,
+          updateInterval: 25
+        }
       }
     };
     const newNetwork = new Network(
