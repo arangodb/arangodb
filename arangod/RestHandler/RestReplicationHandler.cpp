@@ -893,15 +893,17 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     for (auto const& cName : names) {
       LOG_DEVEL << " - " << cName;
     }
+    LOG_DEVEL << "Original Size: " << shardMap->size()
+              << " <=> Other size: " << shardMapNew->size();
     LOG_DEVEL << "ShardMap Original: " << shardMap.get();
-    for (auto const& s1 : *shardMap.get()) {
+    for (auto const& s1 : *shardMap) {
       LOG_DEVEL << "-> Shard: " << s1.first;
       for (auto const& ss1 : s1.second) {
         LOG_DEVEL " ---> Server: " << ss1;
       }
     }
     LOG_DEVEL << "ShardMap Other:    " << shardMapNew.get();
-    for (auto const& s1 : *shardMapNew.get()) {
+    for (auto const& s1 : *shardMapNew) {
       LOG_DEVEL << "-> Shard: " << s1.first;
       for (auto const& ss1 : s1.second) {
         LOG_DEVEL " ---> Server: " << ss1;
