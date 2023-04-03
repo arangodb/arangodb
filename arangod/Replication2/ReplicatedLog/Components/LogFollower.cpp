@@ -100,12 +100,13 @@ FollowerManager::FollowerManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    std::shared_ptr<ILeaderCommunicator> leaderComm,
+    std::shared_ptr<IScheduler> scheduler, LoggerContext logContext)
     : loggerContext(deriveLoggerContext(*termInfo, logContext)),
       options(options),
       metrics(metrics),
-      storage(
-          std::make_shared<StorageManager>(std::move(methods), loggerContext)),
+      storage(std::make_shared<StorageManager>(std::move(methods),
+                                               loggerContext, scheduler)),
       compaction(std::make_shared<CompactionManager>(*storage, options,
                                                      loggerContext)),
       stateHandle(
@@ -113,7 +114,7 @@ FollowerManager::FollowerManager(
       snapshot(std::make_shared<SnapshotManager>(
           *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
       commit(std::make_shared<FollowerCommitManager>(*storage, *stateHandle,
-                                                     loggerContext)),
+                                                     loggerContext, scheduler)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
           termInfo, *storage, *snapshot, *compaction, *commit, metrics,
           loggerContext)),
@@ -275,7 +276,7 @@ auto LogFollowerImpl::waitForIterator(LogIndex index)
 
 auto LogFollowerImpl::getInternalLogIterator(std::optional<LogRange> bounds)
     const -> std::unique_ptr<PersistedLogIterator> {
-  return guarded.getLockedGuard()->storage->getPeristedLogIterator(bounds);
+  return guarded.getLockedGuard()->storage->getPersistedLogIterator(bounds);
 }
 
 auto LogFollowerImpl::release(LogIndex doneWithIdx) -> Result {
@@ -312,10 +313,11 @@ LogFollowerImpl::LogFollowerImpl(
     std::shared_ptr<const FollowerTermInformation> termInfo,
     std::shared_ptr<const ReplicatedLogGlobalSettings> options,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
-    std::shared_ptr<ILeaderCommunicator> leaderComm, LoggerContext logContext)
+    std::shared_ptr<ILeaderCommunicator> leaderComm,
+    std::shared_ptr<IScheduler> scheduler, LoggerContext logContext)
     : myself(std::move(myself)),
       guarded(std::move(methods), std::move(stateHandlePtr),
               std::move(termInfo), std::move(options), std::move(metrics),
-              std::move(leaderComm), logContext) {}
+              std::move(leaderComm), std::move(scheduler), logContext) {}
 
 }  // namespace arangodb::replication2::replicated_log

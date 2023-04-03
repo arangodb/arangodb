@@ -234,8 +234,9 @@ auto to_string(LogId logId) -> std::string;
 
 struct GlobalLogIdentifier {
   GlobalLogIdentifier(std::string database, LogId id);
-  std::string database;
-  LogId id;
+  GlobalLogIdentifier() = default;
+  std::string database{};
+  LogId id{};
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, GlobalLogIdentifier& gid) {

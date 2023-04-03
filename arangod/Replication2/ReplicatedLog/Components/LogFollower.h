@@ -64,7 +64,8 @@ struct FollowerManager {
       std::shared_ptr<FollowerTermInformation const> termInfo,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
-      std::shared_ptr<ILeaderCommunicator>, LoggerContext logContext);
+      std::shared_ptr<ILeaderCommunicator>,
+      std::shared_ptr<IScheduler> scheduler, LoggerContext logContext);
   ~FollowerManager();
   auto getStatus() const -> LogStatus;
   auto getQuickStatus() const -> QuickLogStatus;
@@ -101,7 +102,7 @@ struct LogFollowerImpl : ILogFollower {
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
       std::shared_ptr<ReplicatedLogMetrics> metrics,
       std::shared_ptr<ILeaderCommunicator> leaderComm,
-      LoggerContext logContext);
+      std::shared_ptr<IScheduler> scheduler, LoggerContext logContext);
 
   auto getStatus() const -> LogStatus override;
 
