@@ -36,6 +36,7 @@ inline namespace comp {
 struct IStorageManager;
 struct ISnapshotManager;
 struct ICompactionManager;
+struct IStateHandleManager;
 
 struct AppendEntriesMessageIdAcceptor {
   auto accept(MessageId) noexcept -> bool;
@@ -51,7 +52,7 @@ struct AppendEntriesManager
   AppendEntriesManager(std::shared_ptr<FollowerTermInformation const> termInfo,
                        IStorageManager& storage, ISnapshotManager& snapshot,
                        ICompactionManager& compaction,
-                       IFollowerCommitManager& commit,
+                       IStateHandleManager& stateHandle,
                        std::shared_ptr<ReplicatedLogMetrics> metrics,
                        LoggerContext const& loggerContext);
 
@@ -64,7 +65,8 @@ struct AppendEntriesManager
 
   struct GuardedData {
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
-                ICompactionManager& compaction, IFollowerCommitManager& commit);
+                ICompactionManager& compaction,
+                IStateHandleManager& stateHandle);
     auto preflightChecks(AppendEntriesRequest const& request,
                          FollowerTermInformation const&,
                          LoggerContext const& lctx)
@@ -78,7 +80,7 @@ struct AppendEntriesManager
     IStorageManager& storage;
     ISnapshotManager& snapshot;
     ICompactionManager& compaction;
-    IFollowerCommitManager& commit;
+    IStateHandleManager& stateHandle;
   };
 
   LoggerContext const loggerContext;

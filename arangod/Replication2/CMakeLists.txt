@@ -31,6 +31,8 @@ add_library(arango_replication2_pure STATIC
   ReplicatedLog/Algorithms.cpp
   ReplicatedLog/ILogInterfaces.cpp
   ReplicatedLog/TermIndexMapping.cpp
+  ReplicatedLog/Components/MethodsProvider.cpp ReplicatedLog/Components/MethodsProvider.h
+  ReplicatedLog/Components/IMethodsProvider.cpp ReplicatedLog/Components/IMethodsProvider.h
   IScheduler.h)
 
 target_link_libraries(arango_replication2_pure PUBLIC arango_lightweight

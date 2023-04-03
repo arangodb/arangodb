@@ -54,7 +54,8 @@ struct StorageManagerMock : IStorageManager {
 };
 
 struct StateHandleManagerMock : IStateHandleManager {
-  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(DeferredAction, updateCommitIndex, (LogIndex),
+              (noexcept, override));
   MOCK_METHOD(void, becomeFollower,
               (std::unique_ptr<IReplicatedLogFollowerMethods>),
               (noexcept, override));
@@ -91,7 +92,7 @@ struct FollowerCommitManagerTest : ::testing::Test {
 
   std::shared_ptr<FollowerCommitManager> commit =
       std::make_shared<FollowerCommitManager>(
-          storage, stateHandle, LoggerContext{Logger::REPLICATION2}, scheduler);
+          storage, LoggerContext{Logger::REPLICATION2}, scheduler);
 };
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {

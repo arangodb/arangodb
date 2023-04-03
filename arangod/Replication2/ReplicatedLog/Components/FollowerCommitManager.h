@@ -38,10 +38,10 @@ struct IStorageManager;
 struct FollowerCommitManager
     : IFollowerCommitManager,
       std::enable_shared_from_this<FollowerCommitManager> {
-  FollowerCommitManager(IStorageManager&, IStateHandleManager&,
-                        LoggerContext const& loggerContext,
+  FollowerCommitManager(IStorageManager&, LoggerContext const& loggerContext,
                         std::shared_ptr<IScheduler> scheduler);
-  auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
+  auto updateCommitIndex(LogIndex index) noexcept
+      -> std::pair<std::optional<LogIndex>, DeferredAction> override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
   auto waitFor(LogIndex index) noexcept
@@ -57,14 +57,13 @@ struct FollowerCommitManager
   using WaitForQueue = std::multimap<LogIndex, ResolvePromise>;
 
   struct GuardedData {
-    explicit GuardedData(IStorageManager&, IStateHandleManager&);
+    explicit GuardedData(IStorageManager&);
     LogIndex commitIndex{0};
     LogIndex resolveIndex{0};
     WaitForQueue waitQueue;
     bool isResigned{false};
 
     IStorageManager& storage;
-    IStateHandleManager& stateHandle;
   };
 
   Guarded<GuardedData> guardedData;

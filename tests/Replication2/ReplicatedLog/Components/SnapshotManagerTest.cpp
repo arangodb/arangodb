@@ -79,7 +79,8 @@ struct StorageManagerMock : IStorageManager {
 };
 
 struct StateHandleManagerMock : IStateHandleManager {
-  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(DeferredAction, updateCommitIndex, (LogIndex),
+              (noexcept, override));
   MOCK_METHOD(void, becomeFollower,
               (std::unique_ptr<IReplicatedLogFollowerMethods>),
               (noexcept, override));

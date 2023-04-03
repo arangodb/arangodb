@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,30 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
+
+#include "IMethodsProvider.h"
 
 namespace arangodb {
-struct DeferredAction;
 namespace replication2 {
-struct LogIndex;
-namespace replicated_log {
-
-inline namespace comp {
-
-struct IFollowerCommitManager {
-  virtual ~IFollowerCommitManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept
-      -> std::pair<std::optional<LogIndex>, DeferredAction> = 0;
-  virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
-  virtual auto waitFor(LogIndex index) noexcept
-      -> ILogParticipant::WaitForFuture = 0;
-  virtual auto waitForIterator(LogIndex index) noexcept
-      -> ILogParticipant::WaitForIteratorFuture = 0;
-};
-}  // namespace comp
-}  // namespace replicated_log
+namespace replicated_log {}  // namespace replicated_log
 }  // namespace replication2
 }  // namespace arangodb

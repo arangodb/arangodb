@@ -23,11 +23,13 @@
 #include "AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/NetworkMessages.h"
 #include "Futures/Future.h"
-#include "Replication2/ReplicatedLog/Components/StorageManager.h"
-#include "Replication2/ReplicatedLog/Components/SnapshotManager.h"
 #include "Replication2/coro-helper.h"
+#include "Replication2/ReplicatedLog/Components/IStorageManager.h"
+#include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
+#include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Logger/LogContextKeys.h"
@@ -143,7 +145,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   }
 
   guard->compaction.updateLowestIndexToKeep(request.lowestIndexToKeep);
-  auto action = guard->commit.updateCommitIndex(request.leaderCommit);
+  auto action = guard->stateHandle.updateCommitIndex(request.leaderCommit);
   auto hasSnapshot =
       guard->snapshot.checkSnapshotState() == SnapshotState::AVAILABLE;
   guard.unlock();
@@ -157,14 +159,14 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
 AppendEntriesManager::AppendEntriesManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     IStorageManager& storage, ISnapshotManager& snapshot,
-    ICompactionManager& compaction, IFollowerCommitManager& commit,
+    ICompactionManager& compaction, IStateHandleManager& stateHandle,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     LoggerContext const& loggerContext)
     : loggerContext(loggerContext.with<logContextKeyLogComponent>(
           "append-entries-manager")),
       termInfo(std::move(termInfo)),
       metrics(std::move(metrics)),
-      guarded(storage, snapshot, compaction, commit) {}
+      guarded(storage, snapshot, compaction, stateHandle) {}
 
 auto AppendEntriesManager::getLastReceivedMessageId() const noexcept
     -> MessageId {
@@ -179,11 +181,11 @@ auto AppendEntriesManager::resign() && noexcept -> void {
 AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
                                                ISnapshotManager& snapshot,
                                                ICompactionManager& compaction,
-                                               IFollowerCommitManager& commit)
+                                               IStateHandleManager& stateHandle)
     : storage(storage),
       snapshot(snapshot),
       compaction(compaction),
-      commit(commit) {}
+      stateHandle(stateHandle) {}
 
 auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
