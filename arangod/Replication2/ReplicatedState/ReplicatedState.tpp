@@ -228,7 +228,7 @@ auto ReplicatedStateManager<S>::getLeader() const
 template<typename S>
 auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
   auto guard = _guarded.getLockedGuard();
-  auto&& [core, methods] =
+  auto [core, methods] =
       std::visit([](auto&& mgr) { return std::move(*mgr).resign(); },
                  guard->_currentManager);
   // we should be unconfigured already
