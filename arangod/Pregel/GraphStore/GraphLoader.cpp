@@ -125,7 +125,11 @@ auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
         }
       }
 
-      futures.emplace_back(loadVertices(vertexShard, edges));
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
+          [this, vertexShard = vertexShard, edges = edges]() {
+            return loadVertices(vertexShard, edges);
+          }));
     }
   }
 
@@ -155,7 +159,7 @@ auto GraphLoader<V, E>::load() -> std::vector<std::shared_ptr<Quiver<V, E>>> {
 template<typename V, typename E>
 auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards)
-    -> futures::Future<ResultT<std::shared_ptr<Quiver<V, E>>>> {
+    -> ResultT<std::shared_ptr<Quiver<V, E>>> {
   auto resultQuiver = std::make_shared<Quiver<V, E>>();
 
   transaction::Options trxOpts;
