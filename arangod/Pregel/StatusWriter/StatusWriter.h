@@ -46,6 +46,7 @@ struct StatusWriterInterface {
       -> OperationResult = 0;
   [[nodiscard]] virtual auto readResult() -> OperationResult = 0;
   [[nodiscard]] virtual auto readAllResults() -> OperationResult = 0;
+  [[nodiscard]] virtual auto readAllNonExpiredResults() -> OperationResult = 0;
   [[nodiscard]] virtual auto updateResult(velocypack::Slice data)
       -> OperationResult = 0;
   [[nodiscard]] virtual auto deleteResult() -> OperationResult = 0;

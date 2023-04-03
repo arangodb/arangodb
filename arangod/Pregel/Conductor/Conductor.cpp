@@ -757,7 +757,12 @@ void Conductor::persistPregelState(ExecutionState state) {
     stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
     stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
     stateBuilder.add("gss", VPackValue(_globalSuperstep));
+    stateBuilder.add("ttl", VPackValue(_specifications.ttl.duration.count()));
+    if (_expires != std::chrono::system_clock::time_point{}) {
+      stateBuilder.add("expires", VPackValue(timepointToString(_expires)));
+    }
   };
+
   auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {
     TRI_ASSERT(builder.isOpenObject());
     if (_timing.total.hasStarted()) {

@@ -65,6 +65,12 @@ struct PregelScheduler {
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     scheduler->queue(RequestLane::INTERNAL_LOW, fn);
   }
+  auto delay(std::chrono::seconds delay, std::function<void(bool)>&& fn) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+    auto workItem = scheduler->queueDelayed(
+        "pregel-actors", RequestLane::INTERNAL_LOW, delay, fn);
+  }
 };
 
 class Conductor;
@@ -96,6 +102,7 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<Conductor> conductor(ExecutionNumber executionNumber);
 
   void garbageCollectConductors();
+  void garbageCollectActors();
 
   void addWorker(std::shared_ptr<IWorker>&&, ExecutionNumber executionNumber);
   std::shared_ptr<IWorker> worker(ExecutionNumber executionNumber);
@@ -128,6 +135,8 @@ class PregelFeature final : public ArangodFeature {
   std::string tempPath() const;
 
   auto metrics() -> std::shared_ptr<PregelMetrics> { return _metrics; }
+
+  auto cancel(ExecutionNumber executionNumber) -> Result;
 
  private:
   void scheduleGarbageCollection();
@@ -164,8 +173,9 @@ class PregelFeature final : public ArangodFeature {
   std::shared_ptr<actor::Runtime<PregelScheduler, ArangoExternalDispatcher>>
       _actorRuntime;
 
-  std::unordered_map<ExecutionNumber, actor::ActorPID> _resultActors;
-
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _resultActor;
+  // conductor actor is only used on the coordinator
+  Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _conductorActor;
   Guarded<std::unordered_map<ExecutionNumber, actor::ActorPID>> _statusActors;
 };
 
