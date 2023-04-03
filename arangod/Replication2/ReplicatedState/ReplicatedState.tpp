@@ -228,11 +228,12 @@ auto ReplicatedStateManager<S>::getLeader() const
 template<typename S>
 auto ReplicatedStateManager<S>::resign() && -> std::unique_ptr<CoreType> {
   auto guard = _guarded.getLockedGuard();
-  auto&& [core, methods] =
+  auto [core, methods] =
       std::visit([](auto&& mgr) { return std::move(*mgr).resign(); },
                  guard->_currentManager);
   // we should be unconfigured already
   TRI_ASSERT(methods == nullptr);
+  // cppcheck-suppress returnStdMoveLocal ; core is not a local variable
   return std::move(core);
 }
 
@@ -252,6 +253,7 @@ template<typename S, template<typename> typename Interface,
          ValidStreamLogMethods ILogMethodsT>
 auto StreamProxy<S, Interface,
                  ILogMethodsT>::resign() && -> std::unique_ptr<ILogMethodsT> {
+  // cppcheck-suppress returnStdMoveLocal ; bogus
   return std::move(this->_logMethods.getLockedGuard().get());
 }
 
@@ -395,6 +397,7 @@ auto LeaderStateManager<S>::GuardedData::recoverEntries() {
       std::make_unique<LazyDeserializingIterator<EntryType, Deserializer>>(
           std::move(logIter));
   MeasureTimeGuard timeGuard(*_metrics.replicatedStateRecoverEntriesRtt);
+  // cppcheck-suppress accessMoved ; deserializedIter is only accessed once
   auto fut = _leaderState->recoverEntries(std::move(deserializedIter))
                  .then([guard = std::move(timeGuard)](auto&& res) mutable {
                    guard.fire();
@@ -594,6 +597,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
         return std::make_unique<IterType>(std::move(logIter));
       }();
       if (iter != nullptr) {
+        // cppcheck-suppress accessMoved ; iter is accessed only once - bogus
         followerState->applyEntries(std::move(iter))
             .thenFinal(
                 [promise = std::move(promise),
