@@ -18,7 +18,6 @@ import {
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { useGraph } from "../GraphContext";
-import { NodeDataType } from "../VisGraphData.types";
 
 type AddNodeResponse = DocumentMetadata & {
   new?: { _key: string; _id: string; _rev: string };
@@ -69,7 +68,14 @@ export const AddNodeModal = () => {
   const { addNode } = useAddNodeAction({
     graphName,
     onSuccess: response => {
-      const { _id: id, _key: label } = response.new || {};
+      if (!response.new) {
+        window.arangoHelper.arangoError(
+          "Graph",
+          "Something went wrong while adding a node."
+        );
+        return;
+      }
+      const { _id: id, _key: label } = response.new;
       const { pointer } = selectedAction?.entity || {};
       const nodeModel = {
         id,
@@ -79,7 +85,7 @@ export const AddNodeModal = () => {
         x: Number(pointer?.canvas.x),
         y: Number(pointer?.canvas.y)
       };
-      datasets?.nodes.add((nodeModel as unknown) as NodeDataType);
+      datasets?.nodes.add(nodeModel);
       onClearAction();
     },
     onFailure: onClearAction
