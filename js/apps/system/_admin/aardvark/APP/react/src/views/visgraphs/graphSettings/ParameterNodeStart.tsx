@@ -11,7 +11,7 @@ const ParameterNodeStart = () => {
   const [inputValue, setInputValue] = useState<string>("");
 
   const { values, onRemoveValue, onAddValue } = useSetupNodeStartValues();
-  const { options } = useNodeStartOptions({ graphName, inputValue });
+  const { options } = useNodeStartOptions({ graphName, inputValue, values });
 
   return (
     <>

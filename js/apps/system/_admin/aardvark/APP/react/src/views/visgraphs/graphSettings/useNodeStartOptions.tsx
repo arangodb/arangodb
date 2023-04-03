@@ -1,13 +1,22 @@
+import { aql } from "arangojs";
 import { useEffect, useState } from "react";
 import { OptionType } from "../../../components/select/SelectBase";
 import { getCurrentDB } from "../../../utils/arangoClient";
 
-const fetchVertexOptions = async ({
+/**
+ * fetches vertices or filters collections list
+ * - Input value is of type `collectionName/vertexName`
+ *   - If input value has no vertexName, this filters & returns collections list
+ * - If input value contains `vertexName`, it makes an AQL query call to get vertices.
+ */
+const fetchOptions = async ({
   inputValue,
-  collectionOptions
+  collectionOptions,
+  values
 }: {
   inputValue: string;
   collectionOptions: OptionType[] | undefined;
+  values: OptionType[];
 }) => {
   const inputSplit = inputValue.split("/");
   const [collectionName] = inputSplit;
@@ -21,27 +30,20 @@ const fetchVertexOptions = async ({
       : collectionOptions || [];
     return Promise.resolve(finalOptions);
   }
-  const newCollections = [collectionName];
-  let queries: string[] = [];
-  newCollections.forEach(collection => {
-    const colQuery =
-      "(FOR doc IN " +
-      collection +
-      " FILTER " +
-      "doc._id >= @search && CONTAINS(doc._id, @search) " +
-      "LIMIT 5 " +
-      "RETURN doc._id)";
-    queries = [...queries, colQuery];
-  });
-  const cursor = await db.query(
-    "RETURN FLATTEN(APPEND([], [" + queries.join(", ") + "]))",
-    { search: inputValue }
-  );
+  const valuesList = values.map(value => value.value);
+  const colQuery = aql`
+      FOR doc IN ${db.collection(collectionName)}
+      FILTER doc._id >= ${inputValue} && STARTS_WITH(doc._id, ${inputValue}) 
+      FILTER doc._id NOT IN ${valuesList}
+      LIMIT 5
+      RETURN doc._id`;
+
+  const cursor = await db.query(colQuery);
   const data = await cursor.all();
   if (!data) {
     return Promise.resolve([]);
   }
-  return (data[0] as string[]).map(value => {
+  return (data as string[]).map(value => {
     return {
       label: value,
       value: value
@@ -61,10 +63,12 @@ const fetchVertexOptions = async ({
 
 export const useNodeStartOptions = ({
   graphName,
-  inputValue
+  inputValue,
+  values
 }: {
   graphName: string;
   inputValue: string;
+  values: OptionType[];
 }) => {
   const [vertexOptions, setVertexOptions] = useState<
     OptionType[] | undefined
@@ -90,13 +94,14 @@ export const useNodeStartOptions = ({
   // loads options based on inputValue
   useEffect(() => {
     const loadVertexOptions = async () => {
-      const vertexOptions = await fetchVertexOptions({
+      const vertexOptions = await fetchOptions({
         inputValue,
-        collectionOptions
+        collectionOptions,
+        values
       });
       setVertexOptions(vertexOptions);
     };
     loadVertexOptions();
-  }, [inputValue, collectionOptions]);
+  }, [inputValue, collectionOptions, values]);
   return { options: vertexOptions };
 };

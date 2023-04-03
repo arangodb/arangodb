@@ -22,6 +22,8 @@ const putUserConfig = async ({
     ...fullConfig,
     [paramKey]: {
       ...params,
+      // we never save the 'mode' currently
+      // because in the UI it's a temporary state
       mode: ""
     }
   };
@@ -56,8 +58,9 @@ export const useGraphSettingsHandlers = ({
       ...(updatedParams ? updatedParams : {})
     } as UrlParametersType;
     /**
-     * If nodeStart is undefined, we want to remove it.
-     * If it is an empty string, we set it from settings.startVertex.
+     * - If nodeStart is "undefined", we want to remove it.
+     * - If it is an empty string (""), we set it from settings.startVertex.
+     *   - This avoids random vertex on clicking 'Apply'
      */
     let { nodeStart } = newParams;
     if (nodeStart === "") {
