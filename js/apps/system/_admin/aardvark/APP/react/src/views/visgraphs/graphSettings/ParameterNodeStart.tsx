@@ -1,51 +1,16 @@
 import { FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
 import MultiSelect from "../../../components/select/MultiSelect";
-import { OptionType } from "../../../components/select/SelectBase";
 import { InfoTooltip } from "../../../components/tooltip/InfoTooltip";
 import { useGraph } from "../GraphContext";
-import { useUrlParameterContext } from "../UrlParametersContext";
 import { useNodeStartOptions } from "./useNodeStartOptions";
+import { useSetupNodeStartValues } from "./useSetupNodeStartValues";
 
 const ParameterNodeStart = () => {
-  const { urlParams, setUrlParams } = useUrlParameterContext();
-  const nodeStartValue = urlParams.nodeStart
-    ? urlParams.nodeStart.split(" ").map(nodeId => {
-        return { value: nodeId, label: nodeId };
-      })
-    : [];
-  const [values, setValues] = useState<OptionType[]>(nodeStartValue);
   const { graphName } = useGraph();
-
-  const updateUrlParamsForNode = (updatedValues: OptionType[]) => {
-    // convert to a space separated string for backend
-    const nodeStartString =
-      updatedValues.map(value => value?.value).join(" ") || "";
-    const newUrlParameters = {
-      ...urlParams,
-      nodeStart: nodeStartString || ""
-    };
-    setUrlParams(newUrlParameters);
-  };
-  const handleChange = (newValue?: OptionType) => {
-    const updatedValues = newValue ? [...values, newValue] : values;
-    updateUrlParamsForNode(updatedValues);
-    setValues(newValue ? updatedValues : []);
-  };
-  const onRemoveValue = (removedValue?: OptionType) => {
-    const updatedValues = values.filter(value => {
-      return value.value !== removedValue?.value;
-    });
-    const nodeStartString =
-      updatedValues.map(value => value?.value).join(" ") || "";
-    const newUrlParameters = {
-      ...urlParams,
-      nodeStart: nodeStartString || undefined
-    };
-    setUrlParams(newUrlParameters);
-    setValues(updatedValues);
-  };
   const [inputValue, setInputValue] = useState<string>("");
+
+  const { values, onRemoveValue, onAddValue } = useSetupNodeStartValues();
   const { options } = useNodeStartOptions({ graphName, inputValue });
 
   return (
@@ -66,6 +31,7 @@ const ParameterNodeStart = () => {
         placeholder="Enter 'collection_name/node_name'"
         onInputChange={(newValue, action) => {
           if (action.action === "set-value") {
+            // when a value is being set (by clicking enter), don't re-fill the input
             return;
           }
           setInputValue(newValue);
@@ -77,7 +43,7 @@ const ParameterNodeStart = () => {
               action.option?.value.split("/") || [];
             if (collectionName && vertexName) {
               // this means a proper value is selected
-              handleChange(action.option);
+              onAddValue(action.option);
             }
             setInputValue(`${collectionName}/`);
           }
