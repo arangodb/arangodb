@@ -914,9 +914,14 @@ auto checkConverged(SupervisionContext& ctx, Log const& log) {
 
   auto allStatesReady = std::all_of(
       log.current->localState.begin(), log.current->localState.end(),
-      [](auto const& pair) -> bool {
-        return pair.second.state ==
-               replicated_log::LocalStateMachineStatus::kOperational;
+      [&](auto const& pair) -> bool {
+        // Current can contain stale entries, i.e. participants that were once
+        // part of the replicated log, but no longer are. The supervision should
+        // only ever consider those entries in Current that belong to a
+        // participant in Plan.
+        return not plan.participantsConfig.participants.contains(pair.first) or
+               pair.second.state ==
+                   replicated_log::LocalStateMachineStatus::kOperational;
       });
   if (!allStatesReady) {
     return;
