@@ -14,7 +14,7 @@ export const fetchUserConfig = async () => {
   return data.body.result?.visgraphs;
 };
 
-export const useSetupGraphParams = ({ graphName }: { graphName: string }) => {
+export const useFetchAndSetupGraphParams = ({ graphName }: { graphName: string }) => {
   const [urlParams, setUrlParams] = useState<UrlParametersType>(
     DEFAULT_URL_PARAMETERS
   );

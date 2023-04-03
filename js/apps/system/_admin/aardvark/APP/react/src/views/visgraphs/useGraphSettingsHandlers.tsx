@@ -1,8 +1,11 @@
 import React from "react";
 import { getRouteForDB } from "../../utils/arangoClient";
-import { UrlParametersType } from "./UrlParametersContext";
-import { fetchUserConfig } from "./useSetupGraphParams";
 import { GraphDataType } from "./GraphData.types";
+import {
+  DEFAULT_URL_PARAMETERS,
+  UrlParametersType
+} from "./UrlParametersContext";
+import { fetchUserConfig } from "./useFetchAndSetupGraphParams";
 const putUserConfig = async ({
   params,
   fullConfig,
@@ -28,13 +31,15 @@ const putUserConfig = async ({
   ).put(`/user/${username}/config/visgraphs`, { value: finalConfig });
   return data.body;
 };
-export const useApplyGraphSettings = ({
+export const useGraphSettingsHandlers = ({
   urlParams,
   graphData,
   graphName,
   setParams,
-  hasDrawnOnce
+  hasDrawnOnce,
+  setUrlParams
 }: {
+  setUrlParams: (urlParams: UrlParametersType) => void;
   urlParams: UrlParametersType;
   graphData: GraphDataType | undefined;
   graphName: string;
@@ -63,5 +68,11 @@ export const useApplyGraphSettings = ({
     setParams(finalParams);
     hasDrawnOnce.current = false;
   };
-  return { onApplySettings };
+
+  const onRestoreDefaults = async () => {
+    setUrlParams(DEFAULT_URL_PARAMETERS);
+    await onApplySettings(DEFAULT_URL_PARAMETERS);
+  };
+
+  return { onApplySettings, onRestoreDefaults };
 };

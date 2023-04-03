@@ -1,8 +1,8 @@
 import { useState } from "react";
 import useSWR from "swr";
 import { getRouteForDB } from "../../utils/arangoClient";
-import { UrlParametersType } from "./UrlParametersContext";
 import { GraphDataType } from "./GraphData.types";
+import { UrlParametersType } from "./UrlParametersContext";
 
 export const fetchGraphData = async ({
   graphName,
@@ -46,5 +46,11 @@ export const useFetchGraphData = ({
       revalidateOnFocus: false
     }
   );
-  return { data, error, isLoading, fetchDuration };
+
+  return {
+    graphData: data,
+    isGraphLoading: isLoading,
+    graphError: error,
+    fetchDuration
+  };
 };

@@ -14,13 +14,10 @@ import {
   SelectedEntityType
 } from "./GraphAction.types";
 import { EdgeDataType, GraphDataType, NodeDataType } from "./GraphData.types";
-import {
-  DEFAULT_URL_PARAMETERS,
-  UrlParametersContext
-} from "./UrlParametersContext";
-import { useApplyGraphSettings } from "./useApplyGraphSettings";
+import { UrlParametersContext } from "./UrlParametersContext";
+import { useFetchAndSetupGraphParams } from "./useFetchAndSetupGraphParams";
 import { useFetchGraphData } from "./useFetchGraphData";
-import { useSetupGraphParams } from "./useSetupGraphParams";
+import { useGraphSettingsHandlers } from "./useGraphSettingsHandlers";
 
 type AddEdgeArgs = {
   data: { from: string; to: string };
@@ -68,7 +65,7 @@ const useGraphName = () => {
   return graphName;
 };
 
-const useSettingsDisclosure = () => {
+const useGraphSettingsDisclosure = () => {
   const {
     onOpen: onOpenSettings,
     onClose: onCloseSettings,
@@ -80,38 +77,7 @@ const useSettingsDisclosure = () => {
   return { toggleSettings, isSettingsOpen };
 };
 
-export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
-  const graphName = useGraphName();
-  const [network, setNetwork] = useState<Network>();
-  const hasDrawnOnce = useRef(false);
-  const [datasets, setDatasets] = useState<DatasetsType>();
-  const [rightClickedEntity, setRightClickedEntity] = useState<
-    RightClickedEntityType
-  >();
-  const { setUrlParams, setParams, params, urlParams } = useSetupGraphParams({
-    graphName
-  });
-
-  const {
-    data: graphData,
-    isLoading: isGraphLoading,
-    error: graphError,
-    fetchDuration
-  } = useFetchGraphData({ graphName, params });
-  const { onApplySettings } = useApplyGraphSettings({
-    urlParams,
-    graphData,
-    graphName,
-    setParams,
-    hasDrawnOnce
-  });
-
-  const onRestoreDefaults = async () => {
-    setUrlParams(DEFAULT_URL_PARAMETERS);
-    await onApplySettings(DEFAULT_URL_PARAMETERS);
-  };
-
-  const { toggleSettings, isSettingsOpen } = useSettingsDisclosure();
+const useGraphActions = () => {
   const [selectedAction, setSelectedAction] = useState<
     SelectedActionType | undefined
   >();
@@ -127,6 +93,60 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     });
   };
   const [selectedEntity, onSelectEntity] = useState<SelectedEntityType>();
+  return {
+    selectedEntity,
+    selectedAction,
+    onSelectEntity,
+    setSelectedAction,
+    onAddEdge,
+    onClearAction
+  };
+};
+
+export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
+  const [network, setNetwork] = useState<Network>();
+  const hasDrawnOnce = useRef(false);
+  const [datasets, setDatasets] = useState<DatasetsType>();
+  const [rightClickedEntity, setRightClickedEntity] = useState<
+    RightClickedEntityType
+  >();
+  const graphName = useGraphName();
+
+  const {
+    params,
+    urlParams,
+    setUrlParams,
+    setParams
+  } = useFetchAndSetupGraphParams({
+    graphName
+  });
+
+  const {
+    graphData,
+    isGraphLoading,
+    fetchDuration,
+    graphError
+  } = useFetchGraphData({ graphName, params });
+
+  const { onApplySettings, onRestoreDefaults } = useGraphSettingsHandlers({
+    urlParams,
+    graphData,
+    graphName,
+    setParams,
+    hasDrawnOnce,
+    setUrlParams
+  });
+
+  const { toggleSettings, isSettingsOpen } = useGraphSettingsDisclosure();
+
+  const {
+    selectedEntity,
+    selectedAction,
+    onSelectEntity,
+    setSelectedAction,
+    onAddEdge,
+    onClearAction
+  } = useGraphActions();
 
   return (
     <GraphContext.Provider
