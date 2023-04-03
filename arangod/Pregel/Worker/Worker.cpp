@@ -564,7 +564,8 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   for (auto& quiver : _magazine) {
     storer.store(quiver);
   }
-  return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
+  return PregelResults{.results =
+                           *storer.stealResult()};  // Yes, this is a copy rn.
 }
 
 template<typename V, typename E, typename M>
