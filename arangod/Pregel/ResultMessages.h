@@ -60,16 +60,24 @@ auto inspect(Inspector& f, AddResults& x) {
       f.field("receivedAllResults", x.receivedAllResults));
 }
 
-struct ResultCleanup {};
+struct CleanupResultWhenExpired {};
 template<typename Inspector>
-auto inspect(Inspector& f, ResultCleanup& x) {
+auto inspect(Inspector& f, CleanupResultWhenExpired& x) {
   return f.object(x).fields();
 }
 
-struct ResultMessages : std::variant<ResultStart, OtherResultActorStarted,
-                                     SaveResults, AddResults, ResultCleanup> {
+struct CleanupResults {};
+template<typename Inspector>
+auto inspect(Inspector& f, CleanupResults& x) {
+  return f.object(x).fields();
+}
+
+struct ResultMessages
+    : std::variant<ResultStart, OtherResultActorStarted, SaveResults,
+                   AddResults, CleanupResultWhenExpired, CleanupResults> {
   using std::variant<ResultStart, OtherResultActorStarted, SaveResults,
-                     AddResults, ResultCleanup>::variant;
+                     AddResults, CleanupResultWhenExpired,
+                     CleanupResults>::variant;
 };
 
 template<typename Inspector>
@@ -80,7 +88,8 @@ auto inspect(Inspector& f, ResultMessages& x) {
           "OtherResultActorStarted"),
       arangodb::inspection::type<SaveResults>("SaveResults"),
       arangodb::inspection::type<AddResults>("AddResults"),
-      arangodb::inspection::type<ResultCleanup>("Cleanup"));
+      arangodb::inspection::type<CleanupResultWhenExpired>("CleanupResult"),
+      arangodb::inspection::type<CleanupResults>("CleanupResults"));
 }
 
 }  // namespace arangodb::pregel::message

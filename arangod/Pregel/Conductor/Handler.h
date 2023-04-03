@@ -58,6 +58,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
               .destinationServer = server,
               .conductor = this->self,
               .resultActorOnCoordinator = this->state->resultActor,
+              .ttl = this->state->specifications.ttl,
               .message = message}});
     }
     return std::move(this->state);
