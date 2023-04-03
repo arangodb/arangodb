@@ -383,7 +383,8 @@ void Worker<V, E, M>::_startProcessing() {
       for (auto const& fResponse : futureResponses) {
         auto& result = fResponse.get();
         if (result.fail()) {
-          LOG_PREGEL("ee2ac", WARN) << "Execution aborted prematurely.";
+          LOG_PREGEL("ee2ac", WARN)
+              << "Execution aborted prematurely: " << result.errorMessage();
           return;
         } else {
           _workerContext->_writeAggregators->aggregateValues(
