@@ -1,3 +1,7 @@
+/**
+ * adapted from here: https://github.com/lukasbach/chakra-ui-contextmenu/blob/main/src/ContextMenu.tsx
+ * Modifications made to control open/close & position from outside
+ */
 import {
   Menu,
   MenuButton,
@@ -42,37 +46,36 @@ export function ContextMenu(props: ContextMenuProps) {
   const ref = React.useRef(null);
 
   const onCloseHandler = useCallback(() => {
-    props.menuProps && props.menuProps.onClose && props.menuProps.onClose();
+    props.menuProps?.onClose?.();
     props.onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  if (!isRendered) {
+    return <></>;
+  }
   return (
-    <>
-      {isRendered && (
-        <Portal {...props.portalProps}>
-          <Menu
-            closeOnBlur
-            isOpen={isDeferredOpen}
-            gutter={0}
-            {...props.menuProps}
-            onClose={onCloseHandler}
-          >
-            <MenuButton
-              aria-hidden={true}
-              w={1}
-              h={1}
-              style={{
-                position: "absolute",
-                left: props.position.left,
-                top: props.position.top,
-                cursor: "default"
-              }}
-              {...props.menuButtonProps}
-            />
-            {props.renderMenu(ref)}
-          </Menu>
-        </Portal>
-      )}
-    </>
+    <Portal {...props.portalProps}>
+      <Menu
+        closeOnBlur
+        isOpen={isDeferredOpen}
+        gutter={0}
+        {...props.menuProps}
+        onClose={onCloseHandler}
+      >
+        <MenuButton
+          aria-hidden={true}
+          w={1}
+          h={1}
+          style={{
+            position: "absolute",
+            left: props.position.left,
+            top: props.position.top,
+            cursor: "default"
+          }}
+          {...props.menuButtonProps}
+        />
+        {props.renderMenu(ref)}
+      </Menu>
+    </Portal>
   );
 }
