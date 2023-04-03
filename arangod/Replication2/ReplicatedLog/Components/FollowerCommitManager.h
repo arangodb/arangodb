@@ -40,13 +40,13 @@ struct FollowerCommitManager
       std::enable_shared_from_this<FollowerCommitManager> {
   FollowerCommitManager(IStorageManager&, LoggerContext const& loggerContext,
                         std::shared_ptr<IScheduler> scheduler);
-  auto updateCommitIndex(LogIndex index) noexcept
+  [[nodiscard]] auto updateCommitIndex(LogIndex index) noexcept
       -> std::pair<std::optional<LogIndex>, DeferredAction> override;
-  auto getCommitIndex() const noexcept -> LogIndex override;
+  [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
-  auto waitFor(LogIndex index) noexcept
+  [[nodiscard]] auto waitFor(LogIndex index) noexcept
       -> ILogParticipant::WaitForFuture override;
-  auto waitForIterator(LogIndex index) noexcept
+  [[nodiscard]] auto waitForIterator(LogIndex index) noexcept
       -> ILogParticipant::WaitForIteratorFuture override;
 
   void resign() noexcept;
