@@ -24,8 +24,8 @@
 #include "ProduceAQLResultsState.h"
 
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
-#include "Pregel/Conductor/State.h"
 #include "Pregel/Conductor/ExecutionStates/AQLResultsAvailableState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::actor;
 using namespace arangodb::pregel::conductor;
@@ -35,16 +35,17 @@ ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
 
 auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not std::holds_alternative<message::ResultCreated>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   responseCount++;
   respondedWorkers.emplace(sender);
 
   if (responseCount == conductor.workers.size() and
       respondedWorkers == conductor.workers) {
-    return std::make_unique<AQLResultsAvailable>(conductor);
+    return StateChange{.newState =
+                           std::make_unique<AQLResultsAvailable>(conductor)};
   }
   return std::nullopt;
 }

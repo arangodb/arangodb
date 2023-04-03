@@ -3,6 +3,7 @@
 #include "Pregel/Conductor/ExecutionStates/CollectionLookup.h"
 #include "Pregel/Conductor/ExecutionStates/LoadingState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -56,14 +57,14 @@ auto CreateWorkers::messagesToServers()
 
 auto CreateWorkers::receive(actor::ActorPID sender,
                             message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   conductor.workers.emplace(sender);
 
@@ -73,7 +74,12 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   responseCount++;
 
   if (responseCount == sentServers.size() and respondedServers == sentServers) {
-    return std::make_unique<Loading>(conductor, std::move(actorForShard));
+    auto newState =
+        std::make_unique<Loading>(conductor, std::move(actorForShard));
+    return StateChange{
+        .statusMessage =
+            pregel::message::LoadingStarted{.state = newState->name()},
+        .newState = std::move(newState)};
   }
   return std::nullopt;
 };

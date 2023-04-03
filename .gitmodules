@@ -20,3 +20,6 @@
 	path = 3rdParty/immer
 	url = https://github.com/arangodb/immer
 	branch = release-v0.8
+[submodule "3rdParty/rta-makedata"]
+	path = 3rdParty/rta-makedata
+	url = https://github.com/arangodb/rta-makedata

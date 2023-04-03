@@ -4,7 +4,6 @@ replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 # execute single test suites
 auto cluster suffix=rlog-cluster -- --dumpAgencyOnError true --test shell-replicated-logs-cluster.js
-auto cluster suffix=prototype-state-cluster -- --dumpAgencyOnError true --test shell-prototype-state-cluster.js
 auto cluster suffix=shell-transaction -- --dumpAgencyOnError true --test shell-transaction.js
 auto cluster suffix=shell-transaction-cluster -- --dumpAgencyOnError true --test shell-transaction-cluster.js
 auto cluster suffix=shell-transaction-replication2-recovery -- --dumpAgencyOnError true --test shell-transaction-replication2-recovery.js

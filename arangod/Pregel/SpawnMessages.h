@@ -38,13 +38,17 @@ auto inspect(Inspector& f, SpawnStart& x) {
 struct SpawnWorker {
   actor::ServerID destinationServer;
   actor::ActorPID conductor;
+  actor::ActorPID resultActorOnCoordinator;
+  TTL ttl;
   worker::message::CreateWorker message;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SpawnWorker& x) {
-  return f.object(x).fields(f.field("destinationServer", x.destinationServer),
-                            f.field("conductor", x.conductor),
-                            f.field("message", x.message));
+  return f.object(x).fields(
+      f.field("destinationServer", x.destinationServer),
+      f.field("conductor", x.conductor),
+      f.field("resultActorOnCoordinator", x.resultActorOnCoordinator),
+      f.field("ttl", x.ttl), f.field("message", x.message));
 }
 
 struct SpawnCleanup {};

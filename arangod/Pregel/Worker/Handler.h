@@ -62,12 +62,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    auto dispatch = [this](actor::ActorPID actor,
-                           worker::message::PregelMessage message) -> void {
-      this->template dispatch<worker::message::WorkerMessages>(actor, message);
-    };
     for (auto& cache : this->state->outCaches) {
-      cache->setDispatch(dispatch);
+      cache->setDispatch(
+          [this](actor::ActorPID actor,
+                 worker::message::PregelMessage message) -> void {
+            this->template dispatch<worker::message::WorkerMessages>(actor,
+                                                                     message);
+          });
       cache->setResponsibleActorPerShard(msg.responsibleActorPerShard);
     }
 
@@ -151,15 +152,13 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
-  [[nodiscard]] auto processVertices(size_t idx,
+  [[nodiscard]] auto processVertices(InCache<M>* inCache, OutCache<M>* outCache,
                                      std::shared_ptr<Quiver<V, E>> quiver)
-      -> futures::Future<ResultT<VerticesProcessed>> {
+      -> ResultT<VerticesProcessed> {
     // _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
 
     double start = TRI_microtime();
 
-    InCache<M>* inCache = this->state->inCaches[idx].get();
-    OutCache<M>* outCache = this->state->outCaches[idx].get();
     outCache->setBatchSize(this->state->messageBatchSize);
     outCache->setLocalCache(inCache);
 
@@ -201,7 +200,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     outCache->flushMessages();
 
-    this->state->writeCache->mergeCache(this->state->config, inCache);
+    this->state->writeCache->mergeCache(inCache);
     // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
     MessageStats stats;
@@ -332,11 +331,18 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     this->state->messagesForNextGss.clear();
 
     std::vector<futures::Future<ResultT<VerticesProcessed>>> futures;
+    futures.reserve(this->state->quivers.size());
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(this->state->quivers)) {
-      futures.emplace_back(processVertices(idx, quiver));
+      InCache<M>* inCachePtr = this->state->inCaches[idx].get();
+      OutCache<M>* outCachePtr = this->state->outCaches[idx].get();
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
+          [this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
+           quiver = quiver]() {
+            return processVertices(inCachePtr, outCachePtr, quiver);
+          }));
     }
-
     std::vector<VerticesProcessed> verticesProcessed = {};
 
     if (!futures.empty()) {
