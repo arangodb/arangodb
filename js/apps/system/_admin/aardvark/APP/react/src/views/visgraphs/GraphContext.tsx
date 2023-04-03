@@ -9,36 +9,18 @@ import React, {
 } from "react";
 import { DataSet, Network } from "vis-network";
 import {
+  RightClickedEntityType,
+  SelectedActionType,
+  SelectedEntityType
+} from "./GraphAction.types";
+import { EdgeDataType, GraphDataType, NodeDataType } from "./GraphData.types";
+import {
   DEFAULT_URL_PARAMETERS,
   UrlParametersContext
 } from "./UrlParametersContext";
 import { useApplyGraphSettings } from "./useApplyGraphSettings";
 import { useFetchGraphData } from "./useFetchGraphData";
 import { useSetupGraphParams } from "./useSetupGraphParams";
-import {
-  EdgeDataType,
-  NodeDataType,
-  GraphDataType,
-  GraphPointer
-} from "./GraphData.types";
-
-type ActionEntityType = {
-  type: string;
-  nodeId?: string;
-  edgeId?: string;
-  pointer: GraphPointer;
-};
-
-export type SelectedActionType = {
-  action: "delete" | "edit" | "add" | "loadFullGraph";
-  entityType?: "node" | "edge";
-  from?: string;
-  to?: string;
-  callback?: (edge: EdgeDataType) => void;
-  entity?: ActionEntityType;
-};
-
-export type SelectedEntityType = { entityId: string; type: "node" | "edge" };
 
 type AddEdgeArgs = {
   data: { from: string; to: string };
@@ -60,15 +42,14 @@ type GraphContextType = {
   fetchDuration?: number;
   datasets?: DatasetsType;
   setDatasets: (datasets: DatasetsType) => void;
-  rightClickedEntity?: ActionEntityType;
+  rightClickedEntity?: RightClickedEntityType;
   setRightClickedEntity: (
-    rightClickedEntity: ActionEntityType | undefined
+    rightClickedEntity: RightClickedEntityType | undefined
   ) => void;
   selectedAction?: SelectedActionType;
   setSelectedAction: (selectedAction: SelectedActionType | undefined) => void;
   setNetwork: (network: Network) => void;
   toggleSettings: () => void;
-  onCloseSettings: () => void;
   onClearAction: () => void;
   onAddEdge: (args: AddEdgeArgs) => void;
   selectedEntity?: SelectedEntityType;
@@ -81,14 +62,31 @@ const GraphContext = createContext<GraphContextType>({
   graphName: ""
 } as GraphContextType);
 
-export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
+const useGraphName = () => {
   const currentUrl = window.location.href;
   const graphName = currentUrl.substring(currentUrl.lastIndexOf("/") + 1);
+  return graphName;
+};
+
+const useSettingsDisclosure = () => {
+  const {
+    onOpen: onOpenSettings,
+    onClose: onCloseSettings,
+    isOpen: isSettingsOpen
+  } = useDisclosure();
+  const toggleSettings = () => {
+    isSettingsOpen ? onCloseSettings() : onOpenSettings();
+  };
+  return { toggleSettings, isSettingsOpen };
+};
+
+export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
+  const graphName = useGraphName();
   const [network, setNetwork] = useState<Network>();
   const hasDrawnOnce = useRef(false);
   const [datasets, setDatasets] = useState<DatasetsType>();
   const [rightClickedEntity, setRightClickedEntity] = useState<
-    ActionEntityType
+    RightClickedEntityType
   >();
   const { setUrlParams, setParams, params, urlParams } = useSetupGraphParams({
     graphName
@@ -113,14 +111,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     await onApplySettings(DEFAULT_URL_PARAMETERS);
   };
 
-  const {
-    onOpen: onOpenSettings,
-    onClose: onCloseSettings,
-    isOpen: isSettingsOpen
-  } = useDisclosure();
-  const toggleSettings = () => {
-    isSettingsOpen ? onCloseSettings() : onOpenSettings();
-  };
+  const { toggleSettings, isSettingsOpen } = useSettingsDisclosure();
   const [selectedAction, setSelectedAction] = useState<
     SelectedActionType | undefined
   >();
@@ -146,7 +137,6 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         graphData,
         graphName,
         toggleSettings,
-        onCloseSettings,
         selectedAction,
         setSelectedAction,
         onClearAction,

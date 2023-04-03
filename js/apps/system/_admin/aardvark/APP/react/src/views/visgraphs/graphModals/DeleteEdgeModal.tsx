@@ -7,7 +7,8 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { SelectedActionType, useGraph } from "../GraphContext";
+import { SelectedActionType } from "../GraphAction.types";
+import { useGraph } from "../GraphContext";
 import { useEdgeData } from "./useEdgeData";
 
 const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {

@@ -101,7 +101,3 @@ export type GraphDataType = {
   settings: SettingsType;
 };
 
-export type GraphPointer = {
-  DOM: { x: number; y: number };
-  canvas: { x: number; y: number };
-};

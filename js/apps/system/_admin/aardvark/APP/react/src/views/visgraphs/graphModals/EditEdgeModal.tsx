@@ -9,7 +9,8 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { SelectedActionType, useGraph } from "../GraphContext";
+import { SelectedActionType } from "../GraphAction.types";
+import { useGraph } from "../GraphContext";
 import { AttributesInfo } from "./AttributesInfo";
 import { useEdgeData } from "./useEdgeData";
 
