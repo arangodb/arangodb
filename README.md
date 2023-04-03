@@ -3,8 +3,6 @@
 ArangoDB
 ========
 
-Slack: [![ArangoDB-Logo](https://slack.arangodb.com/badge.svg)](https://slack.arangodb.com)
-
 ArangoDB is a scalable open-source multi-model database natively supporting graph, document and search. All supported data models & access patterns can be combined in queries allowing for maximal flexibility. ArangoDB runs on prem, in the cloud – anywhere.
 
 ArangoDB Cloud Service
@@ -118,4 +116,4 @@ StackOverflow is great for questions about AQL, usage scenarios etc.
 
 To chat with the community and the developers we offer a Slack chat:
 
-[https://slack.arangodb.com/](https://slack.arangodb.com/)
+[https://arangodb-community.slack.com/](https://arangodb-community.slack.com/)
