@@ -201,7 +201,7 @@ void Worker<V, E, M>::setupWorker() {
                        auto loader = GraphLoader<V, E>(
                            _config, _algorithm->inputFormat(),
                            OldLoadingUpdate{.fn = statusUpdateCallback});
-                       _magazine.emplace(std::move(loader.load()));
+                       _magazine = std::move(loader.load());
                      } catch (std::exception const& ex) {
                        LOG_PREGEL("a47c4", WARN)
                            << "caught exception in loadShards: " << ex.what();

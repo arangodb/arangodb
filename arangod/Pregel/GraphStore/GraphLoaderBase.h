@@ -26,7 +26,7 @@
 #include <memory>
 #include <functional>
 
-#include <Pregel/GraphStore/Quiver.h>
+#include <Pregel/GraphStore/Magazine.h>
 
 namespace arangodb::pregel {
 
@@ -37,7 +37,7 @@ struct Quiver;
 
 template<typename V, typename E>
 struct GraphLoaderBase {
-  virtual auto load() -> std::shared_ptr<Quiver<V, E>> = 0;
+  virtual auto load() -> Magazine<V, E> = 0;
   virtual ~GraphLoaderBase() = default;
 };
 
