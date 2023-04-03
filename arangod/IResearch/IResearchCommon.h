@@ -83,12 +83,11 @@ constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
 /// @return format identifier according to a specified index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
-  constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
+  constexpr std::array<std::string_view, 2> kFormats{
       "1_3simd",  // the old storage format used with IResearch index
-      "1_4simd"   // the current storage format used with IResearch index
+      "1_5simd"   // the current storage format used with IResearch index
   };
-
-  return IRESEARCH_FORMATS[static_cast<uint32_t>(version)];
+  return kFormats[static_cast<uint32_t>(version)];
 }
 
 inline constexpr std::string_view PK_COLUMN{"@_PK"};
@@ -186,6 +185,10 @@ struct StaticStrings {
 
   // enables caching for primary key column
   static constexpr std::string_view kCachePrimaryKeyField{"primaryKeyCache"};
+
+#ifdef USE_ENTERPRISE
+  static constexpr std::string_view kOptimizeTopKField{"optimizeTopK"};
+#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the
