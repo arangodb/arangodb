@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,24 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "State.h"
+#include <memory>
 
-namespace arangodb::pregel::conductor {
+namespace arangodb {
+namespace aql {
 
-struct ConductorState;
+class Optimizer;
+class ExecutionPlan;
+struct OptimizerRule;
 
-/*
-  This is the initial state the conductor is in when created. It does not do
-  anything on its own and needs to be changed from outside.
- */
+/// @brief replaces the last element on path access with the direct output of
+/// vertex/edge
+void replaceLastAccessOnGraphPathRule(Optimizer* opt,
+                                      std::unique_ptr<ExecutionPlan> plan,
+                                      OptimizerRule const&);
 
-struct Initial : ExecutionState {
-  Initial() = default;
-  auto name() const -> std::string override { return "initial"; };
-};
-
-}  // namespace arangodb::pregel::conductor
+}  // namespace aql
+}  // namespace arangodb

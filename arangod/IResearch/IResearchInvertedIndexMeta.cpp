@@ -360,6 +360,16 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       _pkCache = pkCacheSlice.getBool();
     }
   }
+  {
+    auto optimizeTopKSlice = slice.get(StaticStrings::kOptimizeTopKField);
+    if (!optimizeTopKSlice.isNone()) {
+      std::string err;
+      if (!_optimizeTopK.fromVelocyPack(optimizeTopKSlice, err)) {
+        errorField = absl::StrCat(StaticStrings::kOptimizeTopKField, ": ", err);
+        return false;
+      }
+    }
+  }
 #endif
 
   if (!InvertedIndexField::init(
@@ -432,6 +442,10 @@ bool IResearchInvertedIndexMeta::json(
 #ifdef USE_ENTERPRISE
   if (_pkCache) {
     builder.add(StaticStrings::kCachePrimaryKeyField, _pkCache);
+  }
+  {
+    VPackArrayBuilder arrayScope(&builder, StaticStrings::kOptimizeTopKField);
+    _optimizeTopK.toVelocyPack(builder);
   }
 #endif
 

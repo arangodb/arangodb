@@ -204,6 +204,9 @@ struct OptimizerRule {
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule,
 
+    // Replaces the last element of the path on traversals, by direct output.
+    replaceLastAccessOnGraphPathRule,
+
     // merge filters into graph traversals
     optimizeTraversalsRule,
 

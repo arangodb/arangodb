@@ -86,7 +86,7 @@ struct SpawnHandler : actor::HandlerBase<Runtime, SpawnState> {
             msg.conductor, msg.message, algorithm->messageFormatUnique(),
             algorithm->messageCombinerUnique(), std::move(algorithm),
             this->state->vocbaseGuard.database(), this->self,
-            this->state->resultActor),
+            this->state->resultActor, msg.statusActor),
         worker::message::WorkerStart{});
   }
 

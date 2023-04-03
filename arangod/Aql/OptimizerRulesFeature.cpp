@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
+#include "Aql/GraphOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -316,6 +317,13 @@ void OptimizerRulesFeature::addRules() {
   // remove-filter-covered-by-index rule)
   registerRule("sort-in-values", sortInValuesRule,
                OptimizerRule::sortInValuesRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+  // Replaces the last element of the path on traversals, by direct output.
+  // path.vertices[-1] => v and path.edges[-1] => e
+  registerRule("optimize-traversal-last-element-access",
+               replaceLastAccessOnGraphPathRule,
+               OptimizerRule::replaceLastAccessOnGraphPathRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // merge filters into traversals

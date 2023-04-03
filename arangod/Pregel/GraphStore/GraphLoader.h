@@ -31,6 +31,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/GraphStore/GraphLoaderBase.h"
 #include "Pregel/IndexHelpers.h"
+#include "Pregel/StatusMessages.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
 
@@ -40,16 +41,25 @@ class WorkerConfig;
 template<class V, class E>
 struct GraphFormat;
 
+struct OldLoadingUpdate {
+  std::function<void()> fn;
+};
+struct ActorLoadingUpdate {
+  std::function<void(pregel::message::GraphLoadingUpdate)> fn;
+};
+using LoadingUpdateCallback =
+    std::variant<OldLoadingUpdate, ActorLoadingUpdate>;
+
 template<typename V, typename E>
 struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
-                       std::function<void()> statusUpdateCallback)
+                       LoadingUpdateCallback updateCallback)
       : result(std::make_shared<Quiver<V, E>>()),
         graphFormat(graphFormat),
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
-        statusUpdateCallback(statusUpdateCallback) {}
+        updateCallback(updateCallback) {}
 
   auto load() -> std::shared_ptr<Quiver<V, E>> override;
 
@@ -66,7 +76,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> const statusUpdateCallback;
+  LoadingUpdateCallback updateCallback;
 
   uint64_t currentVertexId = 0;
   uint64_t currentVertexIdMax = 0;
