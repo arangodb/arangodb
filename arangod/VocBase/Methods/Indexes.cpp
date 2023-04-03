@@ -69,6 +69,71 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
+namespace {
+/// @brief checks if argument is an index name
+Result extractIndexName(velocypack::Slice arg, bool extendedNames,
+                        std::string& collectionName, std::string& name) {
+  TRI_ASSERT(collectionName.empty());
+  TRI_ASSERT(name.empty());
+
+  if (!arg.isString()) {
+    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD};
+  }
+
+  std::string_view handle = arg.stringView();
+  if (Index::validateHandleName(extendedNames, handle)) {
+    std::size_t split = handle.find('/');
+    TRI_ASSERT(split != std::string::npos);
+    collectionName = std::string(handle.data(), split);
+    name = std::string(handle.data() + split + 1, handle.size() - split - 1);
+    return {};
+  }
+
+  auto res = IndexNameValidator::validateName(extendedNames, handle);
+  if (res.ok()) {
+    name = std::string(handle.data(), handle.size());
+  }
+
+  return res;
+}
+
+/// @brief checks if argument is an index identifier
+Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
+                          std::string& collectionName, IndexId& iid) {
+  TRI_ASSERT(collectionName.empty());
+  TRI_ASSERT(iid.empty());
+
+  if (arg.isNumber()) {
+    // numeric index id
+    iid = static_cast<IndexId>(arg.getUInt());
+    return {};
+  }
+
+  if (!arg.isString()) {
+    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD};
+  }
+
+  std::string_view handle = arg.stringView();
+  if (arangodb::Index::validateHandle(extendedNames, handle)) {
+    std::size_t split = handle.find('/');
+    TRI_ASSERT(split != std::string::npos);
+    collectionName = std::string(handle.data(), split);
+    iid = IndexId{StringUtils::uint64(handle.data() + split + 1,
+                                      handle.size() - split - 1)};
+    return {};
+  }
+
+  if (!handle.empty() &&
+      !Index::validateId(std::string_view(handle.data(), handle.size()))) {
+    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD};
+  }
+
+  iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
+  return {};
+}
+
+}  // namespace
+
 Result Indexes::getIndex(LogicalCollection const& collection,
                          VPackSlice indexId, VPackBuilder& out,
                          transaction::Methods* trx) {
@@ -558,72 +623,6 @@ arangodb::Result Indexes::createIndex(LogicalCollection& coll,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if argument is an index identifier
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ExtractIndexHandle(VPackSlice arg, bool extendedNames,
-                               std::string& collectionName, IndexId& iid) {
-  TRI_ASSERT(collectionName.empty());
-  TRI_ASSERT(iid.empty());
-
-  if (arg.isNumber()) {
-    // numeric index id
-    iid = (IndexId)arg.getUInt();
-    return true;
-  }
-
-  if (!arg.isString()) {
-    return false;
-  }
-
-  std::string_view handle = arg.stringView();
-  if (arangodb::Index::validateHandle(extendedNames, handle)) {
-    std::size_t split = handle.find('/');
-    TRI_ASSERT(split != std::string::npos);
-    collectionName = std::string(handle.data(), split);
-    iid = IndexId{StringUtils::uint64(handle.data() + split + 1,
-                                      handle.size() - split - 1)};
-    return true;
-  }
-
-  if (!handle.empty() &&
-      !Index::validateId(std::string_view(handle.data(), handle.size()))) {
-    return false;
-  }
-  iid = IndexId{StringUtils::uint64(handle.data(), handle.size())};
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if argument is an index name
-////////////////////////////////////////////////////////////////////////////////
-
-static bool ExtractIndexName(VPackSlice arg, bool extendedNames,
-                             std::string& collectionName, std::string& name) {
-  TRI_ASSERT(collectionName.empty());
-  TRI_ASSERT(name.empty());
-
-  if (!arg.isString()) {
-    return false;
-  }
-
-  std::string_view handle = arg.stringView();
-  if (arangodb::Index::validateHandleName(extendedNames, handle)) {
-    std::size_t split = handle.find('/');
-    TRI_ASSERT(split != std::string::npos);
-    collectionName = std::string(handle.data(), split);
-    name = std::string(handle.data() + split + 1, handle.size() - split - 1);
-    return true;
-  }
-
-  if (IndexNameValidator::validateName(extendedNames, handle).ok()) {
-    name = std::string(handle.data(), handle.size());
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -641,29 +640,35 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
-    if (!ExtractIndexHandle(val, extendedNames, collectionName, iid) &&
-        !ExtractIndexName(val, extendedNames, collectionName, name)) {
-      return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+    Result res = ::extractIndexHandle(val, extendedNames, collectionName, iid);
+    if (!res.ok()) {
+      res = ::extractIndexName(val, extendedNames, collectionName, name);
+    }
+    if (!res.ok()) {
+      return res;
     }
   } else if (val.isObject()) {
     // extract the index identifier from an object
     VPackSlice iidVal = val.get(StaticStrings::IndexId);
-    if (!ExtractIndexHandle(iidVal, extendedNames, collectionName, iid)) {
+    Result res =
+        ::extractIndexHandle(iidVal, extendedNames, collectionName, iid);
+    if (!res.ok()) {
       VPackSlice nameVal = val.get(StaticStrings::IndexName);
-      if (!ExtractIndexName(nameVal, extendedNames, collectionName, name)) {
-        return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      res = ::extractIndexName(nameVal, extendedNames, collectionName, name);
+      if (!res.ok()) {
+        return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD};
       }
     }
   }
 
-  if (!collectionName.empty()) {
-    if (!methods::Collections::hasName(*resolver, collection, collectionName)) {
-      // I wish this error provided me with more information!
-      // e.g. 'cannot access index outside the collection it was defined in'
-      return Result(TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST);
-    }
+  if (!collectionName.empty() &&
+      !methods::Collections::hasName(*resolver, collection, collectionName)) {
+    // I wish this error provided me with more information!
+    // e.g. 'cannot access index outside the collection it was defined in'
+    return {TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST};
   }
-  return Result();
+
+  return {};
 }
 
 Result Indexes::drop(LogicalCollection& collection,
@@ -674,7 +679,7 @@ Result Indexes::drop(LogicalCollection& collection,
         !exec.canUseCollection(collection.name(), auth::Level::RW)) {
       events::DropIndex(collection.vocbase().name(), collection.name(), "",
                         TRI_ERROR_FORBIDDEN);
-      return TRI_ERROR_FORBIDDEN;
+      return {TRI_ERROR_FORBIDDEN};
     }
   }
 
@@ -764,12 +769,12 @@ Result Indexes::drop(LogicalCollection& collection,
       events::DropIndex(collection.vocbase().name(), collection.name(),
                         std::to_string(iid.id()),
                         TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-      return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+      return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
     }
     if (!idx->canBeDropped()) {
       events::DropIndex(collection.vocbase().name(), collection.name(),
                         std::to_string(iid.id()), TRI_ERROR_FORBIDDEN);
-      return Result(TRI_ERROR_FORBIDDEN);
+      return {TRI_ERROR_FORBIDDEN};
     }
 
     res = col->dropIndex(idx->id());
