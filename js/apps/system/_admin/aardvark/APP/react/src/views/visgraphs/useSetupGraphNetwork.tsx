@@ -56,7 +56,6 @@ export const useSetupGraphNetwork = ({
       },
       newOptions
     );
-    setNetwork(newNetwork);
 
     function registerNetwork() {
       newNetwork.on("stabilizationProgress", function(params) {
@@ -121,6 +120,11 @@ export const useSetupGraphNetwork = ({
       }
     );
     registerNetwork();
+    setNetwork(newNetwork);
+    return () => {
+      newNetwork?.destroy();
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes, options]);
   return { progressValue, setProgressValue };
