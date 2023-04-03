@@ -33,7 +33,6 @@ namespace arangodb {
 namespace maintenance {
 
 class EnsureIndex : public ActionBase {
-
  public:
   EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
 

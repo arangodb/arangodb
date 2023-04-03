@@ -535,8 +535,6 @@ void Index::toVelocyPack(
     builder.add("progress", VPackValue(66));
   }
 
-  
-
   builder.add(
       arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));
   builder.openArray();

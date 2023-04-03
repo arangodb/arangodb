@@ -511,7 +511,8 @@ Result Indexes::ensureIndex(
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output, std::move(progress));
+    res = EnsureIndexLocal(collection, indexDef, create, output,
+                           std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();

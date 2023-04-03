@@ -383,7 +383,6 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
 std::shared_ptr<Index> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
-  
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things

@@ -156,9 +156,7 @@ bool EnsureIndex::first() {
     }
 
     auto lambda = std::make_shared<std::function<arangodb::Result(uint64_t u)>>(
-        [this](uint64_t u) {
-          return setProgress(u);
-        });
+        [this](uint64_t u) { return setProgress(u); });
     VPackBuilder index;
     auto res = methods::Indexes::ensureIndex(col.get(), body.slice(), true,
                                              index, std::move(lambda));
