@@ -160,12 +160,9 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
   stats.incrWritesExecuted(writesExecuted);
   stats.incrWritesIgnored(writesIgnored);
   // the increment of index is not correct when the executor doesn't apply the
-  // single document optimization rule, but we leave the index calculation
-  // incorrect here too to maintain compatibility with the execution without the
-  // rule until fixed
-  if (isIndex) {
-    stats.incrScannedIndex();
-  }
+  // multiple document optimization rule, but, as it was only incrementing for
+  // index lookup operations which don't apply this rule for now, we don't
+  // increment the index
   return result;
 }
 
