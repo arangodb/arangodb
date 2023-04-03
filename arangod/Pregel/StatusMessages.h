@@ -105,10 +105,10 @@ auto inspect(Inspector& f, GlobalSuperStepUpdate& x) {
 }
 
 struct StatusMessages
-    : std::variant<StatusStart, GraphLoadingUpdate, GlobalSuperStepUpdate,
-                   GraphStoringUpdate> {
-  using std::variant<StatusStart, GraphLoadingUpdate, GlobalSuperStepUpdate,
-                     GraphStoringUpdate>::variant;
+    : std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate,
+                   GlobalSuperStepUpdate, GraphStoringUpdate> {
+  using std::variant<StatusStart, LoadingStarted, GraphLoadingUpdate,
+                     GlobalSuperStepUpdate, GraphStoringUpdate>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {
