@@ -1,6 +1,6 @@
 import { MenuItem, MenuList } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
-import { useGraph } from "./GraphContext";
+import { useGraph } from "../GraphContext";
 
 export const CanvasRightClickMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {

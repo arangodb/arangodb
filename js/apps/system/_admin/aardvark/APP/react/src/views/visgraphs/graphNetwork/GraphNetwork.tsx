@@ -1,7 +1,7 @@
 import { Alert, Box, Button, Progress, Stack, Text } from "@chakra-ui/react";
 import React, { useRef } from "react";
-import { useElementPosition } from "../../components/hooks/useElementPosition";
-import { useGraph } from "./GraphContext";
+import { useElementPosition } from "../../../components/hooks/useElementPosition";
+import { useGraph } from "../GraphContext";
 import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
 import { SmartGraphEmptyState } from "./SmartGraphEmptyState";

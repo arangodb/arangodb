@@ -1,9 +1,9 @@
 import React from "react";
 import { GraphContextProvider } from "./GraphContext";
 import { GraphCustomStyleReset } from "./GraphCustomStyleReset";
-import { GraphHeader } from "./GraphHeader";
+import { GraphHeader } from "./graphHeader/GraphHeader";
 import { GraphModals } from "./graphModals/GraphModals";
-import { GraphNetwork } from "./GraphNetwork";
+import { GraphNetwork } from "./graphNetwork/GraphNetwork";
 
 export const GraphDisplay = () => {
   return (

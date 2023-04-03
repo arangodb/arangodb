@@ -1,6 +1,6 @@
 import { Box, Button, Center, Text, Stack } from "@chakra-ui/react";
 import React from "react";
-import { useGraph } from "./GraphContext";
+import { useGraph } from "../GraphContext";
 
 export const SmartGraphEmptyState = () => {
   const { graphName } = useGraph();

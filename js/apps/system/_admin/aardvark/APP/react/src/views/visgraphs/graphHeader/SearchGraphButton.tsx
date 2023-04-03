@@ -11,10 +11,10 @@ import {
   useMenuContext
 } from "@chakra-ui/react";
 import React from "react";
-import SingleSelect from "../../components/select/SingleSelect";
-import { useGraph } from "./GraphContext";
+import SingleSelect from "../../../components/select/SingleSelect";
+import { useGraph } from "../GraphContext";
 
-export const SearchButton = () => {
+export const SearchGraphButton = () => {
   return (
     <Menu closeOnSelect={false} closeOnBlur={false}>
       <Tooltip hasArrow label={"Search nodes"} placement="bottom">

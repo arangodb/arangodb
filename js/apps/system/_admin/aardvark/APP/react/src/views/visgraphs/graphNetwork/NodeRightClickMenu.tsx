@@ -1,10 +1,10 @@
 import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
 import { FullItem } from "vis-data/declarations/data-interface";
-import { useGraph } from "./GraphContext";
-import { useUrlParameterContext } from "./UrlParametersContext";
-import { fetchGraphData } from "./useFetchGraphData";
-import { NodeDataType } from "./GraphData.types";
+import { useGraph } from "../GraphContext";
+import { useUrlParameterContext } from "../UrlParametersContext";
+import { fetchGraphData } from "../useFetchGraphData";
+import { NodeDataType } from "../GraphData.types";
 
 export const NodeRightClickMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {

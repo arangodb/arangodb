@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
-import { GraphPointer } from "./GraphAction.types";
-import { useGraph } from "./GraphContext";
+import { GraphPointer } from "../GraphAction.types";
+import { useGraph } from "../GraphContext";
 
 let timer: number;
 export const useSetupGraphNetwork = ({

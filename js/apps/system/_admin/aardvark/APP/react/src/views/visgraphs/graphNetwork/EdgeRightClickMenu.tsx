@@ -1,6 +1,6 @@
 import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef, LegacyRef } from "react";
-import { useGraph } from "./GraphContext";
+import { useGraph } from "../GraphContext";
 
 export const EdgeRightClickMenu = forwardRef(
   (_props, ref: LegacyRef<HTMLDivElement>) => {

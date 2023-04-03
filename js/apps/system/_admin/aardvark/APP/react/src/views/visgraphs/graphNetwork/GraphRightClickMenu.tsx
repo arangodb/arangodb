@@ -1,9 +1,9 @@
 import { PortalProps } from "@chakra-ui/react";
 import React, { MutableRefObject } from "react";
-import { ContextMenu } from "../../components/contextMenu/ContextMenu";
+import { ContextMenu } from "../../../components/contextMenu/ContextMenu";
 import { CanvasRightClickMenu } from "./CanvasRightClickMenu";
 import { EdgeRightClickMenu } from "./EdgeRightClickMenu";
-import { useGraph } from "./GraphContext";
+import { useGraph } from "../GraphContext";
 import { NodeRightClickMenu } from "./NodeRightClickMenu";
 
 export const GraphRightClickMenu = ({

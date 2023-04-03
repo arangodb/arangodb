@@ -1,10 +1,10 @@
 import { Box, Flex, HStack, Tag, Text, Tooltip } from "@chakra-ui/react";
 import { omit } from "lodash";
 import React from "react";
-import { SelectedEntityType } from "./GraphAction.types";
-import { useGraph } from "./GraphContext";
-import { useEdgeData } from "./graphModals/useEdgeData";
-import { useNodeData } from "./graphModals/useNodeData";
+import { SelectedEntityType } from "../GraphAction.types";
+import { useGraph } from "../GraphContext";
+import { useEdgeData } from "../graphModals/useEdgeData";
+import { useNodeData } from "../graphModals/useNodeData";
 
 export const GraphInfo = () => {
   const { datasets, fetchDuration } = useGraph();
