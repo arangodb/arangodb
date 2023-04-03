@@ -27,6 +27,9 @@
 #include "Basics/Guarded.h"
 #include "Replication2/LoggerContext.h"
 
+namespace arangodb::replication2 {
+struct IScheduler;
+}
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
 
@@ -35,8 +38,9 @@ struct IStorageManager;
 struct FollowerCommitManager
     : IFollowerCommitManager,
       std::enable_shared_from_this<FollowerCommitManager> {
-  explicit FollowerCommitManager(IStorageManager&, IStateHandleManager&,
-                                 LoggerContext const& loggerContext);
+  FollowerCommitManager(IStorageManager&, IStateHandleManager&,
+                        LoggerContext const& loggerContext,
+                        std::shared_ptr<IScheduler> scheduler);
   auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
   auto getCommitIndex() const noexcept -> LogIndex override;
 
@@ -65,6 +69,7 @@ struct FollowerCommitManager
 
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
+  std::shared_ptr<IScheduler> const scheduler;
 };
 
 }  // namespace comp

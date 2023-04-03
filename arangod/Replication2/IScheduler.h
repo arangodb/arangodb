@@ -26,6 +26,7 @@
 #include <function2.hpp>
 #include "Futures/Future.h"
 
+namespace arangodb::replication2 {
 struct IScheduler {
   virtual ~IScheduler() = default;
   virtual auto delayedFuture(std::chrono::nanoseconds duration,
@@ -44,3 +45,4 @@ struct IScheduler {
       -> WorkItemHandle = 0;
   virtual void queue(fu2::unique_function<void()>) noexcept = 0;
 };
+}  // namespace arangodb::replication2
