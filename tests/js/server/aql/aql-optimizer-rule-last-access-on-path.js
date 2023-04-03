@@ -136,8 +136,18 @@ function TraversalOptimizeLastPathAccessTestSuite() {
     };
 
     const assertResultsAreNotModifiedByRule = (query) => {
-        const originalResult = db._query(query,{},{optimizer:{rules: [`-${ruleName}`]}}).toArray();
-        const optimizedResult = db._query(query,{},{optimizer:{rules: [`+${ruleName}`]}}).toArray();
+        // Ordering in the result is not relevant for this test.
+        const sortResults = (a, b) => {
+            if (a._key < b._key) {
+                return -1;
+            }
+            if (a._key > b._key) {
+                return 1;
+            }
+            return 0;
+        };
+        const originalResult = db._query(query,{},{optimizer:{rules: [`-${ruleName}`]}}).toArray().sort(sortResults);
+        const optimizedResult = db._query(query,{},{optimizer:{rules: [`+${ruleName}`]}}).toArray().sort(sortResults);
         assertEqual(originalResult, optimizedResult);
     };
 
@@ -179,12 +189,12 @@ function TraversalOptimizeLastPathAccessTestSuite() {
             const queriesToTest = [
                 `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.vertices[-1]`,
                 `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" GRAPH "${graphName}" RETURN p.edges[-1]`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.vertices[-1]`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1]`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.vertices[-1].name == "test" RETURN v`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" RETURN e`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" && p.vertices[-1].name == "test" RETURN v`,
-                `FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} SORT p.edges[-1].timestamp RETURN e`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.vertices[-1]`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} RETURN p.edges[-1]`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.vertices[-1].name == "test" RETURN v`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" RETURN e`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} FILTER p.edges[-1].label == "foo" && p.vertices[-1].name == "test" RETURN v`,
+                `WITH ${vc} FOR v, e, p IN 1..2 OUTBOUND "${startVertex}" ${ec} SORT p.edges[-1].timestamp RETURN e`,
             ];
             for (const q of queriesToTest) {
                 const {nodes, rules} = AQL_EXPLAIN(q).plan;
