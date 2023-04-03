@@ -1,20 +1,24 @@
 import { InfoIcon } from "@chakra-ui/icons";
-import { Box, Tooltip } from "@chakra-ui/react";
+import { Box, BoxProps, Tooltip } from "@chakra-ui/react";
 import React from "react";
 
-export const InfoTooltip = ({ label }: { label: string }) => {
+export const InfoTooltip = ({
+  label,
+  boxProps
+}: {
+  label: string;
+  boxProps?: BoxProps;
+}) => {
   return (
     <Tooltip hasArrow label={label} placement="top">
-      <Box alignSelf="start">
-        <Box
-          position="relative"
-          top="1"
-          padding="2"
-          display="flex"
-          justifyContent="center"
-        >
-          <InfoIcon />
-        </Box>
+      <Box
+        {...boxProps}
+        position="relative"
+        padding="2"
+        display="flex"
+        justifyContent="center"
+      >
+        <InfoIcon />
       </Box>
     </Tooltip>
   );
