@@ -1,11 +1,11 @@
-import React, { useState } from "react";
-import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
-import { FormState } from "./constants";
-import { pick } from "lodash";
-import { mutate } from "swr";
-import { DeleteViewModal } from "./DeleteViewModal";
 import { CheckIcon, DeleteIcon } from "@chakra-ui/icons";
 import { Button } from "@chakra-ui/react";
+import { pick } from "lodash";
+import React, { useState } from "react";
+import { mutate } from "swr";
+import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { FormState } from "./constants";
+import { DeleteViewModal } from "./DeleteViewModal";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -23,11 +23,11 @@ type SaveButtonProps = {
 };
 
 export const SaveButtonWrap = ({
-                             disabled,
-                             view,
-                             oldName,
-                             setChanged
-                           }: SaveButtonProps) => {
+  disabled,
+  view,
+  oldName,
+  setChanged
+}: SaveButtonProps) => {
   const handleSave = async () => {
     const route = getApiRouteForCurrentDB();
     let result;
@@ -91,7 +91,7 @@ export const SaveButtonWrap = ({
           );
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       arangoHelper.arangoError(
         "Failure",
         `Got unexpected server response: ${e.message}`
@@ -135,7 +135,7 @@ export const DeleteButtonWrap = ({ view, disabled }: DeleteButtonWrapProps) => {
           `Deleted View: ${view.name}`
         );
       }
-    } catch (e) {
+    } catch (e: any) {
       arangoHelper.arangoError(
         "Failure",
         `Got unexpected server response: ${e.message}`
