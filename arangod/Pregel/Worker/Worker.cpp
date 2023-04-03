@@ -358,7 +358,6 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_quiver = _quiver;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
