@@ -125,6 +125,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
             this.instanceManager.destructor(false);
+            this.options.cleanup = false;
             throw new Error("failed to launch instance");
           }
           this.instanceManager.reconnect();
@@ -134,9 +135,11 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
             if (!executeScript(content, true, te)) {
+              this.options.cleanup = false;
               throw new Error("setup of test failed");
             }
           } catch (ex) {
+            this.options.cleanup = false;
             if (ex instanceof ArangoError &&
                 ex.errorNum === internal.errors.ERROR_DISABLED.code) {
               forceTerminate = true;
@@ -168,6 +171,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               }
               this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
             } catch (ex) {
+              this.options.cleanup = false;
               if (ex instanceof ArangoError &&
                   ex.errorNum === internal.errors.ERROR_DISABLED.code) {
                 forceTerminate = true;
@@ -221,13 +225,14 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               return this.results;
             }
           } catch (ex) {
-              this.results[te] = {
-                message: "Aborting testrun; failed to launch instance: " +
-                  ex.message + " - " +
-                  JSON.stringify(this.instanceManager.getStructure()),
-                status: false,
-                shutdown: false
-              };
+            this.options.cleanup = false;
+            this.results[te] = {
+              message: "Aborting testrun; failed to launch instance: " +
+                ex.message + " - " +
+                JSON.stringify(this.instanceManager.getStructure()),
+              status: false,
+              shutdown: false
+            };
             this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
@@ -246,6 +251,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
                            this.instanceManager.addArgs["server.jwt-secret"]);
         }
+        this.results.status = this.results.status && this.results[te].status;
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
