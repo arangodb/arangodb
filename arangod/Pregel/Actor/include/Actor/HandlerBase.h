@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <chrono>
 #include "Inspection/VPackWithErrorT.h"
 
 #include "Message.h"
@@ -40,6 +41,12 @@ struct HandlerBase {
   template<typename ActorMessage>
   auto dispatch(ActorPID receiver, ActorMessage message) -> void {
     runtime->dispatch(self, receiver, message);
+  }
+
+  template<typename ActorMessage>
+  auto dispatchDelayed(std::chrono::seconds delay, ActorPID receiver,
+                       ActorMessage const& message) -> void {
+    runtime->dispatchDelayed(delay, self, receiver, message);
   }
 
   template<typename ActorConfig>

@@ -61,7 +61,9 @@ auto Canceled::receive(actor::ActorPID sender,
     -> std::optional<std::unique_ptr<ExecutionState>> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    // can receive all kinds of messages initiated from other states
+    // ignore them and just continue if it is CleanupFinished message
+    return std::nullopt;
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
