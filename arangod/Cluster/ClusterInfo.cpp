@@ -1061,7 +1061,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
               auto vocbaseViews = _newPlannedViews.find(vocbase.name());
               if (vocbaseViews == _newPlannedViews.end() ||
                   !vocbaseViews->second.contains(viewId)) {
-                if (_pendingCleanups.contains(idx->id().id())) {
+                if (!_pendingCleanups.contains(idx->id().id())) {
                   doQueueLinkDrop(idx->id(), collection->name(), vocbase.name(),
                                   const_cast<ClusterInfo&>(*this));
                 }
