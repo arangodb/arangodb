@@ -888,19 +888,28 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
       if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
-        LOG_DEVEL << "Debug collection list: ";
-        for (auto const& tmpCollection : cols) {
-          auto realNames = tmpCollection->realNames();
-          for (auto const& n : realNames) {
-            LOG_DEVEL << " -> " << n;
-          }
-        }
         // Means we do have a Virtual SmartEdge Collection.
         // A Virtual SmartEdge Collection does not include any shards.
         // Therefore, we cannot, and we do not need to verify if shards are in
         // sync or not.
         TRI_ASSERT(
             !c->isSmartChild());  // ShadowCollections must be SmartChilds
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        // Additionally, whenever we see a Virtual Edge Collection, we must make
+        // sure that the related shadow collections are part of the inventory.
+        for (auto const& shadowCollectionName : c->realNames()) {
+          bool foundShadowCollection = false;
+          for (auto const& logicalCollection : cols) {
+            auto realNames = logicalCollection->realNames();
+            for (auto const& realCollectionName : realNames) {
+              if (realCollectionName == shadowCollectionName) {
+                foundShadowCollection = true;
+              }
+            }
+          }
+          TRI_ASSERT(foundShadowCollection);
+        }
+#endif
       } else {
         if (currentServerList.size() == 0 || p.second.size() == 0 ||
             currentServerList[0] != p.second[0] ||
