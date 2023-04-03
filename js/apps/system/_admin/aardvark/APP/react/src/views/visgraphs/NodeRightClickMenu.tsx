@@ -1,8 +1,9 @@
 import { MenuItem, MenuList, MenuOptionGroup } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
 import { FullItem } from "vis-data/declarations/data-interface";
-import { fetchVisData, useGraph } from "./GraphContext";
+import { useGraph } from "./GraphContext";
 import { useUrlParameterContext } from "./UrlParametersContext";
+import { fetchGraphData } from "./useFetchGraphData";
 import { NodeDataType } from "./VisGraphData.types";
 
 export const NodeRightClickMenu = forwardRef(
@@ -112,7 +113,7 @@ const ExpandNodeButton = ({
         graphName +
         "' RETURN p"
     };
-    const newData = await fetchVisData({
+    const newData = await fetchGraphData({
       graphName,
       params
     });
