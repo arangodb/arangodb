@@ -48,7 +48,8 @@ struct ClusteringMutableProperties {
                                                        SerializedType& result);
 
       static arangodb::inspection::Status fromSerialized(
-          SerializedType const& v, MemoryType& result);
+          SerializedType const& v,
+          inspection::NonNullOptional<MemoryType>& result);
     };
   };
 

@@ -12,6 +12,7 @@ add_library(arango_vocbase_api STATIC
         KeyGeneratorProperties.cpp
         UserInputCollectionProperties.cpp
         UtilityInvariants.cpp
+        UtilityTransformers.cpp
 )
 
 target_include_directories(arango_vocbase_api PRIVATE

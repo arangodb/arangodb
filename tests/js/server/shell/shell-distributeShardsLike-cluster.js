@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual */
+/*global fail, assertEqual, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -58,6 +58,14 @@ function DistributeShardsLikeSuite() {
         assertEqual(errors.ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE.code,
                     err.errorNum);
       }
+    },
+
+    testEmptyString: function() {
+      // We can create a collection with distributeShardsLike as empty string.
+      // This should be identical to not setting it at all.
+      const c =  db._create(cn1, {numberOfShards: 2, distributeShardsLike: ""});
+      const props = c.properties();
+      assertFalse(props.hasOwnProperty("distributeShardsLike"));
     },
 
     testAvoidChain: function() {
