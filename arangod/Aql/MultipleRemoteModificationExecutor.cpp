@@ -34,8 +34,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <algorithm>
-
 namespace arangodb::aql {
 
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
@@ -71,14 +69,20 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
 
   if (input.hasDataRow()) {
     auto [state, row] = input.nextDataRow();
+    if (input.hasDataRow()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "input from MultipleRemoteModificationExecutor should not have more "
+          "than one data row");
+    }
     auto result = doMultipleRemoteOperations(row, stats);
     if (result.ok()) {
       doMultipleRemoteModificationOutput(row, output, result);
     }
   }
-
   return {input.upstreamState(), stats, AqlCall{}};
 }
+
 [[nodiscard]] auto MultipleRemoteModificationExecutor::skipRowsRange(
     AqlItemBlockInputRange& input, AqlCall& call)
     -> std::tuple<ExecutorState, MultipleRemoteModificationExecutor::Stats,

@@ -31,6 +31,7 @@ const isServer = require("@arangodb").isServer;
 const isEnterprise = require("internal").isEnterprise;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const cn = "UnitTestsCollection";
+const cn2 = "UnitTestsCollection2";
 const db = arangodb.db;
 const numDocs = 10000;
 const ruleName = "optimize-cluster-multiple-document-operations";
@@ -67,16 +68,12 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testFromEnumerateListInvalidInputsNoArray: function () {
-
       const queries = [
         `LET docs = MERGE({}, {}) FOR doc IN docs INSERT doc INTO ${cn}`,
         `LET docs = NOOPT({}) FOR doc IN docs INSERT doc INTO ${cn}`,
         `LET docs = {} FOR doc IN docs INSERT doc INTO ${cn}`,
         `FOR doc IN {} INSERT doc INTO ${cn}`,
-        `FOR doc IN NOOPT({}) INSERT doc INTO ${cn}
-        `FOR doc IN ${cn} INSERT doc INTO ${cn}`,
-        LET allDocs = ${cn} FOR doc IN allDocs INSERT doc INTO ${cn}`,
-        
+        `FOR doc IN NOOPT({}) INSERT doc INTO ${cn}`,
       ];
       queries.forEach((query) => {
         try {
@@ -169,18 +166,47 @@ function InsertMultipleDocumentsSuite(params) {
         docs.push({_key: "test" + i});
       }
       docs.push({_key: "test0"});
-
       const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
-      try {
-        assertRuleIsUsed(query, {docs});
-        db._query(query, {docs});
-        fail();
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
-        assertTrue(err.errorMessage.includes("unique constraint violated"));
+      for (const enableRule of [true, false]) {
+        const previousCount = db[cn].count();
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        try {
+          if (enableRule) {
+            assertRuleIsUsed(query, {docs}, queryOptions);
+          } else {
+            assertRuleIsNotUsed(query, {docs}, queryOptions);
+          }
+          db._query(query, {docs}, queryOptions);
+          fail();
+        } catch (err) {
+          assertEqual(db[cn].count(), previousCount);
+          assertEqual(ERRORS.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, err.errorNum);
+          assertTrue(err.errorMessage.includes("unique constraint violated"));
+        }
+        assertEqual(0, db[cn].count());
       }
+    },
 
-      assertEqual(0, db[cn].count());
+    testTransactionalBehaviorInvalidInputNotInsert: function () {
+      const query = `FOR doc IN [{value1: 1}, true] INSERT doc INTO ${cn}`;
+      for (const enableRule of [true, false]) {
+        const previousCount = db[cn].count();
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        try {
+          if (enableRule) {
+            assertRuleIsUsed(query, {}, queryOptions);
+          } else {
+            assertRuleIsNotUsed(query, {}, queryOptions);
+          }
+          db._query(query, {}, queryOptions);
+          fail();
+        } catch (err) {
+          assertEqual(db[cn].count(), previousCount);
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+          assertTrue(err.errorMessage.includes("invalid document type"));
+        }
+        assertEqual(0, db[cn].count());
+      }
     },
 
     testTransactionalBehaviorWithIgnoreErrors: function () {
@@ -191,11 +217,40 @@ function InsertMultipleDocumentsSuite(params) {
       docs.push({_key: "test0"});
 
       const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
-      assertRuleIsUsed(query, {docs});
-      let res = db._query(query, {docs});
-      assertEqual([], res.toArray());
+      for (const enableRule of [true, false]) {
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        if (enableRule) {
+          assertRuleIsUsed(query, {docs}, queryOptions);
+        } else {
+          assertRuleIsNotUsed(query, {docs}, queryOptions);
+        }
+        let res = db._query(query, {docs}, queryOptions);
+        assertEqual([], res.toArray());
 
-      assertEqual(1001, db[cn].count());
+        assertEqual(1001, db[cn].count());
+      }
+    },
+
+    testTransactionalBehaviorInvalidInputWithIgnoreErrorsInsertFirst: function () {
+      // this is because the query will raise the error even with ignoreErrors: true,
+      // because of the coordinator having to know in which server to store the document,
+      // while parsing the documents, would raise the "invalid document type" error even though the
+      // OPTIONS {ignoreErrors: true} is in the query, independent of the optimization rule
+      if (numberOfShards > 1) {
+        return;
+      }
+      const query = `FOR doc IN [{value1: 1}, true] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`;
+      for (const enableRule of [true, false]) {
+        const previousCount = db[cn].count();
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        if (enableRule) {
+          assertRuleIsUsed(query, {}, queryOptions);
+        } else {
+          assertRuleIsNotUsed(query, {}, queryOptions);
+        }
+        db._query(query, {}, queryOptions).toArray();
+        assertEqual(db[cn].count(), previousCount + 1);
+      }
     },
 
     testStatsWithoutErrors: function () {
@@ -205,15 +260,23 @@ function InsertMultipleDocumentsSuite(params) {
       }
 
       const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
-      assertRuleIsUsed(query, {docs});
-      let res = db._query(query, {docs});
-      assertEqual([], res.toArray());
+      for (const enableRule of [true, false]) {
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        if (enableRule) {
+          assertRuleIsUsed(query, {docs}, queryOptions);
+        } else {
+          assertRuleIsNotUsed(query, {docs}, queryOptions);
+        }
+        let res = db._query(query, {docs}, queryOptions);
+        assertEqual([], res.toArray());
 
-      assertEqual(1005, db[cn].count());
+        assertEqual(1005, db[cn].count());
 
-      let stats = res.getExtra().stats;
-      assertEqual(1005, stats.writesExecuted);
-      assertEqual(0, stats.writesIgnored);
+        let stats = res.getExtra().stats;
+        assertEqual(1005, stats.writesExecuted);
+        assertEqual(0, stats.writesIgnored);
+        db[cn].truncate();
+      }
     },
 
     testStatsWithIgnoreErrors: function () {
@@ -224,15 +287,23 @@ function InsertMultipleDocumentsSuite(params) {
       docs.push({_key: "test0"});
 
       const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
-      assertRuleIsUsed(query, {docs});
-      let res = db._query(query, {docs});
-      assertEqual([], res.toArray());
+      for (const enableRule of [true, false]) {
+        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
+        if (enableRule) {
+          assertRuleIsUsed(query, {docs}, queryOptions);
+        } else {
+          assertRuleIsNotUsed(query, {docs}, queryOptions);
+        }
+        let res = db._query(query, {docs}, queryOptions);
+        assertEqual([], res.toArray());
 
-      assertEqual(1001, db[cn].count());
+        assertEqual(1001, db[cn].count());
 
-      let stats = res.getExtra().stats;
-      assertEqual(1001, stats.writesExecuted);
-      assertEqual(1, stats.writesIgnored);
+        let stats = res.getExtra().stats;
+        assertEqual(1001, stats.writesExecuted);
+        assertEqual(1, stats.writesIgnored);
+        db[cn].truncate();
+      }
     },
 
     testReturnOld: function () {
@@ -522,10 +593,13 @@ function InsertMultipleDocumentsExplainSuite(params) {
     setUp: function () {
       db._drop(cn);
       db._create(cn, {numberOfShards, replicationFactor});
+      db._drop(cn2);
+      db._create(cn2, {numberOfShards, replicationFactor});
     },
 
     tearDown: function () {
       db._drop(cn);
+      db._drop(cn2);
     },
 
     testFromVariable: function () {
@@ -649,8 +723,12 @@ function InsertMultipleDocumentsExplainSuite(params) {
         `FOR d in [{value: 1}, {value: 2}] INSERT d INTO ${cn} OPTIONS {exclusive: false} RETURN d`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1 INSERT d INTO ${cn}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1, 1 INSERT d INTO ${cn}`,
+        `FOR doc IN ${cn} INSERT doc INTO ${cn}`,
+        `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} INSERT {value3: 1} INTO ${cn2}`,
+        `INSERT [{value1: 1}] INTO ${cn} INSERT [{value2: 1}] INTO ${cn2}`,
+        `INSERT [{value1: 1}] INTO ${cn} FOR d IN [{value1: 1}, {value2: 3}] INSERT d INTO ${cn2}`,
       ];
-      queries.forEach((query, idx) => {
+      queries.forEach((query) => {
         assertRuleIsNotUsed(query);
       });
     },
