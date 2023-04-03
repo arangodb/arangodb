@@ -165,12 +165,16 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::Cancel msg) -> std::unique_ptr<ConductorState> {
+  auto operator()([[maybe_unused]] message::Cancel msg) -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("012d3", INFO, Logger::PREGEL)
         << fmt::format("Conductor Actor: Run {} is canceled",
                        this->state->specifications.executionNumber);
     if (this->state->executionState->canBeCanceled()) {
-      changeState(std::make_unique<Canceled>(*this->state));
+      auto newState = std::make_unique<Canceled>(*this->state);
+      auto stateName = newState->name();
+      changeState(StateChange{
+          .statusMessage = pregel::message::Canceled{.state = stateName},
+          .newState = std::move(newState)});
       sendMessagesToWorkers();
     }
     return std::move(this->state);
@@ -199,7 +203,8 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     return std::move(this->state);
   }
 
-  auto operator()([[maybe_unused]] auto&& rest) -> std::unique_ptr<ConductorState> {
+  auto operator()([[maybe_unused]] auto&& rest)
+      -> std::unique_ptr<ConductorState> {
     LOG_TOPIC("7ae0f", INFO, Logger::PREGEL)
         << "Conductor Actor: Got unhandled message";
     return std::move(this->state);

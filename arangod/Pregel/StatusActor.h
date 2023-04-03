@@ -225,8 +225,14 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     return std::move(this->state);
   }
 
-  auto operator()(message::InFatalError& msg)
-    -> std::unique_ptr<StatusState> {
+  auto operator()(message::InFatalError& msg) -> std::unique_ptr<StatusState> {
+    this->state->stateName = msg.state;
+    this->state->timings.stopAll(msg.time);
+
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Canceled& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.stopAll(msg.time);
 
