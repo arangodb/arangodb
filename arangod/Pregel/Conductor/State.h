@@ -38,12 +38,14 @@ struct ConductorState {
   ConductorState(std::unique_ptr<IAlgorithm> algorithm,
                  ExecutionSpecifications specifications,
                  std::unique_ptr<CollectionLookup>&& lookupInfo,
-                 actor::ActorPID spawnActor, actor::ActorPID resultActor)
+                 actor::ActorPID spawnActor, actor::ActorPID resultActor,
+                 actor::ActorPID statusActor)
       : algorithm{std::move(algorithm)},
         specifications{std::move(specifications)},
         lookupInfo(std::move(lookupInfo)),
         spawnActor{std::move(spawnActor)},
-        resultActor{std::move(resultActor)} {}
+        resultActor{std::move(resultActor)},
+        statusActor{std::move(statusActor)} {}
 
   ExecutionTimings timing;
   std::unique_ptr<ExecutionState> executionState = std::make_unique<Initial>();
@@ -55,6 +57,7 @@ struct ConductorState {
   std::unique_ptr<CollectionLookup> lookupInfo;
   actor::ActorPID spawnActor;
   actor::ActorPID resultActor;
+  actor::ActorPID statusActor;
 };
 
 template<typename Inspector>
