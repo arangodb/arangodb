@@ -156,18 +156,8 @@ auto SingleRemoteModificationExecutor<
           "'update' or 'replace'");
     }
     result = _trx.insert(_info._aqlCollection->name(), inSlice, _info._options);
-    if (result.ok()) {
-      writesExecuted++;
-    } else {
-      writesIgnored++;
-    }
   } else if (isRemove) {
     result = _trx.remove(_info._aqlCollection->name(), inSlice, _info._options);
-    if (result.ok()) {
-      writesExecuted++;
-    } else {
-      writesIgnored++;
-    }
   } else if (isReplace) {
     if (_info._replaceIndex &&
         _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
@@ -179,13 +169,11 @@ auto SingleRemoteModificationExecutor<
       result =
           _trx.replace(_info._aqlCollection->name(), inSlice, _info._options);
     }
-    if (result.ok()) {
-      writesExecuted++;
-    } else {
-      writesIgnored++;
-    }
   } else if (isUpdate) {
     result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
+  }
+
+  if (!isIndex) {
     if (result.ok()) {
       writesExecuted++;
     } else {
