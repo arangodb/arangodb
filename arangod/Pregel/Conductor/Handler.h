@@ -59,6 +59,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
               .destinationServer = server,
               .conductor = this->self,
               .resultActorOnCoordinator = this->state->resultActor,
+              .statusActor = this->state->statusActor,
               .ttl = this->state->specifications.ttl,
               .message = message}});
     }

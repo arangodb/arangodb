@@ -377,7 +377,7 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
   asio_ns::async_write(
       this->_protocol->socket, buffer,
       withLogContext(
-          [self(this->shared_from_this()), req(std::move(req))](
+          [self(this->shared_from_this()), request(std::move(req))](
               asio_ns::error_code const& ec, std::size_t nwrite) mutable {
             auto& me = static_cast<H2CommTask<T>&>(*self);
             if (ec) {
@@ -392,8 +392,8 @@ void H2CommTask<T>::upgradeHttp1(std::unique_ptr<HttpRequest> req) {
             // Stream 1 is implicitly "half-closed" from the client toward the
             // server
 
-            TRI_ASSERT(req->messageId() == 1);
-            auto* strm = me.createStream(1, std::move(req));
+            TRI_ASSERT(request->messageId() == 1);
+            auto* strm = me.createStream(1, std::move(request));
             TRI_ASSERT(strm);
 
             // will start writing later
