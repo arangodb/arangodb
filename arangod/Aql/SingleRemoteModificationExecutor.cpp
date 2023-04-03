@@ -168,7 +168,6 @@ auto SingleRemoteModificationExecutor<
     } else {
       writesIgnored++;
     }
-    stats.incrScannedIndex();
   } else if (isReplace) {
     if (_info._replaceIndex &&
         _info._input1RegisterId.value() == RegisterId::maxRegisterId) {
@@ -185,7 +184,6 @@ auto SingleRemoteModificationExecutor<
     } else {
       writesIgnored++;
     }
-    stats.incrScannedIndex();
   } else if (isUpdate) {
     result = _trx.update(_info._aqlCollection->name(), inSlice, _info._options);
     if (result.ok()) {
@@ -193,7 +191,6 @@ auto SingleRemoteModificationExecutor<
     } else {
       writesIgnored++;
     }
-    stats.incrScannedIndex();
   }
 
   // check operation result
@@ -218,6 +215,13 @@ auto SingleRemoteModificationExecutor<
 
   stats.incrWritesExecuted(writesExecuted);
   stats.incrWritesIgnored(writesIgnored);
+  // the increment of index is not correct when the executor doesn't apply the
+  // single document optimization rule, but we leave the index calculation
+  // incorrect here too to maintain compatibility with the execution without the
+  // rule until fixed
+  if (isIndex) {
+    stats.incrScannedIndex();
+  }
   return result;
 }
 
