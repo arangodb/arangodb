@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/Components/AppendEntriesManager.h"
 #include "Replication2/ReplicatedLog/Components/StateHandleManager.h"
 #include "Replication2/ReplicatedLog/Components/MethodsProvider.h"
+#include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -73,14 +74,15 @@ FollowerManager::FollowerManager(
           std::move(stateHandlePtr), *commit)),
       snapshot(std::make_shared<SnapshotManager>(
           *storage, *stateHandle, termInfo, leaderComm, loggerContext)),
-      methods(std::make_shared<MethodsProvider>(commit, storage, compaction,
-                                                snapshot)),
+      messageIdManager(std::make_shared<MessageIdManager>()),
+      methodsProvider(std::make_shared<MethodsProviderManager>(
+          commit, storage, compaction, snapshot, messageIdManager)),
       appendEntriesManager(std::make_shared<AppendEntriesManager>(
-          termInfo, *storage, *snapshot, *compaction, *stateHandle, metrics,
-          loggerContext)),
+          termInfo, *storage, *snapshot, *compaction, *stateHandle,
+          *messageIdManager, metrics, loggerContext)),
       termInfo(termInfo) {
   metrics->replicatedLogFollowerNumber->operator++();
-  stateHandle->becomeFollower(methods->getMethods());
+  stateHandle->becomeFollower(methodsProvider->getMethods());
   // Follower state manager is there, now get a snapshot if we need one.
   snapshot->acquireSnapshotIfNecessary();
 }

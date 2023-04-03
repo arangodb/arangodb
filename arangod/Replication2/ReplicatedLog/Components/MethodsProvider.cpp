@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/Components/ISnapshotManager.h"
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
+#include "Replication2/ReplicatedLog/Components/IMessageIdManager.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 namespace arangodb {
@@ -36,11 +37,13 @@ struct FollowerMethodsImpl : IReplicatedLogFollowerMethods {
   FollowerMethodsImpl(std::shared_ptr<IFollowerCommitManager> commit,
                       std::shared_ptr<IStorageManager> storage,
                       std::shared_ptr<ICompactionManager> compaction,
-                      std::shared_ptr<ISnapshotManager> snapshot)
-      : commit(commit),
-        storage(storage),
-        compaction(compaction),
-        snapshot(snapshot) {}
+                      std::shared_ptr<ISnapshotManager> snapshot,
+                      std::shared_ptr<IMessageIdManager> messageIdManager)
+      : commit(std::move(commit)),
+        storage(std::move(storage)),
+        compaction(std::move(compaction)),
+        snapshot(std::move(snapshot)),
+        messageIdManager(std::move(messageIdManager)) {}
 
   auto releaseIndex(LogIndex index) -> void override {
     compaction->updateReleaseIndex(index);
@@ -61,9 +64,8 @@ struct FollowerMethodsImpl : IReplicatedLogFollowerMethods {
   }
 
   auto snapshotCompleted(std::uint64_t version) -> Result override {
-    return {};  // TODO implement me
-    // return snapshot->setSnapshotStateAvailable(
-    //     appendEntriesManager->getLastReceivedMessageId(), version);
+    return snapshot->setSnapshotStateAvailable(
+        messageIdManager->getLastReceivedMessageId(), version);
   }
 
   [[nodiscard]] auto leaderConnectionEstablished() const -> bool override {
@@ -85,21 +87,25 @@ struct FollowerMethodsImpl : IReplicatedLogFollowerMethods {
   std::shared_ptr<IStorageManager> const storage;
   std::shared_ptr<ICompactionManager> const compaction;
   std::shared_ptr<ISnapshotManager> const snapshot;
+  std::shared_ptr<IMessageIdManager> const messageIdManager;
 };
 
-MethodsProvider::MethodsProvider(std::shared_ptr<IFollowerCommitManager> commit,
-                                 std::shared_ptr<IStorageManager> storage,
-                                 std::shared_ptr<ICompactionManager> compaction,
-                                 std::shared_ptr<ISnapshotManager> snapshot)
-    : commit(commit),
-      storage(storage),
-      compaction(compaction),
-      snapshot(snapshot) {}
+MethodsProviderManager::MethodsProviderManager(
+    std::shared_ptr<IFollowerCommitManager> commit,
+    std::shared_ptr<IStorageManager> storage,
+    std::shared_ptr<ICompactionManager> compaction,
+    std::shared_ptr<ISnapshotManager> snapshot,
+    std::shared_ptr<IMessageIdManager> messageIdManager)
+    : commit(std::move(commit)),
+      storage(std::move(storage)),
+      compaction(std::move(compaction)),
+      snapshot(std::move(snapshot)),
+      messageIdManager(std::move(messageIdManager)) {}
 
-auto MethodsProvider::getMethods()
+auto MethodsProviderManager::getMethods()
     -> std::unique_ptr<IReplicatedLogFollowerMethods> {
   return std::make_unique<FollowerMethodsImpl>(commit, storage, compaction,
-                                               snapshot);
+                                               snapshot, messageIdManager);
 }
 
 }  // namespace replicated_log

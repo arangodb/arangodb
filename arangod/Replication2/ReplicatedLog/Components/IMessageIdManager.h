@@ -22,37 +22,24 @@
 
 #pragma once
 
-#include "Replication2/ReplicatedLog/Components/IMethodsProvider.h"
-
 namespace arangodb {
 namespace replication2 {
 namespace replicated_log {
 
+struct MessageId;
+
 inline namespace comp {
-struct IFollowerCommitManager;
-struct IStorageManager;
-struct ICompactionManager;
-struct ISnapshotManager;
-struct IMessageIdManager;
+struct IMessageIdManager {
+  virtual ~IMessageIdManager() = default;
 
-struct MethodsProviderManager : IMethodsProvider {
-  MethodsProviderManager(std::shared_ptr<IFollowerCommitManager> commit,
-                         std::shared_ptr<IStorageManager> storage,
-                         std::shared_ptr<ICompactionManager> compaction,
-                         std::shared_ptr<ISnapshotManager> snapshot,
-                         std::shared_ptr<IMessageIdManager> messageIdManager);
-
-  virtual auto getMethods()
-      -> std::unique_ptr<IReplicatedLogFollowerMethods> override;
-
-  std::shared_ptr<IFollowerCommitManager> const commit;
-  std::shared_ptr<IStorageManager> const storage;
-  std::shared_ptr<ICompactionManager> const compaction;
-  std::shared_ptr<ISnapshotManager> const snapshot;
-  std::shared_ptr<IMessageIdManager> const messageIdManager;
+  [[nodiscard]] virtual auto acceptReceivedMessageId(MessageId) noexcept
+      -> bool = 0;
+  [[nodiscard]] virtual auto getLastReceivedMessageId() const noexcept
+      -> MessageId = 0;
 };
 
 }  // namespace comp
+
 }  // namespace replicated_log
 }  // namespace replication2
 }  // namespace arangodb

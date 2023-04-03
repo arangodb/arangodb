@@ -25,6 +25,7 @@
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/Components/ExclusiveBool.h"
 #include "Replication2/ReplicatedLog/Components/IAppendEntriesManager.h"
+#include "Replication2/ReplicatedLog/Components/IMessageIdManager.h"
 #include "Replication2/ReplicatedLog/Components/TermInformation.h"
 #include "IFollowerCommitManager.h"
 #include "Replication2/LoggerContext.h"
@@ -37,14 +38,7 @@ struct IStorageManager;
 struct ISnapshotManager;
 struct ICompactionManager;
 struct IStateHandleManager;
-
-struct AppendEntriesMessageIdAcceptor {
-  auto accept(MessageId) noexcept -> bool;
-  auto get() const noexcept -> MessageId { return lastId; }
-
- private:
-  MessageId lastId{0};
-};
+struct IMessageIdManager;
 
 struct AppendEntriesManager
     : IAppendEntriesManager,
@@ -53,20 +47,20 @@ struct AppendEntriesManager
                        IStorageManager& storage, ISnapshotManager& snapshot,
                        ICompactionManager& compaction,
                        IStateHandleManager& stateHandle,
+                       IMessageIdManager& messageIdManager,
                        std::shared_ptr<ReplicatedLogMetrics> metrics,
                        LoggerContext const& loggerContext);
 
   auto appendEntries(AppendEntriesRequest request)
       -> futures::Future<AppendEntriesResult> override;
 
-  auto getLastReceivedMessageId() const noexcept -> MessageId;
-
   auto resign() && noexcept -> void override;
 
   struct GuardedData {
     GuardedData(IStorageManager& storage, ISnapshotManager& snapshot,
                 ICompactionManager& compaction,
-                IStateHandleManager& stateHandle);
+                IStateHandleManager& stateHandle,
+                IMessageIdManager& messageIdManager);
     auto preflightChecks(AppendEntriesRequest const& request,
                          FollowerTermInformation const&,
                          LoggerContext const& lctx)
@@ -75,12 +69,12 @@ struct AppendEntriesManager
 
     bool resigned = false;
     ExclusiveBool requestInFlight;
-    AppendEntriesMessageIdAcceptor messageIdAcceptor;
 
     IStorageManager& storage;
     ISnapshotManager& snapshot;
     ICompactionManager& compaction;
     IStateHandleManager& stateHandle;
+    IMessageIdManager& messageIdManager;
   };
 
   LoggerContext const loggerContext;

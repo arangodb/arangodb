@@ -20,10 +20,37 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IMethodsProvider.h"
+#pragma once
+
+#include "Basics/Guarded.h"
+#include "Replication2/ReplicatedLog/Components/IMessageIdManager.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 namespace arangodb {
 namespace replication2 {
-namespace replicated_log {}  // namespace replicated_log
+namespace replicated_log {
+
+inline namespace comp {
+
+struct AppendEntriesMessageIdAcceptor {
+  auto accept(MessageId) noexcept -> bool;
+  auto get() const noexcept -> MessageId;
+
+ private:
+  MessageId lastId{0};
+};
+
+struct MessageIdManager : IMessageIdManager {
+  [[nodiscard]] auto acceptReceivedMessageId(MessageId id) noexcept
+      -> bool override;
+  [[nodiscard]] auto getLastReceivedMessageId() const noexcept
+      -> MessageId override;
+
+ private:
+  Guarded<AppendEntriesMessageIdAcceptor> messageIdAcceptor;
+};
+}  // namespace comp
+
+}  // namespace replicated_log
 }  // namespace replication2
 }  // namespace arangodb

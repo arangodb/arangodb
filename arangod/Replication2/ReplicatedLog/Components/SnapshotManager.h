@@ -43,14 +43,16 @@ struct SnapshotManager : ISnapshotManager {
       std::shared_ptr<ILeaderCommunicator> leaderComm,
       LoggerContext const& loggerContext);
 
-  auto invalidateSnapshotState() -> Result override;
-  auto checkSnapshotState() const noexcept -> SnapshotState override;
+  [[nodiscard]] auto invalidateSnapshotState() -> Result override;
+  [[nodiscard]] auto checkSnapshotState() const noexcept
+      -> SnapshotState override;
 
   // should be called once after construction
   void acquireSnapshotIfNecessary();
 
-  auto setSnapshotStateAvailable(MessageId msgId, std::uint64_t version)
-      -> Result;
+  [[nodiscard]] auto setSnapshotStateAvailable(MessageId msgId,
+                                               std::uint64_t version)
+      -> Result override;
 
  private:
   struct GuardedData {

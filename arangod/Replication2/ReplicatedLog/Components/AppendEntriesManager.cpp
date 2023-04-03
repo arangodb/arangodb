@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/Components/ICompactionManager.h"
 #include "Replication2/ReplicatedLog/Components/IFollowerCommitManager.h"
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
+#include "Replication2/ReplicatedLog/Components/MessageIdManager.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/DeferredExecution.h"
 #include "Replication2/ReplicatedLog/Algorithms.h"
@@ -160,32 +161,29 @@ AppendEntriesManager::AppendEntriesManager(
     std::shared_ptr<FollowerTermInformation const> termInfo,
     IStorageManager& storage, ISnapshotManager& snapshot,
     ICompactionManager& compaction, IStateHandleManager& stateHandle,
+    IMessageIdManager& messageIdManager,
     std::shared_ptr<ReplicatedLogMetrics> metrics,
     LoggerContext const& loggerContext)
     : loggerContext(loggerContext.with<logContextKeyLogComponent>(
           "append-entries-manager")),
       termInfo(std::move(termInfo)),
       metrics(std::move(metrics)),
-      guarded(storage, snapshot, compaction, stateHandle) {}
-
-auto AppendEntriesManager::getLastReceivedMessageId() const noexcept
-    -> MessageId {
-  return guarded.getLockedGuard()->messageIdAcceptor.get();
-}
+      guarded(storage, snapshot, compaction, stateHandle, messageIdManager) {}
 
 auto AppendEntriesManager::resign() && noexcept -> void {
   auto guard = guarded.getLockedGuard();
   return std::move(guard.get()).resign();
 }
 
-AppendEntriesManager::GuardedData::GuardedData(IStorageManager& storage,
-                                               ISnapshotManager& snapshot,
-                                               ICompactionManager& compaction,
-                                               IStateHandleManager& stateHandle)
+AppendEntriesManager::GuardedData::GuardedData(
+    IStorageManager& storage, ISnapshotManager& snapshot,
+    ICompactionManager& compaction, IStateHandleManager& stateHandle,
+    IMessageIdManager& messageIdManager)
     : storage(storage),
       snapshot(snapshot),
       compaction(compaction),
-      stateHandle(stateHandle) {}
+      stateHandle(stateHandle),
+      messageIdManager(messageIdManager) {}
 
 auto AppendEntriesManager::GuardedData::preflightChecks(
     AppendEntriesRequest const& request,
@@ -203,10 +201,11 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
         {AppendEntriesErrorReason::ErrorType::kWrongTerm}, false);
   }
 
-  if (not messageIdAcceptor.accept(request.messageId)) {
+  if (not messageIdManager.acceptReceivedMessageId(request.messageId)) {
     LOG_CTX("bef55", INFO, lctx)
         << "rejecting append entries - dropping outdated message "
-        << request.messageId << " expected > " << messageIdAcceptor.get();
+        << request.messageId << " expected > "
+        << messageIdManager.getLastReceivedMessageId();
     return AppendEntriesResult::withRejection(
         termInfo.term, request.messageId,
         {AppendEntriesErrorReason::ErrorType::kMessageOutdated}, false);
@@ -241,12 +240,4 @@ auto AppendEntriesManager::GuardedData::preflightChecks(
 
 auto AppendEntriesManager::GuardedData::resign() && noexcept -> void {
   resigned = true;
-}
-
-auto AppendEntriesMessageIdAcceptor::accept(MessageId id) noexcept -> bool {
-  if (id > lastId) {
-    lastId = id;
-    return true;
-  }
-  return false;
 }

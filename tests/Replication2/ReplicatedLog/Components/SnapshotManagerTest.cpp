@@ -147,7 +147,8 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot) {
   EXPECT_CALL(storageManagerMock, commitMetaInfoTrx);
 
   EXPECT_CALL(stateHandleManagerMock, acquireSnapshot("LEADER", 1));
-  snapMan->invalidateSnapshotState();
+  auto snapshotInvalidated = snapMan->invalidateSnapshotState();
+  EXPECT_EQ(snapshotInvalidated, Result());
 
   EXPECT_CALL(storageManagerMock, beginMetaInfoTrx).WillOnce([&] {
     auto trx = std::make_unique<testing::NiceMock<StateInfoTransactionMock>>();
@@ -161,7 +162,8 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot) {
   futures::Promise<Result> p;
   EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{12}))
       .WillOnce([&](MessageId) { return p.getFuture(); });
-  snapMan->setSnapshotStateAvailable(MessageId{12}, 1);
+  auto result = snapMan->setSnapshotStateAvailable(MessageId{12}, 1);
+  EXPECT_EQ(result, Result());
   p.setValue(Result{});
 }
 
@@ -188,16 +190,19 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot_twice) {
   });
 
   EXPECT_CALL(stateHandleManagerMock, acquireSnapshot("LEADER", 1));
-  snapMan->invalidateSnapshotState();
+  auto snapshotInvalidated = snapMan->invalidateSnapshotState();
+  EXPECT_EQ(snapshotInvalidated, Result());
   EXPECT_EQ(snapMan->checkSnapshotState(), SnapshotState::MISSING);
 
   testing::Mock::VerifyAndClearExpectations(&storageManagerMock);
 
   // if called again, we will get 2
   EXPECT_CALL(stateHandleManagerMock, acquireSnapshot("LEADER", 2));
-  snapMan->invalidateSnapshotState();
+  snapshotInvalidated = snapMan->invalidateSnapshotState();
+  EXPECT_EQ(snapshotInvalidated, Result());
 
-  snapMan->setSnapshotStateAvailable(MessageId{12}, 1);
+  auto result = snapMan->setSnapshotStateAvailable(MessageId{12}, 1);
+  EXPECT_EQ(result, Result());
   EXPECT_EQ(snapMan->checkSnapshotState(), SnapshotState::MISSING);
 
   EXPECT_CALL(storageManagerMock, beginMetaInfoTrx).WillOnce([&] {
@@ -213,7 +218,8 @@ TEST_F(SnapshotManagerTest, invalidate_snapshot_twice) {
   futures::Promise<Result> p;
   EXPECT_CALL(*leaderComm, reportSnapshotAvailable(MessageId{12}))
       .WillOnce([&](MessageId) { return p.getFuture(); });
-  snapMan->setSnapshotStateAvailable(MessageId{12}, 2);
+  result = snapMan->setSnapshotStateAvailable(MessageId{12}, 2);
+  EXPECT_EQ(result, Result());
   EXPECT_EQ(snapMan->checkSnapshotState(), SnapshotState::AVAILABLE);
 
   p.setValue(Result{});

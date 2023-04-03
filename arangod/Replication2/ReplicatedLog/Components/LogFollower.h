@@ -51,7 +51,8 @@ struct StateHandleManager;
 struct SnapshotManager;
 struct FollowerCommitManager;
 struct AppendEntriesManager;
-struct MethodsProvider;
+struct MethodsProviderManager;
+struct MessageIdManager;
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
 
@@ -88,7 +89,8 @@ struct FollowerManager {
   std::shared_ptr<FollowerCommitManager> const commit;
   std::shared_ptr<StateHandleManager> const stateHandle;
   std::shared_ptr<SnapshotManager> const snapshot;
-  std::shared_ptr<MethodsProvider> const methods;
+  std::shared_ptr<MessageIdManager> const messageIdManager;
+  std::shared_ptr<MethodsProviderManager> const methodsProvider;
   std::shared_ptr<AppendEntriesManager> const appendEntriesManager;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
 };

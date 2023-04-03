@@ -27,14 +27,19 @@ namespace arangodb {
 class Result;
 }
 namespace arangodb::replication2::replicated_log {
+struct MessageId;
 inline namespace comp {
 enum class SnapshotState { MISSING, AVAILABLE };
 auto to_string(SnapshotState) noexcept -> std::string_view;
 
 struct ISnapshotManager {
   virtual ~ISnapshotManager() = default;
-  virtual auto invalidateSnapshotState() -> Result = 0;
-  virtual auto checkSnapshotState() const noexcept -> SnapshotState = 0;
+  [[nodiscard]] virtual auto invalidateSnapshotState() -> Result = 0;
+  [[nodiscard]] virtual auto checkSnapshotState() const noexcept
+      -> SnapshotState = 0;
+  [[nodiscard]] virtual auto setSnapshotStateAvailable(MessageId msgId,
+                                                       std::uint64_t version)
+      -> Result = 0;
 };
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
