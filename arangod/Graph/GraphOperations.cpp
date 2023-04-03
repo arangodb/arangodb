@@ -696,7 +696,7 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
                                             bool returnNew, bool keepNull) {
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
-    return std::move(res);
+    return res;
   }
   TRI_ASSERT(trx != nullptr);
 
@@ -713,7 +713,7 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
                                              bool returnNew, bool keepNull) {
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
-    return std::move(res);
+    return res;
   }
   TRI_ASSERT(trx != nullptr);
 
@@ -886,7 +886,7 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
 
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
-    return std::move(res);
+    return res;
   }
   TRI_ASSERT(trx != nullptr);
 
