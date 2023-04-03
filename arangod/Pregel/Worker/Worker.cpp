@@ -143,18 +143,29 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _quivers.size();
   if (_messageCombiner) {
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
-          nullptr, _messageFormat.get(), _messageCombiner.get());
+          std::set<PregelShard>{}, _messageFormat.get(),
+          _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
           _config, _messageFormat.get(), _messageCombiner.get()));
       incoming.release();
     }
   } else {
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
-      auto incoming =
-          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
+                                                        _messageFormat.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
       incoming.release();
@@ -468,7 +479,7 @@ ResultT<ProcessVerticesResult> Worker<V, E, M>::_processVertices(
   }
 
   // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(_config, inCache);
+  _writeCache->mergeCache(inCache);
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
   verticesResult.stats.sendCount = outCache->sendCount();
