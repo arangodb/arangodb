@@ -27,17 +27,12 @@
 #include "Logger/LogContextKeys.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
+#include "Replication2/IScheduler.h"
 
 using namespace arangodb::replication2::replicated_log::comp;
 
 auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     -> DeferredAction {
-  struct ResolveContext {
-    WaitForResult result;
-    WaitForQueue queue;
-  };
-
-  auto ctx = std::make_unique<ResolveContext>();
   auto guard = guardedData.getLockedGuard();
 
   LOG_CTX("d2083", TRACE, loggerContext)
@@ -58,6 +53,14 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
     guard->stateHandle.updateCommitIndex(guard->resolveIndex);
   }
 
+  struct ResolveContext {
+    WaitForResult result;
+    WaitForQueue queue;
+    std::shared_ptr<IScheduler> scheduler;
+  };
+
+  auto ctx = std::make_unique<ResolveContext>();
+  ctx->scheduler = scheduler;
   ctx->result = WaitForResult(guard->commitIndex, nullptr);
 
   auto const end = guard->waitQueue.upper_bound(guard->resolveIndex);
@@ -68,8 +71,10 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index) noexcept
   return DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
     for (auto& it : ctx->queue) {
       if (!it.second.isFulfilled()) {
-        // This only throws if promise was fulfilled earlier.
-        it.second.setValue(ctx->result);
+        ctx->scheduler->queue(
+            [p = std::move(it.second), res = std::move(ctx->result)]() mutable {
+              p.setValue(std::move(res));
+            });
       }
     }
   });
@@ -79,12 +84,13 @@ auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {
   return guardedData.getLockedGuard()->commitIndex;
 }
 
-FollowerCommitManager::FollowerCommitManager(IStorageManager& storage,
-                                             IStateHandleManager& stateHandle,
-                                             LoggerContext const& loggerContext)
+FollowerCommitManager::FollowerCommitManager(
+    IStorageManager& storage, IStateHandleManager& stateHandle,
+    LoggerContext const& loggerContext, std::shared_ptr<IScheduler> scheduler)
     : guardedData(storage, stateHandle),
       loggerContext(loggerContext.with<logContextKeyLogComponent>(
-          "follower-commit-manager")) {}
+          "follower-commit-manager")),
+      scheduler(std::move(scheduler)) {}
 
 auto FollowerCommitManager::waitFor(LogIndex index) noexcept
     -> ILogParticipant::WaitForFuture {

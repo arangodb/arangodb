@@ -54,21 +54,11 @@ ClusteringConstantProperties::validateDatabaseConfiguration(
                   std::to_string(config.maxNumberOfShards)};
     }
   }
+
   if (config.isOneShardDB) {
     if (numberOfShards.value() != 1) {
       return {TRI_ERROR_BAD_PARAMETER,
               "Collection in a 'oneShardDatabase' must have 1 shard"};
-    }
-
-    if (distributeShardsLike.has_value()) {
-      // There is a special case for the leading collection which is allowed to
-      // not have distributeShardsLike set.
-      // TODO: I think we should unify the test location for oneShard.
-      if (distributeShardsLike.value() != config.defaultDistributeShardsLike) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "Collection in a 'oneShardDatabase' cannot define "
-                "'distributeShardsLike'"};
-      }
     }
   }
 
