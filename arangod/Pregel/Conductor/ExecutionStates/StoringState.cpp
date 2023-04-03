@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StoringState.h"
+
 #include "Pregel/Conductor/ExecutionStates/DoneState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -51,19 +53,19 @@ auto Storing::messages()
 
 auto Storing::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::Stored>>(message)) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
   if (not stored.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   respondedWorkers.emplace(sender);
 
   if (respondedWorkers == conductor.workers) {
-    return std::make_unique<Done>(conductor);
+    return StateChange{.newState = std::make_unique<Done>(conductor)};
   }
 
   return std::nullopt;

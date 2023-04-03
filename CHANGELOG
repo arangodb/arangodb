@@ -1,6 +1,15 @@
 devel
 -----
 
+* MDS-1001: Performance improvement in AQL. If you are using a traversal like
+  `FOR v, e, p IN <....>` and later in the query access the last vertex on the path e.g.:
+  `FILTER p.vertices[-1].name == "ArangoDB"` it will now be transformed to
+  `FILTER v.name == "ArangoDB"` which is an equivalent statement. The latter however
+  is cheaper to compute, as we do not need to create an in-memory representation
+  of the path. Furthermore we can apply additional optimizations on `v` which are not
+  possible on `p`. The same optimization holds true for `p.edges[-1]` which is equivalent
+  to `e`. The optimization rule for this is called "optimize-traversal-last-element-access".
+
 * Updated arangosync to v2.16.1.
 
 * FE-142: Updates indices view list & index addition to React.
