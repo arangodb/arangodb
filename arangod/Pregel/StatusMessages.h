@@ -18,28 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/ExecutionStates/State.h"
+#include <variant>
+#include "Actor/ActorPID.h"
+#include "Inspection/Types.h"
 
-namespace arangodb::pregel::conductor {
+namespace arangodb::pregel::message {
 
-struct ConductorState;
+struct StatusStart {};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusStart& x) {
+  return f.object(x).fields();
+}
 
-struct FatalError : ExecutionState {
-  FatalError(ConductorState& conductor);
-  ~FatalError() = default;
-  auto name() const -> std::string override { return "fatal error"; };
-  auto canBeCanceled() const -> bool override { return false; }
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
-
-  ConductorState& conductor;
+struct StatusMessages : std::variant<StatusStart> {
+  using std::variant<StatusStart>::variant;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, StatusMessages& x) {
+  return f.variant(x).unqualified().alternatives(
+      arangodb::inspection::type<StatusStart>("Start"));
+}
 
-}  // namespace arangodb::pregel::conductor
+}  // namespace arangodb::pregel::message
