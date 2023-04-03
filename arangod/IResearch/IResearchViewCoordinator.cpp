@@ -134,7 +134,7 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
     }
     // refresh view from Agency to get latest state with populated collections
     view = ci.getView(vocbase.name(), absl::AlphaNum{impl->id().id()}.Piece());
-    // view migth be already dropped
+    // view might be already dropped
     if (view) {
       // open view to match the behavior in StorageEngine::openExistingDatabase
       // and original behavior of TRI_vocbase_t::createView

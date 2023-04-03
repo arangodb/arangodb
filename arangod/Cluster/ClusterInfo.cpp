@@ -299,7 +299,7 @@ class CollectionWatcher
   std::atomic<bool> _present;
 };
 
-constexpr frozen::unordered_map<std::string_view, ServerHealth, 3>
+constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
     kHealthStatusMap = {
         {consensus::Supervision::HEALTH_STATUS_BAD, ServerHealth::kBad},
         {consensus::Supervision::HEALTH_STATUS_FAILED, ServerHealth::kFailed},
@@ -350,8 +350,8 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 3>
   return res;
 }
 
-void doQueueLinkDrop(IndexId id, std::string collection, std::string vocbase,
-                     ClusterInfo& ci) {
+void doQueueLinkDrop(IndexId id, std::string const& collection,
+                     std::string const& vocbase, ClusterInfo& ci) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
   if (!scheduler || ci.server().isStopping()) {
     return;
@@ -377,13 +377,12 @@ void doQueueLinkDrop(IndexId id, std::string collection, std::string vocbase,
         else {
           res = methods::Indexes::drop(coll.get(), builder.slice());
         }
-        if (res.fail() &&
-            res.errorNumber() != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+        if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser
-          TRI_ASSERT(res.errorNumber() != TRI_ERROR_FORBIDDEN);
+          TRI_ASSERT(res.isNot(TRI_ERROR_FORBIDDEN));
           LOG_TOPIC("b27f3", WARN, Logger::CLUSTER)
               << "Failed to drop dangling link " << id
-              << " Err:" << res.errorNumber();
+              << " Err: " << res.errorMessage();
           doQueueLinkDrop(id, collection, vocbase, ci);
         } else {
           LOG_TOPIC("2c47a", TRACE, Logger::CLUSTER)
@@ -1051,6 +1050,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
         // optimization
         hash = 0;
         if (cleanupLinks) {
+          TRI_ASSERT(ServerState::instance()->isCoordinator());
           for (auto const& idx : indexes) {
             TRI_ASSERT(idx);
             if (idx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -5743,7 +5743,7 @@ void ClusterInfo::loadServers() {
       _serversProt.doneVersion = storedVersion;
       _serversProt.isValid = true;
     }
-    // FIXME: Here _serversKnown was read withour readlock. It looks safe
+    // FIXME: Here _serversKnown was read without readlock. It looks safe
     // for now as the only write (not include setters for tests) is in this
     // method and it is protexted by mutex _serversProt.mutex
 

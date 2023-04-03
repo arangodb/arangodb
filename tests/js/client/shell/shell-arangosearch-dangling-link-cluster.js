@@ -41,7 +41,7 @@ function ArangoSearchDanglingLinkSuite () {
     },
     
     setUp : function() {
-        internal.debugClearFailAt();
+      internal.debugClearFailAt();
     },
     
     tearDownAll : function () {
@@ -51,38 +51,36 @@ function ArangoSearchDanglingLinkSuite () {
     },
 
     testDanglingLink : function () {
-        internal.debugSetFailAt("IResearchLink::alwaysDangling");
-        db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
-        db._dropView("dangle");
-        let nCount = 0;
-        while(db.foo.getIndexes(true, true).length > 1) {
-            internal.sleep(1);
-            nCount++;
-            // 30 secs should be more than enought to kick in cleanup
-            assertTrue(nCount < 30);
-        }
-       
+      internal.debugSetFailAt("IResearchLink::alwaysDangling");
+      db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
+      db._dropView("dangle");
+      let nCount = 0;
+      while(db.foo.getIndexes(true, true).length > 1) {
+        internal.sleep(1);
+        nCount++;
+        // 30 secs should be more than enough to kick in cleanup
+        assertTrue(nCount < 30);
+      }
     },
     
     testDanglingLinkRetryDrop : function () {
-        internal.debugSetFailAt("IResearchLink::alwaysDangling");
-        internal.debugSetFailAt("IResearchLink::failDropDangling");
-        db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
-        db._dropView("dangle");
-        let nCount = 0;
-        while(db.foo.getIndexes(true, true).length > 1 && nCount < 10) {
-            internal.sleep(1);
-            nCount++;
-        }
-        assertEqual(10, nCount);
-        internal.debugClearFailAt("IResearchLink::failDropDangling");
-        while(db.foo.getIndexes(true, true).length > 1) {
-            internal.sleep(1);
-            nCount++;
-            // 30 secs should be more than enought to kick in cleanup
-            assertTrue(nCount < 30);
-        }
-        
+      internal.debugSetFailAt("IResearchLink::alwaysDangling");
+      internal.debugSetFailAt("IResearchLink::failDropDangling");
+      db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
+      db._dropView("dangle");
+      let nCount = 0;
+      while(db.foo.getIndexes(true, true).length > 1 && nCount < 10) {
+        internal.sleep(1);
+        nCount++;
+      }
+      assertEqual(10, nCount);
+      internal.debugClearFailAt("IResearchLink::failDropDangling");
+      while(db.foo.getIndexes(true, true).length > 1) {
+        internal.sleep(1);
+        nCount++;
+        // 30 secs should be more than enough to kick in cleanup
+        assertTrue(nCount < 30);
+      } 
     },
 
   };
