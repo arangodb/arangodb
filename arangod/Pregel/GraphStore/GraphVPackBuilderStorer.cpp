@@ -56,8 +56,7 @@ namespace arangodb::pregel {
 
 template<typename V, typename E>
 auto GraphVPackBuilderStorer<V, E>::store(
-    std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
-    -> futures::Future<Result> {
+    std::vector<std::shared_ptr<Quiver<V, E>>> quivers) -> Result {
   result = std::make_unique<VPackBuilder>();
 
   std::string tmp;

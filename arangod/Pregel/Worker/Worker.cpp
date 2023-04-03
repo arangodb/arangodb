@@ -603,7 +603,12 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
             std::vector<futures::Future<Result>> storeFutures;
             storeFutures.reserve(_quivers.size());
             for (auto const& quiver : _quivers) {
-              storeFutures.emplace_back(storer.store({quiver}));
+              storeFutures.emplace_back(
+                  SchedulerFeature::SCHEDULER->queueWithFuture(
+                      RequestLane::INTERNAL_LOW,
+                      [storer = &storer, quiver = quiver]() {
+                        return storer->store({quiver});
+                      }));
             }
             if (!storeFutures.empty()) {
               // wait for all futures to finalize
@@ -640,22 +645,15 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
   auto storer =
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
-  std::vector<futures::Future<Result>> storeFutures;
-  storeFutures.reserve(_quivers.size());
-  storeFutures.emplace_back(storer.store(_quivers));
-  if (!storeFutures.empty()) {
-    // wait for all futures to finalize
-    auto futureResponses = futures::collectAll(storeFutures).get();
-    for (auto const& fResponse : futureResponses) {
-      auto& result = fResponse.get();
-      if (result.fail()) {
-        LOG_PREGEL("ee2af", WARN) << fmt::format(
-            "Thread failed to store graph results: {}", result.errorMessage());
-        // TODO: Anything else we can do in case we've failed here?!
-        throw;
-      }
-    }
+
+  // Executing store synchronously as we cannot write in parallel into
+  // VPackBuilders.
+  auto result = storer.store(_quivers);
+  if (result.fail()) {
+    LOG_PREGEL("ee2af", WARN) << fmt::format(
+        "Thread failed to store graph results: {}", result.errorMessage());
   }
+
   return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
 }
 

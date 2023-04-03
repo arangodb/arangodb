@@ -56,8 +56,7 @@ namespace arangodb::pregel {
 
 template<typename V, typename E>
 auto GraphStorer<V, E>::store(
-    std::vector<std::shared_ptr<Quiver<V, E>>> quivers)
-    -> futures::Future<Result> {
+    std::vector<std::shared_ptr<Quiver<V, E>>> quivers) -> Result {
   // TODO: I do no like this approach. Currently the interface is using a vector
   // of quivers, but this concept does not fit this approach here. If we write
   // into a VPackBuilder, we need all quivers at once. If we want to write
