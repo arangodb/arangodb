@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FatalErrorState.h"
+
 #include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
 #include "Pregel/Conductor/State.h"
 
@@ -58,14 +59,14 @@ auto FatalError::messages()
 
 auto FatalError::receive(actor::ActorPID sender,
                          message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
     return std::nullopt;
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
-    return std::make_unique<CleanedUp>();
+    return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
 };
