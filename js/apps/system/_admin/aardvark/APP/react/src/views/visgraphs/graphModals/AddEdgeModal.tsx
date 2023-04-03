@@ -73,7 +73,7 @@ export const AddEdgeModal = () => {
         to
       };
       // this adds the edge to the graph
-      selectedAction?.callback(edgeModel);
+      selectedAction?.callback?.(edgeModel);
       onClearAction();
     },
     onFailure: onClearAction

@@ -18,15 +18,15 @@ import { useSetupGraphParams } from "./useSetupGraphParams";
 import {
   EdgeDataType,
   NodeDataType,
-  VisGraphData,
-  VisPointer
-} from "./VisGraphData.types";
+  GraphDataType,
+  GraphPointer
+} from "./GraphData.types";
 
 type ActionEntityType = {
   type: string;
   nodeId?: string;
   edgeId?: string;
-  pointer: VisPointer;
+  pointer: GraphPointer;
 };
 
 export type SelectedActionType = {
@@ -34,7 +34,7 @@ export type SelectedActionType = {
   entityType?: "node" | "edge";
   from?: string;
   to?: string;
-  callback?: any;
+  callback?: (edge: EdgeDataType) => void;
   entity?: ActionEntityType;
 };
 
@@ -42,7 +42,7 @@ export type SelectedEntityType = { entityId: string; type: "node" | "edge" };
 
 type AddEdgeArgs = {
   data: { from: string; to: string };
-  callback: any;
+  callback: (edge: EdgeDataType) => void;
 };
 
 type DatasetsType = {
@@ -50,7 +50,7 @@ type DatasetsType = {
   edges: DataSet<EdgeDataType>;
 };
 type GraphContextType = {
-  graphData: VisGraphData | undefined;
+  graphData: GraphDataType | undefined;
   graphName: string;
   onApplySettings: (updatedParams?: { [key: string]: string }) => void;
   onRestoreDefaults: () => void;

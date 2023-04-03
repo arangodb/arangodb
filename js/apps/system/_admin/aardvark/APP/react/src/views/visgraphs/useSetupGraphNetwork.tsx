@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { DataSet } from "vis-data";
 import { Network } from "vis-network";
 import { useGraph } from "./GraphContext";
-import { VisPointer } from "./VisGraphData.types";
+import { GraphPointer } from "./GraphData.types";
 
 let timer: number;
 export const useSetupGraphNetwork = ({
@@ -105,7 +105,7 @@ export const useSetupGraphNetwork = ({
     }
     newNetwork.on(
       "oncontext",
-      ({ event, pointer }: { event: Event; pointer: VisPointer }) => {
+      ({ event, pointer }: { event: Event; pointer: GraphPointer }) => {
         event.preventDefault();
         const nodeId = newNetwork.getNodeAt(pointer.DOM) as string;
         const edgeId = newNetwork.getEdgeAt(pointer.DOM) as string;

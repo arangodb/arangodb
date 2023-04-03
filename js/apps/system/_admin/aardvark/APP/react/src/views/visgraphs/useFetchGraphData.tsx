@@ -2,7 +2,7 @@ import { useState } from "react";
 import useSWR from "swr";
 import { getRouteForDB } from "../../utils/arangoClient";
 import { UrlParametersType } from "./UrlParametersContext";
-import { VisGraphData } from "./VisGraphData.types";
+import { GraphDataType } from "./GraphData.types";
 
 export const fetchGraphData = async ({
   graphName,
@@ -29,7 +29,7 @@ export const useFetchGraphData = ({
   params: UrlParametersType | undefined;
 }) => {
   const [fetchDuration, setFetchDuration] = useState<number>();
-  const { data, error, isLoading } = useSWR<VisGraphData>(
+  const { data, error, isLoading } = useSWR<GraphDataType>(
     ["visData", graphName, params],
     async () => {
       const fetchStarted = new Date();

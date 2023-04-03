@@ -1,4 +1,3 @@
-import { ArangojsResponse } from "arangojs/lib/request.node";
 import { Edge, Node, Options } from "vis-network";
 
 export interface NodeDataType extends Node {
@@ -9,16 +8,16 @@ export interface NodeDataType extends Node {
 
 export interface EdgeDataType extends Edge {
   id: string;
-  source: string;
+  source?: string;
   from: string;
-  target: string;
+  target?: string;
   to: string;
-  sortColor: string;
+  sortColor?: string;
 }
 
-// options need to be typed as
+// options need to be typed manually as
 // they are marked as `any` in vis-network exports
-interface VisOptions extends Options {
+interface GraphOptions extends Options {
   interaction: {
     dragNodes: boolean;
     dragView: boolean;
@@ -68,7 +67,7 @@ interface VisOptions extends Options {
 }
 
 interface SettingsType {
-  layout: VisOptions;
+  layout: GraphOptions;
   nodeColorAttributeMessage?: string;
   edgeColorAttributeMessage?: string;
   nodeSizeAttributeMessage?: string;
@@ -95,15 +94,14 @@ interface SettingsType {
   connectionsMinMax: (number | null)[];
   isSmart?: boolean;
 }
-export type VisGraphData = {
+
+export type GraphDataType = {
   nodes: NodeDataType[];
   edges: EdgeDataType[];
   settings: SettingsType;
 };
-export interface VisDataResponse extends ArangojsResponse {
-  body?: VisGraphData;
-}
-export type VisPointer = {
+
+export type GraphPointer = {
   DOM: { x: number; y: number };
   canvas: { x: number; y: number };
 };

@@ -2,7 +2,7 @@ import React from "react";
 import { getRouteForDB } from "../../utils/arangoClient";
 import { UrlParametersType } from "./UrlParametersContext";
 import { fetchUserConfig } from "./useSetupGraphParams";
-import { VisGraphData } from "./VisGraphData.types";
+import { GraphDataType } from "./GraphData.types";
 const putUserConfig = async ({
   params,
   fullConfig,
@@ -36,7 +36,7 @@ export const useApplyGraphSettings = ({
   hasDrawnOnce
 }: {
   urlParams: UrlParametersType;
-  graphData: VisGraphData | undefined;
+  graphData: GraphDataType | undefined;
   graphName: string;
   setParams: React.Dispatch<
     React.SetStateAction<UrlParametersType | undefined>

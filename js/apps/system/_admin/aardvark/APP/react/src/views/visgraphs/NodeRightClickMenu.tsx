@@ -4,7 +4,7 @@ import { FullItem } from "vis-data/declarations/data-interface";
 import { useGraph } from "./GraphContext";
 import { useUrlParameterContext } from "./UrlParametersContext";
 import { fetchGraphData } from "./useFetchGraphData";
-import { NodeDataType } from "./VisGraphData.types";
+import { NodeDataType } from "./GraphData.types";
 
 export const NodeRightClickMenu = forwardRef(
   (_props, ref: React.LegacyRef<HTMLDivElement>) => {
