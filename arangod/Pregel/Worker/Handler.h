@@ -190,7 +190,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     outCache->flushMessages();
 
-    this->state->writeCache->mergeCache(this->state->config, inCache);
+    this->state->writeCache->mergeCache(inCache);
     // _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
     MessageStats stats;

@@ -60,19 +60,22 @@ struct WorkerState {
 
     if (messageCombiner) {
       readCache = std::make_unique<CombiningInCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
       writeCache = std::make_unique<CombiningInCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
       inCache = std::make_unique<CombiningInCache<M>>(
-          nullptr, messageFormat.get(), messageCombiner.get());
+          std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get());
       outCache = std::make_unique<CombiningOutActorCache<M>>(
           config, messageFormat.get(), messageCombiner.get());
     } else {
-      readCache =
-          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
-      writeCache =
-          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
-      inCache = std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get());
+      readCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
+      writeCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
+      inCache = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
+                                                  messageFormat.get());
       outCache =
           std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get());
     }
