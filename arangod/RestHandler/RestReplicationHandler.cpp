@@ -894,17 +894,17 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       LOG_DEVEL << " - " << cName;
     }
     LOG_DEVEL << "ShardMap Original: " << shardMap.get();
-    for (auto const& s1 : shardMap) {
-      LOG_DEVEL << "-> Shard: " s1.first;
+    for (auto const& s1 : *shardMap.get()) {
+      LOG_DEVEL << "-> Shard: " << s1.first;
       for (auto const& ss1 : s1.second) {
-        LOG_DEVEL " ---> Server: " < ss1;
+        LOG_DEVEL " ---> Server: " << ss1;
       }
     }
     LOG_DEVEL << "ShardMap Other:    " << shardMapNew.get();
-    for (auto const& s1 : shardMapNew) {
-      LOG_DEVEL << "-> Shard: " s1.first;
+    for (auto const& s1 : *shardMapNew.get()) {
+      LOG_DEVEL << "-> Shard: " << s1.first;
       for (auto const& ss1 : s1.second) {
-        LOG_DEVEL " ---> Server: " < ss1;
+        LOG_DEVEL " ---> Server: " << ss1;
       }
     }
     ADB_PROD_ASSERT(*shardMap == *shardMapNew);
