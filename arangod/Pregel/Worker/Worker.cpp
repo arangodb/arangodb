@@ -384,6 +384,7 @@ void Worker<V, E, M>::_startProcessing() {
       InCache<M>* inCachePtr = _inCaches[idx];
       OutCache<M>* outCachePtr = _outCaches[idx];
       futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
           [self, this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
            quiver = quiver]() {
             return _processVertices(inCachePtr, outCachePtr, quiver);

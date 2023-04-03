@@ -337,6 +337,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       InCache<M>* inCachePtr = this->state->inCaches[idx].get();
       OutCache<M>* outCachePtr = this->state->outCaches[idx].get();
       futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
           [this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
            quiver = quiver]() {
             return processVertices(inCachePtr, outCachePtr, quiver);
