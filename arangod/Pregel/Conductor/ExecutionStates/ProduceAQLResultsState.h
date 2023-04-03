@@ -22,8 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/ExecutionStates/State.h"
-
+#include "State.h"
 #include <set>
 
 namespace arangodb::pregel::conductor {
@@ -42,13 +41,8 @@ struct ProduceAQLResults : ExecutionState {
   // Discussable Note: To prevent API state change we're using "storing" as the
   // defined name here. Better: Use the real name of that state.
   auto name() const -> std::string override { return "storing"; };
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+      -> std::optional<StateChange> override;
 
  private:
   ConductorState& conductor;

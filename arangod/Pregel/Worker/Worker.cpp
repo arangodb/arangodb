@@ -108,13 +108,17 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _messageBatchSize = 5000;
 
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                          _messageCombiner.get());
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
   } else {
-    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
   }
 }
 
@@ -142,18 +146,29 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _quivers.size();
   if (_messageCombiner) {
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
-          nullptr, _messageFormat.get(), _messageCombiner.get());
+          std::set<PregelShard>{}, _messageFormat.get(),
+          _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
           _config, _messageFormat.get(), _messageCombiner.get()));
       incoming.release();
     }
   } else {
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
-      auto incoming =
-          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
+                                                        _messageFormat.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
       incoming.release();
@@ -361,11 +376,19 @@ void Worker<V, E, M>::_startProcessing() {
       return;
     }
 
-    std::vector<futures::Future<Result>> futures;
+    std::vector<futures::Future<ResultT<ProcessVerticesResult>>> futures;
+    futures.reserve(_quivers.size());
     // first build up all future requests
     for (auto [idx, quiver] : enumerate(_quivers)) {
       TRI_ASSERT(_state == WorkerState::COMPUTING);
-      futures.emplace_back(_processVertices(idx, quiver));
+      InCache<M>* inCachePtr = _inCaches[idx];
+      OutCache<M>* outCachePtr = _outCaches[idx];
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
+          [self, this, inCachePtr = inCachePtr, outCachePtr = outCachePtr,
+           quiver = quiver]() {
+            return _processVertices(inCachePtr, outCachePtr, quiver);
+          }));
     }
 
     if (!futures.empty()) {
@@ -374,8 +397,13 @@ void Worker<V, E, M>::_startProcessing() {
       for (auto const& fResponse : futureResponses) {
         auto& result = fResponse.get();
         if (result.fail()) {
-          LOG_PREGEL("ee2ac", WARN) << "Execution aborted prematurely.";
+          LOG_PREGEL("ee2ac", WARN)
+              << "Execution aborted prematurely: " << result.errorMessage();
           return;
+        } else {
+          _workerContext->_writeAggregators->aggregateValues(
+              result->workerAggregator);
+          _messageStats.accumulate(result->stats);
         }
       }
     }
@@ -399,23 +427,25 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 
 // internally called in a WORKER THREAD!!
 template<typename V, typename E, typename M>
-futures::Future<Result> Worker<V, E, M>::_processVertices(
-    size_t idx, std::shared_ptr<Quiver<V, E>> quiver) {
+ResultT<ProcessVerticesResult> Worker<V, E, M>::_processVertices(
+    InCache<M>* inCache, OutCache<M>* outCache,
+    std::shared_ptr<Quiver<V, E>> quiver) {
   double start = TRI_microtime();
 
   // thread local caches
-  InCache<M>* inCache = _inCaches[idx];
-  OutCache<M>* outCache = _outCaches[idx];
+  TRI_ASSERT(inCache != nullptr);
+  TRI_ASSERT(outCache != nullptr);
   outCache->setBatchSize(_messageBatchSize);
   outCache->setLocalCache(inCache);
   TRI_ASSERT(outCache->sendCount() == 0);
 
-  AggregatorHandler workerAggregator(_algorithm.get());
+  ProcessVerticesResult verticesResult{
+      .workerAggregator = AggregatorHandler(_algorithm.get()), .stats = {}};
 
   std::unique_ptr<VertexComputation<V, E, M>> vertexComputation(
       _algorithm->createComputation(_config));
   _initializeVertexContext(vertexComputation.get());
-  vertexComputation->_writeAggregators = &workerAggregator;
+  vertexComputation->_writeAggregators = &verticesResult.workerAggregator;
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
@@ -448,31 +478,28 @@ futures::Future<Result> Worker<V, E, M>::_processVertices(
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    return futures::makeFuture(Result{TRI_ERROR_INTERNAL});
+    return {TRI_ERROR_INTERNAL};
   }
 
   // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(_config, inCache);
+  _writeCache->mergeCache(inCache);
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
-  MessageStats stats;
-  stats.sendCount = outCache->sendCount();
+  verticesResult.stats.sendCount = outCache->sendCount();
   _currentGssObservables.messagesSent += outCache->sendCount();
   _currentGssObservables.memoryBytesUsedForMessages +=
       outCache->sendCount() * sizeof(M);
-  stats.superstepRuntimeSecs = TRI_microtime() - start;
+  verticesResult.stats.superstepRuntimeSecs = TRI_microtime() - start;
   inCache->clear();
   outCache->clear();
 
   {
     // merge the thread local stats and aggregators
-    _workerContext->_writeAggregators->aggregateValues(workerAggregator);
-    _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _feature.metrics()->pregelNumberOfThreads->fetch_sub(1);
   }
 
-  return futures::makeFuture(Result{TRI_ERROR_NO_ERROR});
+  return {std::move(verticesResult)};
 }
 
 // called at the end of a worker thread, needs mutex

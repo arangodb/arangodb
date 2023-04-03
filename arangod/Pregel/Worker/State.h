@@ -42,15 +42,15 @@ struct WorkerState {
   WorkerState(std::unique_ptr<WorkerContext> workerContext,
               actor::ActorPID conductor,
               worker::message::CreateWorker specifications,
-              std::unique_ptr<MessageFormat<M>> messageFormat,
-              std::unique_ptr<MessageCombiner<M>> messageCombiner,
+              std::unique_ptr<MessageFormat<M>> newMessageFormat,
+              std::unique_ptr<MessageCombiner<M>> newMessageCombiner,
               std::unique_ptr<Algorithm<V, E, M>> algorithm,
               TRI_vocbase_t& vocbase, actor::ActorPID spawnActor,
               actor::ActorPID resultActor)
       : config{std::make_shared<WorkerConfig>(&vocbase)},
         workerContext{std::move(workerContext)},
-        messageFormat{std::move(messageFormat)},
-        messageCombiner{std::move(messageCombiner)},
+        messageFormat{std::move(newMessageFormat)},
+        messageCombiner{std::move(newMessageCombiner)},
         conductor{std::move(conductor)},
         algorithm{std::move(algorithm)},
         vocbaseGuard{vocbase},
@@ -60,20 +60,22 @@ struct WorkerState {
 
     if (messageCombiner) {
       readCache = std::make_unique<CombiningInCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
       writeCache = std::make_unique<CombiningInCache<M>>(
-          config, messageFormat.get(), messageCombiner.get());
+          config->localPregelShardIDs(), messageFormat.get(),
+          messageCombiner.get());
       inCaches.emplace_back(std::make_unique<CombiningInCache<M>>(
-          nullptr, messageFormat.get(), messageCombiner.get()));
+          std::set<PregelShard>{}, messageFormat.get(), messageCombiner.get()));
       outCaches.emplace_back(std::make_unique<CombiningOutActorCache<M>>(
           config, messageFormat.get(), messageCombiner.get()));
     } else {
-      readCache =
-          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
-      writeCache =
-          std::make_unique<ArrayInCache<M>>(config, messageFormat.get());
-      inCaches.emplace_back(
-          std::make_unique<ArrayInCache<M>>(nullptr, messageFormat.get()));
+      readCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
+      writeCache = std::make_unique<ArrayInCache<M>>(
+          config->localPregelShardIDs(), messageFormat.get());
+      inCaches.emplace_back(std::make_unique<ArrayInCache<M>>(
+          std::set<PregelShard>{}, messageFormat.get()));
       outCaches.emplace_back(
           std::make_unique<ArrayOutActorCache<M>>(config, messageFormat.get()));
     }

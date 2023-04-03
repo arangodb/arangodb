@@ -1,8 +1,11 @@
 #include "ComputingState.h"
+
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 #include "Pregel/Conductor/ExecutionStates/ProduceAQLResultsState.h"
+#include "Pregel/Conductor/ExecutionStates/State.h"
 #include "Pregel/Conductor/ExecutionStates/StoringState.h"
-#include "velocypack/Iterator.h"
+#include "Pregel/Conductor/State.h"
+#include "Pregel/MasterContext.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -49,16 +52,16 @@ auto Computing::messages()
 }
 auto Computing::receive(actor::ActorPID sender,
                         message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GlobalSuperStepFinished>>(
           message)) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   auto gssFinished =
       std::get<ResultT<message::GlobalSuperStepFinished>>(message);
   if (not gssFinished.ok()) {
-    return std::make_unique<FatalError>(conductor);
+    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
   }
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());
@@ -81,16 +84,17 @@ auto Computing::receive(actor::ActorPID sender,
       // TODO GORDO-1510
       // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
-        return std::make_unique<Storing>(conductor);
+        return StateChange{.newState = std::make_unique<Storing>(conductor)};
       }
-      return std::make_unique<ProduceAQLResults>(conductor);
+      return StateChange{.newState =
+                             std::make_unique<ProduceAQLResults>(conductor)};
     }
 
     conductor.timing.gss.back().finish();
     masterContext->_globalSuperstep++;
-    return std::make_unique<Computing>(
-        conductor, std::move(masterContext),
-        std::move(messageAccumulation.sendCountPerActor));
+    return StateChange{.newState = std::make_unique<Computing>(
+                           conductor, std::move(masterContext),
+                           std::move(messageAccumulation.sendCountPerActor))};
   }
 
   return std::nullopt;

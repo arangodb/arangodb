@@ -38,6 +38,12 @@ AggregatorHandler::~AggregatorHandler() {
   _values.clear();
 }
 
+AggregatorHandler::AggregatorHandler(AggregatorHandler&& other) {
+  WRITE_LOCKER(guard, other._lock);
+  _algorithm = std::move(other._algorithm);
+  _values = std::move(other._values);
+}
+
 IAggregator* AggregatorHandler::getAggregator(AggregatorID const& name) {
   {
     READ_LOCKER(guard, _lock);
