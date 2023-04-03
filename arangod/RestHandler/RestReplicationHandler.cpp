@@ -892,8 +892,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
         // A Virtual SmartEdge Collection does not include any shards.
         // Therefore, we cannot, and we do not need to verify if shards are in
         // sync or not.
-        TRI_ASSERT(
-            !c->isSmartChild());  // ShadowCollections must be SmartChilds
+        TRI_ASSERT(!c->isSmartChild());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         // Additionally, whenever we see a Virtual Edge Collection, we must make
         // sure that the related shadow collections are part of the inventory.
@@ -903,6 +902,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
             auto realNames = logicalCollection->realNames();
             for (auto const& realCollectionName : realNames) {
               if (realCollectionName == shadowCollectionName) {
+                // ShadowCollections must be SmartChilds
+                TRI_ASSERT(logicalCollection->isSmartChild());
                 foundShadowCollection = true;
               }
             }
