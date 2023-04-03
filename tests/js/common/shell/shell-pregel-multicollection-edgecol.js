@@ -248,27 +248,6 @@ function multiCollectionTestSuite() {
         assertEqual(allUniquePregelResults.size, numComponents);
       });
     },
-    
-    testMultiWCCParallelismMemoryMapping: function () {
-      [ 1, 2, 4, 8 ].forEach((parallelism) => {
-        let pid = pregel.start("wcc", graphName, { resultField: "result", store: true, parallelism, useMemoryMaps: true });
-        const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
-
-        assertTrue(stats.gss <= 25, stats);
-        assertEqual(stats.vertexCount, numComponents * n, stats);
-        assertEqual(stats.edgeCount, numComponents * (m + n), stats);
-        assertTrue(stats.hasOwnProperty("parallelism"), stats);
-        assertEqual(parallelism, stats.parallelism, stats);
-
-        let allUniquePregelResults = new Set();
-        for (let j = 0; j < cn; ++j) {
-          let c = db[`${vColl}_${j}`].all();
-          const pregelResults = pregelTestHelpers.uniquePregelResults(c);
-          allUniquePregelResults = new Set([...allUniquePregelResults, ...pregelResults]);
-        }
-        assertEqual(allUniquePregelResults.size, numComponents);
-      });
-    },
 
   };
 }

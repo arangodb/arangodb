@@ -64,6 +64,9 @@ gtest priority=1000 parallelity=3 size=medium single -- --gtest_filter=-IResearc
 # Fuerte tests are executed in single env
 fuerte priority=500 single
 
+rta_makedata single
+rta_makedata single suffix=afo -- --activeFailover true
+
 
 # Cluster Tests
 
@@ -99,6 +102,8 @@ shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
+
+# TODO: rta_makedata cluster
 
 # Common Tests
 
