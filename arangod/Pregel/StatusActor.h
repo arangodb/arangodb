@@ -157,10 +157,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->id = msg.id;
     this->state->database = msg.database;
     this->state->algorithm = msg.algorithm;
-
-    // TODO: Get this from the message
-    this->state->created = std::chrono::steady_clock::now();
-
     this->state->ttl = msg.ttl;
     this->state->parallelism = msg.parallelism;
 
@@ -172,6 +168,11 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto operator()(message::PregelStarted msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
     this->state->timings.totalRuntime.setStart(msg.time);
+
+    auto duration = std::chrono::microseconds{msg.time.value};
+    this->state->created =
+        std::chrono::time_point<std::chrono::steady_clock>{duration};
+
     return std::move(this->state);
   }
 
@@ -218,7 +219,8 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   auto operator()(message::PregelFinished& msg)
       -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
-    this->state->expires = this->state->created + this->state->ttl.duration;
+    this->state->expires =
+        std::chrono::steady_clock::now() + this->state->ttl.duration;
     this->state->timings.storing.setStop(msg.time);
     this->state->timings.totalRuntime.setStop(msg.time);
 
