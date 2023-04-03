@@ -376,7 +376,6 @@ std::vector<std::string> const& LogicalCollection::shardKeys() const noexcept {
 }
 
 std::shared_ptr<ShardMap> LogicalCollection::shardIds() const {
-  LOG_DEVEL << "Calling LogicalCollection::shardIDs";
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->shardIds();
 }
