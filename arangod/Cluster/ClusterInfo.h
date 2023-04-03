@@ -40,6 +40,7 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
 #include "Replication2/AgencyCollectionSpecification.h"
