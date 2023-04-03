@@ -1,6 +1,10 @@
 devel
 -----
 
+* Make REST API `/_admin/shutdown` sleep for only half a second until it
+  initiates the server shutdown. Previously it slept for 2 seconds, but half
+  a second should already be enough to send the server's response out.
+
 * MDS-1001: Performance improvement in AQL. If you are using a traversal like
   `FOR v, e, p IN <....>` and later in the query access the last vertex on the path e.g.:
   `FILTER p.vertices[-1].name == "ArangoDB"` it will now be transformed to
