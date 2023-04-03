@@ -78,7 +78,6 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
   static std::function<void()> before;
 
-
   PhysicalCollectionMock(arangodb::LogicalCollection& collection);
   std::shared_ptr<arangodb::Index> createIndex(
       arangodb::velocypack::Slice info, bool restore, bool& created,
