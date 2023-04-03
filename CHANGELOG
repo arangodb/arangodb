@@ -66,6 +66,8 @@ devel
   default in one of the future releases of ArangoDB, once enough drivers and 
   other client tools have had the chance to adapt.
 
+* FE-218: Updated WebUI dependencies.
+
 * Fixed statistics values for writes executed and writes ignored when a query 
   is executed using the rule `optimize-cluster-single-document-operations`.
   It was always increasing the amount of writes executed, even if the operation
