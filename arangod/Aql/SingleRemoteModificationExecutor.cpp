@@ -215,7 +215,13 @@ auto SingleRemoteModificationExecutor<
 
   stats.incrWritesExecuted(writesExecuted);
   stats.incrWritesIgnored(writesIgnored);
-  stats.incrScannedIndex();
+  // the increment of index is not correct when the executor doesn't apply the
+  // single document optimization rule, but we leave the index calculation
+  // incorrect here too to maintain compatibility with the execution without the
+  // rule until fixed
+  if (isIndex) {
+    stats.incrScannedIndex();
+  }
   return result;
 }
 

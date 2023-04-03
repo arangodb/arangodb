@@ -149,6 +149,22 @@ function optimizerClusterSingleDocumentTestSuite () {
     });
   };
 
+  let assertForRuleInQuery = function (queryInfo, res) {
+    if (queryInfo.ruleToRemove.hasOwnProperty("optimizer")) {
+      assertEqual(-1, res.plan.rules.indexOf(ruleName));
+    } else {
+      assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query does not trigger rule as expected");
+    }
+  };
+
+  let pushStats = function (queryInfo, stats) {
+    queryInfo.statsInfo.push({
+      writesExecuted: stats.writesExecuted,
+      writesIgnored: stats.writesIgnored,
+      scannedIndex: stats.scannedIndex
+    });
+  };
+
   return {
     setUp : function () {
       setupC1();
@@ -589,100 +605,112 @@ function optimizerClusterSingleDocumentTestSuite () {
       });
     },
 
-    testStatsWhenApplyingRuleOneAtATime: function () {
+    testStatsWhenApplyingRuleOneAtATimeCompare: function () {
       const collName = "testCollectionStats";
       const doc = {value1: 1, value2: "a"};
       const values = [1, 3];
+      // to compare the query stats with and without the rule
+      const queryInfo = [{
+        ruleToRemove: {},
+        statsInfo: []
+      }, {ruleToRemove: {optimizer: {rules: ["-optimize-cluster-single-document-operations"]}}, statsInfo: []}];
       values.forEach(numShards => {
-        try {
-          db._create(collName, {numberOfShards: numShards});
-          for (let i = 0; i < 10; ++i) {
+        queryInfo.forEach(queryInfo => {
+          try {
+            db._create(collName, {numberOfShards: numShards});
             let query = `INSERT @doc IN ${collName} OPTIONS {ignoreErrors: true} RETURN NEW`;
-            let res = AQL_EXPLAIN(query, {doc: doc});
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query, {doc: doc});
+            let res = AQL_EXPLAIN(query, {doc: doc}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {doc: doc}, queryInfo.ruleToRemove);
             let newDoc = res.toArray()[0];
             const key = newDoc["_key"];
             assertEqual(newDoc.value1, 1);
             assertEqual(newDoc.value2, "a");
             let stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 1);
-            assertEqual(stats.writesIgnored, 0);
+            pushStats(queryInfo, stats);
 
             query = `INSERT {_key: ${key}} IN ${collName} OPTIONS {ignoreErrors: true} RETURN NEW`;
-            res = AQL_EXPLAIN(query);
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query);
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
             assertEqual(res.toArray().length, 0);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 0);
-            assertEqual(stats.writesIgnored, 1);
+            pushStats(queryInfo, stats);
 
-
-            query = `UPDATE {_key: @key} WITH {value1: ${i}, value2: 'abc'} IN ${collName} RETURN {old: OLD, new: NEW}`;
-            res = AQL_EXPLAIN(query, {key: key});
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query, {key: key});
+            query = `UPDATE {_key: @key} WITH {value1: 2, value2: 'abc'} IN ${collName} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
             let result = res.toArray()[0];
             assertEqual(result.old.value1, 1);
             assertEqual(result.old.value2, "a");
-            assertEqual(result.new.value1, i);
+            assertEqual(result.new.value1, 2);
             assertEqual(result.new.value2, "abc");
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 1);
-            assertEqual(stats.writesIgnored, 0);
+            pushStats(queryInfo, stats);
 
-            query = `UPDATE {_key: "test1"} WITH {value1: ${i}, value2: 'abc'} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
-            res = AQL_EXPLAIN(query);
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query);
+            query = `FOR d IN ${collName} FILTER d._key == @key RETURN d`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
+            result = res.toArray()[0];
+            assertEqual(result["_key"], key);
+            stats = res.getExtra().stats;
+            pushStats(queryInfo, stats);
+
+            query = `UPDATE {_key: "test1"} WITH {value1: 2, value2: 'abc'} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
             assertEqual(res.toArray().length, 0);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 0);
-            assertEqual(stats.writesIgnored, 1);
+            pushStats(queryInfo, stats);
 
-            query = `REPLACE {_key: @key} WITH {value1: ${i}} IN ${collName} RETURN {old: OLD, new: NEW}`;
-            res = AQL_EXPLAIN(query, {key: key});
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query, {key: key});
+            query = `REPLACE {_key: @key} WITH {value1: 2} IN ${collName} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
             result = res.toArray()[0];
-            assertEqual(result.old.value1, i);
+            assertEqual(result.old.value1, 2);
             assertEqual(result.old.value2, "abc");
             assertFalse(result.new.hasOwnProperty("value2"));
-            assertEqual(result.new.value1, i);
+            assertEqual(result.new.value1, 2);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 1);
-            assertEqual(stats.writesIgnored, 0);
+            pushStats(queryInfo, stats);
 
-            query = `REPLACE {_key: "test1"} WITH {value1: ${i}} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
-            res = AQL_EXPLAIN(query);
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query);
+            query = `REPLACE {_key: "test1"} WITH {value1: 2} IN ${collName} OPTIONS {ignoreErrors: true} RETURN {old: OLD, new: NEW}`;
+            res = AQL_EXPLAIN(query, {}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {}, queryInfo.ruleToRemove);
             assertEqual(res.toArray().length, 0);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 0);
-            assertEqual(stats.writesIgnored, 1);
+            pushStats(queryInfo, stats);
 
             query = `REMOVE {_key: @key} IN ${collName}`;
-            res = AQL_EXPLAIN(query, {key: key});
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query, {key: key});
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 1);
-            assertEqual(stats.writesIgnored, 0);
+            pushStats(queryInfo, stats);
 
             query = `REMOVE {_key: @key} IN ${collName} OPTIONS {ignoreErrors: true} `;
-            res = AQL_EXPLAIN(query, {key: key});
-            assertNotEqual(-1, res.plan.rules.indexOf(ruleName), "query " + query + " does not trigger rule");
-            res = db._query(query, {key: key});
+            res = AQL_EXPLAIN(query, {key: key}, queryInfo.ruleToRemove);
+            assertForRuleInQuery(queryInfo, res);
+            res = db._query(query, {key: key}, queryInfo.ruleToRemove);
             stats = res.getExtra().stats;
-            assertEqual(stats.writesExecuted, 0);
-            assertEqual(stats.writesIgnored, 1);
+            pushStats(queryInfo, stats);
+            assertEqual(db[collName].count(), 0);
+          } finally {
+            db._drop(collName);
           }
-          assertEqual(db[collName].count(), 0);
-        } finally {
-          db._drop(collName);
-        }
+        });
+        assertEqual(queryInfo[0].statsInfo.length, queryInfo[1].statsInfo.length);
+        queryInfo[0].statsInfo.forEach((info, idx) => {
+          const infoWithoutRule = queryInfo[1].statsInfo;
+          assertEqual(info.writesExecuted, infoWithoutRule[idx].writesExecuted);
+          assertEqual(info.writesIgnored, infoWithoutRule[idx].writesIgnored);
+          assertEqual(info.scannedIndex, infoWithoutRule[idx].scannedIndex);
+        });
       });
     },
   };
