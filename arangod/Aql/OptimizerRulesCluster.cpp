@@ -478,33 +478,10 @@ bool substituteClusterMultipleDocumentInsertOperations(
     return false;
   }
 
-  {
-    VarSet usedVars;
-    node = node->getFirstParent();
-    while (node) {
-      auto type = node->getType();
-      if (type == EN::RETURN) {
-        // trailing RETURN statements currently unsupported
-        return false;
-      }
-
-      if (type != EN::CALCULATION) {
-        return false;
-      }
-
-      if (type == EN::CALCULATION) {
-        if (!ExecutionNode::castTo<CalculationNode const*>(node)
-                 ->expression()
-                 ->isDeterministic()) {
-          return false;
-        }
-      }
-      node->getVariablesUsedHere(usedVars);
-      if (usedVars.contains(mod->inVariable())) {
-        return false;
-      }
-      node = node->getFirstParent();
-    }
+  // node cannot have any parent, because it either would have a RETURN or a
+  // modification node, which is not supported for now
+  if (node->getFirstParent() != nullptr) {
+    return false;
   }
 
   auto setterNode = plan->getVarSetBy(enumerateNode->inVariable()->id);

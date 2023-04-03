@@ -222,10 +222,10 @@ inline ExecutionStats& operator+=(
   return executionStats;
 }
 
-// TODO create class for multiple
-class SingleRemoteModificationStats {
+// TODO fix wrong index increments for execution with and without rules applied
+class CoordinatorModificationStats {
  public:
-  SingleRemoteModificationStats() noexcept
+  CoordinatorModificationStats() noexcept
       : _writesExecuted(0), _writesIgnored(0), _scannedIndex(0) {}
 
   void incrWritesExecuted(std::uint64_t value = 1) noexcept {
@@ -249,7 +249,7 @@ class SingleRemoteModificationStats {
     return _scannedIndex;
   }
 
-  void operator+=(SingleRemoteModificationStats const& stats) noexcept {
+  void operator+=(CoordinatorModificationStats const& stats) noexcept {
     _writesExecuted += stats._writesExecuted;
     _writesIgnored += stats._writesIgnored;
     _scannedIndex += stats._scannedIndex;
@@ -263,7 +263,7 @@ class SingleRemoteModificationStats {
 
 inline ExecutionStats& operator+=(
     ExecutionStats& executionStats,
-    SingleRemoteModificationStats const& filterStats) noexcept {
+    CoordinatorModificationStats const& filterStats) noexcept {
   executionStats.writesExecuted += filterStats.getWritesExecuted();
   executionStats.writesIgnored += filterStats.getWritesIgnored();
   executionStats.scannedIndex += filterStats.getScannedIndex();

@@ -67,8 +67,7 @@ struct MultipleRemoteModificationExecutor {
   };
   using Infos = MultipleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Stats =
-      SingleRemoteModificationStats;  // TODO implement class for multiple
+  using Stats = CoordinatorModificationStats;
 
   MultipleRemoteModificationExecutor(Fetcher&, Infos&);
   ~MultipleRemoteModificationExecutor() = default;

@@ -85,7 +85,9 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
                   size_t, AqlCall> {
   // note: this code currently is never triggered, because the optimizer
   // rule is not firing when the query uses a LIMIT
-  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "optimizer rule not supposed to be used with keyword LIMIT");
   auto stats = Stats{};
 
   if (input.hasDataRow()) {
@@ -157,6 +159,13 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
 
   stats.incrWritesExecuted(writesExecuted);
   stats.incrWritesIgnored(writesIgnored);
+  // the increment of index is not correct when the executor doesn't apply the
+  // single document optimization rule, but we leave the index calculation
+  // incorrect here too to maintain compatibility with the execution without the
+  // rule until fixed
+  if (isIndex) {
+    stats.incrScannedIndex();
+  }
   return result;
 }
 

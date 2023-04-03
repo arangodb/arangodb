@@ -41,7 +41,7 @@ if (!isServer) {
     return res;
   };
 }
-      
+
 const assertRuleIsUsed = (query, bind = {}, options = {}) => {
   let res = AQL_EXPLAIN(query, bind, options);
   assertNotEqual(-1, res.plan.rules.indexOf(ruleName));
@@ -68,8 +68,9 @@ function InsertMultipleDocumentsSuite(params) {
     tearDown: function () {
       db._drop(cn);
     },
-    
+
     testFromEnumerateListInvalidInputsNoArray: function () {
+
       const queries = [
         `LET docs = MERGE({}, {}) FOR doc IN docs INSERT doc INTO ${cn}`,
         `LET docs = NOOPT({}) FOR doc IN docs INSERT doc INTO ${cn}`,
@@ -91,7 +92,7 @@ function InsertMultipleDocumentsSuite(params) {
 
       assertEqual(0, db[cn].count());
     },
-    
+
     testFromEnumerateListInvalidInputsNoObjects: function () {
       const queries = [
         `FOR doc IN [[]] INSERT doc INTO ${cn}`,
@@ -111,7 +112,7 @@ function InsertMultipleDocumentsSuite(params) {
 
       assertEqual(0, db[cn].count());
     },
-    
+
     testFromEnumerateListInvalidInputsNoObjectsIgnoreErrors: function () {
       const queries = [
         `FOR doc IN [[], {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
@@ -123,7 +124,7 @@ function InsertMultipleDocumentsSuite(params) {
         assertRuleIsUsed(query);
         let res = db._query(query);
         assertEqual([], res.toArray());
-      
+
         assertEqual(1, db[cn].count());
 
         let stats = res.getExtra().stats;
@@ -135,12 +136,11 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testFromEnumerateListIgnoreErrors: function () {
-      let ignoreErrors = false;
-      const queries = [
-        `LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
-        `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
-      ];
       for (const ignoreErrors of [false, true]) {
+        const queries = [
+          `LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
+          `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
+        ];
         queries.forEach((query, idx) => {
           assertRuleIsUsed(query);
           try {
@@ -158,14 +158,14 @@ function InsertMultipleDocumentsSuite(params) {
         });
       }
     },
-    
+
     testTransactionalBehavior: function () {
       let docs = [];
       for (let i = 0; i < 1001; ++i) {
-        docs.push({ _key: "test" + i });
+        docs.push({_key: "test" + i});
       }
-      docs.push({ _key: "test0" });
-        
+      docs.push({_key: "test0"});
+
       const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
       try {
         assertRuleIsUsed(query, {docs});
@@ -178,14 +178,14 @@ function InsertMultipleDocumentsSuite(params) {
 
       assertEqual(0, db[cn].count());
     },
-    
+
     testTransactionalBehaviorWithIgnoreErrors: function () {
       let docs = [];
       for (let i = 0; i < 1001; ++i) {
-        docs.push({ _key: "test" + i });
+        docs.push({_key: "test" + i});
       }
-      docs.push({ _key: "test0" });
-        
+      docs.push({_key: "test0"});
+
       const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
       assertRuleIsUsed(query, {docs});
       let res = db._query(query, {docs});
@@ -193,44 +193,44 @@ function InsertMultipleDocumentsSuite(params) {
 
       assertEqual(1001, db[cn].count());
     },
-    
+
     testStatsWithoutErrors: function () {
       let docs = [];
       for (let i = 0; i < 1005; ++i) {
-        docs.push({ _key: "test" + i });
+        docs.push({_key: "test" + i});
       }
-        
+
       const query = `FOR doc IN @docs INSERT doc INTO ${cn}`;
       assertRuleIsUsed(query, {docs});
       let res = db._query(query, {docs});
       assertEqual([], res.toArray());
-      
+
       assertEqual(1005, db[cn].count());
 
       let stats = res.getExtra().stats;
       assertEqual(1005, stats.writesExecuted);
       assertEqual(0, stats.writesIgnored);
     },
-    
+
     testStatsWithIgnoreErrors: function () {
       let docs = [];
       for (let i = 0; i < 1001; ++i) {
-        docs.push({ _key: "test" + i });
+        docs.push({_key: "test" + i});
       }
-      docs.push({ _key: "test0" });
-        
+      docs.push({_key: "test0"});
+
       const query = `FOR doc IN @docs INSERT doc INTO ${cn} OPTIONS { ignoreErrors: true }`;
       assertRuleIsUsed(query, {docs});
       let res = db._query(query, {docs});
       assertEqual([], res.toArray());
-      
+
       assertEqual(1001, db[cn].count());
 
       let stats = res.getExtra().stats;
       assertEqual(1001, stats.writesExecuted);
       assertEqual(1, stats.writesIgnored);
     },
-    
+
     testReturnOld: function () {
       // initial document
       let query = `FOR d IN [{_key: '123', value: 1}] INSERT d INTO ${cn} OPTIONS { overwrite: false }`;
@@ -239,7 +239,7 @@ function InsertMultipleDocumentsSuite(params) {
       let res = db._query(query);
       assertEqual(db[cn].count(), 1);
       assertEqual([], res.toArray());
-      
+
       query = `FOR d IN [{_key: '123', value: 2}] INSERT d INTO ${cn} OPTIONS { overwriteMode: 'update' } RETURN {old: OLD}`;
       assertRuleIsNotUsed(query);
       res = db._query(query);
@@ -333,7 +333,7 @@ function InsertMultipleDocumentsSuite(params) {
       assertFalse(docInfo.new.value2.hasOwnProperty('name'));
       assertEqual(docInfo.new.value2.value3, 'a');
     },
-    
+
     testTrailingReturn: function () {
       let docs = [];
       for (let i = 0; i < numDocs; ++i) {
@@ -449,7 +449,7 @@ function InsertMultipleDocumentsSuite(params) {
         }
       }
     },
-    
+
     testSmartGraph: function () {
       if (!isEnterprise()) {
         // SmartGraphs only available in enterprise edition
@@ -507,7 +507,7 @@ function InsertMultipleDocumentsSuite(params) {
         smartGraphs._drop(graph, true);
       }
     },
-  
+
   };
 }
 
@@ -556,7 +556,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
 
     testFromEnumerateList: function () {
       const queries = [
-        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn}`, 
+        `LET list = [{value: 1}, {value: 2}]  FOR d in list INSERT d INTO ${cn}`,
         `FOR d in [{value: 1}, {value: 2}] LET i = d.value + 3 INSERT d INTO ${cn}`
       ];
       queries.forEach(query => {
@@ -579,15 +579,15 @@ function InsertMultipleDocumentsExplainSuite(params) {
         assertEqual(nodes[2].inVariable.name, nodes[1].outVariable.name);
       });
     },
-    
-    testEstimateCost: function() {
+
+    testEstimateCost: function () {
       const docs = [];
       const numDocs = 100;
       for (let i = 0; i < numDocs; ++i) {
         docs.push({});
       }
       const query = `FOR d in @docs INSERT d INTO ${cn}`;
-      
+
       const res = AQL_EXPLAIN(query, {docs: docs});
       const nodes = res.plan.nodes;
       assertEqual(nodes[2].type, "MultipleRemoteModificationNode");
@@ -599,12 +599,16 @@ function InsertMultipleDocumentsExplainSuite(params) {
       const queries = [
         `LET docs = (FOR i IN 1..1 FOR d IN ${cn} INSERT d INTO ${cn}) RETURN docs`,
         `LET docs = (FOR i IN 1..1 RETURN i) FOR d IN docs INSERT d INTO ${cn}`,
+        `LET illegalList = (FOR x IN ${cn} LIMIT 5 RETURN x)
+         LET confusePattern = SLEEP(1)
+         FOR d IN illegalList
+         INSERT d INTO ${cn}`
       ];
-      queries.forEach((query, idx) => {
+      queries.forEach((query) => {
         assertRuleIsNotUsed(query);
       });
     },
-    
+
     testInInnerLoop: function () {
       const queries = [
         `FOR i IN 1..1 FOR d IN ${cn} INSERT d INTO ${cn}`,
