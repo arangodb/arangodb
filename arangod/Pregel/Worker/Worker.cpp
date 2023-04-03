@@ -193,25 +193,26 @@ void Worker<V, E, M>::setupWorker() {
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(
-      RequestLane::INTERNAL_LOW,
-      [this, self = shared_from_this(),
-       statusUpdateCallback = std::move(_makeStatusCallback()),
-       finishedCallback = std::move(finishedCallback)] {
-        try {
-          auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
-                                          statusUpdateCallback);
-          _quiver = loader.load();
-        } catch (std::exception const& ex) {
-          LOG_PREGEL("a47c4", WARN)
-              << "caught exception in loadShards: " << ex.what();
-          throw;
-        } catch (...) {
-          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
-          throw;
-        }
-        finishedCallback();
-      });
+  scheduler->queue(RequestLane::INTERNAL_LOW,
+                   [this, self = shared_from_this(),
+                    statusUpdateCallback = std::move(_makeStatusCallback()),
+                    finishedCallback = std::move(finishedCallback)] {
+                     try {
+                       auto loader = GraphLoader<V, E>(
+                           _config, _algorithm->inputFormat(),
+                           OldLoadingUpdate{.fn = statusUpdateCallback});
+                       _quiver = loader.load();
+                     } catch (std::exception const& ex) {
+                       LOG_PREGEL("a47c4", WARN)
+                           << "caught exception in loadShards: " << ex.what();
+                       throw;
+                     } catch (...) {
+                       LOG_PREGEL("e932d", WARN)
+                           << "caught unknown exception in loadShards";
+                       throw;
+                     }
+                     finishedCallback();
+                   });
 }
 
 template<typename V, typename E, typename M>
@@ -530,9 +531,9 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
          statusUpdateCallback = std::move(_makeStatusCallback()),
          cleanup = std::move(cleanup)] {
           try {
-            auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
-                                            _config->globalShardIDs(),
-                                            std::move(statusUpdateCallback));
+            auto storer = GraphStorer<V, E>(
+                _config, _algorithm->inputFormat(), _config->globalShardIDs(),
+                OldStoringUpdate{.fn = std::move(statusUpdateCallback)});
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
             storer.store(_quiver);
           } catch (std::exception const& ex) {
