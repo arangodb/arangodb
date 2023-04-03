@@ -879,13 +879,25 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
     std::shared_ptr<ShardMap> shardMapNew = c->shardingInfo()->shardIds();
     auto names = c->realNamesForRead();
+    LOG_DEVEL << "Collection type: " << c->type()
+              << " , isSmart: " << c->isSmart()
+              << " , smartChild: " << c->isSmartChild()
+              << " , isSatellite: " << c->isSatellite();
+    if (c->type() == TRI_COL_TYPE_DOCUMENT) {
+      LOG_DEVEL << " - Document collection;
+    } else if (c->type() == TRI_COL_TYPE_EDGE) {
+      LOG_DEVEL << " - Edge collection;
+    }
+
     LOG_DEVEL << "Collection names: ";
     for (auto const& cName : names) {
       LOG_DEVEL << " - " << cName;
     }
     LOG_DEVEL << "ShardMap Original: " << shardMap.get();
     LOG_DEVEL << "ShardMap Other:    " << shardMapNew.get();
-    ADB_PROD_ASSERT(*shardMap == *shardMapNew);
+    ADB_PROD_ASSERT(*shardMap == *shardMapNew)
+        << inspection::json(shardMap, inspection::JsonPrintFormat::kPretty)
+        << inspection::json(shardMapNew, inspection::JsonPrintFormat::kPretty);
 
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
@@ -916,8 +928,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
           resultBuilder.openObject();
           view->properties(resultBuilder,
                            LogicalDataSource::Serialization::Inventory);
-          // details, !forPersistence because on restore any datasource ids will
-          // differ, so need an end-user representation
+          // details, !forPersistence because on restore any
+          // datasource ids will differ, so need an end-user
+          // representation
           resultBuilder.close();
         }
 
@@ -2258,7 +2271,7 @@ void RestReplicationHandler::handleCommandSync() {
     result.add("name", VPackValue(it.second));
     result.close();  // one collection
   }
-  result.close();  // collections
+  result.close();    // collections
 
   auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
