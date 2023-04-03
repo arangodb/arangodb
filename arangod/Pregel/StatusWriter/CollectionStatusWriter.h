@@ -54,6 +54,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto readResult() -> OperationResult override;
+  [[nodiscard]] auto readAllNonExpiredResults() -> OperationResult override;
   [[nodiscard]] auto readAllResults() -> OperationResult override;
   [[nodiscard]] auto updateResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto deleteResult() -> OperationResult override;
@@ -71,6 +72,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
  private:
+  [[nodiscard]] auto executeQuery(std::string queryString) -> OperationResult;
   [[nodiscard]] auto handleOperationResult(SingleCollectionTransaction& trx,
                                            OperationOptions& options,
                                            Result& transactionResult,
@@ -84,9 +86,6 @@ struct CollectionStatusWriter : StatusWriterInterface {
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };
 
-// Note: Put inspect methods into dedicated own header file.
-// This will speed up compilation times. Only include where we actually
-// need to serialize.
 template<typename Inspector>
 auto inspect(Inspector& f, CollectionStatusWriter::OperationData& x) {
   return f.object(x).fields(f.field("_key", x._key), f.field("data", x.data));

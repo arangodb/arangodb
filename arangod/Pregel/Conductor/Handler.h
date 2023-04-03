@@ -25,6 +25,7 @@
 #include <memory>
 #include <variant>
 #include "Actor/HandlerBase.h"
+#include "Pregel/Conductor/ExecutionStates/CanceledState.h"
 #include "Pregel/Conductor/ExecutionStates/CreateWorkersState.h"
 #include "Pregel/SpawnActor.h"
 #include "Pregel/SpawnMessages.h"
@@ -53,10 +54,12 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
     for (auto& [server, message] : messages) {
       this->dispatch(
           this->state->spawnActor,
-          pregel::message::SpawnMessages{
-              pregel::message::SpawnWorker{.destinationServer = server,
-                                           .conductor = this->self,
-                                           .message = message}});
+          pregel::message::SpawnMessages{pregel::message::SpawnWorker{
+              .destinationServer = server,
+              .conductor = this->self,
+              .resultActorOnCoordinator = this->state->resultActor,
+              .ttl = this->state->specifications.ttl,
+              .message = message}});
     }
     return std::move(this->state);
   }
@@ -152,6 +155,17 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
       this->finish();
       this->template dispatch<pregel::message::SpawnMessages>(
           this->state->spawnActor, pregel::message::SpawnCleanup{});
+    }
+    return std::move(this->state);
+  }
+
+  auto operator()(message::Cancel msg) -> std::unique_ptr<ConductorState> {
+    LOG_TOPIC("012d3", INFO, Logger::PREGEL)
+        << fmt::format("Conductor Actor: Run {} is canceled",
+                       this->state->specifications.executionNumber);
+    if (this->state->executionState->canBeCanceled()) {
+      changeState(std::make_unique<Canceled>(*this->state));
+      sendMessages();
     }
     return std::move(this->state);
   }
