@@ -1,4 +1,3 @@
-import { useDisclosure } from "@chakra-ui/react";
 import React, {
   createContext,
   MutableRefObject,
@@ -19,11 +18,6 @@ import { useFetchAndSetupGraphParams } from "./useFetchAndSetupGraphParams";
 import { useFetchGraphData } from "./useFetchGraphData";
 import { useGraphSettingsHandlers } from "./useGraphSettingsHandlers";
 
-type AddEdgeArgs = {
-  data: { from: string; to: string };
-  callback: (edge: EdgeDataType) => void;
-};
-
 type DatasetsType = {
   nodes: DataSet<NodeDataType>;
   edges: DataSet<EdgeDataType>;
@@ -34,7 +28,6 @@ type GraphContextType = {
   onApplySettings: (updatedParams?: { [key: string]: string }) => void;
   onRestoreDefaults: () => void;
   network?: Network;
-  isSettingsOpen?: boolean;
   isGraphLoading?: boolean;
   fetchDuration?: number;
   datasets?: DatasetsType;
@@ -44,11 +37,11 @@ type GraphContextType = {
     rightClickedEntity: RightClickedEntityType | undefined
   ) => void;
   selectedAction?: SelectedActionType;
-  setSelectedAction: (selectedAction: SelectedActionType | undefined) => void;
+  setSelectedAction: React.Dispatch<
+    React.SetStateAction<SelectedActionType | undefined>
+  >;
   setNetwork: (network: Network) => void;
-  toggleSettings: () => void;
   onClearAction: () => void;
-  onAddEdge: (args: AddEdgeArgs) => void;
   selectedEntity?: SelectedEntityType;
   onSelectEntity: (data: SelectedEntityType) => void;
   hasDrawnOnce: MutableRefObject<boolean>;
@@ -65,40 +58,19 @@ const useGraphName = () => {
   return graphName;
 };
 
-const useGraphSettingsDisclosure = () => {
-  const {
-    onOpen: onOpenSettings,
-    onClose: onCloseSettings,
-    isOpen: isSettingsOpen
-  } = useDisclosure();
-  const toggleSettings = () => {
-    isSettingsOpen ? onCloseSettings() : onOpenSettings();
-  };
-  return { toggleSettings, isSettingsOpen };
-};
-
 const useGraphActions = () => {
   const [selectedAction, setSelectedAction] = useState<
     SelectedActionType | undefined
   >();
+  const [selectedEntity, onSelectEntity] = useState<SelectedEntityType>();
   const onClearAction = () => {
     setSelectedAction(undefined);
   };
-  const onAddEdge = ({ data, callback }: AddEdgeArgs) => {
-    setSelectedAction(action => {
-      if (!action) {
-        return;
-      }
-      return { ...action, from: data.from, to: data.to, callback };
-    });
-  };
-  const [selectedEntity, onSelectEntity] = useState<SelectedEntityType>();
   return {
     selectedEntity,
     selectedAction,
     onSelectEntity,
     setSelectedAction,
-    onAddEdge,
     onClearAction
   };
 };
@@ -110,6 +82,7 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [rightClickedEntity, setRightClickedEntity] = useState<
     RightClickedEntityType
   >();
+
   const graphName = useGraphName();
 
   const {
@@ -137,14 +110,11 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
     setUrlParams
   });
 
-  const { toggleSettings, isSettingsOpen } = useGraphSettingsDisclosure();
-
   const {
     selectedEntity,
     selectedAction,
     onSelectEntity,
     setSelectedAction,
-    onAddEdge,
     onClearAction
   } = useGraphActions();
 
@@ -156,15 +126,12 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
         setNetwork,
         graphData,
         graphName,
-        toggleSettings,
         selectedAction,
         setSelectedAction,
         onClearAction,
-        isSettingsOpen,
         isGraphLoading,
         rightClickedEntity,
         setRightClickedEntity,
-        onAddEdge,
         datasets,
         setDatasets,
         fetchDuration,

@@ -3,8 +3,17 @@ import { DataSet } from "vis-data";
 import { Network } from "vis-network";
 import { GraphPointer } from "../GraphAction.types";
 import { useGraph } from "../GraphContext";
+import { EdgeDataType } from "../GraphData.types";
 
 let timer: number;
+
+type AddEdgeData = { from: string; to: string };
+type AddEdgeCallback = (edge: EdgeDataType) => void;
+type AddEdgeArgs = {
+  data: AddEdgeData;
+  callback: AddEdgeCallback;
+};
+
 export const useSetupGraphNetwork = ({
   visJsRef
 }: {
@@ -14,7 +23,7 @@ export const useSetupGraphNetwork = ({
     graphData,
     setNetwork,
     setDatasets,
-    onAddEdge,
+    setSelectedAction,
     onSelectEntity,
     hasDrawnOnce,
     setRightClickedEntity
@@ -23,7 +32,14 @@ export const useSetupGraphNetwork = ({
 
   const { edges, nodes, settings } = graphData || {};
   const { layout: options } = settings || {};
-
+  const onAddEdge = ({ data, callback }: AddEdgeArgs) => {
+    setSelectedAction(action => {
+      if (!action) {
+        return;
+      }
+      return { ...action, from: data.from, to: data.to, callback };
+    });
+  };
   useEffect(() => {
     if (!visJsRef.current) {
       return;
@@ -35,7 +51,7 @@ export const useSetupGraphNetwork = ({
       ...options,
       manipulation: {
         enabled: false,
-        addEdge: function(data: { from: string; to: string }, callback: any) {
+        addEdge: function(data: AddEdgeData, callback: AddEdgeCallback) {
           onAddEdge({ data, callback });
         }
       },
