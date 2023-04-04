@@ -558,7 +558,7 @@ function testSuite() {
      
       res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value1') RETURN 1").toArray();
       assertEqual(100, res.length);
-      res = db._query("FOR doc IN `" + extendedName + "` FILTER HAS(doc, 'value2') RETURN 1").toArray();
+      res = db._query("FOR doc IN @@coll FILTER HAS(doc, 'value2') RETURN 1", { "@coll": extendedName }).toArray();
       assertEqual(50, res.length);
       
       // update by id
@@ -1039,7 +1039,7 @@ function testSuite() {
       }
       assertTrue(tries < 60);
 
-      res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._to == '" + extendedName + "/test0' RETURN doc").toArray();
+      res = db._query("FOR doc IN `" + traditionalName + "` FILTER doc._to == @to RETURN doc", { to: extendedName + "/test0" }).toArray();
       assertEqual(10, res.length);
       // sort by the numeric part of _from
       res.sort((l, r) => {
