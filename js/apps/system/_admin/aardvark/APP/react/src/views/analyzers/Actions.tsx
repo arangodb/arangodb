@@ -1,16 +1,13 @@
+import { pick } from 'lodash';
 import React, { MouseEvent, useState } from 'react';
+import { mutate } from "swr";
+import { IconButton } from "../../components/arango/buttons";
 import { Modal, ModalBody, ModalFooter, ModalHeader } from "../../components/modal";
 import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { mutate } from "swr";
-import { pick } from 'lodash';
-import { FormState } from "./constants";
 import { State } from '../../utils/constants';
-import { IconButton } from "../../components/arango/buttons";
-import { ViewAnalyzerModal } from './ViewAnalyzerModal';
 import { userIsAdmin } from '../../utils/usePermissions';
-
-declare var frontendConfig: { [key: string]: any };
-declare var arangoHelper: { [key: string]: any };
+import { FormState } from "./constants";
+import { ViewAnalyzerModal } from './ViewAnalyzerModal';
 
 type ButtonProps = {
   analyzer: FormState;
@@ -30,18 +27,18 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
       const result = await getApiRouteForCurrentDB().delete(`/analyzer/${analyzer.name}`, { force: forceDelete });
 
       if (result.body.error) {
-        arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
+        window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${result.body.errorMessage}`);
       } else {
-        arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
+        window.arangoHelper.arangoNotification('Success', `Deleted Analyzer: ${analyzer.name}`);
         await mutate('/analyzer');
       }
-    } catch (e) {
-      arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
+    } catch (e: any) {
+      window.arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
     }
   };
 
   return <>
-    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)}/>
+    <IconButton icon={'trash-o'} style={{ background: 'transparent' }} onClick={() => setShow(true)} />
     <Modal isOpen={show} onClose={() => setShow(false)}>
       <ModalHeader>
         Delete Analyzer {analyzer.name}?
@@ -58,7 +55,7 @@ const DeleteButton = ({ analyzer }: ButtonProps) => {
         <br />
         <label htmlFor={'force-delete'} className="pure-checkbox">
           <input id={'force-delete'} type={'checkbox'} checked={forceDelete} onChange={toggleForce}
-                 style={{ width: 'auto' }}/> Force Delete
+            style={{ width: 'auto' }} /> Force Delete
         </label>
       </ModalBody>
       <ModalFooter>
@@ -128,18 +125,18 @@ interface ActionProps {
 const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
   const isUserDefined = analyzer.name.includes('::');
   const isSameDB = isUserDefined
-    ? analyzer.name.split('::')[0] === frontendConfig.db
-    : frontendConfig.db === '_system';
+    ? analyzer.name.split('::')[0] === window.frontendConfig.db
+    : window.frontendConfig.db === '_system';
   const isAdminUser = userIsAdmin(permission);
   const canDelete = isUserDefined && isSameDB && isAdminUser;
 
   return <>
-    <ViewButton analyzer={analyzer} modalCid={`modal-content-view-${modalCidSuffix}`}/>
+    <ViewButton analyzer={analyzer} modalCid={`modal-content-view-${modalCidSuffix}`} />
     {
       canDelete
         ? <>
           &nbsp;
-          <DeleteButton analyzer={analyzer} modalCid={`modal-content-delete-${modalCidSuffix}`}/>
+          <DeleteButton analyzer={analyzer} modalCid={`modal-content-delete-${modalCidSuffix}`} />
         </>
         : null
     }
@@ -147,4 +144,3 @@ const Actions = ({ analyzer, permission, modalCidSuffix }: ActionProps) => {
 };
 
 export default Actions;
-

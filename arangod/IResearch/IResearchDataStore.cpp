@@ -870,6 +870,7 @@ Result IResearchDataStore::commitUnsafeImpl(
       commitLock.lock();
     }
     auto engineSnapshot = _engine->currentSnapshot();
+    TRI_IF_FAILURE("ArangoSearch::DisableMoveTickInCommit") { return {}; }
     if (ADB_UNLIKELY(!engineSnapshot)) {
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("Failed to get engine snapshot while committing "

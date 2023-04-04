@@ -25,8 +25,10 @@
 
 #include <memory>
 #include <cstdint>
+#include <variant>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/overload.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -41,6 +43,7 @@
 #include "Pregel/Algos/SCC/SCCValue.h"
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -138,11 +141,19 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
     }
   }
-  // TODO GORDO-1584 and when using actors: send message to status actor instead
-  // currently if statusUpdateCallback captures WorkerHandler by reference, this
-  // can lead to to a bad alloc
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
+
+  std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                        update.fn(message::GraphLoadingUpdate{
+                            .verticesLoaded = result->numberOfVertices(),
+                            .edgesLoaded = result->numberOfEdges(),
+                            .memoryBytesUsed = 0  // TODO
+                        });
+                      },
+                      [](OldLoadingUpdate const& update) {
+                        SchedulerFeature::SCHEDULER->queue(
+                            RequestLane::INTERNAL_LOW, update.fn);
+                      }},
+             updateCallback);
   return result;
 }
 
@@ -225,9 +236,18 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
       break;
     }
 
-    // log only every 10 seconds
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       statusUpdateCallback);
+    std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result->numberOfVertices(),
+                              .edgesLoaded = result->numberOfEdges(),
+                              .memoryBytesUsed = 0  // TODO
+                          });
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+               updateCallback);
   }
 }
 

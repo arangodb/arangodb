@@ -36,31 +36,16 @@ namespace pregel {
 struct MessageStats {
   size_t sendCount = 0;
   size_t receivedCount = 0;
+  size_t memoryBytesUsedForMessages = 0;
   double superstepRuntimeSecs = 0;
 
   MessageStats() = default;
-  explicit MessageStats(VPackSlice statValues) { accumulate(statValues); }
   MessageStats(size_t s, size_t r) : sendCount(s), receivedCount(r) {}
 
   void accumulate(MessageStats const& other) {
     sendCount += other.sendCount;
     receivedCount += other.receivedCount;
     superstepRuntimeSecs += other.superstepRuntimeSecs;
-  }
-
-  void accumulate(VPackSlice statValues) {
-    VPackSlice p = statValues.get(Utils::sendCountKey);
-    if (p.isInteger()) {
-      sendCount += p.getUInt();
-    }
-    p = statValues.get(Utils::receivedCountKey);
-    if (p.isInteger()) {
-      receivedCount += p.getUInt();
-    }
-    // p = statValues.get(Utils::superstepRuntimeKey);
-    // if (p.isNumber()) {
-    //  superstepRuntimeSecs += p.getNumber<double>();
-    //}
   }
 
   void serializeValues(VPackBuilder& b) const {
@@ -97,13 +82,6 @@ struct StatsManager {
 
   void accumulateActiveCounts(std::string const& sender, uint64_t active) {
     _activeStats[sender] += active;
-  }
-
-  void accumulateMessageStats(VPackSlice data) {
-    VPackSlice sender = data.get(Utils::senderKey);
-    if (sender.isString()) {
-      _serverStats[sender.copyString()].accumulate(data);
-    }
   }
 
   void accumulateMessageStats(std::string const& sender,
