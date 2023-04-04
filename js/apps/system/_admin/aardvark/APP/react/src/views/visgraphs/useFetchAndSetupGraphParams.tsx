@@ -11,7 +11,7 @@ export const fetchUserConfig = async () => {
   const data = await getRouteForDB(window.frontendConfig.db, "_api").get(
     `/user/${username}/config`
   );
-  return data.body.result?.visgraphs;
+  return data.body.result?.['graph-v2'];
 };
 
 export const useFetchAndSetupGraphParams = ({ graphName }: { graphName: string }) => {

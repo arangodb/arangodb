@@ -7,7 +7,7 @@ import { useGlobalStyleReset } from "../../utils/useGlobalStyleReset";
 import "./graph.css";
 import { GraphDisplay } from "./GraphDisplay.tsx";
 
-const VisGraphReactView = () => {
+const GraphV2ReactView = () => {
   useDisableNavBar();
   useGlobalStyleReset();
 
@@ -20,4 +20,4 @@ const VisGraphReactView = () => {
   );
 };
 
-window.VisGraphReactView = VisGraphReactView;
+window.GraphV2ReactView = GraphV2ReactView;
