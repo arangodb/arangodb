@@ -25,6 +25,7 @@
 #include <chrono>
 #include <variant>
 #include "Actor/ActorPID.h"
+#include "Pregel/PregelOptions.h"
 #include "Inspection/Types.h"
 
 namespace arangodb::pregel::message {

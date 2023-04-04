@@ -119,6 +119,109 @@ auto inspect(Inspector& f, PregelTimings& x) {
       f.field("gss", x.gss));
 }
 
+struct GraphLoadingDetails {
+  auto add(GraphLoadingDetails const& other) -> void {
+    verticesLoaded += other.verticesLoaded;
+    edgesLoaded += other.edgesLoaded;
+    memoryBytesUsed += other.memoryBytesUsed;
+  }
+  std::uint64_t verticesLoaded = 0;
+  std::uint64_t edgesLoaded = 0;
+  std::uint64_t memoryBytesUsed = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoadingDetails& x) {
+  return f.object(x).fields(f.field("verticesLoaded", x.verticesLoaded),
+                            f.field("edgesLoaded", x.edgesLoaded),
+                            f.field("memoryBytesUsed", x.memoryBytesUsed));
+}
+struct GraphStoringDetails {
+  auto add(GraphStoringDetails const& other) -> void {
+    verticesStored += other.verticesStored;
+  }
+  uint64_t verticesStored = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphStoringDetails& x) {
+  return f.object(x).fields(f.field("verticesStored", x.verticesStored));
+}
+struct GlobalSuperStepDetails {
+  auto add(GlobalSuperStepDetails const& other) -> void {
+    verticesProcessed += other.verticesProcessed;
+    messagesSent += other.messagesSent;
+    messagesReceived += other.messagesReceived;
+    memoryBytesUsedForMessages += other.memoryBytesUsedForMessages;
+  }
+  uint64_t verticesProcessed = 0;
+  uint64_t messagesSent = 0;
+  uint64_t messagesReceived = 0;
+  uint64_t memoryBytesUsedForMessages = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GlobalSuperStepDetails& x) {
+  return f.object(x).fields(
+      f.field("verticesProcessed", x.verticesProcessed),
+      f.field("messagesSent", x.messagesSent),
+      f.field("messagesReceived", x.messagesReceived),
+      f.field("memoryBytesUsedForMessages", x.memoryBytesUsedForMessages));
+}
+
+struct Details {
+  GraphLoadingDetails loading;
+  GraphStoringDetails storing;
+  std::unordered_map<std::string, GlobalSuperStepDetails> computing;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, Details& x) {
+  return f.object(x).fields(f.field("graphLoading", x.loading),
+                            f.field("computing", x.computing),
+                            f.field("graphStoring", x.storing));
+}
+struct StatusDetails {
+  auto update(ServerID server, GraphLoadingDetails const& loadingDetails)
+      -> void {
+    perWorker[server].loading = loadingDetails;
+    // update combined
+    GraphLoadingDetails loadingCombined;
+    for (auto& [server, details] : perWorker) {
+      loadingCombined.add(details.loading);
+    }
+    combined.loading = loadingCombined;
+  }
+  auto update(ServerID server, GraphStoringDetails const& storingDetails)
+      -> void {
+    perWorker[server].storing = storingDetails;
+    // update combined
+    GraphStoringDetails storingCombined;
+    for (auto& [server, details] : perWorker) {
+      storingCombined.add(details.storing);
+    }
+    combined.storing = storingCombined;
+  }
+  auto update(ServerID server, uint64_t gss,
+              GlobalSuperStepDetails const& gssDetails) -> void {
+    auto gssName = fmt::format("gss_{}", gss);
+    perWorker[server].computing[gssName] = gssDetails;
+    // update combined
+    GlobalSuperStepDetails lastGssCombined;
+    for (auto& [server, details] : perWorker) {
+      auto detailsForGss = details.computing.contains(gssName)
+                               ? details.computing[gssName]
+                               : GlobalSuperStepDetails{};
+      lastGssCombined.add(detailsForGss);
+    }
+    combined.computing[gssName] = lastGssCombined;
+  }
+
+  std::unordered_map<ServerID, Details> perWorker;
+  Details combined;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, StatusDetails& x) {
+  return f.object(x).fields(f.field("total", x.combined),
+                            f.field("perWorker", x.perWorker));
+}
+
 struct StatusState {
   std::string stateName;
   ExecutionNumber id;
@@ -131,6 +234,9 @@ struct StatusState {
   PregelTimings timings;
   uint64_t gss;
   VPackBuilder aggregators;
+  uint64_t vertexCount;
+  uint64_t edgeCount;
+  StatusDetails details;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusState& x) {
@@ -148,8 +254,13 @@ auto inspect(Inspector& f, StatusState& x) {
       f.field("expires", formatted_expires), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism), f.field("timings", x.timings),
       f.field("gss", x.gss),
+
       // TODO embed aggregators field (it already has "aggregators" as key)
-      f.field("aggregators", x.aggregators));
+      f.field("aggregators", x.aggregators),
+
+      f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
+      f.field("details", x.details)
+      );
 }
 
 template<typename Runtime>
@@ -211,12 +322,6 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
     this->state->created =
         std::chrono::time_point<std::chrono::steady_clock>{duration};
 
-    return std::move(this->state);
-  }
-
-  auto operator()(message::LoadingStarted msg) -> std::unique_ptr<StatusState> {
-    this->state->stateName = msg.state;
-    this->state->timings.loading.setStart(msg.time);
     return std::move(this->state);
   }
 
