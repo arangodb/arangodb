@@ -299,12 +299,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         LogIndex newCommitIndex, std::shared_ptr<QuorumData> quorum)
         -> ResolvedPromiseSet;
 
-    [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
-        -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>>;
-
-    [[nodiscard]] auto getLogConsumerIterator(std::optional<LogRange> bounds)
-        const -> std::unique_ptr<LogRangeIterator>;
-
     [[nodiscard]] auto getLocalStatistics() const -> LogStatistics;
 
     [[nodiscard]] auto createAppendEntriesRequest(

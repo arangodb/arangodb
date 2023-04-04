@@ -870,7 +870,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   // including the InMemory part.
 
   if (inMemoryLog.getLastIndex() > follower.nextPrevLogIndex) {
-    auto it = getInternalLogIterator(follower.nextPrevLogIndex + 1);
+    auto it = _self._inMemoryLogManager->getInternalLogIterator(
+        follower.nextPrevLogIndex + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
     auto sizeCounter = std::size_t{0};
     while (auto entry = it->next()) {
@@ -1031,115 +1032,6 @@ auto replicated_log::LogLeader::GuardedLeaderData::handleAppendEntriesResponse(
   return std::make_pair(prepareAppendEntries(), std::move(toBeResolved));
 }
 
-auto replicated_log::LogLeader::GuardedLeaderData::getInternalLogIterator(
-    LogIndex firstIdx) const
-    -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
-  // TODO Move this function into the InMemoryLogManager; we also don't need to
-  //      acquire the leader's lock.
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
-  if (inMemoryLog.getFirstIndex() <= firstIdx) {
-    auto const endIdx = inMemoryLog.getLastTermIndexPair().index + 1;
-    TRI_ASSERT(firstIdx <= endIdx);
-    return inMemoryLog.getMemtryIteratorFrom(firstIdx);
-  }
-
-  auto diskIter = _self._storageManager->getPersistedLogIterator(firstIdx);
-
-  struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
-    explicit OverlayIterator(
-        std::unique_ptr<PersistedLogIterator> diskIter,
-        std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> inMemoryIter,
-        LogRange inMemoryRange)
-        : _diskIter(std::move(diskIter)),
-          _inMemoryIter(std::move(inMemoryIter)),
-          _inMemoryRange(inMemoryRange) {}
-
-    auto next() -> std::optional<InMemoryLogEntry> override {
-      // iterate over the disk until it is covered by the in memory part
-      if (_diskIter) {
-        auto entry = _diskIter->next();
-        if (entry) {
-          if (not _inMemoryRange.contains(entry->logIndex())) {
-            return InMemoryLogEntry{*entry};
-          }
-        }
-        _diskIter.reset();
-      }
-
-      return _inMemoryIter->next();
-    }
-
-    std::unique_ptr<PersistedLogIterator> _diskIter;
-    std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> _inMemoryIter;
-    LogRange _inMemoryRange;
-  };
-
-  return std::make_unique<OverlayIterator>(
-      std::move(diskIter), inMemoryLog.getMemtryIteratorFrom(firstIdx),
-      inMemoryLog.getIndexRange());
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::getLogConsumerIterator(
-    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
-  // TODO Move this function into the InMemoryLogManager; we also don't need to
-  //      acquire the leader's lock.
-
-  // Note that there can be committed log entries only in memory, because they
-  // might not be persisted locally.
-
-  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
-  // Intersect the range with the committed range
-  auto range = LogRange{LogIndex{0}, commitIndex + 1};
-  if (bounds) {
-    range = intersect(range, *bounds);
-  }
-
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
-  // check if we can serve everything from memory
-  if (inMemoryLog.getIndexRange().contains(range)) {
-    return inMemoryLog.getIteratorRange(range);
-  }
-
-  // server from disk
-  auto diskIter = _self._storageManager->getCommittedLogIterator(range);
-
-  struct OverlayIterator : LogRangeIterator {
-    explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
-                             std::unique_ptr<LogRangeIterator> inMemoryIter,
-                             LogRange inMemoryRange, LogRange range)
-        : _diskIter(std::move(diskIter)),
-          _inMemoryIter(std::move(inMemoryIter)),
-          _inMemoryRange(inMemoryRange),
-          _range(range) {}
-
-    auto next() -> std::optional<LogEntryView> override {
-      // iterate over the disk until it is covered by the in memory part
-      if (_diskIter) {
-        auto entry = _diskIter->next();
-        if (entry) {
-          if (not _inMemoryRange.contains(entry->logIndex())) {
-            return entry;
-          }
-        }
-        _diskIter.reset();
-      }
-
-      return _inMemoryIter->next();
-    }
-
-    auto range() const noexcept -> LogRange override { return _range; }
-
-    std::unique_ptr<LogRangeIterator> _diskIter;
-    std::unique_ptr<LogRangeIterator> _inMemoryIter;
-    LogRange _inMemoryRange;
-    LogRange _range;
-  };
-
-  return std::make_unique<OverlayIterator>(std::move(diskIter),
-                                           inMemoryLog.getIteratorRange(range),
-                                           inMemoryLog.getIndexRange(), range);
-}
-
 /*
  * Collects last acknowledged term/index pairs from all followers.
  * While doing so, it calculates the largest common index, which is
@@ -1297,8 +1189,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
         [this, index](GuardedLeaderData& leaderData)
             -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
-          // TODO Move this lambda into InMemoryLogManager (after
-          //      getLogConsumerIterator() was moved)
+          // TODO Move this lambda into InMemoryLogManager
           auto const commitIndex = _inMemoryLogManager->getCommitIndex();
           auto const inMemoryLog = _inMemoryLogManager->getInMemoryLog();
           TRI_ASSERT(index <= commitIndex);
@@ -1326,7 +1217,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
           }
 
           return std::make_pair(testIndex,
-                                leaderData.getLogConsumerIterator(
+                                _inMemoryLogManager->getLogConsumerIterator(
                                     LogRange{testIndex, commitIndex + 1}));
         });
 
@@ -1341,7 +1232,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
 auto replicated_log::LogLeader::getLogConsumerIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
-  return _guardedLeaderData.getLockedGuard()->getLogConsumerIterator(bounds);
+  return _inMemoryLogManager->getLogConsumerIterator(bounds);
 }
 
 replicated_log::LogLeader::LocalFollower::LocalFollower(
@@ -1755,8 +1646,7 @@ auto replicated_log::LogLeader::getInternalLogIterator(
     -> std::unique_ptr<PersistedLogIterator> {
   auto range =
       bounds ? *bounds : LogRange{LogIndex{0}, LogIndex{std::uint64_t(-1)}};
-  auto iter =
-      _guardedLeaderData.getLockedGuard()->getInternalLogIterator(range.from);
+  auto iter = _inMemoryLogManager->getInternalLogIterator(range.from);
 
   struct Adapter : PersistedLogIterator {
     explicit Adapter(std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> iter,

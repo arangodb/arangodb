@@ -52,6 +52,13 @@ struct IInMemoryLogManager {
       std::variant<LogMetaPayload, LogPayload> payload, LogTerm term,
       InMemoryLogEntry::clock::time_point insertTp, bool waitForSync)
       -> LogIndex = 0;
+
+  [[nodiscard]] virtual auto getInternalLogIterator(LogIndex firstIdx) const
+      -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> = 0;
+
+  [[nodiscard]] virtual auto getLogConsumerIterator(
+      std::optional<LogRange> bounds) const
+      -> std::unique_ptr<LogRangeIterator> = 0;
 };
 
 }  // namespace comp

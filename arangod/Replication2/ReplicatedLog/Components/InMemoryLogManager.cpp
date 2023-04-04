@@ -124,6 +124,115 @@ auto InMemoryLogManager::appendLogEntry(
   });
 }
 
+auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
+    -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
+  return _guardedData.doUnderLock(
+      [&](auto& data) -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> {
+        auto const& inMemoryLog = data._inMemoryLog;
+        if (inMemoryLog.getFirstIndex() <= firstIdx) {
+          auto const endIdx = inMemoryLog.getLastTermIndexPair().index + 1;
+          TRI_ASSERT(firstIdx <= endIdx);
+          return inMemoryLog.getMemtryIteratorFrom(firstIdx);
+        }
+
+        auto diskIter = _storageManager->getPersistedLogIterator(firstIdx);
+
+        struct OverlayIterator : TypedLogIterator<InMemoryLogEntry> {
+          explicit OverlayIterator(
+              std::unique_ptr<PersistedLogIterator> diskIter,
+              std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> inMemoryIter,
+              LogRange inMemoryRange)
+              : _diskIter(std::move(diskIter)),
+                _inMemoryIter(std::move(inMemoryIter)),
+                _inMemoryRange(inMemoryRange) {}
+
+          auto next() -> std::optional<InMemoryLogEntry> override {
+            // iterate over the disk until it is covered by the in memory part
+            if (_diskIter) {
+              auto entry = _diskIter->next();
+              if (entry) {
+                if (not _inMemoryRange.contains(entry->logIndex())) {
+                  return InMemoryLogEntry{*entry};
+                }
+              }
+              _diskIter.reset();
+            }
+
+            return _inMemoryIter->next();
+          }
+
+          std::unique_ptr<PersistedLogIterator> _diskIter;
+          std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> _inMemoryIter;
+          LogRange _inMemoryRange;
+        };
+
+        return std::make_unique<OverlayIterator>(
+            std::move(diskIter), inMemoryLog.getMemtryIteratorFrom(firstIdx),
+            inMemoryLog.getIndexRange());
+      });
+}
+
+auto InMemoryLogManager::getLogConsumerIterator(
+    std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
+  return _guardedData.doUnderLock([&](auto& data)
+                                      -> std::unique_ptr<LogRangeIterator> {
+    // Note that there can be committed log entries only in memory, because they
+    // might not be persisted locally.
+
+    auto const commitIndex = data._commitIndex;
+    // Intersect the range with the committed range
+    auto range = LogRange{LogIndex{0}, commitIndex + 1};
+    if (bounds) {
+      range = intersect(range, *bounds);
+    }
+
+    // check if we can serve everything from memory
+    auto const& inMemoryLog = data._inMemoryLog;
+    if (inMemoryLog.getIndexRange().contains(range)) {
+      return inMemoryLog.getIteratorRange(range);
+    }
+
+    // server from disk
+    auto diskIter = _storageManager->getCommittedLogIterator(range);
+
+    struct OverlayIterator : LogRangeIterator {
+      explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
+                               std::unique_ptr<LogRangeIterator> inMemoryIter,
+                               LogRange inMemoryRange, LogRange range)
+          : _diskIter(std::move(diskIter)),
+            _inMemoryIter(std::move(inMemoryIter)),
+            _inMemoryRange(inMemoryRange),
+            _range(range) {}
+
+      auto next() -> std::optional<LogEntryView> override {
+        // iterate over the disk until it is covered by the in memory part
+        if (_diskIter) {
+          auto entry = _diskIter->next();
+          if (entry) {
+            if (not _inMemoryRange.contains(entry->logIndex())) {
+              return entry;
+            }
+          }
+          _diskIter.reset();
+        }
+
+        return _inMemoryIter->next();
+      }
+
+      auto range() const noexcept -> LogRange override { return _range; }
+
+      std::unique_ptr<LogRangeIterator> _diskIter;
+      std::unique_ptr<LogRangeIterator> _inMemoryIter;
+      LogRange _inMemoryRange;
+      LogRange _range;
+    };
+
+    return std::make_unique<OverlayIterator>(
+        std::move(diskIter), inMemoryLog.getIteratorRange(range),
+        inMemoryLog.getIndexRange(), range);
+  });
+}
+
 InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)
     : _inMemoryLog(firstIndex) {}
 
