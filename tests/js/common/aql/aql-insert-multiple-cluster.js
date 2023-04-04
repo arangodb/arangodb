@@ -236,20 +236,34 @@ function InsertMultipleDocumentsSuite(params) {
       // because of the coordinator having to know in which server to store the document,
       // while parsing the documents, would raise the "invalid document type" error even though the
       // OPTIONS {ignoreErrors: true} is in the query, independent of the optimization rule
-      if (numberOfShards > 1) {
-        return;
-      }
+
       const query = `FOR doc IN [{value1: 1}, true] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`;
-      for (const enableRule of [true, false]) {
+      //  for (const enableRule of [true, false]) {
+      for (const optRules of [{enableOneShard: false, enableMulti: false}, {
+        enableOneShard: false,
+        enableMulti: true
+      }, {enableOneShard: true, enableMulti: false}, {enableOneShard: true, enableMulti: true}]) {
         const previousCount = db[cn].count();
-        const queryOptions = enableRule ? {} : {optimizer: {rules: ["-optimize-cluster-multiple-document-operations"]}};
-        if (enableRule) {
+        const queryOptions = {optimizer: {rules: []}};
+        if (!optRules.enableMulti) {
+          queryOptions.optimizer.rules.push("-optimize-cluster-multiple-document-operations");
+        }
+        if (!optRules.enableOneShard) {
+          queryOptions.optimizer.rules.push("-cluster-one-shard");
+        }
+        if (optRules.enableMulti) {
           assertRuleIsUsed(query, {}, queryOptions);
         } else {
           assertRuleIsNotUsed(query, {}, queryOptions);
         }
-        db._query(query, {}, queryOptions).toArray();
-        assertEqual(db[cn].count(), previousCount + 1);
+        try {
+          db._query(query, {}, queryOptions).toArray();
+          assertEqual(db[cn].count(), previousCount + 1);
+        } catch (err) {
+          assertEqual(db[cn].count(), previousCount);
+          assertTrue(!optRules.enableOneShard || numberOfShards > 1);
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
       }
     },
 
@@ -555,7 +569,7 @@ function InsertMultipleDocumentsSuite(params) {
         }
 
         let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex}`;
-        assertRuleIsUsed(query);
+        assertRuleIsNotUsed(query);
 
         const verticesCount = db[vertex].count();
         let res = db._query(query);
@@ -563,7 +577,7 @@ function InsertMultipleDocumentsSuite(params) {
         assertEqual([], res.toArray());
 
         query = `FOR d IN [{_from: '${vertex}/value3:abc3', _to: '${vertex}/value6:abc3', value: 'value3'}] INSERT d INTO ${edges}`;
-        assertRuleIsUsed(query);
+        assertRuleIsNotUsed(query);
 
         const edgesCount = db[edges].count();
         res = db._query(query);
@@ -573,7 +587,7 @@ function InsertMultipleDocumentsSuite(params) {
 
         try {
           query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges}`;
-          assertRuleIsUsed(query);
+          assertRuleIsNotUsed(query);
           db._query(query);
           fail();
         } catch (err) {
@@ -728,8 +742,41 @@ function InsertMultipleDocumentsExplainSuite(params) {
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1, 1 INSERT d INTO ${cn}`,
         `FOR doc IN ${cn} INSERT doc INTO ${cn}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} INSERT {value3: 1} INTO ${cn2}`,
-        `INSERT [{value1: 1}] INTO ${cn} INSERT [{value2: 1}] INTO ${cn2}`,
-        `INSERT [{value1: 1}] INTO ${cn} FOR d IN [{value1: 1}, {value2: 3}] INSERT d INTO ${cn2}`,
+        `INSERT
+        [{value1: 1}] INTO
+        ${cn}
+        INSERT
+        [
+        {
+        value2
+        :
+        1
+        }
+        ]
+        INTO
+        ${cn2}`,
+        `INSERT
+        [{value1: 1}] INTO
+        ${cn}
+        FOR
+        d
+        IN
+        [
+        {
+        value1
+        :
+        1
+        },
+        {
+        value2
+        :
+        3
+        }
+        ]
+        INSERT
+        d
+        INTO
+        ${cn2}`,
       ];
       queries.forEach((query) => {
         assertRuleIsNotUsed(query);

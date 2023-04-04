@@ -25,6 +25,7 @@
 #include "OptimizerRules.h"
 
 #include "Aql/ClusterNodes.h"
+#include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -462,6 +463,11 @@ bool substituteClusterMultipleDocumentInsertOperations(
 
   bool modified = false;
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
+
+  // for now, not support smart graph
+  if (mod->collection()->isSmart()) {
+    return false;
+  }
 
   Variable const* oldVariable = mod->getOutVariableOld();
   if (oldVariable != nullptr && mod->isVarUsedLater(oldVariable)) {

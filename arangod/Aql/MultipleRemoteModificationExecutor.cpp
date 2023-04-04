@@ -132,18 +132,18 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
   }
 
   auto res = _trx.begin();
-  if (!res.ok()) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   auto result = _trx.insert(_info._aqlCollection->name(), inDocument.slice(),
                             _info._options);
+  if (result.fail()) {
+    THROW_ARANGO_EXCEPTION(result.result);
+  }
 
   // check operation result
   if (!_info._ignoreErrors) {
-    if (!result.ok()) {
-      THROW_ARANGO_EXCEPTION(result.result);
-    }
     if (!result.countErrorCodes.empty()) {
       THROW_ARANGO_EXCEPTION(result.countErrorCodes.begin()->first);
     }
