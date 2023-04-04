@@ -72,7 +72,7 @@ function arangoSecureInstallationSuite () {
         assertEqual(1, actualRc.exit);
       } finally {
         try {
-          fs.removeDirectory(path);
+          //fs.removeDirectory(path);
         } catch (err) {}
       }
     },
@@ -98,7 +98,7 @@ function arangoSecureInstallationSuite () {
         assertEqual(0, actualRc.exit);
       } finally {
         try {
-          fs.removeDirectory(path);
+          //fs.removeDirectory(path);
         } catch (err) {}
       }
     },
