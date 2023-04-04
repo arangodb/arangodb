@@ -405,7 +405,7 @@ void DatabaseFeature::start() {
         << "Enabling extended names for "
         << basics::StringUtils::join(what, ", ")
         << " is an experimental feature which can "
-        << "cause incompatibility issues with not-yet-prepared drivers and "
+           "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
   }
 
