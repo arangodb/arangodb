@@ -549,6 +549,12 @@ void Index::toVelocyPack(
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
+  auto const progress = _progress.load(std::memory_order_relaxed);
+  if (progress > 0) {
+    builder.add("progress",
+                VPackValue(_progress.load(std::memory_order_relaxed)));
+  }
+
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
     builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);

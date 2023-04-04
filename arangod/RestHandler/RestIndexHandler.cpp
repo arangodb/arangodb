@@ -227,7 +227,6 @@ RestStatus RestIndexHandler::getIndexes() {
       b.add(StaticStrings::Error, VPackValue(false));
       b.add(StaticStrings::Code,
             VPackValue(static_cast<int>(ResponseCode::OK)));
-      b.add("progress", VPackValue(66));
       b.close();
       output = VPackCollection::merge(output.slice(), b.slice(), false);
       generateResult(rest::ResponseCode::OK, output.slice());
