@@ -1073,6 +1073,49 @@ function testSuite() {
       }
       assertTrue(tries < 60);
     },
+    
+    testEdgesUsedInUDF: function() {
+      // vertices
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+
+      // edges
+      c = db._createEdgeCollection(traditionalName);
+      docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, _from: extendedName + "/test" + i, _to: extendedName + "/test" + (i % 10), value: i });
+      }
+      c.insert(docs);
+      
+      const udf = require("@arangodb/aql/functions");
+
+      // register UDF to modify edge data
+      udf.register("SOME::FUNC", function(doc) {
+        doc.value2 = doc._from + "-" + doc._to;
+        doc._from = doc._from + "hello";
+        return doc;
+      });
+
+      try {
+        let res = db._query("FOR doc IN `" + traditionalName + "` SORT doc.value RETURN SOME::FUNC(doc)").toArray();
+        
+        assertEqual(100, res.length);
+        for (let i = 0; i < 100; ++i) {
+          let doc = res[i];
+          assertEqual("test" + i, doc._key);
+          assertEqual(extendedName + "/test" + i + "hello", doc._from);
+          assertEqual(extendedName + "/test" + (i % 10), doc._to);
+          assertEqual(i, doc.value);
+          assertEqual(extendedName + "/test" + i + "-" + extendedName + "/test" + (i % 10), doc.value2);
+        }
+      } finally {
+        udf.unregister("SOME::FUNC");
+      }
+    },
 
   };
 }
