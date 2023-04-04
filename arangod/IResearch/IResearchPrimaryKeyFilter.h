@@ -47,27 +47,28 @@ class PrimaryKeyFilter final : public irs::filter,
 
   PrimaryKeyFilter(LocalDocumentId value, bool nested) noexcept;
 
-  irs::doc_iterator::ptr execute(
-      irs::ExecutionContext const& ctx) const override;
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<PrimaryKeyFilter>::id();
+  }
+  irs::doc_iterator::ptr execute(irs::ExecutionContext const& ctx) const final;
 
-  size_t hash() const noexcept override;
+  size_t hash() const noexcept final;
 
   using irs::filter::prepare;
   filter::prepared::ptr prepare(
-      irs::IndexReader const& index, irs::Order const& /*ord*/,
+      irs::IndexReader const& index, irs::Scorers const& /*ord*/,
       irs::score_t /*boost*/,
-      irs::attribute_provider const* /*ctx*/) const override;
+      irs::attribute_provider const* /*ctx*/) const final;
 
   void visit(irs::SubReader const&, irs::PreparedStateVisitor&,
-             irs::score_t) const override {
+             irs::score_t) const final {
     // NOOP
   }
 
- protected:
-  bool equals(filter const& rhs) const noexcept override;
-
  private:
-  struct PrimaryKeyIterator : public irs::doc_iterator {
+  bool equals(filter const& rhs) const noexcept final;
+
+  struct PrimaryKeyIterator final : public irs::doc_iterator {
     PrimaryKeyIterator() = default;
 
     bool next() noexcept final {
@@ -131,8 +132,7 @@ class PrimaryKeyFilterContainer final : public irs::filter {
     return "arangodb::iresearch::PrimaryKeyFilterContainer";
   }
 
-  PrimaryKeyFilterContainer()
-      : irs::filter(irs::type<PrimaryKeyFilterContainer>::get()) {}
+  PrimaryKeyFilterContainer() = default;
   PrimaryKeyFilterContainer(PrimaryKeyFilterContainer&&) = default;
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
@@ -144,9 +144,13 @@ class PrimaryKeyFilterContainer final : public irs::filter {
 
   void clear() noexcept { _filters.clear(); }
 
-  filter::prepared::ptr prepare(
-      irs::IndexReader const& rdr, irs::Order const& ord, irs::score_t boost,
-      irs::attribute_provider const* ctx) const override;
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<PrimaryKeyFilterContainer>::id();
+  }
+
+  filter::prepared::ptr prepare(irs::IndexReader const& rdr,
+                                irs::Scorers const& ord, irs::score_t boost,
+                                irs::attribute_provider const* ctx) const final;
 
  private:
   std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid

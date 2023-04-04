@@ -193,7 +193,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection0, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_3simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     ASSERT_TRUE(false == !index);
@@ -351,7 +352,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     auto link = arangodb::iresearch::IResearchLinkHelper::find(
         *updatedCollection, *logicalView);
     EXPECT_TRUE(link);
-    ASSERT_EQ("1_4simd", link->format());
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX),
+              link->meta()._version);
 
     auto index = std::dynamic_pointer_cast<arangodb::Index>(link);
     EXPECT_TRUE(true == index->canBeDropped());
