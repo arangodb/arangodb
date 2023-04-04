@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <chrono>
 #include <memory>
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
@@ -290,10 +291,29 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     // if not: send message back to itself such that in between it can receive
     // missing messages
     if (message.sendCount != this->state->writeCache->containedMessageCount()) {
+      if (not this->state->isWaitingForAllMessagesSince.has_value()) {
+        this->state->isWaitingForAllMessagesSince =
+            std::chrono::steady_clock::now();
+      }
+      if (std::chrono::steady_clock::now() -
+              this->state->isWaitingForAllMessagesSince.value() >
+          this->state->messageTimeout) {
+        this->template dispatch<conductor::message::ConductorMessages>(
+            this->state->conductor,
+            ResultT<conductor::message::GlobalSuperStepFinished>::error(
+                TRI_ERROR_INTERNAL,
+                fmt::format("Worker {} received {} messages in gss {} after "
+                            "timeout, although {} were send to it.",
+                            this->self,
+                            this->state->writeCache->containedMessageCount(),
+                            message.gss, message.sendCount)));
+        return std::move(this->state);
+      }
       this->template dispatch<worker::message::WorkerMessages>(this->self,
                                                                message);
       return std::move(this->state);
     }
+    this->state->isWaitingForAllMessagesSince = std::nullopt;
 
     prepareGlobalSuperStep(std::move(message));
 
