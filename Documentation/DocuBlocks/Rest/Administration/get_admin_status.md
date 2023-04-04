@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_status
 @brief returns Status information of the server.
 
-@RESTHEADER{GET /_admin/status, Return status information, RestStatusHandler}
+@RESTHEADER{GET /_admin/status, Return status information, getStatus}
 
 @RESTDESCRIPTION
 Returns status information about the server.
