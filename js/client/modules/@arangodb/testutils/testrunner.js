@@ -304,7 +304,7 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
+    let failurePoints = obj.instanceManager.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
       obj.results[obj.translateResult(te)] = {
         status: false,
@@ -381,6 +381,7 @@ class testRunner {
     }
     this.cleanupChecks.push();
     this.instanceManager;
+    this.cleanupChecks.push(failurePointsCheck);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
