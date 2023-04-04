@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_license
 @brief Set a new license
 
-@RESTHEADER{PUT /_admin/license, Set a new license, putLicense}
+@RESTHEADER{PUT /_admin/license, Set a new license, setLicense}
 
 @RESTQUERYPARAMETERS
 
@@ -10,7 +10,7 @@
 Set to `true` to change the license even if it expires sooner than the current one.
 
 @RESTALLBODYPARAM{license,string,required}
-The body has to contain the Base64 encoded string wrapped in double quotes.
+The request body has to contain the Base64-encoded string wrapped in double quotes.
 
 @RESTDESCRIPTION
 Set a new license for an Enterprise Edition instance.
