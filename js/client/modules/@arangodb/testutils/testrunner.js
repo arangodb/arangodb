@@ -304,7 +304,7 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = obj.instanceManager.checkServerFailurePoints(obj.instanceManager);
+    let failurePoints = obj.instanceManager.checkServerFailurePoints();
     if (failurePoints.length > 0) {
       obj.results[obj.translateResult(te)] = {
         status: false,
