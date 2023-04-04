@@ -29,6 +29,8 @@
 #include <velocypack/Buffer.h>
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -253,16 +255,16 @@ class Node final {
   Node const* parent() const;
 
   /// @brief Part of relative path vector which exists
-  std::vector<std::string> exists(std::vector<std::string> const&) const;
+  std::vector<std::string> exists(std::vector<std::string> const& rel) const;
 
   /// @brief Part of relative path which exists
-  std::vector<std::string> exists(std::string const&) const;
+  std::vector<std::string> exists(std::string_view rel) const;
 
   /// @brief Part of relative path vector which exists
-  bool has(std::vector<std::string> const&) const;
+  bool has(std::vector<std::string> const& rel) const;
 
   /// @brief Part of relative path which exists
-  bool has(std::string const&) const;
+  bool has(std::string_view rel) const;
 
   /// @brief Is Int
   bool isInt() const;

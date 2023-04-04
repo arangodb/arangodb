@@ -31,6 +31,7 @@
 #include "Pregel/GraphStore/GraphStorerBase.h"
 #include "Pregel/GraphStore/Quiver.h"
 #include "Cluster/ClusterTypes.h"
+#include "Pregel/StatusMessages.h"
 
 namespace arangodb::pregel {
 
@@ -39,23 +40,32 @@ class WorkerConfig;
 template<class V, class E>
 struct GraphFormat;
 
+struct OldStoringUpdate {
+  std::function<void()> fn;
+};
+struct ActorStoringUpdate {
+  std::function<void(pregel::message::GraphStoringUpdate)> fn;
+};
+using StoringUpdateCallback =
+    std::variant<OldStoringUpdate, ActorStoringUpdate>;
+
 template<typename V, typename E>
 struct GraphStorer : GraphStorerBase<V, E> {
   explicit GraphStorer(std::shared_ptr<WorkerConfig> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        std::vector<ShardID> globalShards,
-                       std::function<void()> statusUpdateCallback)
+                       StoringUpdateCallback updateCallback)
       : graphFormat(graphFormat),
         globalShards(globalShards),
         config(config),
-        statusUpdateCallback(statusUpdateCallback) {}
+        updateCallback(updateCallback) {}
 
   auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::vector<ShardID> globalShards;
   std::shared_ptr<WorkerConfig const> config;
-  std::function<void()> statusUpdateCallback;
+  StoringUpdateCallback updateCallback;
 };
 
 }  // namespace arangodb::pregel

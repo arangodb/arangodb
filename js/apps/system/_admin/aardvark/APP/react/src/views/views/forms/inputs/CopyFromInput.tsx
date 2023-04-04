@@ -1,14 +1,14 @@
-import { FormState } from "../../constants";
-import { FormProps } from "../../../../utils/constants";
-import React, { useEffect, useState } from "react";
-import { find, sortBy, pick } from "lodash";
-import useSWRImmutable from "swr/immutable";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-import { validateAndFix } from "../../helpers";
-import { useHistory, useLocation } from "react-router-dom";
-import { Box, Button, Stack, Text } from "@chakra-ui/react";
 import { ArrowBackIcon } from "@chakra-ui/icons";
+import { Box, Button, Stack, Text } from "@chakra-ui/react";
+import { find, pick, sortBy } from "lodash";
+import React, { useEffect, useState } from "react";
+import { useHistory, useLocation } from "react-router-dom";
+import useSWRImmutable from "swr/immutable";
 import SingleSelect from "../../../../components/select/SingleSelect";
+import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { FormProps } from "../../../../utils/constants";
+import { FormState } from "../../constants";
+import { validateAndFix } from "../../helpers";
 
 type CopyFromInputProps = {
   views: FormState[];
@@ -24,7 +24,7 @@ const filterAndSortViews = (views: FormState[]) => {
         return { value: view.name, label: view.name };
       }),
     "name"
-  );
+  ) as {value: string; label: string}[];
 };
 
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
