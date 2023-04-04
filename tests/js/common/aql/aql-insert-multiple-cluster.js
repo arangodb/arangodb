@@ -238,28 +238,32 @@ function InsertMultipleDocumentsSuite(params) {
       // OPTIONS {ignoreErrors: true} is in the query, independent of the optimization rule
 
       const query = `FOR doc IN [{value1: 1}, true] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`;
-      //  for (const enableRule of [true, false]) {
-      for (const optRules of [{enableOneShard: false, enableMulti: false}, {
-        enableOneShard: false,
-        enableMulti: true
-      }, {enableOneShard: true, enableMulti: false}, {enableOneShard: true, enableMulti: true}]) {
+      for (const enableOneShard of [true, false]) {
         const previousCount = db[cn].count();
-        const queryOptions = {optimizer: {rules: []}};
-        if (!optRules.enableMulti) {
-          queryOptions.optimizer.rules.push("-optimize-cluster-multiple-document-operations");
+        const rules = [];
+        if (!enableOneShard) {
+          rules.push("-cluster-one-shard");
         }
-        if (!optRules.enableOneShard) {
-          queryOptions.optimizer.rules.push("-cluster-one-shard");
-        }
-        if (optRules.enableMulti) {
-          assertRuleIsUsed(query, {}, queryOptions);
-        } else {
-          assertRuleIsNotUsed(query, {}, queryOptions);
-        }
+
+        let expectSuccess;
         try {
-          db._query(query, {}, queryOptions).toArray();
-          assertEqual(db[cn].count(), previousCount + 1);
+          db._query(query, {}, {optimizer: { rules: ["-optimize-cluster-multiple-document-operations", ...rules]}}).toArray();
+          expectSuccess = true;
         } catch (err) {
+          expectSuccess = false;
+          assertEqual(db[cn].count(), previousCount);
+          assertTrue(!optRules.enableOneShard || numberOfShards > 1);
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        }
+
+        try {
+          assertRuleIsUsed(query, {}, {optimizer: { rules: rules}});
+          db._query(query, {}, {optimizer: { rules: rules}}).toArray();
+          if (!expectSuccess) {
+            fail();
+          }
+        } catch(err) {
+          assertFalse(expectSuccess);
           assertEqual(db[cn].count(), previousCount);
           assertTrue(!optRules.enableOneShard || numberOfShards > 1);
           assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
