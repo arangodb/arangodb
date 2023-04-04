@@ -183,12 +183,16 @@ auto inspect(Inspector& f, Canceled& x) {
 }
 
 struct StatusMessages
-    : std::variant<StatusStart, PregelStarted, LoadingStarted, GraphLoadingUpdate,
-                   ComputationStarted, GlobalSuperStepStarted, GlobalSuperStepUpdate, StoringStarted, GraphStoringUpdate,
-                   PregelFinished, InFatalError, Canceled> {
-  using std::variant<StatusStart, PregelStarted, LoadingStarted, GraphLoadingUpdate,
-                     ComputationStarted, GlobalSuperStepStarted, GlobalSuperStepUpdate, StoringStarted, GraphStoringUpdate,
-                     PregelFinished, InFatalError, Canceled>::variant;
+    : std::variant<StatusStart, PregelStarted, LoadingStarted,
+                   GraphLoadingUpdate, ComputationStarted,
+                   GlobalSuperStepStarted, GlobalSuperStepUpdate,
+                   StoringStarted, GraphStoringUpdate, PregelFinished,
+                   InFatalError, Canceled> {
+  using std::variant<StatusStart, PregelStarted, LoadingStarted,
+                     GraphLoadingUpdate, ComputationStarted,
+                     GlobalSuperStepStarted, GlobalSuperStepUpdate,
+                     StoringStarted, GraphStoringUpdate, PregelFinished,
+                     InFatalError, Canceled>::variant;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, StatusMessages& x) {

@@ -259,8 +259,7 @@ auto inspect(Inspector& f, StatusState& x) {
       f.field("aggregators", x.aggregators),
 
       f.field("vertexCount", x.vertexCount), f.field("edgeCount", x.edgeCount),
-      f.field("details", x.details)
-      );
+      f.field("details", x.details));
 }
 
 template<typename Runtime>
