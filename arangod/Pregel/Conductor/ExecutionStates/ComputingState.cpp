@@ -106,6 +106,8 @@ auto Computing::receive(actor::ActorPID sender,
     aggregators.openObject();
     masterContext->_aggregators->serializeValues(aggregators);
     aggregators.close();
+    auto vertexCount = masterContext->vertexCount();
+    auto edgeCount = masterContext->edgeCount();
     auto newState = std::make_unique<Computing>(
         conductor, std::move(masterContext),
         std::move(messageAccumulation.sendCountPerActor));
@@ -113,6 +115,8 @@ auto Computing::receive(actor::ActorPID sender,
     return StateChange{.statusMessage =
                            pregel::message::GlobalSuperStepStarted{
                                .gss = gss,
+                               .vertexCount = vertexCount,
+                               .edgeCount = edgeCount,
                                .aggregators = std::move(aggregators),
                                .state = stateName},
                        .newState = std::move(newState)};

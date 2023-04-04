@@ -98,9 +98,9 @@ struct GlobalSuperStepFinished {
 
   MessageStats messageStats;
   std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
-  uint64_t activeCount;
-  uint64_t vertexCount;
-  uint64_t edgeCount;
+  uint64_t activeCount = 0;
+  uint64_t vertexCount = 0;
+  uint64_t edgeCount = 0;
   VPackBuilder aggregators;
 };
 template<typename Inspector>
