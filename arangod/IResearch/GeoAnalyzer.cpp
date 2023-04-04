@@ -315,9 +315,8 @@ void toVelocyPack(velocypack::Builder& builder,
   builder.add(kLegacyParam, velocypack::Value{options.legacy});
 }
 
-GeoAnalyzer::GeoAnalyzer(irs::type_info const& type,
-                         S2RegionTermIndexer::Options const& options)
-    : irs::analysis::analyzer{type}, _indexer{options}, _coverer{options} {}
+GeoAnalyzer::GeoAnalyzer(S2RegionTermIndexer::Options const& options)
+    : _indexer{options}, _coverer{options} {}
 
 bool GeoAnalyzer::next() noexcept {
   if (_begin >= _end) {
@@ -335,10 +334,8 @@ void GeoAnalyzer::reset(std::vector<std::string>&& terms) noexcept {
   _end = _begin + _terms.size();
 }
 
-GeoJsonAnalyzerBase::GeoJsonAnalyzerBase(
-    irs::type_info const& type, GeoJsonAnalyzerBase::OptionsBase const& options)
-    : GeoAnalyzer{type,
-                  S2Options(options.options, options.type != Type::SHAPE)},
+GeoJsonAnalyzerBase::GeoJsonAnalyzerBase(OptionsBase const& options)
+    : GeoAnalyzer{S2Options(options.options, options.type != Type::SHAPE)},
       _type{options.type} {}
 
 bool GeoJsonAnalyzerBase::resetImpl(std::string_view value, bool legacy,
@@ -406,8 +403,7 @@ irs::bytes_view GeoVPackAnalyzer::store(irs::token_stream* ctx,
 }
 
 GeoVPackAnalyzer::GeoVPackAnalyzer(Options const& options)
-    : GeoJsonAnalyzerBase{irs::type<GeoVPackAnalyzer>::get(), options},
-      _legacy{options.legacy} {}
+    : GeoJsonAnalyzerBase{options}, _legacy{options.legacy} {}
 
 bool GeoVPackAnalyzer::reset(std::string_view value) {
   return resetImpl(value, _legacy, geo::coding::Options::kInvalid, nullptr);
@@ -427,8 +423,7 @@ irs::analysis::analyzer::ptr GeoPointAnalyzer::make(std::string_view args) {
 }
 
 GeoPointAnalyzer::GeoPointAnalyzer(Options const& options)
-    : GeoAnalyzer{irs::type<GeoPointAnalyzer>::get(),
-                  S2Options(options.options, true)},
+    : GeoAnalyzer{S2Options(options.options, true)},
       _fromArray{options.latitude.empty()},
       _latitude{options.latitude},
       _longitude{options.longitude} {

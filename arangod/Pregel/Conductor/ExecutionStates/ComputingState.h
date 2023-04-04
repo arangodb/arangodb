@@ -36,7 +36,7 @@ struct Computing : ExecutionState {
   Computing(ConductorState& conductor,
             std::unique_ptr<MasterContext> masterContext,
             std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor);
-  ~Computing();
+  ~Computing() override = default;
   auto name() const -> std::string override { return "computing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,

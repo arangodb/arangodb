@@ -56,7 +56,7 @@ using Disjunction =
 
 // Return a filter matching all documents with a given geo field
 irs::filter::prepared::ptr match_all(irs::IndexReader const& index,
-                                     irs::Order const& order,
+                                     irs::Scorers const& order,
                                      std::string_view field,
                                      irs::score_t boost) {
   // Return everything we've stored
@@ -87,7 +87,7 @@ class GeoIterator : public irs::doc_iterator {
   GeoIterator(doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt,
               Parser& parser, Acceptor& acceptor, irs::SubReader const& reader,
               irs::term_reader const& field, irs::byte_type const* query_stats,
-              irs::Order const& order, irs::score_t boost)
+              irs::Scorers const& order, irs::score_t boost)
       : _approx{std::move(approx)},
         _columnIt{std::move(columnIt)},
         _storedValue{irs::get<irs::payload>(*_columnIt)},
@@ -179,7 +179,7 @@ irs::doc_iterator::ptr makeIterator(
     typename Disjunction::doc_iterators_t&& itrs,
     irs::doc_iterator::ptr&& columnIt, irs::SubReader const& reader,
     irs::term_reader const& field, irs::byte_type const* query_stats,
-    irs::Order const& order, irs::score_t boost, Parser& parser,
+    irs::Scorers const& order, irs::score_t boost, Parser& parser,
     Acceptor& acceptor) {
   if (ADB_UNLIKELY(itrs.empty() || !columnIt)) {
     return irs::doc_iterator::empty();
@@ -364,7 +364,7 @@ irs::filter::prepared::ptr makeQuery(GeoStates&& states, irs::bstring&& stats,
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
-    irs::IndexReader const& index, irs::Order const& order,
+    irs::IndexReader const& index, irs::Scorers const& order,
     std::span<const std::string> geoTerms, std::string_view field) {
   TRI_ASSERT(!geoTerms.empty());
 
@@ -417,7 +417,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
     termStates.clear();
   }
 
-  fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()), index);
+  fieldStats.finish(const_cast<irs::byte_type*>(res.second.data()));
 
   return res;
 }
@@ -433,9 +433,9 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
 }
 
 irs::filter::prepared::ptr prepareOpenInterval(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options,
-    bool greater) {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options, bool greater) {
   auto const& range = options.range;
   auto const& origin = options.origin;
 
@@ -538,8 +538,9 @@ irs::filter::prepared::ptr prepareOpenInterval(
 }
 
 irs::filter::prepared::ptr prepareInterval(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    std::string_view field, GeoDistanceFilterOptions const& options) {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, std::string_view field,
+    GeoDistanceFilterOptions const& options) {
   auto const& range = options.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);
@@ -635,8 +636,8 @@ irs::filter::prepared::ptr prepareInterval(
 }  // namespace
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
   if (shape.empty()) {
     return prepared::empty();
@@ -687,8 +688,8 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 }
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
-    irs::IndexReader const& index, irs::Order const& order, irs::score_t boost,
-    irs::attribute_provider const* /*ctx*/) const {
+    irs::IndexReader const& index, irs::Scorers const& order,
+    irs::score_t boost, irs::attribute_provider const* /*ctx*/) const {
   auto const& options = this->options();
   auto const& range = options.range;
   auto const lowerBound = irs::BoundType::UNBOUNDED != range.min_type;
