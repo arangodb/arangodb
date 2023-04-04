@@ -49,7 +49,7 @@ auto inspect(Inspector& f, RestGeneralOptions& x) {
       f.field("edgeCollectionRestrictions", x.edgeCollectionRestrictions)
           .fallback(
               std::unordered_map<std::string, std::vector<std::string>>{}),
-      f.field("actors", x.useActors).fallback(false));
+      f.field("actors", x.useActors).fallback(true));
 }
 
 struct RestCollectionSettings {
