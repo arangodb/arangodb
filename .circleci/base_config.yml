@@ -171,6 +171,7 @@ jobs:
             - utils
             - UnitTests
             - 3rdParty/iresearch/tests/resources
+            - 3rdParty/rta-makedata
 
   run-tests:
     docker:
