@@ -827,6 +827,33 @@ function testSuite() {
       }
     },
     
+    testExtendedNamesQuoting: function() {
+      const names = [
+        "Десятую",
+        "a b c",
+        "💩🍺🌧t⛈c🌩_⚡🔥💥🌨",
+      ];
+      
+      names.forEach((name) => {
+        let c = db._create(name);
+        try {
+          try {
+            // doesn't work without quoting
+            db._query("FOR doc IN " + name + " RETURN doc");
+            fail();
+          } catch (err) {
+            assertEqual(errors.ERROR_QUERY_PARSE.code, err.errorNum);
+          }
+          
+          // works without quoting
+          let res = db._query("FOR doc IN `" + name + "` RETURN doc").toArray();
+          assertEqual(0, res.length);
+        } finally {
+          db._drop(name);
+        }
+      });
+    },
+    
     testQueryIdValues: function() {
       let c = db._create(extendedName);
       let docs = [];
@@ -989,6 +1016,32 @@ function testSuite() {
         assertEqual(extendedName + "/test" + (i * 10), edges[i]._id);
         assertEqual(i * 10, edges[i].value);
       }
+    },
+    
+    testTraversal: function() {
+      // vertices
+      let c = db._create(extendedName);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+
+      // edges
+      c = db._createEdgeCollection(traditionalName);
+      docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i, _from: extendedName + "/test" + i, _to: extendedName + "/test" + (i % 10), value: i });
+      }
+      c.insert(docs);
+
+      let res = db._query("FOR v, e, p IN 1..3 OUTBOUND '" + extendedName + "/test0' " + traditionalName + " RETURN [v, e]").toArray();
+      assertEqual(1, res.length);
+      assertEqual(extendedName + "/test0", res[0][0]._id);
+      assertEqual("test0", res[0][0]._key);
+      
+      assertEqual(extendedName + "/test0", res[0][1]._from);
+      assertEqual(extendedName + "/test0", res[0][1]._to);
     },
     
     testEdgeIndex: function() {
