@@ -399,7 +399,7 @@ auto replicated_log::LogLeader::construct(
   auto const firstIndexOfCurrentTerm = lastIndex.index + 1u;
   auto inMemoryLogManager = std::make_shared<InMemoryLogManager>(
       commonLogContext.with<logContextKeyLogComponent>("in-memory-log-manager"),
-      firstIndexOfCurrentTerm, storageManager);
+      logMetrics, firstIndexOfCurrentTerm, storageManager);
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
@@ -621,24 +621,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
 
-  auto const&& [index, approxByteSize] =
-      _self._inMemoryLogManager->appendLogEntry(
-          std::move(payload), _self._currentTerm,
-          insertTp.value_or(InMemoryLogEntry::clock::now()), waitForSync);
+  auto const index = _self._inMemoryLogManager->appendLogEntry(
+      std::move(payload), _self._currentTerm,
+      insertTp.value_or(InMemoryLogEntry::clock::now()), waitForSync);
 
-  bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
-  auto const payloadSize = std::holds_alternative<LogPayload>(payload)
-                               ? std::get<LogPayload>(payload).byteSize()
-                               : 0;
-
-  _self._logMetrics->replicatedLogInsertsBytes->count(payloadSize);
-  _self._logMetrics->leaderNumInMemoryEntries->fetch_add(1);
-  _self._logMetrics->leaderNumInMemoryBytes->fetch_add(approxByteSize);
-  if (isMetaLogEntry) {
-    _self._logMetrics->replicatedLogNumberMetaEntries->count(1);
-  } else {
-    _self._logMetrics->replicatedLogNumberAcceptedEntries->count(1);
-  }
   return index;
 }
 
@@ -686,8 +672,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   LOG_CTX("a9a7e", TRACE, _self._logContext)
       << "updating commit index to " << newCommitIndex << " with quorum "
       << quorum->quorum;
-  _self._inMemoryLogManager->updateCommitIndex(*_self._logMetrics,
-                                               newCommitIndex);
+  _self._inMemoryLogManager->updateCommitIndex(newCommitIndex);
   // TODO Should _lastQuorum be moved into the InMemoryLogManager?
   _lastQuorum = quorum;
 

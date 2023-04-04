@@ -36,18 +36,19 @@ inline namespace comp {
 struct IStorageManager;
 
 struct InMemoryLogManager : IInMemoryLogManager {
-  explicit InMemoryLogManager(LoggerContext logContext, LogIndex firstIndex,
+  explicit InMemoryLogManager(LoggerContext logContext,
+                              std::shared_ptr<ReplicatedLogMetrics>,
+                              LogIndex firstIndex,
                               std::shared_ptr<IStorageManager> storage);
 
   auto getCommitIndex() const noexcept -> LogIndex override;
-  void updateCommitIndex(ReplicatedLogMetrics&,
-                         LogIndex newIndex) noexcept override;
+  void updateCommitIndex(LogIndex newIndex) noexcept override;
 
   auto getInMemoryLog() const noexcept -> InMemoryLog override;
   auto appendLogEntry(std::variant<LogMetaPayload, LogPayload> payload,
                       LogTerm term,
                       InMemoryLogEntry::clock::time_point insertTp,
-                      bool waitForSync) -> InsertLogEntryResult override;
+                      bool waitForSync) -> LogIndex override;
 
  private:
   struct GuardedData {
@@ -55,7 +56,8 @@ struct InMemoryLogManager : IInMemoryLogManager {
     InMemoryLog _inMemoryLog;
     LogIndex _commitIndex{0};
   };
-  LoggerContext _logContext;
+  LoggerContext const _logContext;
+  std::shared_ptr<ReplicatedLogMetrics> const _metrics;
   std::shared_ptr<IStorageManager> const _storageManager;
   Guarded<GuardedData> _guardedData;
 };

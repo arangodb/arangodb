@@ -41,22 +41,17 @@ struct IInMemoryLogManager {
   [[nodiscard]] virtual auto getCommitIndex() const noexcept -> LogIndex = 0;
   // Sets the new index, returns the old one. The new index is expected to be
   // larger than the old one.
-  virtual void updateCommitIndex(ReplicatedLogMetrics&,
-                                 LogIndex newIndex) noexcept = 0;
+  virtual void updateCommitIndex(LogIndex newIndex) noexcept = 0;
 
   // Get a copy (snapshot) of the InMemoryLog.
   // TODO In many cases, only one or two indexes are needed, not the whole
   //      flex_vector. It might make sense to expose them separately.
   [[nodiscard]] virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
 
-  struct InsertLogEntryResult {
-    LogIndex logIndex{};
-    std::size_t approximateByteSize{};
-  };
   [[nodiscard]] virtual auto appendLogEntry(
       std::variant<LogMetaPayload, LogPayload> payload, LogTerm term,
       InMemoryLogEntry::clock::time_point insertTp, bool waitForSync)
-      -> InsertLogEntryResult = 0;
+      -> LogIndex = 0;
 };
 
 }  // namespace comp

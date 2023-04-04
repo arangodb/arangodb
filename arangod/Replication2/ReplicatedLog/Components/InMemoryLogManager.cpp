@@ -32,10 +32,11 @@
 
 namespace arangodb::replication2::replicated_log {
 
-InMemoryLogManager::InMemoryLogManager(LoggerContext logContext,
-                                       LogIndex firstIndex,
-                                       std::shared_ptr<IStorageManager> storage)
-    : _logContext(logContext),
+InMemoryLogManager::InMemoryLogManager(
+    LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> metrics,
+    LogIndex firstIndex, std::shared_ptr<IStorageManager> storage)
+    : _logContext(std::move(logContext)),
+      _metrics(std::move(metrics)),
       _storageManager(std::move(storage)),
       _guardedData(firstIndex) {}
 
@@ -43,8 +44,7 @@ auto InMemoryLogManager::getCommitIndex() const noexcept -> LogIndex {
   return _guardedData.getLockedGuard()->_commitIndex;
 }
 
-void InMemoryLogManager::updateCommitIndex(ReplicatedLogMetrics& metrics,
-                                           LogIndex newCommitIndex) noexcept {
+void InMemoryLogManager::updateCommitIndex(LogIndex newCommitIndex) noexcept {
   return _guardedData.doUnderLock([&](auto& data) {
     auto oldCommitIndex = data._commitIndex;
 
@@ -53,10 +53,10 @@ void InMemoryLogManager::updateCommitIndex(ReplicatedLogMetrics& metrics,
         << ", newCommitIndex == " << newCommitIndex;
     data._commitIndex = newCommitIndex;
 
-    metrics.replicatedLogNumberCommittedEntries->count(newCommitIndex.value -
-                                                       oldCommitIndex.value);
+    _metrics->replicatedLogNumberCommittedEntries->count(newCommitIndex.value -
+                                                         oldCommitIndex.value);
 
-    // Update commit time metrics
+    // Update commit time _metrics
     auto const commitTp = InMemoryLogEntry::clock::now();
 
     auto const newlyCommittedLogEntries =
@@ -64,7 +64,7 @@ void InMemoryLogManager::updateCommitIndex(ReplicatedLogMetrics& metrics,
     for (auto const& it : newlyCommittedLogEntries) {
       using namespace std::chrono_literals;
       auto const entryDuration = commitTp - it.insertTp();
-      metrics.replicatedLogInsertsRtt->count(entryDuration / 1us);
+      _metrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
     }
 
     // potentially evict parts of the inMemoryLog.
@@ -82,8 +82,8 @@ void InMemoryLogManager::updateCommitIndex(ReplicatedLogMetrics& metrics,
     }
     // remove upto commit index, but keep non-locally persisted log
     data._inMemoryLog = data._inMemoryLog.removeFront(evictStopIndex);
-    metrics.leaderNumInMemoryEntries->fetch_sub(numEntriesEvicted);
-    metrics.leaderNumInMemoryBytes->fetch_sub(releasedMemory);
+    _metrics->leaderNumInMemoryEntries->fetch_sub(numEntriesEvicted);
+    _metrics->leaderNumInMemoryBytes->fetch_sub(releasedMemory);
   });
 }
 
@@ -94,8 +94,8 @@ auto InMemoryLogManager::getInMemoryLog() const noexcept -> InMemoryLog {
 auto InMemoryLogManager::appendLogEntry(
     std::variant<LogMetaPayload, LogPayload> payload, LogTerm term,
     InMemoryLogEntry::clock::time_point insertTp, bool waitForSync)
-    -> InsertLogEntryResult {
-  return _guardedData.doUnderLock([&](auto& data) -> InsertLogEntryResult {
+    -> LogIndex {
+  return _guardedData.doUnderLock([&](auto& data) -> LogIndex {
     auto const index = data._inMemoryLog.getNextIndex();
 
     auto logEntry = InMemoryLogEntry(
@@ -105,7 +105,22 @@ auto InMemoryLogManager::appendLogEntry(
     auto size = logEntry.entry().approxByteSize();
 
     data._inMemoryLog.appendInPlace(_logContext, std::move(logEntry));
-    return {index, size};
+
+    bool const isMetaLogEntry = std::holds_alternative<LogMetaPayload>(payload);
+    auto const payloadSize = std::holds_alternative<LogPayload>(payload)
+                                 ? std::get<LogPayload>(payload).byteSize()
+                                 : 0;
+
+    _metrics->replicatedLogInsertsBytes->count(payloadSize);
+    _metrics->leaderNumInMemoryEntries->fetch_add(1);
+    _metrics->leaderNumInMemoryBytes->fetch_add(size);
+    if (isMetaLogEntry) {
+      _metrics->replicatedLogNumberMetaEntries->count(1);
+    } else {
+      _metrics->replicatedLogNumberAcceptedEntries->count(1);
+    }
+
+    return index;
   });
 }
 
