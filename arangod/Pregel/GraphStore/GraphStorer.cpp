@@ -48,9 +48,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
-#define LOG_PREGEL(logId, level)          \
-  LOG_TOPIC(logId, level, Logger::PREGEL) \
-      << "[job " << config->executionNumber() << "] "
+#define LOG_PREGEL(logId, level) \
+  LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << executionNumber << "] "
 
 namespace arangodb::pregel {
 
@@ -100,7 +99,7 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      if (config->vocbase()->server().isStopping()) {
+      if (vocbaseGuard.database().server().isStopping()) {
         LOG_PREGEL("73ec2", WARN) << "Storing data was canceled prematurely";
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
@@ -122,7 +121,8 @@ auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
       currentShard = vertex.shard();
       shard = globalShards[currentShard.value];
 
-      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+      auto ctx =
+          transaction::StandaloneContext::Create(vocbaseGuard.database());
       trx = std::make_unique<SingleCollectionTransaction>(
           ctx, shard, AccessMode::Type::WRITE);
       trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);

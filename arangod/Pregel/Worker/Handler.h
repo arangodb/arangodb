@@ -351,7 +351,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
         auto storer = std::make_shared<GraphStorer<V, E>>(
-            this->state->config, this->state->algorithm->inputFormat(),
+            this->state->config->executionNumber(),
+            *this->state->config->vocbase(),
+            this->state->algorithm->inputFormat(),
             this->state->config->globalShardIDs(),
             ActorStoringUpdate{
                 .fn =
