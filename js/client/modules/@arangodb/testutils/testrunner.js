@@ -315,6 +315,7 @@ let failurePointsCheck = {
       };
       return false;
     }
+    return true;
   }
 };
 
