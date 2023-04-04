@@ -52,7 +52,7 @@ const useAddEdgeAction = ({
     } catch (error: unknown) {
       console.log("Error creating this edge: ", error);
       window.arangoHelper.arangoError(
-        "Could not create edge.",
+        "Could not create edge",
         (error as any).response.body.errorMessage
       );
       onFailure();
