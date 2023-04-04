@@ -1035,7 +1035,7 @@ function testSuite() {
       }
       c.insert(docs);
 
-      let res = db._query("FOR v, e, p IN 1..3 OUTBOUND '" + extendedName + "/test0' " + traditionalName + " RETURN [v, e]").toArray();
+      let res = db._query("WITH `" + extendedName + "` FOR v, e, p IN 1..3 OUTBOUND '" + extendedName + "/test0' " + traditionalName + " RETURN [v, e]").toArray();
       assertEqual(1, res.length);
       assertEqual(extendedName + "/test0", res[0][0]._id);
       assertEqual("test0", res[0][0]._key);
