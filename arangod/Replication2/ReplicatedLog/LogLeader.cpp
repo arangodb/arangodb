@@ -214,16 +214,18 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 
         auto [request, lastIndex] =
             logLeader->_guardedLeaderData.doUnderLock([&](auto const& self) {
-              auto [releaseIndex, lowestIndexToKeep] =
+              auto const [releaseIndex, lowestIndexToKeep] =
                   logLeader->_compactionManager->getIndexes();
-              auto lastAvailableIndex =
+              auto const lastAvailableIndex =
                   self._inMemoryLog.getLastTermIndexPair();
+              auto const commitIndex =
+                  logLeader->_inMemoryLogManager->getCommitIndex();
               LOG_CTX("71801", TRACE, follower->logContext)
                   << "last matched index = " << follower->nextPrevLogIndex
                   << ", current index = " << lastAvailableIndex
                   << ", last acked commit index = "
                   << follower->lastAckedCommitIndex
-                  << ", current commit index = " << self._commitIndex
+                  << ", current commit index = " << commitIndex
                   << ", last acked litk = "
                   << follower->lastAckedLowestIndexToKeep
                   << ", current litk = " << lowestIndexToKeep;
@@ -231,7 +233,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               // for this follower
               TRI_ASSERT(
                   follower->nextPrevLogIndex != lastAvailableIndex.index ||
-                  self._commitIndex != follower->lastAckedCommitIndex ||
+                  commitIndex != follower->lastAckedCommitIndex ||
                   lowestIndexToKeep != follower->lastAckedLowestIndexToKeep);
 
               return self.createAppendEntriesRequest(*follower,
@@ -379,7 +381,7 @@ auto replicated_log::LogLeader::construct(
       std::move(methods),
       commonLogContext.with<logContextKeyLogComponent>("local-storage-manager"),
       scheduler);
-  auto lastIndex =
+  auto const lastIndex =
       storageManager->getTermIndexMapping().getLastIndex().value_or(
           TermIndexPair{});
 
@@ -393,10 +395,15 @@ auto replicated_log::LogLeader::construct(
     FATAL_ERROR_EXIT();  // This must never happen in production
   }
 
+  auto const firstIndexOfCurrentTerm = lastIndex.index + 1u;
+  auto inMemoryLogManager = std::make_shared<InMemoryLogManager>(
+      firstIndexOfCurrentTerm, storageManager);
+
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), options, std::move(id), term, lastIndex.index + 1u,
-      std::move(stateHandle), followerFactory, scheduler);
+      std::move(logMetrics), options, std::move(id), term,
+      firstIndexOfCurrentTerm, std::move(stateHandle), followerFactory,
+      scheduler);
 
   auto compactionManager = std::make_shared<CompactionManager>(
       *storageManager, options,
@@ -418,6 +425,7 @@ auto replicated_log::LogLeader::construct(
       leaderDataGuard->activeParticipantsConfig = participantsConfig;
       leader->_localFollower = std::move(localFollower);
       leader->_storageManager = std::move(storageManager);
+      leader->_inMemoryLogManager = std::move(inMemoryLogManager);
       leader->_compactionManager = std::move(compactionManager);
       TRI_ASSERT(leaderDataGuard->_follower.size() >=
                  config.effectiveWriteConcern)
@@ -634,16 +642,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
-  return _guardedLeaderData.doUnderLock([index](auto& leaderData) {
+  return _guardedLeaderData.doUnderLock([this, index](auto& leaderData) {
     if (leaderData._didResign) {
       auto promise = WaitForPromise{};
       promise.setException(ParticipantResignedException(
           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
       return promise.getFuture();
     }
-    if (leaderData._commitIndex >= index) {
-      return futures::Future<WaitForResult>{
-          std::in_place, leaderData._commitIndex, leaderData._lastQuorum};
+    auto const commitIndex = _inMemoryLogManager->getCommitIndex();
+    if (commitIndex >= index) {
+      return futures::Future<WaitForResult>{std::in_place, commitIndex,
+                                            leaderData._lastQuorum};
     }
     auto it = leaderData._waitForQueue.emplace(index, WaitForPromise{});
     auto& promise = it->second;
@@ -671,24 +680,23 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
-    LogIndex newIndex, std::shared_ptr<QuorumData> quorum)
+    LogIndex const newCommitIndex, std::shared_ptr<QuorumData> quorum)
     -> ResolvedPromiseSet {
   LOG_CTX("a9a7e", TRACE, _self._logContext)
-      << "updating commit index to " << newIndex << " with quorum "
+      << "updating commit index to " << newCommitIndex << " with quorum "
       << quorum->quorum;
-  auto oldIndex = _commitIndex;
+  auto const oldCommitIndex =
+      _self._inMemoryLogManager->updateCommitIndex(newCommitIndex);
 
-  TRI_ASSERT(_commitIndex < newIndex)
-      << "_commitIndex == " << _commitIndex << ", newIndex == " << newIndex;
   _self._logMetrics->replicatedLogNumberCommittedEntries->count(
-      newIndex.value - _commitIndex.value);
-  _commitIndex = newIndex;
+      newCommitIndex.value - oldCommitIndex.value);
   _lastQuorum = quorum;
 
   // Update commit time metrics
   auto const commitTp = InMemoryLogEntry::clock::now();
 
-  for (auto const& it : _inMemoryLog.slice(oldIndex, newIndex + 1)) {
+  for (auto const& it :
+       _inMemoryLog.slice(oldCommitIndex, newCommitIndex + 1)) {
     using namespace std::chrono_literals;
     auto const entryDuration = commitTp - it.insertTp();
     _self._logMetrics->replicatedLogInsertsRtt->count(entryDuration / 1us);
@@ -698,7 +706,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
   auto maxDiskIndex =
       _self._storageManager->getTermIndexMapping().getLastIndex().value_or(
           TermIndexPair{});
-  auto evictStopIndex = std::min(_commitIndex, maxDiskIndex.index);
+  auto evictStopIndex = std::min(newCommitIndex, maxDiskIndex.index);
   std::size_t releasedMemory = 0, numEntriesEvicted = 0;
   for (auto const& memtry : _inMemoryLog.slice(LogIndex{0}, evictStopIndex)) {
     releasedMemory += memtry.entry().approxByteSize();
@@ -753,7 +761,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
 
   if (not _leadershipEstablished) {
     // leadership is established if commitIndex is non-zero
-    ADB_PROD_ASSERT(newIndex > LogIndex{0});
+    ADB_PROD_ASSERT(newCommitIndex > LogIndex{0});
     _leadershipEstablished = true;
     LOG_CTX("f1136", DEBUG, _self._logContext) << "leadership established";
     _stateHandle->leadershipEstablished(std::make_unique<MethodsImpl>(_self));
@@ -765,14 +773,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
 
   try {
     WaitForQueue toBeResolved;
-    auto const end = _waitForQueue.upper_bound(_commitIndex);
+    auto const end = _waitForQueue.upper_bound(newCommitIndex);
     for (auto it = _waitForQueue.begin(); it != end;) {
       LOG_CTX("37f9d", TRACE, _self._logContext)
           << "resolving promise for index " << it->first;
       toBeResolved.insert(_waitForQueue.extract(it++));
     }
-    return ResolvedPromiseSet{_commitIndex, std::move(toBeResolved),
-                              WaitForResult(newIndex, std::move(quorum))};
+    return ResolvedPromiseSet{newCommitIndex, std::move(toBeResolved),
+                              WaitForResult(newCommitIndex, std::move(quorum))};
   } catch (std::exception const& e) {
     // If those promises are not fulfilled we can not continue.
     // Note that the move constructor of std::multi_map is not noexcept.
@@ -815,16 +823,17 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
   auto [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
 
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastAvailableIndex = _inMemoryLog.getLastTermIndexPair();
   LOG_CTX("8844a", TRACE, follower->logContext)
       << "last matched index = " << follower->nextPrevLogIndex
       << ", current index = " << lastAvailableIndex
       << ", last acked commit index = " << follower->lastAckedCommitIndex
-      << ", current commit index = " << _commitIndex
+      << ", current commit index = " << commitIndex
       << ", last acked lci = " << follower->lastAckedLowestIndexToKeep
       << ", current lci = " << lowestIndexToKeep;
   if (follower->nextPrevLogIndex == lastAvailableIndex.index &&
-      _commitIndex == follower->lastAckedCommitIndex &&
+      commitIndex == follower->lastAckedCommitIndex &&
       lowestIndexToKeep == follower->lastAckedLowestIndexToKeep) {
     LOG_CTX("74b71", TRACE, follower->logContext) << "up to date";
     return std::nullopt;  // nothing to replicate
@@ -874,8 +883,10 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
 
   auto [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
+
   AppendEntriesRequest req;
-  req.leaderCommit = _commitIndex;
+  req.leaderCommit = commitIndex;
   req.lowestIndexToKeep = lowestIndexToKeep;
   req.leaderTerm = _self._currentTerm;
   req.leaderId = _self._id;
@@ -1109,8 +1120,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogConsumerIterator(
   // Note that there can be committed log entries only in memory, because they
   // might not be persisted locally.
 
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
   // Intersect the range with the committed range
-  auto range = LogRange{LogIndex{0}, _commitIndex + 1};
+  auto range = LogRange{LogIndex{0}, commitIndex + 1};
   if (bounds) {
     range = intersect(range, *bounds);
   }
@@ -1168,7 +1180,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLogConsumerIterator(
  */
 auto replicated_log::LogLeader::GuardedLeaderData::collectFollowerStates() const
     -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>> {
-  auto largestCommonIndex = _commitIndex;
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
+  auto largestCommonIndex = commitIndex;
   std::vector<algorithms::ParticipantState> participantStates;
   participantStates.reserve(_follower.size());
   for (auto const& [pid, follower] : _follower) {
@@ -1206,19 +1219,21 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
     _self._compactionManager->updateLowestIndexToKeep(largestCommonIndex);
   }
 
-  auto [newCommitIndex, commitFailReason, quorum] =
+  auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
+  auto const [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes, this->activeParticipantsConfig->config.effectiveWriteConcern,
-          _commitIndex, _inMemoryLog.getLastTermIndexPair());
+          currentCommitIndex, _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
       << "calculated commit index as " << newCommitIndex
-      << ", current commit index = " << _commitIndex;
-  LOG_CTX_IF("fbc23", TRACE, _self._logContext, newCommitIndex == _commitIndex)
+      << ", current commit index = " << currentCommitIndex;
+  LOG_CTX_IF("fbc23", TRACE, _self._logContext,
+             newCommitIndex == currentCommitIndex)
       << "commit fail reason = " << to_string(commitFailReason)
       << " follower-states = " << indexes;
-  if (newCommitIndex > _commitIndex) {
+  if (newCommitIndex > currentCommitIndex) {
     auto const quorum_data = std::make_shared<QuorumData>(
         newCommitIndex, _self._currentTerm, std::move(quorum));
     return updateCommitIndexLeader(newCommitIndex, quorum_data);
@@ -1228,11 +1243,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
 auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
     -> LogStatistics {
-  auto [releaseIndex, lowestIndexToKeep] =
+  auto const [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto mapping = _self._storageManager->getTermIndexMapping();
   auto result = LogStatistics{};
-  result.commitIndex = _commitIndex;
+  result.commitIndex = commitIndex;
   result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
   result.releaseIndex = releaseIndex;
@@ -1263,17 +1279,18 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
 
 auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
     const noexcept -> std::chrono::duration<double, std::milli> {
-  auto memtry = _inMemoryLog.getEntryByIndex(_commitIndex + 1);
+  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
+  auto memtry = _inMemoryLog.getEntryByIndex(commitIndex + 1);
   if (memtry.has_value()) {
     return std::chrono::duration_cast<
         std::chrono::duration<double, std::milli>>(
         std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
-    TRI_ASSERT(_commitIndex == LogIndex{0} ||
-               _commitIndex == _inMemoryLog.getLastIndex())
+    TRI_ASSERT(commitIndex == LogIndex{0} ||
+               commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "
-           "should be the commitIndex. _commitIndex = "
-        << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
+           "should be the commitIndex. commitIndex = "
+        << commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
     return {};
   }
 }
@@ -1301,13 +1318,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
 auto replicated_log::LogLeader::getReplicatedLogSnapshot() const
     -> InMemoryLog::log_type {
   auto [log, commitIndex] =
-      _guardedLeaderData.doUnderLock([](auto const& leaderData) {
+      _guardedLeaderData.doUnderLock([this](auto const& leaderData) {
         if (leaderData._didResign) {
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
+        auto const commitIndex_ = _inMemoryLogManager->getCommitIndex();
 
-        return std::make_pair(leaderData._inMemoryLog, leaderData._commitIndex);
+        return std::make_pair(leaderData._inMemoryLog, commitIndex_);
       });
 
   return log.takeSnapshotUpToAndIncluding(commitIndex).copyFlexVector();
@@ -1323,9 +1341,10 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
   return waitFor(index).thenValue([this, self = shared_from_this(), index](
                                       auto&& quorum) -> WaitForIteratorFuture {
     auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
-        [index](GuardedLeaderData& leaderData)
+        [this, index](GuardedLeaderData& leaderData)
             -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
-          TRI_ASSERT(index <= leaderData._commitIndex);
+          auto const commitIndex = _inMemoryLogManager->getCommitIndex();
+          TRI_ASSERT(index <= commitIndex);
 
           /*
            * This code here ensures that if only private log entries are present
@@ -1334,7 +1353,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
            */
 
           auto testIndex = index;
-          while (testIndex <= leaderData._commitIndex) {
+          while (testIndex <= commitIndex) {
             auto memtry = leaderData._inMemoryLog.getEntryByIndex(testIndex);
             if (!memtry.has_value()) {
               break;
@@ -1345,13 +1364,13 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
             testIndex = testIndex + 1;
           }
 
-          if (testIndex > leaderData._commitIndex) {
+          if (testIndex > commitIndex) {
             return std::make_pair(testIndex, nullptr);
           }
 
-          return std::make_pair(
-              testIndex, leaderData.getLogConsumerIterator(
-                             LogRange{testIndex, leaderData._commitIndex + 1}));
+          return std::make_pair(testIndex,
+                                leaderData.getLogConsumerIterator(
+                                    LogRange{testIndex, commitIndex + 1}));
         });
 
     // call here, otherwise we deadlock with waitFor
@@ -1647,7 +1666,7 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
 }
 
 auto replicated_log::LogLeader::getCommitIndex() const noexcept -> LogIndex {
-  return _guardedLeaderData.getLockedGuard()->_commitIndex;
+  return _inMemoryLogManager->getCommitIndex();
 }
 
 auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept

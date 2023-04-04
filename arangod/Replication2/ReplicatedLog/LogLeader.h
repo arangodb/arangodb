@@ -49,6 +49,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Scheduler/Scheduler.h"
 #include "Replication2/IScheduler.h"
+#include "Replication2/ReplicatedLog/Components/InMemoryLogManager.h"
 #include "Replication2/ReplicatedLog/Components/StorageManager.h"
 #include "Replication2/ReplicatedLog/Components/CompactionManager.h"
 
@@ -297,7 +298,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::pair<LogIndex, std::vector<algorithms::ParticipantState>>;
 
     [[nodiscard]] auto updateCommitIndexLeader(
-        LogIndex newIndex, std::shared_ptr<QuorumData> quorum)
+        LogIndex newCommitIndex, std::shared_ptr<QuorumData> quorum)
         -> ResolvedPromiseSet;
 
     [[nodiscard]] auto getInternalLogIterator(LogIndex firstIdx) const
@@ -330,7 +331,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     WaitForQueue _waitForQueue{};
     WaitForBag _waitForResignQueue;
     std::shared_ptr<QuorumData> _lastQuorum{};
-    LogIndex _commitIndex{0};
     bool _didResign{false};
     bool _leadershipEstablished{false};
     CommitFailReason _lastCommitFailReason;
@@ -353,6 +353,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
   std::shared_ptr<StorageManager> _storageManager;
+  std::shared_ptr<InMemoryLogManager> _inMemoryLogManager;
   std::shared_ptr<CompactionManager> _compactionManager;
   // _localFollower is const after construction
   std::shared_ptr<LocalFollower> _localFollower;
