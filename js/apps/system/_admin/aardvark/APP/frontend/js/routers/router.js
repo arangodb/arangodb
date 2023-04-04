@@ -45,7 +45,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
-      'graph-v2/:name': 'showV2Graph',
+      'graphs-v2/:name': 'showV2Graph',
       'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',

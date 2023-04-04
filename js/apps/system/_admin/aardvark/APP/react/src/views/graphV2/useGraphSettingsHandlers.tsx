@@ -30,7 +30,7 @@ const putUserConfig = async ({
   const data = await getRouteForDB(
     window.frontendConfig.db,
     "_api"
-  ).put(`/user/${username}/config/graph-v2`, { value: finalConfig });
+  ).put(`/user/${username}/config/graphs-v2`, { value: finalConfig });
   return data.body;
 };
 export const useGraphSettingsHandlers = ({

@@ -15,7 +15,7 @@ export const fetchGraphData = async ({
     return Promise.resolve();
   }
   const data = await getRouteForDB(window.frontendConfig.db, "_admin").get(
-    `/aardvark/graph-v2/${graphName}`,
+    `/aardvark/graphs-v2/${graphName}`,
     params
   );
   return data.body;

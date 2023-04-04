@@ -1007,7 +1007,7 @@ authRouter.get('/graph/:name', function (req, res) {
   This function returns vertices and edges for a specific graph.
 `);
 
-authRouter.get('/graph-v2/:name', function (req, res) {
+authRouter.get('/graphs-v2/:name', function (req, res) {
   var name = req.pathParams.name;
   var gm;
   if (isEnterprise) {
