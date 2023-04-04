@@ -12,7 +12,7 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/visgraphs/VisGraphReactView');
+require('./views/graphV2/GraphV2ReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
@@ -186,7 +186,6 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 // require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
-  // <Overview />
   render() {
     return (
       <div className="App" />

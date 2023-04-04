@@ -27,6 +27,8 @@ devel
   pattern, so that the optimization may be triggered in more cases in the
   future.
 
+* FE-200: Add canvas interactions to Graph Viewer.
+
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
 * FE-218: Updated WebUI dependencies.

@@ -55,23 +55,20 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
                        std::shared_ptr<GraphFormat<V, E> const> graphFormat,
                        LoadingUpdateCallback updateCallback)
-      : result(std::make_shared<Quiver<V, E>>()),
-        graphFormat(graphFormat),
+      : graphFormat(graphFormat),
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         updateCallback(updateCallback) {}
-
-  auto load() -> std::shared_ptr<Quiver<V, E>> override;
+  auto load() -> Magazine<V, E> override;
 
   auto loadVertices(ShardID const& vertexShard,
-                    std::vector<ShardID> const& edgeShards) -> void;
+                    std::vector<ShardID> const& edgeShards)
+      -> std::shared_ptr<Quiver<V, E>>;
   auto loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  std::string_view documentID,
                  traverser::EdgeCollectionInfo& info) -> void;
 
   auto requestVertexIds(uint64_t numVertices) -> void;
-
-  std::shared_ptr<Quiver<V, E>> result;
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
