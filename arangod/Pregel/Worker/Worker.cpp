@@ -338,36 +338,40 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
   _state = WorkerState::COMPUTING;
   _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
-  _activeCount = 0;  // active count is only valid after the run
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  _activeCount.store(0);
 
-  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  LOG_PREGEL("425c3", DEBUG)
+      << "Starting processing on " << _magazine.size() << " shards";
+
+  //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
   _initializeMessageCaches();
 
   auto self = shared_from_this();
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
-    if (_state != WorkerState::COMPUTING) {
-      LOG_PREGEL("f0e3d", WARN) << "Execution aborted prematurely.";
-      return;
-    }
-    for (auto [idx, quiver] : enumerate(_magazine)) {
-      auto res = _processVertices(_inCaches[idx], _outCaches[idx], quiver);
-      if (res.ok()) {
-        auto& processRes = res.get();
-        _workerContext->_writeAggregators->aggregateValues(
-            processRes.workerAggregator);
-        _messageStats.accumulate(processRes.stats);
-      } else {
-        // TODO: ?
-      }
-    }
-    if (_state == WorkerState::COMPUTING) {
-      _finishedProcessing();  // last thread turns the lights out
-    }
-  });
+  auto futures = std::vector<futures::Future<ResultT<ProcessVerticesResult>>>{};
+  for (auto [idx, quiver] : enumerate(_magazine)) {
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW, [self, this, idx = idx, quiver = quiver]() {
+          return _processVertices(_inCaches[idx], _outCaches[idx], quiver);
+        }));
+  }
 
-  LOG_PREGEL("425c3", DEBUG) << "Starting processing using " << 1 << " threads";
+  futures::collectAll(std::move(futures))
+      .thenFinal([self, this](auto&& tryResults) {
+        auto&& results = tryResults.get();
+        for (auto&& tryRes : results) {
+          auto&& res = tryRes.get();
+          if (res.ok()) {
+            auto& processRes = res.get();
+            _workerContext->_writeAggregators->aggregateValues(
+                processRes.workerAggregator);
+            _messageStats.accumulate(processRes.stats);
+          } else {
+            // TODO: ?
+          }
+        }
+        _finishedProcessing();
+      });
 }
 
 template<typename V, typename E, typename M>
