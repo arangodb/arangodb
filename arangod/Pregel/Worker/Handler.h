@@ -63,12 +63,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     LOG_TOPIC("cd69c", INFO, Logger::PREGEL)
         << fmt::format("Worker Actor {} is loading", this->self);
 
-    this->state->outCache->setDispatch(
-        [this](actor::ActorPID actor,
-               worker::message::PregelMessage message) -> void {
-          this->template dispatch<worker::message::WorkerMessages>(actor,
-                                                                   message);
-        });
     this->state->outCache->setResponsibleActorPerShard(
         msg.responsibleActorPerShard);
 
@@ -113,6 +107,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
   auto prepareGlobalSuperStep(message::RunGlobalSuperStep message) -> void {
     // write cache becomes the readable cache
+    this->state->outCache->setDispatch(
+        [this](actor::ActorPID actor,
+               worker::message::PregelMessage message) -> void {
+          this->template dispatch<worker::message::WorkerMessages>(actor,
+                                                                   message);
+        });
     TRI_ASSERT(this->state->readCache->containedMessageCount() == 0);
     std::swap(this->state->readCache, this->state->writeCache);
     this->state->config->_globalSuperstep = message.gss;
@@ -317,7 +317,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
   auto operator()(message::PregelMessage message)
       -> std::unique_ptr<WorkerState<V, E, M>> {
     LOG_TOPIC("80709", INFO, Logger::PREGEL) << fmt::format(
-        "Worker Actor {} received message {}", this->self, message);
+        "Worker Actor {} with gss {} received message for gss {}", this->self,
+        this->state->config->globalSuperstep(), message.gss);
     if (message.gss != this->state->config->globalSuperstep() &&
         message.gss != this->state->config->globalSuperstep() + 1) {
       LOG_TOPIC("da39a", ERR, Logger::PREGEL)
