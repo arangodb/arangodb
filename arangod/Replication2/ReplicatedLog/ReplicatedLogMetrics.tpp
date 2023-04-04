@@ -108,10 +108,10 @@ ReplicatedLogMetricsIndirect<mock>::ReplicatedLogMetricsIndirect(
       createMetric<arangodb_replication2_replicated_log_append_entries_size>(
           metricsFeature);
   replicatedLogFollowerEntryDropCount = createMetric<
-      arangodb_replication2_replicated_log_follower_entry_drop_count>(
+      arangodb_replication2_replicated_log_follower_entry_drop_total>(
       metricsFeature);
   replicatedLogLeaderAppendEntriesErrorCount = createMetric<
-      arangodb_replication2_replicated_log_leader_append_entries_error_count>(
+      arangodb_replication2_replicated_log_leader_append_entries_error_total>(
       metricsFeature);
 }
 
