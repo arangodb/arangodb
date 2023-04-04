@@ -53,12 +53,18 @@ struct InMemoryLogManager : IInMemoryLogManager {
       -> std::unique_ptr<TypedLogIterator<InMemoryLogEntry>> override;
   auto getLogConsumerIterator(std::optional<LogRange> bounds) const
       -> std::unique_ptr<LogRangeIterator> override;
+  auto getNonEmptyLogConsumerIterator(LogIndex firstIdx) const
+      -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> override;
 
  private:
   struct GuardedData {
     explicit GuardedData(LogIndex firstIndex);
     InMemoryLog _inMemoryLog;
     LogIndex _commitIndex{0};
+
+    auto getLogConsumerIterator(IStorageManager& storageManager,
+                                std::optional<LogRange> bounds) const
+        -> std::unique_ptr<LogRangeIterator>;
   };
   LoggerContext const _logContext;
   std::shared_ptr<ReplicatedLogMetrics> const _metrics;

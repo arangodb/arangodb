@@ -174,66 +174,106 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
 
 auto InMemoryLogManager::getLogConsumerIterator(
     std::optional<LogRange> bounds) const -> std::unique_ptr<LogRangeIterator> {
-  return _guardedData.doUnderLock([&](auto& data)
-                                      -> std::unique_ptr<LogRangeIterator> {
-    // Note that there can be committed log entries only in memory, because they
-    // might not be persisted locally.
+  return _guardedData.getLockedGuard()->getLogConsumerIterator(*_storageManager,
+                                                               bounds);
+}
 
-    auto const commitIndex = data._commitIndex;
-    // Intersect the range with the committed range
-    auto range = LogRange{LogIndex{0}, commitIndex + 1};
-    if (bounds) {
-      range = intersect(range, *bounds);
-    }
+auto InMemoryLogManager::getNonEmptyLogConsumerIterator(LogIndex const firstIdx)
+    const -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> {
+  return _guardedData.doUnderLock(
+      [&](auto& data)
+          -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> {
+        auto const commitIndex = data._commitIndex;
+        auto const& inMemoryLog = data._inMemoryLog;
+        TRI_ASSERT(firstIdx <= commitIndex);
 
-    // check if we can serve everything from memory
-    auto const& inMemoryLog = data._inMemoryLog;
-    if (inMemoryLog.getIndexRange().contains(range)) {
-      return inMemoryLog.getIteratorRange(range);
-    }
+        /*
+         * This code here ensures that if only private log entries are present
+         * we do not reply with an empty iterator but instead wait for the
+         * next entry containing payload.
+         */
 
-    // server from disk
-    auto diskIter = _storageManager->getCommittedLogIterator(range);
-
-    struct OverlayIterator : LogRangeIterator {
-      explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
-                               std::unique_ptr<LogRangeIterator> inMemoryIter,
-                               LogRange inMemoryRange, LogRange range)
-          : _diskIter(std::move(diskIter)),
-            _inMemoryIter(std::move(inMemoryIter)),
-            _inMemoryRange(inMemoryRange),
-            _range(range) {}
-
-      auto next() -> std::optional<LogEntryView> override {
-        // iterate over the disk until it is covered by the in memory part
-        if (_diskIter) {
-          auto entry = _diskIter->next();
-          if (entry) {
-            if (not _inMemoryRange.contains(entry->logIndex())) {
-              return entry;
-            }
+        auto testIndex = firstIdx;
+        while (testIndex <= commitIndex) {
+          auto memtry = inMemoryLog.getEntryByIndex(testIndex);
+          if (!memtry.has_value()) {
+            break;
           }
-          _diskIter.reset();
+          if (memtry->entry().hasPayload()) {
+            break;
+          }
+          testIndex = testIndex + 1;
         }
 
-        return _inMemoryIter->next();
-      }
+        if (testIndex > commitIndex) {
+          return testIndex;
+        }
 
-      auto range() const noexcept -> LogRange override { return _range; }
-
-      std::unique_ptr<LogRangeIterator> _diskIter;
-      std::unique_ptr<LogRangeIterator> _inMemoryIter;
-      LogRange _inMemoryRange;
-      LogRange _range;
-    };
-
-    return std::make_unique<OverlayIterator>(
-        std::move(diskIter), inMemoryLog.getIteratorRange(range),
-        inMemoryLog.getIndexRange(), range);
-  });
+        return data.getLogConsumerIterator(
+            *_storageManager, LogRange{testIndex, commitIndex + 1});
+      });
 }
 
 InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)
     : _inMemoryLog(firstIndex) {}
+
+auto InMemoryLogManager::GuardedData::getLogConsumerIterator(
+    IStorageManager& storageManager, std::optional<LogRange> bounds) const
+    -> std::unique_ptr<LogRangeIterator> {
+  // Note that there can be committed log entries only in memory, because they
+  // might not be persisted locally.
+
+  auto const commitIndex = _commitIndex;
+  // Intersect the range with the committed range
+  auto range = LogRange{LogIndex{0}, commitIndex + 1};
+  if (bounds) {
+    range = intersect(range, *bounds);
+  }
+
+  // check if we can serve everything from memory
+  auto const& inMemoryLog = _inMemoryLog;
+  if (inMemoryLog.getIndexRange().contains(range)) {
+    return inMemoryLog.getIteratorRange(range);
+  }
+
+  // server from disk
+  auto diskIter = storageManager.getCommittedLogIterator(range);
+
+  struct OverlayIterator : LogRangeIterator {
+    explicit OverlayIterator(std::unique_ptr<LogRangeIterator> diskIter,
+                             std::unique_ptr<LogRangeIterator> inMemoryIter,
+                             LogRange inMemoryRange, LogRange range)
+        : _diskIter(std::move(diskIter)),
+          _inMemoryIter(std::move(inMemoryIter)),
+          _inMemoryRange(inMemoryRange),
+          _range(range) {}
+
+    auto next() -> std::optional<LogEntryView> override {
+      // iterate over the disk until it is covered by the in memory part
+      if (_diskIter) {
+        auto entry = _diskIter->next();
+        if (entry) {
+          if (not _inMemoryRange.contains(entry->logIndex())) {
+            return entry;
+          }
+        }
+        _diskIter.reset();
+      }
+
+      return _inMemoryIter->next();
+    }
+
+    auto range() const noexcept -> LogRange override { return _range; }
+
+    std::unique_ptr<LogRangeIterator> _diskIter;
+    std::unique_ptr<LogRangeIterator> _inMemoryIter;
+    LogRange _inMemoryRange;
+    LogRange _range;
+  };
+
+  return std::make_unique<OverlayIterator>(std::move(diskIter),
+                                           inMemoryLog.getIteratorRange(range),
+                                           inMemoryLog.getIndexRange(), range);
+}
 
 }  // namespace arangodb::replication2::replicated_log

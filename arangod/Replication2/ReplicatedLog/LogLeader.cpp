@@ -1186,47 +1186,19 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
 
   return waitFor(index).thenValue([this, self = shared_from_this(), index](
                                       auto&& quorum) -> WaitForIteratorFuture {
-    auto [actualIndex, iter] = _guardedLeaderData.doUnderLock(
-        [this, index](GuardedLeaderData& leaderData)
-            -> std::pair<LogIndex, std::unique_ptr<LogRangeIterator>> {
-          // TODO Move this lambda into InMemoryLogManager
-          auto const commitIndex = _inMemoryLogManager->getCommitIndex();
-          auto const inMemoryLog = _inMemoryLogManager->getInMemoryLog();
-          TRI_ASSERT(index <= commitIndex);
+    auto iterOrNextIdx =
+        _inMemoryLogManager->getNonEmptyLogConsumerIterator(index);
 
-          /*
-           * This code here ensures that if only private log entries are present
-           * we do not reply with an empty iterator but instead wait for the
-           * next entry containing payload.
-           */
-
-          auto testIndex = index;
-          while (testIndex <= commitIndex) {
-            auto memtry = inMemoryLog.getEntryByIndex(testIndex);
-            if (!memtry.has_value()) {
-              break;
-            }
-            if (memtry->entry().hasPayload()) {
-              break;
-            }
-            testIndex = testIndex + 1;
-          }
-
-          if (testIndex > commitIndex) {
-            return std::make_pair(testIndex, nullptr);
-          }
-
-          return std::make_pair(testIndex,
-                                _inMemoryLogManager->getLogConsumerIterator(
-                                    LogRange{testIndex, commitIndex + 1}));
-        });
-
-    // call here, otherwise we deadlock with waitFor
-    if (iter == nullptr) {
-      return waitForIterator(actualIndex);
-    }
-
-    return std::move(iter);
+    return std::visit(
+        overload{
+            [](std::unique_ptr<LogRangeIterator> iter)
+                -> WaitForIteratorFuture { return std::move(iter); },
+            [this](LogIndex indexToWaitFor) -> WaitForIteratorFuture {
+              // call here, otherwise we deadlock with waitFor
+              return waitForIterator(indexToWaitFor);
+            },
+        },
+        std::move(iterOrNextIdx));
   });
 }
 
