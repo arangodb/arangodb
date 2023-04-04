@@ -27,6 +27,8 @@ devel
   pattern, so that the optimization may be triggered in more cases in the
   future.
 
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
 * FE-218: Updated WebUI dependencies.
 
 * Fixed statistics values for writes executed and writes ignored when a query 

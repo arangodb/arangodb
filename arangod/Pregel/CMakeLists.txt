@@ -8,7 +8,9 @@ target_link_libraries(arango_pregel_with_actors
   PRIVATE
   arango_inspection
   arango_actor)
-
+target_link_libraries(arango_pregel_with_actors
+  PUBLIC
+  absl::flat_hash_map)
 add_library(arango_pregel STATIC
   AlgoRegistry.cpp
   ExecutionNumber.cpp
