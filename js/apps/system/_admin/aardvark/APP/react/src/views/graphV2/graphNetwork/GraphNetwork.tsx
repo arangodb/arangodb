@@ -4,7 +4,6 @@ import { useElementPosition } from "../../../components/hooks/useElementPosition
 import { useGraph } from "../GraphContext";
 import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
-import { SmartGraphEmptyState } from "./SmartGraphEmptyState";
 import { useSetupGraphNetwork } from "./useSetupGraphNetwork";
 
 export const GraphNetwork = () => {
