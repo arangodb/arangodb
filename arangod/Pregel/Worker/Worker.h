@@ -32,7 +32,7 @@
 #include "Pregel/AggregatorHandler.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Messages.h"
-#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Pregel/Statistics.h"
 #include "Pregel/Status/Status.h"
 #include "Pregel/Worker/Messages.h"
@@ -104,7 +104,7 @@ class Worker : public IWorker {
 
   std::unique_ptr<AggregatorHandler> _conductorAggregators;
   std::unique_ptr<AggregatorHandler> _workerAggregators;
-  std::shared_ptr<Quiver<V, E>> _quiver;
+  Magazine<V, E> _magazine;
   std::unique_ptr<MessageFormat<M>> _messageFormat;
   std::unique_ptr<MessageCombiner<M>> _messageCombiner;
 

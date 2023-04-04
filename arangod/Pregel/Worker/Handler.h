@@ -85,14 +85,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        this->state->quiver = loader.load();
+        this->state->magazine = loader.load();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);
         return {conductor::message::GraphLoaded{
             .executionNumber = this->state->config->executionNumber(),
-            .vertexCount = this->state->quiver->numberOfVertices(),
-            .edgeCount = this->state->quiver->numberOfEdges()}};
+            .vertexCount = this->state->magazine.numberOfVertices(),
+            .edgeCount = this->state->magazine.numberOfEdges()}};
       } catch (std::exception const& ex) {
         return Result{
             TRI_ERROR_INTERNAL,
@@ -137,7 +137,6 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
     ctx->_gss = this->state->config->globalSuperstep();
     ctx->_lss = this->state->config->localSuperstep();
     ctx->_context = this->state->workerContext.get();
-    ctx->_quiver = this->state->quiver;
     ctx->_readAggregators = this->state->workerContext->_readAggregators.get();
   }
 
@@ -161,37 +160,39 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     size_t verticesProcessed = 0;
     size_t activeCount = 0;
-    for (auto& vertexEntry : *this->state->quiver) {
-      MessageIterator<M> messages = this->state->readCache->getMessages(
-          vertexEntry.shard(), vertexEntry.key());
-      this->state->messageStats.receivedCount += messages.size();
-      // _feature.metrics()->pregelMessagesReceived->count(
-      //     _readCache->containedMessageCount());
-      this->state->messageStats.memoryBytesUsedForMessages +=
-          messages.size() * sizeof(M);
+    for (auto& quiver : this->state->magazine) {
+      for (auto& vertexEntry : *quiver) {
+        MessageIterator<M> messages = this->state->readCache->getMessages(
+            vertexEntry.shard(), vertexEntry.key());
+        this->state->messageStats.receivedCount += messages.size();
+        // _feature.metrics()->pregelMessagesReceived->count(
+        //     _readCache->containedMessageCount());
+        this->state->messageStats.memoryBytesUsedForMessages +=
+            messages.size() * sizeof(M);
 
-      if (messages.size() > 0 || vertexEntry.active()) {
-        vertexComputation->_vertexEntry = &vertexEntry;
-        vertexComputation->compute(messages);
-        if (vertexEntry.active()) {
-          activeCount++;
+        if (messages.size() > 0 || vertexEntry.active()) {
+          vertexComputation->_vertexEntry = &vertexEntry;
+          vertexComputation->compute(messages);
+          if (vertexEntry.active()) {
+            activeCount++;
+          }
         }
-      }
 
-      this->state->messageStats.sendCount = outCache->sendCount();
-      verticesProcessed++;
-      if (verticesProcessed %
-              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-          0) {
-        this->template dispatch<pregel::message::StatusMessages>(
-            this->state->statusActor,
-            pregel::message::GlobalSuperStepUpdate{
-                .gss = this->state->config->globalSuperstep(),
-                .verticesProcessed = verticesProcessed,
-                .messagesSent = this->state->messageStats.sendCount,
-                .messagesReceived = this->state->messageStats.receivedCount,
-                .memoryBytesUsedForMessages =
-                    this->state->messageStats.memoryBytesUsedForMessages});
+        this->state->messageStats.sendCount = outCache->sendCount();
+        verticesProcessed++;
+        if (verticesProcessed %
+                Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+            0) {
+          this->template dispatch<pregel::message::StatusMessages>(
+              this->state->statusActor,
+              pregel::message::GlobalSuperStepUpdate{
+                  .gss = this->state->config->globalSuperstep(),
+                  .verticesProcessed = verticesProcessed,
+                  .messagesSent = this->state->messageStats.sendCount,
+                  .messagesReceived = this->state->messageStats.receivedCount,
+                  .memoryBytesUsedForMessages =
+                      this->state->messageStats.memoryBytesUsedForMessages});
+        }
       }
     }
 
@@ -227,7 +228,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->statusActor,
         pregel::message::GlobalSuperStepUpdate{
             .gss = this->state->config->globalSuperstep(),
-            .verticesProcessed = this->state->quiver->numberOfVertices(),
+            .verticesProcessed = this->state->magazine.numberOfVertices(),
             .messagesSent = this->state->messageStats.sendCount,
             .messagesReceived = this->state->messageStats.receivedCount,
             .memoryBytesUsedForMessages =
@@ -246,8 +247,8 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         this->state->messageStats,
         verticesProcessed.sendCountPerActor,
         verticesProcessed.activeCount,
-        this->state->quiver->numberOfVertices(),
-        this->state->quiver->numberOfEdges(),
+        this->state->magazine.numberOfVertices(),
+        this->state->magazine.numberOfEdges(),
         aggregators};
     LOG_TOPIC("ade5b", DEBUG, Logger::PREGEL)
         << fmt::format("Finished GSS: {}", gssFinishedEvent);
@@ -358,7 +359,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->magazine) {
+          storer.store(quiver);
+        }
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
@@ -397,7 +400,9 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
             GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
                                           this->state->algorithm->inputFormat(),
                                           std::move(statusUpdateCallback));
-        storer.store(this->state->quiver);
+        for (auto& quiver : this->state->magazine) {
+          storer.store(quiver);
+        }
         return PregelResults{*storer.result};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,
