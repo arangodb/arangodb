@@ -9,7 +9,7 @@ export const getDB = memoize((db: string) => new Database({
   }
 }));
 
-export const getCurrentDB = () => getDB(frontendConfig.db);
+export const getCurrentDB = () => getDB(window.frontendConfig.db);
 
 export const getRouteForDB = memoize((db: string, route: string) => getDB(db).route(route),
   (db: string, route: string) => `${db}/${route}`);
