@@ -20,7 +20,12 @@ module.exports = {
     // Our vendored copy of sigma relies on "this" being an alias for "window"
     config.module.rules.unshift({
       test: /sigma.*/,
-      use: "imports-loader?this=>window",
+      use: {
+        loader: "imports-loader",
+        options: {
+          wrapper: "window",
+        },
+      },
     });
 
     // The html-loader no longer supports interpolation, which we use in
