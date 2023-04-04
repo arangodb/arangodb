@@ -2,7 +2,7 @@
 @startDocuBlock post_api_transaction_begin
 @brief begin a server-side transaction
 
-@RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
+@RESTHEADER{POST /_api/transaction/begin, Begin transaction, beginStreamTransaction}
 
 @RESTHEADERPARAMETERS
 
@@ -39,6 +39,15 @@ not time out waiting for a lock.
 Transaction size limit in bytes.
 
 @RESTDESCRIPTION
+Begin a Stream Transaction that allows clients to call selected APIs over a
+short period of time, referencing the transaction ID, and have the server
+execute the operations transactionally.
+
+Committing or aborting a running transaction must be done by the client.
+It is bad practice to not commit or abort a transaction once you are done
+using it. It forces the server to keep resources and collection locks 
+until the entire transaction times out.
+
 The transaction description must be passed in the body of the POST request.
 If the transaction can be started on the server, *HTTP 201* will be returned.
 
