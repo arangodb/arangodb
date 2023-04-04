@@ -39,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
+#include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -70,6 +71,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <absl/strings/str_cat.h>
@@ -383,7 +385,7 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  std::vector<std::string> what;
+  containers::SmallVector<std::string_view, 4> what;
 
   if (_extendedNamesDatabases) {
     what.push_back("databases");
