@@ -1183,8 +1183,6 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>()),
-      _cacheEnabled(basics::VelocyPackHelper::getBooleanValue(
-          info, StaticStrings::CacheEnabled, false)),
       _forceCacheRefill(collection.vocbase()
                             .server()
                             .getFeature<RocksDBIndexCacheRefillFeature>()

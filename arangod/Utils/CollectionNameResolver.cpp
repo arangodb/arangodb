@@ -126,7 +126,7 @@ DataSourceId CollectionNameResolver::getCollectionIdCluster(
     return getCollectionIdLocal(name);
   }
   if (name.empty()) {
-    DataSourceId::none();
+    return DataSourceId::none();
   }
   if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
