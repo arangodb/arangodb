@@ -129,7 +129,7 @@ Result fillIndexSingleThreaded(
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   Result res;
   uint64_t numDocsWritten = 0;
 
@@ -137,7 +137,7 @@ Result fillIndexSingleThreaded(
 
   auto rcoll = static_cast<RocksDBCollection*>(ridx.collection().getPhysical());
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-  auto count = ridx.collection().countCache().get();
+  auto count = rcoll->numberDocuments(&trx);
   rocksdb::Slice upper(bounds.end());
 
   OperationOptions options;
@@ -155,12 +155,12 @@ Result fillIndexSingleThreaded(
     numDocsWritten++;
 
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-      if (progress != nullptr && count > 0) {
-        auto pres = (*progress)(docsProcessed.load(std::memory_order_relaxed) *
-                                100 / count);
-        if (!pres.ok()) {
-          res.reset(TRI_ERROR_TRANSACTION_ABORTED, pres.errorMessage());
-          break;
+      if (count > 0) {
+        double p =
+          docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+        ridx.progress(p);
+        if (progress != nullptr) {
+          (*progress)(p);
         }
       }
 
@@ -318,7 +318,7 @@ static Result fillIndex(
     std::atomic<uint64_t>& docsProcessed, bool isUnique, size_t numThreads,
     uint64_t threadBatchSize, rocksdb::Options const& dbOptions,
     std::string const& idxPath,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress =
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
         nullptr) {
   // fillindex can be non transactional, we just need to clean up
   TRI_ASSERT(rootDB != nullptr);
@@ -370,7 +370,7 @@ static Result fillIndex(
 }
 
 Result RocksDBBuilderIndex::fillIndexForeground(
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
@@ -765,7 +765,7 @@ void RocksDBBuilderIndex::Locker::unlock() {
 // Background index filler task
 Result RocksDBBuilderIndex::fillIndexBackground(
     Locker& locker,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(locker.isLocked());
 
   RocksDBIndex* internal = _wrapped.get();

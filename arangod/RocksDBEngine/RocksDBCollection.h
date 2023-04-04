@@ -66,7 +66,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   std::shared_ptr<Index> createIndex(
       velocypack::Slice info, bool restore, bool& created,
-      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> =
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
           nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(

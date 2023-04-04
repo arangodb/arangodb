@@ -131,8 +131,8 @@ void ClusterIndex::toVelocyPack(
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
-    uint64_t progress = 0;
-    uint64_t success = 0;
+    double progress = 0;
+    double success = 0;
     auto const shards = _collection.shardIds();
     auto const body = VPackBuffer<uint8_t>();
     auto* pool =
@@ -142,6 +142,9 @@ void ClusterIndex::toVelocyPack(
     std::string const prefix = "/_api/index/";
     for (auto const& shard : *shards) {
       network::RequestOptions reqOpts;
+      reqOpts.param("withHidden", "true");
+      // best effort. only displaying progress
+      reqOpts.timeout = network::Timeout(10.0);
       std::string const url =
           prefix + shard.first + "/" + std::to_string(_iid.id());
       futures.emplace_back(
@@ -150,6 +153,9 @@ void ClusterIndex::toVelocyPack(
     }
     for (Future<network::Response>& f : futures) {
       network::Response const& r = f.get();
+
+      // Only best effort accounting. If something breaks here, we just
+      // ignore the output. Account for what we can and move on.
       if (r.fail()) {
         LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
             << "Communication error while collecting figures for collection "
@@ -168,16 +174,16 @@ void ClusterIndex::toVelocyPack(
             << _collection.name() + " from " + r.destination;
       }
       if (resSlice.hasKey("progress") && resSlice.get("progress").isNumber()) {
-        progress += resSlice.get("progress").getNumber<uint64_t>();
+        progress += resSlice.get("progress").getNumber<double>();
         success++;
       } else {
-        LOG_TOPIC("aegb4", TRACE, Logger::CLUSTER)
+        LOG_TOPIC("aegb4", INFO, Logger::CLUSTER)
             << "No progress entry on index " << std::to_string(_iid.id())
             << "  from " + r.destination << ": " << resSlice.toJson();
       }
     }
     if (success) {
-      builder.add("progress", VPackValue(progress / success));
+      builder.add("progress", VPackValue(progress/success));
     }
   }
 

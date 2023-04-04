@@ -173,7 +173,6 @@ arangodb::Result Indexes::getAll(
       }
     }
     tmp.close();
-
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
@@ -313,7 +312,7 @@ arangodb::Result Indexes::getAll(
 static Result EnsureIndexLocal(
     arangodb::LogicalCollection* collection, VPackSlice definition, bool create,
     VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(collection != nullptr);
 
   return arangodb::basics::catchVoidToResult([&]() -> void {
@@ -361,7 +360,7 @@ Result Indexes::ensureIndexCoordinator(
 Result Indexes::ensureIndex(
     LogicalCollection* collection, VPackSlice input, bool create,
     VPackBuilder& output,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {

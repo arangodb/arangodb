@@ -328,7 +328,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief Create a new Index based on VelocyPack description
   virtual std::shared_ptr<Index> createIndex(
       velocypack::Slice, bool&,
-      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;

@@ -531,9 +531,6 @@ void Index::toVelocyPack(
               arangodb::velocypack::Value(oldtypeName(type())));
   builder.add(arangodb::StaticStrings::IndexName,
               arangodb::velocypack::Value(name()));
-  if (ServerState::instance()->isCoordinator()) {
-    builder.add("progress", VPackValue(66));
-  }
 
   builder.add(
       arangodb::velocypack::Value(arangodb::StaticStrings::IndexFields));

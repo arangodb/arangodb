@@ -66,7 +66,7 @@ Result fillIndexSingleThreaded(
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
-    std::shared_ptr<std::function<arangodb::Result(uint64_t)>> progress =
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
         nullptr);
 
 class RocksDBCollection;
@@ -141,7 +141,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
 
   /// @brief assumes an exclusive lock on the collection
   Result fillIndexForeground(
-      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   struct Locker {
     explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
@@ -159,7 +159,7 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
   /// @param locker locks and unlocks the collection
   Result fillIndexBackground(
       Locker& locker,
-      std::shared_ptr<std::function<arangodb::Result(uint64_t)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
  private:
   static constexpr uint64_t kThreadBatchSize = 100000;
