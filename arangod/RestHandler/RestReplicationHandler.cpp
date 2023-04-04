@@ -899,13 +899,10 @@ void RestReplicationHandler::handleCommandClusterInventory() {
         for (auto const& shadowCollectionName : c->realNames()) {
           bool foundShadowCollection = false;
           for (auto const& logicalCollection : cols) {
-            auto realNames = logicalCollection->realNames();
-            for (auto const& realCollectionName : realNames) {
-              if (realCollectionName == shadowCollectionName) {
-                // ShadowCollections must be SmartChilds
-                TRI_ASSERT(logicalCollection->isSmartChild());
-                foundShadowCollection = true;
-              }
+            if (logicalCollection->name() == shadowCollectionName) {
+              // A ShadowCollection must be a SmartChild
+              TRI_ASSERT(logicalCollection->isSmartChild());
+              foundShadowCollection = true;
             }
           }
           TRI_ASSERT(foundShadowCollection);
