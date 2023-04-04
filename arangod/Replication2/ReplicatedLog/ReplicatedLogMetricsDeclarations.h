@@ -121,11 +121,11 @@ DECLARE_HISTOGRAM(arangodb_replication2_replicated_log_append_entries_size,
                   AppendEntriesSizeScale,
                   "Histogram of size of append-entries requests");
 DECLARE_COUNTER(
-    arangodb_replication2_replicated_log_follower_entry_drop_count,
+    arangodb_replication2_replicated_log_follower_entry_drop_total,
     "Number of log entries dropped by a follower before appending the log");
 
 DECLARE_COUNTER(
-    arangodb_replication2_replicated_log_leader_append_entries_error_count,
+    arangodb_replication2_replicated_log_leader_append_entries_error_total,
     "Number of failed append-entries requests");
 
 DECLARE_COUNTER(
