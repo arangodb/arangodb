@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
 * Make REST API `/_admin/shutdown` sleep for only half a second until it
   initiates the server shutdown. Previously it slept for 2 seconds, but half
   a second should already be enough to send the server's response out.
