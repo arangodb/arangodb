@@ -56,12 +56,19 @@ struct GraphVPackBuilderStorer : GraphStorerBase<V, E> {
       bool withId, std::shared_ptr<WorkerConfig> config,
       std::shared_ptr<GraphFormat<V, E> const> graphFormat,
       std::function<void()> const& statusUpdateCallback)
-      : withId(withId),
+      : result(std::make_unique<VPackBuilder>()),
+        withId(withId),
         graphFormat(graphFormat),
         config(config),
-        statusUpdateCallback(statusUpdateCallback) {}
+        statusUpdateCallback(statusUpdateCallback) {
+    result->openArray(/*unindexed*/ true);
+  }
 
   auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
+  auto stealResult() -> std::unique_ptr<VPackBuilder> {
+    result->close();
+    return std::move(result);
+  }
 
   std::unique_ptr<VPackBuilder> result;
   bool withId{false};

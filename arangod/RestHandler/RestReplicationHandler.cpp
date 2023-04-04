@@ -877,6 +877,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // We want to check if the collection is usable and all followers
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
+
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
     auto cic = ci.getCollectionCurrent(dbName,
@@ -886,13 +887,36 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     bool allInSync = true;
     for (auto const& p : *shardMap) {
       auto currentServerList = cic->servers(p.first /* shardId */);
-      if (currentServerList.size() == 0 || p.second.size() == 0 ||
-          currentServerList[0] != p.second[0] ||
-          (!p.second[0].empty() && p.second[0][0] == '_')) {
-        isReady = false;
-      }
-      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
-        allInSync = false;
+      if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
+        // Means we do have a Virtual SmartEdge Collection.
+        // A Virtual SmartEdge Collection does not include any shards.
+        // Therefore, we cannot, and we do not need to verify if shards are in
+        // sync or not.
+        ADB_PROD_ASSERT(!c->isSmartChild());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        // Additionally, whenever we see a Virtual Edge Collection, we must make
+        // sure that the related shadow collections are part of the inventory.
+        for (auto const& shadowCollectionName : c->realNames()) {
+          bool foundShadowCollection = false;
+          for (auto const& logicalCollection : cols) {
+            if (logicalCollection->name() == shadowCollectionName) {
+              // A ShadowCollection must be a SmartChild
+              TRI_ASSERT(logicalCollection->isSmartChild());
+              foundShadowCollection = true;
+            }
+          }
+          TRI_ASSERT(foundShadowCollection);
+        }
+#endif
+      } else {
+        if (currentServerList.size() == 0 || p.second.size() == 0 ||
+            currentServerList[0] != p.second[0] ||
+            (!p.second[0].empty() && p.second[0][0] == '_')) {
+          isReady = false;
+        }
+        if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+          allInSync = false;
+        }
       }
     }
     c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady,
@@ -906,8 +930,9 @@ void RestReplicationHandler::handleCommandClusterInventory() {
           resultBuilder.openObject();
           view->properties(resultBuilder,
                            LogicalDataSource::Serialization::Inventory);
-          // details, !forPersistence because on restore any datasource ids will
-          // differ, so need an end-user representation
+          // details, !forPersistence because on restore any
+          // datasource ids will differ, so need an end-user
+          // representation
           resultBuilder.close();
         }
 
