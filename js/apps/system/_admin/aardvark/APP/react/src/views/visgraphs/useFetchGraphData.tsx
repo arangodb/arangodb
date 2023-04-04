@@ -9,7 +9,7 @@ export const fetchGraphData = async ({
   params
 }: {
   graphName: string;
-  params: UrlParametersType | undefined;
+  params?: UrlParametersType;
 }) => {
   if (!params) {
     return Promise.resolve();
@@ -26,7 +26,7 @@ export const useFetchGraphData = ({
   params
 }: {
   graphName: string;
-  params: UrlParametersType | undefined;
+  params?: UrlParametersType;
 }) => {
   const [fetchDuration, setFetchDuration] = useState<number>();
   const { data, error, isLoading } = useSWR<GraphDataType>(

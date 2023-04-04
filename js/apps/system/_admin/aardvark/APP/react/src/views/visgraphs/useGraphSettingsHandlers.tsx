@@ -43,7 +43,7 @@ export const useGraphSettingsHandlers = ({
 }: {
   setUrlParams: (urlParams: UrlParametersType) => void;
   urlParams: UrlParametersType;
-  graphData: GraphDataType | undefined;
+  graphData?: GraphDataType;
   graphName: string;
   setParams: React.Dispatch<
     React.SetStateAction<UrlParametersType | undefined>

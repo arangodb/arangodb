@@ -23,7 +23,7 @@ type DatasetsType = {
   edges: DataSet<EdgeDataType>;
 };
 type GraphContextType = {
-  graphData: GraphDataType | undefined;
+  graphData?: GraphDataType;
   graphName: string;
   onApplySettings: (updatedParams?: { [key: string]: string }) => void;
   onRestoreDefaults: () => void;
