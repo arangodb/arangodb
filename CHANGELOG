@@ -66,6 +66,8 @@ devel
   default in one of the future releases of ArangoDB, once enough drivers and 
   other client tools have had the chance to adapt.
 
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
 * FE-218: Updated WebUI dependencies.
 
 * Fixed statistics values for writes executed and writes ignored when a query 
