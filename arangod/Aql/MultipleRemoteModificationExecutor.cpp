@@ -142,6 +142,10 @@ auto MultipleRemoteModificationExecutor::doMultipleRemoteOperations(
     THROW_ARANGO_EXCEPTION(result.result);
   }
 
+  if (result.countErrorCodes.contains(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
   // check operation result
   if (!_info._ignoreErrors) {
     if (!result.countErrorCodes.empty()) {

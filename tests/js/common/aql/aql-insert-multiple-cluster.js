@@ -111,6 +111,11 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testFromEnumerateListInvalidInputsNoObjectsIgnoreErrors: function () {
+      // this is to be compatible with the execution without the optimization rule
+      // "optimize-cluster-multiple-document-operations"
+      // when "cluster-one-shard" is not enabled. Independent of the value of "ignoreErrors", the query would fail
+      // because of invalid document type
+
       const queries = [
         `FOR doc IN [[], {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
         `FOR doc IN [1, {_key:"test"}] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`,
@@ -119,16 +124,14 @@ function InsertMultipleDocumentsSuite(params) {
       ];
       queries.forEach((query) => {
         assertRuleIsUsed(query);
-        let res = db._query(query);
-        assertEqual([], res.toArray());
-
-        assertEqual(1, db[cn].count());
-
-        let stats = res.getExtra().stats;
-        assertEqual(1, stats.writesExecuted);
-        assertEqual(1, stats.writesIgnored);
-
-        db[cn].truncate();
+        try {
+          db._query(query);
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+        } finally {
+          db[cn].truncate();
+        }
       });
     },
 
@@ -138,7 +141,7 @@ function InsertMultipleDocumentsSuite(params) {
           `LET list = [{_key: "123"}, {_key: "123"}] FOR d in list INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
           `FOR d in [{_key: "123"}, {_key: "abc"}, {_key: "123"}] LET i = d.value + 3 INSERT d INTO ${cn} OPTIONS {ignoreErrors: ${ignoreErrors}}`,
         ];
-        queries.forEach((query, idx) => {
+        queries.forEach((query) => {
           assertRuleIsUsed(query);
           const previousCount = db[cn].count();
           try {
@@ -236,38 +239,38 @@ function InsertMultipleDocumentsSuite(params) {
       // because of the coordinator having to know in which server to store the document,
       // while parsing the documents, would raise the "invalid document type" error even though the
       // OPTIONS {ignoreErrors: true} is in the query, independent of the optimization rule
+      // so the "optimize-cluster-multiple-document-operations" should behave according to a query execution without
+      // it in the execution plan and without "cluster-one-shard"
 
       const query = `FOR doc IN [{value1: 1}, true] INSERT doc INTO ${cn} OPTIONS {ignoreErrors: true}`;
-      for (const enableOneShard of [true, false]) {
-        const previousCount = db[cn].count();
-        const rules = [];
-        if (!enableOneShard) {
-          rules.push("-cluster-one-shard");
-        }
+      let previousCount = db[cn].count();
+      const multipleRule = "-optimize-cluster-multiple-document-operations";
+      const oneShardRule = "-cluster-one-shard";
+      const removeAllRules = {optimizer: {rules: [multipleRule, oneShardRule]}};
+      const removeOneShardRule = {optimizer: {rules: [oneShardRule]}};
 
-        let expectSuccess;
-        try {
-          db._query(query, {}, {optimizer: { rules: ["-optimize-cluster-multiple-document-operations", ...rules]}}).toArray();
-          expectSuccess = true;
-        } catch (err) {
-          expectSuccess = false;
-          assertEqual(db[cn].count(), previousCount);
-          assertTrue(!optRules.enableOneShard || numberOfShards > 1);
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
-        }
+      let expectSuccess;
+      try {
+        assertRuleIsNotUsed(query, {}, removeAllRules);
+        db._query(query, {}, removeAllRules).toArray();
+        expectSuccess = true;
+      } catch (err) {
+        expectSuccess = false;
+        assertEqual(db[cn].count(), previousCount);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+      }
 
-        try {
-          assertRuleIsUsed(query, {}, {optimizer: { rules: rules}});
-          db._query(query, {}, {optimizer: { rules: rules}}).toArray();
-          if (!expectSuccess) {
-            fail();
-          }
-        } catch(err) {
-          assertFalse(expectSuccess);
-          assertEqual(db[cn].count(), previousCount);
-          assertTrue(!optRules.enableOneShard || numberOfShards > 1);
-          assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
+      previousCount = db[cn].count();
+      try {
+        assertRuleIsUsed(query, {}, removeOneShardRule);
+        db._query(query, {}, removeOneShardRule).toArray();
+        if (!expectSuccess) {
+          fail();
         }
+      } catch (err) {
+        assertFalse(expectSuccess);
+        assertEqual(db[cn].count(), previousCount);
+        assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, err.errorNum);
       }
     },
 
@@ -573,7 +576,7 @@ function InsertMultipleDocumentsSuite(params) {
         }
 
         let query = `FOR d IN [{_key: 'value123:abc123', value: 'value123'}] INSERT d INTO ${vertex}`;
-        assertRuleIsNotUsed(query);
+        assertRuleIsUsed(query);
 
         const verticesCount = db[vertex].count();
         let res = db._query(query);
@@ -715,7 +718,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
         `FOR i IN 1..10 FOR d IN [{value: 1}, {value: 2}] INSERT d INTO ${cn}`,
         `FOR i IN 1..10 FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
       ];
-      queries.forEach((query, idx) => {
+      queries.forEach((query) => {
         const rules = {optimizer: {rules: ["-interchange-adjacent-enumerations"]}};
         assertRuleIsNotUsed(query, {}, rules);
       });
@@ -725,7 +728,7 @@ function InsertMultipleDocumentsExplainSuite(params) {
       const queries = [
         `LET x = (FOR d IN ${cn} LIMIT 5 RETURN d) FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn}`,
       ];
-      queries.forEach((query, idx) => {
+      queries.forEach((query) => {
         assertRuleIsNotUsed(query, {}, {optimizer: {rules: ["-remove-unnecessary-calculations", "-remove-unnecessary-calculations-2", "remove-unnecessary-calculations-3"]}});
       });
     },
@@ -746,41 +749,8 @@ function InsertMultipleDocumentsExplainSuite(params) {
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] LIMIT 1, 1 INSERT d INTO ${cn}`,
         `FOR doc IN ${cn} INSERT doc INTO ${cn}`,
         `FOR d IN [{_key: '123', value1: 2, value2: {value3: 'a'}}] INSERT d INTO ${cn} INSERT {value3: 1} INTO ${cn2}`,
-        `INSERT
-        [{value1: 1}] INTO
-        ${cn}
-        INSERT
-        [
-        {
-        value2
-        :
-        1
-        }
-        ]
-        INTO
-        ${cn2}`,
-        `INSERT
-        [{value1: 1}] INTO
-        ${cn}
-        FOR
-        d
-        IN
-        [
-        {
-        value1
-        :
-        1
-        },
-        {
-        value2
-        :
-        3
-        }
-        ]
-        INSERT
-        d
-        INTO
-        ${cn2}`,
+        `INSERT [{value1: 1}] INTO ${cn} INSERT [{value2: 1}] INTO ${cn2}`,
+        `INSERT [{value1: 1}] INTO ${cn} FOR d IN [{value1: 1}, {value2: 3}] INSERT d INTO ${cn2}`,
       ];
       queries.forEach((query) => {
         assertRuleIsNotUsed(query);

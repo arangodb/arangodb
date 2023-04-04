@@ -465,7 +465,8 @@ bool substituteClusterMultipleDocumentInsertOperations(
   auto mod = ExecutionNode::castTo<InsertNode*>(node);
 
   // for now, not support smart graph
-  if (mod->collection()->isSmart()) {
+  if (mod->collection()->isSmart() &&
+      mod->collection()->type() == TRI_COL_TYPE_EDGE) {
     return false;
   }
 
