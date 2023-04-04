@@ -41,6 +41,7 @@ namespace replication2 {
 struct LogRange;
 struct LogIndex;
 class LogEntryView;
+struct PersistedLogIterator;
 template<typename T>
 struct TypedLogRangeIterator;
 namespace replicated_log {
