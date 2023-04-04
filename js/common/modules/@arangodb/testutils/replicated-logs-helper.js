@@ -367,7 +367,7 @@ const checkRequestResult = function (requestResult, expectingError=false) {
       'error': true,
       'code': requestResult.json.code,
       'errorNum': arangodb.ERROR_INTERNAL,
-      'errorMessage': 'Error during request'
+      'errorMessage': `Error during request: ${requestResult.json.errorMessage}`
     });
   }
 
