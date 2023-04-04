@@ -72,7 +72,10 @@ struct CollectionStatusWriter : StatusWriterInterface {
   };
 
  private:
-  [[nodiscard]] auto executeQuery(std::string queryString) -> OperationResult;
+  [[nodiscard]] auto executeQuery(
+      std::string queryString,
+      std::optional<std::shared_ptr<VPackBuilder>> bindParameters)
+      -> OperationResult;
   [[nodiscard]] auto handleOperationResult(SingleCollectionTransaction& trx,
                                            OperationOptions& options,
                                            Result& transactionResult,
