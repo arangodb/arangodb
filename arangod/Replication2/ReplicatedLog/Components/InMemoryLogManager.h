@@ -26,20 +26,28 @@
 #include "Replication2/ReplicatedLog/Components/IInMemoryLogManager.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/LoggerContext.h"
 
 #include <memory>
 
 namespace arangodb::replication2::replicated_log {
-
+struct ReplicatedLogMetrics;
 inline namespace comp {
 struct IStorageManager;
 
 struct InMemoryLogManager : IInMemoryLogManager {
-  explicit InMemoryLogManager(LogIndex firstIndex,
+  explicit InMemoryLogManager(LoggerContext logContext, LogIndex firstIndex,
                               std::shared_ptr<IStorageManager> storage);
 
   auto getCommitIndex() const noexcept -> LogIndex override;
-  auto updateCommitIndex(LogIndex newIndex) noexcept -> LogIndex override;
+  void updateCommitIndex(ReplicatedLogMetrics&,
+                         LogIndex newIndex) noexcept override;
+
+  auto getInMemoryLog() const noexcept -> InMemoryLog override;
+  auto appendLogEntry(std::variant<LogMetaPayload, LogPayload> payload,
+                      LogTerm term,
+                      InMemoryLogEntry::clock::time_point insertTp,
+                      bool waitForSync) -> InsertLogEntryResult override;
 
  private:
   struct GuardedData {
@@ -47,6 +55,7 @@ struct InMemoryLogManager : IInMemoryLogManager {
     InMemoryLog _inMemoryLog;
     LogIndex _commitIndex{0};
   };
+  LoggerContext _logContext;
   std::shared_ptr<IStorageManager> const _storageManager;
   Guarded<GuardedData> _guardedData;
 };

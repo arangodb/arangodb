@@ -128,8 +128,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] auto waitForIterator(LogIndex index)
       -> WaitForIteratorFuture override;
 
-  [[nodiscard]] auto getReplicatedLogSnapshot() const -> InMemoryLog::log_type;
-
   // Triggers sending of appendEntries requests to all followers. This continues
   // until all participants are perfectly in sync, and will then stop.
   // Is usually called automatically after an insert, but can be called manually
@@ -325,7 +323,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     LogLeader& _self;
-    InMemoryLog _inMemoryLog;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
         _follower{};
     WaitForQueue _waitForQueue{};
