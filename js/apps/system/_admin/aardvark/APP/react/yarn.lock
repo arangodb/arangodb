@@ -6925,6 +6925,14 @@ import-local@^3.0.2:
     pkg-dir "^4.2.0"
     resolve-cwd "^3.0.0"
 
+imports-loader@^0.8.0:
+  version "0.8.0"
+  resolved "https://registry.yarnpkg.com/imports-loader/-/imports-loader-0.8.0.tgz#030ea51b8ca05977c40a3abfd9b4088fe0be9a69"
+  integrity sha512-kXWL7Scp8KQ4552ZcdVTeaQCZSLW+e6nJfp3cwUMB673T7Hr98Xjx5JK+ql7ADlJUvj1JS5O01RLbKoutN5QDQ==
+  dependencies:
+    loader-utils "^1.0.2"
+    source-map "^0.6.1"
+
 imurmurhash@^0.1.4:
   version "0.1.4"
   resolved "https://registry.npmjs.org/imurmurhash/-/imurmurhash-0.1.4.tgz"
@@ -7970,7 +7978,7 @@ json-stable-stringify-without-jsonify@^1.0.1:
   resolved "https://registry.npmjs.org/json-stable-stringify-without-jsonify/-/json-stable-stringify-without-jsonify-1.0.1.tgz"
   integrity sha1-nbe1lJatPzz+8wp1FC0tkwrXJlE=
 
-json5@^1.0.2:
+json5@^1.0.1, json5@^1.0.2:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/json5/-/json5-1.0.2.tgz#63d98d60f21b313b77c4d6da18bfa69d80e1d593"
   integrity sha512-g1MWMLBiz8FKi1e4w0UyVL3w+iJceWAFBAaBnnGKOpNa5f8TLktkbre1+s6oICydWAm+HRUGTmI+//xv2hvXYA==
@@ -8121,6 +8129,15 @@ loader-runner@^4.2.0:
   version "4.3.0"
   resolved "https://registry.yarnpkg.com/loader-runner/-/loader-runner-4.3.0.tgz#c1b4a163b99f614830353b16755e7149ac2314e1"
   integrity sha512-3R/1M+yS3j5ou80Me59j7F9IMs4PXs3VqRrm0TU3AbKPxlmpoY1TNscJV/oGJXo8qCatFGTfDbY6W6ipGOYXfg==
+
+loader-utils@^1.0.2:
+  version "1.4.2"
+  resolved "https://registry.yarnpkg.com/loader-utils/-/loader-utils-1.4.2.tgz#29a957f3a63973883eb684f10ffd3d151fec01a3"
+  integrity sha512-I5d00Pd/jwMD2QCduo657+YM/6L3KZu++pmX9VFncxaxvHcru9jx1lBaFft+r4Mt2jK0Yhp41XlRAihzPxHNCg==
+  dependencies:
+    big.js "^5.2.2"
+    emojis-list "^3.0.0"
+    json5 "^1.0.1"
 
 loader-utils@^2.0.0, loader-utils@^2.0.4:
   version "2.0.4"

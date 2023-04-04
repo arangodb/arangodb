@@ -17,6 +17,12 @@ module.exports = {
       url: require.resolve("url/"),
     };
 
+    // Our vendored copy of sigma relies on "this" being an alias for "window"
+    config.module.rules.unshift({
+      test: /sigma.*/,
+      use: "imports-loader?this=>window",
+    });
+
     // The html-loader no longer supports interpolation, which we use in
     // index.html to inject the legacy frontend scaffolding. Workaround via:
     // https://github.com/webpack-contrib/html-loader/issues/291#issuecomment-671686973
