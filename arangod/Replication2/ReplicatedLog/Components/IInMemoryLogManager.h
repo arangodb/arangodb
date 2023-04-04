@@ -26,9 +26,13 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 
+#include <chrono>
+#include <variant>
+
 namespace arangodb::replication2 {
 struct LogIndex;
-}
+struct TermIndexPair;
+}  // namespace arangodb::replication2
 
 namespace arangodb::replication2::replicated_log {
 struct InMemoryLog;
@@ -42,6 +46,12 @@ struct IInMemoryLogManager {
   // Sets the new index, returns the old one. The new index is expected to be
   // larger than the old one.
   virtual void updateCommitIndex(LogIndex newIndex) noexcept = 0;
+
+  [[nodiscard]] virtual auto calculateCommitLag() const noexcept
+      -> std::chrono::duration<double, std::milli> = 0;
+
+  [[nodiscard]] virtual auto getSpearheadTermIndexPair() const noexcept
+      -> TermIndexPair = 0;
 
   // Get a copy (snapshot) of the InMemoryLog.
   // TODO In many cases, only one or two indexes are needed, not the whole

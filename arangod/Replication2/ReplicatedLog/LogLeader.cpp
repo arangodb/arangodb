@@ -217,8 +217,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
               auto const [releaseIndex, lowestIndexToKeep] =
                   logLeader->_compactionManager->getIndexes();
               auto const lastAvailableIndex =
-                  logLeader->_inMemoryLogManager->getInMemoryLog()
-                      .getLastTermIndexPair();
+                  logLeader->_inMemoryLogManager->getSpearheadTermIndexPair();
               auto const commitIndex =
                   logLeader->_inMemoryLogManager->getCommitIndex();
               LOG_CTX("71801", TRACE, follower->logContext)
@@ -519,7 +518,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
               f->nextPrevLogIndex, f->snapshotAvailable});
     }
 
-    status.commitLagMS = leaderData.calculateCommitLag();
+    status.commitLagMS = _inMemoryLogManager->calculateCommitLag();
     return LogStatus{std::move(status)};
   });
 }
@@ -569,7 +568,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
         TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
   }
   auto commitFailReason = std::optional<CommitFailReason>{};
-  if (guard->calculateCommitLag() > std::chrono::seconds{20}) {
+  if (_inMemoryLogManager->calculateCommitLag() > std::chrono::seconds{20}) {
     commitFailReason = guard->_lastCommitFailReason;
   }
   std::vector<ParticipantId> followersWithSnapshot;
@@ -784,7 +783,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::prepareAppendEntry(
 
   auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
   auto const lastAvailableIndex =
-      _self._inMemoryLogManager->getInMemoryLog().getLastTermIndexPair();
+      _self._inMemoryLogManager->getSpearheadTermIndexPair();
   LOG_CTX("8844a", TRACE, follower->logContext)
       << "last matched index = " << follower->nextPrevLogIndex
       << ", current index = " << lastAvailableIndex
@@ -1080,11 +1079,12 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
   }
 
   auto const currentCommitIndex = _self._inMemoryLogManager->getCommitIndex();
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
+  auto const lastTermIndex =
+      _self._inMemoryLogManager->getSpearheadTermIndexPair();
   auto const [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
           indexes, this->activeParticipantsConfig->config.effectiveWriteConcern,
-          currentCommitIndex, inMemoryLog.getLastTermIndexPair());
+          currentCommitIndex, lastTermIndex);
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
@@ -1107,12 +1107,11 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   auto const [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
   auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
   auto const mapping = _self._storageManager->getTermIndexMapping();
   auto result = LogStatistics{};
   result.commitIndex = commitIndex;
   result.firstIndex = mapping.getFirstIndex().value_or(TermIndexPair{}).index;
-  result.spearHead = inMemoryLog.getLastTermIndexPair();
+  result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
   return result;
 }
@@ -1135,26 +1134,6 @@ auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
   return CompactionResult{.numEntriesCompacted = result.compactedRange.count(),
                           .range = result.compactedRange,
                           .stopReason = result.stopReason};
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
-    const noexcept -> std::chrono::duration<double, std::milli> {
-  // TODO Move into InMemoryLogManager
-  auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
-  auto const memtry = inMemoryLog.getEntryByIndex(commitIndex + 1);
-  if (memtry.has_value()) {
-    return std::chrono::duration_cast<
-        std::chrono::duration<double, std::milli>>(
-        std::chrono::steady_clock::now() - memtry->insertTp());
-  } else {
-    TRI_ASSERT(commitIndex == LogIndex{0} ||
-               commitIndex == inMemoryLog.getLastIndex())
-        << "If there is no entry following the commitIndex the last index "
-           "should be the commitIndex. commitIndex = "
-        << commitIndex << ", lastIndex = " << inMemoryLog.getLastIndex();
-    return {};
-  }
 }
 
 auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
@@ -1409,9 +1388,9 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
           }
         }
         {  // add new followers
-          auto const inMemoryLog = _inMemoryLogManager->getInMemoryLog();
           auto const lastIndex =
-              inMemoryLog.getLastTermIndexPair().index.saturatedDecrement();
+              _inMemoryLogManager->getSpearheadTermIndexPair()
+                  .index.saturatedDecrement();
           for (auto&& [participantId, abstractFollowerPtr] :
                additionalFollowers) {
             followers.try_emplace(participantId,

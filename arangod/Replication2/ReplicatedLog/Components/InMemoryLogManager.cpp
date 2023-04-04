@@ -214,6 +214,33 @@ auto InMemoryLogManager::getNonEmptyLogConsumerIterator(LogIndex const firstIdx)
       });
 }
 
+TermIndexPair InMemoryLogManager::getSpearheadTermIndexPair() const noexcept {
+  return _guardedData.doUnderLock([](auto const& data) {
+    return data._inMemoryLog.getLastTermIndexPair();
+  });
+}
+auto InMemoryLogManager::calculateCommitLag() const noexcept
+    -> std::chrono::duration<double, std::milli> {
+  return _guardedData.doUnderLock([&](auto& data) -> std::chrono::duration<
+                                                      double, std::milli> {
+    auto const commitIndex = data._commitIndex;
+    auto const& inMemoryLog = data._inMemoryLog;
+    auto const memtry = inMemoryLog.getEntryByIndex(commitIndex + 1);
+    if (memtry.has_value()) {
+      return std::chrono::duration_cast<
+          std::chrono::duration<double, std::milli>>(
+          std::chrono::steady_clock::now() - memtry->insertTp());
+    } else {
+      TRI_ASSERT(commitIndex == LogIndex{0} ||
+                 commitIndex == inMemoryLog.getLastIndex())
+          << "If there is no entry following the commitIndex the last index "
+             "should be the commitIndex. commitIndex = "
+          << commitIndex << ", lastIndex = " << inMemoryLog.getLastIndex();
+      return {};
+    }
+  });
+}
+
 InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)
     : _inMemoryLog(firstIndex) {}
 

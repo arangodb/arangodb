@@ -305,9 +305,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
-    [[nodiscard]] auto calculateCommitLag() const noexcept
-        -> std::chrono::duration<double, std::milli>;
-
     auto insertInternal(
         std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
         std::optional<InMemoryLogEntry::clock::time_point> insertTp)
