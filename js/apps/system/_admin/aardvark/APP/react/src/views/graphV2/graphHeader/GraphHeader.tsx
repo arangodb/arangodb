@@ -9,8 +9,7 @@ import { SearchGraphButton } from "./SearchGraphButton";
 import { SwitchToOldButton } from "./SwitchToOldButton";
 
 export const GraphHeader = () => {
-  const { graphName, graphData } = useGraph();
-  const isSmart = graphData?.settings.isSmart || false;
+  const { graphName } = useGraph();
 
   return (
     <Box
@@ -22,7 +21,7 @@ export const GraphHeader = () => {
       gridTemplateColumns="1fr 1fr"
     >
       <Box>{graphName}</Box>
-      {!isSmart && <RightActions />}
+      <RightActions />
     </Box>
   );
 };

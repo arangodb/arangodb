@@ -41,11 +41,8 @@ const GraphNetworkInner = ({
   visJsRef: React.RefObject<HTMLDivElement>;
 }) => {
   const { graphError, graphData, datasets } = useGraph();
-  const isSmart = graphData?.settings.isSmart || false;
-
-  if (isSmart) {
-    return <SmartGraphEmptyState />;
-  }
+  const isSmart = graphData?.settings.isSmart || false
+  console.log({isSmart});
   return (
     <>
       <GraphRightClickMenu
