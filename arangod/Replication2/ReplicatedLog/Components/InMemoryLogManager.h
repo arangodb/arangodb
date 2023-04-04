@@ -45,8 +45,10 @@ struct InMemoryLogManager : IInMemoryLogManager {
   void updateCommitIndex(LogIndex newIndex) noexcept override;
   auto calculateCommitLag() const noexcept
       -> std::chrono::duration<double, std::milli> override;
+  auto getFirstInMemoryIndex() const noexcept -> LogIndex override;
   auto getSpearheadTermIndexPair() const noexcept -> TermIndexPair override;
-  auto getInMemoryLog() const noexcept -> InMemoryLog override;
+  auto getTermOfIndex(LogIndex) const noexcept
+      -> std::optional<LogTerm> override;
   auto appendLogEntry(std::variant<LogMetaPayload, LogPayload> payload,
                       LogTerm term,
                       InMemoryLogEntry::clock::time_point insertTp,

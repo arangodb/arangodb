@@ -87,10 +87,6 @@ void InMemoryLogManager::updateCommitIndex(LogIndex newCommitIndex) noexcept {
   });
 }
 
-auto InMemoryLogManager::getInMemoryLog() const noexcept -> InMemoryLog {
-  return _guardedData.getLockedGuard()->_inMemoryLog;
-}
-
 auto InMemoryLogManager::appendLogEntry(
     std::variant<LogMetaPayload, LogPayload> payload, LogTerm term,
     InMemoryLogEntry::clock::time_point insertTp, bool waitForSync)
@@ -219,6 +215,7 @@ TermIndexPair InMemoryLogManager::getSpearheadTermIndexPair() const noexcept {
     return data._inMemoryLog.getLastTermIndexPair();
   });
 }
+
 auto InMemoryLogManager::calculateCommitLag() const noexcept
     -> std::chrono::duration<double, std::milli> {
   return _guardedData.doUnderLock([&](auto& data) -> std::chrono::duration<
@@ -239,6 +236,23 @@ auto InMemoryLogManager::calculateCommitLag() const noexcept
       return {};
     }
   });
+}
+
+LogIndex InMemoryLogManager::getFirstInMemoryIndex() const noexcept {
+  return _guardedData.getLockedGuard()->_inMemoryLog.getFirstIndex();
+}
+
+auto InMemoryLogManager::getTermOfIndex(LogIndex logIndex) const noexcept
+    -> std::optional<LogTerm> {
+  return _guardedData.doUnderLock(
+      [this, logIndex](auto const& data) -> std::optional<LogTerm> {
+        if (data._inMemoryLog.getIndexRange().contains(logIndex)) {
+          return data._inMemoryLog.getEntryByIndex(logIndex)->entry().logTerm();
+        } else {
+          return _storageManager->getTermIndexMapping().getTermOfIndex(
+              logIndex);
+        }
+      });
 }
 
 InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)

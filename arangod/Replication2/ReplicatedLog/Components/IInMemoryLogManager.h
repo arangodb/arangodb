@@ -50,13 +50,12 @@ struct IInMemoryLogManager {
   [[nodiscard]] virtual auto calculateCommitLag() const noexcept
       -> std::chrono::duration<double, std::milli> = 0;
 
+  [[nodiscard]] virtual auto getFirstInMemoryIndex() const noexcept
+      -> LogIndex = 0;
   [[nodiscard]] virtual auto getSpearheadTermIndexPair() const noexcept
       -> TermIndexPair = 0;
-
-  // Get a copy (snapshot) of the InMemoryLog.
-  // TODO In many cases, only one or two indexes are needed, not the whole
-  //      flex_vector. It might make sense to expose them separately.
-  [[nodiscard]] virtual auto getInMemoryLog() const noexcept -> InMemoryLog = 0;
+  [[nodiscard]] virtual auto getTermOfIndex(LogIndex) const noexcept
+      -> std::optional<LogTerm> = 0;
 
   [[nodiscard]] virtual auto appendLogEntry(
       std::variant<LogMetaPayload, LogPayload> payload, LogTerm term,

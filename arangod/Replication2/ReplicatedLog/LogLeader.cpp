@@ -477,8 +477,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
     status.term = term;
     status.compactionStatus = _compactionManager->getCompactionStatus();
     status.lowestIndexToKeep = lowestIndexToKeep;
-    status.firstInMemoryIndex =
-        _inMemoryLogManager->getInMemoryLog().getFirstIndex();
+    status.firstInMemoryIndex = _inMemoryLogManager->getFirstInMemoryIndex();
     status.lastCommitStatus = leaderData._lastCommitFailReason;
     status.leadershipEstablished = leaderData._leadershipEstablished;
     status.activeParticipantsConfig = *leaderData.activeParticipantsConfig;
@@ -829,21 +828,14 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
     replicated_log::LogLeader::FollowerInfo& follower,
     TermIndexPair const& lastAvailableIndex) const
     -> std::pair<AppendEntriesRequest, TermIndexPair> {
-  auto const inMemoryLog = _self._inMemoryLogManager->getInMemoryLog();
-  auto prevLogTerm = [&]() -> std::optional<LogTerm> {
-    if (inMemoryLog.getIndexRange().contains(follower.nextPrevLogIndex)) {
-      return inMemoryLog.getEntryByIndex(follower.nextPrevLogIndex)
-          ->entry()
-          .logTerm();
-    } else {
-      return _self._storageManager->getTermIndexMapping().getTermOfIndex(
-          follower.nextPrevLogIndex);
-    }
-  }();
+  auto const prevLogTerm =
+      _self._inMemoryLogManager->getTermOfIndex(follower.nextPrevLogIndex);
 
-  auto [releaseIndex, lowestIndexToKeep] =
+  auto const [releaseIndex, lowestIndexToKeep] =
       _self._compactionManager->getIndexes();
   auto const commitIndex = _self._inMemoryLogManager->getCommitIndex();
+  auto const spearheadIdx =
+      _self._inMemoryLogManager->getSpearheadTermIndexPair().index;
 
   AppendEntriesRequest req;
   req.leaderCommit = commitIndex;
@@ -868,7 +860,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::createAppendEntriesRequest(
   // Now get a iterator starting at follower.nextPrevLogIndex + 1 but also
   // including the InMemory part.
 
-  if (inMemoryLog.getLastIndex() > follower.nextPrevLogIndex) {
+  if (spearheadIdx > follower.nextPrevLogIndex) {
     auto it = _self._inMemoryLogManager->getInternalLogIterator(
         follower.nextPrevLogIndex + 1);
     auto transientEntries = decltype(req.entries)::transient_type{};
