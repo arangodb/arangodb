@@ -37,15 +37,22 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not std::holds_alternative<message::ResultCreated>(message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   responseCount++;
   respondedWorkers.emplace(sender);
 
   if (responseCount == conductor.workers.size() and
       respondedWorkers == conductor.workers) {
-    return StateChange{.newState =
-                           std::make_unique<AQLResultsAvailable>(conductor)};
+    auto newState = std::make_unique<AQLResultsAvailable>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .newState = std::move(newState)};
   }
   return std::nullopt;
 }

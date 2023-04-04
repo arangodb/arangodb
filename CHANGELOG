@@ -3,6 +3,14 @@ devel
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
+* FE-218: Updated WebUI dependencies.
+
+* Fixed statistics values for writes executed and writes ignored when a query 
+  is executed using the rule `optimize-cluster-single-document-operations`.
+  It was always increasing the amount of writes executed, even if the operation
+  wasn't successful, and also never increasing the amount of writes ignored 
+  when needed.
+
 * Make REST API `/_admin/shutdown` sleep for only half a second until it
   initiates the server shutdown. Previously it slept for 2 seconds, but half
   a second should already be enough to send the server's response out.

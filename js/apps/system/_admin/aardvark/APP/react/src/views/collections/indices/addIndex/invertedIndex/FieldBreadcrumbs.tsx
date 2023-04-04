@@ -32,7 +32,7 @@ const useFieldBreakcrumbs = ({
     pathParts &&
     new Array(partsLength).fill(null).map((_, index) => {
       const breadcrumbPath = pathParts.slice(0, index + 1).join(".");
-      const breadcrumbValue = get(values, `${breadcrumbPath}.name`);
+      const breadcrumbValue = get(values, `${breadcrumbPath}.name`)!;
       const { restPath, lastIndex } = extractLastIndexAndRestOfPath(
         breadcrumbPath
       );

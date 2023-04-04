@@ -60,7 +60,7 @@ std::shared_ptr<transaction::Context> GraphOperations::ctx() {
 }
 
 void GraphOperations::checkForUsedEdgeCollections(
-    const Graph& graph, const std::string& collectionName,
+    const Graph& graph, std::string const& collectionName,
     std::unordered_set<std::string>& possibleEdgeCollections) {
   for (auto const& it : graph.edgeDefinitions()) {
     if (it.second.isVertexCollectionUsed(collectionName)) {
@@ -570,8 +570,8 @@ OperationResult GraphOperations::getVertex(std::string const& collectionName,
 }
 
 // TODO check if definitionName is an edge collection in _graph?
-OperationResult GraphOperations::getEdge(const std::string& definitionName,
-                                         const std::string& key,
+OperationResult GraphOperations::getEdge(std::string const& definitionName,
+                                         std::string const& key,
                                          std::optional<RevisionId> rev) {
   return getDocument(definitionName, key, std::move(rev));
 }
@@ -688,14 +688,15 @@ OperationResult GraphOperations::createDocument(
   return result;
 }
 
-OperationResult GraphOperations::updateEdge(const std::string& definitionName,
-                                            const std::string& key,
+OperationResult GraphOperations::updateEdge(std::string const& definitionName,
+                                            std::string const& key,
                                             VPackSlice document,
                                             std::optional<RevisionId> rev,
                                             bool waitForSync, bool returnOld,
                                             bool returnNew, bool keepNull) {
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
+    // cppcheck-suppress returnStdMoveLocal
     return std::move(res);
   }
   TRI_ASSERT(trx != nullptr);
@@ -705,14 +706,15 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
                         *trx.get());
 }
 
-OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
-                                             const std::string& key,
+OperationResult GraphOperations::replaceEdge(std::string const& definitionName,
+                                             std::string const& key,
                                              VPackSlice document,
                                              std::optional<RevisionId> rev,
                                              bool waitForSync, bool returnOld,
                                              bool returnNew, bool keepNull) {
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
+    // cppcheck-suppress returnStdMoveLocal
     return std::move(res);
   }
   TRI_ASSERT(trx != nullptr);
@@ -723,7 +725,7 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 }
 
 std::pair<OperationResult, std::unique_ptr<transaction::Methods>>
-GraphOperations::validateEdge(const std::string& definitionName,
+GraphOperations::validateEdge(std::string const& definitionName,
                               const VPackSlice& document, bool waitForSync,
                               bool isUpdate) {
   std::string fromCollectionName;
@@ -776,8 +778,8 @@ GraphOperations::validateEdge(const std::string& definitionName,
 }
 
 OperationResult GraphOperations::validateEdgeVertices(
-    const std::string& fromCollectionName, const std::string& fromCollectionKey,
-    const std::string& toCollectionName, const std::string& toCollectionKey,
+    std::string const& fromCollectionName, std::string const& fromCollectionKey,
+    std::string const& toCollectionName, std::string const& toCollectionKey,
     transaction::Methods& trx) {
   VPackBuilder bT;
   {
@@ -874,7 +876,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options), true);
 }
 
-OperationResult GraphOperations::createEdge(const std::string& definitionName,
+OperationResult GraphOperations::createEdge(std::string const& definitionName,
                                             VPackSlice document,
                                             bool waitForSync, bool returnNew) {
   // check if edgeCollection is available in the graph definition
@@ -886,6 +888,7 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
 
   auto [res, trx] = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
+    // cppcheck-suppress returnStdMoveLocal
     return std::move(res);
   }
   TRI_ASSERT(trx != nullptr);
@@ -894,8 +897,8 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
                         returnNew);
 }
 
-OperationResult GraphOperations::updateVertex(const std::string& collectionName,
-                                              const std::string& key,
+OperationResult GraphOperations::updateVertex(std::string const& collectionName,
+                                              std::string const& key,
                                               VPackSlice document,
                                               std::optional<RevisionId> rev,
                                               bool waitForSync, bool returnOld,
@@ -918,7 +921,7 @@ OperationResult GraphOperations::updateVertex(const std::string& collectionName,
 }
 
 OperationResult GraphOperations::replaceVertex(
-    const std::string& collectionName, const std::string& key,
+    std::string const& collectionName, std::string const& key,
     VPackSlice document, std::optional<RevisionId> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull) {
   std::vector<std::string> writeCollections;
@@ -938,7 +941,7 @@ OperationResult GraphOperations::replaceVertex(
                         waitForSync, returnOld, returnNew, keepNull, trx);
 }
 
-OperationResult GraphOperations::createVertex(const std::string& collectionName,
+OperationResult GraphOperations::createVertex(std::string const& collectionName,
                                               VPackSlice document,
                                               bool waitForSync,
                                               bool returnNew) {
@@ -966,7 +969,7 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
 }
 
 OperationResult GraphOperations::removeEdgeOrVertex(
-    const std::string& collectionName, const std::string& key,
+    std::string const& collectionName, std::string const& key,
     std::optional<RevisionId> rev, bool waitForSync, bool returnOld) {
   OperationOptions options;
   options.waitForSync = waitForSync;
@@ -1059,8 +1062,8 @@ OperationResult GraphOperations::removeEdgeOrVertex(
   return result;
 }
 
-OperationResult GraphOperations::removeVertex(const std::string& collectionName,
-                                              const std::string& key,
+OperationResult GraphOperations::removeVertex(std::string const& collectionName,
+                                              std::string const& key,
                                               std::optional<RevisionId> rev,
                                               bool waitForSync,
                                               bool returnOld) {

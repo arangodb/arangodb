@@ -40,7 +40,11 @@ auto Loading::receive(actor::ActorPID sender,
   }
   auto workerCreated = std::get<ResultT<message::GraphLoaded>>(message);
   if (not workerCreated.ok()) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
   totalVerticesCount += workerCreated.get().vertexCount;
@@ -51,10 +55,14 @@ auto Loading::receive(actor::ActorPID sender,
         totalVerticesCount, totalEdgesCount,
         std::make_unique<AggregatorHandler>(conductor.algorithm.get()),
         conductor.specifications.userParameters.slice());
-
-    return StateChange{.newState = std::make_unique<Computing>(
-                           conductor, std::move(masterContext),
-                           std::unordered_map<actor::ActorPID, uint64_t>{})};
+    auto newState = std::make_unique<Computing>(
+        conductor, std::move(masterContext),
+        std::unordered_map<actor::ActorPID, uint64_t>{});
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage =
+            pregel::message::ComputationStarted{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   return std::nullopt;
