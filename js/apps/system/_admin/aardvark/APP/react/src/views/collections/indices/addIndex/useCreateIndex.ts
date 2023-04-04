@@ -55,7 +55,7 @@ export const useCreateIndex = <TValues extends unknown>() => {
           if (result.body.code === 201) {
             handleSuccess(onCloseForm);
           }
-        } catch (error) {
+        } catch (error: any) {
           handleError(error.response.body);
         }
       }
