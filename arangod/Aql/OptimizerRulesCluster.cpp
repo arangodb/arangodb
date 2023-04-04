@@ -142,6 +142,7 @@ bool depIsSingletonOrConstCalc(ExecutionNode const* node) {
     }
 
     VarSet used;
+    // cppcheck-suppress nullPointerRedundantCheck
     node->getVariablesUsedHere(used);
     if (!used.empty()) {
       return false;

@@ -26,6 +26,8 @@
 #include "Actor/ActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Inspection/Status.h"
+#include "Inspection/Format.h"
+#include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
 #include "fmt/core.h"
 #include "fmt/chrono.h"
@@ -162,6 +164,42 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
     LOG_TOPIC("ea4f4", INFO, Logger::PREGEL)
         << fmt::format("Status Actor {} started", this->self);
+    return std::move(this->state);
+  }
+
+  auto operator()(message::LoadingStarted loading)
+      -> std::unique_ptr<StatusState> {
+    this->state->stateName = loading.state;
+    this->state->timings.loading.setStart(loading.time);
+    return std::move(this->state);
+  }
+  auto operator()(message::GraphLoadingUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server,
+        GraphLoadingDetails{.verticesLoaded = msg.verticesLoaded,
+                            .edgesLoaded = msg.edgesLoaded,
+                            .memoryBytesUsed = msg.memoryBytesUsed});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GlobalSuperStepUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server, msg.gss,
+        GlobalSuperStepDetails{
+            .verticesProcessed = msg.verticesProcessed,
+            .messagesSent = msg.messagesSent,
+            .messagesReceived = msg.messagesReceived,
+            .memoryBytesUsedForMessages = msg.memoryBytesUsedForMessages});
+    return std::move(this->state);
+  }
+
+  auto operator()(message::GraphStoringUpdate msg)
+      -> std::unique_ptr<StatusState> {
+    this->state->details.update(
+        this->sender.server,
+        GraphStoringDetails{.verticesStored = msg.verticesStored});
     return std::move(this->state);
   }
 

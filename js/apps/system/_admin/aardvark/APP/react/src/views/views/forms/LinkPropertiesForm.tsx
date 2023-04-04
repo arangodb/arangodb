@@ -10,7 +10,7 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
   const match = useRouteMatch();
 
   const formState = fs as FormState;
-  const link = get(match.params, "link");
+  const link = get(match.params, "link")!;
   const disabled = !isAdminUser;
 
   return (

@@ -87,6 +87,18 @@ auto inspect(Inspector& f, LoadingStarted& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
 }
 
+struct GraphLoadingUpdate {
+  std::uint64_t verticesLoaded;
+  std::uint64_t edgesLoaded;
+  std::uint64_t memoryBytesUsed;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphLoadingUpdate& x) {
+  return f.object(x).fields(f.field("verticesLoaded", x.verticesLoaded),
+                            f.field("edgesLoaded", x.edgesLoaded),
+                            f.field("memoryBytesUsed", x.memoryBytesUsed));
+}
+
 struct ComputationStarted {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
@@ -109,6 +121,22 @@ auto inspect(Inspector& f, GlobalSuperStepStarted& x) {
                             f.field("state", x.state), f.field("time", x.time));
 }
 
+struct GlobalSuperStepUpdate {
+  std::uint64_t gss;
+  std::uint64_t verticesProcessed = 0;
+  std::uint64_t messagesSent = 0;
+  std::uint64_t messagesReceived = 0;
+  std::uint64_t memoryBytesUsedForMessages = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GlobalSuperStepUpdate& x) {
+  return f.object(x).fields(
+      f.field("gss", x.gss), f.field("verticesProcessed", x.verticesProcessed),
+      f.field("messagesSent", x.messagesSent),
+      f.field("messagesReceived", x.messagesReceived),
+      f.field("memoryBytesUsedForMessages", x.memoryBytesUsedForMessages));
+}
+
 struct StoringStarted {
   std::string state;
   TimingInMicroseconds time = TimingInMicroseconds::now();
@@ -116,6 +144,14 @@ struct StoringStarted {
 template<typename Inspector>
 auto inspect(Inspector& f, StoringStarted& x) {
   return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+}
+
+struct GraphStoringUpdate {
+  uint64_t verticesStored;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GraphStoringUpdate& x) {
+  return f.object(x).fields(f.field("verticesStored", x.verticesStored));
 }
 
 struct PregelFinished {
@@ -146,11 +182,11 @@ auto inspect(Inspector& f, Canceled& x) {
 }
 
 struct StatusMessages
-    : std::variant<StatusStart, PregelStarted, LoadingStarted,
-                   ComputationStarted, GlobalSuperStepStarted, StoringStarted,
+    : std::variant<StatusStart, PregelStarted, LoadingStarted, GraphLoadingUpdate,
+                   ComputationStarted, GlobalSuperStepStarted, GlobalSuperStepUpdate, StoringStarted, GraphStoringUpdate,
                    PregelFinished, InFatalError, Canceled> {
-  using std::variant<StatusStart, PregelStarted, LoadingStarted,
-                     ComputationStarted, GlobalSuperStepStarted, StoringStarted,
+  using std::variant<StatusStart, PregelStarted, LoadingStarted, GraphLoadingUpdate,
+                     ComputationStarted, GlobalSuperStepStarted, GlobalSuperStepUpdate, StoringStarted, GraphStoringUpdate,
                      PregelFinished, InFatalError, Canceled>::variant;
 };
 template<typename Inspector>
@@ -159,10 +195,14 @@ auto inspect(Inspector& f, StatusMessages& x) {
       arangodb::inspection::type<StatusStart>("Start"),
       arangodb::inspection::type<PregelStarted>("PregelStarted"),
       arangodb::inspection::type<LoadingStarted>("LoadingStarted"),
+      arangodb::inspection::type<GraphLoadingUpdate>("GraphLoadingUpdate"),
       arangodb::inspection::type<ComputationStarted>("ComputationStarted"),
       arangodb::inspection::type<GlobalSuperStepStarted>(
           "GlobalSuperStepStarted"),
+      arangodb::inspection::type<GlobalSuperStepUpdate>(
+          "GlobalSuperStepUpdate"),
       arangodb::inspection::type<StoringStarted>("StoringStarted"),
+      arangodb::inspection::type<GraphStoringUpdate>("GraphStoringUpdate"),
       arangodb::inspection::type<PregelFinished>("PregelFinished"),
       arangodb::inspection::type<InFatalError>("InFatalError"),
       arangodb::inspection::type<Canceled>("Canceled"));

@@ -64,6 +64,7 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
               .destinationServer = server,
               .conductor = this->self,
               .resultActorOnCoordinator = this->state->resultActor,
+              .statusActor = this->state->statusActor,
               .ttl = this->state->specifications.ttl,
               .message = message}});
     }
@@ -170,8 +171,9 @@ struct ConductorHandler : actor::HandlerBase<Runtime, ConductorState> {
         << fmt::format("Conductor Actor: Run {} is canceled",
                        this->state->specifications.executionNumber);
     if (this->state->executionState->canBeCanceled()) {
-      changeState(std::make_unique<Canceled>(*this->state));
-      sendMessages();
+      changeState(
+          StateChange{.newState = std::make_unique<Canceled>(*this->state)});
+      sendMessagesToWorkers();
     }
     return std::move(this->state);
   }
