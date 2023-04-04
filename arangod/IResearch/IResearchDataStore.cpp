@@ -1769,11 +1769,6 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
     _lastCommittedTick = lastCommittedTick;
   };
   try {
-    _dataStore._writer->Clear(tick);
-    std::move(clearGuard).Cancel();
-    // payload will not be called is index already empty
-    _lastCommittedTick = std::max(tick, _lastCommittedTick);
-
     auto snapshot = _engine->currentSnapshot();
     if (ADB_UNLIKELY(!snapshot)) {
       // we reuse storage snapshot in this unlikely. Technically this is not
@@ -1783,6 +1778,13 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
       // get new reader
       snapshot = _dataStore.loadSnapshot()->_snapshot;
     }
+    tick = snapshot->tick();
+    _dataStore._writer->Clear(tick);
+    _dataStore._writer->Clear(tick);
+    std::move(clearGuard).Cancel();
+    // payload will not be called if index already empty
+    _lastCommittedTick = std::max(tick, _lastCommittedTick);
+
     auto reader = _dataStore._writer->GetSnapshot();
     TRI_ASSERT(reader);
 
