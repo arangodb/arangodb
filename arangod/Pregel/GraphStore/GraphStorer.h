@@ -60,7 +60,8 @@ struct GraphStorer : GraphStorerBase<V, E> {
         config(config),
         updateCallback(updateCallback) {}
 
-  auto store(std::shared_ptr<Quiver<V, E>> quiver) -> void override;
+  auto store(Magazine<V, E> magazine)
+      -> futures::Future<futures::Unit> override;
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   std::vector<ShardID> globalShards;
