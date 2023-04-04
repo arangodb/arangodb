@@ -223,7 +223,15 @@ void RestControlPregelHandler::handlePregelHistoryResult(
     } else {
       if (onlyReturnFirstAqlResultEntry) {
         TRI_ASSERT(result->slice().isArray());
-        generateResult(rest::ResponseCode::OK, result.get().slice().at(0));
+        if (result.get().slice().at(0).isNull()) {
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+          ResponseCode code = GeneralResponse::responseCode(nf.errorNumber());
+          generateError(code, nf.errorNumber(), nf.errorMessage());
+        } else {
+          generateResult(rest::ResponseCode::OK, result.get().slice().at(0));
+        }
       } else {
         generateResult(rest::ResponseCode::OK, result.get().slice());
       }

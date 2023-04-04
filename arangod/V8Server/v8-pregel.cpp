@@ -177,7 +177,14 @@ static void JS_PregelStatus(v8::FunctionCallbackInfo<v8::Value> const& args) {
       } else {
         if (onlyReturnFirstAqlResultEntry) {
           TRI_ASSERT(result->slice().isArray());
-          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
         } else {
           TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
         }
@@ -326,7 +333,14 @@ static void JS_PregelHistory(v8::FunctionCallbackInfo<v8::Value> const& args) {
       } else {
         if (onlyReturnFirstAqlResultEntry) {
           TRI_ASSERT(result->slice().isArray());
-          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
         } else {
           TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
         }
@@ -404,7 +418,14 @@ static void JS_PregelHistoryRemove(
       } else {
         if (onlyReturnFirstAqlResultEntry) {
           TRI_ASSERT(result->slice().isArray());
-          TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          if (result->slice().at(0).isNull()) {
+            Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+            TRI_V8_THROW_EXCEPTION_MESSAGE(nf.errorNumber(), nf.errorMessage());
+          } else {
+            TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice().at(0)));
+          }
         } else {
           TRI_V8_RETURN(TRI_VPackToV8(isolate, result.get().slice()));
         }
