@@ -18,44 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Julia Volmer
+/// @author Aditya Mukhopadhyay
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AQLResultsAvailableState.h"
+#include "InitialState.h"
 
-#include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
-#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "CreateWorkersState.h"
 #include "Pregel/Conductor/State.h"
+#include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
 
+using namespace arangodb;
+using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 
-AQLResultsAvailable::AQLResultsAvailable(ConductorState& conductor)
-    : conductor{conductor} {}
+Initial::Initial(ConductorState& conductor) : conductor{conductor} {}
 
-auto AQLResultsAvailable::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto messages =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>{};
-  for (auto const& worker : conductor.workers) {
-    messages.emplace(worker, worker::message::Cleanup{});
-  }
-  return messages;
-}
-
-auto AQLResultsAvailable::receive(actor::ActorPID sender,
-                                  message::ConductorMessages message)
+auto Initial::receive(actor::ActorPID sender,
+                      message::ConductorMessages message)
     -> std::optional<StateChange> {
-  if (not conductor.workers.contains(sender) or
-      not std::holds_alternative<message::CleanupFinished>(message)) {
+  if (!std::holds_alternative<message::ConductorStart>(message)) {
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .newState = std::move(newState)};
   }
-  conductor.workers.erase(sender);
-  if (conductor.workers.empty()) {
-    return StateChange{.newState = std::make_unique<CleanedUp>()};
-  }
-  return std::nullopt;
-};
+
+  auto newState = std::make_unique<CreateWorkers>(conductor);
+  auto stateName = newState->name();
+
+  return StateChange{
+      .statusMessage = pregel::message::PregelStarted{.state = stateName},
+      .newState = std::move(newState)};
+}

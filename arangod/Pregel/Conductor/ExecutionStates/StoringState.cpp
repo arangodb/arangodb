@@ -56,16 +56,28 @@ auto Storing::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::Stored>>(message)) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
   if (not stored.ok()) {
-    return StateChange{.newState = std::make_unique<FatalError>(conductor)};
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);
 
   if (respondedWorkers == conductor.workers) {
-    return StateChange{.newState = std::make_unique<Done>(conductor)};
+    auto newState = std::make_unique<Done>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::PregelFinished{.state = stateName},
+        .newState = std::move(newState)};
   }
 
   return std::nullopt;

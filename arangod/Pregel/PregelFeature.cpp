@@ -364,9 +364,16 @@ ResultT<ExecutionNumber> PregelFeature::startExecution(TRI_vocbase_t& vocbase,
             vocbase, executionSpecifications.vertexCollections,
             executionSpecifications.edgeCollections);
 
+    auto statusStart = message::StatusMessages{message::StatusStart{
+        .state = "Execution Started",
+        .id = executionSpecifications.executionNumber,
+        .database = vocbase.name(),
+        .algorithm = executionSpecifications.algorithm,
+        .ttl = executionSpecifications.ttl,
+        .parallelism = executionSpecifications.parallelism}};
     auto statusActorID = _actorRuntime->spawn<StatusActor>(
         vocbase.name(), std::make_unique<StatusState>(),
-        message::StatusMessages{message::StatusStart{}});
+        std::move(statusStart));
     auto statusActorPID = actor::ActorPID{
         .server = ss->getId(), .database = vocbase.name(), .id = statusActorID};
     _statusActors.doUnderLock([&en, &statusActorPID](auto& actors) {
@@ -562,12 +569,12 @@ The option can have one of the following values:
 - `custom`: use a custom directory location for memory-mapped files. You can set
   the location via the `--pregel.memory-mapped-files-custom-path` option.
 
-The default location for Pregel's memory-mapped files is the temporary directory 
+The default location for Pregel's memory-mapped files is the temporary directory
 (`--temp.path`), which may not provide enough capacity for larger Pregel jobs.
 It may be more sensible to configure a custom directory for memory-mapped files
-and provide the necessary disk space there (`custom`). 
-Such custom directory can be mounted on ephemeral storage, as the files are only 
-needed temporarily. If a custom directory location is used, you need to specify 
+and provide the necessary disk space there (`custom`).
+Such custom directory can be mounted on ephemeral storage, as the files are only
+needed temporarily. If a custom directory location is used, you need to specify
 the actual location via the `--pregel.memory-mapped-files-custom-path`
 parameter.
 
