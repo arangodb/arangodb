@@ -159,7 +159,8 @@
           }
 
           // react unmounting
-          ReactDOM.unmountComponentAtNode(document.getElementById('content-react'));
+          const reactRoot = document.getElementById('content-react');
+          if (reactRoot) ReactDOM.unmountComponentAtNode(reactRoot);
           ReactDOM.unmountComponentAtNode(document.getElementById('content'));
         }
       }
