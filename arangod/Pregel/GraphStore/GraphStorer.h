@@ -29,7 +29,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Pregel/GraphStore/GraphStorerBase.h"
-#include "Pregel/GraphStore/Quiver.h"
+#include "Pregel/GraphStore/Magazine.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/StatusMessages.h"
 
@@ -60,6 +60,7 @@ struct GraphStorer : GraphStorerBase<V, E> {
         config(config),
         updateCallback(updateCallback) {}
 
+  auto storeQuiver(std::shared_ptr<Quiver<V, E>> quiver) -> void;
   auto store(Magazine<V, E> magazine)
       -> futures::Future<futures::Unit> override;
 

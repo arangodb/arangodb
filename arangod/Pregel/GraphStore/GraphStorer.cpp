@@ -55,8 +55,8 @@
 namespace arangodb::pregel {
 
 template<typename V, typename E>
-auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
-    -> futures::Future<futures::Unit> {
+auto GraphStorer<V, E>::storeQuiver(std::shared_ptr<Quiver<V, E>> quiver)
+    -> void {
   // transaction on one shard
   OperationOptions options;
   options.silent = true;
@@ -116,50 +116,46 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
   // This loop will fill a buffer of vertices until we run into a new
   // collection
   // or there are no more vertices for to store (or the buffer is full)
-  for (auto& quiver : magazine) {
-    for (auto& vertex : *quiver) {
-      if (vertex.shard() != currentShard || numDocs >= 1000) {
-        commitTransaction();
+  for (auto& vertex : *quiver) {
+    if (vertex.shard() != currentShard || numDocs >= 1000) {
+      commitTransaction();
+      currentShard = vertex.shard();
+      shard = globalShards[currentShard.value];
 
-        currentShard = vertex.shard();
-        shard = globalShards[currentShard.value];
+      auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
+      trx = std::make_unique<SingleCollectionTransaction>(
+          ctx, shard, AccessMode::Type::WRITE);
+      trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
 
-        auto ctx = transaction::StandaloneContext::Create(*config->vocbase());
-        trx = std::make_unique<SingleCollectionTransaction>(
-            ctx, shard, AccessMode::Type::WRITE);
-        trx->addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-
-        res = trx->begin();
-        if (!res.ok()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
+      res = trx->begin();
+      if (!res.ok()) {
+        THROW_ARANGO_EXCEPTION(res);
       }
+    }
 
-      std::string_view const key = vertex.key();
+    std::string_view const key = vertex.key();
 
-      builder.openObject(true);
-      builder.add(
-          StaticStrings::KeyString,
-          VPackValuePair(key.data(), key.size(), VPackValueType::String));
-      V const& data = vertex.data();
-      if (auto result = graphFormat->buildVertexDocument(builder, &data);
-          !result) {
-        LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
-      }
-      builder.close();
-      ++numDocs;
-      if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-        std::visit(overload{[&](ActorStoringUpdate const& update) {
-                              update.fn(message::GraphStoringUpdate{
-                                  .verticesStored = 0  // TODO
-                              });
-                            },
-                            [](OldStoringUpdate const& update) {
-                              SchedulerFeature::SCHEDULER->queue(
-                                  RequestLane::INTERNAL_LOW, update.fn);
-                            }},
-                   updateCallback);
-      }
+    builder.openObject(true);
+    builder.add(StaticStrings::KeyString,
+                VPackValuePair(key.data(), key.size(), VPackValueType::String));
+    V const& data = vertex.data();
+    if (auto result = graphFormat->buildVertexDocument(builder, &data);
+        !result) {
+      LOG_PREGEL("143af", DEBUG) << "Failed to build vertex document";
+    }
+    builder.close();
+    ++numDocs;
+    if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
+      std::visit(overload{[&](ActorStoringUpdate const& update) {
+                            update.fn(message::GraphStoringUpdate{
+                                .verticesStored = 0  // TODO
+                            });
+                          },
+                          [](OldStoringUpdate const& update) {
+                            SchedulerFeature::SCHEDULER->queue(
+                                RequestLane::INTERNAL_LOW, update.fn);
+                          }},
+                 updateCallback);
     }
   }
 
@@ -177,9 +173,23 @@ auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
   // commit the remainders in our buffer
   // will throw if it fails
   commitTransaction();
-  return futures::Unit{};
 }
 
+template<typename V, typename E>
+auto GraphStorer<V, E>::store(Magazine<V, E> magazine)
+    -> futures::Future<futures::Unit> {
+  auto futures = std::vector<futures::Future<futures::Unit>>{};
+  auto self = this->shared_from_this();
+  for (auto& quiver : magazine) {
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::INTERNAL_LOW, [this, self, quiver] {
+          storeQuiver(quiver);
+          return futures::Unit{};
+        }));
+  }
+  return futures::collectAll(futures).thenValue(
+      [](auto&& units) { return futures::Unit{}; });
+}
 }  // namespace arangodb::pregel
 
 template struct arangodb::pregel::GraphStorer<int64_t, int64_t>;
