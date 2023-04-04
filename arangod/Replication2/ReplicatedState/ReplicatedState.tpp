@@ -338,7 +338,8 @@ ProducerStreamProxy<S>::ProducerStreamProxy(
     : StreamProxy<S, streams::ProducerStream,
                   replicated_log::IReplicatedLogLeaderMethods>(
           std::move(methods)) {
-  ADB_PROD_ASSERT(this->_logMethods.getLockedGuard().get() != nullptr);
+  // this produces a lock inversion
+  // ADB_PROD_ASSERT(this->_logMethods.getLockedGuard().get() != nullptr);
 }
 
 template<typename S>

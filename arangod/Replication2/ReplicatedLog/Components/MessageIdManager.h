@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,35 +17,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
-#include <string>
+#include "Basics/Guarded.h"
+#include "Replication2/ReplicatedLog/Components/IMessageIdManager.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 namespace arangodb {
-struct DeferredAction;
-}
-
-namespace arangodb::replication2 {
-struct LogIndex;
-using ParticipantId = std::string;
+namespace replication2 {
 namespace replicated_log {
-struct IReplicatedStateHandle;
-struct IReplicatedLogFollowerMethods;
+
 inline namespace comp {
-struct IStateHandleManager {
-  virtual ~IStateHandleManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
-  virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
-  virtual void becomeFollower(
-      std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
-  virtual void acquireSnapshot(ParticipantId const& leader,
-                               std::uint64_t version) noexcept = 0;
+
+struct AppendEntriesMessageIdAcceptor {
+  auto accept(MessageId) noexcept -> bool;
+  auto get() const noexcept -> MessageId;
+
+ private:
+  MessageId lastId{0};
 };
 
+struct MessageIdManager : IMessageIdManager {
+  [[nodiscard]] auto acceptReceivedMessageId(MessageId id) noexcept
+      -> bool override;
+  [[nodiscard]] auto getLastReceivedMessageId() const noexcept
+      -> MessageId override;
+
+ private:
+  Guarded<AppendEntriesMessageIdAcceptor> messageIdAcceptor;
+};
 }  // namespace comp
+
 }  // namespace replicated_log
-}  // namespace arangodb::replication2
+}  // namespace replication2
+}  // namespace arangodb

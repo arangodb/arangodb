@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,35 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <memory>
-#include <string>
-
 namespace arangodb {
-struct DeferredAction;
-}
-
-namespace arangodb::replication2 {
-struct LogIndex;
-using ParticipantId = std::string;
+namespace replication2 {
 namespace replicated_log {
-struct IReplicatedStateHandle;
-struct IReplicatedLogFollowerMethods;
+
+struct MessageId;
+
 inline namespace comp {
-struct IStateHandleManager {
-  virtual ~IStateHandleManager() = default;
-  virtual auto updateCommitIndex(LogIndex) noexcept -> DeferredAction = 0;
-  virtual auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> = 0;
-  virtual void becomeFollower(
-      std::unique_ptr<IReplicatedLogFollowerMethods>) = 0;
-  virtual void acquireSnapshot(ParticipantId const& leader,
-                               std::uint64_t version) noexcept = 0;
+struct IMessageIdManager {
+  virtual ~IMessageIdManager() = default;
+
+  [[nodiscard]] virtual auto acceptReceivedMessageId(MessageId) noexcept
+      -> bool = 0;
+  [[nodiscard]] virtual auto getLastReceivedMessageId() const noexcept
+      -> MessageId = 0;
 };
 
 }  // namespace comp
+
 }  // namespace replicated_log
-}  // namespace arangodb::replication2
+}  // namespace replication2
+}  // namespace arangodb

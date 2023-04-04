@@ -54,7 +54,8 @@ struct StorageManagerMock : IStorageManager {
 };
 
 struct StateHandleManagerMock : IStateHandleManager {
-  MOCK_METHOD(void, updateCommitIndex, (LogIndex), (noexcept, override));
+  MOCK_METHOD(DeferredAction, updateCommitIndex, (LogIndex),
+              (noexcept, override));
   MOCK_METHOD(void, becomeFollower,
               (std::unique_ptr<IReplicatedLogFollowerMethods>),
               (noexcept, override));
@@ -91,18 +92,19 @@ struct FollowerCommitManagerTest : ::testing::Test {
 
   std::shared_ptr<FollowerCommitManager> commit =
       std::make_shared<FollowerCommitManager>(
-          storage, stateHandle, LoggerContext{Logger::REPLICATION2}, scheduler);
+          storage, LoggerContext{Logger::REPLICATION2}, scheduler);
 };
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{12})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitFor(LogIndex{12});
   EXPECT_FALSE(f.isReady());
-  commit->updateCommitIndex(LogIndex{12});
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(LogIndex{12});
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
   auto index = f.get().currentCommitIndex;
@@ -110,7 +112,6 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{25})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -125,7 +126,9 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
         return makeRangeIter(bounds.value());
       });
 
-  commit->updateCommitIndex(LogIndex{25});
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(LogIndex{25});
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{25});
 
   ASSERT_TRUE(f.isReady());
   auto iter = std::move(f).get();
@@ -135,14 +138,15 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{44})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
   auto f = commit->waitFor(LogIndex{50});
   EXPECT_FALSE(f.isReady());
-  commit->updateCommitIndex(LogIndex{60});
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(LogIndex{60});
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{44});
   // although commit index is 60, we have log upto 45
   // so waiting for 50 should not be resolved
 
@@ -151,7 +155,6 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index_missing_log) {
 
 TEST_F(FollowerCommitManagerTest,
        wait_for_iterator_update_commit_index_missing_log) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{44})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillOnce([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -166,8 +169,10 @@ TEST_F(FollowerCommitManagerTest,
         return makeRangeIter(bounds.value());
       });
 
-  commit->updateCommitIndex(LogIndex{60});  // return only upto 45, although 60
-
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(
+      LogIndex{60});  // return only upto 45, although 60
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{44});
   ASSERT_TRUE(f.isReady());
   auto iter = std::move(f).get();
   EXPECT_EQ(iter->range(),
@@ -176,12 +181,13 @@ TEST_F(FollowerCommitManagerTest,
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{30})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillRepeatedly([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
 
-  commit->updateCommitIndex(LogIndex{30});
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(LogIndex{30});
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{30});
   auto f = commit->waitFor(LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
@@ -190,7 +196,6 @@ TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
 }
 
 TEST_F(FollowerCommitManagerTest, wait_for_iterator_already_resolved) {
-  EXPECT_CALL(stateHandle, updateCommitIndex(LogIndex{30})).Times(1);
   EXPECT_CALL(storage, getTermIndexMapping).Times(1).WillRepeatedly([] {
     return makeRange({LogIndex{10}, LogIndex{45}});
   });
@@ -202,7 +207,9 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_already_resolved) {
         return makeRangeIter(bounds.value());
       });
 
-  commit->updateCommitIndex(LogIndex{30});
+  auto&& [resolveIndex, action] = commit->updateCommitIndex(LogIndex{30});
+  action.fire();
+  EXPECT_EQ(resolveIndex, LogIndex{30});
   auto f = commit->waitForIterator(LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
