@@ -174,8 +174,8 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   }
   std::string toString(VPackSlice const&, VPackOptions const*,
                        VPackSlice const&) override {
-    LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
-        << "DefaultCustomTypeHandler called";
+    //    LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
+    //        << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
