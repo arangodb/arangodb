@@ -1,8 +1,7 @@
-
 @startDocuBlock delete_api_shutdown
 @brief initiates the shutdown sequence
 
-@RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence, RestShutdownHandler}
+@RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence, startShutdown}
 
 @RESTQUERYPARAMETERS
 
@@ -27,7 +26,7 @@ The following types of operations are tracked:
  - AQL cursors (in particular streaming cursors)
  - Transactions (in particular stream transactions)
  - Pregel runs (conducted by this Coordinator)
- - Ongoing asynchronous requests (using the `x-arango-async: store` HTTP header
+ - Ongoing asynchronous requests (using the `x-arango-async: store` HTTP header)
  - Finished asynchronous requests, whose result has not yet been
    collected
  - Queued low priority requests (most normal requests)
