@@ -304,26 +304,39 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::startGlobalStep(RunGlobalSuperStep const& data) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
-  std::lock_guard guard{_commandMutex};
-  if (_state != WorkerState::PREPARING) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Cannot start a gss when the worker is not prepared");
-  }
-  LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
+  {
+    std::lock_guard guard{_commandMutex};
+    if (_state != WorkerState::PREPARING) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Cannot start a gss when the worker is not prepared");
+    }
+    LOG_PREGEL("d5e44", DEBUG) << fmt::format("Starting GSS: {}", data);
 
-  _workerContext->_writeAggregators->resetValues();
-  _workerContext->_readAggregators->setAggregatedValues(
-      data.aggregators.slice());
-  // execute context
-  if (_workerContext) {
-    _workerContext->_vertexCount = data.vertexCount;
-    _workerContext->_edgeCount = data.edgeCount;
-    _workerContext->preGlobalSuperstep(data.gss);
-  }
+    _workerContext->_writeAggregators->resetValues();
+    _workerContext->_readAggregators->setAggregatedValues(
+        data.aggregators.slice());
+    // execute context
+    if (_workerContext) {
+      _workerContext->_vertexCount = data.vertexCount;
+      _workerContext->_edgeCount = data.edgeCount;
+      _workerContext->preGlobalSuperstep(data.gss);
+    }
 
-  LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << data.gss;
-  _startProcessing();  // sets _state = COMPUTING;
+    LOG_PREGEL("39e20", DEBUG) << "Worker starts new gss: " << data.gss;
+    _state = WorkerState::COMPUTING;
+    _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
+    _activeCount.store(0);
+
+    LOG_PREGEL("425c3", DEBUG)
+        << "Starting processing on " << _magazine.size() << " shards";
+
+    //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
+    _initializeMessageCaches();
+  }
+  // release the lock because processing is using futures (and we do not need to
+  // protect)
+  _startProcessing();
 }
 
 template<typename V, typename E, typename M>
@@ -333,20 +346,9 @@ void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   _workHandle.reset();
 }
 
-/// WARNING only call this while holding the _commandMutex
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::_startProcessing() {
-  _state = WorkerState::COMPUTING;
-  _feature.metrics()->pregelWorkersRunningNumber->fetch_add(1);
-  _activeCount.store(0);
-
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  LOG_PREGEL("425c3", DEBUG)
-      << "Starting processing on " << _magazine.size() << " shards";
-
-  //  _feature.metrics()->pregelNumberOfThreads->fetch_add(1);
-  _initializeMessageCaches();
-
   auto self = shared_from_this();
   auto futures = std::vector<futures::Future<ResultT<ProcessVerticesResult>>>{};
   for (auto [idx, quiver] : enumerate(_magazine)) {
