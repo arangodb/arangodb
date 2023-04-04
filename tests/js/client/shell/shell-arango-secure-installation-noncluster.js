@@ -65,7 +65,7 @@ function arangoSecureInstallationSuite () {
 
       // set no password for the database
       try {
-        let args = [path];
+        let args = ['--log.force-direct', 'true', '--log.foreground-tty', 'true', '--log.file', fs.join(path, 'log'),  path];
         // invoke arango-secure-installation without password. this will fail
         let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
         assertTrue(actualRc.hasOwnProperty("exit"));
@@ -91,7 +91,7 @@ function arangoSecureInstallationSuite () {
       // set an initial password for the database
       internal.env['ARANGODB_DEFAULT_ROOT_PASSWORD'] = 'haxxmann';
       try {
-        let args = [path];
+        let args = ['--log.force-direct', 'true', '--log.foreground-tty', 'true', '--log.file', fs.join(path, 'log'),  path];
         // invoke arango-secure-installation with password. this must succeed
         let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
         assertTrue(actualRc.hasOwnProperty("exit"));
