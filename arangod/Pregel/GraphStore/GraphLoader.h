@@ -86,7 +86,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
   std::shared_ptr<WorkerConfig const> config;
   LoadingUpdateCallback updateCallback;
 
-  Guarded<VertexIdRange> vertexIdRegistry;
+  std::atomic<uint64_t> currentIdBase;
 
   uint64_t const batchSize = 10000;
 };

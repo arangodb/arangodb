@@ -80,13 +80,10 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices)
       ADB_PROD_ASSERT(false) << "ClusterFeature not present in server";
     }
   } else {
-    // Just bump the max
-    return vertexIdRegistry.doUnderLock([numVertices](VertexIdRange& range) {
-      auto result = range;
-      range.current = range.maxId;
-      range.maxId = range.maxId + numVertices;
-      return result;
-    });
+    uint64_t base = currentIdBase.load();
+    while (!currentIdBase.compare_exchange_strong(base, base + numVertices)) {
+    };
+    return VertexIdRange{.current = base, .maxId = base + numVertices};
   }
   ADB_PROD_ASSERT(false);
   return VertexIdRange{};
