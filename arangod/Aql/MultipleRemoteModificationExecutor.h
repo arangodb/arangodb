@@ -96,6 +96,7 @@ struct MultipleRemoteModificationExecutor {
   transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
+  bool _hasFetchedDataRow{false};
 };
 
 }  // namespace aql

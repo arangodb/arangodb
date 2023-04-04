@@ -28,8 +28,8 @@ const arangodb = require("@arangodb");
 const internal = require('internal');
 const ERRORS = require("@arangodb").errors;
 const isServer = require("@arangodb").isServer;
-const isEnterprise = require("internal").isEnterprise;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const isEnterprise = internal.isEnterprise();
 const cn = "UnitTestsCollection";
 const cn2 = "UnitTestsCollection2";
 const db = arangodb.db;
@@ -526,7 +526,7 @@ function InsertMultipleDocumentsSuite(params) {
     },
 
     testSmartGraph: function () {
-      if (!isEnterprise()) {
+      if (!isEnterprise) {
         // SmartGraphs only available in enterprise edition
         return;
       }
@@ -549,6 +549,7 @@ function InsertMultipleDocumentsSuite(params) {
           db[edges].insert({
             _from: vertex + "/value" + i + ":abc" + i,
             _to: vertex + "/value" + (9 - i) + ":abc" + i,
+            _key: "value" + i + ":" + i + "123:" + "value" + (9 - i),
             value: "value" + i
           });
         }
@@ -568,6 +569,7 @@ function InsertMultipleDocumentsSuite(params) {
         res = db._query(query);
         assertEqual(db[edges].count(), edgesCount + 1);
         assertEqual([], res.toArray());
+        assertEqual(db["_from_" + edges].count(), db["_to_" + edges].count());
 
         try {
           query = `FOR d IN [{_from: '${vertex}/value2:abc2', _to: '${vertex}/value3:abc3', value: 'value3'}, {_from: 'value1000:abc1000', _to: '${vertex}/value2:abc2', value: 'value2'}] INSERT d INTO ${edges}`;
@@ -577,6 +579,7 @@ function InsertMultipleDocumentsSuite(params) {
         } catch (err) {
           assertTrue(err.errorMessage.includes("edge attribute missing"));
           assertEqual(db[edges].count(), edgesCount + 1);
+          assertEqual(db["_from_" + edges].count(), db["_to_" + edges].count());
         }
       } finally {
         smartGraphs._drop(graph, true);
