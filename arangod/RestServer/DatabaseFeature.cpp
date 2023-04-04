@@ -74,9 +74,6 @@
 
 #include <absl/strings/str_cat.h>
 
-using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace arangodb {
