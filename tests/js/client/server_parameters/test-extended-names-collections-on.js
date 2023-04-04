@@ -36,6 +36,7 @@ const db = internal.db;
 const errors = internal.errors;
 const ArangoCollection = require("@arangodb").ArangoCollection;
 const isCluster = internal.isCluster;
+const isEnterprise = internal.isEnterprise;
 
 const traditionalName = "UnitTestsCollection";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
@@ -1114,6 +1115,70 @@ function testSuite() {
         }
       } finally {
         udf.unregister("SOME::FUNC");
+      }
+    },
+    
+    testGraphWithExtendedCollectionNames: function() {
+      const gn = "le-graph";
+      const graph = require("@arangodb/general-graph");
+
+      const edgeDef = graph._edgeDefinitions(
+        graph._relation(traditionalName, [extendedName], [extendedName]),
+      );
+
+      let g = graph._create(gn, edgeDef);
+      try {
+        let doc = db._graphs.document(gn);
+        assertEqual(1, doc.edgeDefinitions.length);
+        assertEqual(traditionalName, doc.edgeDefinitions[0].collection);
+        assertEqual(1, doc.edgeDefinitions[0].from.length);
+        assertEqual([extendedName], doc.edgeDefinitions[0].from);
+        assertEqual(1, doc.edgeDefinitions[0].to.length);
+        assertEqual([extendedName], doc.edgeDefinitions[0].to.sort());
+        assertEqual([], doc.orphanCollections);
+      
+        let v1 = g[extendedName].save({_key: "1"});
+        assertEqual(extendedName + "/1", v1._id);
+        let v2 = g[extendedName].save({_key: "2"});
+        assertEqual(extendedName + "/2", v2._id);
+
+        assertEqual(2, g[extendedName].count());
+      } finally {
+        graph._drop(gn, true);
+      }
+    },
+    
+    testSmartGraphWithExtendedCollectionNames: function() {
+      if (!isEnterprise()) {
+        return;
+      }
+
+      const gn = "le-graph";
+      const graph = require("@arangodb/smart-graph");
+
+      const edgeDef = graph._edgeDefinitions(
+        graph._relation(traditionalName, [extendedName], [extendedName]),
+      );
+
+      let g = graph._create(gn, edgeDef);
+      try {
+        let doc = db._graphs.document(gn);
+        assertEqual(1, doc.edgeDefinitions.length);
+        assertEqual(traditionalName, doc.edgeDefinitions[0].collection);
+        assertEqual(1, doc.edgeDefinitions[0].from.length);
+        assertEqual([extendedName], doc.edgeDefinitions[0].from);
+        assertEqual(1, doc.edgeDefinitions[0].to.length);
+        assertEqual([extendedName], doc.edgeDefinitions[0].to.sort());
+        assertEqual([], doc.orphanCollections);
+      
+        let v1 = g[extendedName].save({_key: "1"});
+        assertEqual(extendedName + "/1", v1._id);
+        let v2 = g[extendedName].save({_key: "2"});
+        assertEqual(extendedName + "/2", v2._id);
+
+        assertEqual(2, g[extendedName].count());
+      } finally {
+        graph._drop(gn, true);
       }
     },
 
