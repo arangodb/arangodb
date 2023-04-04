@@ -17,14 +17,11 @@ Computing::Computing(
       sendCountPerActor{std::move(sendCountPerActor)} {
   // TODO GORDO-1510
   // _feature.metrics()->pregelConductorsRunningNumber->fetch_add(1);
-  conductor.timing.gss.emplace_back(Duration{
-      ._start = std::chrono::steady_clock::now(), ._finish = std::nullopt});
 }
 
 auto Computing::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
   if (masterContext->_globalSuperstep == 0) {
-    conductor.timing.computation.start();
     masterContext->preApplication();
   }
   masterContext->preGlobalSuperstep();
@@ -84,9 +81,7 @@ auto Computing::receive(actor::ActorPID sender,
     auto postGss = _postGlobalSuperStep();
 
     if (postGss.finished) {
-      conductor.timing.gss.back().finish();
       masterContext->postApplication();
-      conductor.timing.computation.finish();
       // TODO GORDO-1510
       // conductor._feature.metrics()->pregelConductorsRunningNumber->fetch_sub(1);
       if (conductor.specifications.storeResults) {
@@ -105,7 +100,6 @@ auto Computing::receive(actor::ActorPID sender,
           .newState = std::move(newState)};
     }
 
-    conductor.timing.gss.back().finish();
     masterContext->_globalSuperstep++;
     auto gss = masterContext->_globalSuperstep;
     VPackBuilder aggregators;

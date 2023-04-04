@@ -9,9 +9,8 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::conductor;
 
-CreateWorkers::CreateWorkers(ConductorState& conductor) : conductor{conductor} {
-  conductor.timing.total.start();
-}
+CreateWorkers::CreateWorkers(ConductorState& conductor)
+    : conductor{conductor} {}
 
 auto workerSpecification(
     std::unique_ptr<CollectionLookup> const& collectionLookup,
