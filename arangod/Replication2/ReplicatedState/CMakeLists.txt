@@ -5,3 +5,8 @@ target_sources(arango_replication2 PRIVATE
   ReplicatedStateToken.cpp
   StateCommon.cpp
   WaitForQueue.cpp)
+
+target_sources(arango_replication2_pure PRIVATE
+  StateStatus.h
+  StateCommon.cpp
+  )

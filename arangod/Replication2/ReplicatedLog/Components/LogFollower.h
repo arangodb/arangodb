@@ -51,12 +51,13 @@ struct StateHandleManager;
 struct SnapshotManager;
 struct FollowerCommitManager;
 struct AppendEntriesManager;
+struct MethodsProviderManager;
+struct MessageIdManager;
 }  // namespace comp
 }  // namespace arangodb::replication2::replicated_log
 
 namespace arangodb::replication2::replicated_log {
 
-struct MethodsProvider;
 struct FollowerManager {
   explicit FollowerManager(
       std::unique_ptr<replicated_state::IStorageEngineMethods> methods,
@@ -77,7 +78,6 @@ struct FollowerManager {
       -> futures::Future<AppendEntriesResult>;
 
  private:
-  friend struct MethodsProvider;
   friend struct LogFollowerImpl;
   LoggerContext const loggerContext;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const options;
@@ -86,9 +86,11 @@ struct FollowerManager {
   // Make this into shared_ptrs allows types to remain incomplete in this header
   std::shared_ptr<StorageManager> const storage;
   std::shared_ptr<CompactionManager> const compaction;
+  std::shared_ptr<FollowerCommitManager> const commit;
   std::shared_ptr<StateHandleManager> const stateHandle;
   std::shared_ptr<SnapshotManager> const snapshot;
-  std::shared_ptr<FollowerCommitManager> const commit;
+  std::shared_ptr<MessageIdManager> const messageIdManager;
+  std::shared_ptr<MethodsProviderManager> const methodsProvider;
   std::shared_ptr<AppendEntriesManager> const appendEntriesManager;
   std::shared_ptr<FollowerTermInformation const> const termInfo;
 };

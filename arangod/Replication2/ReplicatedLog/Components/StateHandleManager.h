@@ -20,7 +20,9 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include "Replication2/ReplicatedLog/Components/IStateHandleManager.h"
 #include "Basics/Guarded.h"
 #include "Replication2/ReplicatedLog/types.h"
@@ -28,13 +30,15 @@
 
 namespace arangodb::replication2::replicated_log {
 inline namespace comp {
+struct IFollowerCommitManager;
 
 struct StateHandleManager : IStateHandleManager {
   explicit StateHandleManager(
-      std::unique_ptr<IReplicatedStateHandle> stateHandle);
+      std::unique_ptr<IReplicatedStateHandle> stateHandle,
+      IFollowerCommitManager& commit);
 
   auto resign() noexcept -> std::unique_ptr<IReplicatedStateHandle> override;
-  void updateCommitIndex(LogIndex index) noexcept override;
+  auto updateCommitIndex(LogIndex index) noexcept -> DeferredAction override;
   void becomeFollower(
       std::unique_ptr<IReplicatedLogFollowerMethods> ptr) override;
 
@@ -44,9 +48,10 @@ struct StateHandleManager : IStateHandleManager {
 
  private:
   struct GuardedData {
-    explicit GuardedData(
-        std::unique_ptr<IReplicatedStateHandle> stateHandlePtr);
+    explicit GuardedData(std::unique_ptr<IReplicatedStateHandle> stateHandlePtr,
+                         IFollowerCommitManager& commit);
     std::unique_ptr<IReplicatedStateHandle> stateHandle;
+    IFollowerCommitManager& commit;
   };
 
   Guarded<GuardedData> guardedData;

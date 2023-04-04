@@ -4,8 +4,7 @@ set -e
 IN=${1:-README.md}
 OUT=${2:-README}
 
-fgrep -v "Slack Badge" $IN \
-  | fgrep -v "picture>" \
+fgrep -v "picture>" $IN \
   | fgrep -v "<source " \
   | fgrep -v "<img " \
   | sed -e 's:&gt;:>:g' \

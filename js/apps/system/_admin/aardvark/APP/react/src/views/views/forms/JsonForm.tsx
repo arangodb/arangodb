@@ -7,8 +7,6 @@ import { FormProps, State } from "../../../utils/constants";
 import { useJsonFormErrorHandler, useJsonFormUpdateEffect } from "../../../utils/helpers";
 import { formSchema, FormState, linksSchema } from "../constants";
 
-declare var frontendConfig: { [key: string]: any };
-
 const ajv = new Ajv2019({
   allErrors: true,
   verbose: true,
@@ -63,7 +61,7 @@ const JsonForm = ({ formState, dispatch, renderKey, mode = 'code', isEdit = fals
       fss.properties.writebufferSizeMax = {
         const: formState.writebufferSizeMax
       };
-      if (frontendConfig.isCluster) {
+      if (window.frontendConfig.isCluster) {
         fss.properties.name = {
           const: formState.name
         };

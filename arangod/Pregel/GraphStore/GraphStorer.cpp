@@ -35,18 +35,18 @@
 #include "Pregel/Algos/SLPA/SLPAValue.h"
 #include "Pregel/Algos/WCC/WCCValue.h"
 
+#include "Pregel/StatusMessages.h"
 #include "Pregel/Worker/WorkerConfig.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/overload.h"
 #include "Logger/LogMacros.h"
-
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
-
-#include "ApplicationFeatures/ApplicationServer.h"
 
 #define LOG_PREGEL(logId, level)          \
   LOG_TOPIC(logId, level, Logger::PREGEL) \
@@ -146,13 +146,29 @@ auto GraphStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver) -> void {
     builder.close();
     ++numDocs;
     if (numDocs % Utils::batchOfVerticesStoredBeforeUpdatingStatus == 0) {
-      SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                         statusUpdateCallback);
+      std::visit(overload{[&](ActorStoringUpdate const& update) {
+                            update.fn(message::GraphStoringUpdate{
+                                .verticesStored = 0  // TODO
+                            });
+                          },
+                          [](OldStoringUpdate const& update) {
+                            SchedulerFeature::SCHEDULER->queue(
+                                RequestLane::INTERNAL_LOW, update.fn);
+                          }},
+                 updateCallback);
     }
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                     statusUpdateCallback);
+  std::visit(overload{[&](ActorStoringUpdate const& update) {
+                        update.fn(message::GraphStoringUpdate{
+                            .verticesStored = 0  // TODO
+                        });
+                      },
+                      [](OldStoringUpdate const& update) {
+                        SchedulerFeature::SCHEDULER->queue(
+                            RequestLane::INTERNAL_LOW, update.fn);
+                      }},
+             updateCallback);
 
   // commit the remainders in our buffer
   // will throw if it fails
