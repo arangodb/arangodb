@@ -188,6 +188,7 @@ let viewsTest = {
 let analyzersTest = {
   name: 'analyzers',
   setUp: function(obj, te) {
+    obj.analyzersBefore = [];
     analyzers.toArray().forEach(oneAnalyzer => {
       obj.analyzersBefore.push(oneAnalyzer.name());
     });
@@ -226,7 +227,6 @@ let analyzersTest = {
       };
       return false;
     }
-    obj.analyzersBefore = [];
     return true;
   }
 };

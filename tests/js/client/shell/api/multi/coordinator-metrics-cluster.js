@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
+const { checkIndexMetrics } = require("@arangodb/test-helper-common");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
@@ -88,7 +89,7 @@ function checkRawMetrics(txt, empty) {
   if (empty) {
     assertEqual(metrics, {});
   } else {
-    checkMetrics(metrics);
+    checkIndexMetrics(function() { return checkMetrics(metrics); });
   }
 }
 
