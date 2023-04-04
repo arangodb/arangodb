@@ -49,9 +49,12 @@ const useAddEdgeAction = ({
         `The edge ${response.new._id} was successfully created`
       );
       onSuccess(response);
-    } catch (error) {
+    } catch (error: unknown) {
       console.log("Error creating this edge: ", error);
-      window.arangoHelper.arangoError("Graph", "Could not create edge.");
+      window.arangoHelper.arangoError(
+        "Could not create edge.",
+        (error as any).response.body.errorMessage
+      );
       onFailure();
     }
   };
