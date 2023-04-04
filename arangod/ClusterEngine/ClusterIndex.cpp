@@ -144,7 +144,7 @@ void ClusterIndex::toVelocyPack(
       network::RequestOptions reqOpts;
       reqOpts.param("withHidden", "true");
       // best effort. only displaying progress
-      reqOpts.timeout = network::Timeout(10.0);
+      reqOpts.timeout = network::Timeout(10.0); // jsteeman, ideas?
       std::string const url =
           prefix + shard.first + "/" + std::to_string(_iid.id());
       futures.emplace_back(
@@ -160,6 +160,7 @@ void ClusterIndex::toVelocyPack(
         LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
             << "Communication error while collecting figures for collection "
             << _collection.name() + " from " + r.destination;
+        continue;
       }
       VPackSlice resSlice = r.slice();
       if (!resSlice.isObject() || !resSlice.hasKey(StaticStrings::Error) ||
@@ -167,11 +168,13 @@ void ClusterIndex::toVelocyPack(
         LOG_TOPIC("agbe4", INFO, Logger::CLUSTER)
             << "Result of collecting figures for collection "
             << _collection.name() + " from " + r.destination << " is invalid";
+        continue;
       }
       if (resSlice.get(StaticStrings::Error).getBoolean()) {
         LOG_TOPIC("a4beg", INFO, Logger::CLUSTER)
             << "Failed to collect figures for collection "
             << _collection.name() + " from " + r.destination;
+        continue;
       }
       if (resSlice.hasKey("progress") && resSlice.get("progress").isNumber()) {
         progress += resSlice.get("progress").getNumber<double>();

@@ -210,6 +210,7 @@ Index::Index(
       _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
+      _progress(-1.);
       _unique(unique),
       _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
@@ -227,6 +228,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
       _useExpansion(::hasExpansion(_fields)),
+      _progress(-1.),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
@@ -550,9 +552,8 @@ void Index::toVelocyPack(
   }
 
   auto const progress = _progress.load(std::memory_order_relaxed);
-  if (progress > 0) {
-    builder.add("progress",
-                VPackValue(_progress.load(std::memory_order_relaxed)));
+  if (progress > -1 && progress < 100) {
+    builder.add("progress", VPackValue(progress));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
