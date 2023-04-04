@@ -1,22 +1,22 @@
-@RESTSTRUCT{id,get_api_control_pregel,string,required,string}
+@RESTSTRUCT{id,get_api_control_pregel_struct,string,required,string}
 The ID of the Pregel job, as a string.
 
-@RESTSTRUCT{algorithm,get_api_control_pregel,string,required,string}
+@RESTSTRUCT{algorithm,get_api_control_pregel_struct,string,required,string}
 The algorithm used by the job.
 
-@RESTSTRUCT{created,get_api_control_pregel,string,required,string}
+@RESTSTRUCT{created,get_api_control_pregel_struct,string,required,string}
 The date and time when the job was created.
 
-@RESTSTRUCT{expires,get_api_control_pregel,string,optional,string}
+@RESTSTRUCT{expires,get_api_control_pregel_struct,string,optional,string}
 The date and time when the job results expire. The expiration date is only
 meaningful for jobs that were completed, canceled or resulted in an error. Such jobs
 are cleaned up by the garbage collection when they reach their expiration date/time.
 
-@RESTSTRUCT{ttl,get_api_control_pregel,number,required,float}
+@RESTSTRUCT{ttl,get_api_control_pregel_struct,number,required,float}
 The TTL (time to live) value for the job results, specified in seconds.
 The TTL is used to calculate the expiration date for the job's results.
 
-@RESTSTRUCT{state,get_api_control_pregel,string,required,string}
+@RESTSTRUCT{state,get_api_control_pregel_struct,string,required,string}
 The state of the execution. The following values can be returned:
 - `"none"`: The Pregel run did not yet start.
 - `"loading"`: The graph is loaded from the database into memory before the execution of the algorithm.
@@ -37,37 +37,37 @@ The state of the execution. The following values can be returned:
 - `"recovering"` (currently unused): The execution is actively recovering and
   switches back to `running` if the recovery is successful.
 
-@RESTSTRUCT{gss,get_api_control_pregel,integer,required,int64}
+@RESTSTRUCT{gss,get_api_control_pregel_struct,integer,required,int64}
 The number of global supersteps executed.
 
-@RESTSTRUCT{totalRuntime,get_api_control_pregel,number,required,float}
+@RESTSTRUCT{totalRuntime,get_api_control_pregel_struct,number,required,float}
 The total runtime of the execution up to now (if the execution is still ongoing).
 
-@RESTSTRUCT{startupTime,get_api_control_pregel,number,required,float}
+@RESTSTRUCT{startupTime,get_api_control_pregel_struct,number,required,float}
 The startup runtime of the execution.
 The startup time includes the data loading time and can be substantial.
 
-@RESTSTRUCT{computationTime,get_api_control_pregel,number,required,float}
+@RESTSTRUCT{computationTime,get_api_control_pregel_struct,number,required,float}
 The algorithm execution time. Is shown when the computation started. 
 
-@RESTSTRUCT{storageTime,get_api_control_pregel,number,optional,float}
+@RESTSTRUCT{storageTime,get_api_control_pregel_struct,number,optional,float}
 The time for storing the results if the job includes results storage.
 Is shown when the storing started.
 
-@RESTSTRUCT{gssTimes,get_api_control_pregel,array,optional,number}
+@RESTSTRUCT{gssTimes,get_api_control_pregel_struct,array,optional,number}
 Computation time of each global super step. Is shown when the computation started.
 
-@RESTSTRUCT{reports,get_api_control_pregel,array,required,object}
+@RESTSTRUCT{reports,get_api_control_pregel_struct,array,required,object}
 This attribute is used by Programmable Pregel Algorithms (`ppa`, experimental).
 The value is only populated once the algorithm has finished.
 
-@RESTSTRUCT{vertexCount,get_api_control_pregel,integer,optional,int64}
+@RESTSTRUCT{vertexCount,get_api_control_pregel_struct,integer,optional,int64}
 The total number of vertices processed.
 
-@RESTSTRUCT{edgeCount,get_api_control_pregel,integer,optional,int64}
+@RESTSTRUCT{edgeCount,get_api_control_pregel_struct,integer,optional,int64}
 The total number of edges processed.
 
-@RESTSTRUCT{detail,get_api_control_pregel,object,required,get_api_control_pregel_detail}
+@RESTSTRUCT{detail,get_api_control_pregel_struct,object,required,get_api_control_pregel_detail}
 The Pregel run details.
 
 @RESTSTRUCT{aggregatedStatus,get_api_control_pregel_detail,object,required,get_api_control_pregel_detail_aggregated}

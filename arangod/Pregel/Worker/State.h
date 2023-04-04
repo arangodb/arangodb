@@ -105,7 +105,7 @@ struct WorkerState {
   const actor::ActorPID spawnActor;
   const actor::ActorPID resultActor;
   const actor::ActorPID statusActor;
-  std::shared_ptr<Quiver<V, E>> quiver = std::make_unique<Quiver<V, E>>();
+  Magazine<V, E> magazine;
   MessageStats messageStats;
 };
 template<typename V, typename E, typename M, typename Inspector>
