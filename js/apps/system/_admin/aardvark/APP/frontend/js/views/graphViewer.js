@@ -110,7 +110,7 @@
       const url = window.location.href;
       const linkToNewGraphViewer = url.substring(url.lastIndexOf('/') + 1);
       window.App.navigate(
-        `#visgraphs/${linkToNewGraphViewer}`, { trigger: true }
+        `#graph-v2/${linkToNewGraphViewer}`, { trigger: true }
       );
     },
 
