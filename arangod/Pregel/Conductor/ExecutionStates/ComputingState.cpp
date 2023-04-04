@@ -68,6 +68,9 @@ auto Computing::receive(actor::ActorPID sender,
   }
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());
+  for (auto const& count : gssFinished.get().sendCountPerActor) {
+    sendCountPerActorForNextGss[count.receiver] += count.sendCount;
+  }
 
   if (respondedWorkers == conductor.workers) {
     masterContext->_vertexCount = messageAccumulation.vertexCount;
@@ -108,9 +111,9 @@ auto Computing::receive(actor::ActorPID sender,
     aggregators.close();
     auto vertexCount = masterContext->vertexCount();
     auto edgeCount = masterContext->edgeCount();
-    auto newState = std::make_unique<Computing>(
-        conductor, std::move(masterContext),
-        std::move(messageAccumulation.sendCountPerActor));
+    auto newState =
+        std::make_unique<Computing>(conductor, std::move(masterContext),
+                                    std::move(sendCountPerActorForNextGss));
     auto stateName = newState->name();
     return StateChange{.statusMessage =
                            pregel::message::GlobalSuperStepStarted{

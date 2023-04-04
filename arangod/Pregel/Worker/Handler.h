@@ -243,9 +243,14 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
       this->state->workerContext->_writeAggregators->serializeValues(
           aggregators);
     }
+    std::vector<conductor::message::SendCountPerActor> sendCountList;
+    for (auto const& [actor, count] : verticesProcessed.sendCountPerActor) {
+      sendCountList.emplace_back(conductor::message::SendCountPerActor{
+          .receiver = actor, .sendCount = count});
+    }
     auto gssFinishedEvent = conductor::message::GlobalSuperStepFinished{
         this->state->messageStats,
-        verticesProcessed.sendCountPerActor,
+        sendCountList,
         verticesProcessed.activeCount,
         this->state->magazine.numberOfVertices(),
         this->state->magazine.numberOfEdges(),
