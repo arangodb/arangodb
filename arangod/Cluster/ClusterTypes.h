@@ -30,6 +30,9 @@
 #include <string>
 
 #include "Basics/Result.h"
+==== BASE ====
+#include "Containers/FlatHashMap.h"
+==== BASE ====
 
 namespace arangodb {
 
@@ -92,6 +95,20 @@ auto inspect(Inspector& f, RebootId& x) {
     return f.apply(v);
   }
 }
+
+enum class ServerHealth { kGood, kBad, kFailed, kUnclear };
+
+std::ostream& operator<<(std::ostream& o, ServerHealth r);
+
+struct ServerHealthState {
+  RebootId rebootId;
+  ServerHealth status;
+};
+
+std::ostream& operator<<(std::ostream& o, ServerHealthState const& r);
+
+using ServersKnown = containers::FlatHashMap<ServerID, ServerHealthState>;
+
 
 namespace velocypack {
 class Builder;
