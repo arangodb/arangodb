@@ -59,7 +59,6 @@ auto GraphVPackBuilderStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver)
     -> void {
   std::string tmp;
 
-  result->openArray(/*unindexed*/ true);
   for (auto& vertex : *quiver) {
     ADB_PROD_ASSERT(vertex.shard().value < config->globalShardIDs().size());
     ShardID const& shardId = config->globalShardID(vertex.shard());
@@ -88,7 +87,6 @@ auto GraphVPackBuilderStorer<V, E>::store(std::shared_ptr<Quiver<V, E>> quiver)
     }
     result->close();
   }
-  result->close();
 }
 
 }  // namespace arangodb::pregel
