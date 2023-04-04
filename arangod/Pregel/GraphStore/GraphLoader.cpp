@@ -84,7 +84,8 @@ auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
+auto GraphLoader<V, E>::load() -> Magazine<V, E> {
+  auto result = Magazine<V, E>{};
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
@@ -128,7 +129,7 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
       }
 
       try {
-        loadVertices(vertexShard, edges);
+        result.emplace(loadVertices(vertexShard, edges));
       } catch (basics::Exception const& ex) {
         LOG_PREGEL("8682a", WARN)
             << "caught exception while loading pregel graph: " << ex.what();
@@ -144,8 +145,8 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
 
   std::visit(overload{[&](ActorLoadingUpdate const& update) {
                         update.fn(message::GraphLoadingUpdate{
-                            .verticesLoaded = result->numberOfVertices(),
-                            .edgesLoaded = result->numberOfEdges(),
+                            .verticesLoaded = result.numberOfVertices(),
+                            .edgesLoaded = result.numberOfEdges(),
                             .memoryBytesUsed = 0  // TODO
                         });
                       },
@@ -160,7 +161,9 @@ auto GraphLoader<V, E>::load() -> std::shared_ptr<Quiver<V, E>> {
 template<typename V, typename E>
 auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards)
-    -> void {
+    -> std::shared_ptr<Quiver<V, E>> {
+  auto result = std::make_shared<Quiver<V, E>>();
+
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
   trxOpts.allowImplicitCollectionsForRead = true;
@@ -249,6 +252,7 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
                         }},
                updateCallback);
   }
+  return result;
 }
 
 template<typename V, typename E>
