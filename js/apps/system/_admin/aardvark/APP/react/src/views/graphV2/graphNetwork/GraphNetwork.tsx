@@ -39,9 +39,7 @@ const GraphNetworkInner = ({
   progressValue: number;
   visJsRef: React.RefObject<HTMLDivElement>;
 }) => {
-  const { graphError, graphData, datasets } = useGraph();
-  const isSmart = graphData?.settings.isSmart || false
-  console.log({isSmart});
+  const { graphError, datasets } = useGraph();
   return (
     <>
       <GraphRightClickMenu
