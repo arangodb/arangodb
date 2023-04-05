@@ -11,7 +11,7 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) => {
   return (
     <Box fontSize="md">
       <Box backgroundColor="gray.800" paddingX="4" paddingY="2">
-        <HStack listStyleType="none" as="ul" color="gray.100">
+        <HStack listStyleType="none" as="ul" color="gray.100" flexWrap="wrap">
           <Link
             textDecoration="underline"
             _hover={{ color: "gray.100" }}

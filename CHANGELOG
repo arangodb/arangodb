@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-200: Adds smart & enterprise graph support in the UI. 
+
 * Forward the `ttl` cursor option for AQL queries in the JavaScript API
   from the `db._query()` and the `db._createStatement()` methods to the server.
 
