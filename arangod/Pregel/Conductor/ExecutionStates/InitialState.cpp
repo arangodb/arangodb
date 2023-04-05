@@ -37,6 +37,9 @@ auto Initial::receive(actor::ActorPID sender,
                       message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (!std::holds_alternative<message::ConductorStart>(message)) {
+    LOG_TOPIC("a9c8f", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

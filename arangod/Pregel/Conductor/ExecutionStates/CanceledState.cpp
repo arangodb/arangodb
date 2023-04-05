@@ -46,6 +46,9 @@ auto Canceled::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
+    LOG_TOPIC("f4e7e", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

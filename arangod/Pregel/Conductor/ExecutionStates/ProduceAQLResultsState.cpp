@@ -47,6 +47,9 @@ auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not std::holds_alternative<message::ResultCreated>(message)) {
+    LOG_TOPIC("92e67", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

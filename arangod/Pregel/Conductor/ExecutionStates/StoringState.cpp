@@ -54,6 +54,9 @@ auto Storing::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::Stored>>(message)) {
+    LOG_TOPIC("9e62a", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
@@ -62,6 +65,9 @@ auto Storing::receive(actor::ActorPID sender,
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
   if (not stored.ok()) {
+    LOG_TOPIC("20eaa", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received error {}", name(),
+                       inspection::json(stored.errorMessage()));
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

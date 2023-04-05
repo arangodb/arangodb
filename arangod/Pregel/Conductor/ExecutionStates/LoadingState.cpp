@@ -35,9 +35,20 @@ auto Loading::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GraphLoaded>>(message)) {
+    LOG_TOPIC("7f0a5", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::GraphLoaded>>(message);
   if (not workerCreated.ok()) {
+    LOG_TOPIC("413ed", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received error {}", name(),
+                       inspection::json(workerCreated.errorMessage()));
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

@@ -51,6 +51,9 @@ auto Computing::receive(actor::ActorPID sender,
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<ResultT<message::GlobalSuperStepFinished>>(
           message)) {
+    LOG_TOPIC("c1c44", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
@@ -60,6 +63,9 @@ auto Computing::receive(actor::ActorPID sender,
   auto gssFinished =
       std::get<ResultT<message::GlobalSuperStepFinished>>(message);
   if (not gssFinished.ok()) {
+    LOG_TOPIC("22096", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received error {}", name(),
+                       inspection::json(gssFinished.errorMessage()));
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{

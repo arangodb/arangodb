@@ -59,6 +59,9 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     -> std::optional<StateChange> {
   if (not sentServers.contains(sender.server) or
       not std::holds_alternative<ResultT<message::WorkerCreated>>(message)) {
+    LOG_TOPIC("4856a", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received unexpected message {} from {}", name(),
+                       inspection::json(message), sender);
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
@@ -67,6 +70,9 @@ auto CreateWorkers::receive(actor::ActorPID sender,
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
   if (not workerCreated.ok()) {
+    LOG_TOPIC("4bfdb", INFO, Logger::PREGEL)
+        << fmt::format("In {}: Received error {}", name(),
+                       inspection::json(workerCreated.errorMessage()));
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
