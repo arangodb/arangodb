@@ -93,6 +93,7 @@ interface SettingsType {
   connectionsCounts: number[];
   connectionsMinMax: (number | null)[];
   isSmart?: boolean;
+  smartGraphAttribute?: string;
 }
 
 export type GraphDataType = {

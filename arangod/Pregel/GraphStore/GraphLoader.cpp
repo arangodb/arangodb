@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Algos/ColorPropagation/ColorPropagationValue.h"
@@ -65,27 +66,33 @@ constexpr auto shardError = std::string_view{
 
 namespace arangodb::pregel {
 template<typename V, typename E>
-auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices) -> void {
+auto GraphLoader<V, E>::requestVertexIds(uint64_t numVertices)
+    -> VertexIdRange {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
     if (config->vocbase()->server().template hasFeature<ClusterFeature>()) {
       arangodb::ClusterInfo& ci = this->config->vocbase()
                                       ->server()
                                       .template getFeature<ClusterFeature>()
                                       .clusterInfo();
-      currentVertexId = ci.uniqid(numVertices);
-      currentVertexIdMax = currentVertexId + numVertices;
+      auto n = ci.uniqid(numVertices);
+      return VertexIdRange{.current = n, .maxId = n + numVertices};
     } else {
       ADB_PROD_ASSERT(false) << "ClusterFeature not present in server";
     }
   } else {
-    // Just bump the max
-    currentVertexIdMax += numVertices;
+    uint64_t base = currentIdBase.load();
+    while (!currentIdBase.compare_exchange_strong(base, base + numVertices)) {
+    };
+    return VertexIdRange{.current = base, .maxId = base + numVertices};
   }
+  ADB_PROD_ASSERT(false);
+  return VertexIdRange{};
 }
 
 template<typename V, typename E>
-auto GraphLoader<V, E>::load() -> Magazine<V, E> {
-  auto result = Magazine<V, E>{};
+auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
+  auto futures = std::vector<futures::Future<std::shared_ptr<Quiver<V, E>>>>{};
+
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
@@ -128,34 +135,50 @@ auto GraphLoader<V, E>::load() -> Magazine<V, E> {
         }
       }
 
-      try {
-        result.emplace(loadVertices(vertexShard, edges));
-      } catch (basics::Exception const& ex) {
-        LOG_PREGEL("8682a", WARN)
-            << "caught exception while loading pregel graph: " << ex.what();
-      } catch (std::exception const& ex) {
-        LOG_PREGEL("c87c9", WARN)
-            << "caught exception while loading pregel graph: " << ex.what();
-      } catch (...) {
-        LOG_PREGEL("c7240", WARN)
-            << "caught unknown exception while loading pregel graph";
-      }
+      auto self = this->shared_from_this();
+      futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+          RequestLane::INTERNAL_LOW,
+          [this, self, vertexShard, edges]() -> std::shared_ptr<Quiver<V, E>> {
+            try {
+              return loadVertices(vertexShard, edges);
+            } catch (basics::Exception const& ex) {
+              LOG_PREGEL("8682a", WARN)
+                  << "caught exception while loading pregel graph: "
+                  << ex.what();
+              return nullptr;
+            } catch (std::exception const& ex) {
+              LOG_PREGEL("c87c9", WARN)
+                  << "caught exception while loading pregel graph: "
+                  << ex.what();
+              return nullptr;
+            } catch (...) {
+              LOG_PREGEL("c7240", WARN)
+                  << "caught unknown exception while loading pregel graph";
+              return nullptr;
+            }
+          }));
     }
   }
-
-  std::visit(overload{[&](ActorLoadingUpdate const& update) {
-                        update.fn(message::GraphLoadingUpdate{
-                            .verticesLoaded = result.numberOfVertices(),
-                            .edgesLoaded = result.numberOfEdges(),
-                            .memoryBytesUsed = 0  // TODO
-                        });
-                      },
-                      [](OldLoadingUpdate const& update) {
-                        SchedulerFeature::SCHEDULER->queue(
-                            RequestLane::INTERNAL_LOW, update.fn);
-                      }},
-             updateCallback);
-  return result;
+  auto self = this->shared_from_this();
+  return collectAll(futures).thenValue([this, self](auto&& results) {
+    auto result = Magazine<V, E>{};
+    for (auto&& r : results) {
+      // TODO: maybe handle exceptions here?
+      result.emplace(std::move(r.get()));
+    }
+    std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result.numberOfVertices(),
+                              .edgesLoaded = result.numberOfEdges(),
+                              .memoryBytesUsed = 0});
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+               updateCallback);
+    return result;
+  });
 }
 
 template<typename V, typename E>
@@ -184,11 +207,10 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
   LogicalCollection* coll = cursor->collection();
   uint64_t numVertices = coll->getPhysical()->numberDocuments(&trx);
 
-  requestVertexIds(numVertices);
+  auto vertexIdRange = requestVertexIds(numVertices);
   LOG_PREGEL("7c31f", DEBUG)
       << "Shard '" << vertexShard << "' has " << numVertices
-      << " vertices. id range: [" << currentVertexId << ", "
-      << currentVertexIdMax << ")";
+      << " vertices. id range: " << inspection::json(vertexIdRange);
 
   std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>>
       edgeCollectionInfos;
@@ -216,12 +238,12 @@ auto GraphLoader<V, E>::loadVertices(ShardID const& vertexShard,
       // note: ventry->_data and vertexIdRange may be modified by
       // copyVertexData!
 
-      TRI_ASSERT(currentVertexId < currentVertexIdMax)
-          << fmt::format("vertexId exceeded maximum: {} < {}", currentVertexId,
-                         currentVertexIdMax);
+      TRI_ASSERT(vertexIdRange.current < vertexIdRange.maxId)
+          << fmt::format("vertexId exceeded maximum: {} < {}",
+                         vertexIdRange.current, vertexIdRange.maxId);
       graphFormat->copyVertexData(*ctx->getVPackOptions(), documentId, slice,
-                                  ventry.data(), currentVertexId);
-      currentVertexId += 1;
+                                  ventry.data(), vertexIdRange.current);
+      vertexIdRange.current += 1;
     }
 
     // load edges
