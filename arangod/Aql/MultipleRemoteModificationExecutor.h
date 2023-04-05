@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -35,15 +35,15 @@ namespace arangodb {
 namespace aql {
 class ExecutionEngine;
 
-struct SingleRemoteModificationInfos : ModificationExecutorInfos {
-  SingleRemoteModificationInfos(
+struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
+  MultipleRemoteModificationInfos(
       ExecutionEngine* engine, RegisterId inputRegister,
       RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
       RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
       OperationOptions options, aql::Collection const* aqlCollection,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
-      IgnoreDocumentNotFound ignoreDocumentNotFound, std::string key,
-      bool hasParent, bool replaceIndex)
+      IgnoreDocumentNotFound ignoreDocumentNotFound, bool hasParent,
+      bool isExclusive)
       : ModificationExecutorInfos(
             engine, inputRegister, RegisterPlan::MaxRegisterId,
             RegisterPlan::MaxRegisterId, outputNewRegisterId,
@@ -51,43 +51,26 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
             aqlCollection, ProducesResults(false), consultAqlWriteFilter,
             ignoreErrors, DoCount(true), IsReplace(false),
             ignoreDocumentNotFound),
-        _key(std::move(key)),
         _hasParent(hasParent),
-        _replaceIndex(replaceIndex) {}
-
-  std::string _key;
+        _isExclusive(isExclusive) {}
 
   bool _hasParent;  // node->hasParent();
-
-  bool _replaceIndex;
-
-  constexpr static double const defaultTimeOut = 3600.0;
+  bool _isExclusive;
 };
 
-// These tags are used to instantiate SingleRemoteModificationExecutor
-// for the different use cases
-struct IndexTag {};
-struct Insert {};
-struct Remove {};
-struct Replace {};
-struct Update {};
-struct Upsert {};
-
-template<typename Modifier>
-struct SingleRemoteModificationExecutor {
+struct MultipleRemoteModificationExecutor {
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
-  using Infos = SingleRemoteModificationInfos;
+  using Infos = MultipleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Stats = CoordinatorModificationStats;
-  using Modification = Modifier;
 
-  SingleRemoteModificationExecutor(Fetcher&, Infos&);
-  ~SingleRemoteModificationExecutor() = default;
+  MultipleRemoteModificationExecutor(Fetcher&, Infos&);
+  ~MultipleRemoteModificationExecutor() = default;
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -102,14 +85,18 @@ struct SingleRemoteModificationExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  auto doSingleRemoteModificationOperation(InputAqlItemRow&, Stats&)
-      -> OperationResult;
-  auto doSingleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
-                                        OperationResult&) -> void;
+  auto doMultipleRemoteOperations(InputAqlItemRow&, Stats&) -> OperationResult;
+  auto doMultipleRemoteModificationOutput(InputAqlItemRow&, OutputAqlItemRow&,
+                                          OperationResult&) -> void;
 
+  static transaction::Methods createTransaction(
+      std::shared_ptr<transaction::Context> ctx, Infos& info);
+
+  std::shared_ptr<transaction::Context> _ctx;
   transaction::Methods _trx;
   Infos& _info;
   ExecutionState _upstreamState;
+  bool _hasFetchedDataRow{false};
 };
 
 }  // namespace aql

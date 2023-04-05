@@ -97,6 +97,8 @@ struct RegisterPlanT;
 using RegisterPlan = RegisterPlanT<ExecutionNode>;
 struct Variable;
 
+size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -165,6 +167,7 @@ class ExecutionNode {
     MUTEX = 33,
     WINDOW = 34,
     OFFSET_INFO_MATERIALIZE = 35,
+    REMOTE_MULTIPLE = 36,
 
     MAX_NODE_TYPE_VALUE
   };

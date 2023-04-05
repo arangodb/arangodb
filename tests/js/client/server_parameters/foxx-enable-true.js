@@ -27,6 +27,7 @@
 if (getOptions === true) {
   return {
     'foxx.enable': 'true',
+    'foxx.force-update-on-startup': 'true'
   };
 }
 const jsunity = require('jsunity');
