@@ -34,6 +34,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
 #include "Replication2/Mocks/LeaderCommunicatorMock.h"
+#include "Replication2/Mocks/StorageManagerMock.h"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -42,12 +43,11 @@
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_state;
 
 namespace {
-
-struct StorageManagerMock;
 
 struct StorageTransactionMock : IStorageTransaction {
   MOCK_METHOD(LogRange, getLogBounds, (), (const, noexcept, override));
@@ -61,21 +61,6 @@ struct StorageTransactionMock : IStorageTransaction {
 
 struct StateInfoTransactionMock : IStateInfoTransaction {
   MOCK_METHOD(InfoType&, get, (), (noexcept, override));
-};
-
-struct StorageManagerMock : IStorageManager {
-  MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
-              getCommittedLogIterator, (std::optional<LogRange>),
-              (const, override));
-  MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
-  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
-              (const, override));
-  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
-              (override));
-  MOCK_METHOD(Result, commitMetaInfoTrx,
-              (std::unique_ptr<IStateInfoTransaction>), (override));
 };
 
 struct StateHandleManagerMock : IStateHandleManager {

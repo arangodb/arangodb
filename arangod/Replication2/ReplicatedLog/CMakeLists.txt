@@ -34,11 +34,13 @@ target_sources(arango_replication2_pure PRIVATE
   Components/IAppendEntriesManager.h
   Components/ICompactionManager.h
   Components/IFollowerCommitManager.h
+  Components/IInMemoryLogManager.h
   Components/IMessageIdManager.h
   Components/IMethodsProvider.h
   Components/ISnapshotManager.h
   Components/IStateHandleManager.h
   Components/IStorageManager.h
+  Components/InMemoryLogManager.cpp Components/InMemoryLogManager.h
   Components/LogFollower.cpp Components/LogFollower.h
   Components/MessageIdManager.cpp Components/MessageIdManager.h
   Components/MethodsProvider.cpp Components/MethodsProvider.h

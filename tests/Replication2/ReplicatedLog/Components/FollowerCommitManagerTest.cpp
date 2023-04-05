@@ -31,27 +31,15 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Basics/Result.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
+#include "Replication2/Mocks/StorageManagerMock.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::test;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::replication2::replicated_log::comp;
 
 namespace {
-struct StorageManagerMock : IStorageManager {
-  MOCK_METHOD(std::unique_ptr<IStorageTransaction>, transaction, (),
-              (override));
-  MOCK_METHOD(std::unique_ptr<TypedLogRangeIterator<LogEntryView>>,
-              getCommittedLogIterator, (std::optional<LogRange>),
-              (const, override));
-  MOCK_METHOD(TermIndexMapping, getTermIndexMapping, (), (const, override));
-  MOCK_METHOD(replicated_state::PersistedStateInfo, getCommittedMetaInfo, (),
-              (const, override));
-  MOCK_METHOD(std::unique_ptr<IStateInfoTransaction>, beginMetaInfoTrx, (),
-              (override));
-  MOCK_METHOD(Result, commitMetaInfoTrx,
-              (std::unique_ptr<IStateInfoTransaction>), (override));
-};
 
 struct StateHandleManagerMock : IStateHandleManager {
   MOCK_METHOD(DeferredAction, updateCommitIndex, (LogIndex),
