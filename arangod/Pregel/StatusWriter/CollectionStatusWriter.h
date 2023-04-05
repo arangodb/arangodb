@@ -86,6 +86,7 @@ struct CollectionStatusWriter : StatusWriterInterface {
  private:
   DatabaseGuard _vocbaseGuard;
   ExecutionNumber _executionNumber;
+  std::optional<std::string> _user;
   std::shared_ptr<LogicalCollection> _logicalCollection;
 };
 

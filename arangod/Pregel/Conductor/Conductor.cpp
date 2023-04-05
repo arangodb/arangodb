@@ -761,7 +761,14 @@ void Conductor::persistPregelState(ExecutionState state) {
     stateBuilder.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
     stateBuilder.add("gss", VPackValue(_globalSuperstep));
 
+    // Additional attributes added during actor rework
     stateBuilder.add("graphLoaded", VPackValue(_graphLoaded));
+    std::string user = ExecContext::current().user();
+    if (!user.empty()) {
+      stateBuilder.add("user", VPackValue(user));
+    } else {
+      stateBuilder.add("user", VPackSlice::nullSlice());
+    }
   };
 
   auto addAdditionalOutputToBuilder = [&](VPackBuilder& builder) -> void {

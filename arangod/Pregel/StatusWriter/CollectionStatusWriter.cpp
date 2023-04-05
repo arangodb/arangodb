@@ -50,6 +50,9 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase,
                                    StaticStrings::PregelCollection);
   }
   _logicalCollection = std::move(logicalCollection);
+  if (!ExecContext::current().user().empty()) {
+    _user = ExecContext::current().user();
+  }
 };
 
 CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
@@ -62,6 +65,9 @@ CollectionStatusWriter::CollectionStatusWriter(TRI_vocbase_t& vocbase)
                                    StaticStrings::PregelCollection);
   }
   _logicalCollection = std::move(logicalCollection);
+  if (!ExecContext::current().user().empty()) {
+    _user = ExecContext::current().user();
+  }
 };
 
 auto CollectionStatusWriter::createResult(velocypack::Slice data)
@@ -95,15 +101,26 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
   bindParameter->add("pid", VPackValue(_executionNumber.value));
   bindParameter->add("collectionName",
                      VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value()) {
+    bindParameter->add("user", _user.value());
+  }
   bindParameter->close();
 
   // TODO: GORDO-1607
   // Note: As soon as we introduce an inspectable struct to the data we actually
   // write into the pregel collection, we can remove change "entry.data" to
   // just "entry".
-  std::string queryString = R"(
-    RETURN DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
-  )";
+  std::string queryString;
+  if (_user.has_value()) {
+    queryString = R"(
+      LET potentialDocument = DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
+      RETURN potentialDocument.user == @user ? potentialDocument : null
+    )";
+  } else {
+    queryString = R"(
+      RETURN DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
+    )";
+  }
 
   return executeQuery(queryString, bindParameter);
 }
