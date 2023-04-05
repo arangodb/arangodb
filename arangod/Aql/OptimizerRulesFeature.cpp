@@ -371,6 +371,12 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
+  registerRule("optimize-cluster-multiple-document-operations",
+               substituteClusterMultipleDocumentOperationsRule,
+               OptimizerRule::substituteMultipleDocumentOperations,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
   // make sort node aware of subsequent limit statements for internal
   // optimizations
   registerRule("sort-limit", sortLimitRule, OptimizerRule::applySortLimitRule,

@@ -78,6 +78,11 @@ class RangeIterator;
 template<typename V, typename E, typename M>
 class VertexContext;
 
+struct ProcessVerticesResult {
+  AggregatorHandler workerAggregator;
+  MessageStats stats;
+};
+
 template<typename V, typename E, typename M>
 class Worker : public IWorker {
   // friend class arangodb::RestPregelHandler;
@@ -125,7 +130,7 @@ class Worker : public IWorker {
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
   /// valid after _finishedProcessing was called
-  uint64_t _activeCount = 0;
+  std::atomic<uint64_t> _activeCount = 0;
   /// current number of running threads
   size_t _runningThreads = 0;
   Scheduler::WorkHandle _workHandle;
@@ -133,7 +138,9 @@ class Worker : public IWorker {
   void _initializeMessageCaches();
   void _initializeVertexContext(VertexContext<V, E, M>* ctx);
   void _startProcessing();
-  bool _processVertices();
+  ResultT<ProcessVerticesResult> _processVertices(
+      InCache<M>* inCache, OutCache<M>* outCache,
+      std::shared_ptr<Quiver<V, E>> quiver);
   void _finishedProcessing();
   void _callConductor(std::string const& path,
                       VPackBuilder const& message) const;
