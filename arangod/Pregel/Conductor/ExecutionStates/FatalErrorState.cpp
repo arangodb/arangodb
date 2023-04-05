@@ -28,24 +28,7 @@
 
 using namespace arangodb::pregel::conductor;
 
-FatalError::FatalError(ConductorState& conductor) : conductor{conductor} {
-  if (conductor.timing.loading.hasStarted() and
-      not conductor.timing.loading.hasFinished()) {
-    conductor.timing.loading.finish();
-  }
-  if (conductor.timing.computation.hasStarted() and
-      not conductor.timing.computation.hasFinished()) {
-    conductor.timing.computation.finish();
-  }
-  if (conductor.timing.storing.hasStarted() and
-      not conductor.timing.storing.hasFinished()) {
-    conductor.timing.storing.finish();
-  }
-  if (conductor.timing.total.hasStarted() and
-      not conductor.timing.total.hasFinished()) {
-    conductor.timing.total.finish();
-  }
-}
+FatalError::FatalError(ConductorState& conductor) : conductor{conductor} {}
 
 auto FatalError::messages()
     -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
