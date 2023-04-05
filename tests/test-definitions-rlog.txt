@@ -1,10 +1,10 @@
 gtest_replication2 single priority=1000
-replication2_client cluster -- --noStartStopLogs false
-replication2_server cluster buckets=3 -- --dumpAgencyOnError true --noStartStopLogs false
+replication2_client cluster
+replication2_server cluster buckets=3 -- --dumpAgencyOnError true
 
 # execute single test suites
-auto cluster suffix=rlog-cluster -- --dumpAgencyOnError true --test shell-replicated-logs-cluster.js --noStartStopLogs false
-auto cluster suffix=shell-transaction -- --dumpAgencyOnError true --test shell-transaction.js --noStartStopLogs false
-auto cluster suffix=shell-transaction-cluster -- --dumpAgencyOnError true --test shell-transaction-cluster.js --noStartStopLogs false
-auto cluster suffix=shell-transaction-replication2-recovery -- --dumpAgencyOnError true --test shell-transaction-replication2-recovery.js --noStartStopLogs false
-auto cluster suffix=resilience-move -- --dumpAgencyOnError true --test moving-shards-cluster-data-R2.js --noStartStopLogs false
+auto cluster suffix=rlog-cluster -- --dumpAgencyOnError true --test shell-replicated-logs-cluster.js
+auto cluster suffix=shell-transaction -- --dumpAgencyOnError true --test shell-transaction.js
+auto cluster suffix=shell-transaction-cluster -- --dumpAgencyOnError true --test shell-transaction-cluster.js
+auto cluster suffix=shell-transaction-replication2-recovery -- --dumpAgencyOnError true --test shell-transaction-replication2-recovery.js
+auto cluster suffix=resilience-move -- --dumpAgencyOnError true --test moving-shards-cluster-data-R2.js
