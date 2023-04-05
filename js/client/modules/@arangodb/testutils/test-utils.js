@@ -166,8 +166,13 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     whichFilter.filter = 'graph';
     return false;
   }
-  
+
   if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
+    whichFilter.filter = 'non-windows';
+    return false;
+  }
+
+  if (testname.indexOf('-nonmac') !== -1 && platform.substr(0, 3) === 'win') {
     whichFilter.filter = 'non-windows';
     return false;
   }
