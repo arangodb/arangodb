@@ -83,7 +83,7 @@ struct SingleRemoteModificationExecutor {
   };
   using Infos = SingleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Stats = SingleRemoteModificationStats;
+  using Stats = CoordinatorModificationStats;
   using Modification = Modifier;
 
   SingleRemoteModificationExecutor(Fetcher&, Infos&);

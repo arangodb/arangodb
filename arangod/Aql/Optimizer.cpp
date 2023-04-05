@@ -107,6 +107,7 @@ class PlanChecker
       case ExecutionNode::REMOVE:
       case ExecutionNode::GATHER:
       case ExecutionNode::REMOTESINGLE:
+      case ExecutionNode::REMOTE_MULTIPLE:
         if (node->getParents().size() > 1) {
           errors.emplace_back()
               << "#parents == " << node->getParents().size() << " at ["

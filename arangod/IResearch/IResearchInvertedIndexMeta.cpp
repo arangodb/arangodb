@@ -209,7 +209,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
   }
   bool const extendedNames =
-      server.getFeature<DatabaseFeature>().extendedNamesForAnalyzers();
+      server.getFeature<DatabaseFeature>().extendedNames();
 
   auto const& identity = *IResearchAnalyzerFeature::identity();
   AnalyzerPool::ptr versionSpecificIdentity;

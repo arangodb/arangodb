@@ -195,7 +195,7 @@ Result createLink(LogicalCollection& collection,
   builder.close();
 
   velocypack::Builder tmp;
-  return methods::Indexes::ensureIndex(&collection, builder.slice(), true, tmp);
+  return methods::Indexes::ensureIndex(collection, builder.slice(), true, tmp);
 }
 
 template<typename ViewType>
@@ -230,7 +230,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
               velocypack::Value(link.index().id().id()));
   builder.close();
 
-  return methods::Indexes::drop(&collection, builder.slice());
+  return methods::Indexes::drop(collection, builder.slice());
 }
 
 struct State {
