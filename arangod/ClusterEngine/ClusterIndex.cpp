@@ -165,13 +165,13 @@ void ClusterIndex::toVelocyPack(
       VPackSlice resSlice = r.slice();
       if (!resSlice.isObject() ||
           !resSlice.get(StaticStrings::Error).isBoolean()) {
-        LOG_TOPIC("agbe4", INFO, Logger::CLUSTER)
+        LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
             << "Result of collecting figures for collection "
             << _collection.name() << " from " << r.destination << " is invalid";
         continue;
       }
       if (resSlice.get(StaticStrings::Error).getBoolean()) {
-        LOG_TOPIC("a4beg", INFO, Logger::CLUSTER)
+        LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
             << "Failed to collect figures for collection " << _collection.name()
             << " from " << r.destination;
         continue;
@@ -180,7 +180,7 @@ void ClusterIndex::toVelocyPack(
         progress += resSlice.get("progress").getNumber<double>();
         success++;
       } else {
-        LOG_TOPIC("aegb4", INFO, Logger::CLUSTER)
+        LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
             << "No progress entry on index " << _iid.id() << "  from "
             << r.destination << ": " << resSlice.toJson();
       }
