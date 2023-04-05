@@ -181,7 +181,7 @@ void ClusterIndex::toVelocyPack(
         success++;
       } else {
         LOG_TOPIC("aegb4", INFO, Logger::CLUSTER)
-            << "No progress entry on index " << std::to_string(_iid.id())
+            << "No progress entry on index " << _iid.id()
             << "  from " + r.destination << ": " << resSlice.toJson();
       }
     }
