@@ -54,7 +54,12 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
         .newState = std::move(newState)};
   }
   auto gssFinished =
@@ -63,7 +68,12 @@ auto Computing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage = fmt::format(
+                    "In {}: Received error {} from {}", name(),
+                    inspection::json(gssFinished.errorMessage()), sender)},
         .newState = std::move(newState)};
   }
   LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(

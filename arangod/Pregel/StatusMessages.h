@@ -169,11 +169,14 @@ auto inspect(Inspector& f, PregelFinished& x) {
 
 struct InFatalError {
   std::string state;
+  std::string errorMessage;
   TimingInMicroseconds time = TimingInMicroseconds::now();
 };
 template<typename Inspector>
 auto inspect(Inspector& f, InFatalError& x) {
-  return f.object(x).fields(f.field("state", x.state), f.field("time", x.time));
+  return f.object(x).fields(f.field("state", x.state),
+                            f.field("errorMessage", x.errorMessage),
+                            f.field("time", x.time));
 }
 
 struct Canceled {

@@ -62,7 +62,12 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
         .newState = std::move(newState)};
   }
   auto workerCreated = std::get<ResultT<message::WorkerCreated>>(message);
@@ -70,7 +75,12 @@ auto CreateWorkers::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage = fmt::format(
+                    "In {}: Received error {} from {}", name(),
+                    inspection::json(workerCreated.errorMessage()), sender)},
         .newState = std::move(newState)};
   }
   conductor.workers.emplace(sender);

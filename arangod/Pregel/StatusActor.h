@@ -226,6 +226,7 @@ auto inspect(Inspector& f, StatusDetails& x) {
 
 struct StatusState {
   std::string stateName;
+  std::optional<std::string> errorMessage;
   ExecutionNumber id;
   std::string database;
   std::string algorithm;
@@ -250,9 +251,9 @@ auto inspect(Inspector& f, StatusState& x) {
           : "0";
 
   return f.object(x).fields(
-      f.field("state", x.stateName), f.field("id", x.id),
-      f.field("database", x.database), f.field("algorithm", x.algorithm),
-      f.field("created", formatted_created),
+      f.field("state", x.stateName), f.field("errorMessage", x.errorMessage),
+      f.field("id", x.id), f.field("database", x.database),
+      f.field("algorithm", x.algorithm), f.field("created", formatted_created),
       f.field("expires", formatted_expires), f.field("ttl", x.ttl),
       f.field("parallelism", x.parallelism), f.embedFields(x.timings),
       f.field("gss", x.gss),
@@ -377,6 +378,7 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
 
   auto operator()(message::InFatalError& msg) -> std::unique_ptr<StatusState> {
     this->state->stateName = msg.state;
+    this->state->errorMessage = msg.errorMessage;
     this->state->timings.stopAll(msg.time);
 
     return std::move(this->state);

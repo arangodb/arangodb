@@ -57,7 +57,12 @@ auto Storing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage =
+                    fmt::format("In {}: Received unexpected message {} from {}",
+                                name(), inspection::json(message), sender)},
         .newState = std::move(newState)};
   }
   auto stored = std::get<ResultT<message::Stored>>(message);
@@ -65,7 +70,12 @@ auto Storing::receive(actor::ActorPID sender,
     auto newState = std::make_unique<FatalError>(conductor);
     auto stateName = newState->name();
     return StateChange{
-        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .statusMessage =
+            pregel::message::InFatalError{
+                .state = stateName,
+                .errorMessage = fmt::format(
+                    "In {}: Received error {} from {}", name(),
+                    inspection::json(stored.errorMessage()), sender)},
         .newState = std::move(newState)};
   }
   respondedWorkers.emplace(sender);

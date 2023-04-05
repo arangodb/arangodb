@@ -54,9 +54,10 @@ const Graph = graphGeneration.Graph;
 const epsilon = 0.00001;
 
 const runFinishedSuccessfully = (stats) => stats.state === "done";
-const runFinishedUnsuccessfully = (stats) => stats.state === "canceled" || stats.state === "fatal error";
-const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 const runCanceled = (stats) => stats.state === "canceled";
+const runInFatalError = (stats) => stats.state === "fatal error";
+const runFinishedUnsuccessfully = (stats) => runCanceled(stats) || runInFatalError(stats);
+const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsuccessfully(stats);
 
 const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
@@ -70,11 +71,16 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
     }
   } while (!runFinished(status));
 
-  if (runFinishedUnsuccessfully(status)) {
-    assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
-    return;
+  if (runFinishedSuccessfully(status)) {
+    return status;
   }
 
+  if (runInFatalError(status)) {
+    assertTrue(false, "Pregel run finished unsuccessfully with error " + status.errorMessage);
+    return status;
+  }
+
+  assertTrue(false, "Pregel run finished unsuccessfully in state " + status.state);
   return status;
 };
 
