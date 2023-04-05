@@ -503,7 +503,7 @@ bool ClusterIndex::inProgress() const {
   if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
     slc = slc.get(std::vector<std::string>{cid, "indexes"});
     for (auto const& index : VPackArrayIterator(slc)) {
-      if (index.get("id").copyString() == std::to_string(_iid.id())) {
+      if (index.get("id").stringView() == std::to_string(_iid.id())) {
         if (index.hasKey("isBuilding")) {
           LOG_TOPIC("fdae4", INFO, Logger::CLUSTER)  // kaveh remove
               << " " << index.toJson();
