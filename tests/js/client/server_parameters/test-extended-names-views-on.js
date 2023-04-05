@@ -26,9 +26,7 @@
 
 if (getOptions === true) {
   return {
-    'database.extended-names-views': "true",
-    'database.extended-names-indexes': "true",
-    'database.extended-names-collections': "true",
+    'database.extended-names': "true",
   };
 }
 const jsunity = require('jsunity');

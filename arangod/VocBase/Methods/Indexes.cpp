@@ -170,7 +170,7 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
-                             .extendedNamesIndexes();
+                             .extendedNames();
     if (auto res = IndexNameValidator::validateName(extendedNames, name);
         res.fail()) {
       return res;
@@ -636,7 +636,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   bool extendedNames = collection.vocbase()
                            .server()
                            .getFeature<DatabaseFeature>()
-                           .extendedNamesIndexes();
+                           .extendedNames();
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {

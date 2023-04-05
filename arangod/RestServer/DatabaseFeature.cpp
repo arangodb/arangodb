@@ -33,13 +33,11 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
-#include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -281,46 +279,17 @@ void DatabaseFeature::collectOptions(
                      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
-      ->addOption("--database.extended-names-databases",
-                  "Allow most UTF-8 characters in database names. Once in use, "
+      ->addOption("--database.extended-names",
+                  "Allow most UTF-8 characters in database names, collection "
+                  "names, views names and index names. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNamesDatabases),
+                  new options::BooleanParameter(&_extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
 
-  options
-      ->addOption("--database.extended-names-collections",
-                  "Allow most UTF-8 characters in collection and index names. "
-                  "Once in use, "
-                  "this option cannot be turned off again.",
-                  new BooleanParameter(&_extendedNamesCollections),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31100);
-
-  options
-      ->addOption("--database.extended-names-views",
-                  "Allow most UTF-8 characters in view names. "
-                  "Once in use, "
-                  "this option cannot be turned off again.",
-                  new BooleanParameter(&_extendedNamesViews),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31100);
-
-  options
-      ->addOption("--database.extended-names-indexes",
-                  "Allow most UTF-8 characters in index names. "
-                  "Once in use, "
-                  "this option cannot be turned off again.",
-                  new BooleanParameter(&_extendedNamesIndexes),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Experimental))
-      .setIntroducedIn(31100);
+  options->addOldOption("database.extended-names-databases",
+                        "database.extended-names");
 
   options
       ->addOption("--database.io-heartbeat",
@@ -385,25 +354,10 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  containers::SmallVector<std::string_view, 4> what;
-
-  if (_extendedNamesDatabases) {
-    what.push_back("databases");
-  }
-  if (_extendedNamesCollections) {
-    what.push_back("collections");
-  }
-  if (_extendedNamesIndexes) {
-    what.push_back("indexes");
-  }
-  if (_extendedNamesViews) {
-    what.push_back("views");
-  }
-
-  if (!what.empty()) {
+  if (_extendedNames) {
     LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Enabling extended names for "
-        << basics::StringUtils::join(what, ", ")
+        << "Enabling extended names for databases, collections, view, and "
+           "indexes "
         << " is an experimental feature which can "
            "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
@@ -692,7 +646,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = extendedNamesDatabases();
+  bool extendedNames = this->extendedNames();
   if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
                                                      extendedNames, name);
       res.fail()) {
@@ -1196,7 +1150,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
               "extended naming convention for databases, which is "
               "currently disabled. The extended naming convention can "
               "be enabled via the startup option "
-              "`--database.extended-names-databases true`");
+              "`--database.extended-names true`");
         }
       } else {
         absl::StrAppend(&errorMsg, "when opening database '", name,

@@ -38,10 +38,10 @@ struct NameValidator {
 
 struct DatabaseNameValidator {
   /// @brief maximal database name length, in bytes (old convention, used when
-  /// `--database.extended-names-databases=false`)
+  /// `--database.extended-names=false`)
   static constexpr std::size_t maxNameLengthTraditional = 64;
   /// @brief maximal database name length, in bytes (new convention, used when
-  /// `--database.extended-names-databases=true`)
+  /// `--database.extended-names=true`)
   static constexpr std::size_t maxNameLengthExtended = 128;
 
   /// @brief maximum length of a database name (in bytes), based on convention
@@ -84,10 +84,10 @@ struct CollectionNameValidator {
 
 struct ViewNameValidator {
   /// @brief maximal view name length, in bytes (old convention, used when
-  /// `--database.extended-names-views=false`)
+  /// `--database.extended-names=false`)
   static constexpr std::size_t maxNameLengthTraditional = 64;
   /// @brief maximal view name length, in bytes (new convention, used when
-  /// `--database.extended-names-views=true`)
+  /// `--database.extended-names=true`)
   static constexpr std::size_t maxNameLengthExtended = 256;
 
   /// @brief maximum length of a view name (in bytes), based on convention

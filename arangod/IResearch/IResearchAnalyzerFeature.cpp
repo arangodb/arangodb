@@ -1244,8 +1244,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesAnalyzers();
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res = AnalyzerNameValidator::validateName(
           extendedNames,
           std::string_view(split.second.data(), split.second.size()));

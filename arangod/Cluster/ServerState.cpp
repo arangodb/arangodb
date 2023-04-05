@@ -68,11 +68,9 @@ std::regex const uuidRegex(
     "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-"
     "f0-9]{12}$");
 
-constexpr std::string_view extendedNamesDatabasesKey = "extendedNamesDatabases";
-constexpr std::string_view extendedNamesCollectionsKey =
-    "extendedNamesCollections";
-constexpr std::string_view extendedNamesIndexesKey = "extendedNamesIndexes";
-constexpr std::string_view extendedNamesViewsKey = "extendedNamesViews";
+// naming is not 100% accurate, but it needs to be downwards-compatible to
+// previous versions (e.g. 3.9 and 3.10)
+constexpr std::string_view extendedNamesKey = "extendedNamesDatabases";
 
 constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
@@ -772,29 +770,9 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     // cluster
     auto& df = _server.getFeature<DatabaseFeature>();
 
-    // --database.extended-names-databases
-    if (!checkSetting(servers, "database.extended-names-databases",
-                      ::extendedNamesDatabasesKey,
-                      df.extendedNamesDatabases())) {
-      // settings mismatch
-      return false;
-    }
-    // --database.extended-names-collections
-    if (!checkSetting(servers, "database.extended-names-collections",
-                      ::extendedNamesCollectionsKey,
-                      df.extendedNamesCollections())) {
-      // settings mismatch
-      return false;
-    }
-    // --database.extended-names-indexes
-    if (!checkSetting(servers, "database.extended-names-indexes",
-                      ::extendedNamesIndexesKey, df.extendedNamesIndexes())) {
-      // settings mismatch
-      return false;
-    }
-    // --database.extended-names-views
-    if (!checkSetting(servers, "database.extended-names-views",
-                      ::extendedNamesViewsKey, df.extendedNamesViews())) {
+    // --database.extended-names
+    if (!checkSetting(servers, "database.extended-names", ::extendedNamesKey,
+                      df.extendedNames())) {
       // settings mismatch
       return false;
     }
@@ -1039,7 +1017,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
           "engine",
           VPackValue(_server.getFeature<EngineSelectorFeature>().engineName()));
 
-      if (df.extendedNamesDatabases()) {
+      if (df.extendedNames()) {
         // only store value of this config variable when it is activated.
         // so whenever this variable was set to true, we store its value in
         // Current/ServersRegistered for ourselves.
@@ -1051,26 +1029,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
         // we don't store the value in the agency if the option was not set.
         // that way we can still upgrade the value from "not set" to true,
         // but never from "true" to "false" or "not set".
-        builder.add(::extendedNamesDatabasesKey,
-                    VPackValue(df.extendedNamesDatabases()));
-      }
-      if (df.extendedNamesCollections()) {
-        // we only store the value of this config variable when activated.
-        // for the rationale behind this see above
-        builder.add(::extendedNamesCollectionsKey,
-                    VPackValue(df.extendedNamesCollections()));
-      }
-      if (df.extendedNamesIndexes()) {
-        // we only store the value of this config variable when activated.
-        // for the rationale behind this see above
-        builder.add(::extendedNamesIndexesKey,
-                    VPackValue(df.extendedNamesIndexes()));
-      }
-      if (df.extendedNamesViews()) {
-        // we only store the value of this config variable when activated.
-        // for the rationale behind this see above
-        builder.add(::extendedNamesViewsKey,
-                    VPackValue(df.extendedNamesViews()));
+        builder.add(::extendedNamesKey, VPackValue(df.extendedNames()));
       }
 
       builder.add(

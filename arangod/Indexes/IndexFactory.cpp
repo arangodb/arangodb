@@ -283,7 +283,7 @@ Result IndexFactory::enhanceIndexDefinition(  // normalize definition
 
     if (!name.empty()) {
       bool extendedNames =
-          _server.getFeature<DatabaseFeature>().extendedNamesIndexes();
+          _server.getFeature<DatabaseFeature>().extendedNames();
       if (auto res = IndexNameValidator::validateName(extendedNames, name);
           res.fail()) {
         return res;

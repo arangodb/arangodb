@@ -123,8 +123,7 @@ Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
             "Failure to get 'ViewTypes' feature while creating LogicalView"};
   }
 
-  bool extendedNames =
-      server.getFeature<DatabaseFeature>().extendedNamesViews();
+  bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
   if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
                                                  extendedNames, name);
       res.fail()) {

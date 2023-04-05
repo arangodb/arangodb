@@ -1303,8 +1303,7 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesCollections();
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res =
           CollectionNameValidator::validateName(isSystem, extendedNames, name);
       res.fail()) {
@@ -1374,7 +1373,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = databaseFeature.extendedNamesViews();
+  bool extendedNames = databaseFeature.extendedNames();
   if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
                                                  extendedNames, newName);
       res.fail()) {
@@ -1450,8 +1449,7 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames =
-      server().getFeature<DatabaseFeature>().extendedNamesCollections();
+  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
                                                        extendedNames, newName);
       res.fail()) {
@@ -1596,8 +1594,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
 
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesViews();
+    bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
     valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
                                              extendedNames, name)
                  .ok();
@@ -2008,7 +2005,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   });
 
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = db.extendedNamesCollections();
+  config.allowExtendedNames = db.extendedNames();
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();

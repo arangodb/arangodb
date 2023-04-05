@@ -114,7 +114,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
   bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res = CollectionNameValidator::validateName(
           allowSystem, extendedNames, info.name);
       res.fail()) {
@@ -1072,7 +1072,7 @@ Result Collections::rename(LogicalCollection& collection,
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
-                             .extendedNamesCollections();
+                             .extendedNames();
     if (auto res = CollectionNameValidator::validateName(
             isSystem, extendedNames, newName);
         res.fail()) {

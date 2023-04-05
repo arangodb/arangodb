@@ -28,7 +28,7 @@
 
 if (getOptions === true) {
   return {
-    'database.extended-names-databases': "false",
+    'database.extended-names': "false",
   };
 }
 const jsunity = require('jsunity');

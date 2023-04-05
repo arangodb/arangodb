@@ -232,24 +232,8 @@ void arangodb::rocksdbStartupVersionCheck(ArangodServer& server,
   // read settings for extended names from persisted storage
   auto& df = server.getFeature<DatabaseFeature>();
 
-  // --database.extended-names-databases
+  // --database.extended-names
   checkSetting(RocksDBSettingsType::ExtendedNamesDatabases,
-               "database.extended-names-databases", df.extendedNamesDatabases(),
-               [&df](bool value) { df.extendedNamesDatabases(value); });
-
-  // --database.extended-names-collections
-  checkSetting(RocksDBSettingsType::ExtendedNamesCollections,
-               "database.extended-names-collections",
-               df.extendedNamesCollections(),
-               [&df](bool value) { df.extendedNamesCollections(value); });
-
-  // --database.extended-names-indexes
-  checkSetting(RocksDBSettingsType::ExtendedNamesIndexes,
-               "database.extended-names-indexes", df.extendedNamesIndexes(),
-               [&df](bool value) { df.extendedNamesIndexes(value); });
-
-  // --database.extended-names-views
-  checkSetting(RocksDBSettingsType::ExtendedNamesViews,
-               "database.extended-names-views", df.extendedNamesViews(),
-               [&df](bool value) { df.extendedNamesViews(value); });
+               "database.extended-names", df.extendedNames(),
+               [&df](bool value) { df.extendedNames(value); });
 }

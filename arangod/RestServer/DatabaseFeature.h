@@ -160,42 +160,12 @@ class DatabaseFeature final : public ArangodFeature {
     return _defaultReplicationVersion;
   }
 
-  /// @brief whether or not extended names for databases can be used
-  bool extendedNamesDatabases() const noexcept {
-    return _extendedNamesDatabases;
-  }
+  /// @brief whether or not extended names for databases, collections, views
+  /// and indexes
+  bool extendedNames() const noexcept { return _extendedNames; }
   /// @brief will be called only during startup when reading stored value from
   /// storage engine
-  void extendedNamesDatabases(bool value) noexcept {
-    _extendedNamesDatabases = value;
-  }
-
-  /// @brief whether or not extended names for collections can be used
-  bool extendedNamesCollections() const noexcept {
-    return _extendedNamesCollections;
-  }
-  /// @brief will be called only during startup when reading stored value from
-  /// storage engine
-  void extendedNamesCollections(bool value) noexcept {
-    _extendedNamesCollections = value;
-  }
-
-  /// @brief whether or not extended names for indexes can be used
-  bool extendedNamesIndexes() const noexcept { return _extendedNamesIndexes; }
-  /// @brief will be called only during startup when reading stored value from
-  /// storage engine
-  void extendedNamesIndexes(bool value) noexcept {
-    _extendedNamesIndexes = value;
-  }
-
-  /// @brief whether or not extended names for views
-  bool extendedNamesViews() const noexcept { return _extendedNamesViews; }
-  /// @brief will be called only during startup when reading stored value from
-  /// storage engine
-  void extendedNamesViews(bool value) noexcept { _extendedNamesViews = value; }
-
-  /// @brief currently always false, until feature is implemented
-  bool extendedNamesAnalyzers() const noexcept { return false; }
+  void extendedNames(bool value) noexcept { _extendedNames = value; }
 
   void enableCheckVersion() noexcept { _checkVersion = true; }
   void enableUpgrade() noexcept { _upgrade = true; }
@@ -226,14 +196,8 @@ class DatabaseFeature final : public ArangodFeature {
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
-  // allow extended names for databases
-  bool _extendedNamesDatabases{false};
-  // allow extended names for collections
-  bool _extendedNamesCollections{false};
-  // allow extended names for views
-  bool _extendedNamesIndexes{false};
-  // allow extended names for views
-  bool _extendedNamesViews{false};
+  // allow extended names for databases, collections, views and indexes
+  bool _extendedNames{false};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 

@@ -298,8 +298,7 @@ Result CreateDatabaseInfo::checkOptions() {
   }
 
   bool isSystem = _name == StaticStrings::SystemDatabase;
-  bool extendedNames =
-      _server.getFeature<DatabaseFeature>().extendedNamesDatabases();
+  bool extendedNames = _server.getFeature<DatabaseFeature>().extendedNames();
 
   return DatabaseNameValidator::validateName(isSystem, extendedNames, _name);
 }

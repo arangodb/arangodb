@@ -166,7 +166,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   TRI_ASSERT(info.isObject());
 
   bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNamesCollections();
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res = CollectionNameValidator::validateName(system(), extendedNames,
                                                        name());
       res.fail()) {

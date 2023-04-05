@@ -1007,7 +1007,7 @@ function ahuacatlQuerySimpleTestSuite () {
       actual = getQueryResults("LET `a b c` = { `d e f`: 1 } RETURN `a b c`['d e f']");
       assertEqual([ 1 ], actual);
       
-      // "a b c" is a legal collection name if `--database.extended-names-collections=true`
+      // "a b c" is a legal collection name if `--database.extended-names=true`
       assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "LET a = 1 RETURN `a b c`"); 
     },
 
