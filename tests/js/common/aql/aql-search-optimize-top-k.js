@@ -25,10 +25,10 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const isEnterprise = internal.isEnterprise();
+const isEnterprise = require("internal").isEnterprise();
 
 function testOptimizeTopK() {
-  let names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
+  const names = ["v_alias_tfidf", "v_alias_bm25", "v_search_tfidf", "v_search_bm25"];
 
   return {
     setUpAll: function () {
@@ -62,6 +62,14 @@ function testOptimizeTopK() {
       for (let i = 0; i < 50; ++i) {
         db.c.insert(docs);
       }
+
+      // testWithoutScore
+      for (const v of names) {
+        const query = "FOR d IN " + v + " SEARCH d.f == 'a' OPTIONS {waitForSync:true} LIMIT 10 RETURN d";
+        print(query);
+        let res = db._query(query).toArray();
+        assertEqual(res.length, 10);
+      }
     },
 
     tearDownAll: function () {
@@ -69,15 +77,6 @@ function testOptimizeTopK() {
         db._dropView(v);
       }
       db._drop("c");
-    },
-
-    testWithoutScore: function () {
-      for (const v of names) {
-        const query = "FOR d IN " + v + " SEARCH d.f == 'a' LIMIT 10 RETURN d";
-        print(query);
-        let res = db._query(query).toArray();
-        assertEqual(res.length, 10);
-      }
     },
 
     testWithTFIDF: function () {
