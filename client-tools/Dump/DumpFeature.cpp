@@ -93,9 +93,9 @@ arangodb::Result fileError(arangodb::ManagedDirectory::File* file,
 std::string escapedCollectionName(std::string const& name,
                                   VPackSlice parameters) {
   std::string escapedName = name;
-  if (!arangodb::CollectionNameValidator::validateName(/*isSystem*/ true, false,
-                                                       name)
-           .ok()) {
+  if (arangodb::CollectionNameValidator::validateName(/*isSystem*/ true, false,
+                                                      name)
+          .fail()) {
     // we have a collection name with special characters.
     // we should not try to save the collection under its name in the
     // filesystem. instead, we will use the collection id as part of the
@@ -121,9 +121,9 @@ std::string escapedCollectionName(std::string const& name,
 
 std::string escapedViewName(std::string const& name, VPackSlice parameters) {
   std::string escapedName = name;
-  if (!arangodb::ViewNameValidator::validateName(/*isSystem*/ true, false,
-                                                 escapedName)
-           .ok()) {
+  if (arangodb::ViewNameValidator::validateName(/*isSystem*/ true, false,
+                                                escapedName)
+          .fail()) {
     // we have a view name with special characters.
     // we should not try to save the view under its name in the filesystem.
     // instead, we will use the view id as part of the filename.

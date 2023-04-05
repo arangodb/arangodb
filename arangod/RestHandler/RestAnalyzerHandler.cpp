@@ -93,9 +93,9 @@ void RestAnalyzerHandler::createAnalyzer(  // create
   }
 
   bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
-  if (!AnalyzerNameValidator::validateName(extendedNames,
-                                           splittedAnalyzerName.second)
-           .ok()) {
+  if (AnalyzerNameValidator::validateName(extendedNames,
+                                          splittedAnalyzerName.second)
+          .fail()) {
     generateError(Result(
         TRI_ERROR_BAD_PARAMETER,
         "invalid characters in analyzer name '" +
