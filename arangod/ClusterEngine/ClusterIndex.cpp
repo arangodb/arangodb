@@ -143,7 +143,7 @@ void ClusterIndex::toVelocyPack(
     network::RequestOptions reqOpts;
     reqOpts.param("withHidden", "true");
     // best effort. only displaying progress
-    reqOpts.timeout = network::Timeout(10.0);    
+    reqOpts.timeout = network::Timeout(10.0);
     for (auto const& shard : *shards) {
       std::string const url =
           prefix + shard.first + "/" + std::to_string(_iid.id());
@@ -163,7 +163,8 @@ void ClusterIndex::toVelocyPack(
         continue;
       }
       VPackSlice resSlice = r.slice();
-      if (!resSlice.isObject() || !resSlice.get(StaticStrings::Error).isBoolean()) {
+      if (!resSlice.isObject() ||
+          !resSlice.get(StaticStrings::Error).isBoolean()) {
         LOG_TOPIC("agbe4", INFO, Logger::CLUSTER)
             << "Result of collecting figures for collection "
             << _collection.name() << " from " << r.destination << " is invalid";
@@ -171,8 +172,8 @@ void ClusterIndex::toVelocyPack(
       }
       if (resSlice.get(StaticStrings::Error).getBoolean()) {
         LOG_TOPIC("a4beg", INFO, Logger::CLUSTER)
-            << "Failed to collect figures for collection "
-            << _collection.name() << " from " << r.destination;
+            << "Failed to collect figures for collection " << _collection.name()
+            << " from " << r.destination;
         continue;
       }
       if (resSlice.get("progress").isNumber()) {
@@ -180,12 +181,12 @@ void ClusterIndex::toVelocyPack(
         success++;
       } else {
         LOG_TOPIC("aegb4", INFO, Logger::CLUSTER)
-            << "No progress entry on index " << _iid.id()
-            << "  from " << r.destination << ": " << resSlice.toJson();
+            << "No progress entry on index " << _iid.id() << "  from "
+            << r.destination << ": " << resSlice.toJson();
       }
     }
     if (success) {
-      builder.add("progress", VPackValue(progress/success));
+      builder.add("progress", VPackValue(progress / success));
     }
   }
 

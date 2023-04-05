@@ -459,7 +459,7 @@ class Index {
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
 
-  void progress (double p) noexcept {
+  void progress(double p) noexcept {
     _progress.store(p, std::memory_order_relaxed);
   }
   double progress() noexcept {
@@ -492,8 +492,8 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
-    std::atomic<double> _progress;
-    bool const _useExpansion;
+  std::atomic<double> _progress;
+  bool const _useExpansion;
 
   mutable bool _unique;
   mutable bool _sparse;

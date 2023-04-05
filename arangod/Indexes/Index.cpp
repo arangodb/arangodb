@@ -211,8 +211,7 @@ Index::Index(
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
       _progress(-1.);
-      _unique(unique),
-      _sparse(sparse) {
+_unique(unique), _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
