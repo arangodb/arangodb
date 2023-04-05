@@ -66,6 +66,9 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage = pregel::message::InFatalError{.state = stateName},
         .newState = std::move(newState)};
   }
+  LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
+      "Conductor Actor: Global super step {} finished on worker {}",
+      masterContext->_globalSuperstep, sender);
   respondedWorkers.emplace(sender);
   messageAccumulation.add(gssFinished.get());
   for (auto const& count : gssFinished.get().sendCountPerActor) {
