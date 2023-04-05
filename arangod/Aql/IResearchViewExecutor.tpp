@@ -558,7 +558,8 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
     AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   AqlCall upstreamCall{};
-  upstreamCall.fullCount = output.getClientCall().fullCount;
+  bool const needFullCount = output.getClientCall().fullCount;
+  upstreamCall.fullCount = needFullCount;
   while (inputRange.hasDataRow() && !output.isFull()) {
     bool documentWritten = false;
     while (!documentWritten) {
@@ -571,7 +572,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::produceRows(
 
         // reset must be called exactly after we've got a new and valid input
         // row.
-        static_cast<Impl&>(*this).reset();
+        static_cast<Impl&>(*this).reset(needFullCount);
       }
 
       ReadContext ctx(infos().getDocumentRegister(), _inputRow, output);
@@ -607,8 +608,9 @@ std::tuple<ExecutorState,
            size_t, AqlCall>
 IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
+  bool const needFullCount = call.needsFullCount();
   TRI_ASSERT(_indexReadBuffer.empty() ||
-             (!this->infos().scoresSort().empty() && call.needsFullCount()));
+             (!this->infos().scoresSort().empty() && needFullCount));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -622,7 +624,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::skipRowsRange(
       }
 
       // reset must be called exactly after we've got a new and valid input row.
-      impl.reset();
+      impl.reset(needFullCount);
     }
     TRI_ASSERT(_inputRow.isInitialized());
     if (call.getOffset() > 0) {
@@ -1086,11 +1088,14 @@ size_t IResearchViewHeapSortExecutor<ExecutionTraits>::skip(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewHeapSortExecutor<ExecutionTraits>::reset() {
+void IResearchViewHeapSortExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
 #ifdef USE_ENTERPRISE
-  this->_wand = this->_infos.optimizeTopK().makeWandContext(
-      this->_infos.scoresSort(), this->_scorers);
+  if (!needFullCount) {
+    this->_wand = this->_infos.optimizeTopK().makeWandContext(
+        this->_infos.scoresSort(), this->_scorers);
+  }
 #endif
   _totalCount = 0;
   _bufferedCount = 0;
@@ -1488,7 +1493,8 @@ bool IResearchViewExecutor<ExecutionTraits>::resetIterator() {
 }
 
 template<typename ExecutionTraits>
-void IResearchViewExecutor<ExecutionTraits>::reset() {
+void IResearchViewExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
 
   // reset iterator state
@@ -1674,7 +1680,8 @@ bool IResearchViewMergeExecutor<ExecutionTraits>::MinHeapContext::operator()(
 }
 
 template<typename ExecutionTraits>
-void IResearchViewMergeExecutor<ExecutionTraits>::reset() {
+void IResearchViewMergeExecutor<ExecutionTraits>::reset(
+    [[maybe_unused]] bool needFullCount) {
   Base::reset();
 
   _segments.clear();

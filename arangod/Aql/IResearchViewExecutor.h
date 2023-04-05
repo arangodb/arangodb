@@ -620,7 +620,7 @@ class IResearchViewExecutor
 
   bool resetIterator();
 
-  void reset();
+  void reset(bool needFullCount);
 
  private:
   // Returns true unless the iterator is exhausted. documentId will always be
@@ -721,7 +721,7 @@ class IResearchViewMergeExecutor
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
-  void reset();
+  void reset(bool needFullCount);
   size_t skip(size_t toSkip, IResearchViewStats&);
   size_t skipAll(IResearchViewStats&);
 
@@ -765,7 +765,7 @@ class IResearchViewHeapSortExecutor
   size_t getScanned() const noexcept { return _totalCount; }
   bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
 
-  void reset();
+  void reset(bool needFullCount);
   bool fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
 
@@ -775,7 +775,7 @@ class IResearchViewHeapSortExecutor
   size_t _scannedCount{0};
   size_t _bufferedCount{};
   bool _bufferFilled{false};
-};  // ResearchViewHeapSortExecutor
+};
 
 union UnitedDocumentId {
   irs::doc_id_t irsId;
