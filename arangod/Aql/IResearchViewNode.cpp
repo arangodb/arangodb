@@ -803,7 +803,9 @@ char const* NODE_VIEW_SCORERS_SORT_LIMIT = "scorersSortLimit";
 char const* NODE_VIEW_META_FIELDS = "metaFields";
 char const* NODE_VIEW_META_SORT = "metaSort";
 char const* NODE_VIEW_META_STORED = "metaStored";
+#ifdef USE_ENTERPRISE
 char const* NODE_VIEW_META_TOPK = "metaTopK";
+#endif
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
                   bool needSort, [[maybe_unused]] bool needScorerSort) {
