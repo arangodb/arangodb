@@ -350,8 +350,10 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
 
     auto graphStored = [this]() -> ResultT<conductor::message::Stored> {
       try {
-        auto storer = GraphStorer<V, E>(
-            this->state->config, this->state->algorithm->inputFormat(),
+        auto storer = std::make_shared<GraphStorer<V, E>>(
+            this->state->config->executionNumber(),
+            *this->state->config->vocbase(),
+            this->state->algorithm->inputFormat(),
             this->state->config->globalShardIDs(),
             ActorStoringUpdate{
                 .fn =
@@ -359,9 +361,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        for (auto& quiver : this->state->magazine) {
-          storer.store(quiver);
-        }
+        storer->store(this->state->magazine).get();
         return conductor::message::Stored{};
       } catch (std::exception const& ex) {
         return Result{
@@ -396,14 +396,12 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
         //         .status = this->state->observeStatus()});
       };
       try {
-        auto storer =
-            GraphVPackBuilderStorer<V, E>(msg.withID, this->state->config,
-                                          this->state->algorithm->inputFormat(),
-                                          std::move(statusUpdateCallback));
-        for (auto& quiver : this->state->magazine) {
-          storer.store(quiver);
-        }
-        return PregelResults{*storer.result};
+        auto storer = std::make_shared<GraphVPackBuilderStorer<V, E>>(
+            msg.withID, this->state->config,
+            this->state->algorithm->inputFormat(),
+            std::move(statusUpdateCallback));
+        storer->store(this->state->magazine).get();
+        return PregelResults{*storer->stealResult()};
       } catch (std::exception const& ex) {
         return Result{TRI_ERROR_INTERNAL,
                       fmt::format("caught exception when receiving results: {}",
