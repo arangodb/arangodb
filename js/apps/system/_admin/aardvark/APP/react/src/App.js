@@ -12,7 +12,7 @@ const parsePrometheusTextFormat = require('parse-prometheus-text-format');
 // import new react views
 // require('./views/shards/ShardsReactView');
 require('./views/analyzers/AnalyzersReactView');
-require('./views/visgraphs/VisGraphReactView');
+require('./views/graphV2/GraphV2ReactView');
 require('./views/views/ViewSettingsReactView');
 require('./views/views/ViewsListReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
@@ -100,12 +100,6 @@ window._ = _;
 require('../../frontend/js/arango/templateEngine.js');
 require('../../frontend/js/arango/arango.js');
 
-// only set this for development
-if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
-  window.frontendConfig.react = true;
-}
-
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.form.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
@@ -192,7 +186,6 @@ window.randomColor = require('../../frontend/js/lib/randomColor.js');
 // require('../../frontend/src/mode-aql.js');
 
 class App extends Component {
-  // <Overview />
   render() {
     return (
       <div className="App" />

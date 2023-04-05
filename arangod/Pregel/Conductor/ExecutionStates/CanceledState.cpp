@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CanceledState.h"
+
 #include "Pregel/Conductor/ExecutionStates/CleanedUpState.h"
 #include "Pregel/Conductor/ExecutionStates/FatalErrorState.h"
+#include "Pregel/Conductor/State.h"
 
 using namespace arangodb::pregel::conductor;
 
@@ -58,16 +60,18 @@ auto Canceled::messages()
 
 auto Canceled::receive(actor::ActorPID sender,
                        message::ConductorMessages message)
-    -> std::optional<std::unique_ptr<ExecutionState>> {
+    -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
-    // can receive all kinds of messages initiated from other states
-    // ignore them and just continue if it is CleanupFinished message
-    return std::nullopt;
+    auto newState = std::make_unique<FatalError>(conductor);
+    auto stateName = newState->name();
+    return StateChange{
+        .statusMessage = pregel::message::InFatalError{.state = stateName},
+        .newState = std::move(newState)};
   }
   conductor.workers.erase(sender);
   if (conductor.workers.empty()) {
-    return std::make_unique<CleanedUp>();
+    return StateChange{.newState = std::make_unique<CleanedUp>()};
   }
   return std::nullopt;
 };

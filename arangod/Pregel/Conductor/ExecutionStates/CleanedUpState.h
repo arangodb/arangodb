@@ -22,24 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Pregel/Conductor/ExecutionStates/State.h"
+#include "State.h"
 
 namespace arangodb::pregel::conductor {
-
-struct ConductorState;
 
 struct CleanedUp : ExecutionState {
   CleanedUp() = default;
   auto name() const -> std::string override { return "cleaned up"; }
-  auto messages()
-      -> std::unordered_map<actor::ActorPID,
-                            worker::message::WorkerMessages> override {
-    return {};
-  }
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override {
-    return std::nullopt;
-  }
 };
 
 }  // namespace arangodb::pregel::conductor

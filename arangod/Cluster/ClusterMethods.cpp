@@ -3723,7 +3723,8 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     // Check timestamps of all dbservers:
     size_t good = 0;  // Count restarted servers
     for (auto const& dbs : dbServers) {
-      if (postServersKnown.at(dbs) != preServersKnown.at(dbs)) {
+      if (postServersKnown.at(dbs).rebootId !=
+          preServersKnown.at(dbs).rebootId) {
         ++good;
       }
     }

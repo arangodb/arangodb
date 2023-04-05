@@ -1,18 +1,69 @@
 devel
 -----
 
+* APM-407: add an optimization for inserting multiple documents at the same
+  time via an AQL INSERT query.
+
+  There is an optimizer rule `optimize-cluster-multiple-document-operations`,
+  which fires in case an AQL query has one of the patterns
+  - `FOR doc IN @docs INSERT doc INTO ...` (where `@docs` is a bind parameter
+    with an array of documents to be inserted),
+  - `FOR doc IN [...] INSERT doc INTO ...` (where the FOR loop iterates over
+    an array of input documents known at query compile time),
+  - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
+    set up by the LET are some static documents known at query compile time),
+
+  If a query has such pattern, and there are no following RETURN nodes
+  (including any RETURN OLD, RETURN NEW), the FOR loop is not contained in
+  another outer FOR loop, and there are no calculations between the FOR and
+  the INSERT, the optimization is triggered.
+
+  The optimization will then add a `MultipleRemoteExecutionNode` to the query
+  execution plan, which will care about inserting all documents into the 
+  collection in one go. Further optimizer rules are skipped if the optimization
+  is triggered.
+
+  Future versions of ArangoDB may lift some of the restrictions for the query
+  pattern, so that the optimization may be triggered in more cases in the
+  future.
+
+* FE-200: Add canvas interactions to Graph Viewer.
+
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
+* FE-218: Updated WebUI dependencies.
+
+* Fixed statistics values for writes executed and writes ignored when a query 
+  is executed using the rule `optimize-cluster-single-document-operations`.
+  It was always increasing the amount of writes executed, even if the operation
+  wasn't successful, and also never increasing the amount of writes ignored 
+  when needed.
+
+* Make REST API `/_admin/shutdown` sleep for only half a second until it
+  initiates the server shutdown. Previously it slept for 2 seconds, but half
+  a second should already be enough to send the server's response out.
+
+* MDS-1001: Performance improvement in AQL. If you are using a traversal like
+  `FOR v, e, p IN <....>` and later in the query access the last vertex on the path e.g.:
+  `FILTER p.vertices[-1].name == "ArangoDB"` it will now be transformed to
+  `FILTER v.name == "ArangoDB"` which is an equivalent statement. The latter however
+  is cheaper to compute, as we do not need to create an in-memory representation
+  of the path. Furthermore we can apply additional optimizations on `v` which are not
+  possible on `p`. The same optimization holds true for `p.edges[-1]` which is equivalent
+  to `e`. The optimization rule for this is called "optimize-traversal-last-element-access".
+
 * Updated arangosync to v2.16.1.
 
 * FE-142: Updates indices view list & index addition to React.
 
-* A Pregel execution now stores it's state during and after execution
+* A Pregel execution now stores its state during and after execution
   into a system collection. To read or delete entries the new API
-  `/_api/control_pregel/history[/<id>]` has been added. Additionally, the Pregel JavaScript
-  module has been extended to support access as well.
+  `/_api/control_pregel/history[/<id>]` has been added. Additionally, the 
+  Pregel JavaScript module has been extended to support access as well.
   Read history `<PregelModule>.history(<pid>)`.
   Remove history `<PregelModule>.removeHistory(<pid>)`.
 
-* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+* SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
 
 * Marked all memory-mapping options for Pregel as obsolete;

@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <unordered_map>
-#include "Pregel/Conductor/Messages.h"
-#include "Pregel/Conductor/State.h"
-#include "Pregel/MasterContext.h"
-#include "Pregel/Worker/Messages.h"
 #include "State.h"
 
-namespace arangodb::pregel::conductor {
+namespace arangodb::pregel {
+
+class MasterContext;
+
+namespace conductor {
 
 struct ConductorState;
 
@@ -37,13 +36,13 @@ struct Computing : ExecutionState {
   Computing(ConductorState& conductor,
             std::unique_ptr<MasterContext> masterContext,
             std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor);
-  ~Computing();
+  ~Computing() override = default;
   auto name() const -> std::string override { return "computing"; };
   auto messages()
       -> std::unordered_map<actor::ActorPID,
                             worker::message::WorkerMessages> override;
   auto receive(actor::ActorPID sender, message::ConductorMessages message)
-      -> std::optional<std::unique_ptr<ExecutionState>> override;
+      -> std::optional<StateChange> override;
   struct PostGlobalSuperStepResult {
     bool finished;
   };
@@ -57,4 +56,5 @@ struct Computing : ExecutionState {
   message::GlobalSuperStepFinished messageAccumulation;
 };
 
-}  // namespace arangodb::pregel::conductor
+}  // namespace conductor
+}  // namespace arangodb::pregel

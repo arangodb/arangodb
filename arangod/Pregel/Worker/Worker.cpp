@@ -88,7 +88,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
       _state(WorkerState::IDLE),
       _config(std::make_shared<WorkerConfig>(&vocbase)),
       _algorithm(algo),
-      _quiver(nullptr) {
+      _magazine() {
   _config->updateConfig(parameters);
 
   std::lock_guard guard{_commandMutex};
@@ -133,24 +133,29 @@ template<typename V, typename E, typename M>
 void Worker<V, E, M>::_initializeMessageCaches() {
   const size_t p = _config->parallelism();
   if (_messageCombiner) {
-    _readCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                         _messageCombiner.get());
-    _writeCache = new CombiningInCache<M>(_config, _messageFormat.get(),
-                                          _messageCombiner.get());
+    _readCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
+    _writeCache =
+        new CombiningInCache<M>(_config->localPregelShardIDs(),
+                                _messageFormat.get(), _messageCombiner.get());
     for (size_t i = 0; i < p; i++) {
       auto incoming = std::make_unique<CombiningInCache<M>>(
-          nullptr, _messageFormat.get(), _messageCombiner.get());
+          std::set<PregelShard>{}, _messageFormat.get(),
+          _messageCombiner.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new CombiningOutCache<M>(
           _config, _messageFormat.get(), _messageCombiner.get()));
       incoming.release();
     }
   } else {
-    _readCache = new ArrayInCache<M>(_config, _messageFormat.get());
-    _writeCache = new ArrayInCache<M>(_config, _messageFormat.get());
+    _readCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                     _messageFormat.get());
+    _writeCache = new ArrayInCache<M>(_config->localPregelShardIDs(),
+                                      _messageFormat.get());
     for (size_t i = 0; i < p; i++) {
-      auto incoming =
-          std::make_unique<ArrayInCache<M>>(nullptr, _messageFormat.get());
+      auto incoming = std::make_unique<ArrayInCache<M>>(std::set<PregelShard>{},
+                                                        _messageFormat.get());
       _inCaches.push_back(incoming.get());
       _outCaches.push_back(new ArrayOutCache<M>(_config, _messageFormat.get()));
       incoming.release();
@@ -167,8 +172,8 @@ void Worker<V, E, M>::setupWorker() {
                        _config->executionNumber());
     auto graphLoaded = GraphLoaded{.executionNumber = _config->_executionNumber,
                                    .sender = ServerState::instance()->getId(),
-                                   .vertexCount = _quiver->numberOfVertices(),
-                                   .edgeCount = _quiver->numberOfEdges()};
+                                   .vertexCount = _magazine.numberOfVertices(),
+                                   .edgeCount = _magazine.numberOfEdges()};
     auto serialized = inspection::serializeWithErrorT(graphLoaded);
     if (!serialized.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -188,25 +193,26 @@ void Worker<V, E, M>::setupWorker() {
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(
-      RequestLane::INTERNAL_LOW,
-      [this, self = shared_from_this(),
-       statusUpdateCallback = std::move(_makeStatusCallback()),
-       finishedCallback = std::move(finishedCallback)] {
-        try {
-          auto loader = GraphLoader<V, E>(_config, _algorithm->inputFormat(),
-                                          statusUpdateCallback);
-          _quiver = loader.load();
-        } catch (std::exception const& ex) {
-          LOG_PREGEL("a47c4", WARN)
-              << "caught exception in loadShards: " << ex.what();
-          throw;
-        } catch (...) {
-          LOG_PREGEL("e932d", WARN) << "caught unknown exception in loadShards";
-          throw;
-        }
-        finishedCallback();
-      });
+  scheduler->queue(RequestLane::INTERNAL_LOW,
+                   [this, self = shared_from_this(),
+                    statusUpdateCallback = std::move(_makeStatusCallback()),
+                    finishedCallback = std::move(finishedCallback)] {
+                     try {
+                       auto loader = GraphLoader<V, E>(
+                           _config, _algorithm->inputFormat(),
+                           OldLoadingUpdate{.fn = statusUpdateCallback});
+                       _magazine = std::move(loader.load());
+                     } catch (std::exception const& ex) {
+                       LOG_PREGEL("a47c4", WARN)
+                           << "caught exception in loadShards: " << ex.what();
+                       throw;
+                     } catch (...) {
+                       LOG_PREGEL("e932d", WARN)
+                           << "caught unknown exception in loadShards";
+                       throw;
+                     }
+                     finishedCallback();
+                   });
 }
 
 template<typename V, typename E, typename M>
@@ -263,8 +269,8 @@ GlobalSuperStepPrepared Worker<V, E, M>::prepareGlobalStep(
   return GlobalSuperStepPrepared{.executionNumber = _config->_executionNumber,
                                  .sender = ServerState::instance()->getId(),
                                  .activeCount = _activeCount,
-                                 .vertexCount = _quiver->numberOfVertices(),
-                                 .edgeCount = _quiver->numberOfEdges(),
+                                 .vertexCount = _magazine.numberOfVertices(),
+                                 .edgeCount = _magazine.numberOfEdges(),
                                  .aggregators = aggregators};
 }
 
@@ -352,7 +358,6 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
   ctx->_gss = _config->globalSuperstep();
   ctx->_lss = _config->localSuperstep();
   ctx->_context = _workerContext.get();
-  ctx->_quiver = _quiver;
   ctx->_readAggregators = _workerContext->_readAggregators.get();
 }
 
@@ -377,29 +382,31 @@ bool Worker<V, E, M>::_processVertices() {
   vertexComputation->_cache = outCache;
 
   size_t activeCount = 0;
-  for (auto& vertexEntry : *_quiver) {
-    MessageIterator<M> messages =
-        _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
-    _currentGssObservables.messagesReceived += messages.size();
-    _currentGssObservables.memoryBytesUsedForMessages +=
-        messages.size() * sizeof(M);
+  for (auto& quiver : _magazine) {
+    for (auto& vertexEntry : *quiver) {
+      MessageIterator<M> messages =
+          _readCache->getMessages(vertexEntry.shard(), vertexEntry.key());
+      _currentGssObservables.messagesReceived += messages.size();
+      _currentGssObservables.memoryBytesUsedForMessages +=
+          messages.size() * sizeof(M);
 
-    if (messages.size() > 0 || vertexEntry.active()) {
-      vertexComputation->_vertexEntry = &vertexEntry;
-      vertexComputation->compute(messages);
-      if (vertexEntry.active()) {
-        activeCount++;
+      if (messages.size() > 0 || vertexEntry.active()) {
+        vertexComputation->_vertexEntry = &vertexEntry;
+        vertexComputation->compute(messages);
+        if (vertexEntry.active()) {
+          activeCount++;
+        }
       }
-    }
-    if (_state != WorkerState::COMPUTING) {
-      break;
-    }
+      if (_state != WorkerState::COMPUTING) {
+        break;
+      }
 
-    ++_currentGssObservables.verticesProcessed;
-    if (_currentGssObservables.verticesProcessed %
-            Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
-        0) {
-      _makeStatusCallback()();
+      ++_currentGssObservables.verticesProcessed;
+      if (_currentGssObservables.verticesProcessed %
+              Utils::batchOfVerticesProcessedBeforeUpdatingStatus ==
+          0) {
+        _makeStatusCallback()();
+      }
     }
   }
 
@@ -411,7 +418,7 @@ bool Worker<V, E, M>::_processVertices() {
   }
 
   // merge thread local messages, _writeCache does locking
-  _writeCache->mergeCache(_config, inCache);
+  _writeCache->mergeCache(inCache);
   _feature.metrics()->pregelMessagesSent->count(outCache->sendCount());
 
   MessageStats stats;
@@ -525,11 +532,13 @@ void Worker<V, E, M>::finalizeExecution(FinalizeExecution const& msg,
          statusUpdateCallback = std::move(_makeStatusCallback()),
          cleanup = std::move(cleanup)] {
           try {
-            auto storer = GraphStorer<V, E>(_config, _algorithm->inputFormat(),
-                                            _config->globalShardIDs(),
-                                            std::move(statusUpdateCallback));
+            auto storer = GraphStorer<V, E>(
+                _config, _algorithm->inputFormat(), _config->globalShardIDs(),
+                OldStoringUpdate{.fn = std::move(statusUpdateCallback)});
             _feature.metrics()->pregelWorkersStoringNumber->fetch_add(1);
-            storer.store(_quiver);
+            for (auto& quiver : _magazine) {
+              storer.store(quiver);
+            }
           } catch (std::exception const& ex) {
             LOG_PREGEL("a4774", WARN)
                 << "caught exception in store: " << ex.what();
@@ -552,8 +561,11 @@ auto Worker<V, E, M>::aqlResult(bool withId) const -> PregelResults {
       GraphVPackBuilderStorer<V, E>(withId, _config, _algorithm->inputFormat(),
                                     std::move(_makeStatusCallback()));
 
-  storer.store(_quiver);
-  return PregelResults{.results = *storer.result};  // Yes, this is a copy rn.
+  for (auto& quiver : _magazine) {
+    storer.store(quiver);
+  }
+  return PregelResults{.results =
+                           *storer.stealResult()};  // Yes, this is a copy rn.
 }
 
 template<typename V, typename E, typename M>

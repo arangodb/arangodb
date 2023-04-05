@@ -57,7 +57,6 @@ class RebootTracker {
     Callback callback;
     std::string description;
   };
-  using State = containers::FlatHashMap<ServerID, RebootId>;
   using CallbackId = uint64_t;
   using RebootIds =
       std::map<RebootId,
@@ -73,7 +72,9 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState peer, Callback callback,
                                std::string description);
 
-  void updateServerState(State state);
+  void updateServerState(ServersKnown state);
+
+  bool isServerAlive(ServerID id) const;
 
  private:
   void unregisterCallback(PeerState const& peer,
@@ -93,7 +94,7 @@ class RebootTracker {
   /// Will regularly get updates from the agency.
   /// Updates may not be applied if scheduling the affected callbacks fails, so
   /// the scheduling will be tried again on the next update.
-  State _state;
+  ServersKnown _state;
 
   /// @brief List of registered callbacks per server.
   /// Needs to fulfill the following:
