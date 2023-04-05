@@ -1,4 +1,4 @@
-name: arangodb_replication2_replicated_log_leader_append_entries_error_count
+name: arangodb_replication2_replicated_log_leader_append_entries_error_total
 introducedIn: "3.11.0"
 help: |
   Counter of failed append-entries messages.
