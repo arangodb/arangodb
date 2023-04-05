@@ -1,9 +1,7 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertEqual, assertTrue, fail */
+/* global getOptions, assertEqual, assertTrue, assertNull, assertNotNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test for server parameters
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -23,7 +21,7 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
@@ -34,34 +32,57 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
+const isCluster = require("internal").isCluster;
 
-const traditionalName = "UnitTestsDatabase";
+const traditionalName = "UnitTestsCollection";
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
 function testSuite() {
   return {
     tearDown: function() {
-      try {
-        db._dropDatabase(traditionalName);
-      } catch (err) {}
-      try {
-        db._dropDatabase(extendedName);
-      } catch (err) {}
+      db._drop(traditionalName);
+      db._drop(extendedName);
     },
 
-    testTraditionalName: function() {
-      let res = db._createDatabase(traditionalName);
-      assertTrue(res);
-    },
-    
-    testExtendedName: function() {
+    testCreateExtendedName: function() {
       try {
-        db._createDatabase(extendedName);
+        db._create(extendedName);
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+      
+      let c = db._collection(extendedName);
+      assertNull(c);
+    },
+    
+    testCreateEdgeExtendedName: function() {
+      try {
+        db._createEdgeCollection(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+      }
+      
+      let c = db._collection(extendedName);
+      assertNull(c);
+    },
+    
+    testRenameToExtendedName: function() {
+      if (isCluster()) {
+        // renaming not supported in cluster
+        return;
+      }
+        
+      let c = db._create(traditionalName);
+      try {
+        c.rename(extendedName);
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
       }
     },
+    
   };
 }
 
