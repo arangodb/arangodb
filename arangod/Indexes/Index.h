@@ -492,8 +492,8 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
-  bool const _useExpansion;
-  std::atomic<double> _progress;
+    std::atomic<double> _progress;
+    bool const _useExpansion;
 
   mutable bool _unique;
   mutable bool _sparse;
