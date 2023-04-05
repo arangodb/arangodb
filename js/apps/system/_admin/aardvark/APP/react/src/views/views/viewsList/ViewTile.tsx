@@ -13,7 +13,7 @@ export const ViewTile = ({ view }: { view: SearchViewTypeWithLock }) => {
       boxShadow="md"
       backgroundColor="white"
       cursor="pointer"
-      onClick={() => history.push(`/view/${view.name}`)}
+      onClick={() => history.push(`/view/${encodeURIComponent(view.name)}`)}
       title={view.name}
     >
       <Box

@@ -45,7 +45,11 @@ type GraphContextType = {
   selectedEntity?: SelectedEntityType;
   onSelectEntity: (data: SelectedEntityType) => void;
   hasDrawnOnce: MutableRefObject<boolean>;
-  graphError?: { code: number; response: { body: { errorMessage: string } } };
+  graphError?: {
+    code: number;
+    errorMessage?: string;
+    response?: { body: { errorMessage: string } };
+  };
 };
 
 const GraphContext = createContext<GraphContextType>({
@@ -79,27 +83,18 @@ export const GraphContextProvider = ({ children }: { children: ReactNode }) => {
   const [network, setNetwork] = useState<Network>();
   const hasDrawnOnce = useRef(false);
   const [datasets, setDatasets] = useState<DatasetsType>();
-  const [rightClickedEntity, setRightClickedEntity] = useState<
-    RightClickedEntityType
-  >();
+  const [rightClickedEntity, setRightClickedEntity] =
+    useState<RightClickedEntityType>();
 
   const graphName = useGraphName();
 
-  const {
-    params,
-    urlParams,
-    setUrlParams,
-    setParams
-  } = useFetchAndSetupGraphParams({
-    graphName
-  });
+  const { params, urlParams, setUrlParams, setParams } =
+    useFetchAndSetupGraphParams({
+      graphName
+    });
 
-  const {
-    graphData,
-    isGraphLoading,
-    fetchDuration,
-    graphError
-  } = useFetchGraphData({ graphName, params });
+  const { graphData, isGraphLoading, fetchDuration, graphError } =
+    useFetchGraphData({ graphName, params });
 
   const { onApplySettings, onRestoreDefaults } = useGraphSettingsHandlers({
     urlParams,

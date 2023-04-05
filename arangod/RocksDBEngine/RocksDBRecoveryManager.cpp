@@ -324,6 +324,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // document key
       std::string_view ref = RocksDBKey::primaryKey(key);
       TRI_ASSERT(!ref.empty());
+      if (ref.empty()) {
+        return;
+      }
       // check if the key is numeric
       if (ref[0] >= '1' && ref[0] <= '9') {
         // numeric start byte. looks good

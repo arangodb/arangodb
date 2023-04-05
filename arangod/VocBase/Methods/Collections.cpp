@@ -30,6 +30,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ClusterFeature.h"
@@ -112,14 +113,13 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool isLocalCollection, bool isSystemName,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
-  bool extendedNames = vocbase.server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNamesForCollections();
-  if (!CollectionNameValidator::isAllowedName(allowSystem, extendedNames,
-                                              info.name)) {
-    events::CreateCollection(vocbase.name(), info.name,
-                             TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    return {TRI_ERROR_ARANGO_ILLEGAL_NAME};
+  bool extendedNames =
+      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = CollectionNameValidator::validateName(
+          allowSystem, extendedNames, info.name);
+      res.fail()) {
+    events::CreateCollection(vocbase.name(), info.name, res.errorNumber());
+    return res;
   }
 
   // check the collection type in _info
@@ -1039,23 +1039,23 @@ Result Collections::rename(LogicalCollection& collection,
                            std::string const& newName, bool doOverride) {
   if (ServerState::instance()->isCoordinator()) {
     // renaming a collection in a cluster is unsupported
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+    return {TRI_ERROR_CLUSTER_UNSUPPORTED};
   }
 
   if (newName.empty()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "<name> must be non-empty");
+    return {TRI_ERROR_BAD_PARAMETER, "<name> must be non-empty"};
   }
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW) ||
       !exec.canUseCollection(collection.name(), auth::Level::RW)) {
-    return TRI_ERROR_FORBIDDEN;
+    return {TRI_ERROR_FORBIDDEN};
   }
 
   // check required to pass
   // shell-collection-rocksdb-noncluster.js::testSystemSpecial
   if (collection.system()) {
-    return TRI_ERROR_FORBIDDEN;
+    return {TRI_ERROR_FORBIDDEN};
   }
 
   if (!doOverride) {
@@ -1064,18 +1064,19 @@ Result Collections::rename(LogicalCollection& collection,
     if (isSystem != NameValidator::isSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name or vice versa
-      return arangodb::Result(TRI_ERROR_ARANGO_ILLEGAL_NAME,
-                              "a system collection shall not be renamed to a "
-                              "non-system collection name or vice versa");
+      return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+              "a system collection shall not be renamed to a "
+              "non-system collection name or vice versa"};
     }
 
     bool extendedNames = collection.vocbase()
                              .server()
                              .getFeature<DatabaseFeature>()
-                             .extendedNamesForCollections();
-    if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames,
-                                                newName)) {
-      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+                             .extendedNames();
+    if (auto res = CollectionNameValidator::validateName(
+            isSystem, extendedNames, newName);
+        res.fail()) {
+      return res;
     }
   }
 

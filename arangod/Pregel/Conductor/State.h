@@ -48,9 +48,7 @@ struct ConductorState {
         resultActor{std::move(resultActor)},
         statusActor{std::move(statusActor)} {}
 
-  ExecutionTimings timing;
   std::unique_ptr<ExecutionState> executionState;
-  uint64_t globalSuperstep = 0;
   ConductorStatus status;
   std::unordered_set<actor::ActorPID> workers;
   std::unique_ptr<IAlgorithm> algorithm;
@@ -64,8 +62,6 @@ struct ConductorState {
 template<typename Inspector>
 auto inspect(Inspector& f, ConductorState& x) {
   return f.object(x).fields(
-      f.field("timing", x.timing),
-      f.field("globalSuperstep", x.globalSuperstep),
       f.field("executionState", x.executionState->name()),
       f.field("status", x.status),
       // f.field("workers", x._workers), TODO make set inspectionable
