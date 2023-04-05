@@ -152,7 +152,6 @@ void RestControlPregelHandler::handleGetRequest() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.empty()) {
-    VPackBuilder builder;
     pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};
     return handlePregelHistoryResult(cWriter.readAllNonExpiredResults());
   }
@@ -166,30 +165,9 @@ void RestControlPregelHandler::handleGetRequest() {
     }
     auto executionNumber = arangodb::pregel::ExecutionNumber{
         arangodb::basics::StringUtils::uint64(suffixes[0])};
-    auto c = _pregel.conductor(executionNumber);
-
-    if (nullptr == c) {
-      auto status = _pregel.getStatus(executionNumber);
-      if (not status.ok()) {
-        generateError(rest::ResponseCode::NOT_FOUND, status.errorNumber(),
-                      status.errorMessage());
-        return;
-      }
-      auto serializedState = inspection::serializeWithErrorT(status.get());
-      if (!serializedState.ok()) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                      fmt::format("Cannot serialize status: {}",
-                                  serializedState.error().error()));
-        return;
-      }
-      generateResult(rest::ResponseCode::OK, serializedState.get().slice());
-      return;
-    }
-
-    VPackBuilder builder;
-    c->toVelocyPack(builder);
-    generateResult(rest::ResponseCode::OK, builder.slice());
-    return;
+    pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
+                                                         executionNumber};
+    return handlePregelHistoryResult(cWriter.readResult(), true);
   } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
              suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {
@@ -206,7 +184,7 @@ void RestControlPregelHandler::handleGetRequest() {
           arangodb::basics::StringUtils::uint64(suffixes.at(1))};
       pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
                                                            executionNumber};
-      return handlePregelHistoryResult(cWriter.readResult());
+      return handlePregelHistoryResult(cWriter.readResult(), true);
     }
   }
 
@@ -216,7 +194,7 @@ void RestControlPregelHandler::handleGetRequest() {
 }
 
 void RestControlPregelHandler::handlePregelHistoryResult(
-    ResultT<OperationResult> result) {
+    ResultT<OperationResult> result, bool onlyReturnFirstAqlResultEntry) {
   if (result.fail()) {
     // check outer ResultT result
     generateError(rest::ResponseCode::BAD, result.errorNumber(),
@@ -243,7 +221,20 @@ void RestControlPregelHandler::handlePregelHistoryResult(
       // Truncate does not deliver a proper slice in a Cluster.
       generateResult(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
-      generateResult(rest::ResponseCode::OK, result.get().slice());
+      if (onlyReturnFirstAqlResultEntry) {
+        TRI_ASSERT(result->slice().isArray());
+        if (result.get().slice().at(0).isNull()) {
+          // due to AQL returning "null" values in case a document does not
+          // exist ....
+          Result nf = Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+          ResponseCode code = GeneralResponse::responseCode(nf.errorNumber());
+          generateError(code, nf.errorNumber(), nf.errorMessage());
+        } else {
+          generateResult(rest::ResponseCode::OK, result.get().slice().at(0));
+        }
+      } else {
+        generateResult(rest::ResponseCode::OK, result.get().slice());
+      }
     }
   } else {
     // Should always have a Slice, doing this check to be sure.
