@@ -159,7 +159,7 @@ void ClusterIndex::toVelocyPack(
       if (r.fail()) {
         LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
             << "Communication error while collecting figures for collection "
-            << _collection.name() + " from " + r.destination;
+            << _collection.name() << " from " << r.destination;
         continue;
       }
       VPackSlice resSlice = r.slice();
