@@ -64,6 +64,32 @@ devel
   enabled by default in one of the future releases of ArangoDB, once enough 
   drivers and other client tools have had the chance to adapt.
 
+* APM-407: add an optimization for inserting multiple documents at the same
+  time via an AQL INSERT query.
+
+  There is an optimizer rule `optimize-cluster-multiple-document-operations`,
+  which fires in case an AQL query has one of the patterns
+  - `FOR doc IN @docs INSERT doc INTO ...` (where `@docs` is a bind parameter
+    with an array of documents to be inserted),
+  - `FOR doc IN [...] INSERT doc INTO ...` (where the FOR loop iterates over
+    an array of input documents known at query compile time),
+  - `LET docs = [...] FOR doc IN docs INSERT doc INTO ...` (where the documents
+    set up by the LET are some static documents known at query compile time),
+
+  If a query has such pattern, and there are no following RETURN nodes
+  (including any RETURN OLD, RETURN NEW), the FOR loop is not contained in
+  another outer FOR loop, and there are no calculations between the FOR and
+  the INSERT, the optimization is triggered.
+
+  The optimization will then add a `MultipleRemoteExecutionNode` to the query
+  execution plan, which will care about inserting all documents into the 
+  collection in one go. Further optimizer rules are skipped if the optimization
+  is triggered.
+
+  Future versions of ArangoDB may lift some of the restrictions for the query
+  pattern, so that the optimization may be triggered in more cases in the
+  future.
+
 * FE-200: Add canvas interactions to Graph Viewer.
 
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
@@ -93,14 +119,14 @@ devel
 
 * FE-142: Updates indices view list & index addition to React.
 
-* A Pregel execution now stores it's state during and after execution
+* A Pregel execution now stores its state during and after execution
   into a system collection. To read or delete entries the new API
-  `/_api/control_pregel/history[/<id>]` has been added. Additionally, the Pregel JavaScript
-  module has been extended to support access as well.
+  `/_api/control_pregel/history[/<id>]` has been added. Additionally, the 
+  Pregel JavaScript module has been extended to support access as well.
   Read history `<PregelModule>.history(<pid>)`.
   Remove history `<PregelModule>.removeHistory(<pid>)`.
 
-* SEARCH-300: Fixed a rare case when arangosearch data folders migth be left on
+* SEARCH-300: Fixed a rare case when arangosearch data folders might be left on
   disk after database is dropped.
 
 * Marked all memory-mapping options for Pregel as obsolete;
