@@ -1,6 +1,10 @@
 devel
 -----
 
+* FE-200: Add canvas interactions to Graph Viewer.
+
+* Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
+
 * FE-218: Updated WebUI dependencies.
 
 * Fixed statistics values for writes executed and writes ignored when a query 
