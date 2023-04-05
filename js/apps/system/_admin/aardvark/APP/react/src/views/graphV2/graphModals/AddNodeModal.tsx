@@ -51,7 +51,11 @@ const useAddNodeAction = ({
       onSuccess(response);
     } catch (error) {
       console.log("Error adding this node: ", error);
-      window.arangoHelper.arangoError("Graph", "Could not add node.");
+      const errorMessage = (error as any).response.body.errorMessage;
+      window.arangoHelper.arangoError(
+        "Could not add node",
+        errorMessage ? errorMessage : ""
+      );
       onFailure();
     }
   };
