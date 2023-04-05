@@ -172,7 +172,7 @@ void ClusterIndex::toVelocyPack(
       if (resSlice.get(StaticStrings::Error).getBoolean()) {
         LOG_TOPIC("a4beg", INFO, Logger::CLUSTER)
             << "Failed to collect figures for collection "
-            << _collection.name() + " from " + r.destination;
+            << _collection.name() << " from " << r.destination;
         continue;
       }
       if (resSlice.get("progress").isNumber()) {
