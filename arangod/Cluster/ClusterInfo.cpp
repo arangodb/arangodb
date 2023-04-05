@@ -6230,8 +6230,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
 
         auto serverList = (*it).second;
         if (serverList == nullptr || serverList->empty()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL, "no servers found for shard " + shardId);
+          break;  // replication 2 not yet ready
         }
 
         if (!(*serverList)[0].empty() && (*serverList)[0][0] == '_') {

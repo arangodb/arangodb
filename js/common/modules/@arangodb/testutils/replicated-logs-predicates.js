@@ -122,6 +122,49 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
   };
 };
 
+const replicatedStateAccessible = function (database, logId) {
+  return function () {
+    let {plan, current} = LH.readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+
+    if (!plan.currentTerm) {
+      return Error("No term with leader present");
+    }
+    const expectedTerm = plan.currentTerm.term;
+
+    if (!current.leader || current.leader.term !== expectedTerm) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.leadershipEstablished) {
+      return Error("Leader has not yet established its leadership");
+    }
+
+    // check if leader recovery is completed
+    const leaderId = plan.currentTerm.leader.serverId;
+
+    if (current.localStatus[leaderId].state !== "ServiceOperational") {
+      return Error(`Leader state is ${current.localStatus[leaderId].state}.`);
+    }
+
+    return true;
+  };
+};
+
+const allReplicatedStatesAccessible = function (database) {
+  return function () {
+    let plan = LH.readAgencyValueAt(`Plan/ReplicatedLogs/${database}`);
+    for (const logId of Object.keys(plan)) {
+      const result = replicatedStateAccessible(database, logId)();
+      if (result !== true) {
+        return result;
+      }
+    }
+    return true;
+  };
+};
+
 const allServersHealthy = function () {
   return function () {
     for (const server of LH.dbservers) {
@@ -336,3 +379,5 @@ exports.replicatedLogReplicationCompleted = replicatedLogReplicationCompleted;
 exports.serverFailed = serverFailed;
 exports.serverHealthy = serverHealthy;
 exports.agencyJobIn = agencyJobIn;
+exports.replicatedStateAccessible = replicatedStateAccessible;
+exports.allReplicatedStatesAccessible = allReplicatedStatesAccessible;
