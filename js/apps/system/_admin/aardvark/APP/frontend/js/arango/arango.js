@@ -8,9 +8,6 @@
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
       var url = 'cluster/amICoordinator';
-      if (frontendConfig.react) {
-        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
-      }
       $.ajax(
         url,
         {

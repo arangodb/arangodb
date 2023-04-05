@@ -149,18 +149,6 @@ function randomTestSuite() {
       assertEqual(stats.edgeCount, m * 2, stats);
     },
 
-    testPageRankRandomMMap: function () {
-      const opts = {
-        threshold: 0.0000001, resultField: "result",
-        store: true, useMemoryMaps: true
-      };
-      var pid = pregel.start("pagerank", graphName, opts);
-      const stats = pregelTestHelpers.waitUntilRunFinishedSuccessfully(pid);
-
-      assertEqual(stats.vertexCount, n, stats);
-      assertEqual(stats.edgeCount, m * 2, stats);
-    },
-
     testHITS: function () {
       const opts = {
         threshold: 0.0000001, resultField: "score",

@@ -1,13 +1,13 @@
-import React, { useReducer } from 'react';
 import { cloneDeep, merge, set, uniqueId } from 'lodash';
+import React, { useReducer } from 'react';
 import { mutate } from "swr";
-import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
-import { FormState } from "./constants";
-import { DispatchArgs, State } from '../../utils/constants';
-import { validateAndFix } from "./helpers";
-import { getPath, getReducer } from "../../utils/helpers";
 import { IconButton } from "../../components/arango/buttons";
+import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { DispatchArgs, State } from '../../utils/constants';
+import { getPath, getReducer } from "../../utils/helpers";
 import { AddAnalyzerModal } from './AddAnalyzerModal';
+import { FormState } from "./constants";
+import { validateAndFix } from "./helpers";
 
 declare var arangoHelper: { [key: string]: any };
 
@@ -67,7 +67,7 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
 
         dispatch({ type: 'reset' });
       }
-    } catch (e) {
+    } catch (e: any) {
       arangoHelper.arangoError('Failure', `Got unexpected server response: ${e.message}`);
     }
   };
@@ -100,4 +100,3 @@ const AddAnalyzer = ({ analyzers }: AddAnalyzerProps) => {
 };
 
 export default AddAnalyzer;
-

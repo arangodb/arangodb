@@ -423,10 +423,6 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(
   return nullptr;
 }
 
-std::string_view IResearchLink::format() const noexcept {
-  return getFormat(LinkVersion{_meta._version});
-}
-
 IResearchViewStoredValues const& IResearchLink::storedValues() const noexcept {
   return _meta._storedValues;
 }

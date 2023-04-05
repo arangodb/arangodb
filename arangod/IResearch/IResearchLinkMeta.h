@@ -39,6 +39,10 @@
 #include "IResearchViewStoredValues.h"
 #include "IResearchCompression.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchOptimizeTopK.h"
+#endif
+
 namespace arangodb {
 namespace velocypack {
 
@@ -224,6 +228,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
           _sortCache(mask),
           _pkCache(mask),
+          _optimizeTopK(mask),
 #endif
           _version(mask) {
     }
@@ -236,6 +241,7 @@ struct IResearchLinkMeta : public FieldMeta {
 #ifdef USE_ENTERPRISE
     bool _sortCache;
     bool _pkCache;
+    bool _optimizeTopK;
 #endif
     bool _version;
   };
@@ -243,6 +249,9 @@ struct IResearchLinkMeta : public FieldMeta {
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort;
   IResearchViewStoredValues _storedValues;
+#ifdef USE_ENTERPRISE
+  IResearchOptimizeTopK _optimizeTopK;
+#endif
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
 
 #ifdef USE_ENTERPRISE

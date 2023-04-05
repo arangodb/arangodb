@@ -1,8 +1,7 @@
-
 @startDocuBlock get_admin_server_availability
 @brief Return whether or not a server is available
 
-@RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available, handleAvailability}
+@RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available, getServerAvailability}
 
 @RESTDESCRIPTION
 Return availability information about a server.
@@ -25,4 +24,5 @@ In addition, HTTP 503 will be returned in case the fill grade of the scheduler
 queue exceeds the configured high-water mark (adjustable via startup option
 `--server.unavailability-queue-fill-grade`), which by default is set to 75 % of
 the maximum queue length.
+
 @endDocuBlock
