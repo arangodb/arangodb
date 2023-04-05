@@ -511,6 +511,7 @@ bool ClusterIndex::inProgress() const {
         }
       }
     }
-  } catch (...) {}
+  } catch (...) {
+  }
   return false;
 }
