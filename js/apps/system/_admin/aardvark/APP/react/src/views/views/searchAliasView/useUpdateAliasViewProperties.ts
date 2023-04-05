@@ -101,7 +101,7 @@ async function patchViewProperties({
     if (!isNameChanged) {
       await mutate(path);
     } else {
-      const encodedViewName = encodeURIComponent(view.name.normalize());
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       let newRoute = `#view/${encodedViewName}`;
       window.App.navigate(newRoute, {
         trigger: true,

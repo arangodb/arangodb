@@ -82,7 +82,7 @@ export const SaveButtonWrap = ({
           if (view.name === oldName) {
             await mutate(path);
           } else {
-            const encodedViewName = encodeURIComponent(view.name.normalize());
+            const { encoded: encodedViewName } = encodeHelper(view.name);
             let newRoute = `#view/${encodedViewName}`;
             window.App.navigate(newRoute, {
               trigger: true,
@@ -123,8 +123,7 @@ export const DeleteButtonWrap = ({ view, disabled }: DeleteButtonWrapProps) => {
 
   const handleDelete = async () => {
     try {
-      const encodedViewName = encodeURIComponent(view.name.normalize());
-
+      const { encoded: encodedViewName } = encodeHelper(view.name);
       const result = await getApiRouteForCurrentDB().delete(
         `/view/${encodedViewName}`
       );
