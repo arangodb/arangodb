@@ -33,6 +33,16 @@ using namespace arangodb::pregel::conductor;
 ProduceAQLResults::ProduceAQLResults(ConductorState& conductor)
     : conductor{conductor} {}
 
+auto ProduceAQLResults::messages()
+    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+  auto out =
+      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
+  for (auto const& worker : conductor.workers) {
+    out.emplace(worker, worker::message::ProduceResults{});
+  }
+  return out;
+}
+
 auto ProduceAQLResults::receive(actor::ActorPID sender,
                                 message::ConductorMessages message)
     -> std::optional<StateChange> {
