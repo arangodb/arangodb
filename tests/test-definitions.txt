@@ -1,1 +1,1 @@
-chaos !windows !coverage full cluster priority=9600 -- --dumpAgencyOnError true
+chaos !windows !coverage pr cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
