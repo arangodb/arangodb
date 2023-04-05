@@ -51,6 +51,7 @@ const testRunnerBase = require('@arangodb/testutils/testrunner').testRunner;
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
+const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -80,7 +81,9 @@ function makeDataWrapper (options) {
     constructor(options, testname, ...optionalArgs) {
       super(options, testname, ...optionalArgs);
       this.info = "runRtaInArangosh";
-      this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
+      if (isEnterprise()) {
+        this.serverOptions["arangosearch.columns-cache-limit"] = "5000";
+      }
     }
     filter(te, filtered) {
       return true;
@@ -177,7 +180,7 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '..','release-test-automation'));
+  opts['rtasource'] = fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata'));
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

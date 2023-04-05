@@ -34,7 +34,7 @@ export const useUpdateAliasViewProperties = ({
           setChanged
         });
       }
-    } catch (e) {
+    } catch (e: any) {
       window.arangoHelper.arangoError(
         "Failure",
         `Got unexpected server response: ${e.message}`

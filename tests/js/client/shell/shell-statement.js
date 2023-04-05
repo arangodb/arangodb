@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, fail, more */
+/*global assertEqual, assertTrue, assertFalse, assertNotUndefined, fail, more */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -33,6 +33,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const queries = require('@arangodb/aql/queries');
 const db = arangodb.db;
+const ERRORS = arangodb.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -136,11 +137,11 @@ function StatementSuite () {
       }
 
       assertFalse(cursor.hasNext());
-    }
+    },
+
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -229,7 +230,64 @@ function StatementStreamSuite () {
       }
 
       assertFalse(cursor.hasNext());
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test constructor
+////////////////////////////////////////////////////////////////////////////////
+
+    testConstructWithOptions : function () {
+      var query = "for v in @values return v";
+      var bind = { values: [ 1, 2, 3 ] };
+      var st = db._createStatement({
+        query: query,
+        bindVars: bind,
+        count: true,
+        cache: true,
+        stream: true,
+        batchSize: 42,
+        ttl: 4.2,
+        options: {
+          allowDirtyReads: true
+        }
+      });
+
+      assertEqual(bind, st._bindVars);
+      assertTrue(st._doCount);
+      assertTrue(st._cache);
+      assertTrue(st._stream);
+      assertEqual(42, st._batchSize);
+      assertEqual(4.2, st._ttl);
+      assertNotUndefined(st._options);
+      assertTrue(st._options.allowDirtyReads);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test execute method
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecuteOptionsTtlError : function () {
+      var st = db._createStatement({
+        query : "FOR i IN 1..2000 RETURN i",
+        ttl : 0.00001,
+        batchSize : 1000, // default
+        options: {
+          stream : true,
+        }
+      });
+      var docs = [ ];
+      try {
+        var result = st.execute();
+        while (result.hasNext()) {
+          docs.push(result.next());
+        }
+        result = true;
+        fail();
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
+      }
+    },
+
 
   };
 }

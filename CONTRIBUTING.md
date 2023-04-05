@@ -1025,7 +1025,7 @@ To aid their development, they can also be used from the ArangoDB source tree.
 
 #### MakeData / CheckData suite
 
-The [makedata framework](https://github.com/arangodb/release-test-automation#makedata--checkdata-framework)
+The [makedata framework](https://github.com/arangodb/rta-makedata) as git submodule in [3rdParty/rta-makedata](3rdParty/rta-makedata/)
 is implemented in arangosh javascript.
 It uses the respective interface to execute DDL and DML operations. 
 It facilitates a per database approach, and can be run multiple times in loops. 
@@ -1052,12 +1052,13 @@ The `rta_makedata` testsuite can be invoked with:
 - `--activefailover true` to be ran on an active failover setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
+These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
+
 Invoke it like this:
 
-    ./scripts/unittest rta_makedata --cluster true --rtasource ../release-test-automation/
+    ./scripts/unittest rta_makedata --cluster true
 
-(with `--rtasource ../release-test-automation` being the default value,
-that can be overriden with another directory with a git clone of RTA)
+(you can override the 3rdParty/rta-makedata with `--rtasource ../rta-makedata` ,if you want to work with a full git clone of RTA-makedata)
 
 ### Driver tests
 

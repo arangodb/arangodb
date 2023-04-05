@@ -209,6 +209,10 @@ using WeightedShortestPathClusterTracer =
     arangodb::graph::TracedWeightedShortestPathEnumerator<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
+namespace arangodb::aql {
+struct MultipleRemoteModificationExecutor;
+}
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -754,7 +758,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Remove>,
                   SingleRemoteModificationExecutor<Update>,
                   SingleRemoteModificationExecutor<Replace>,
-                  SingleRemoteModificationExecutor<Upsert>, SortExecutor,
+                  SingleRemoteModificationExecutor<Upsert>,
+                  MultipleRemoteModificationExecutor, SortExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
                   MaterializeExecutor<void, false>,
