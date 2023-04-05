@@ -344,7 +344,12 @@ function fulltextCreateSuite () {
       var idx3 = c.ensureIndex({ type: "fulltext", fields: ["attr2"] });
 
       assertTrue(c.dropIndex(idx1));
-      assertFalse(c.dropIndex(idx2)); // already deleted
+      try {
+        c.dropIndex(idx2); // already deleted
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
+      }
       assertTrue(c.dropIndex(idx3));
     }
 
@@ -404,8 +409,7 @@ function fulltextQuerySuite () {
         try {
           assertEqual(0, collection.fulltext("text", queries[i], idx).toArray().length);
           fail();
-        }
-        catch (e) {
+        } catch (e) {
           assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
         }
       }

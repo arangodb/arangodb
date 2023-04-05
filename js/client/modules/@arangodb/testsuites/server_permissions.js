@@ -250,7 +250,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
         this.instanceManager.destructor(this.results[te].status && shutdownStatus);
       } else {
-        if (this.options.extremeVerbosity !== 'silent') {
+        if (this.options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);
         }
       }
