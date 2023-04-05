@@ -60,11 +60,14 @@ struct InMemoryLogManager : IInMemoryLogManager {
   auto getNonEmptyLogConsumerIterator(LogIndex firstIdx) const
       -> std::variant<std::unique_ptr<LogRangeIterator>, LogIndex> override;
 
+  void resign() && noexcept;
+
  private:
   struct GuardedData {
     explicit GuardedData(LogIndex firstIndex);
     InMemoryLog _inMemoryLog;
     LogIndex _commitIndex{0};
+    bool _resigned = false;
 
     auto getLogConsumerIterator(IStorageManager& storageManager,
                                 std::optional<LogRange> bounds) const
