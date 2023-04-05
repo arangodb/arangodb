@@ -1568,7 +1568,6 @@ void TRI_ShutdownProcess() {
   ExternalProcesses.clear();
 }
 
-
 std::string TRI_SetPriority(ExternalId pid, int prio) {
 #ifndef _WIN32
   errno = 0;
@@ -1578,19 +1577,19 @@ std::string TRI_SetPriority(ExternalId pid, int prio) {
     if (err != 0) {
       std::stringstream ss;
       ss << "setting process priority for : '" << pid._pid
-        << "' failed with error: " << strerror(err);
+         << "' failed with error: " << strerror(err);
       return ss.str();
     }
   }
 #else
-   HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
-   DWORD  dwPriorityClass;
-   if (prio == 0) {
-     dwPriorityClass = NORMAL_PRIORITY_CLASS;
-   } else {
-     dwPriorityClass = IDLE_PRIORITY_CLASS;
-   }
-   SetPriorityClass(hCurrentProcess, dwPriorityClass);
+  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
+  DWORD dwPriorityClass;
+  if (prio == 0) {
+    dwPriorityClass = NORMAL_PRIORITY_CLASS;
+  } else {
+    dwPriorityClass = IDLE_PRIORITY_CLASS;
+  }
+  SetPriorityClass(hCurrentProcess, dwPriorityClass);
 #endif
-   return "";
+  return "";
 }

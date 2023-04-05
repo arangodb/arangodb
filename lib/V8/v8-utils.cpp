@@ -4786,7 +4786,8 @@ static void JS_SetPriority(v8::FunctionCallbackInfo<v8::Value> const& args) {
   ExternalId pid;
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
 
-  uint32_t priority = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[1], true));
+  uint32_t priority =
+      static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[1], true));
 
   auto ret = TRI_SetPriority(pid, priority);
 
@@ -4798,7 +4799,6 @@ static void JS_SetPriority(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
