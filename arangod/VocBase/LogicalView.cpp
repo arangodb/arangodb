@@ -77,12 +77,7 @@ LogicalView::LogicalView(std::pair<ViewType, std::string_view> typeInfo,
         TRI_ERROR_BAD_PARAMETER,
         "got an invalid view definition while constructing LogicalView");
   }
-  bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNamesForViews();
-  if (!ViewNameValidator::isAllowedName(/*allowSystem*/ false, extendedNames,
-                                        name())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
+
   if (!id()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -114,17 +109,27 @@ bool LogicalView::canUse(auth::Level const& level) {
 
 Result LogicalView::create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                            velocypack::Slice definition, bool isUserRequest) {
+  // extract view name
+  std::string name;
+  if (definition.isObject()) {
+    name = basics::VelocyPackHelper::getStringValue(
+        definition, StaticStrings::DataSourceName, "");
+  }
+
   auto& server = vocbase.server();
   if (!server.hasFeature<ViewTypesFeature>()) {
-    std::string name;
-    if (definition.isObject()) {
-      name = basics::VelocyPackHelper::getStringValue(
-          definition, StaticStrings::DataSourceName, "");
-    }
     events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return {TRI_ERROR_INTERNAL,
             "Failure to get 'ViewTypes' feature while creating LogicalView"};
   }
+
+  bool extendedNames = server.getFeature<DatabaseFeature>().extendedNames();
+  if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
+                                                 extendedNames, name);
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
   auto& viewTypes = server.getFeature<ViewTypesFeature>();
   auto type = basics::VelocyPackHelper::getStringView(
       definition, StaticStrings::DataSourceType, {});

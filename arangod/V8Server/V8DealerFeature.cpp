@@ -805,8 +805,10 @@ void V8DealerFeature::unprepare() {
 /// in every OS
 [[nodiscard]] static std::string_view getDatabaseDirName(std::string_view name,
                                                          std::string_view id) {
-  bool const isOldStyleName = DatabaseNameValidator::isAllowedName(
-      /*allowSystem=*/true, /*extendedNames=*/false, name);
+  bool const isOldStyleName =
+      DatabaseNameValidator::validateName(
+          /*allowSystem=*/true, /*extendedNames=*/false, name)
+          .ok();
   return (isOldStyleName || id.empty()) ? name : id;
 }
 
