@@ -1163,7 +1163,7 @@ auto replicated_log::LogLeader::waitForIterator(LogIndex index)
     return std::visit(
         overload{
             [](std::unique_ptr<LogRangeIterator> iter)
-                -> WaitForIteratorFuture { return std::move(iter); },
+                -> WaitForIteratorFuture { return iter; },
             [this](LogIndex indexToWaitFor) -> WaitForIteratorFuture {
               // call here, otherwise we deadlock with waitFor
               return waitForIterator(indexToWaitFor);
