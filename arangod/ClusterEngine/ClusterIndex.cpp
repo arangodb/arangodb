@@ -496,7 +496,7 @@ bool ClusterIndex::inProgress() const {
       vocbase.server().getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] =
       agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-          "Plan/Collections/" + dbname + "/" + cid + "/indexes")});
+          "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" + cid + "/indexes")});
   auto slc = acb->slice()[0].get(std::vector<std::string>{
       "arango", "Plan", "Collections", vocbase.name()});
   if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
