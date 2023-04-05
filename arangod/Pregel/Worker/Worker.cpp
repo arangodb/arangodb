@@ -166,9 +166,6 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template<typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  // initialization of the graphstore might take an undefined amount
-  // of time. Therefore this is performed asynchronously
-  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   LOG_PREGEL("52070", WARN) << fmt::format(
       "Worker for execution number {} is loading", _config->executionNumber());
   _feature.metrics()->pregelWorkersLoadingNumber->fetch_add(1);
