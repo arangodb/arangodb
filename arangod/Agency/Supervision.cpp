@@ -3584,7 +3584,7 @@ void Supervision::checkUndoLeaderChangeActions() {
     });
 
     if (auto jobOpt = undoOp.hasAsNode("moveShard"); jobOpt.has_value()) {
-      Node const& job{*jobOpt};
+      Node const& job(jobOpt.value());
 
       auto fromServer = job.hasAsString("fromServer");
       if (!fromServer) {
@@ -3618,18 +3618,16 @@ void Supervision::checkUndoLeaderChangeActions() {
             UndoAction::UndoMoveShardR2{
                 std::move(*database), std::move(*collection), id,
                 std::move(*fromServer), std::move(*toServer), stateId.value()},
-            std::move(deadline), std::move(started), std::move(jobId),
-            rebootId};
+            deadline, started, jobId, rebootId};
       }
 
       return UndoAction{UndoAction::UndoMoveShardR1{
                             std::move(*database), std::move(*collection), id,
                             std::move(*fromServer), std::move(*toServer)},
-                        std::move(deadline), std::move(started),
-                        std::move(jobId), rebootId};
+                        deadline, started, jobId, rebootId};
     } else if (jobOpt = undoOp.hasAsNode("reconfigureReplicatedLog");
                jobOpt.has_value()) {
-      Node const& job{*jobOpt};
+      Node const& job(jobOpt.value());
 
       auto database = job.hasAsString("database");
       if (!database) {
@@ -3660,8 +3658,7 @@ void Supervision::checkUndoLeaderChangeActions() {
 
       return UndoAction{UndoAction::UndoSetLeaderR2{std::move(*database),
                                                     std::move(*server), *logId},
-                        std::move(deadline), std::move(started),
-                        std::move(jobId), rebootId};
+                        deadline, started, jobId, rebootId};
     }
 
     return Result{TRI_ERROR_BAD_PARAMETER, "unknown undo action"};
