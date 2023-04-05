@@ -159,12 +159,24 @@ auto GraphLoader<V, E>::load() -> futures::Future<Magazine<V, E>> {
           }));
     }
   }
-  return collectAll(futures).thenValue([](auto&& results) {
+  auto self = this->shared_from_this();
+  return collectAll(futures).thenValue([this, self](auto&& results) {
     auto result = Magazine<V, E>{};
     for (auto&& r : results) {
       // TODO: maybe handle exceptions here?
       result.emplace(std::move(r.get()));
     }
+    std::visit(overload{[&](ActorLoadingUpdate const& update) {
+                          update.fn(message::GraphLoadingUpdate{
+                              .verticesLoaded = result.numberOfVertices(),
+                              .edgesLoaded = result.numberOfEdges(),
+                              .memoryBytesUsed = 0});
+                        },
+                        [](OldLoadingUpdate const& update) {
+                          SchedulerFeature::SCHEDULER->queue(
+                              RequestLane::INTERNAL_LOW, update.fn);
+                        }},
+               updateCallback);
     return result;
   });
 }
