@@ -163,8 +163,7 @@ void ClusterIndex::toVelocyPack(
         continue;
       }
       VPackSlice resSlice = r.slice();
-      if (!resSlice.isObject() || !resSlice.hasKey(StaticStrings::Error) ||
-          !resSlice.get(StaticStrings::Error).isBoolean()) {
+      if (!resSlice.isObject() || !resSlice.get(StaticStrings::Error).isBoolean()) {
         LOG_TOPIC("agbe4", INFO, Logger::CLUSTER)
             << "Result of collecting figures for collection "
             << _collection.name() + " from " + r.destination << " is invalid";
