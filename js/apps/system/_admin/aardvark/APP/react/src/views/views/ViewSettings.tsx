@@ -5,6 +5,7 @@ import { HashRouter } from "react-router-dom";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormDispatch, State } from "../../utils/constants";
+import { encodeHelper } from "../../utils/encodeHelper";
 import { getReducer } from "../../utils/helpers";
 import { usePermissions, userIsAdmin } from "../../utils/usePermissions";
 import { FormState, ViewContext } from "./constants";
@@ -28,7 +29,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
     lockJsonForm: false
   });
   // workaround, because useView only exposes partial FormState by default
-  const view = (useView(name) as any) as FormState;
+  const view = useView(name) as any as FormState;
   const [changed, setChanged] = useState(
     !!window.sessionStorage.getItem(`${name}-changed`)
   );
@@ -81,6 +82,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
       setViews(data.body.result);
     }
   }
+  const { encoded: encodedName } = encodeHelper(name);
   return (
     <ViewContext.Provider
       value={{
@@ -91,7 +93,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
         setChanged
       }}
     >
-      <HashRouter basename={`view/${name}`} hashType={"noslash"}>
+      <HashRouter basename={`view/${encodedName}}`} hashType={"noslash"}>
         <ViewSettingsInner
           formState={formState}
           updateName={updateName}
