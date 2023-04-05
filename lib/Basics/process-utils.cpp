@@ -1582,7 +1582,7 @@ std::string TRI_SetPriority(ExternalId pid, int prio) {
     }
   }
 #else
-  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
+  HANDLE processHandle = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid._pid);
   DWORD dwPriorityClass;
   if (prio == 0) {
     dwPriorityClass = NORMAL_PRIORITY_CLASS;
