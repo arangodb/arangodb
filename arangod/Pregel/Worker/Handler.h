@@ -85,7 +85,7 @@ struct WorkerHandler : actor::HandlerBase<Runtime, WorkerState<V, E, M>> {
                   this->template dispatch<pregel::message::StatusMessages>(
                       this->state->statusActor, update);
                 }});
-        this->state->magazine = loader.load();
+        this->state->magazine = loader.load().get();
 
         LOG_TOPIC("5206c", WARN, Logger::PREGEL)
             << fmt::format("Worker {} has finished loading.", this->self);

@@ -27,6 +27,7 @@
 #include <functional>
 
 #include "Basics/GlobalResourceMonitor.h"
+#include "Basics/Guarded.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterTypes.h"
 #include "Pregel/GraphStore/GraphLoaderBase.h"
@@ -50,6 +51,16 @@ struct ActorLoadingUpdate {
 using LoadingUpdateCallback =
     std::variant<OldLoadingUpdate, ActorLoadingUpdate>;
 
+struct VertexIdRange {
+  uint64_t current = 0;
+  uint64_t maxId = 0;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, VertexIdRange& r) {
+  return f.object(r).fields(f.field("current", r.current),
+                            f.field("maxId", r.maxId));
+}
+
 template<typename V, typename E>
 struct GraphLoader : GraphLoaderBase<V, E> {
   explicit GraphLoader(std::shared_ptr<WorkerConfig const> config,
@@ -59,7 +70,7 @@ struct GraphLoader : GraphLoaderBase<V, E> {
         resourceMonitor(GlobalResourceMonitor::instance()),
         config(config),
         updateCallback(updateCallback) {}
-  auto load() -> Magazine<V, E> override;
+  auto load() -> futures::Future<Magazine<V, E>> override;
 
   auto loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards)
@@ -68,15 +79,14 @@ struct GraphLoader : GraphLoaderBase<V, E> {
                  std::string_view documentID,
                  traverser::EdgeCollectionInfo& info) -> void;
 
-  auto requestVertexIds(uint64_t numVertices) -> void;
+  auto requestVertexIds(uint64_t numVertices) -> VertexIdRange;
 
   std::shared_ptr<GraphFormat<V, E> const> graphFormat;
   ResourceMonitor resourceMonitor;
   std::shared_ptr<WorkerConfig const> config;
   LoadingUpdateCallback updateCallback;
 
-  uint64_t currentVertexId = 0;
-  uint64_t currentVertexIdMax = 0;
+  std::atomic<uint64_t> currentIdBase;
 
   uint64_t const batchSize = 10000;
 };
