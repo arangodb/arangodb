@@ -152,7 +152,9 @@ auto InMemoryLogManager::getInternalLogIterator(LogIndex firstIdx) const
                 _inMemoryIter(std::move(inMemoryIter)),
                 _inMemoryRange(inMemoryRange) {}
 
-          auto next() -> std::optional<InMemoryLogEntry> override {
+          // MSVC fails to parse a trailing return type with "final" or
+          // "override" here.
+          std::optional<InMemoryLogEntry> next() final {
             // iterate over the disk until it is covered by the in memory part
             if (_diskIter) {
               auto entry = _diskIter->next();
