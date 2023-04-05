@@ -66,7 +66,9 @@ const GraphNetworkInner = ({
           </Alert>
         )}
         <GraphError />
-        <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+        {!graphError && (
+          <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+        )}
         <GraphInfo />
       </Box>
     </>
