@@ -324,7 +324,7 @@
         if (error) {
           arangoHelper.arangoError('DB', 'Could not check coordinator state');
         } else {
-          var collName = $('#new-collection-name').val();
+          var collName = String($('#new-collection-name').val()).normalize("NFC");
           var collSize = $('#new-collection-size').val();
           var replicationFactor = Number($('#new-replication-factor').val());
           var writeConcern = Number($('#new-write-concern').val());
