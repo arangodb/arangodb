@@ -200,11 +200,11 @@ export const AddNodeModal = () => {
               }
               let data = json;
               if (key) {
-                data = { ...json, _key: key };
+                data = { ...data, _key: key };
               }
               if (smartGraphAttribute) {
                 data = {
-                  ...json,
+                  ...data,
                   [smartGraphAttribute]: smartGraphAttributeValue
                 };
               }
