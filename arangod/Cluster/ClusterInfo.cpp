@@ -319,17 +319,17 @@ constexpr frozen::unordered_map<std::string_view, ServerHealth, 4>
       auto status = ServerHealth::kUnclear;
       std::string serverId = it.key.copyString();
       if (ADB_LIKELY(supervisionHealth.isObject())) {
-        try {
-          auto decoded = kHealthStatusMap.find(
-              supervisionHealth.get(serverId).get("Status").stringView());
-          if (decoded != kHealthStatusMap.end()) {
-            status = decoded->second;
+        auto serverKey = supervisionHealth.get(serverId);
+        // Server may be missing from Health if it has just arrived
+        // to our cluster.
+        if (serverKey.isObject()) {
+          auto statusString = serverKey.get("Status");
+          if (statusString.isString()) {
+            auto decoded = kHealthStatusMap.find(statusString.stringView());
+            if (decoded != kHealthStatusMap.end()) {
+              status = decoded->second;
+            }
           }
-        } catch (velocypack::Exception const& ex) {
-          LOG_TOPIC("d783d", WARN, Logger::CLUSTER)
-              << "Invalid health data for server " << serverId
-              << " Error: " << ex.what()
-              << " Data: " << supervisionHealth.toString();
         }
       }
       VPackSlice const knownServerSlice = it.value;
