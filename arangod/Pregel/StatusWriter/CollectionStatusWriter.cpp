@@ -101,7 +101,7 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
   bindParameter->add("pid", VPackValue(_executionNumber.value));
   bindParameter->add("collectionName",
                      VPackValue(StaticStrings::PregelCollection));
-  if (_user.has_value()) {
+  if (_user.has_value() && _user.value() != "root") {
     bindParameter->add("user", _user.value());
   }
   bindParameter->close();
@@ -111,7 +111,7 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
   // write into the pregel collection, we can remove change "entry.data" to
   // just "entry".
   std::string queryString;
-  if (_user.has_value()) {
+  if (_user.has_value() && _user.value() != "root") {
     queryString = R"(
       LET potentialDocument = DOCUMENT(CONCAT(@collectionName, '/', @pid)).data
       RETURN potentialDocument.user == @user ? potentialDocument : null
@@ -126,24 +126,63 @@ auto CollectionStatusWriter::readResult() -> OperationResult {
 }
 
 auto CollectionStatusWriter::readAllNonExpiredResults() -> OperationResult {
+  std::shared_ptr<VPackBuilder> bindParameter =
+      std::make_shared<VPackBuilder>();
+  bindParameter->openObject();
+  bindParameter->add("@collectionName",
+                     VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value() && _user.value() != "root") {
+    bindParameter->add("user", _user.value());
+  }
+  bindParameter->close();
+
   // TODO: GORDO-1607
   // Note: As soon as we introduce an inspectable struct to the data we actually
   // write into the pregel collection, we can remove change "entry.data" to
   // just "entry".
-  std::string queryString = R"(
-    FOR entry IN _pregel_queries
-      FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
-      OR entry.data.expires == null
-    RETURN entry.data
-  )";
+  std::string queryString;
+  if (_user.has_value() && _user.value() != "root") {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER (entry.data.user == @user AND DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0)
+          OR (entry.data.user == @user AND entry.data.expires == null)
+      RETURN entry.data
+    )";
+  } else {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER DATE_DIFF(DATE_NOW(), DATE_TIMESTAMP(entry.data.expires), "s") >= 0
+        OR entry.data.expires == null
+      RETURN entry.data
+    )";
+  }
 
-  return executeQuery(queryString, std::nullopt);
+  return executeQuery(queryString, bindParameter);
 }
 
 auto CollectionStatusWriter::readAllResults() -> OperationResult {
+  std::shared_ptr<VPackBuilder> bindParameter =
+      std::make_shared<VPackBuilder>();
+  bindParameter->openObject();
+  bindParameter->add("@collectionName",
+                     VPackValue(StaticStrings::PregelCollection));
+  if (_user.has_value() && _user.value() != "root") {
+    bindParameter->add("user", _user.value());
+  }
+  bindParameter->close();
+
   // TODO: GORDO-1607
-  std::string queryString = "FOR entry IN _pregel_queries RETURN entry";
-  return executeQuery(queryString, std::nullopt);
+  std::string queryString;
+  if (_user.has_value() && _user.value() != "root") {
+    queryString = R"(
+      FOR entry IN @@collectionName
+        FILTER entry.data.user == @user
+      RETURN entry.data
+    )";
+  } else {
+    queryString = "FOR entry IN @@collectionName RETURN entry.data";
+  }
+  return executeQuery(queryString, bindParameter);
 }
 
 auto CollectionStatusWriter::updateResult(velocypack::Slice data)
