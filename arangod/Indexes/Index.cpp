@@ -209,9 +209,10 @@ Index::Index(
       _collection(collection),
       _name(name),
       _fields(fields),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
-      _progress(-1.);
-_unique(unique), _sparse(sparse) {
+      _unique(unique),
+      _sparse(sparse) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
@@ -226,8 +227,8 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
-      _useExpansion(::hasExpansion(_fields)),
       _progress(-1.),
+      _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(

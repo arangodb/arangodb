@@ -130,7 +130,7 @@ void ClusterIndex::toVelocyPack(
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
   }
 
-  if (Index::hasFlag(flags, Index::Serialize::Figures)) {
+  if (inProgress()) {
     double progress = 0;
     double success = 0;
     auto const shards = _collection.shardIds();
@@ -490,26 +490,27 @@ ClusterIndex::coveredFields() const {
 }
 
 bool ClusterIndex::inProgress() const {
-  auto const& vocbase = _collection.vocbase();
-  auto const& dbname = vocbase.name();
-  auto const cid = std::to_string(_collection.id().id());
-  auto const& agencyCache =
-      vocbase.server().getFeature<ClusterFeature>().agencyCache();
-  auto [acb, idx] =
-      agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-          "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" + cid + "/indexes")});
-  auto slc = acb->slice()[0].get(std::vector<std::string>{
-      "arango", "Plan", "Collections", vocbase.name()});
-  if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
-    slc = slc.get(std::vector<std::string>{cid, "indexes"});
-    for (auto const& index : VPackArrayIterator(slc)) {
-      if (index.get("id").stringView() == std::to_string(_iid.id())) {
-        if (index.hasKey("isBuilding")) {
-          LOG_TOPIC("fdae4", INFO, Logger::CLUSTER)  // kaveh remove
-              << " " << index.toJson();
+  // If agency entry "isBuilding".
+  try {
+    auto const& vocbase = _collection.vocbase();
+    auto const& dbname = vocbase.name();
+    auto const cid = std::to_string(_collection.id().id());
+    auto const& agencyCache =
+        vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] =
+        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
+            "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" +
+            cid + "/indexes")});
+    auto slc = acb->slice()[0].get(std::vector<std::string>{
+        "arango", "Plan", "Collections", vocbase.name()});
+    if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
+      slc = slc.get(std::vector<std::string>{cid, "indexes"});
+      for (auto const& index : VPackArrayIterator(slc)) {
+        if (index.get("id").stringView() == std::to_string(_iid.id())) {
+          return index.hasKey("isBuilding");
         }
       }
     }
-  }
+  } catch (...) {}
   return false;
 }
