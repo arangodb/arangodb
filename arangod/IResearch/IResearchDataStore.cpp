@@ -1787,6 +1787,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
 
     auto reader = _dataStore._writer->GetSnapshot();
     TRI_ASSERT(reader);
+    TRI_ASSERT(reader->docs_count() == 0);
+    TRI_ASSERT(reader->live_docs_count() == 0);
 
     // update reader
     _dataStore.storeSnapshot(
