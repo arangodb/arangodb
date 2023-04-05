@@ -423,6 +423,7 @@ void DistributeNode::addSatellite(aql::Collection* satellite) {
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
       case REMOTESINGLE:
+      case REMOTE_MULTIPLE:
         // While being a CollectionAccessingNode, it lives on the Coordinator.
         // However it should thus not be encountered here.
         TRI_ASSERT(false);
