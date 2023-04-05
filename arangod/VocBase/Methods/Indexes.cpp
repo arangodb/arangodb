@@ -640,8 +640,10 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
+    // try to extract index handle
     Result res = ::extractIndexHandle(val, extendedNames, collectionName, iid);
     if (!res.ok()) {
+      // no index handle found. now try extracting index name
       res = ::extractIndexName(val, extendedNames, collectionName, name);
     }
     if (!res.ok()) {

@@ -440,7 +440,7 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
   }
   if (!indexesSlice.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view optional field 'indexes' should be array"};
+            "search-alias view optional field 'indexes' should be an array"};
   }
   CollectionNameResolver resolver{vocbase};
   velocypack::ArrayIterator it{indexesSlice};
@@ -525,7 +525,7 @@ Result Search::properties(velocypack::Slice definition, bool isUserRequest,
   }
   if (!indexesSlice.isArray()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "search-alias view optional field 'indexes' should be array"};
+            "search-alias view optional field 'indexes' should be an array"};
   }
   velocypack::ArrayIterator it{indexesSlice};
   if (it.size() == 0 && partialUpdate) {
