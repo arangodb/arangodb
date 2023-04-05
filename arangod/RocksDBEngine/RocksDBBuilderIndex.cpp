@@ -157,7 +157,7 @@ Result fillIndexSingleThreaded(
     if (numDocsWritten % 1024 == 0) {  // commit buffered writes
       if (count > 0) {
         double p =
-          docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
         ridx.progress(p);
         if (progress != nullptr) {
           (*progress)(p);
