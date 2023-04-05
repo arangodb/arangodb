@@ -93,7 +93,7 @@ export const ViewSettings = ({ name }: { name: string }) => {
         setChanged
       }}
     >
-      <HashRouter basename={`view/${encodedName}}`} hashType={"noslash"}>
+      <HashRouter basename={`view/${encodedName}`} hashType={"noslash"}>
         <ViewSettingsInner
           formState={formState}
           updateName={updateName}

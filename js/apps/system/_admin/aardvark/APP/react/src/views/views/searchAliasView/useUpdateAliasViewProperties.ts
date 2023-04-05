@@ -1,6 +1,7 @@
 import { differenceWith, isEqual } from "lodash";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { ViewPropertiesType } from "./useFetchViewProperties";
 
 export const useUpdateAliasViewProperties = ({
@@ -54,10 +55,10 @@ const putRenameView = async ({
 }) => {
   let isError = false;
   const route = getApiRouteForCurrentDB();
-  // normalize again here because 
+  // normalize again here because
   // this can change from the JSON form too
   const normalizedViewName = name.normalize();
-  const encodedInitialViewName = encodeURIComponent(initialName.normalize());
+  const encodedInitialViewName = encodeHelper(initialName).encoded;
   const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
     name: normalizedViewName
   });
@@ -82,7 +83,7 @@ async function patchViewProperties({
   initialView: ViewPropertiesType;
   setChanged: (changed: boolean) => void;
 }) {
-  const encodedViewName = encodeURIComponent(view.name.normalize());
+  const encodedViewName = encodeHelper(view.name).encoded;
   const path = `/view/${encodedViewName}/properties`;
   window.arangoHelper.hideArangoNotifications();
   const result = await patchProperties({ view, path, initialView });

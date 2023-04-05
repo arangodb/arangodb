@@ -1,4 +1,5 @@
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { encodeHelper } from "../../../../utils/encodeHelper";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 
 const handleError = (error: { errorMessage: string }) => {
@@ -22,6 +23,7 @@ export const useCreateIndex = <
 >() => {
   const { collectionName, collectionId, onCloseForm } =
     useCollectionIndicesContext();
+  const { encoded: encodedCollectionName } = encodeHelper(collectionName);
 
   const onCreate = async (values: TValues) => {
     window.arangoHelper.checkDatabasePermissions(
@@ -39,7 +41,7 @@ export const useCreateIndex = <
               ...values,
               name: (values.name as string)?.normalize() || undefined
             },
-            `collection=${encodeURIComponent(collectionName)}`,
+            `collection=${encodedCollectionName}`,
             {
               "x-arango-async": "store"
             }

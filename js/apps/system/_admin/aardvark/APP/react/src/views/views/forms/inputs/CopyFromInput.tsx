@@ -7,6 +7,7 @@ import useSWRImmutable from "swr/immutable";
 import SingleSelect from "../../../../components/select/SingleSelect";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import { FormProps } from "../../../../utils/constants";
+import { encodeHelper } from "../../../../utils/encodeHelper";
 import { FormState } from "../../constants";
 import { validateAndFix } from "../../helpers";
 
@@ -24,15 +25,16 @@ const filterAndSortViews = (views: FormState[]) => {
         return { value: view.name, label: view.name };
       }),
     "name"
-  ) as {value: string; label: string}[];
+  ) as { value: string; label: string }[];
 };
 
 const CopyFromInput = ({ views, dispatch, formState }: CopyFromInputProps) => {
   const initalViewOptions = filterAndSortViews(views);
   const [viewOptions, setViewOptions] = useState(initalViewOptions);
   const [selectedView, setSelectedView] = useState(viewOptions[0]);
+  const {encoded: selectedViewValue} = encodeHelper(selectedView.value);
   const { data } = useSWRImmutable(
-    `/view/${selectedView.value}/properties`,
+    `/view/${selectedViewValue}/properties`,
     path => getApiRouteForCurrentDB().get(path)
   );
   const location = useLocation();
