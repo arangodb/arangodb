@@ -140,11 +140,11 @@ void ClusterIndex::toVelocyPack(
     std::vector<Future<network::Response>> futures;
     futures.reserve(shards->size());
     std::string const prefix = "/_api/index/";
+    network::RequestOptions reqOpts;
+    reqOpts.param("withHidden", "true");
+    // best effort. only displaying progress
+    reqOpts.timeout = network::Timeout(10.0);    
     for (auto const& shard : *shards) {
-      network::RequestOptions reqOpts;
-      reqOpts.param("withHidden", "true");
-      // best effort. only displaying progress
-      reqOpts.timeout = network::Timeout(10.0); // jsteeman, ideas?
       std::string const url =
           prefix + shard.first + "/" + std::to_string(_iid.id());
       futures.emplace_back(
