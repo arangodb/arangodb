@@ -79,6 +79,7 @@ const GraphError = () => {
   if (!graphError) {
     return null;
   }
+  const errorMessage = graphError.response?.body.errorMessage;
   return (
     <Box
       width="full"
@@ -99,7 +100,8 @@ const GraphError = () => {
       >
         <Stack>
           <Text>Something went wrong while loading the graph</Text>
-          <Text>Error Code: {graphError.code}</Text>
+          {errorMessage && <Text>Error: {errorMessage}</Text>}
+          <Text>Code: {graphError.code}</Text>
           <Button
             onClick={onRestoreDefaults}
             colorScheme="red"
