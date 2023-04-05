@@ -176,7 +176,7 @@ void ClusterIndex::toVelocyPack(
             << _collection.name() + " from " + r.destination;
         continue;
       }
-      if (resSlice.hasKey("progress") && resSlice.get("progress").isNumber()) {
+      if (resSlice.get("progress").isNumber()) {
         progress += resSlice.get("progress").getNumber<double>();
         success++;
       } else {
