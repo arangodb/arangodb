@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig, localStorage */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
 
 (function () {
   'use strict';
@@ -299,7 +299,7 @@
       var name = $(e.currentTarget).attr('id');
       if (name) {
         name = name.substr(0, name.length - 5);
-        window.App.navigate('visgraphs/' + encodeURIComponent(name), {trigger: true});
+        window.App.navigate('graphs-v2/' + encodeURIComponent(name), {trigger: true});
       }
     },
 
@@ -1574,7 +1574,7 @@
       var graphName = $('#editGraphName').val();
 
       const localStorageKey = graphName + "-gv-urlparameters";
-      localStorage.removeItem(localStorageKey);
+      window.localStorage.removeItem(localStorageKey);
 
       var test = new window.GraphSettingsView({
         name: graphName,

@@ -66,6 +66,8 @@ devel
   default in one of the future releases of ArangoDB, once enough drivers and 
   other client tools have had the chance to adapt.
 
+* FE-200: Add canvas interactions to Graph Viewer.
+
 * Fixed BTS-1292: Added automatic cleanup of dangling ArangoSearch links.
 
 * FE-218: Updated WebUI dependencies.
