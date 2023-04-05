@@ -402,7 +402,7 @@ VocbaseOptions getVocbaseOptions(ArangodServer& server, VPackSlice options,
     if (vocbaseOptions.replicationFactor == 0) {
       if (haveCluster) {
         vocbaseOptions.replicationFactor =
-            server.getFeature<ClusterFeature>().defaultReplicationFactor();
+            server.getFeature<ClusterFeature>().minReplicationFactor();
       } else {
         LOG_TOPIC("eeeef", ERR, Logger::CLUSTER)
             << "Cannot access ClusterFeature to determine replicationFactor";
