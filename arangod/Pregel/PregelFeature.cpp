@@ -810,55 +810,49 @@ std::shared_ptr<IWorker> PregelFeature::worker(
 }
 
 ResultT<PregelResults> PregelFeature::getResults(ExecutionNumber execNr) {
-  auto resultActor = _resultActor.doUnderLock(
-      [&execNr](auto const& actors) -> std::optional<actor::ActorPID> {
+  return _resultActor.doUnderLock(
+      [&execNr, this](auto const& actors) -> ResultT<PregelResults> {
         auto actor = actors.find(execNr);
         if (actor == actors.end()) {
-          return std::nullopt;
+          return Result{
+              TRI_ERROR_HTTP_NOT_FOUND,
+              fmt::format("Cannot locate results for pregel run {}.", execNr)};
         }
-        return actor->second;
+        auto state =
+            _actorRuntime->getActorStateByID<ResultActor>(actor->second.id);
+        if (!state.has_value()) {
+          return Result{
+              TRI_ERROR_HTTP_NOT_FOUND,
+              fmt::format("Cannot find results for pregel run {}.", execNr)};
+        }
+        if (state.value().complete) {
+          return state.value().results;
+        }
+        return Result{
+            TRI_ERROR_INTERNAL,
+            fmt::format("Pregel results for run {} are not yet available.",
+                        execNr)};
       });
-  if (not resultActor.has_value()) {
-    return Result{
-        TRI_ERROR_HTTP_NOT_FOUND,
-        fmt::format("Cannot locate results for pregel run {}.", execNr)};
-  }
-  auto actorPID = resultActor.value();
-  auto state = _actorRuntime->getActorStateByID<ResultActor>(actorPID.id);
-  if (!state.has_value()) {
-    return Result{
-        TRI_ERROR_HTTP_NOT_FOUND,
-        fmt::format("Cannot find results for pregel run {}.", execNr)};
-  }
-  if (state.value().complete) {
-    return state.value().results;
-  }
-  return Result{
-      TRI_ERROR_INTERNAL,
-      fmt::format("Pregel results for run {} are not yet available.", execNr)};
 }
 
 ResultT<StatusState> PregelFeature::getStatus(ExecutionNumber execNr) {
-  auto statusActor = _statusActors.doUnderLock(
-      [&execNr](auto const& actors) -> std::optional<actor::ActorPID> {
+  return _statusActors.doUnderLock(
+      [&execNr, this](auto const& actors) -> ResultT<StatusState> {
         auto actor = actors.find(execNr);
         if (actor == actors.end()) {
-          return std::nullopt;
+          return Result{
+              TRI_ERROR_HTTP_NOT_FOUND,
+              fmt::format("Cannot locate status for pregel run {}.", execNr)};
         }
-        return actor->second;
+        auto state =
+            _actorRuntime->getActorStateByID<StatusActor>(actor->second.id);
+        if (!state.has_value()) {
+          return Result{
+              TRI_ERROR_HTTP_NOT_FOUND,
+              fmt::format("Cannot find status for pregel run {}.", execNr)};
+        }
+        return state.value();
       });
-  if (not statusActor.has_value()) {
-    return Result{
-        TRI_ERROR_HTTP_NOT_FOUND,
-        fmt::format("Cannot locate status for pregel run {}.", execNr)};
-  }
-  auto state =
-      _actorRuntime->getActorStateByID<StatusActor>(statusActor.value().id);
-  if (!state.has_value()) {
-    return Result{TRI_ERROR_HTTP_NOT_FOUND,
-                  fmt::format("Cannot find status for pregel run {}.", execNr)};
-  }
-  return state.value();
 }
 
 void PregelFeature::cleanupConductor(ExecutionNumber executionNumber) {
@@ -1192,39 +1186,32 @@ auto PregelFeature::cancel(ExecutionNumber executionNumber) -> Result {
   }
 
   // pregel can still have ran with actors, then the result actor would exist
-  auto resultActor = _resultActor.doUnderLock(
-      [&executionNumber](auto const& actors) -> std::optional<actor::ActorPID> {
-        auto actor = actors.find(executionNumber);
-        if (actor == actors.end()) {
-          return std::nullopt;
-        }
-        return actor->second;
-      });
-  if (resultActor.has_value()) {
-    if (_actorRuntime->contains(resultActor.value().id)) {
+  auto resultActorCanceled = _resultActor.doUnderLock([&executionNumber,
+                                                       this](auto const& actors)
+                                                          -> Result {
+    auto actor = actors.find(executionNumber);
+    if (actor == actors.end()) {
+      return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
+    }
+    if (_actorRuntime->contains(actor->second.id)) {
       _actorRuntime->dispatch<pregel::message::ResultMessages>(
-          resultActor.value(), resultActor.value(),
-          pregel::message::CleanupResults{});
+          actor->second, actor->second, pregel::message::CleanupResults{});
     }
-
-    auto conductorActor = _conductorActor.doUnderLock(
-        [&executionNumber](
-            auto const& actors) -> std::optional<actor::ActorPID> {
-          auto actor = actors.find(executionNumber);
-          if (actor == actors.end()) {
-            return std::nullopt;
-          }
-          return actor->second;
-        });
-    if (conductorActor.has_value() and
-        _actorRuntime->contains(conductorActor.value().id)) {
-      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
-          conductorActor.value(), conductorActor.value(),
-          pregel::conductor::message::Cancel{});
-    }
-
     return Result{};
+  });
+  if (not resultActorCanceled.ok()) {
+    return resultActorCanceled;
   }
 
-  return Result{TRI_ERROR_CURSOR_NOT_FOUND, "Execution number is invalid"};
+  _conductorActor.doUnderLock([&executionNumber, this](auto const& actors) {
+    auto actor = actors.find(executionNumber);
+    if (actor == actors.end()) {
+      return;
+    }
+    if (_actorRuntime->contains(actor->second.id)) {
+      _actorRuntime->dispatch<pregel::conductor::message::ConductorMessages>(
+          actor->second, actor->second, pregel::conductor::message::Cancel{});
+    }
+  });
+  return Result{};
 }
