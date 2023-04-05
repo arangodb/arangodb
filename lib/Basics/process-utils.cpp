@@ -1590,7 +1590,7 @@ std::string TRI_SetPriority(ExternalId pid, int prio) {
   } else {
     dwPriorityClass = IDLE_PRIORITY_CLASS;
   }
-  SetPriorityClass(hCurrentProcess, dwPriorityClass);
+  SetPriorityClass(processHandle, dwPriorityClass);
 #endif
   return "";
 #else
