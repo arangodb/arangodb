@@ -124,7 +124,7 @@ arangodb::iresearch::MissingFieldsMap gatherMissingFields(
 
 namespace arangodb::iresearch {
 
-const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
+IResearchInvertedIndexMeta const& IResearchInvertedIndexMeta::DEFAULT() {
   static const IResearchInvertedIndexMeta meta{};
   return meta;
 }
@@ -458,8 +458,11 @@ bool IResearchInvertedIndexMeta::operator==(
          (static_cast<IResearchDataStoreMeta const&>(*this) ==
           static_cast<IResearchDataStoreMeta const&>(other)) &&
          (static_cast<InvertedIndexField const&>(*this) ==
-          static_cast<InvertedIndexField const&>(other)) &&
-         _sort == other._sort && _storedValues == other._storedValues;
+          static_cast<InvertedIndexField const&>(other))
+#ifdef USE_ENTERPRISE
+         && _optimizeTopK == other._optimizeTopK
+#endif
+         && _sort == other._sort && _storedValues == other._storedValues;
 }
 
 bool IResearchInvertedIndexMeta::matchesDefinition(
