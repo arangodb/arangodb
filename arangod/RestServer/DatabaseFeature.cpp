@@ -33,7 +33,6 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -66,7 +65,16 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <vector>
+
 #include <absl/strings/str_cat.h>
+
+using namespace arangodb::options;
 
 namespace arangodb {
 namespace {
@@ -271,13 +279,17 @@ void DatabaseFeature::collectOptions(
                      options::makeDefaultFlags(options::Flags::Uncommon));
 
   options
-      ->addOption("--database.extended-names-databases",
-                  "Allow most UTF-8 characters in database names. Once in use, "
+      ->addOption("--database.extended-names",
+                  "Allow most UTF-8 characters in database names, collection "
+                  "names, views names and index names. Once in use, "
                   "this option cannot be turned off again.",
-                  new options::BooleanParameter(&_extendedNamesForDatabases),
+                  new options::BooleanParameter(&_extendedNames),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
       .setIntroducedIn(30900);
+
+  options->addOldOption("database.extended-names-databases",
+                        "database.extended-names");
 
   options
       ->addOption("--database.io-heartbeat",
@@ -342,10 +354,12 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  if (_extendedNamesForDatabases) {
-    LOG_TOPIC("2c0c6", WARN, Logger::FIXME)
-        << "Extended names for databases are an experimental feature which "
-           "can cause incompatibility issues with not-yet-prepared drivers and "
+  if (_extendedNames) {
+    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
+        << "Enabling extended names for databases, collections, view, and "
+           "indexes "
+        << " is an experimental feature which can "
+           "cause incompatibility issues with not-yet-prepared drivers and "
            "applications - do not use in production!";
   }
 
@@ -632,10 +646,11 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = extendedNamesForDatabases();
-  if (!DatabaseNameValidator::isAllowedName(/*allowSystem*/ false,
-                                            extendedNames, name)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NAME_INVALID};
+  bool extendedNames = this->extendedNames();
+  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
+                                                     extendedNames, name);
+      res.fail()) {
+    return res;
   }
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
@@ -1121,19 +1136,21 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 
     if (res.fail()) {
       std::string errorMsg;
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID)) {
+      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
         // check if the name would be allowed when using extended names
-        if (DatabaseNameValidator::isAllowedName(
-                /*isSystem*/ false, /*extendedNames*/ true, name)) {
+        if (DatabaseNameValidator::validateName(
+                /*isSystem*/ false, /*extendedNames*/ true, name)
+                .ok()) {
           errorMsg.append(
               ". This database name would be allowed when using the "
               "extended naming convention for databases, which is "
               "currently disabled. The extended naming convention can "
               "be enabled via the startup option "
-              "`--database.extended-names-databases true`");
+              "`--database.extended-names true`");
         }
       } else {
         absl::StrAppend(&errorMsg, "when opening database '", name,

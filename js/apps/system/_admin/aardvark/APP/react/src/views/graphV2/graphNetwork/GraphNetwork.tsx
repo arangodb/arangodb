@@ -4,7 +4,6 @@ import { useElementPosition } from "../../../components/hooks/useElementPosition
 import { useGraph } from "../GraphContext";
 import { GraphInfo } from "./GraphInfo";
 import { GraphRightClickMenu } from "./GraphRightClickMenu";
-import { SmartGraphEmptyState } from "./SmartGraphEmptyState";
 import { useSetupGraphNetwork } from "./useSetupGraphNetwork";
 
 export const GraphNetwork = () => {
@@ -40,12 +39,7 @@ const GraphNetworkInner = ({
   progressValue: number;
   visJsRef: React.RefObject<HTMLDivElement>;
 }) => {
-  const { graphError, graphData, datasets } = useGraph();
-  const isSmart = graphData?.settings.isSmart || false;
-
-  if (isSmart) {
-    return <SmartGraphEmptyState />;
-  }
+  const { graphError, datasets } = useGraph();
   return (
     <>
       <GraphRightClickMenu
@@ -72,7 +66,9 @@ const GraphNetworkInner = ({
           </Alert>
         )}
         <GraphError />
-        <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+        {!graphError && (
+          <Box ref={visJsRef} height="calc(100% - 40px)" width="full" />
+        )}
         <GraphInfo />
       </Box>
     </>
@@ -85,6 +81,7 @@ const GraphError = () => {
   if (!graphError) {
     return null;
   }
+  const errorMessage = graphError.response?.body.errorMessage;
   return (
     <Box
       width="full"
@@ -105,7 +102,8 @@ const GraphError = () => {
       >
         <Stack>
           <Text>Something went wrong while loading the graph</Text>
-          <Text>Error Code: {graphError.code}</Text>
+          {errorMessage && <Text>Error: {errorMessage}</Text>}
+          <Text>Code: {graphError.code}</Text>
           <Button
             onClick={onRestoreDefaults}
             colorScheme="red"

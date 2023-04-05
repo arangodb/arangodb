@@ -26,6 +26,7 @@
 #include <memory>
 #include <functional>
 
+#include <Futures/Future.h>
 #include <Pregel/GraphStore/Magazine.h>
 
 namespace arangodb::pregel {
@@ -36,8 +37,8 @@ template<typename V, typename E>
 struct Quiver;
 
 template<typename V, typename E>
-struct GraphLoaderBase {
-  virtual auto load() -> Magazine<V, E> = 0;
+struct GraphLoaderBase : std::enable_shared_from_this<GraphLoaderBase<V, E>> {
+  virtual auto load() -> futures::Future<Magazine<V, E>> = 0;
   virtual ~GraphLoaderBase() = default;
 };
 
