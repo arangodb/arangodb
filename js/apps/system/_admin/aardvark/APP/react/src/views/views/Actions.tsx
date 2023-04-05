@@ -4,6 +4,7 @@ import { pick } from "lodash";
 import React, { useState } from "react";
 import { mutate } from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
+import { encodeHelper } from "../../utils/encodeHelper";
 import { FormState } from "./constants";
 import { DeleteViewModal } from "./DeleteViewModal";
 
@@ -32,13 +33,13 @@ export const SaveButtonWrap = ({
     const route = getApiRouteForCurrentDB();
     let result;
     let error = false;
-    const normalizedViewName = view.name.normalize();
-    const encodedViewName = encodeURIComponent(normalizedViewName);
+    const { normalized: normalizedViewName, encoded: encodedViewName } =
+      encodeHelper(view.name);
     const path = `/view/${encodedViewName}/properties`;
 
     try {
       if (oldName && view.name !== oldName) {
-        const encodedOldName = encodeURIComponent(oldName.normalize());
+        const { encoded: encodedOldName } = encodeHelper(oldName);
         result = await route.put(`/view/${encodedOldName}/rename`, {
           name: normalizedViewName
         });
