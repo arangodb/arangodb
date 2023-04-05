@@ -806,17 +806,19 @@ char const* NODE_VIEW_META_STORED = "metaStored";
 char const* NODE_VIEW_META_TOPK = "metaTopK";
 
 void toVelocyPack(velocypack::Builder& node, SearchMeta const& meta,
-                  bool needSort, bool needScorerSort) {
+                  bool needSort, [[maybe_unused]] bool needScorerSort) {
   if (needSort) {
     VPackObjectBuilder objectScope{&node, NODE_VIEW_META_SORT};
     [[maybe_unused]] bool const result = meta.primarySort.toVelocyPack(node);
     TRI_ASSERT(result);
   }
+#ifdef USE_ENTERPRISE
   if (needScorerSort) {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_TOPK};
     [[maybe_unused]] bool const result = meta.optimizeTopK.toVelocyPack(node);
     TRI_ASSERT(result);
   }
+#endif
   {
     VPackArrayBuilder arrayScope{&node, NODE_VIEW_META_STORED};
     [[maybe_unused]] bool const result = meta.storedValues.toVelocyPack(node);
@@ -848,11 +850,13 @@ void fromVelocyPack(velocypack::Slice node, SearchMeta& meta) {
     checkError(NODE_VIEW_META_SORT);
   }
 
+#ifdef USE_ENTERPRISE
   slice = node.get(NODE_VIEW_META_TOPK);
   if (!slice.isNone()) {
     meta.optimizeTopK.fromVelocyPack(slice, error);
     checkError(NODE_VIEW_META_TOPK);
   }
+#endif
 
   slice = node.get(NODE_VIEW_META_STORED);
   meta.storedValues.fromVelocyPack(slice, error);
@@ -1930,7 +1934,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         searchDocRegId,
         std::move(scoreRegisters),
         engine.getQuery(),
+#ifdef USE_ENTERPRISE
         optimizeTopK(_meta, _view),
+#endif
         scorers(),
         sort(),
         storedValues(_meta, _view),
