@@ -26,6 +26,7 @@
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/Components/IStorageManager.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
 #include "Replication2/ReplicatedLog/TermIndexMapping.h"
@@ -92,6 +93,15 @@ auto InMemoryLogManager::appendLogEntry(
     InMemoryLogEntry::clock::time_point insertTp, bool waitForSync)
     -> LogIndex {
   return _guardedData.doUnderLock([&](auto& data) -> LogIndex {
+    if (data._resigned) {
+      throw ParticipantResignedException(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+    }
+
+    // TODO for now only waitForSync=true is supported.
+    waitForSync = true;  // by setting this to true, the waitForSync flag is set
+                         // for all log entries, independent of the log config.
+
     auto const index = data._inMemoryLog.getNextIndex();
 
     auto logEntry = InMemoryLogEntry(
@@ -253,6 +263,9 @@ auto InMemoryLogManager::getTermOfIndex(LogIndex logIndex) const noexcept
               logIndex);
         }
       });
+}
+void InMemoryLogManager::resign() && noexcept {
+  _guardedData.getLockedGuard()->_resigned = true;
 }
 
 InMemoryLogManager::GuardedData::GuardedData(LogIndex firstIndex)

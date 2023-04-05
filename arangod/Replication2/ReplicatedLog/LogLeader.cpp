@@ -603,27 +603,8 @@ auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
     -> LogIndex {
   auto const insertTp = InMemoryLogEntry::clock::now();
   // Currently we use a mutex. Is this the only valid semantic?
-  return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leaderData) {
-    return leaderData.insertInternal(std::move(payload), waitForSync, insertTp);
-  });
-}
-
-auto replicated_log::LogLeader::GuardedLeaderData::insertInternal(
-    std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync,
-    std::optional<InMemoryLogEntry::clock::time_point> insertTp) -> LogIndex {
-  // TODO for now only waitForSync=true is supported.
-  waitForSync = true;  // by setting this to true, the waitForSync flag is set
-                       // for all log entries, independent of the log config.
-  if (this->_didResign) {
-    throw ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
-  }
-
-  auto const index = _self._inMemoryLogManager->appendLogEntry(
-      std::move(payload), _self._currentTerm,
-      insertTp.value_or(InMemoryLogEntry::clock::now()), waitForSync);
-
-  return index;
+  return _inMemoryLogManager->appendLogEntry(std::move(payload), _currentTerm,
+                                             insertTp, waitForSync);
 }
 
 auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
@@ -1239,20 +1220,17 @@ auto replicated_log::LogLeader::LocalFollower::appendEntries(
 void replicated_log::LogLeader::establishLeadership(
     std::shared_ptr<agency::ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
-  auto waitForIndex =
-      _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
-        // Immediately append an empty log entry in the new term. This is
-        // necessary because we must not commit entries of older terms, but do
-        // not want to wait with committing until the next insert.
+  // Immediately append an empty log entry in the new term. This is
+  // necessary because we must not commit entries of older terms, but do
+  // not want to wait with committing until the next insert.
 
-        // Also make sure that this entry is written with waitForSync = true
-        // to ensure that entries of the previous term are synced as well.
-        auto meta = LogMetaPayload::FirstEntryOfTerm{.leader = data._self._id,
-                                                     .participants = *config};
-        auto firstIndex = data.insertInternal(LogMetaPayload{std::move(meta)},
-                                              true, std::nullopt);
-        return firstIndex;
-      });
+  // Also make sure that this entry is written with waitForSync = true
+  // to ensure that entries of the previous term are synced as well.
+  auto meta =
+      LogMetaPayload::FirstEntryOfTerm{.leader = _id, .participants = *config};
+  auto const insertTp = InMemoryLogEntry::clock::now();
+  auto waitForIndex = _inMemoryLogManager->appendLogEntry(
+      LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
   TRI_ASSERT(waitForIndex == _firstIndexOfCurrentTerm)
       << "got waitForIndex = " << waitForIndex
       << " but firstIndexOfCurrentTerm is " << _firstIndexOfCurrentTerm;
@@ -1408,8 +1386,9 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
 
         auto meta =
             LogMetaPayload::UpdateParticipantsConfig{.participants = *config};
-        auto const idx = data.insertInternal(LogMetaPayload{std::move(meta)},
-                                             true, std::nullopt);
+        auto const insertTp = InMemoryLogEntry::clock::now();
+        auto const idx = _inMemoryLogManager->appendLogEntry(
+            LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, true);
         data.activeParticipantsConfig = config;
         data._follower.swap(followers);
 
@@ -1518,10 +1497,10 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
 
 auto replicated_log::LogLeader::ping(std::optional<std::string> message)
     -> LogIndex {
-  auto index = _guardedLeaderData.doUnderLock([&](GuardedLeaderData& leader) {
-    auto meta = LogMetaPayload::withPing(message);
-    return leader.insertInternal(std::move(meta), false, std::nullopt);
-  });
+  auto meta = LogMetaPayload::withPing(message);
+  auto const insertTp = InMemoryLogEntry::clock::now();
+  auto index = _inMemoryLogManager->appendLogEntry(
+      LogMetaPayload{std::move(meta)}, _currentTerm, insertTp, false);
 
   triggerAsyncReplication();
   return index;
@@ -1539,6 +1518,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
           throw ParticipantResignedException(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
         }
+        std::move(*_inMemoryLogManager).resign();
 
         // WARNING! This stunt is here to make things exception safe.
         // The move constructor of std::multimap is **not** noexcept.

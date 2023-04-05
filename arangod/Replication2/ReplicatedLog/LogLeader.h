@@ -305,11 +305,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         FollowerInfo& follower, TermIndexPair const& lastAvailableIndex) const
         -> std::pair<AppendEntriesRequest, TermIndexPair>;
 
-    auto insertInternal(
-        std::variant<LogMetaPayload, LogPayload>, bool waitForSync,
-        std::optional<InMemoryLogEntry::clock::time_point> insertTp)
-        -> LogIndex;
-
     [[nodiscard]] auto waitForResign()
         -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
