@@ -126,7 +126,9 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
   } else {
     expected = runQuery("FOR d IN " + cn + " RETURN d").length;
   }
+  print("in collection " + expected);
   let vn;
+  let results = [];
   const checkView = (isMaterialize) => {
     let result;
     if (isMaterialize) {
@@ -134,7 +136,8 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    assertEqual(expected, result);
+    print("in view " + vn + " " + result);
+    results.push(result);
   };
 
   vn = viewName(cn + "_view", isSearchAlias);
@@ -148,6 +151,9 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize) => {
 
   vn = viewName(cn + "_view_ps_sv", isSearchAlias);
   checkView(isMaterialize);
+  for (const result of results) {
+    assertEqual(result, expected);
+  }
 };
 
 const clearAllFailurePoints = () => {
