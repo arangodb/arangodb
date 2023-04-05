@@ -54,6 +54,7 @@ struct Computing : ExecutionState {
 
   std::unordered_set<actor::ActorPID> respondedWorkers;
   message::GlobalSuperStepFinished messageAccumulation;
+  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActorForNextGss;
 };
 
 }  // namespace conductor
