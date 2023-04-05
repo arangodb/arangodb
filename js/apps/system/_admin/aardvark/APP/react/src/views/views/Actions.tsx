@@ -32,7 +32,7 @@ export const SaveButtonWrap = ({
     const route = getApiRouteForCurrentDB();
     let result;
     let error = false;
-    const normalizedViewName = encodeURIComponent(view.name.normalize());
+    const normalizedViewName = view.name.normalize();
     const encodedViewName = encodeURIComponent(normalizedViewName);
     const path = `/view/${encodedViewName}/properties`;
 
