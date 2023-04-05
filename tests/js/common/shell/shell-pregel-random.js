@@ -54,7 +54,7 @@ function randomTestSuite() {
     do {
       try {
         let stats = pregel.status(pid);
-        if (pregelTestHelpers.runCanceled(pid)) {
+        if (pregelTestHelpers.runCanceled(stats)) {
           break;
         }
       } catch (err) {
