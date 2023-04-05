@@ -54,9 +54,10 @@ const putRenameView = async ({
 }) => {
   let isError = false;
   const route = getApiRouteForCurrentDB();
-
-  const result = await route.put(`/view/${initialName}/rename`, {
-    name: name
+  const normalizedViewName = name.normalize();
+  const encodedInitialViewName = encodeURIComponent(initialName.normalize());
+  const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
+    name: normalizedViewName
   });
 
   if (result.body.error) {
@@ -79,7 +80,8 @@ async function patchViewProperties({
   initialView: ViewPropertiesType;
   setChanged: (changed: boolean) => void;
 }) {
-  const path = `/view/${view.name}/properties`;
+  const encodedViewName = encodeURIComponent(view.name.normalize());
+  const path = `/view/${encodedViewName}/properties`;
   window.arangoHelper.hideArangoNotifications();
   const result = await patchProperties({ view, path, initialView });
 
@@ -96,7 +98,8 @@ async function patchViewProperties({
     if (!isNameChanged) {
       await mutate(path);
     } else {
-      let newRoute = `#view/${view.name}`;
+      const encodedViewName = encodeURIComponent(view.name.normalize());
+      let newRoute = `#view/${encodedViewName}`;
       window.App.navigate(newRoute, {
         trigger: true,
         replace: true

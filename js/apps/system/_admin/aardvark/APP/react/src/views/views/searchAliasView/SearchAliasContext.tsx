@@ -81,8 +81,9 @@ export const SearchAliasProvider = ({
 
   const handleDelete = async () => {
     try {
+      const encodedViewName = encodeURIComponent(view.name.normalize());
       const result = await getApiRouteForCurrentDB().delete(
-        `/view/${view.name}`
+        `/view/${encodedViewName}`
       );
 
       if (result.body.error) {
