@@ -581,7 +581,11 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     instanceInfo.exitStatus = { status: 'TERMINATED'};
   }
   // renice debugger to lowest prio so it doesn't steal test resources
-  internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
+  try {
+    internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
+  } catch (ex) {
+    print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+  }
 }
 
 function aggregateDebugger(instanceInfo, options) {
@@ -593,7 +597,6 @@ function aggregateDebugger(instanceInfo, options) {
   print(`waiting for debugger of ${instanceInfo.pid} to terminate: ${JSON.stringify(instanceInfo.debuggerInfo)}`);
   let tearDownTimeout = 180; // s
   while (tearDownTimeout > 0) {
-    print(instanceInfo.debuggerInfo.pid.pid)
     let ret = statusExternal(instanceInfo.debuggerInfo.pid.pid, false);
     if (ret.status === "RUNNING") {
       sleep(1);

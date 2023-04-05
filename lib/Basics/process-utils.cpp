@@ -1569,6 +1569,7 @@ void TRI_ShutdownProcess() {
 }
 
 std::string TRI_SetPriority(ExternalId pid, int prio) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #ifndef _WIN32
   errno = 0;
   int ret = setpriority(PRIO_PROCESS, pid._pid, prio);
@@ -1592,4 +1593,7 @@ std::string TRI_SetPriority(ExternalId pid, int prio) {
   SetPriorityClass(hCurrentProcess, dwPriorityClass);
 #endif
   return "";
+#else
+  return "only available in maintainer mode";
+#endif
 }
